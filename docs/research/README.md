@@ -87,7 +87,7 @@ exclusion is recorded with its evidence.
 | [31-review-log.md](reference/31-review-log.md) | What each fact-check pass found and changed | Written |
 | [glossary.md](reference/glossary.md) | Terms used across the set | Written |
 | architecture-options/ | Five repository architecture options, their comparison and a recommendation | Planned, [#30](https://github.com/weaveplatform/infraweave/issues/30) |
-| [decisions/](decisions/README.md) | Decision records, with their index | 0001 to 0003; 0004 to 0021 planned in [#29](https://github.com/weaveplatform/infraweave/issues/29) and [#30](https://github.com/weaveplatform/infraweave/issues/30) |
+| [decisions/](decisions/README.md) | Decision records, with their index | 0001 to 0003 Accepted; 0005 to 0022 Proposed; 0004 planned in [#30](https://github.com/weaveplatform/infraweave/issues/30) |
 
 ## Versions at the research baseline
 
