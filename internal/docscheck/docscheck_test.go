@@ -32,6 +32,11 @@ const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack ma
 // sections may differ between options.
 const option = "# Option\n\n## Summary\n\n### Rules\n\n## Deep dives\n\n### Runs\n\n## Walkthroughs\n\n### A push\n"
 
+// plan is an implementation plan with two phases; the roadmap names both.
+const plan = "# Plan\n\n## Build status\n\n| P0 | done |\n\n## P0: Reference\n\nDecisions: [0001](../research/decisions/0001-one.md)\n\n" +
+	"**Depends on:** nothing.\n\n**Tasks**\n\n1. Generate.\n\n**Exit criteria**\n\n- `make gate` passes.\n\n" +
+	"## P1a: Skeleton\n\nDecisions: none.\n\n**Depends on:** P0.\n\n**Tasks**\n\n1. Serve.\n\n```\n## P9: Not a phase\n```\n\n**Exit criteria**\n\n- Served.\n"
+
 // tree is a repository that passes every check; each case changes one file.
 func tree() fstest.MapFS {
 	return fstest.MapFS{
@@ -59,6 +64,10 @@ func tree() fstest.MapFS {
 		"docs/research/architecture-options/1-a.md": file(option),
 		"docs/research/architecture-options/2-b.md": file(
 			option + "\n```\n## Not a heading\n```\n",
+		),
+		"docs/implementation/plan.md": file(plan),
+		"docs/implementation/capability-roadmap.md": file(
+			"# Roadmap\n\nP99 in prose is not an assignment.\n\n| Stacks | P0 | `P42` |\n| Runs | P1a |\n",
 		),
 		".git/description.md":     file("docs/missing.md\n"),
 		".github/workflows/w.yml": file("# docs/research/README.md\n"),
@@ -257,6 +266,32 @@ func TestUnitCheckFindings(t *testing.T) {
 			where: "docs/research/architecture-options/2-b.md:15",
 		},
 		{
+			name: "phase without exit criteria",
+			edit: func(m fstest.MapFS) {
+				m["docs/implementation/plan.md"] = file(strings.Replace(plan, "**Exit criteria**\n\n- Served.\n", "", 1))
+			},
+			want:  `phase P1a has no "**Exit criteria**"`,
+			where: "docs/implementation/plan.md:21",
+		},
+		{
+			name: "phase without decisions",
+			edit: func(m fstest.MapFS) {
+				m["docs/implementation/plan.md"] = file(
+					strings.Replace(plan, "Decisions: [0001](../research/decisions/0001-one.md)\n\n", "", 1),
+				)
+			},
+			want:  `phase P0 has no "Decisions:"`,
+			where: "docs/implementation/plan.md:7",
+		},
+		{
+			name: "roadmap names a missing phase",
+			edit: func(m fstest.MapFS) {
+				m["docs/implementation/capability-roadmap.md"] = file("# Roadmap\n\n| Stacks | P0, P2 |\n")
+			},
+			want:  "names phase P2, which plan.md does not have",
+			where: "docs/implementation/capability-roadmap.md:3",
+		},
+		{
 			name:  "stale mention",
 			edit:  func(m fstest.MapFS) { m["internal/x/x.go"] = file("package x\n\n// docs/research/02-old.md\n") },
 			want:  "names docs/research/02-old.md, which does not exist",
@@ -303,6 +338,29 @@ func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
 				m["api/reference/spacelift/spacelift.openapi.yaml"] = file(spec)
 			} else {
 				delete(m, "api/reference/spacelift/spacelift.openapi.yaml")
+			}
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, f := range found {
+				t.Error(f)
+			}
+		})
+	}
+}
+
+// TestUnitCheckWithoutPlan covers trees from before the implementation
+// plan, with and without its capability roadmap.
+func TestUnitCheckWithoutPlan(t *testing.T) {
+	for name, gone := range map[string][]string{
+		"no plan":    {"docs/implementation/plan.md", "docs/implementation/capability-roadmap.md"},
+		"no roadmap": {"docs/implementation/capability-roadmap.md"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := tree()
+			for _, p := range gone {
+				delete(m, p)
 			}
 			found, err := Check(m)
 			if err != nil {

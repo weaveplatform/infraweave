@@ -110,9 +110,12 @@ decide every request, so a binding change takes effect without a new token.
   name, so a key creator cannot point the server at arbitrary URLs.
 - **Reset** (`apiKeyReset`) replaces the secret in place and revokes every
   session of the key. **Disable** and **delete** do the same.
-- **`ApiKeyInput.admin`.** `true` is stored as a `space-admin` binding on
-  `root`, created with the key, and `admin` reads back whether that binding
-  exists. There is no separate admin column.
+- **`ApiKeyInput.admin`.** Not accepted, as decision 0021 rules for this
+  changelog-deprecated field: a body that sets it answers `400
+  invalid-request` like any unknown field (decision 0022). A key is made an
+  administrator by a `space-admin` binding on `root` (decision 0007), and
+  the key's read model reports `admin` as whether that binding exists.
+  There is no separate admin column.
 - **Personal keys** carry `owner_user_id`; their principal is the owner's, so
   they never exceed the owner's access, and they stop working when the owner is
   deactivated (`disabled_reason = DEPROVISIONED`).
@@ -336,7 +339,7 @@ Departures from Spacelift, for the plan's deviations register:
 | Departure | Why |
 |---|---|
 | The in-run token's `iss` defaults to `spacelift` but is configurable | Keeps `spacelift_current_stack` working while letting an operator brand the issuer |
-| `ApiKeyInput.admin` is stored as a root `space-admin` binding | One source of truth for access; the changelog already deprecates the flag |
+| `ApiKeyInput.admin` is not accepted; a root `space-admin` binding grants admin | One source of truth for access; the changelog deprecates the flag and decision 0021 excludes it |
 | OIDC API key issuers are fetched over HTTPS only, optionally from an allowlist | A self-hosted server fetching user-supplied URLs is an SSRF path |
 | Signing keys rotate automatically every 90 days | Self-hosted Spacelift documents no rotation of its JWT signing key, while its AWS module rotates only the master and in-app encryption keys yearly ([24 section 3.5](../reference/24-self-hosted-reference.md#35-encryption-and-kms)); rotation limits key exposure |
 | The federation token file is refreshed during long runs | Spacelift does not document reissue (report 12 section 6.1); a run past one hour otherwise loses cloud access |

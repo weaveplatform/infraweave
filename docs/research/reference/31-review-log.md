@@ -1,15 +1,16 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-08 and ARC-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022 and the architecture options as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
 This log records what the independent fact-checks of the reference reports
 and the proposed decision records found and what each finding changed, so
 that a reader can tell which statements in reports 01 and 03 to 28, in
-decisions 0004 to 0022 and in the architecture options are corrections
-rather than first drafts. It covers eight passes, one per ticket from
-RES-02 to RES-08 and ARC-01, and keeps every
+decisions 0004 to 0022, in the architecture options and in the
+implementation documents are corrections rather than first drafts. It
+covers nine passes, one per ticket from RES-02 to RES-08, ARC-01 and
+IMP-01, and keeps every
 finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
@@ -72,6 +73,15 @@ decision 0004. Two helpers took options 1 to 4; the checker took option 5,
 the comparison and 0004, and settled Go and depguard claims by experiment
 rather than from documentation.
 
+IMP-01 reviewed the implementation plan, the capability roadmap, the
+deviations register, the repository layout and the definition of done. A
+helper took the roadmap and the register; the checker took the plan's
+phase graph, tasks, exit criteria and milestones, the layout and the
+definition of done, settling dependencies by tracing each task's packages
+and tables to the phase that builds them, and build status against the
+GitHub issues. A task that uses something no phase it depends on builds
+counts as *wrong*.
+
 ## Totals
 
 | Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
@@ -84,7 +94,8 @@ rather than from documentation.
 | RES-07 | [26](26-scope-and-tiers.md), [27](27-reference-materials.md), [28](28-data-model.md) | about 175, plus every table row, link and typed field by script | 18 | 4 | 2 | 0 | 0 | 24 |
 | RES-08 | decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md) | about 765, plus every link, slug and shared name by script | 34 | 9 | 12 | 0 | 3 | 58 |
 | ARC-01 | [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md) | about 450, plus every heading, depguard block, matrix cell and mapping row by script | 61 | 5 | 13 | 0 | 3 | 82 |
-| **All** | 27 reports, 19 records, 5 options | about 3,320 | **217** | **92** | **129** | **7** | **25** | **470** |
+| IMP-01 | the [implementation documents](../../implementation/plan.md) and option 5 | about 400, plus every operationId, roadmap row and DV row by script | 28 | 3 | 9 | 0 | 2 | 42 |
+| **All** | 27 reports, 19 records, 5 options, 5 implementation documents | about 3,720 | **245** | **95** | **138** | **7** | **27** | **512** |
 
 The counts are of the findings tables' rows. Two reviews give summary
 counts that differ from their own rows. In RES-02, the 05 summary gives 15
@@ -1071,6 +1082,115 @@ and registry modules.
   operations, 22 run states and 43 transitions, and option 5's 6 depguard
   rules with about 75 entries.
 
+## IMP-01: implementation plan and supporting documents
+
+### Claims checked
+
+About 400 claims by hand: every task of the 45 phases of the
+[plan](../../implementation/plan.md) (202 tasks), traced package by package
+and table by table to the phase that builds what it uses; every
+**Depends on** line, exit criterion and milestone; the Build status rows
+against the state of issues #5, #8 to #15 and #21 to #31 on GitHub; the
+[repository layout](../../implementation/repo-layout.md) and the
+[definition of done](../../implementation/definition-of-done.md) against
+decisions [0004](../decisions/0004-repository-architecture.md),
+[0016](../decisions/0016-testing-and-acceptance.md) and
+[0020](../decisions/0020-reference-deployments-and-packaging.md), option 5
+and today's `Makefile`, workflows, `.golangci.yml`, `.testcoverage.yml` and
+`go list ./...`. Scripts rebuilt the phase graph (cycles, the longest
+chain), checked every operationId the plan names against
+`spacelift.openapi.yaml` and `deploy.openapi.yaml` (674 named, all exist),
+gave every one of the 725 reference operations an owner in the plan or the
+[capability roadmap](../../implementation/capability-roadmap.md), recomputed
+each tag's owning phases against the exit criteria, and checked test and
+feature names against 0016. A helper re-derived every roadmap row (53 tags
+plus 8 untagged operations, 56 resources, 62 data sources, 31
+`BillingTierFeature` values) against the reference artefacts and report
+[26](26-scope-and-tiers.md), traced each row to its phase's tasks, and
+checked every row of the [deviations register](../../implementation/deviations.md)
+(DV-001 to DV-091) against the record it cites and every departure named in
+decisions 0004 to 0022. The copy check found no docs prose.
+
+### Findings by severity
+
+| Files | wrong | unsupported | missing | copied | style | Total |
+|---|---|---|---|---|---|---|
+| [plan](../../implementation/plan.md) | 18 | 1 | 3 | 0 | 2 | 24 |
+| [repo-layout](../../implementation/repo-layout.md), [definition of done](../../implementation/definition-of-done.md) | 5 | 0 | 1 | 0 | 0 | 6 |
+| [5-modular-monolith](../architecture-options/5-modular-monolith.md) | 1 | 0 | 2 | 0 | 0 | 3 |
+| [capability roadmap](../../implementation/capability-roadmap.md), [deviations](../../implementation/deviations.md), [0013](../decisions/0013-secrets-at-rest.md) | 4 | 2 | 3 | 0 | 0 | 9 |
+| **All** | **28** | **3** | **9** | **0** | **2** | **42** |
+
+### Findings
+
+| # | Finding | Change |
+|---|---|---|
+| 1 | Plan critical path ran through P13 → P13b → P23; the longest chain of **Depends on** edges runs P10 → P11 → P20 → P20b → P22 → P22b → P24, one phase longer | Critical path recomputed (24 edges) with the shorter chains named |
+| 2 | P2b registered `blob.expire` "in P2c" and its `secrets rotate` enqueues `secrets.reseal` (0013), yet P2b depended on P2 only, so its expiry exit criterion could not hold | P2b depends on P2c and registers its own job and periodic task; P2c keeps `queue.prune` and `idempotency.purge` |
+| 3 | P4 exit: a hidden stack answers `404`; stacks arrive in P5, which depends on P4 | A hidden space |
+| 4 | P4b served stack role bindings, `stackRoleBindings` and `stacksWithAccessToSpace` without depending on P5 | P4b depends on P5 |
+| 5 | P8's handover carries "the resolved environment", which P6's `Environment.Resolve` provides; P8 did not depend on P6 | P6 added to P8's **Depends on** |
+| 6 | P14 enforced drift run limits in the claim before drift detection exists (P16) | Moved to P16 task 2 |
+| 7 | P15 served `moduleAttachableAwsIntegrations` and `moduleAttachableAzureIntegrations` (`/modules/{moduleId}/...`) before modules exist (P17) | Moved to P17, which depends on P15 |
+| 8 | P17 served `moduleAttachablePolicies` and `modulePolicyAttachment` without depending on P13, which builds policies | P17 depends on P13 and P15 |
+| 9 | P3 and P3b exits claimed decision 0016's evidence rule, whose denial scenario is a `403` under 0007; the authorizer lands in P4 | P3 and P3b prove success and failure; P4 and P4b exits carry their denials and the evidence rule |
+| 10 | P3 exit: report 26 shows API Keys `implemented`; `apiKeyApiKeyRoleBindings` is P4b's | API Keys `partial` at P4, complete at P4b |
+| 11 | P3b exit: Managed Users complete less group integrations; its two role-binding reads are P4b's | Both exceptions named |
+| 12 | P22 exit: the Search Suggestions tag meets the evidence rule, but its operations land with their searches in phases P22 does not depend on (P4b, P13b, P17, P18, P18b, P19b, P21) | Claim removed; task 2 says each suggestion lands with its search |
+| 13 | P20 exit: "every vendor of report 20" includes Ansible, which is P20b's | The four vendors P20 builds |
+| 14 | Milestones M5, M6 and M8 named one phase whose dependencies do not include P14, P15, P16, P17b (M5), P19b, P21 (M6) or P25b (M8) | "Reached after" lists every phase the outcome needs |
+| 15 | Parallel lanes: "six lanes run independently once P10 lands" put P14 (after P13), P15 (after P9), P17 (after P13) and P21 (also after P12) in lanes they are not in | Lanes rewritten from the graph |
+| 16 | P23 task 2 called `managedUserGroupIntegration*` IdP group mappings; they give a Slack channel access rules (report 14 section 4.3) and need P18, which P23 does not depend on | Moved to P18; P23 keeps the login mapping onto P3b's groups |
+| 17 | P24: "decision 0004 leaves the provider's repository open"; 0004 does not mention the provider's repository | Stated as an open item with no decision |
+| 18 | No open-items list: the web console, the provider's repository and the report 26 cells that 0008 and 0021 supersede (section 7.8's MQTT transport, 7.7's legacy AWS mutations, the provisional phase column) had no place | New Open items section; P28 task 3 amends report 26 when 0021 is accepted |
+| 19 | P3 task 3 did not say how `ApiKeyInput.admin` is handled after 0006 followed 0021 | Rejected with `400 invalid-request`; `admin` reads a root `space-admin` binding from P4b |
+| 20 | P3 exit replayed capture C17 (the in-run token's `sub`); the in-run token first exists in P9 | Moved to P9 |
+| 21 | P1b exit: "the repo layout matches the tree", which cannot hold while the tree names later modules | Every package `go list` shows sits where the layout places it |
+| 22 | The adjustments table omitted remaps from report 26's provisional phases: `spacelift_idp_group_mapping`, Billing, OAuth, Worker Pools | Added |
+| 23 | "Adjustments to the approved spine" named a plan outside the repository, and "still carries the earlier marks" narrated history | Rewritten against report 26 section 1.4 |
+| 24 | `plugins.feature` and `scans.feature` broke 0016's `<area>_<topic>.feature` | `vendors_plugins.feature`, `resources_scans.feature` |
+| 25 | repo-layout: "The Terraform provider is a separate repository", a choice no record makes | Open, linked to the plan's open items |
+| 26 | repo-layout and definition of done: `api/provider-parity.yaml`; 0016 and DV-002 say `api/reference/provider-parity.yaml` | 0016's path |
+| 27 | repo-layout phase marks: `vendors` and `iac` at P9, though P5 creates both; captures at P9, though P1c creates them; marks said to be option 5's, though they are the plan's | Marks corrected; the plan named as their source |
+| 28 | repo-layout lacked `kernel/search` and `platform/sql/search` (P5) and `resources/internal/scans` (P22b), and described `httpkit/strict` without the update semantics P5 puts there | Added |
+| 29 | repo-layout `deploy/helm/` held one chart and `images/` omitted the Flows runtime; 0020 ships the `infraweave` and `infraweave-workers` charts and a Flows runtime image | Tree reconciled with 0020 |
+| 30 | Definition of done: forbidigo "From P1c", though P1b enables it; the CLI row "From P24", though `infraweavectl` is P24b | P1b and P24b |
+| 31 | Option 5 `sqltest`: "one schema per test"; 0016 gives each case a database copied from a migrated template | 0016's rule |
+| 32 | Option 5's `cmd` list and composition root omitted the `secrets` subcommands that 0004 and 0013 define | `secrets` and `secrets.go` added |
+| 33 | Option 5 `deploy/` listed one Helm chart and no Compose file, Terraform modules or `check.sh` | Reconciled with 0020 |
+| 34 | Roadmap: `spacelift_idp_group_mapping` resource and data source at P23, though they call only P3b's `managedUserGroup*` operations | P3b |
+| 35 | Roadmap: five Terraform rows called operations of later phases without saying so (`spacelift_account`, `spacelift_default_runner_image`, `spacelift_stack`, `spacelift_tool_versions`, `spacelift_stack_destructor`) | Notes name the phases; the reading rule says a row is implemented only when all are |
+| 36 | Roadmap Also column omitted P4b on Stacks (`stackRoleBindings`) | Added |
+| 37 | Roadmap Managed Users note: "IdP group mappings are SSO's" | Slack channel access rules, P18 |
+| 38 | Roadmap supersession register: `ApiKeyInput.admin` still "pending", in conflict with 0006 | Replaced by a root `space-admin` binding, P4b |
+| 39 | DV-013 kept the field as a pending conflict; a pending-deviations row repeated it | Rewritten from 0006 and 0021; pending row removed |
+| 40 | DV-051 (values under 4 bytes are not masked) cited 0013, which states the rule but not as a departure | 0013's Rationale gains the departure |
+| 41 | DV-091 cited 0022's Rationale, which does not list it; 0022's Constraints calls it a deliberate departure | Source corrected |
+| 42 | DV-039 cited 0011's Decision only; the departure is in its Rationale table | Rationale cited |
+
+### What survived
+
+- **Graph:** the 45 phases form an acyclic graph, every **Depends on** names
+  a real phase, and every phase carries its decisions, dependencies, tasks
+  and exit criteria.
+- **Operations:** all 674 operationIds the plan names exist; all 725
+  reference operations have an owner, three groups through counted phrases
+  (the five subscription mutations, the 20 User Guide operations and the
+  six grant-view suggestions).
+- **Counts:** 53 tags plus 8 untagged operations, 56 resources, 62 data
+  sources and 31 `BillingTierFeature` values, each with exactly one roadmap
+  row whose phase exists.
+- **Build status:** P0 done (#5 closed); P1 in progress with #9, #10, #12
+  and #13 closed and #11, #14 and #15 open, as GitHub shows.
+- **Gaps in today's tree:** each has a task. P1b moves the packages,
+  updates the `Makefile` and `.testcoverage.yml` paths and enables depguard
+  and forbidigo; P1c adds the `-run '^TestUnit'` filter, the acceptance
+  partitions and `generated` in the gate's `needs`; P24 adds
+  `provider-parity`.
+- **Deviations:** apart from the rows above, every DV row's departure is in
+  the record it cites, and every departure in decisions 0004 to 0022 has a
+  row.
+
 ## What survived across the set
 
 - **Mechanical inventories hold.** Every operation, route, field, enum
@@ -1121,7 +1241,7 @@ and registry modules.
 ## Inferred and undocumented
 
 This log adds no claims about Spacelift. Its counts come from the findings
-tables of the eight reviews; where a review's own summary differs from its
+tables of the nine reviews; where a review's own summary differs from its
 rows, the rows are counted and the difference is stated under Totals.
 
 ## Versions at the research baseline
@@ -1137,9 +1257,10 @@ rows, the rows are counted and the difference is stated under Totals.
 ## Sources
 
 - The fact-check reviews of RES-02, RES-03, RES-04, RES-05, RES-06,
-  RES-07, RES-08 and ARC-01, and the drafters' notes for RES-02 to RES-07, written
+  RES-07, RES-08, ARC-01 and IMP-01, and the drafters' notes for RES-02 to RES-07, written
   2026-10-28.
 - Reports [01](01-spacelift-landscape.md) and [03](03-deploy-core-api-inventory.md) to [28](28-data-model.md) in this directory, as edited by those
   reviews, decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08, and the [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md), as edited by ARC-01.
+- The [implementation plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [deviations register](../../implementation/deviations.md), [repository layout](../../implementation/repo-layout.md) and [definition of done](../../implementation/definition-of-done.md), as edited by IMP-01; GitHub issues #5, #8 to #15 and #21 to #31, read 2026-10-28.
 - <https://spacelift.io/pricing>, read 2026-10-28 as raw HTML for RES-07.
 - The open questions the reviews raised: [30](30-open-questions.md).
