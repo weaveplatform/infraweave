@@ -75,9 +75,9 @@ exclusion is recorded with its evidence.
 | [19-events-notifications-audit.md](reference/19-events-notifications-audit.md) | Notifications, Slack and Teams, webhooks, the audit trail and metrics exporters | Written |
 | [20-vendors.md](reference/20-vendors.md) | Terraform, OpenTofu, Terragrunt, Pulumi, CloudFormation, Kubernetes and Ansible; workflow tools, cost estimation and sanitization | Written |
 | [21-resources-scans-search.md](reference/21-resources-scans-search.md) | The resources view, entity changes, scans, saved filters and search | Written |
-| 22-intelligence.md | AI integrations, the Infra Assistant, Intent and the MCP server | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
-| 23-flows.md | Spacelift Flows: model, apps, flowctl, the Flows provider, self-hosted Flows and agent pools | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
-| 24-self-hosted-reference.md | Self-hosted Spacelift's components, external dependencies, networking and reference deployments | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
+| [22-intelligence.md](reference/22-intelligence.md) | AI integrations, the Infra Assistant, Intent and the MCP server | Written |
+| [23-flows.md](reference/23-flows.md) | Spacelift Flows: model, apps, flowctl, the Flows provider, self-hosted Flows and agent pools | Written |
+| [24-self-hosted-reference.md](reference/24-self-hosted-reference.md) | Self-hosted Spacelift's components, external dependencies, networking and reference deployments | Written |
 | [25-other-integrations.md](reference/25-other-integrations.md) | Plugins, Backstage, ServiceNow, Teleport, Docker and the Kubernetes operator | Written |
 | 26-scope-and-tiers.md | Editions and tier features against infraweave's availability state and owning phase; supersession boundaries | Planned, [#28](https://github.com/weaveplatform/infraweave/issues/28) |
 | 27-reference-materials.md | Atlantis, OTF, Terrakube, Digger, Burrito, Terramate, the Flux tofu-controller, OPA, Temporal and River: what to borrow | Planned, [#28](https://github.com/weaveplatform/infraweave/issues/28) |
