@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: infraweave Deploy API
+  version: 0.1.0
+  description: >-
+    infraweave's infrastructure-as-code orchestration API: stacks, runs,
+    policies, contexts and worker pools over REST. It starts from the Spacelift
+    reference in api/reference/spacelift and may diverge from it; see
+    docs/research/decisions/0001-rest-first-spacelift-surface.md.
+servers:
+  - url: /api/v1
+    description: The versioned prefix on the server's single listener.
+security:
+  - bearerAuth: []
+tags:
+  - name: system
+    description: Health and version endpoints that need no authentication.
+  - name: handwritten
+    description: Marker tag. Operations with this tag are implemented by hand and excluded from code generation.

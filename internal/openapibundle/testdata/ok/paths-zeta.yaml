@@ -1,0 +1,25 @@
+paths:
+  /widgets/{widgetId}:
+    get:
+      operationId: getWidget
+      tags: [widgets]
+      parameters:
+        - name: widgetId
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: The widget.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Widget'
+        "404":
+          $ref: '#/components/responses/NotFound'
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        id: {type: string}

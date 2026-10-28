@@ -1,0 +1,20 @@
+components:
+  schemas:
+    # Kept: a comment on a component survives into the bundle.
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        title: {type: string}
+        status: {type: integer, format: int32}
+  responses:
+    NotFound:
+      description: No such resource.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

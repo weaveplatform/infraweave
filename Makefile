@@ -85,6 +85,10 @@ REFERENCE_DIR := api/reference/spacelift
 reference-fetch:
 	$(GO) run ./tools/specref fetch --dir $(REFERENCE_DIR)
 
+## bundle: merge api/src/<service>/*.yaml fragments into api/<service>.openapi.yaml
+bundle:
+	$(GO) run ./tools/openapi-bundle --src api/src --out api
+
 ## reference: regenerate the Spacelift OpenAPI reference and coverage report from the snapshots
 reference:
 	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
@@ -96,4 +100,4 @@ verify-reference:
 ## gate: everything CI runs, in order
 gate: vet lint test accept verify-reference cover vuln build
 
-.PHONY: help init fmt lint vet test accept reference-fetch reference verify-reference cover vuln build gate
+.PHONY: help init fmt lint vet test accept reference-fetch bundle reference verify-reference cover vuln build gate

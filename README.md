@@ -31,6 +31,23 @@ The weekly **OpenAPI specification update** workflow (`openapi-spec-update.yml`)
 compares the pinned upstream commits with the newest ones. When either is
 newer, it regenerates on a runner and opens a PR.
 
+## The served API
+
+infraweave's own API is authored as fragments in `api/src/deploy/`:
+- `info.yaml` holds the document head;
+- `components-*.yaml` and `paths-<family>.yaml` hold only `paths` and `components`.
+
+`make bundle` (`tools/openapi-bundle` over `internal/openapibundle`) merges
+the fragments into `api/deploy.openapi.yaml`, served under `/api/v1`. The
+bundle is committed, and a unit test fails when it is stale.
+
+Bundling fails when any of these happens:
+
+- `info.yaml` is missing, or holds keys other than its own;
+- a fragment holds anything besides `paths` and `components`;
+- a path, `operationId` or component is defined twice (the error names both files);
+- the result is not valid OpenAPI 3.0.3.
+
 ## Layout
 
 | Path | What |
@@ -39,7 +56,7 @@ newer, it regenerates on a runner and opens a PR.
 | `cmd/<binary>/` | Entry points: thin cobra shims over `internal/`; excluded from the coverage gate |
 | `internal/` | Project-only packages; `internal/buildinfo` carries the version stamped in by `make build` |
 | `pkg/` | Public, importable packages |
-| `tools/` | Developer tooling (`tools/specref`); excluded from the coverage gate |
+| `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
 | `test/acceptance/` | Gherkin features run by godog against the committed reference (excluded from `make test`) |
 
@@ -50,6 +67,7 @@ newer, it regenerates on a runner and opens a PR.
 | `make gate` | Everything CI runs: vet, lint, test, accept, verify-reference, cover, vuln, build |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
+| `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
 | `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
 | `make reference` | Regenerates the spec and `coverage.md` from the snapshots |
 | `make verify-reference` | Fails if the committed reference is not exactly what the snapshots generate |

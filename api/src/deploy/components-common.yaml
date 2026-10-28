@@ -1,0 +1,46 @@
+# Shapes every family shares. Problem and its responses match the Spacelift
+# reference's, so scaffolded families reference them instead of copying.
+components:
+  schemas:
+    Problem:
+      description: >-
+        An RFC 9457 problem detail. Every error response uses the status code
+        and this body.
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          description: A URI naming the problem type.
+        title:
+          type: string
+          description: A short summary of the problem type.
+        status:
+          type: integer
+          format: int32
+          description: The HTTP status code, repeated for clients that lose it.
+        detail:
+          type: string
+          description: What went wrong with this request.
+        instance:
+          type: string
+          description: A URI naming this occurrence.
+  responses:
+    NotFound:
+      description: No such resource, or the caller may not see it.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Problem:
+      description: The request failed; the body says why.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A JWT issued by infraweave's token endpoint.
