@@ -85,6 +85,12 @@ REFERENCE_DIR := api/reference/spacelift
 reference-fetch:
 	$(GO) run ./tools/specref fetch --dir $(REFERENCE_DIR)
 
+## scaffold: copy one reference tag into a deploy API fragment and rebundle (make scaffold TAG=Stacks FAMILY=stacks [FORCE=1])
+scaffold:
+	@test -n "$(TAG)" -a -n "$(FAMILY)" || { echo "usage: make scaffold TAG=<reference tag> FAMILY=<fragment name>"; exit 1; }
+	$(GO) run ./tools/specref scaffold --dir $(REFERENCE_DIR) --tag "$(TAG)" --out api/src/deploy/paths-$(FAMILY).yaml $(if $(FORCE),--force)
+	$(MAKE) bundle
+
 ## bundle: merge api/src/<service>/*.yaml fragments into api/<service>.openapi.yaml
 bundle:
 	$(GO) run ./tools/openapi-bundle --src api/src --out api
@@ -100,4 +106,4 @@ verify-reference:
 ## gate: everything CI runs, in order
 gate: vet lint test accept verify-reference cover vuln build
 
-.PHONY: help init fmt lint vet test accept reference-fetch bundle reference verify-reference cover vuln build gate
+.PHONY: help init fmt lint vet test accept reference-fetch scaffold bundle reference verify-reference cover vuln build gate

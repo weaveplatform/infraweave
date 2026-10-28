@@ -51,7 +51,8 @@ change to retrofit once clients exist:
     covers rate limiting, a disabled caller, and the 409 and 422 above.
 - **Methods that ignore the key.** `GET`, `HEAD`, `PUT` and `DELETE` are
   idempotent by definition, with the resource ID as the key, and ignore the
-  header.
+  header. So do searches (`POST …/search`): they change nothing, so a retry
+  is already safe.
 - **Optional.** A client that never sends a key gets exactly the behaviour it
   would without this feature.
 

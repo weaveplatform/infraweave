@@ -64,7 +64,8 @@ func TestUnitDeployConventionComponents(t *testing.T) {
 	for _, name := range []string{
 		"TooManyRequests", "IdempotencyConflict", "IdempotencyMismatch", "ApiDisabled", "InvalidCursor",
 	} {
-		if r := c.Responses[name]; r == nil || r.Value.Description == nil || *r.Value.Description == "" {
+		if r := c.Responses[name]; r == nil || r.Value.Description == nil ||
+			*r.Value.Description == "" {
 			t.Errorf("response %s missing or undocumented", name)
 		}
 	}
