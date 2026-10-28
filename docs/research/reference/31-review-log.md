@@ -1,21 +1,22 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-07 fact-check reviews and reports 01 and 03 to 28 as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08 fact-check reviews, reports 01 and 03 to 28 and decisions 0005 to 0022 as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
 This log records what the independent fact-checks of the reference reports
-found and what each finding changed, so that a reader can tell which
-statements in reports 01 and 03 to 28 are corrections rather than first
-drafts. It covers six passes, one per research ticket from RES-02 to
-RES-07, and keeps every finding, shortened. Report 02 predates these
+and the proposed decision records found and what each finding changed, so
+that a reader can tell which statements in reports 01 and 03 to 28 and in
+decisions 0005 to 0022 are corrections rather than first drafts. It covers
+seven passes, one per research ticket from RES-02 to RES-08, and keeps every
+finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
 [glossary](glossary.md).
 
 | Label | Means |
 |---|---|
-| *wrong* | The report stated something a primary source contradicts |
+| *wrong* | The report or record stated something a primary source, or another record, contradicts |
 | *unsupported* | The claim may hold, but its cited source does not show it, or its marker claimed more than the source gives |
 | *missing* | A fact in scope that a cited or obvious source states was absent |
 | *copied* | Text matched a run of 12 or more words on docs.spacelift.io, or quoted a source without the attribution its licence needs |
@@ -57,6 +58,14 @@ RES-06 read the live Flows OAuth metadata. RES-07 read the pricing page's
 raw HTML and the GitHub release list. RES-03 fetched the policy
 contract.
 
+RES-08 reviewed decision records rather than reports. Two helpers each
+checked half the records against the reports and primary sources, and the
+checker compared every shared name across all 18 records (problem slugs,
+configuration keys, job kinds, channels, tables, sealed columns, test and
+feature names, process roles), counting a contradiction between records as
+*wrong*. It also renamed the records' process and binary names to decision
+0004's.
+
 ## Totals
 
 | Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
@@ -67,7 +76,8 @@ contract.
 | RES-05 | [15](15-module-and-provider-registry.md), [17](17-blueprints-and-templates.md), [18](18-scheduling-drift-dependencies.md), [20](20-vendors.md), [21](21-resources-scans-search.md), [25](25-other-integrations.md) | about 500, plus every schema table row by script | 21 | 16 | 25 | 2 | 2 | 66 |
 | RES-06 | [22](22-intelligence.md), [23](23-flows.md), [24](24-self-hosted-reference.md) | about 255, plus every link and generated row by script | 8 | 2 | 10 | 1 | 1 | 22 |
 | RES-07 | [26](26-scope-and-tiers.md), [27](27-reference-materials.md), [28](28-data-model.md) | about 175, plus every table row, link and typed field by script | 18 | 4 | 2 | 0 | 0 | 24 |
-| **All** | 27 reports | about 2,105 | **122** | **78** | **104** | **7** | **19** | **330** |
+| RES-08 | decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md) | about 765, plus every link, slug and shared name by script | 34 | 9 | 12 | 0 | 3 | 58 |
+| **All** | 27 reports, 18 records | about 2,870 | **156** | **87** | **116** | **7** | **22** | **388** |
 
 The counts are of the findings tables' rows. Two reviews give summary
 counts that differ from their own rows. In RES-02, the 05 summary gives 15
@@ -812,6 +822,156 @@ record that tasks need a paid account.
 - **28:** all 96 typed field claims, the other child-to-parent edges, and the
   identity rules of section 1.2.
 
+## RES-08: decision records 0005 to 0022
+
+### Claims checked
+
+About 765 claims by hand: 0005 to 0013 about 315 (every transition ID and
+driver of 0008 against report 08, the timers and priority tiers, report
+24's database and encryption facts, the OIDC claims and subject template,
+the policy types, timeouts and quotas, the state backend protocol against
+the Terraform and OpenTofu `http` clients, River's features, the VCS
+signature schemes and the masking rules); 0014 to 0022 about 360 (every
+registry protocol answer against report 15 and HashiCorp's protocols, the
+delivery contract against report 19 and its captures, the CI and coverage
+facts against the repository, report 19's exporter metrics, report 23's
+Flows limits, report 22's AI and Intent facts, report 26's supersession
+rows, RFC 9457, RFC 7396 and Go's timezone loader); and about 90
+cross-record pairs. Scripts resolved the 480 links and anchors, checked
+about 40 Go API symbols at their latest module versions, and compared names
+across all 18 records: every problem slug against 0022's table, about 300
+configuration keys, job kinds and periodic tasks against 0011, NOTIFY
+channels against 0005, sealed columns and stores against 0013, test and
+feature-file names against 0016, and 0021's served and not-served table
+against the records that own each candidate. The copy check found no
+12-word run shared with the docs mirror.
+
+### Findings by severity
+
+| Records | wrong | unsupported | missing | copied | style | Total |
+|---|---|---|---|---|---|---|
+| [0005](../decisions/0005-persistence-postgresql.md) | 2 | 2 | 0 | 0 | 0 | 4 |
+| [0006](../decisions/0006-authentication-and-tokens.md) | 1 | 0 | 0 | 0 | 0 | 1 |
+| [0007](../decisions/0007-authorization-spaces-and-roles.md) | 0 | 0 | 1 | 0 | 0 | 1 |
+| [0008](../decisions/0008-run-execution-and-worker-protocol.md) | 1 | 1 | 0 | 0 | 0 | 2 |
+| [0009](../decisions/0009-policy-engine-opa.md) | 0 | 1 | 0 | 0 | 0 | 1 |
+| [0010](../decisions/0010-state-backend.md) | 1 | 0 | 0 | 0 | 0 | 1 |
+| [0011](../decisions/0011-persistent-work-queue.md) | 1 | 0 | 0 | 0 | 1 | 2 |
+| [0012](../decisions/0012-vcs-integration-model.md) | 0 | 1 | 0 | 0 | 0 | 1 |
+| [0013](../decisions/0013-secrets-at-rest.md) | 4 | 0 | 0 | 0 | 0 | 4 |
+| [0014](../decisions/0014-module-and-provider-registry.md) | 2 | 2 | 1 | 0 | 0 | 5 |
+| [0015](../decisions/0015-events-notifications-webhooks-audit.md) | 2 | 2 | 2 | 0 | 0 | 6 |
+| [0016](../decisions/0016-testing-and-acceptance.md) | 2 | 0 | 0 | 0 | 0 | 2 |
+| [0017](../decisions/0017-observability-and-health.md) | 1 | 0 | 0 | 0 | 0 | 1 |
+| [0019](../decisions/0019-ai-provider-boundary.md) | 1 | 0 | 1 | 0 | 0 | 2 |
+| [0020](../decisions/0020-reference-deployments-and-packaging.md) | 0 | 0 | 1 | 0 | 0 | 1 |
+| [0021](../decisions/0021-capability-scope-and-supersession.md) | 1 | 0 | 0 | 0 | 0 | 1 |
+| [0022](../decisions/0022-api-errors-and-update-semantics.md) | 3 | 0 | 0 | 0 | 1 | 4 |
+| Across records | 12 | 0 | 6 | 0 | 1 | 19 |
+| **All** | **34** | **9** | **12** | **0** | **3** | **58** |
+
+[0018](../decisions/0018-flows-runtime.md) had no finding of its own; it
+takes part in findings 40 and 55.
+
+### Findings
+
+| # | Record | Finding | Change |
+|---|---|---|---|
+| 1 | 0005 | *unsupported*: migrations at start linked 24 section 9; the fact is in 2.1 | Anchor moved |
+| 2 | 0005 | *wrong*: self-hosted Spacelift "needs only" PostgreSQL and object storage; 24 section 3 also requires a registry and a runtime | "only mandatory data stores" |
+| 3 | 0005 | *unsupported*: retention said to follow Spacelift's buckets; `run-artifacts` has no match | Marked infraweave's |
+| 4 | 0005 | *wrong*: Spacelift's wire IDs called ULIDs; most entities are slug-addressed (28 section 1.2) | Corrected |
+| 5 | 0006 | *wrong*: Spacelift's self-hosted key "permanent"; the choice is permanent and the AWS module rotates keys yearly | Row rewritten |
+| 6 | 0007 | *missing*: the `worker-pool-controller` slug is *(unverified)* in report 14 | Named in the departure and Constraints |
+| 7 | 0008 | *wrong*: four Spacelift launcher variables have no equivalent | Named as left open |
+| 8 | 0008 | *unsupported*: the 4-byte masking minimum attributed to Spacelift | Attributed to 0013 |
+| 9 | 0009 | *unsupported*: "any reject rejects" is *(unverified)* in 09 section 3.3 | Listed as infraweave's |
+| 10 | 0010 | *wrong*: `terraform force-unlock` sends an empty body, not the holder's ID; OpenTofu sends the ID | Rewritten; design affected |
+| 11 | 0011 | *wrong*: River's dead letters called Pro; open-source River keeps `discarded` jobs and retries them | Rationale narrowed; decision stands |
+| 12 | 0011 | *style*: grammar "fixed by P9", a question | "0022's answer to P9" |
+| 13 | 0012 | *unsupported*: Digger dispatch is in 27 section 5.4 | Link added |
+| 14 | 0013 | *wrong*: a separate JWT key exists only in KMS mode | Corrected |
+| 15 | 0013 | *wrong*: Spacelift's keys "have no rotation path" | Corrected |
+| 16 | 0013 | *wrong*: FIPS 140-3 "needs no change"; `fips140=only` refuses caller-nonce AES-GCM, used by the object format and go-jose | Rewritten; design affected |
+| 17 | 0013 | *wrong*: a sealed VCS agent pool column; 0012 stores the key as SHA-256 | Row removed; key hashed |
+| 18 | 0014 | *wrong*: the Open Registry service is 27 section 4.1, not 4.3 | Anchor moved |
+| 19 | 0014 | *wrong*: `x-amz-checksum-sha256` takes base64, not hex | Conversion stated |
+| 20 | 0014 | *unsupported*: "Spacelift publishes without checking" | Reworded to 15 section 10.5 |
+| 21 | 0014 | *unsupported*: `tfconfig.LoadModule` reads one directory | Calls named |
+| 22 | 0014 | *missing*: deleting a `REVOKED` provider version is infraweave's choice (C136) | Marked |
+| 23 | 0015 | *missing*: most of the delivery contract is infraweave's while C178 is open | Separated |
+| 24 | 0015 | *missing*: the log placeholder cap (C172) and pull request bodies | Stated |
+| 25 | 0015 | *unsupported*: the audit retry schedule is open (C181) | Marked |
+| 26 | 0015 | *unsupported*: Atlantis and Digger cited by Terrakube's section | Links added |
+| 27 | 0015 | *wrong*: v3 made the broker optional, not dropped | Corrected |
+| 28 | 0016 | *wrong*: Windows runners have Docker, for Windows containers only | Corrected |
+| 29 | 0016 | *wrong*: MinIO is in the on-prem guide's examples, with a stopped upstream | Corrected; design affected |
+| 30 | 0017 | *wrong*: `deployment.environment` is deprecated for `deployment.environment.name` | Renamed |
+| 31 | 0019 | *wrong*: `openai-go`'s current major is `/v3` | Path corrected |
+| 32 | 0019 | *missing*: Bedrock discovery is in `service/bedrock` | Named |
+| 33 | 0020 | *missing*: self-hosted Spacelift has no GCP integration either | Added |
+| 34 | 0021 | *wrong*: `TERRAFORM_PLAN` aliases `PLAN` | Corrected |
+| 35 | 0022 | *wrong*: a merge-patch `null` removes the member (RFC 7396) | Stated; design affected |
+| 36 | 0022 | *wrong*: `time.LoadLocation` reads host zone data before `time/tzdata` | Corrected; design affected |
+| 37 | 0022 | *style*: `Etc/GMT+1` is a zone, not a link | Corrected |
+| 38 | 0022 | *wrong*: a constraint left open what the table decides | Reworded |
+| 39 | 0015 | *wrong*: "0022's conflict problem" does not exist | `already-exists` |
+| 40 | 0005, 0006, 0008, 0011, 0014, 0016 to 0021 | *wrong*: process and binary names contradicted decision 0004 (`infraweave server --roles` with `api`, `drain` and `vcs-gateway`, `infraweave launcher`, `runner` and `mcp`, one download for all), and 0017 and 0020 had a gRPC VCS gateway against 0012's long-poll | 0004's `serve`, `scheduler`, `all`, `worker`, `worker exec` and `infraweavectl`; VCS agent endpoints in `serve`; departure added |
+| 41 | 0007, 0009 | *wrong*: 0009 accepted the `ACCESS` type and three aliases that 0021 does not serve | Follows 0021 |
+| 42 | 0008 | *wrong*: `PENDING` served, against 0021 | Absent |
+| 43 | 0008, 0015 | *wrong*: a transition enqueued `run.state_changed`; 0015 emits `run_updated`, and lacked the commit-check sink 0012 relies on | Aligned; sink added |
+| 44 | 0017 | *wrong*: `[REDACTED]` against 0013's `[redacted]` | Aligned |
+| 45 | 0017 | *wrong*: event metric attributes and names differed from 0015's | 0015's kept; owners named |
+| 46 | 0017 | *wrong*: called open whether problem bodies carry the request ID; 0022 puts it in `instance` | Stated |
+| 47 | 0016 | *missing*: the `@flows-runtime` tag of 0018 | Tag and partition added |
+| 48 | 0016 | *wrong*: the partition test failed every multi-tag scenario | First matching partition |
+| 49 | 0008, 0009 | *style*: four feature names outside `<area>_<topic>` | Renamed |
+| 50 | 0022 | *missing*: a test file with no `TestUnit` name | `TestUnitProblemRegistry` |
+| 51 | 0005 | *wrong*: sealed stores omitted `run-artifacts` and state uploads | Listed |
+| 52 | 0005, 0010, 0013, 0015 | *missing*: derived keys not tied to `secrets.DeriveKey` purposes; no purpose for state upload tokens | Purposes named; `state-upload-url` added |
+| 53 | 0005 | *wrong*: `infraweave_vcs_agent` also carries request IDs | Both payloads |
+| 54 | 0006 | *wrong*: "the only unauthenticated route" overlooked protocol routes | Reworded |
+| 55 | 0018, 0021 | *wrong*: Flows switched off removed routes in one record and answered `feature-disabled` in the other | `feature-disabled` on Flows routes, empty integration on Deploy reads |
+| 56 | 0014, 0022 | *missing*: 409 and 422 answers without slugs; the `feature` member absent from 0022 | Named |
+| 57 | 0012 | *missing*: four providers deferred to 0021, which decides two | Stated; `SHOWCASE` left open |
+
+Design choices affected by a corrected fact, flagged for the maintainer and
+not changed: Terraform's force-unlock under 0010's matching-ID rule (10); a
+FIPS-only build of 0013 (16); the narrower case against River in 0011
+(11); MinIO in 0016's acceptance harness (29); a `PATCH` that cannot null a
+field with a non-null default (35); host-dependent timezone validation
+(36). Recorded, not fixed: 0013's `infraweave secrets` subcommands are not
+in decision 0004's list; 0021 does not decide the `SHOWCASE` provider; and,
+outside these records, report 26 section 2.3 and report 22 section 2.2
+disagree on whether run summaries ship on self-hosted.
+
+Resolved after the review, in reconciling with the architecture options:
+0013 gains the `worker_pool_ca` sealed row that 0008 names; 0005's
+migrations run as named streams with `schema_migrations` keyed by stream,
+because decision 0004's recommended layout gives each module a stream; and
+0018 puts Flows in its own `flows` PostgreSQL schema, the question 0005
+left to it.
+
+### What survived
+
+- **0005 to 0013:** every transition ID and driver against report 08, the
+  timers and tiers, report 24's database and encryption facts, the OIDC
+  claims and token lifetimes, the space tree and action catalogue, the
+  policy types, timeouts and quotas, the `http` backend's locking and
+  status codes, River's claim order and defaults, every VCS signature
+  scheme, and the masking mechanisms.
+- **0014 to 0022:** every captured registry answer of report 15, report
+  19's delivery and audit facts and exporter metrics, report 23's Flows
+  limits, report 22's AI and Intent facts, every supersession row against
+  report 26, and 0003's five slugs.
+- **Consistency:** every problem slug is in 0022's table, every periodic
+  task of 0005 to 0013 is in 0011's, every sealed column exists in its
+  owner, every test function is `TestUnit` or `TestAcc`, and report 30's P1
+  to P11 pointers name the records that answer them.
+- **Rules:** status on line 3, the template's sections, no sequencing, no
+  dashes, no contradiction of 0001 to 0003; 0022's amendment of 0003's
+  "only list" remains a flagged proposal.
+
 ## What survived across the set
 
 - **Mechanical inventories hold.** Every operation, route, field, enum
@@ -826,8 +986,8 @@ record that tasks need a paid account.
   run with the docs mirror; the remaining hits are identifier lists,
   commands and one example value. Quotations from MIT sources without a
   `NOTICE` entry were removed (P13).
-- **Most corrections are precision, not direction.** Of the 330 findings,
-  122 are *wrong*; most of those are line anchors, types, counts, defaults
+- **Most corrections are precision, not direction.** Of the 330 findings
+  on the reports, 122 are *wrong*; most of those are line anchors, types, counts, defaults
   and edge states. The design-relevant ones are the vcs-agent's allowlist
   (11), the AWS session name (12), the approval `reject` outcome (08), the
   `ro_` and `wo_` stage rule (10 against 13), the OIDC SSO tier (03 and 04),
@@ -845,7 +1005,11 @@ record that tasks need a paid account.
   record the spacectl list pagers dropping `orderBy`, which 06 does not yet
   do. From RES-07: report 14 section 11 still calls the self-hosted tier
   mapping undocumented, and report 08 does not record that tasks need a
-  paid account.
+  paid account. From RES-08: report 26 section 2.3 and report 22 section
+  2.2 disagree on whether run summaries ship on self-hosted.
+- **The decision records agree with each other** after RES-08: 19 of its
+  58 findings were contradictions between records, and six corrected facts
+  affect a proposed design choice, each flagged for the maintainer.
 
 ## What this means for infraweave
 
@@ -858,7 +1022,7 @@ record that tasks need a paid account.
 ## Inferred and undocumented
 
 This log adds no claims about Spacelift. Its counts come from the findings
-tables of the six reviews; where a review's own summary differs from its
+tables of the seven reviews; where a review's own summary differs from its
 rows, the rows are counted and the difference is stated under Totals.
 
 ## Versions at the research baseline
@@ -873,9 +1037,10 @@ rows, the rows are counted and the difference is stated under Totals.
 
 ## Sources
 
-- The fact-check reviews of RES-02, RES-03, RES-04, RES-05, RES-06 and
-  RES-07, and the drafters' notes for the same tickets, written 2026-10-28.
+- The fact-check reviews of RES-02, RES-03, RES-04, RES-05, RES-06,
+  RES-07 and RES-08, and the drafters' notes for RES-02 to RES-07, written
+  2026-10-28.
 - Reports [01](01-spacelift-landscape.md) and [03](03-deploy-core-api-inventory.md) to [28](28-data-model.md) in this directory, as edited by those
-  reviews.
+  reviews, and decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08.
 - <https://spacelift.io/pricing>, read 2026-10-28 as raw HTML for RES-07.
 - The open questions the reviews raised: [30](30-open-questions.md).
