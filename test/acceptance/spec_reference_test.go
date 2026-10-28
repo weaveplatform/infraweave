@@ -25,7 +25,10 @@ var errStep = errors.New("step failed")
 
 func TestAccFeatures(t *testing.T) {
 	suite := godog.TestSuite{
-		ScenarioInitializer: func(sc *godog.ScenarioContext) { (&referenceSteps{}).register(sc) },
+		ScenarioInitializer: func(sc *godog.ScenarioContext) {
+			(&referenceSteps{}).register(sc)
+			(&deploySteps{}).register(sc)
+		},
 		Options: &godog.Options{
 			Format:   "pretty",
 			Paths:    []string{"features"},
