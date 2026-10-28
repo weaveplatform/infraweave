@@ -68,17 +68,17 @@ exclusion is recorded with its evidence.
 | [12-cloud-integrations-and-oidc.md](reference/12-cloud-integrations-and-oidc.md) | AWS, Azure and GCP integrations, OIDC tokens and subject claims, Vault | Written |
 | [13-configuration.md](reference/13-configuration.md) | Contexts, environment variables, mounted files, auto-attach and precedence | Written |
 | [14-spaces-rbac-and-identity.md](reference/14-spaces-rbac-and-identity.md) | Spaces and inheritance, roles and bindings, login policies, SSO, SCIM, MFA, API keys and sessions | Written |
-| 15-module-and-provider-registry.md | The module and provider registries, versions, test cases, sharing, GPG keys and the registry protocol | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
+| [15-module-and-provider-registry.md](reference/15-module-and-provider-registry.md) | The module and provider registries, versions, test cases, sharing, GPG keys and the registry protocol | Written |
 | [16-state-management.md](reference/16-state-management.md) | The managed state backend, external access, import, rollback and state URLs | Written |
-| 17-blueprints-and-templates.md | Blueprints, templates, deployments, the workbench and the version catalog | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
-| 18-scheduling-drift-dependencies.md | Scheduled runs, tasks and deletes, drift detection, stack dependencies and output references | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
+| [17-blueprints-and-templates.md](reference/17-blueprints-and-templates.md) | Blueprints, templates, deployments, the workbench and the version catalog | Written |
+| [18-scheduling-drift-dependencies.md](reference/18-scheduling-drift-dependencies.md) | Scheduled runs, tasks and deletes, drift detection, stack dependencies and output references | Written |
 | [19-events-notifications-audit.md](reference/19-events-notifications-audit.md) | Notifications, Slack and Teams, webhooks, the audit trail and metrics exporters | Written |
-| 20-vendors.md | Terraform, OpenTofu, Terragrunt, Pulumi, CloudFormation, Kubernetes and Ansible; workflow tools, cost estimation and sanitization | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
-| 21-resources-scans-search.md | The resources view, entity changes, scans, saved filters and search | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
+| [20-vendors.md](reference/20-vendors.md) | Terraform, OpenTofu, Terragrunt, Pulumi, CloudFormation, Kubernetes and Ansible; workflow tools, cost estimation and sanitization | Written |
+| [21-resources-scans-search.md](reference/21-resources-scans-search.md) | The resources view, entity changes, scans, saved filters and search | Written |
 | 22-intelligence.md | AI integrations, the Infra Assistant, Intent and the MCP server | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
 | 23-flows.md | Spacelift Flows: model, apps, flowctl, the Flows provider, self-hosted Flows and agent pools | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
 | 24-self-hosted-reference.md | Self-hosted Spacelift's components, external dependencies, networking and reference deployments | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
-| 25-other-integrations.md | Plugins, Backstage, ServiceNow, Teleport, Docker and the Kubernetes operator | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
+| [25-other-integrations.md](reference/25-other-integrations.md) | Plugins, Backstage, ServiceNow, Teleport, Docker and the Kubernetes operator | Written |
 | 26-scope-and-tiers.md | Editions and tier features against infraweave's availability state and owning phase; supersession boundaries | Planned, [#28](https://github.com/weaveplatform/infraweave/issues/28) |
 | 27-reference-materials.md | Atlantis, OTF, Terrakube, Digger, Burrito, Terramate, the Flux tofu-controller, OPA, Temporal and River: what to borrow | Planned, [#28](https://github.com/weaveplatform/infraweave/issues/28) |
 | 28-data-model.md | Wire entities, their relationships and the storage tables they imply | Planned, [#28](https://github.com/weaveplatform/infraweave/issues/28) |
