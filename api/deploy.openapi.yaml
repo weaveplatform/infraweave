@@ -17,7 +17,101 @@ security:
   - bearerAuth: []
 paths: {}
 components:
+  headers:
+    IdempotencyReplayed:
+      description: >-
+        Present and true when this response is a replay of the first request made with the same Idempotency-Key.
+      schema:
+        type: boolean
+    RateLimitLimit:
+      description: The capacity of the rate-limit bucket this request drew from.
+      schema:
+        type: integer
+    RateLimitRemaining:
+      description: Whole requests left in that bucket.
+      schema:
+        type: integer
+    RateLimitReset:
+      description: Seconds until that bucket is full again.
+      schema:
+        type: integer
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: >-
+        The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: >-
+        Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size. Values outside 1–100 are clamped.
+      schema:
+        type: integer
+        format: int32
+        default: 20
   responses:
+    ApiDisabled:
+      description: The operator has disabled the API for this caller.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:api-disabled
+            title: API disabled for this caller
+            status: 503
+    IdempotencyConflict:
+      description: >-
+        A request with this Idempotency-Key is still in flight. Retry after it finishes.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:idempotency-key-in-flight
+            title: Idempotency key in use
+            status: 409
+    IdempotencyMismatch:
+      description: This Idempotency-Key was already used with a different request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:idempotency-key-reuse
+            title: Idempotency key reused
+            status: 422
+    InvalidCursor:
+      description: The cursor doesn't decode, or belongs to another list.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:invalid-cursor
+            title: Invalid cursor
+            status: 400
     NotFound:
       description: No such resource, or the caller may not see it.
       content:
@@ -30,6 +124,25 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: The caller's rate-limit bucket for this operation's cost class is empty.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/RateLimitReset'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:rate-limited
+            title: Rate limit exceeded
+            status: 429
   schemas:
     Problem:
       description: >-

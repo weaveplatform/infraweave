@@ -180,6 +180,20 @@ through a list or a scalar.
 | Stacks and runs | `/stacks/{stackId}/proposed-runs`, `/stacks/{stackId}/aws-role`, `/stacks/{stackId}/state/download-url`, `/runs/batch` |
 | Intent projects | `/intent-projects/{intentProjectId}/configs/{configId}`, `/stacks`, and the resource dependency, review and eject routes |
 
+## From the reference to the served API
+
+These rules shape the reference only. infraweave's served API
+(`api/deploy.openapi.yaml`) starts from it and adds the conventions in
+[decision 0003](decisions/0003-api-conventions.md):
+- list routes return a `<Type>Page` envelope with `limit` and `cursor`, where
+  the reference returns bare arrays;
+- `POST` and `PATCH` accept an optional `Idempotency-Key`;
+- every operation can answer `429` and carries `X-RateLimit-*` headers, with
+  its cost class in `x-infraweave-cost`.
+
+Searches keep the reference's `SearchInput` with `first`/`after` and
+`pageInfo`.
+
 ## Open work
 
 - **Nested Terraform blocks** are listed but not mapped
