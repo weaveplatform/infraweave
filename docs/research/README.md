@@ -36,9 +36,9 @@ exclusion is recorded with its evidence.
    Spacelift publishes its definitions, how the specification reference is
    built, and the research method.
 2. [02](reference/02-graphql-to-rest-mapping.md) explains how GraphQL root
-   fields become REST routes. Reports 03 and 04 inventory every operation by
+   fields become REST routes. Reports [03](reference/03-deploy-core-api-inventory.md) and [04](reference/04-platform-api-inventory.md) inventory every operation by
    family.
-3. [05](reference/05-terraform-provider.md) and 06 are the client side: what
+3. [05](reference/05-terraform-provider.md) and [06](reference/06-spacectl-and-clients.md) are the client side: what
    the Terraform provider and spacectl call.
 4. Reports 07 to 25 describe behaviour, one feature area each.
 5. Reports 26 to 29 bring it together:
@@ -54,12 +54,12 @@ exclusion is recorded with its evidence.
 
 | Document | Purpose | Status |
 |---|---|---|
-| [01-spacelift-landscape.md](reference/01-spacelift-landscape.md) | Where Spacelift's definitions live, the docs index, the MIT repositories, licence, auth, error behaviour, the research method and the specref parity oracle | Written; expansion in [#23](https://github.com/weaveplatform/infraweave/issues/23) |
+| [01-spacelift-landscape.md](reference/01-spacelift-landscape.md) | Where Spacelift's definitions live, the docs indexes, every spacelift-io repository with its licence, authentication and tokens, error behaviour, rate limits, the research method and the specref parity oracle | Written |
 | [02-graphql-to-rest-mapping.md](reference/02-graphql-to-rest-mapping.md) | How root fields map to REST routes, `rest-mapping.yaml`, and the path from reference to served API | Written |
-| 03-deploy-core-api-inventory.md | Stacks, runs, contexts, policies, spaces, worker pools and modules: every operation per family | Planned, [#23](https://github.com/weaveplatform/infraweave/issues/23) |
-| 04-platform-api-inventory.md | Every remaining tag, from account and SSO to Intent and Flows, plus the untagged operations | Planned, [#23](https://github.com/weaveplatform/infraweave/issues/23) |
-| [05-terraform-provider.md](reference/05-terraform-provider.md) | The Terraform provider: what the reference extracts, attribute matching and later provider parity | Written; expansion in [#23](https://github.com/weaveplatform/infraweave/issues/23) |
-| 06-spacectl-and-clients.md | spacectl commands, the Pulumi provider, the Kubernetes operator and Backstage plugins, and what an infraweave CLI must cover | Planned, [#23](https://github.com/weaveplatform/infraweave/issues/23) |
+| [03-deploy-core-api-inventory.md](reference/03-deploy-core-api-inventory.md) | Stacks, runs, contexts, policies, spaces, worker pools and modules: every operation per family, with its permission, tier gate and side effects | Written |
+| [04-platform-api-inventory.md](reference/04-platform-api-inventory.md) | Every remaining tag, from account and SSO to Intent and Flows, plus the untagged operations | Written |
+| [05-terraform-provider.md](reference/05-terraform-provider.md) | The Terraform provider: every resource and data source mapped to its operations and routes, import IDs, attributes with no input field, and behaviour worth copying | Written |
+| [06-spacectl-and-clients.md](reference/06-spacectl-and-clients.md) | spacectl commands and their operations, its MCP tools, the Pulumi provider, the Kubernetes operator, Backstage plugins, and what an infraweave CLI must cover | Written |
 | 07-stack-model.md | Stack settings, vendor configuration, runtime YAML and typing traps | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
 | 08-run-lifecycle.md | Run types and states, transitions, phases and hooks, confirm, discard, retry and stop, promotion, targeted replan, PR feedback | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
 | 09-policies.md | Policy types, Rego versions, inputs per type, flags, sampling, auto-attach and deprecations | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
