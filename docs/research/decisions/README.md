@@ -31,6 +31,7 @@ record is missing from this index or its status here differs from its own.
 | 0001 | [A REST-first surface for the Spacelift feature set](0001-rest-first-spacelift-surface.md) | Accepted |
 | 0002 | [Committed reference sources and their licensing](0002-reference-sources-and-licensing.md) | Accepted |
 | 0003 | [Idempotency keys, rate limits and cursor pagination](0003-api-conventions.md) | Accepted |
+| 0004 | [Repository architecture and process topology](0004-repository-architecture.md) | Proposed |
 | 0005 | [Persistence: PostgreSQL, embedded migrations and object storage](0005-persistence-postgresql.md) | Proposed |
 | 0006 | [Authentication and tokens](0006-authentication-and-tokens.md) | Proposed |
 | 0007 | [Authorization: spaces and roles](0007-authorization-spaces-and-roles.md) | Proposed |
