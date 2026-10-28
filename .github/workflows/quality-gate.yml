@@ -62,6 +62,61 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  accept:
+    name: 'Acceptance (Gherkin)'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Acceptance features (godog)
+        run: make accept
+
+      - name: Upload acceptance coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cover-accept
+          path: cover/accept
+          include-hidden-files: true
+          retention-days: 7
+
+  reference:
+    name: 'Spacelift reference up to date'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      # Offline: regenerates from the committed snapshots and diffs, so an
+      # edit to rest-mapping.yaml or the generator without `make reference`
+      # fails here rather than shipping a stale spec.
+      - name: Verify the generated reference
+        run: make verify-reference
+
   lint:
     name: 'Lint (blocking)'
     runs-on: ubuntu-latest
@@ -139,7 +194,7 @@ jobs:
 
   coverage:
     name: 'Coverage gate (≥95% total, ≥90% per package)'
-    needs: [unit]
+    needs: [unit, accept]
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -169,7 +224,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, lint, vuln, build, coverage]
+    needs: [unit, accept, reference, lint, vuln, build, coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed

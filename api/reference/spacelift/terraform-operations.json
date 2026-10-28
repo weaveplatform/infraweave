@@ -1,0 +1,540 @@
+{
+  "resources": {
+    "spacelift_ai_integration": [
+      "aiIntegration",
+      "aiIntegrationCreate",
+      "aiIntegrationDelete",
+      "aiIntegrationToggle",
+      "aiIntegrationUpdate",
+      "id"
+    ],
+    "spacelift_api_key": [
+      "apiKey",
+      "apiKeyCreate",
+      "apiKeyDelete",
+      "apiKeyUpdate"
+    ],
+    "spacelift_audit_trail_webhook": [
+      "auditTrailDeleteWebhook",
+      "auditTrailSetWebhook",
+      "auditTrailWebhook"
+    ],
+    "spacelift_aws_integration": [
+      "awsIntegration",
+      "awsIntegrationCreate",
+      "awsIntegrationDelete",
+      "awsIntegrationUpdate"
+    ],
+    "spacelift_aws_integration_attachment": [
+      "awsIntegration",
+      "awsIntegrationAttach",
+      "awsIntegrationAttachmentUpdate",
+      "awsIntegrationDetach"
+    ],
+    "spacelift_aws_role": [
+      "module",
+      "stack",
+      "stackIntegrationAwsCreate",
+      "stackIntegrationAwsDelete"
+    ],
+    "spacelift_azure_devops_integration": [
+      "azureDevOpsRepoIntegration",
+      "azureDevOpsRepoIntegrationCreate",
+      "azureDevOpsRepoIntegrationDelete",
+      "azureDevOpsRepoIntegrationUpdate"
+    ],
+    "spacelift_azure_integration": [
+      "azureIntegration",
+      "azureIntegrationCreate",
+      "azureIntegrationDelete",
+      "azureIntegrationUpdate"
+    ],
+    "spacelift_azure_integration_attachment": [
+      "azureIntegration",
+      "azureIntegrationAttach",
+      "azureIntegrationAttachmentUpdate",
+      "azureIntegrationDetach"
+    ],
+    "spacelift_bitbucket_datacenter_integration": [
+      "bitbucketDatacenterIntegration",
+      "bitbucketDatacenterIntegrationCreate",
+      "bitbucketDatacenterIntegrationDelete",
+      "bitbucketDatacenterIntegrationUpdate"
+    ],
+    "spacelift_blueprint": [
+      "blueprint",
+      "blueprintCreate",
+      "blueprintDelete",
+      "blueprintUpdate",
+      "id"
+    ],
+    "spacelift_context": [
+      "context",
+      "contextCreateV2",
+      "contextDelete",
+      "contextUpdateV2"
+    ],
+    "spacelift_context_attachment": [
+      "context",
+      "contextAttach",
+      "contextDetach"
+    ],
+    "spacelift_default_runner_image": [
+      "accountUpdateDefaultWorkerPoolRunnerImages",
+      "defaultPrivateWorkerPoolRunnerImage",
+      "defaultPublicWorkerPoolRunnerImage"
+    ],
+    "spacelift_drift_detection": [
+      "id",
+      "stack",
+      "stackIntegrationDriftDetectionCreate",
+      "stackIntegrationDriftDetectionDelete",
+      "stackIntegrationDriftDetectionUpdate"
+    ],
+    "spacelift_environment_variable": [
+      "context",
+      "contextConfigAdd",
+      "contextConfigDelete",
+      "module",
+      "stack",
+      "stackConfigAdd",
+      "stackConfigDelete"
+    ],
+    "spacelift_gcp_service_account": [
+      "module",
+      "stack",
+      "stackIntegrationGcpCreate",
+      "stackIntegrationGcpDelete"
+    ],
+    "spacelift_gitlab_integration": [
+      "gitlabIntegration",
+      "gitlabIntegrationCreate",
+      "gitlabIntegrationDelete",
+      "gitlabIntegrationUpdate"
+    ],
+    "spacelift_idp_group_mapping": [
+      "managedUserGroup",
+      "managedUserGroupCreate",
+      "managedUserGroupDelete",
+      "managedUserGroupUpdate"
+    ],
+    "spacelift_module": [
+      "module",
+      "moduleCreate",
+      "moduleDelete",
+      "modulePublish",
+      "moduleShare",
+      "moduleUpdateV2"
+    ],
+    "spacelift_mounted_file": [
+      "context",
+      "contextConfigAdd",
+      "contextConfigDelete",
+      "module",
+      "stack",
+      "stackConfigAdd",
+      "stackConfigDelete"
+    ],
+    "spacelift_named_webhook": [
+      "id",
+      "namedWebhooksIntegration",
+      "namedWebhooksIntegrationCreate",
+      "namedWebhooksIntegrationDelete",
+      "namedWebhooksIntegrationUpdate"
+    ],
+    "spacelift_named_webhook_secret_header": [
+      "id",
+      "namedWebhooksIntegration",
+      "namedWebhooksIntegrationDeleteHeaders",
+      "namedWebhooksIntegrationSetHeaders"
+    ],
+    "spacelift_plugin": [
+      "plugin",
+      "pluginDelete",
+      "pluginInstall",
+      "pluginTemplate"
+    ],
+    "spacelift_plugin_template": [
+      "pluginTemplate",
+      "pluginTemplateCreate",
+      "pluginTemplateDelete"
+    ],
+    "spacelift_policy": [
+      "policy",
+      "policyCreatev2",
+      "policyDelete",
+      "policyUpdatev2"
+    ],
+    "spacelift_policy_attachment": [
+      "policy",
+      "policyAttach",
+      "policyDetach"
+    ],
+    "spacelift_repo": [
+      "repo",
+      "repoCreate",
+      "repoDelete",
+      "repoUpdate"
+    ],
+    "spacelift_repo_file": [
+      "repoFileHistory",
+      "revisionCreate"
+    ],
+    "spacelift_role": [
+      "role",
+      "roleCreate",
+      "roleDelete",
+      "roleUpdate"
+    ],
+    "spacelift_role_attachment": [
+      "apiKeyRoleBinding",
+      "apiKeyRoleBindingCreate",
+      "apiKeyRoleBindingDelete",
+      "stackRoleBinding",
+      "stackRoleBindingCreate",
+      "stackRoleBindingDelete",
+      "userGroupRoleBinding",
+      "userGroupRoleBindingCreate",
+      "userGroupRoleBindingDelete",
+      "userRoleBinding",
+      "userRoleBindingBatchCreate",
+      "userRoleBindingDelete"
+    ],
+    "spacelift_run": [
+      "runTrigger"
+    ],
+    "spacelift_saved_filter": [
+      "savedFilter",
+      "savedFilterCreate",
+      "savedFilterDelete",
+      "savedFilterUpdate"
+    ],
+    "spacelift_scheduled_delete_stack": [
+      "stack",
+      "stackScheduledDeleteCreate",
+      "stackScheduledDeleteDelete",
+      "stackScheduledDeleteUpdate"
+    ],
+    "spacelift_scheduled_run": [
+      "stack",
+      "stackScheduledRunCreate",
+      "stackScheduledRunDelete",
+      "stackScheduledRunUpdate"
+    ],
+    "spacelift_scheduled_task": [
+      "stack",
+      "stackScheduledTaskCreate",
+      "stackScheduledTaskDelete",
+      "stackScheduledTaskUpdate"
+    ],
+    "spacelift_security_email": [
+      "accountUpdateSecurityEmail",
+      "securityEmail"
+    ],
+    "spacelift_space": [
+      "space",
+      "spaceCreate",
+      "spaceDelete",
+      "spaceUpdate"
+    ],
+    "spacelift_stack": [
+      "stack",
+      "stackCreate",
+      "stackDelete",
+      "stackMigrateVendor",
+      "stackUpdate",
+      "stateUploadUrl"
+    ],
+    "spacelift_stack_activator": [
+      "stack",
+      "stackDisable",
+      "stackEnable"
+    ],
+    "spacelift_stack_dependency": [
+      "stack",
+      "stackDependencyCreate",
+      "stackDependencyDelete",
+      "stackDependencyUpdate"
+    ],
+    "spacelift_stack_dependency_reference": [
+      "id",
+      "stack",
+      "stackDependenciesAddReference",
+      "stackDependenciesDeleteReference",
+      "stackDependenciesUpdateReference"
+    ],
+    "spacelift_stack_destructor": [
+      "id",
+      "runDiscardAll",
+      "stack",
+      "stackDelete"
+    ],
+    "spacelift_task": [
+      "taskCreate"
+    ],
+    "spacelift_template": [
+      "template",
+      "templateCreate",
+      "templateDelete",
+      "templateUpdate"
+    ],
+    "spacelift_template_deployment": [
+      "templateDeployment",
+      "templateDeploymentCreate",
+      "templateDeploymentDelete",
+      "templateDeploymentUpdate"
+    ],
+    "spacelift_template_version": [
+      "template",
+      "templateVersionCreate",
+      "templateVersionDelete",
+      "templateVersionParseTemplate",
+      "templateVersionUpdate"
+    ],
+    "spacelift_terraform_provider": [
+      "terraformProvider",
+      "terraformProviderCreate",
+      "terraformProviderDelete",
+      "terraformProviderSetVisibility",
+      "terraformProviderUpdate"
+    ],
+    "spacelift_user": [
+      "managedUser",
+      "managedUserDelete",
+      "managedUserInvite",
+      "managedUserUpdate"
+    ],
+    "spacelift_vcs_agent_pool": [
+      "vcsAgentPool",
+      "vcsAgentPoolCreate",
+      "vcsAgentPoolDelete",
+      "vcsAgentPoolUpdate"
+    ],
+    "spacelift_version": [
+      "module",
+      "versionCreate"
+    ],
+    "spacelift_webhook": [
+      "id",
+      "module",
+      "stack",
+      "webhooksIntegrationCreate",
+      "webhooksIntegrationDelete",
+      "webhooksIntegrationUpdate"
+    ],
+    "spacelift_worker_pool": [
+      "workerPool",
+      "workerPoolCreate",
+      "workerPoolDelete",
+      "workerPoolReset",
+      "workerPoolUpdate"
+    ],
+    "spacelift_worker_pool_recycle": [
+      "workerPoolCycle"
+    ]
+  },
+  "dataSources": {
+    "spacelift_account": [
+      "name",
+      "spaceliftAwsAccountId",
+      "tier"
+    ],
+    "spacelift_ai_integration": [
+      "aiIntegration"
+    ],
+    "spacelift_ai_integrations": [
+      "aiIntegrations"
+    ],
+    "spacelift_aws_integration": [
+      "awsIntegration",
+      "awsIntegrationByName"
+    ],
+    "spacelift_aws_integration_attachment": [
+      "awsIntegration"
+    ],
+    "spacelift_aws_integration_attachment_external_id": [
+      "awsIntegration",
+      "id"
+    ],
+    "spacelift_aws_integrations": [
+      "awsIntegrations"
+    ],
+    "spacelift_aws_role": [
+      "module",
+      "stack"
+    ],
+    "spacelift_azure_devops_integration": [
+      "azureDevOpsRepoIntegration"
+    ],
+    "spacelift_azure_integration": [
+      "azureIntegration",
+      "azureIntegrationByName"
+    ],
+    "spacelift_azure_integration_attachment": [
+      "azureIntegration"
+    ],
+    "spacelift_azure_integrations": [
+      "azureIntegrations"
+    ],
+    "spacelift_bitbucket_cloud_integration": [
+      "bitbucketCloudIntegration",
+      "id",
+      "name",
+      "space"
+    ],
+    "spacelift_bitbucket_datacenter_integration": [
+      "bitbucketDatacenterIntegration",
+      "id",
+      "name",
+      "space"
+    ],
+    "spacelift_context": [
+      "context"
+    ],
+    "spacelift_context_attachment": [
+      "context"
+    ],
+    "spacelift_contexts": [
+      "contexts"
+    ],
+    "spacelift_current_space": [
+      "module",
+      "stack"
+    ],
+    "spacelift_environment_variable": [
+      "context",
+      "module",
+      "stack"
+    ],
+    "spacelift_github_enterprise_integration": [
+      "githubEnterpriseIntegration",
+      "id",
+      "name",
+      "space"
+    ],
+    "spacelift_gitlab_integration": [
+      "gitlabIntegration",
+      "id",
+      "name",
+      "space"
+    ],
+    "spacelift_gitlab_webhook_endpoint": [
+      "gitlabWebhooksEndpoint"
+    ],
+    "spacelift_idp_group_mapping": [
+      "managedUserGroups"
+    ],
+    "spacelift_ips": [
+      "outgoingIPAddresses"
+    ],
+    "spacelift_module": [
+      "module"
+    ],
+    "spacelift_modules": [
+      "searchModules"
+    ],
+    "spacelift_mounted_file": [
+      "context",
+      "module",
+      "stack"
+    ],
+    "spacelift_named_webhook": [
+      "namedWebhooksIntegration"
+    ],
+    "spacelift_plugin": [
+      "plugin"
+    ],
+    "spacelift_plugin_template": [
+      "pluginTemplate"
+    ],
+    "spacelift_policies": [
+      "id",
+      "name",
+      "policies",
+      "space",
+      "type"
+    ],
+    "spacelift_policy": [
+      "policy"
+    ],
+    "spacelift_repo": [
+      "repo"
+    ],
+    "spacelift_repos": [
+      "repos"
+    ],
+    "spacelift_role": [
+      "roles"
+    ],
+    "spacelift_saved_filter": [
+      "id",
+      "name",
+      "savedFilter",
+      "type"
+    ],
+    "spacelift_saved_filters": [
+      "savedFilters"
+    ],
+    "spacelift_scheduled_delete_stack": [
+      "stack"
+    ],
+    "spacelift_scheduled_run": [
+      "stack"
+    ],
+    "spacelift_scheduled_task": [
+      "stack"
+    ],
+    "spacelift_space": [
+      "space"
+    ],
+    "spacelift_space_by_path": [
+      "spaces"
+    ],
+    "spacelift_spaces": [
+      "spaces"
+    ],
+    "spacelift_stack": [
+      "stack"
+    ],
+    "spacelift_stack_outputs": [
+      "stack"
+    ],
+    "spacelift_stacks": [
+      "searchStacks"
+    ],
+    "spacelift_template": [
+      "template"
+    ],
+    "spacelift_template_deployment": [
+      "templateDeployment"
+    ],
+    "spacelift_template_version": [
+      "template"
+    ],
+    "spacelift_tool_versions": [
+      "kubectlVersions",
+      "openTofuVersions",
+      "terraformVersions",
+      "terragruntVersions"
+    ],
+    "spacelift_user": [
+      "managedUsers"
+    ],
+    "spacelift_vcs_agent_pool": [
+      "vcsAgentPool"
+    ],
+    "spacelift_vcs_agent_pools": [
+      "vcsAgentPools"
+    ],
+    "spacelift_webhook": [
+      "module",
+      "stack"
+    ],
+    "spacelift_worker_pool": [
+      "workerPool"
+    ],
+    "spacelift_worker_pools": [
+      "workerPools"
+    ]
+  }
+}

@@ -10,3 +10,5 @@ exclude:
   paths:
     # Binary entry points: thin shims over internal/.
     - ^cmd/
+    # Maintainer tools (specref): thin cobra shims over internal/.
+    - ^tools/

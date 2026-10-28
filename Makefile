@@ -23,7 +23,7 @@ help:
 ## init: rename the module after creating a repository from the template (make init NAME=<repo>)
 init:
 	@test -n "$(NAME)" || { echo "usage: make init NAME=<repository name>"; exit 1; }
-	@grep -rl --exclude-dir=.git weaveplatform-template . | xargs sed -i.bak 's/weaveplatform-template/$(NAME)/g'
+	@grep -rl --exclude-dir=.git infraweave . | xargs sed -i.bak 's/infraweave/$(NAME)/g'
 	@find . -name '*.bak' -not -path './.git/*' -delete
 	$(GO) mod tidy
 	@echo "renamed to github.com/weaveplatform/$(NAME); review README.md and CODEOWNERS"
@@ -72,7 +72,28 @@ build:
 		done; \
 	done
 
-## gate: everything CI runs, in order
-gate: vet lint test cover vuln build
+## accept: Gherkin acceptance features (godog); coverage to cover/accept
+# atomic matches the counter mode -race forces on the unit run; covdata
+# refuses to merge profiles whose modes differ.
+accept:
+	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
+	$(GO) test -count=1 -covermode=atomic -cover -coverpkg=$(MODULE)/... ./test/acceptance/... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
 
-.PHONY: help init fmt lint vet test cover vuln build gate
+REFERENCE_DIR := api/reference/spacelift
+
+## reference-fetch: refresh the Spacelift snapshots and sources.lock.yaml (network and terraform; pins from the lock unless overridden by flags or SPECREF_*)
+reference-fetch:
+	$(GO) run ./tools/specref fetch --dir $(REFERENCE_DIR)
+
+## reference: regenerate the Spacelift OpenAPI reference and coverage report from the snapshots
+reference:
+	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
+
+## verify-reference: fail if the committed reference is not what its snapshots generate
+verify-reference:
+	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
+
+## gate: everything CI runs, in order
+gate: vet lint test accept verify-reference cover vuln build
+
+.PHONY: help init fmt lint vet test accept reference-fetch reference verify-reference cover vuln build gate

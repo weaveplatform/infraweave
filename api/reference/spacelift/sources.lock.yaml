@@ -1,0 +1,13 @@
+# Written by `specref fetch`; pins every upstream input of this directory.
+introspection:
+  endpoint: https://demo.app.spacelift.io/graphql
+  sha256: b3255fe38f5ef8e08dfaf4fcabc47b12c7895d45ed360c4171692b532b994aed
+  fetchedAt: "2026-10-28T07:11:59Z"
+bruno:
+  repository: spacelift-io/spacelift-api-bruno
+  ref: 7cad4574954b569df083b2a809b68371fc385e6d
+  sha256: 97c0202c77a372f7725d76e65b6ae1ba9fe4579427f78014ad61a763ad2e1f46
+provider:
+  repository: spacelift-io/terraform-provider-spacelift
+  ref: v1.57.0
+  sha256: beab31f28e285b6dc8283dc7fbe5e5cf71aa4d7f9705c4cd148c081dc3e968ea
