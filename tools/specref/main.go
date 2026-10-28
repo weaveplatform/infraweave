@@ -46,6 +46,9 @@ type config struct {
 	ProviderVersion string `mapstructure:"provider-version"`
 	Terraform       string `mapstructure:"terraform"`
 	Timeout         string `mapstructure:"timeout"`
+	Tag             string `mapstructure:"tag"`
+	Out             string `mapstructure:"out"`
+	Force           bool   `mapstructure:"force"`
 }
 
 func main() {
@@ -156,7 +159,43 @@ func newRoot() *cobra.Command {
 			return specref.CheckDir(cmd.Context(), c.Dir)
 		},
 	}
-	root.AddCommand(fetch, generate, check)
+	scaffold := &cobra.Command{
+		Use:   "scaffold",
+		Short: "Copy one reference tag into a served-API fragment, applying decision 0003",
+		Long: "Copies every path holding an operation with the tag, and the components they\n" +
+			"reach, into a fragment. Components and paths the other fragments in the output's\n" +
+			"directory define are referenced, not copied. Reference operations without a tag\n" +
+			"can't be scaffolded this way; add them to a fragment by hand.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := decode(v)
+			if err != nil {
+				return err
+			}
+			s, err := specref.ScaffoldFile(c.Dir, c.Tag, c.Out, c.Force)
+			if err != nil {
+				return err
+			}
+			cmd.Printf("%s: %d operations, %d components\n", c.Out, s.Operations, s.Components)
+			for _, p := range s.Shared {
+				cmd.Printf("left out %s: another fragment defines it\n", p)
+			}
+			for _, f := range s.Foreign {
+				cmd.Printf("carried %s: it shares a path with a %s operation\n", f, c.Tag)
+			}
+			cmd.Printf(
+				"info.yaml needs a %q tag; the reference describes it as:\n%s\n",
+				c.Tag,
+				s.TagDescription,
+			)
+			return nil
+		},
+	}
+	sf := scaffold.Flags()
+	sf.String("tag", "", "reference tag to scaffold, such as Stacks")
+	sf.String("out", "", "fragment to write, such as api/src/deploy/paths-stacks.yaml")
+	sf.Bool("force", false, "overwrite an existing fragment")
+	root.AddCommand(fetch, generate, check, scaffold)
 	return root
 }
 

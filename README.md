@@ -64,10 +64,13 @@ Bundling fails when any of these happens:
 
 | Target | What |
 |---|---|
-| `make gate` | Everything CI runs: vet, lint, test, accept, verify-reference, cover, vuln, build |
+| `make gate` | Everything CI runs: vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
+| `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/deploy/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
 | `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
+| `make generate` | Bundles, then generates each strict chi server (`internal/server/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |
+| `make verify-generate` | Fails if the committed bundles or generated code are stale |
 | `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
 | `make reference` | Regenerates the spec and `coverage.md` from the snapshots |
 | `make verify-reference` | Fails if the committed reference is not exactly what the snapshots generate |

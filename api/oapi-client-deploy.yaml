@@ -1,0 +1,10 @@
+# oapi-codegen configuration for the deploy API's Go client (make generate).
+package: deploy
+output: pkg/client/deploy/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true
+  exclude-tags:
+    - handwritten

@@ -180,6 +180,33 @@ through a list or a scalar.
 | Stacks and runs | `/stacks/{stackId}/proposed-runs`, `/stacks/{stackId}/aws-role`, `/stacks/{stackId}/state/download-url`, `/runs/batch` |
 | Intent projects | `/intent-projects/{intentProjectId}/configs/{configId}`, `/stacks`, and the resource dependency, review and eject routes |
 
+## From the reference to the served API
+
+These rules shape the reference only. infraweave's served API
+(`api/deploy.openapi.yaml`) starts from it and adds the conventions in
+[decision 0003](decisions/0003-api-conventions.md):
+- list routes return a `<Type>Page` envelope with `limit` and `cursor`, where
+  the reference returns bare arrays;
+- `POST` and `PATCH` accept an optional `Idempotency-Key`;
+- every operation can answer `429` and carries `X-RateLimit-*` headers, with
+  its cost class in `x-infraweave-cost`.
+
+Searches keep the reference's `SearchInput` with `first`/`after` and
+`pageInfo`.
+
+`specref scaffold --tag <Tag>` (`make scaffold TAG=Stacks FAMILY=stacks`)
+starts a family by copying from the reference:
+- **Paths:** every path holding an operation with the tag. A path lives in
+  one fragment, so operations under another tag that share it come along and
+  are reported.
+- **Components:** the closure of what those paths reach, through `$ref` and
+  discriminator mappings. Anything another fragment of the service defines is
+  referenced, not copied.
+- **Conventions:** the decision 0003 conventions are applied to each
+  operation and listed in its `x-infraweave-divergence`.
+- **Known gap:** the 8 reference operations without a tag can't be
+  scaffolded this way; they are added to a fragment by hand.
+
 ## Open work
 
 - **Nested Terraform blocks** are listed but not mapped
