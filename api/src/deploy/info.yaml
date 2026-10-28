@@ -17,3 +17,11 @@ tags:
     description: Health and version endpoints that need no authentication.
   - name: handwritten
     description: Marker tag. Operations with this tag are implemented by hand and excluded from code generation.
+  - name: Runs
+    description: >-
+      The run lifecycle: trigger, confirm, discard, cancel, stop and retry
+      runs against a stack.
+  - name: Stacks
+    description: >-
+      Tracked pieces of infrastructure, each bound to a repository, a branch
+      and a project root, with their locks, state and scheduled work.
