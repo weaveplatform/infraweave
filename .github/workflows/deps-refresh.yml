@@ -72,7 +72,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          latest=$(go env GOVERSION | sed -E 's/^go([0-9]+\.[0-9]+).*/\1/')
+          # The full patch version: setup-go installs exactly what go.mod
+          # names, and a bare 1.N would let CI and laptops run a patch
+          # release with known standard-library vulnerabilities.
+          latest=$(go env GOVERSION | sed -E 's/^go([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/')
           go mod edit -go="$latest"
           go get -u ./... tool
           # Some modules' newest version is not "latest": gVisor, for one,

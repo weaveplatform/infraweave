@@ -1,0 +1,353 @@
+# Hand-curated input to `specref generate`: everything the naming rules in
+# internal/specref/rest.go cannot infer. Keys are checked strictly; a root
+# field named here that upstream no longer has fails generation, so this
+# file cannot rot silently. See docs/research/02-graphql-to-rest-mapping.md.
+
+# Mutations served as POST /<operation-kebab> because no rule or override
+# gives them a resource shape. Zero: a new upstream mutation that the rules
+# cannot place fails generation until it gets an override below.
+rpcBudget: 0
+
+# Irregular plurals (singular → plural), applied to the last word.
+plurals: {}
+
+# Account-wide objects addressed without an id: /oidc, not /oidcs/{id}.
+singletons:
+  - account
+  - auditTrail
+  - billingSubscription
+  - githubIntegration
+  - oidc
+  - originIntegration
+  - saml
+  - slackAppConfig
+
+# ID arguments that set a property of the target instead of nesting it
+# under a parent: intentProjectCreate(space:) is not /spaces/{id}/....
+attributeArgs:
+  - space
+  - spaceID
+  - spaceId
+
+operations:
+  apiKeyUser:
+    method: POST
+    path: /auth/token
+    public: true
+    tag: Auth
+  runTrigger:
+    method: POST
+    path: /stacks/{stackId}/runs
+    params: {stackId: stack}
+  awsIntegrationAttachmentUpdate:
+    method: PUT
+    path: /aws-integration-attachments/{attachmentId}
+    params: {attachmentId: id}
+  azureIntegrationAttachmentUpdate:
+    method: PUT
+    path: /azure-integration-attachments/{attachmentId}
+    params: {attachmentId: id}
+  awsIntegrationIntentProjectAttach:
+    method: PUT
+    path: /intent-projects/{intentProjectId}/aws-integrations/{integrationId}
+  awsIntegrationIntentProjectDetach:
+    method: DELETE
+    path: /intent-projects/{intentProjectId}/aws-integrations/{integrationId}
+  policyIntentProjectAttach:
+    method: PUT
+    path: /intent-projects/{intentProjectId}/policies/{policyId}
+    params: {policyId: id}
+  intentProjectAttachWorkerPool:
+    method: PUT
+    path: /intent-projects/{intentProjectId}/worker-pool
+  intentProjectDetachWorkerPool:
+    method: DELETE
+    path: /intent-projects/{intentProjectId}/worker-pool
+  logout:
+    method: POST
+    path: /auth/logout
+    tag: Auth
+  sessionDelete:
+    method: DELETE
+    path: /sessions/{sessionId}
+    params: {sessionId: id}
+  sessionDeleteAll:
+    method: DELETE
+    path: /sessions
+  securityKeyDelete:
+    method: DELETE
+    path: /security-keys/{securityKeyId}
+    params: {securityKeyId: id}
+  userSecurityKeyDeleteAll:
+    method: DELETE
+    path: /security-keys
+  stackIntegrationDriftDetectionCreate:
+    method: POST
+    path: /stacks/{stackId}/drift-detection
+  stackIntegrationDriftDetectionUpdate:
+    method: PUT
+    path: /stacks/{stackId}/drift-detection
+  stackIntegrationDriftDetectionDelete:
+    method: DELETE
+    path: /stacks/{stackId}/drift-detection
+  starSet:
+    method: PUT
+    path: /stacks/{stackId}/star
+    params: {stackId: id}
+  tofuWorkspaceUnlock:
+    method: POST
+    path: /tofu-workspaces/{tofuWorkspaceId}/unlock
+    params: {tofuWorkspaceId: id}
+  tofuWorkspaceUnlockAll:
+    method: POST
+    path: /stacks/{stackId}/tofu-workspaces/unlock
+  vcsIntegrationTest:
+    method: GET
+    path: /vcs-integrations/{vcsIntegrationId}/test
+    params: {vcsIntegrationId: id}
+  workerDrainSet:
+    method: PUT
+    path: /worker-pools/{workerPoolId}/workers/{workerId}/drain
+    params: {workerId: id}
+
+  # --- Sign-in flows. GitHub OAuth is the browser login: the caller has no
+  # token yet. The CLI confirmation token is requested by a signed-in user.
+  oauthRedirect:
+    method: POST
+    path: /auth/github/redirect
+    public: true
+    tag: Auth
+  oauthToken:
+    method: POST
+    path: /auth/github/token
+    public: true
+    tag: Auth
+  oauthUser:
+    method: POST
+    path: /auth/github/user
+    public: true
+    tag: Auth
+  cliConfirmationToken:
+    method: POST
+    path: /auth/cli-confirmation-tokens
+    tag: Auth
+    created: true
+  identityFederationUnlink:
+    method: DELETE
+    path: /identity-federations/{provider}
+
+  # --- Account settings and singletons.
+  apiKeyEnableNonRootManagers:
+    method: PUT
+    path: /account/api-key-non-root-managers
+  createOauthClientForSCIM:
+    method: POST
+    path: /scim-settings
+    created: true
+  deleteOauthClientForSCIM:
+    method: DELETE
+    path: /scim-settings
+  resetOauthClientForSCIM:
+    method: POST
+    path: /scim-settings/reset
+  slackOauthRedirect:
+    method: POST
+    path: /slack-integration/oauth/redirect
+  uiConfigGet:
+    method: GET
+    path: /ui-config
+  uiConfigStore:
+    method: PUT
+    path: /ui-config
+  completeGenericForm:
+    method: PUT
+    path: /generic-forms/{name}
+
+  # --- Notifications. Dismissal is a state change, not a deletion.
+  dismissNotifications:
+    method: POST
+    path: /notifications/dismiss
+  dismissAllNotifications:
+    method: POST
+    path: /notifications/dismiss-all
+  dismissNotificationGroup:
+    method: POST
+    path: /notification-groups/{groupingKey}/dismiss
+
+  # --- The signed-in user's active guide (GET /active-user-guide-progress).
+  userGuideAbandon:
+    method: POST
+    path: /active-user-guide-progress/abandon
+  userGuideComplete:
+    method: POST
+    path: /active-user-guide-progress/complete
+  userGuideMoveToNextStep:
+    method: POST
+    path: /active-user-guide-progress/next-step
+  userGuideMoveToPreviousStep:
+    method: POST
+    path: /active-user-guide-progress/previous-step
+
+  # --- Users.
+  managedUserInviteV2:
+    method: POST
+    path: /managed-users
+    created: true
+  managedUserRequestInvite:
+    method: POST
+    path: /managed-user-invite-requests
+    created: true
+  managedUserRequestRoleChange:
+    method: POST
+    path: /spaces/{spaceId}/role-change-requests
+    created: true
+
+  # --- VCS: the GitHub App manifest flow ends in a GitHub Enterprise integration.
+  githubAppGenerateManifest:
+    method: POST
+    path: /github-app-manifests
+  githubAppCreateFromManifest:
+    method: POST
+    path: /github-enterprise-integrations/from-manifest
+    created: true
+
+  # --- Stacks and runs.
+  proposeWithOverrides:
+    method: POST
+    path: /stacks/{stackId}/proposed-runs
+    params: {stackId: stack}
+    created: true
+  uploadLocalWorkspace:
+    method: POST
+    path: /stacks/{stackId}/local-workspace-uploads
+    params: {stackId: stack}
+    created: true
+  runTriggerBatch:
+    method: POST
+    path: /runs/batch
+  runExternalDependencyMarkAsCompleted:
+    method: POST
+    path: /run-external-dependencies/{dependencyId}/complete
+    params: {dependencyId: dependency}
+  stackMigrateVendorAll:
+    method: POST
+    path: /stacks/migrate-vendor
+  stateDownloadUrl:
+    method: POST
+    path: /stacks/{stackId}/state/download-url
+    params: {stackId: input.stackId}
+  stateUploadUrl:
+    method: POST
+    path: /state/upload-url
+  # The legacy AWS role of a stack (spacelift_aws_role): one per stack.
+  stackIntegrationAwsCreate:
+    method: PUT
+    path: /stacks/{stackId}/aws-role
+    params: {stackId: id}
+  stackIntegrationAwsDelete:
+    method: DELETE
+    path: /stacks/{stackId}/aws-role
+    params: {stackId: id}
+
+  # --- Stack dependencies and their output references. The name rules split
+  # stackDependencies... into stack + Dependencies..., which binds a
+  # reference id as a stack id, so every one is placed by hand.
+  stackDependenciesCreateInBatch:
+    method: POST
+    path: /stack-dependencies/batch
+    created: true
+  stackDependenciesAddReference:
+    method: POST
+    path: /stack-dependencies/{stackDependencyId}/references
+    created: true
+  stackDependenciesAddReferences:
+    method: POST
+    path: /stack-dependencies/{stackDependencyId}/references/batch
+    created: true
+  stackDependenciesUpdateReference:
+    method: PUT
+    path: /stack-dependency-references/{referenceId}
+    params: {referenceId: reference.id}
+  stackDependenciesUpdateReferences:
+    method: PUT
+    path: /stack-dependency-references
+  stackDependenciesDeleteReference:
+    method: DELETE
+    path: /stack-dependency-references/{referenceId}
+    params: {referenceId: id}
+  stackDependenciesDeleteReferences:
+    method: DELETE
+    path: /stack-dependency-references
+
+  # --- OpenTofu migration (asynchronous; the queue drains in the background).
+  openTofuMigrate:
+    method: POST
+    path: /open-tofu-migrations
+  openTofuMigrationQueueClean:
+    method: POST
+    path: /open-tofu-migration-queue/clean
+
+  # --- Policies, plugins, blueprints and templates.
+  policySimulatev2:
+    method: POST
+    path: /policies/simulate
+  pluginInstall:
+    method: POST
+    path: /plugins
+    created: true
+  blueprintParseTemplate:
+    method: POST
+    path: /blueprints/parse-template
+  templateDeploymentCreate:
+    method: POST
+    path: /templates/{templateId}/deployments
+    params: {templateId: id}
+    created: true
+
+  # --- Intent projects: configs nest like /stacks/{stackId}/configs.
+  stackCreateFromIntent:
+    method: POST
+    path: /intent-projects/{intentProjectId}/stacks
+    params: {intentProjectId: project}
+    created: true
+  intentProjectConfigAdd:
+    method: POST
+    path: /intent-projects/{intentProjectId}/configs
+    params: {intentProjectId: project}
+  intentProjectConfigUpdate:
+    method: PUT
+    path: /intent-projects/{intentProjectId}/configs/{configId}
+    params: {intentProjectId: project, configId: config.id}
+  intentProjectConfigDelete:
+    method: DELETE
+    path: /intent-projects/{intentProjectId}/configs/{configId}
+    params: {intentProjectId: project, configId: config}
+  intentResourceDependencyRemove:
+    method: DELETE
+    path: /intent-projects/{intentProjectId}/intent-resource-dependencies/{fromResourceId}/{toResourceId}
+  intentResourceOperationReview:
+    method: POST
+    path: /intent-projects/{intentProjectId}/intent-resource-operations/{operationId}/review
+  intentResourceStateEject:
+    method: POST
+    path: /intent-projects/{intentProjectId}/intent-resources/{resourceId}/eject
+
+exclude:
+  groupUserEvent: Product analytics sent by the Spacelift web UI; not an API of the platform.
+  identifyUserEvent: Product analytics sent by the Spacelift web UI; not an API of the platform.
+  pageUserEvent: Product analytics sent by the Spacelift web UI; not an API of the platform.
+  trackUserEvent: Product analytics sent by the Spacelift web UI; not an API of the platform.
+
+# Terraform attribute → GraphQL input field, where the naming convention
+# (snake_case → camelCase, else without _id) does not give the name. Read
+# from the provider source (research 03); a rename to a field that no
+# longer exists shows up as unmapped in coverage.md.
+terraform:
+  spacelift_module:
+    enable_local_preview: localPreviewEnabled
+  spacelift_stack:
+    allow_run_promotion: githubActionDeploy
+    enable_local_preview: localPreviewEnabled
+    enable_sensitive_outputs_upload: enableSensitiveOutputUpload
+  spacelift_worker_pool:
+    csr: certificateSigningRequest

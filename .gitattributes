@@ -5,3 +5,8 @@
 * text=auto
 
 *.json text eol=lf
+
+# Generated files are compared byte for byte with generator output, which
+# writes LF on every OS; a CRLF checkout on Windows reads as drift.
+api/reference/** text eol=lf
+internal/specref/testdata/golden/** text eol=lf

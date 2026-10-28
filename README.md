@@ -1,60 +1,71 @@
-# weaveplatform-template
+# infraweave
 
-The starting point for weaveplatform Go repositories: a blocking quality gate
-(lint, unit tests on Linux, macOS and Windows, govulncheck, cross-compile, and a
-≥95% merged coverage gate), release-please through the organisation's App,
-dependencies that track their latest release from the day a repository is born,
-and conventional-commit PR titles.
+Self-hosted infrastructure-as-code orchestration with the feature set of
+Spacelift (stacks, runs, policies, contexts, drift detection, worker pools)
+behind a REST API described by OpenAPI 3 instead of GraphQL.
 
-## After creating a repository from this template
+Everything starts from a machine-checked reference of the upstream surface:
+`api/reference/spacelift/spacelift.openapi.yaml`. It holds a REST route for
+every one of Spacelift's 665 GraphQL root fields, with the official Terraform
+provider's attribute descriptions attached. See
+[decision 0001](docs/research/decisions/0001-rest-first-spacelift-surface.md)
+for why infraweave is REST-first.
 
-1. **Rename the module.** `make init NAME=<repository name>` rewrites
-   `weaveplatform-template` everywhere (module path, this README) and tidies.
-2. **Set the owners** in `.github/CODEOWNERS`.
-3. **Protect `main`.** Require the `Quality gate` and `✅ Validate PR Title` checks,
-   and enable auto-merge so Dependabot updates merge once the gate passes.
-4. **Releases** start at 0.1.0 and need nothing per repository: the organisation's release-please
-   App is installed on all repositories and its credentials are organisation
-   variables and secrets. The workflow warns in its log if it falls back to a
-   `RELEASE_PLEASE_PAT`.
-5. **Replace this README** with the project's own.
+## The Spacelift specification reference
 
-## Dependencies stay at latest
+| Piece | What |
+|---|---|
+| `internal/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
+| `tools/specref` | `fetch` (network and terraform), `generate` and `check` (offline) |
+| `api/reference/spacelift/` | Pinned snapshots, `sources.lock.yaml`, the hand-curated `rest-mapping.yaml`, and the generated spec and `coverage.md` |
+| `docs/research/` | API landscape, the mapping rules, the provider, decision records |
 
-| Piece | What it moves | When |
-|---|---|---|
-| `deps-refresh.yml` | The `go` directive (latest stable Go), every module and every `go.mod` tool (`go get -u ./... tool`), and `.github/golangci-lint-version` | On the push that creates `main` (repository birth), daily, and on demand |
-| Dependabot | Go modules and GitHub Actions pins, majors included, one grouped PR per ecosystem | Daily |
-| `auto-merge.yml` | Merges either kind of PR once the quality gate has passed on that exact commit | When the gate finishes |
+Generation fails when any of these happens:
 
-The gate is the only thing that holds an update back. A major that breaks the
-build fails it, and the PR stays open for a person. Dependabot owns the action
-pins because changing workflow files needs a permission the org App does not
-have.
+- a root field is neither routed nor excluded with a reason;
+- two routes collide;
+- a mutation gets no resource shape (`rpcBudget` is 0);
+- `rest-mapping.yaml` names something upstream no longer has.
 
-This repository itself refreshes the same way, so a repository created from it
-starts from a current snapshot and updates again within minutes of creation.
+The weekly **OpenAPI specification update** workflow (`openapi-spec-update.yml`)
+compares the pinned upstream commits with the newest ones. When either is
+newer, it regenerates on a runner and opens a PR.
 
 ## Layout
 
 | Path | What |
 |---|---|
+| `api/` | OpenAPI documents, embedded for tests and tools by `api/doc.go` |
 | `cmd/<binary>/` | Entry points: thin cobra shims over `internal/`; excluded from the coverage gate |
 | `internal/` | Project-only packages; `internal/buildinfo` carries the version stamped in by `make build` |
 | `pkg/` | Public, importable packages |
-| `docs/` | Design notes and decision records |
-| `test/acceptance/` | Acceptance tests against real dependencies (excluded from `make test`) |
+| `tools/` | Developer tooling (`tools/specref`); excluded from the coverage gate |
+| `docs/` | Research and decision records |
+| `test/acceptance/` | Gherkin features run by godog against the committed reference (excluded from `make test`) |
 
 ## Make targets
 
 | Target | What |
 |---|---|
-| `make gate` | Everything CI runs: vet, lint, test, cover, vuln, build |
+| `make gate` | Everything CI runs: vet, lint, test, accept, verify-reference, cover, vuln, build |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
-| `make cover` | Merges every `cover/*` directory and enforces `.testcoverage.yml` |
+| `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
+| `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
+| `make reference` | Regenerates the spec and `coverage.md` from the snapshots |
+| `make verify-reference` | Fails if the committed reference is not exactly what the snapshots generate |
+| `make cover` | Merges every `cover/*` directory and enforces `.testcoverage.yml` (≥95% total, ≥90% per package) |
 | `make lint` / `make fmt` | golangci-lint with `.golangci.yml` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |
 
-Acceptance tests write their coverage to another `cover/<name>` directory; the
-coverage job merges whatever it downloads, so adding one is a new CI job that
-uploads a `cover-<name>` artifact plus an entry in the gate's `needs`.
+## Dependencies stay at latest
+
+| Piece | What it moves | When |
+|---|---|---|
+| `deps-refresh.yml` | The `go` directive (latest stable Go), every module and every `go.mod` tool, and `.github/golangci-lint-version` | Daily and on demand |
+| Dependabot | Go modules and GitHub Actions pins, one grouped PR per ecosystem | Daily |
+| `auto-merge.yml` | Merges either kind of PR once the quality gate has passed on that exact commit | When the gate finishes |
+
+## Licence notices
+
+The committed Spacelift reference includes material from MIT-licensed
+Spacelift repositories; see `api/reference/spacelift/NOTICE`.

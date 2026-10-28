@@ -1,0 +1,189 @@
+name: OpenAPI specification update
+
+# Weekly: compare the upstream commits pinned in sources.lock.yaml with the
+# newest ones (head of spacelift-api-bruno, latest terraform-provider-spacelift
+# release). Only when one is newer does the runner re-fetch at the new pins,
+# regenerate the reference and raise one PR from the org App, so the quality
+# gate (and its acceptance features) judges the drift like any other change.
+#
+# The live GraphQL schema has no commit of its own; it is re-introspected
+# whenever a pin moves. Run the workflow by hand with `force` to pick up a
+# schema change that arrived without a new Bruno commit or provider release.
+#
+# Generation can fail on genuine upstream change: a new operation colliding
+# with an existing route, or more RPC-shaped mutations than rpcBudget allows.
+# The PR is still opened with the snapshots, and the failing gate names what
+# rest-mapping.yaml needs.
+on:
+  schedule:
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Regenerate even if the pinned commits are current'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openapi-spec-update
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+  BRANCH: reference/openapi-spec-update
+  LOCK: api/reference/spacelift/sources.lock.yaml
+
+jobs:
+  check:
+    name: '🔎 Compare pinned upstream commits'
+    runs-on: ubuntu-latest
+    outputs:
+      newer: ${{ steps.compare.outputs.newer }}
+      bruno: ${{ steps.compare.outputs.bruno }}
+      provider: ${{ steps.compare.outputs.provider }}
+      summary: ${{ steps.compare.outputs.summary }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare with upstream
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force || false }}
+        run: |
+          set -euo pipefail
+          pinned_bruno=$(yq -r '.bruno.ref' "$LOCK")
+          pinned_provider=$(yq -r '.provider.ref' "$LOCK")
+          bruno=$(gh api repos/spacelift-io/spacelift-api-bruno/commits/main -q .sha)
+          provider=$(gh api repos/spacelift-io/terraform-provider-spacelift/releases/latest -q .tag_name)
+
+          newer=false
+          summary=""
+          # "ahead" is a normal new commit; "diverged" means upstream rewrote
+          # history past our pin, which still needs a fresh reference.
+          status=$(gh api "repos/spacelift-io/spacelift-api-bruno/compare/${pinned_bruno}...${bruno}" -q .status)
+          if [ "$status" = ahead ] || [ "$status" = diverged ]; then
+            newer=true
+            summary+="- spacelift-api-bruno: \`${pinned_bruno:0:12}\` → \`${bruno:0:12}\` (${status})"$'\n'
+          fi
+          # Tags compare as versions so a re-tagged older release never
+          # looks like an update.
+          top=$(printf '%s\n%s\n' "${pinned_provider#v}" "${provider#v}" | sort -V | tail -1)
+          if [ "${provider#v}" != "${pinned_provider#v}" ] && [ "$top" = "${provider#v}" ]; then
+            newer=true
+            summary+="- terraform-provider-spacelift: \`${pinned_provider}\` → \`${provider}\`"$'\n'
+          fi
+          if [ "$FORCE" = true ] && [ "$newer" = false ]; then
+            newer=true
+            summary+="- forced run: pins unchanged, re-introspecting the live schema"$'\n'
+          fi
+
+          {
+            echo "newer=$newer"
+            echo "bruno=$bruno"
+            echo "provider=${provider#v}"
+            echo "summary<<EOF"
+            printf '%s' "$summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$newer" = true ]; then
+            { echo "### Upstream moved"; printf '%s' "$summary"; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Pinned commits are current" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  update:
+    name: '🔭 Regenerate the OpenAPI specification'
+    needs: check
+    if: needs.check.outputs.newer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      # The App token is what makes the PR trigger the quality gate.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ vars.RP_APP_ID }}
+          private-key: ${{ secrets.RP_APP_PRIVATE_KEY }}
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      # terraform reads the provider schema; the wrapper would mix its own
+      # output into the JSON that specref parses.
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+
+      # The pins come from the check job rather than being re-read, so the
+      # PR describes exactly the commits that were fetched.
+      - name: Fetch upstream at the new pins
+        env:
+          BRUNO: ${{ needs.check.outputs.bruno }}
+          PROVIDER: ${{ needs.check.outputs.provider }}
+        run: go run ./tools/specref fetch --bruno-ref "$BRUNO" --provider-version "$PROVIDER"
+
+      - name: Regenerate the specification
+        id: generate
+        run: |
+          if make reference; then
+            echo "result=generated" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failed" >> "$GITHUB_OUTPUT"
+            echo "::warning::generation failed; the PR carries the snapshots and the gate will say what rest-mapping.yaml needs"
+          fi
+
+      - name: Open or update the PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SUMMARY: ${{ needs.check.outputs.summary }}
+          RESULT: ${{ steps.generate.outputs.result }}
+        run: |
+          set -euo pipefail
+          # fetchedAt changes on every run; the spec is versioned by schema
+          # digest, so a forced run against an unchanged upstream changes
+          # nothing else and needs no PR.
+          others=$(git status --porcelain -- . ":(exclude)$LOCK")
+          pins=$(git diff -U0 -- "$LOCK" | grep -E '^[-+] ' | grep -v fetchedAt || true)
+          if [ -z "$others" ] && [ -z "$pins" ]; then
+            echo "upstream unchanged"
+            exit 0
+          fi
+          title="feat(reference): update the Spacelift OpenAPI specification from upstream"
+          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review `api/reference/spacelift/coverage.md` for new, excluded and RPC-shaped operations.\n' "$SUMMARY" "$RESULT")
+          git config user.name "weaveplatform-release-please[bot]"
+          git config user.email "weaveplatform-release-please[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -A api/reference/spacelift
+          git commit -qm "$title"
+          git push --force -u origin "$BRANCH"
+          pr=$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')
+          if [ -z "$pr" ]; then
+            gh pr create --head "$BRANCH" --title "$title" --body "$body"
+          else
+            gh pr edit "$pr" --body "$body"
+          fi
