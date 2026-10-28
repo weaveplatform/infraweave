@@ -95,6 +95,28 @@ scaffold:
 bundle:
 	$(GO) run ./tools/openapi-bundle --src api/src --out api
 
+# Run from its own module graph rather than as a go.mod tool: built against
+# ours, its dependencies would be upgraded past what it was released with.
+# deps-refresh.yml moves it to the latest release.
+OAPI_CODEGEN := github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.1
+
+# One per api/src/<service>/; each needs api/oapi-{server,client}-<service>.yaml.
+SPECS := $(patsubst api/src/%/info.yaml,%,$(wildcard api/src/*/info.yaml))
+
+## generate: bundle the specs, then generate each strict chi server, Go client and 501 stubs
+generate: bundle
+	@for s in $(SPECS); do \
+		echo "generate $$s"; \
+		$(GO) run $(OAPI_CODEGEN) -config api/oapi-server-$$s.yaml api/$$s.openapi.yaml || exit 1; \
+		$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-$$s.yaml api/$$s.openapi.yaml || exit 1; \
+		$(GO) run ./tools/stubgen internal/server/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
+	done
+
+## verify-generate: fail if the committed bundles or generated code differ from what make generate writes
+verify-generate: generate
+	@git diff --exit-code -- api/*.openapi.yaml internal/server/gen pkg/client || \
+		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
+
 ## reference: regenerate the Spacelift OpenAPI reference and coverage report from the snapshots
 reference:
 	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
@@ -104,6 +126,6 @@ verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
 
 ## gate: everything CI runs, in order
-gate: vet lint test accept verify-reference cover vuln build
+gate: vet lint test accept verify-reference verify-generate cover vuln build
 
-.PHONY: help init fmt lint vet test accept reference-fetch scaffold bundle reference verify-reference cover vuln build gate
+.PHONY: help init fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference verify-reference cover vuln build gate

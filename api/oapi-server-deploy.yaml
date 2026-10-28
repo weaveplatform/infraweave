@@ -1,0 +1,14 @@
+# oapi-codegen configuration for the deploy API's strict chi server (make
+# generate). Operations tagged "handwritten" are excluded so the generated
+# router never claims a path a hand-written handler serves.
+package: deploy
+output: internal/server/gen/deploy/server.gen.go
+generate:
+  models: true
+  chi-server: true
+  strict-server: true
+  embedded-spec: true
+output-options:
+  skip-prune: true
+  exclude-tags:
+    - handwritten
