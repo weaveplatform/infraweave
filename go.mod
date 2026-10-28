@@ -35,15 +35,18 @@ require (
 	github.com/aws/smithy-go v1.28.7 // indirect
 	github.com/cucumber/gherkin/go/v42 v42.0.1 // indirect
 	github.com/cucumber/messages/go/v34 v34.2.1 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-openapi/jsonpointer v1.0.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/go-github/v88 v88.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
+	github.com/google/renameio v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-memdb v1.3.5 // indirect
+	github.com/hashicorp/go-uuid v1.0.4 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
@@ -52,6 +55,7 @@ require (
 	github.com/oasdiff/yaml v0.1.3 // indirect
 	github.com/oasdiff/yaml3 v0.0.16 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
+	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
