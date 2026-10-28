@@ -64,15 +64,15 @@ exclusion is recorded with its evidence.
 | [08-run-lifecycle.md](reference/08-run-lifecycle.md) | Run types and states, transitions, phases and hooks, confirm, discard, retry and stop, promotion, targeted replan, PR feedback | Written |
 | [09-policies.md](reference/09-policies.md) | Policy types, Rego versions, inputs per type, flags, sampling, auto-attach and deprecations | Written |
 | [10-workers-and-execution.md](reference/10-workers-and-execution.md) | Public and private pools, the launcher and worker protocol, runner images, caching, drain, autoscaling and signed runs | Written |
-| 11-vcs-integrations.md | GitHub, GitLab, Bitbucket, Azure DevOps, raw git, VCS agent pools, webhooks and checks | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
-| 12-cloud-integrations-and-oidc.md | AWS, Azure and GCP integrations, OIDC tokens and subject claims, Vault | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
+| [11-vcs-integrations.md](reference/11-vcs-integrations.md) | GitHub, GitLab, Bitbucket, Azure DevOps, raw git, VCS agent pools, webhooks and checks | Written |
+| [12-cloud-integrations-and-oidc.md](reference/12-cloud-integrations-and-oidc.md) | AWS, Azure and GCP integrations, OIDC tokens and subject claims, Vault | Written |
 | [13-configuration.md](reference/13-configuration.md) | Contexts, environment variables, mounted files, auto-attach and precedence | Written |
-| 14-spaces-rbac-and-identity.md | Spaces and inheritance, roles and bindings, login policies, SSO, SCIM, MFA, API keys and sessions | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
+| [14-spaces-rbac-and-identity.md](reference/14-spaces-rbac-and-identity.md) | Spaces and inheritance, roles and bindings, login policies, SSO, SCIM, MFA, API keys and sessions | Written |
 | 15-module-and-provider-registry.md | The module and provider registries, versions, test cases, sharing, GPG keys and the registry protocol | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
 | [16-state-management.md](reference/16-state-management.md) | The managed state backend, external access, import, rollback and state URLs | Written |
 | 17-blueprints-and-templates.md | Blueprints, templates, deployments, the workbench and the version catalog | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
 | 18-scheduling-drift-dependencies.md | Scheduled runs, tasks and deletes, drift detection, stack dependencies and output references | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
-| 19-events-notifications-audit.md | Notifications, Slack and Teams, webhooks, the audit trail and metrics exporters | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
+| [19-events-notifications-audit.md](reference/19-events-notifications-audit.md) | Notifications, Slack and Teams, webhooks, the audit trail and metrics exporters | Written |
 | 20-vendors.md | Terraform, OpenTofu, Terragrunt, Pulumi, CloudFormation, Kubernetes and Ansible; workflow tools, cost estimation and sanitization | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
 | 21-resources-scans-search.md | The resources view, entity changes, scans, saved filters and search | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
 | 22-intelligence.md | AI integrations, the Infra Assistant, Intent and the MCP server | Planned, [#27](https://github.com/weaveplatform/infraweave/issues/27) |
