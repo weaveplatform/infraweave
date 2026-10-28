@@ -121,9 +121,16 @@ verify-generate: generate
 reference:
 	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
 
-## verify-reference: fail if the committed reference is not what its snapshots generate
+INVENTORY := docs/research/reference/29-data-model-inventory.md
+
+## reference-inventory: regenerate report 29, the data model inventory, from the introspection snapshot
+reference-inventory:
+	$(GO) run ./tools/specref inventory --dir $(REFERENCE_DIR) --out $(INVENTORY)
+
+## verify-reference: fail if the committed reference or report 29 is not what the snapshots generate
 verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
+	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY)
 
 ## docs-check: links, report headers and decision statuses under docs/ (internal/docscheck)
 docs-check:
@@ -132,4 +139,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint test accept verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference verify-reference cover vuln build gate
+.PHONY: help init docs-check fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference cover vuln build gate

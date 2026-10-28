@@ -113,7 +113,8 @@ jobs:
 
       # Offline: regenerates from the committed snapshots and diffs, so an
       # edit to rest-mapping.yaml or the generator without `make reference`
-      # fails here rather than shipping a stale spec.
+      # (or `make reference-inventory` for report 29) fails here rather than
+      # shipping a stale spec or inventory.
       - name: Verify the generated reference
         run: make verify-reference
 

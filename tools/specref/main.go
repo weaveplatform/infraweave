@@ -1,7 +1,8 @@
 // Command specref maintains the Spacelift API reference in
 // api/reference/spacelift: fetch refreshes the pinned upstream snapshots,
-// generate derives the OpenAPI spec and coverage report from them, and check
-// fails when the committed output is stale. Logic lives in internal/specref.
+// generate derives the OpenAPI spec and coverage report from them, check
+// fails when the committed output is stale, and inventory writes or checks
+// report 29, the data model inventory. Logic lives in internal/specref.
 package main
 
 import (
@@ -49,6 +50,7 @@ type config struct {
 	Tag             string `mapstructure:"tag"`
 	Out             string `mapstructure:"out"`
 	Force           bool   `mapstructure:"force"`
+	Check           bool   `mapstructure:"check"`
 }
 
 func main() {
@@ -195,7 +197,29 @@ func newRoot() *cobra.Command {
 	sf.String("tag", "", "reference tag to scaffold, such as Stacks")
 	sf.String("out", "", "fragment to write, such as api/src/deploy/paths-stacks.yaml")
 	sf.Bool("force", false, "overwrite an existing fragment")
-	root.AddCommand(fetch, generate, check, scaffold)
+	inventory := &cobra.Command{
+		Use:   "inventory",
+		Short: "Write report 29, the data model inventory, from the introspection snapshot",
+		Args:  cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			c, err := decode(v)
+			if err != nil {
+				return err
+			}
+			if c.Check {
+				return specref.CheckInventory(c.Dir, c.Out)
+			}
+			return specref.InventoryFile(c.Dir, c.Out)
+		},
+	}
+	inf := inventory.Flags()
+	inf.String(
+		"out",
+		filepath.Join("docs", "research", "reference", "29-data-model-inventory.md"),
+		"report to write",
+	)
+	inf.Bool("check", false, "fail if the report is stale instead of writing it")
+	root.AddCommand(fetch, generate, check, scaffold, inventory)
 	return root
 }
 

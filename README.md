@@ -65,7 +65,7 @@ Bundling fails when any of these happens:
 | Target | What |
 |---|---|
 | `make gate` | Everything CI runs: docs-check, vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
-| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, or a stale `docs/…` path anywhere in the repository |
+| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a reference spec tag that report 26 does not name, or a report with *(unverified)* claims that report 30 does not link |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/deploy/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
@@ -74,7 +74,8 @@ Bundling fails when any of these happens:
 | `make verify-generate` | Fails if the committed bundles or generated code are stale |
 | `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
 | `make reference` | Regenerates the spec and `coverage.md` from the snapshots |
-| `make verify-reference` | Fails if the committed reference is not exactly what the snapshots generate |
+| `make reference-inventory` | Regenerates report 29, the data model inventory (`docs/research/reference/29-data-model-inventory.md`), from the introspection snapshot |
+| `make verify-reference` | Fails if the committed reference or report 29 is not exactly what the snapshots generate |
 | `make cover` | Merges every `cover/*` directory and enforces `.testcoverage.yml` (≥95% total, ≥90% per package) |
 | `make lint` / `make fmt` | golangci-lint with `.golangci.yml` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |
