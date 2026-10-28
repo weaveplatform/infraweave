@@ -7,6 +7,7 @@ name: deps | Refresh
 #   - every module and every go.mod tool (govulncheck, go-test-coverage),
 #     with go get -u;
 #   - the golangci-lint version in .github/golangci-lint-version;
+#   - the oapi-codegen version in the Makefile, which runs it outside go.mod;
 #   - modules pinned to a branch or query in .github/deps-refresh.pins.
 #
 # The result goes up as one PR from the org App, so the quality gate runs on
@@ -89,6 +90,8 @@ jobs:
           fi
           go mod tidy
           gh api repos/golangci/golangci-lint/releases/latest -q .tag_name > .github/golangci-lint-version
+          oapi=$(gh api repos/oapi-codegen/oapi-codegen/releases/latest -q .tag_name)
+          sed -i -E "s#(oapi-codegen/v2/cmd/oapi-codegen@)v[0-9.]+#\1${oapi}#" Makefile
           git status --short
 
       - name: Open or update the refresh PR
