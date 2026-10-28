@@ -290,6 +290,9 @@ nothing about them is secret:
     the local-key mode where Spacelift's RSA key does both. It is a sealed row
     of [0006](0006-authentication-and-tokens.md), so rotating one never
     touches the other.
+  - **Values shorter than 4 bytes are not masked.** Spacelift documents no
+    minimum length for masked values; masking `1` or `on` would destroy the
+    log and protect nothing.
 - **Rejected: column encryption in PostgreSQL** (`pgcrypto`). The key would
   travel to the database server in queries and logs, and it needs an
   extension that [0005](0005-persistence-postgresql.md) does not require.

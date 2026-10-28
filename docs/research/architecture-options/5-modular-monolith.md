@@ -85,7 +85,7 @@ Rules 2 to 8 are depguard rules in `.golangci.yml`; rule 1 is the compiler's
 infraweave/
 ├── cmd/
 │   ├── infraweave/             one binary: serve, scheduler, all, worker, hidden worker exec,
-│   │                           vcs-agent, flows-agent, migrate up and status, version
+│   │                           vcs-agent, flows-agent, migrate up and status, secrets, version
 │   └── infraweavectl/          (P24) the CLI, a client over pkg/client/deploy
 ├── internal/                   app/ kernel/ platform/ iac/ agent/ devtools/ and one directory per module
 ├── pkg/
@@ -98,9 +98,12 @@ infraweave/
 │   ├── acceptance/             godog features against real PostgreSQL, object storage and a real run
 │   └── fixtures/               (P9) Terraform and OpenTofu projects, Git repositories, policy corpus
 ├── tools/                      unchanged: thin mains over internal/devtools
-├── deploy/                     (P27) container images, runner images, Helm chart, Compose file
-│   ├── images/                 server image and runner images (P9, P20)
-│   └── helm/infraweave/        one Deployment per role
+├── deploy/                     (P27) decision 0020's images, charts, Compose file and Terraform modules
+│   ├── images/                 server, runner (P9, P20) and Flows runtime image definitions
+│   ├── compose/                compose.yaml: one infraweave all and one worker
+│   ├── helm/                   infraweave/ (serve, scheduler) and infraweave-workers/ (worker)
+│   ├── terraform/              modules/<cloud>/ for aws, azure and google, and examples/
+│   └── check.sh                static checks of every deployment root
 ├── docs/                       research, decisions, the implementation plan
 ├── Makefile                    generate writes to internal/platform/gen and internal/agent/wire
 ├── .golangci.yml               depguard enabled with the rules in "Tests and enforcement"
@@ -206,7 +209,7 @@ internal/
 │   ├── sql/                              pgx pool; the migrator, whose advisory lock is the only one (decision 0005)
 │   │   ├── migrate/                      embedded streams, schema_migrations keyed by module
 │   │   ├── notify/                       LISTEN and NOTIFY fan-out between replicas (P7)
-│   │   └── sqltest/                      testcontainers PostgreSQL, one schema per test
+│   │   └── sqltest/                      testcontainers PostgreSQL, a database per case from a migrated template
 │   ├── tx/                               Tx(ctx, fn), AfterCommit; the unit of work on the context
 │   ├── audit/                            Record(ctx, kernel.AuditEntry): audit_trail_entries row in the caller's tx
 │   │                                     (decision 0015); the table is platform's, as events and jobs are
@@ -935,6 +938,7 @@ cmd/infraweave/
 ├── vcsagent.go           `vcs-agent`: agent/vcsagent.Run (P19)
 ├── flowsagent.go         `flows-agent`: agent/flowsagent.Run (P26)
 ├── migrate.go            `migrate up` and `migrate status`: app.Migrate, then exit
+├── secrets.go            `secrets generate-kek`, `secrets rewrap`, `secrets rotate` (decision 0013), then exit
 └── version.go            `version`: platform/buildinfo
 internal/app/
 ├── config/               config.go (Settings: Server, Database, ObjectStore, Crypt, Queue, one field per module)

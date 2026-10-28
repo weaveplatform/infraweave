@@ -20,7 +20,10 @@
 //     the register of open questions;
 //   - every numbered architecture option has the same outline as the first,
 //     so the comparison in docs/research/architecture-options/README.md
-//     compares like with like.
+//     compares like with like;
+//   - every phase of docs/implementation/plan.md states its decisions,
+//     dependencies, tasks and exit criteria, and every phase the capability
+//     roadmap names is a phase of the plan.
 package docscheck
 
 import (
@@ -44,6 +47,8 @@ const (
 	decisionsDir = "docs/research/decisions"
 	decisionsIdx = decisionsDir + "/README.md"
 	optionsDir   = "docs/research/architecture-options"
+	planDoc      = "docs/implementation/plan.md"
+	roadmapDoc   = "docs/implementation/capability-roadmap.md"
 	scopeReport  = reportsDir + "/26-scope-and-tiers.md"
 	openReport   = reportsDir + "/30-open-questions.md"
 	referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
@@ -84,6 +89,7 @@ func Check(repo fs.FS) ([]Finding, error) {
 	}
 	c.unverified()
 	c.options()
+	c.plan()
 	if err := c.tags(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
@@ -514,6 +520,77 @@ func (c *checker) options() {
 			c.add(d.path, max(g.line, 1), "outline departs from %s: has %q where it has %q",
 				path.Base(first.path), cmp.Or(g.text, "(end)"), cmp.Or(w.text, "(end)"))
 			break
+		}
+	}
+}
+
+var (
+	phaseHeading = regexp.MustCompile(`^## (P\d+[a-z]?): `)
+	phaseRef     = regexp.MustCompile(`\bP\d+[a-z]?\b`)
+)
+
+// phaseParts are the lines every phase of the plan carries, in the plan's
+// own wording, so a phase cannot be cut into tickets without its decisions,
+// its blockers or a way to tell that it is finished.
+var phaseParts = []string{"Decisions:", "**Depends on:**", "**Tasks**", "**Exit criteria**"}
+
+// plan checks each phase of the implementation plan for its parts, and
+// that the capability roadmap assigns capabilities only to phases the plan
+// has.
+func (c *checker) plan() {
+	d, ok := c.docs[planDoc]
+	if !ok {
+		return
+	}
+	phases := map[string]bool{}
+	var id string
+	var start int
+	var body []string
+	check := func() {
+		for _, want := range phaseParts {
+			if !slices.ContainsFunc(
+				body,
+				func(l string) bool { return strings.HasPrefix(l, want) },
+			) {
+				c.add(d.path, start, "phase %s has no %q", id, want)
+			}
+		}
+	}
+	for i, l := range d.lines {
+		if d.code[i] {
+			continue
+		}
+		if strings.HasPrefix(l, "## ") {
+			if id != "" {
+				check()
+			}
+			id, start, body = "", 0, nil
+			if m := phaseHeading.FindStringSubmatch(l); m != nil {
+				id, start = m[1], i+1
+				phases[id] = true
+			}
+			continue
+		}
+		if id != "" {
+			body = append(body, l)
+		}
+	}
+	if id != "" {
+		check()
+	}
+	r, ok := c.docs[roadmapDoc]
+	if !ok {
+		return
+	}
+	for i, l := range r.lines {
+		// Phases are assigned in table rows; prose may name a phase range.
+		if r.code[i] || !strings.HasPrefix(l, "|") {
+			continue
+		}
+		for _, p := range phaseRef.FindAllString(codeSpan.ReplaceAllString(l, ""), -1) {
+			if !phases[p] {
+				c.add(r.path, i+1, "names phase %s, which %s does not have", p, path.Base(planDoc))
+			}
 		}
 	}
 }
