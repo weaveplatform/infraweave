@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Fixture API
+  version: 0.0.1
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: widgets
