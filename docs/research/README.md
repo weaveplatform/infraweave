@@ -60,16 +60,16 @@ exclusion is recorded with its evidence.
 | [04-platform-api-inventory.md](reference/04-platform-api-inventory.md) | Every remaining tag, from account and SSO to Intent and Flows, plus the untagged operations | Written |
 | [05-terraform-provider.md](reference/05-terraform-provider.md) | The Terraform provider: every resource and data source mapped to its operations and routes, import IDs, attributes with no input field, and behaviour worth copying | Written |
 | [06-spacectl-and-clients.md](reference/06-spacectl-and-clients.md) | spacectl commands and their operations, its MCP tools, the Pulumi provider, the Kubernetes operator, Backstage plugins, and what an infraweave CLI must cover | Written |
-| 07-stack-model.md | Stack settings, vendor configuration, runtime YAML and typing traps | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
-| 08-run-lifecycle.md | Run types and states, transitions, phases and hooks, confirm, discard, retry and stop, promotion, targeted replan, PR feedback | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
-| 09-policies.md | Policy types, Rego versions, inputs per type, flags, sampling, auto-attach and deprecations | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
-| 10-workers-and-execution.md | Public and private pools, the launcher and worker protocol, runner images, caching, drain, autoscaling and signed runs | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
+| [07-stack-model.md](reference/07-stack-model.md) | Stack settings, vendor configuration, runtime YAML and typing traps | Written |
+| [08-run-lifecycle.md](reference/08-run-lifecycle.md) | Run types and states, transitions, phases and hooks, confirm, discard, retry and stop, promotion, targeted replan, PR feedback | Written |
+| [09-policies.md](reference/09-policies.md) | Policy types, Rego versions, inputs per type, flags, sampling, auto-attach and deprecations | Written |
+| [10-workers-and-execution.md](reference/10-workers-and-execution.md) | Public and private pools, the launcher and worker protocol, runner images, caching, drain, autoscaling and signed runs | Written |
 | 11-vcs-integrations.md | GitHub, GitLab, Bitbucket, Azure DevOps, raw git, VCS agent pools, webhooks and checks | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
 | 12-cloud-integrations-and-oidc.md | AWS, Azure and GCP integrations, OIDC tokens and subject claims, Vault | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
-| 13-configuration.md | Contexts, environment variables, mounted files, auto-attach and precedence | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
+| [13-configuration.md](reference/13-configuration.md) | Contexts, environment variables, mounted files, auto-attach and precedence | Written |
 | 14-spaces-rbac-and-identity.md | Spaces and inheritance, roles and bindings, login policies, SSO, SCIM, MFA, API keys and sessions | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
 | 15-module-and-provider-registry.md | The module and provider registries, versions, test cases, sharing, GPG keys and the registry protocol | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
-| 16-state-management.md | The managed state backend, external access, import, rollback and state URLs | Planned, [#24](https://github.com/weaveplatform/infraweave/issues/24) |
+| [16-state-management.md](reference/16-state-management.md) | The managed state backend, external access, import, rollback and state URLs | Written |
 | 17-blueprints-and-templates.md | Blueprints, templates, deployments, the workbench and the version catalog | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
 | 18-scheduling-drift-dependencies.md | Scheduled runs, tasks and deletes, drift detection, stack dependencies and output references | Planned, [#26](https://github.com/weaveplatform/infraweave/issues/26) |
 | 19-events-notifications-audit.md | Notifications, Slack and Teams, webhooks, the audit trail and metrics exporters | Planned, [#25](https://github.com/weaveplatform/infraweave/issues/25) |
