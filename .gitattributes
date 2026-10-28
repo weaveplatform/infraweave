@@ -12,4 +12,5 @@ api/reference/** text eol=lf
 internal/specref/testdata/golden/** text eol=lf
 api/*.openapi.yaml text eol=lf
 api/src/** text eol=lf
+*.gen.go text eol=lf
 internal/openapibundle/testdata/golden/** text eol=lf
