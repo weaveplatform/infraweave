@@ -18,7 +18,7 @@ for why infraweave is REST-first.
 | `internal/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
 | `tools/specref` | `fetch` (network and terraform), `generate` and `check` (offline) |
 | `api/reference/spacelift/` | Pinned snapshots, `sources.lock.yaml`, the hand-curated `rest-mapping.yaml`, and the generated spec and `coverage.md` |
-| `docs/research/` | API landscape, the mapping rules, the provider, decision records |
+| `docs/research/` | Research reports in `reference/` (landscape, mapping rules, provider), decision records in `decisions/`; see its [README](docs/research/README.md) |
 
 Generation fails when any of these happens:
 
@@ -64,7 +64,8 @@ Bundling fails when any of these happens:
 
 | Target | What |
 |---|---|
-| `make gate` | Everything CI runs: vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
+| `make gate` | Everything CI runs: docs-check, vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
+| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, or a stale `docs/…` path anywhere in the repository |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/deploy/paths-<family>.yaml` with the decision 0003 conventions, then bundles |

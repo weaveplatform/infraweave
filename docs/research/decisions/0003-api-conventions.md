@@ -192,4 +192,4 @@ The scaffolder adds them to each operation and records each addition in
 - [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): problem details.
 - [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/).
 - [RFC 9110 §10.2.3](https://www.rfc-editor.org/rfc/rfc9110#section-10.2.3): `Retry-After`.
-- [02](../02-graphql-to-rest-mapping.md): the reference's list and search shapes.
+- [02](../reference/02-graphql-to-rest-mapping.md): the reference's list and search shapes.

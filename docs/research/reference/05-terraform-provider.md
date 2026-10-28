@@ -1,4 +1,11 @@
-# 03: The Spacelift Terraform provider
+# 05: The Spacelift Terraform provider
+
+Checked against: the snapshots pinned in
+[`sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): introspection
+`b3255fe38f5e` (fetched 2026-10-28), spacelift-api-bruno `7cad4574954b` and
+terraform-provider-spacelift v1.57.0.
+
+Research baseline: **2026-10-28**.
 
 How the reference uses
 [terraform-provider-spacelift](https://github.com/spacelift-io/terraform-provider-spacelift),
@@ -72,9 +79,15 @@ the provider's description when GraphQL has none.
 ## Later: provider parity in `deploy/ci`
 
 infraweave will ship its own REST-native Terraform provider (see decision
-[0001](decisions/0001-rest-first-spacelift-surface.md)). `deploy/ci` will run
+[0001](../decisions/0001-rest-first-spacelift-surface.md)). `deploy/ci` will run
 it against a live infraweave server, mirroring
 `weaveplatform-artifact-registry/deploy/ci`.
 
 `terraform-schema.json` is the parity oracle. Every Spacelift resource and
 attribute should have an infraweave equivalent, or a recorded reason why not.
+
+## Sources
+
+- [`api/reference/spacelift/sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): the pinned inputs.
+- <https://github.com/spacelift-io/terraform-provider-spacelift> (MIT) at v1.57.0.
+- [`api/reference/spacelift/terraform-schema.json`](../../../api/reference/spacelift/terraform-schema.json): the extracted provider schema.
