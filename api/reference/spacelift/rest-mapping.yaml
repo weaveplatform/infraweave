@@ -1,7 +1,7 @@
 # Hand-curated input to `specref generate`: everything the naming rules in
 # internal/specref/rest.go cannot infer. Keys are checked strictly; a root
 # field named here that upstream no longer has fails generation, so this
-# file cannot rot silently. See docs/research/02-graphql-to-rest-mapping.md.
+# file cannot rot silently. See docs/research/reference/02-graphql-to-rest-mapping.md.
 
 # Mutations served as POST /<operation-kebab> because no rule or override
 # gives them a resource shape. Zero: a new upstream mutation that the rules

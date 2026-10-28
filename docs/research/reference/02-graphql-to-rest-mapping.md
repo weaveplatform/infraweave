@@ -1,8 +1,15 @@
 # 02: Mapping GraphQL root fields to REST
 
+Checked against: the snapshots pinned in
+[`sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): introspection
+`b3255fe38f5e` (fetched 2026-10-28), spacelift-api-bruno `7cad4574954b` and
+terraform-provider-spacelift v1.57.0.
+
+Research baseline: **2026-10-28**.
+
 How `internal/specref` turns each of Spacelift's 665 root fields into a
 resource-oriented route, and how `rest-mapping.yaml` handles the fields that
-no rule can infer. Decision [0001](decisions/0001-rest-first-spacelift-surface.md)
+no rule can infer. Decision [0001](../decisions/0001-rest-first-spacelift-surface.md)
 records why the surface is REST.
 
 ## Invariants
@@ -184,7 +191,7 @@ through a list or a scalar.
 
 These rules shape the reference only. infraweave's served API
 (`api/deploy.openapi.yaml`) starts from it and adds the conventions in
-[decision 0003](decisions/0003-api-conventions.md):
+[decision 0003](../decisions/0003-api-conventions.md):
 - list routes return a `<Type>Page` envelope with `limit` and `cursor`, where
   the reference returns bare arrays;
 - `POST` and `PATCH` accept an optional `Idempotency-Key`;
@@ -210,4 +217,12 @@ starts a family by copying from the reference:
 ## Open work
 
 - **Nested Terraform blocks** are listed but not mapped
-  ([03](03-terraform-provider.md)).
+  ([05](05-terraform-provider.md)).
+
+## Sources
+
+- [`api/reference/spacelift/sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): the pinned inputs.
+- [`internal/specref/`](../../../internal/specref/): the mapping rules, the generator and the scaffolder.
+- [`api/reference/spacelift/rest-mapping.yaml`](../../../api/reference/spacelift/rest-mapping.yaml): overrides and exclusions.
+- [`api/reference/spacelift/coverage.md`](../../../api/reference/spacelift/coverage.md): the generated coverage report.
+- [Decision 0003](../decisions/0003-api-conventions.md): the conventions the scaffolder applies.

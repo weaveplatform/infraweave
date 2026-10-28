@@ -125,7 +125,11 @@ reference:
 verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
 
-## gate: everything CI runs, in order
-gate: vet lint test accept verify-reference verify-generate cover vuln build
+## docs-check: links, report headers and decision statuses under docs/ (internal/docscheck)
+docs-check:
+	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/docscheck
 
-.PHONY: help init fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference verify-reference cover vuln build gate
+## gate: everything CI runs, in order
+gate: docs-check vet lint test accept verify-reference verify-generate cover vuln build
+
+.PHONY: help init docs-check fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference verify-reference cover vuln build gate

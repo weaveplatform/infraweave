@@ -1,5 +1,12 @@
 # 01: The Spacelift API landscape
 
+Checked against: the snapshots pinned in
+[`sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): introspection
+`b3255fe38f5e` (fetched 2026-10-28), spacelift-api-bruno `7cad4574954b` and
+terraform-provider-spacelift v1.57.0.
+
+Research baseline: **2026-10-28**.
+
 What Spacelift exposes, where each piece is published, and what infraweave
 takes from it. Numbers are from the snapshots pinned in
 `api/reference/spacelift/sources.lock.yaml`.
@@ -77,7 +84,7 @@ calls.
 
 [spacelift-io/terraform-provider-spacelift](https://github.com/spacelift-io/terraform-provider-spacelift)
 (MIT) has 56 resources and 62 data sources. See
-[03-terraform-provider.md](03-terraform-provider.md).
+[05-terraform-provider.md](05-terraform-provider.md).
 
 ## What is out of scope
 
@@ -88,3 +95,11 @@ calls.
 - **Billing and Spacelift-internal SaaS operations.** These are kept in the
   reference so its coverage stays complete. Whether infraweave implements them
   is a later decision.
+
+## Sources
+
+- [`api/reference/spacelift/sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): the pinned inputs.
+- <https://demo.app.spacelift.io/graphql>: the introspected schema.
+- <https://github.com/spacelift-io/spacelift-api-bruno> (MIT): tags, docs and examples.
+- <https://github.com/spacelift-io/terraform-provider-spacelift> (MIT): resources and data sources.
+- [`api/reference/spacelift/rest-mapping.yaml`](../../../api/reference/spacelift/rest-mapping.yaml): exclusions.
