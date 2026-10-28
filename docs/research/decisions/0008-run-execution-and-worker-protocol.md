@@ -53,9 +53,11 @@ facts shape the design.
   3. appends a `run_state_transitions` row (`run`, `sequence` = the new
      `state_version`, `state`, `timestamp`, `until`, `username`, `note`,
      `terminal`, `has_logs`);
-  4. updates `stacks.state` and `state_set_by` when the run is the stack's tracked
-     run and the state exists in `StackState`
-     ([08 StackState](../reference/08-run-lifecycle.md#stackstate-and-runstate));
+  4. updates the stack's `state` and `state_set_by` when the run is the stack's
+     tracked run and the state exists in `StackState`
+     ([08 StackState](../reference/08-run-lifecycle.md#stackstate-and-runstate)).
+     The columns live in a table the run transition owns, so the write stays
+     inside the transition's transaction; decision 0004 places it;
   5. emits a `run_updated` event with `events.Emit` in the same transaction;
      decision 0015's fan-out, through the queue of
      [0011](0011-persistent-work-queue.md), reaches notifications, webhooks,

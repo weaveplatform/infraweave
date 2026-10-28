@@ -28,6 +28,10 @@ const goodReport = "# 01: A report\n\nChecked against: v1\n\nResearch baseline: 
 // spec is a reference spec with two tags; report 26 must name both.
 const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack management.\n  - name: Runs\n"
 
+// option is an architecture option's outline. H3s outside the nested
+// sections may differ between options.
+const option = "# Option\n\n## Summary\n\n### Rules\n\n## Deep dives\n\n### Runs\n\n## Walkthroughs\n\n### A push\n"
+
 // tree is a repository that passes every check; each case changes one file.
 func tree() fstest.MapFS {
 	return fstest.MapFS{
@@ -50,10 +54,14 @@ func tree() fstest.MapFS {
 		"internal/x/x.go": file(
 			"// See docs/research/decisions/0001-one.md.\npackage x\n",
 		),
-		"internal/x/x_test.go":           file("// docs/missing.md is a fixture.\n"),
-		"internal/x/testdata/fixture.md": file("docs/missing.md\n"),
-		".git/description.md":            file("docs/missing.md\n"),
-		".github/workflows/w.yml":        file("# docs/research/README.md\n"),
+		"internal/x/x_test.go":                      file("// docs/missing.md is a fixture.\n"),
+		"internal/x/testdata/fixture.md":            file("docs/missing.md\n"),
+		"docs/research/architecture-options/1-a.md": file(option),
+		"docs/research/architecture-options/2-b.md": file(
+			option + "\n```\n## Not a heading\n```\n",
+		),
+		".git/description.md":     file("docs/missing.md\n"),
+		".github/workflows/w.yml": file("# docs/research/README.md\n"),
 		"api/spec.yaml": file(
 			"description: see docs/research/reference/01-a.md and ../docs/x.md\n",
 		),
@@ -219,6 +227,34 @@ func TestUnitCheckFindings(t *testing.T) {
 			},
 			want:  "report marks a claim *(unverified)* but 30-open-questions.md does not link it",
 			where: "docs/research/reference/02-b.md:17",
+		},
+		{
+			name: "option heading differs",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/architecture-options/2-b.md"] = file(
+					strings.Replace(option, "## Walkthroughs", "## Walk-throughs", 1),
+				)
+			},
+			want:  `outline departs from 1-a.md: has "## Walk-throughs" where it has "## Walkthroughs"`,
+			where: "docs/research/architecture-options/2-b.md:11",
+		},
+		{
+			name: "option missing a nested heading",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/architecture-options/2-b.md"] = file(
+					strings.Replace(option, "### A push\n", "", 1),
+				)
+			},
+			want:  `has "(end)" where it has "### A push"`,
+			where: "docs/research/architecture-options/2-b.md:1",
+		},
+		{
+			name: "option with an extra heading",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/architecture-options/2-b.md"] = file(option + "\n## Numbers\n")
+			},
+			want:  `has "## Numbers" where it has "(end)"`,
+			where: "docs/research/architecture-options/2-b.md:15",
 		},
 		{
 			name:  "stale mention",

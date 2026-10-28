@@ -17,7 +17,10 @@
 //   - every tag of the Spacelift reference spec appears in report 26, so the
 //     scope decision accounts for every area of the API;
 //   - every report with an *(unverified)* claim is linked from report 30,
-//     the register of open questions.
+//     the register of open questions;
+//   - every numbered architecture option has the same outline as the first,
+//     so the comparison in docs/research/architecture-options/README.md
+//     compares like with like.
 package docscheck
 
 import (
@@ -40,6 +43,7 @@ const (
 	reportsDir   = "docs/research/reference"
 	decisionsDir = "docs/research/decisions"
 	decisionsIdx = decisionsDir + "/README.md"
+	optionsDir   = "docs/research/architecture-options"
 	scopeReport  = reportsDir + "/26-scope-and-tiers.md"
 	openReport   = reportsDir + "/30-open-questions.md"
 	referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
@@ -79,6 +83,7 @@ func Check(repo fs.FS) ([]Finding, error) {
 		c.decision(d)
 	}
 	c.unverified()
+	c.options()
 	if err := c.tags(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
@@ -446,4 +451,69 @@ func (c *checker) mentions() error {
 		return fmt.Errorf("walk repository: %w", err)
 	}
 	return nil
+}
+
+var optionName = regexp.MustCompile(`^` + optionsDir + `/\d+-[^/]+\.md$`)
+
+// nested names the H2 sections whose H3s are part of the outline too: the
+// comparison weighs the options domain by domain and walkthrough by
+// walkthrough, so each option must cover the same ones. Other sections may
+// add H3s that only one option needs.
+var nested = map[string]bool{"Deep dives": true, "Walkthroughs": true}
+
+type outlineHeading struct {
+	line int
+	text string
+}
+
+// outline is a document's H2 headings, with the H3s of the nested sections.
+func outline(d *doc) []outlineHeading {
+	var out []outlineHeading
+	section := ""
+	for i, l := range d.lines {
+		if d.code[i] {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(l, "## "):
+			section = strings.TrimSpace(l[3:])
+			out = append(out, outlineHeading{i + 1, l})
+		case strings.HasPrefix(l, "### ") && nested[section]:
+			out = append(out, outlineHeading{i + 1, l})
+		}
+	}
+	return out
+}
+
+// options checks every numbered architecture option against the outline of
+// the first, reporting the first heading where each one departs from it.
+func (c *checker) options() {
+	var first *doc
+	var want []outlineHeading
+	for _, d := range c.sorted() {
+		if !optionName.MatchString(d.path) {
+			continue
+		}
+		got := outline(d)
+		if first == nil {
+			first, want = d, got
+			continue
+		}
+		for i := range max(len(got), len(want)) {
+			var g, w outlineHeading
+			if i < len(got) {
+				g = got[i]
+			}
+			if i < len(want) {
+				w = want[i]
+			}
+			if g.text == w.text {
+				continue
+			}
+			// A missing heading has no line of its own: the file as a whole.
+			c.add(d.path, max(g.line, 1), "outline departs from %s: has %q where it has %q",
+				path.Base(first.path), cmp.Or(g.text, "(end)"), cmp.Or(w.text, "(end)"))
+			break
+		}
+	}
 }

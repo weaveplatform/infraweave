@@ -1,14 +1,15 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-08 fact-check reviews, reports 01 and 03 to 28 and decisions 0005 to 0022 as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08 and ARC-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022 and the architecture options as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
 This log records what the independent fact-checks of the reference reports
 and the proposed decision records found and what each finding changed, so
-that a reader can tell which statements in reports 01 and 03 to 28 and in
-decisions 0005 to 0022 are corrections rather than first drafts. It covers
-seven passes, one per research ticket from RES-02 to RES-08, and keeps every
+that a reader can tell which statements in reports 01 and 03 to 28, in
+decisions 0004 to 0022 and in the architecture options are corrections
+rather than first drafts. It covers eight passes, one per ticket from
+RES-02 to RES-08 and ARC-01, and keeps every
 finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
@@ -66,6 +67,11 @@ feature names, process roles), counting a contradiction between records as
 *wrong*. It also renamed the records' process and binary names to decision
 0004's.
 
+ARC-01 reviewed the five architecture options, their comparison and
+decision 0004. Two helpers took options 1 to 4; the checker took option 5,
+the comparison and 0004, and settled Go and depguard claims by experiment
+rather than from documentation.
+
 ## Totals
 
 | Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
@@ -77,7 +83,8 @@ feature names, process roles), counting a contradiction between records as
 | RES-06 | [22](22-intelligence.md), [23](23-flows.md), [24](24-self-hosted-reference.md) | about 255, plus every link and generated row by script | 8 | 2 | 10 | 1 | 1 | 22 |
 | RES-07 | [26](26-scope-and-tiers.md), [27](27-reference-materials.md), [28](28-data-model.md) | about 175, plus every table row, link and typed field by script | 18 | 4 | 2 | 0 | 0 | 24 |
 | RES-08 | decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md) | about 765, plus every link, slug and shared name by script | 34 | 9 | 12 | 0 | 3 | 58 |
-| **All** | 27 reports, 18 records | about 2,870 | **156** | **87** | **116** | **7** | **22** | **388** |
+| ARC-01 | [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md) | about 450, plus every heading, depguard block, matrix cell and mapping row by script | 61 | 5 | 13 | 0 | 3 | 82 |
+| **All** | 27 reports, 19 records, 5 options | about 3,320 | **217** | **92** | **129** | **7** | **25** | **470** |
 
 The counts are of the findings tables' rows. Two reviews give summary
 counts that differ from their own rows. In RES-02, the 05 summary gives 15
@@ -940,8 +947,7 @@ not changed: Terraform's force-unlock under 0010's matching-ID rule (10); a
 FIPS-only build of 0013 (16); the narrower case against River in 0011
 (11); MinIO in 0016's acceptance harness (29); a `PATCH` that cannot null a
 field with a non-null default (35); host-dependent timezone validation
-(36). Recorded, not fixed: 0013's `infraweave secrets` subcommands are not
-in decision 0004's list; 0021 does not decide the `SHOWCASE` provider; and,
+(36). Recorded, not fixed: 0021 does not decide the `SHOWCASE` provider; and,
 outside these records, report 26 section 2.3 and report 22 section 2.2
 disagree on whether run summaries ship on self-hosted.
 
@@ -971,6 +977,99 @@ left to it.
 - **Rules:** status on line 3, the template's sections, no sequencing, no
   dashes, no contradiction of 0001 to 0003; 0022's amendment of 0003's
   "only list" remains a flagged proposal.
+
+## ARC-01: architecture options and decision 0004
+
+### Claims checked
+
+About 450 claims by hand: option 5, the [comparison](../architecture-options/README.md)
+and [decision 0004](../decisions/0004-repository-architecture.md) about 190
+(every report link against its section, every decision cross-reference,
+the process-topology evidence against reports 10, 23, 24 and 27, and the
+deep dives against decisions 0005, 0008, 0009, 0010, 0011, 0012, 0013,
+0015, 0016 and 0018); options 1 and 2 about 110; options 3 and 4 about 150.
+Scripts compared every option's outline, parsed every depguard block,
+recounted every matrix cell and total, and checked every package-mapping
+row against `go list ./...`. Experiments in a scratch Go module settled the
+Go claims: nested `internal/` visibility, a `vendor` path element, depguard
+v2.2.1 under golangci-lint 2.15.0 (list modes, prefix matching, the
+map-form `deny`), and embedding strict-server partials across nested
+`internal/` directories. The copy check found no docs prose.
+
+### Findings by severity
+
+| Files | wrong | unsupported | missing | copied | style | Total |
+|---|---|---|---|---|---|---|
+| [1-layered](../architecture-options/1-layered.md), [2-hexagonal](../architecture-options/2-hexagonal.md) | 14 | 1 | 3 | 0 | 1 | 19 |
+| [3-clean](../architecture-options/3-clean.md), [4-ddd](../architecture-options/4-ddd.md) | 21 | 2 | 5 | 0 | 2 | 30 |
+| [5-modular-monolith](../architecture-options/5-modular-monolith.md), README, 0004 | 26 | 2 | 5 | 0 | 0 | 33 |
+| **All** | **61** | **5** | **13** | **0** | **3** | **82** |
+
+One finding (27) changed a matrix rating; it is counted as *wrong*.
+
+### Findings
+
+| # | Finding | Change |
+|---|---|---|
+| 1 | Option 5 `app/router.go` embeds types from `internal/<module>/internal/http`; the compiler forbids the import (experiment) | Partials re-exported by alias from each `module/` package; comment explains why |
+| 2 | Option 5 `platform/cron` "leader-elected periodic jobs over sql advisory locks"; `Cron` comment "fired by the elected leader"; `platform/sql` "advisory locks". 0005 and 0011: no election, one advisory lock | Ticker over due rows with `SKIP LOCKED`, no leader; migration lock named as the only one |
+| 3 | README process topology: singletons by "one elected leader ... as OTF does with an advisory lock" | Row restated from 0011, with OTF's exclusive subsystems as the contrast |
+| 4 | 0004 `scheduler` row: "cron entries fired by one elected leader" | Restated from 0011 |
+| 5 | Option 5 `platform/queue` described SQS terms (visibility, receive count) and "implementation per decision 0011", as though open; 0011 decides its own PostgreSQL queue | 0011's terms: `EnqueueTx`, leases fenced by generation, ordering keys, dead state |
+| 6 | Option 5 `Transition` calls `queue.Enqueue` inside the transaction; 0011 reserves `Enqueue` for callers without one | `EnqueueTx(ctx, tx.From(ctx), ...)` |
+| 7 | Option 5 worker endpoints (`GET /worker/v1/jobs`, `/signals`, `/phases`, `heartbeat.go`) differ from 0008's operations | 0008's register, poll (heartbeat, assignment, signals, drain), deregister, spec, reports, upload URLs, log chunks, artifacts, workspace |
+| 8 | Option 5 waiter woken when a run "reaches `READY`"; 0008 claims `READY`, `CONFIRMED` and `REPLAN_REQUESTED`; tracked walkthrough "enqueue for the pool" | All three claimable states; confirm issues `NOTIFY`, runs are not jobs |
+| 9 | Option 5 `chi.RegisterMethod("LOCK", "UNLOCK")`; `go doc` shows one method per call | Two calls |
+| 10 | Option 5 outbox "per-consumer cursors" and a dispatch loop; 0015's outbox is an `events` row plus an `events.fanout` job, and only the audit shipper keeps a cursor | `platform/outbox` and `platform/events` restated from 0015 |
+| 11 | Option 5 audit entries appended to the outbox and consumed by `events`; 0015 records audit through `audit.Record(ctx, tx, entry)` in the change's transaction | New `platform/audit` (table owned by platform, as `events` and `jobs` are); `events/core/audit` keeps search, retention and shipping; rule 7 denies it to the agent |
+| 12 | Option 5 job kinds `runs.gate`, `vcs.process`, `flows.event` differ from 0008 (`run.schedule`), 0012 (`vcs.process_delivery` on `vcs-inbox`) and 0018 (`flows.deliver`, one per linked input) | Renamed throughout; intake answers `202`, or `200` for a duplicate |
+| 13 | Option 5 machine "the 43 transitions of report 08"; 0008 adds T44 | "report 08's 43 and decision 0008's T44" (also in options 1 to 4) |
+| 14 | Option 5 runner mount `/usr/local/bin/infraweave`; 0008 mounts `/opt/infraweave/bin/infraweave` | 0008's path |
+| 15 | Option 5 objectstore drivers `s3/ fs/`; 0005 has `s3`, `gcs`, `azureblob`, `fs`. Contract suite `objecttest`; 0005 and 0016 say `objectstoretest` | Four drivers; suite renamed |
+| 16 | Option 5 `crypt/kms` "AWS, GCP, Azure" omits 0013's `vault` and `local` providers; log masking (0013, worker side) had no package | `crypt/kek` with all five providers; `agent/mask` |
+| 17 | Option 5 policy table: TRIGGER "on the five terminal states of blocking runs"; report 09 section 8 says a tracked run or task | Corrected |
+| 18 | Option 5 "a timeout is a deny, as report 09 section 2.3 requires"; 2.3 lists timeouts only, decision 0009 makes errors fail closed | Cites 0009 |
+| 19 | Option 5 "67 example-library templates" cited report 09 section 7; the count is in section 10.2 | Anchor `#102-counts` |
+| 20 | Option 5 run-state encryption cited report 10 section 2; the claim is in 1.1 (and the CSR in 2.3) | Both anchors |
+| 21 | Option 5 store tests "skipped by the unit job on macOS and Windows"; 0016 makes them `TestAcc`, ubuntu only | Restated from 0016 |
+| 22 | Option 5 friction: the agent "shares only `internal/iac`" with the server; rule 7 also allows kernel and three platform packages | Corrected |
+| 23 | README shared facts and "What ships": roles only; README singletons and 0011 "chooses" wording | Full subcommand list, `infraweavectl`, VCS agents on long-poll; 0011's queue named as decided |
+| 24 | README "Every option moves the same six packages"; hexagonal keeps `internal/buildinfo` | Five in every option, six in all but hexagonal; appendix sentence too |
+| 25 | README verdict: Spacelift folded the scheduler "for the same reason": a forced-off scheduler "silently" stops timers. Report 24 section 2.2 gives no reason, the chart warns, and the list is drift detection, scheduled runs, tasks and deletes | Restated as what report 24 says |
+| 26 | README "Decision 0011 choosing Temporal" as a change trigger; 0011 already rejects Temporal | "0011 reversed in favour of Temporal" |
+| 27 | README matrix: Clean "shared hotspot files" Fair while hexagonal is Poor for the same pattern (`app/usecases.go`, `controllers.go`, `events.go`, `rest/server.go`, one migration stream, a generated lint block edited by every phase) | Clean Poor, with a note; totals Clean 5/8/7 |
+| 28 | README Clean con "not expressible as depguard prefixes"; the cause is that depguard has no variable for the importing package | Reworded |
+| 29 | 0004 `version` reads `internal/buildinfo`; option 5 moves it to `internal/platform/buildinfo` | Corrected |
+| 30 | 0004 `serve` omitted the VCS agent long-poll and Flows agent gateway; `internal/agent` omitted both agents and masking; `devtools` called `docscheck` a library behind `tools/` (it has no tool; `make docs-check` runs its test) | Rows corrected |
+| 31 | 0004 and options 1, 2, 5 cited report 23 section 3 for Flows tenancy; the hierarchy is section 2 | Anchors `#2-resource-hierarchy` |
+| 32 | 0004 gave no place for the flat package names that decisions 0005 to 0022 use | New "Package names in other records" table |
+| 33 | Option 5 Flows "its own PostgreSQL schema": 0005 defers it to 0018, which was silent | 0018 now sets the `flows` schema, and option 5 cites it |
+| 34-52 | Options 1 and 2 (helper): hexagonal allow+deny in original mode; layered `model` rule self-denial and version hedge; missing subcommands and agent code; elected scheduler; layered leader-run pool assignment against 0008's poll claim; worker endpoints; outbox cursors and audit subscriber against 0015; state backend routes and bucket versioning against 0010 and 0005; object store API and `azure` driver; webhook routes and job names against 0012; SQS queue vocabulary; five OPA built-ins removed where 0009 removes six; T44; migration and feature naming against 0005 and 0016; report 28 anchor (1.2 for 12.1); `httpout` signature claim; VCS route tables unreachable under worker isolation | Fixed in place, with the depguard and embedding claims settled by experiment |
+| 53-82 | Options 3 and 4 (helper): clean rule 1 deny-only against its allow-list text; rule-2 prefixes matching siblings (`usecase/stack` lets `usecase/stackcontrol` through); rule 6 missing the container clients and go-jose; per-pool assignment against 0008; worker ops and "MQTT owned by 0008"; job kinds and outbox relay against 0011 and 0015; routes against 0010 and 0012; missing subcommands; sealing format and masking with nowhere to live; cron grammar as a library; unsupported separate Flows schema; a count of use cases. DDD map-form `deny`; wrong vendored-package error text; "no operation in common with deploy" against 0018's six Flows-tag operations; a run spec snapshot at trigger with no source and against 0013; the busy-flag lag claim against report 10 section 3.3; claim missing T30 and `NOTIFY`; heartbeat endpoint and CSR registration against 0008; queue vocabulary; routes; Docker client module (`moby/moby/client`) and go-jose; shared seal format; package breakdown summing to about 292 against the stated 330; unstated departures from 0009 and 0005; feature naming | Fixed in place |
+
+After the review, the coordinator aligned the decisions with the options:
+0005 runs migrations as named streams and 0018 gives Flows its own schema
+(both before RES-08 merged); 0008's stack state write is placed by 0004;
+and 0004 lists the `secrets` subcommands of 0013. Left for the maintainer:
+option 5 allows no foreign key across modules, while 0005 keeps real
+foreign keys for polymorphic owners that span the configuration, stacks
+and registry modules.
+
+### What survived
+
+- **Template:** the five options share one outline, which docscheck now
+  asserts.
+- **Matrix:** every criterion is rated for every option in all three
+  tables and the totals recount to the cells. Option 5 leads the roadmap
+  table and is Poor on nothing, so the recommendation rests on no corrected
+  fact; the one rating change widens its lead.
+- **Package mapping:** every package `go list` reports, plus `cmd/`,
+  `api/src/deploy` and `api/reference/spacelift`, appears in every option.
+- **Process topology evidence:** report 24 sections 2.1, 2.2 and 3.3,
+  report 23 section 14.1, report 27 section 3.1 and report 10 section 4.2.
+- **Numbers:** 72 stubs, about 24,000 generated lines, 725 reference
+  operations, 22 run states and 43 transitions, and option 5's 6 depguard
+  rules with about 75 entries.
 
 ## What survived across the set
 
@@ -1022,7 +1121,7 @@ left to it.
 ## Inferred and undocumented
 
 This log adds no claims about Spacelift. Its counts come from the findings
-tables of the seven reviews; where a review's own summary differs from its
+tables of the eight reviews; where a review's own summary differs from its
 rows, the rows are counted and the difference is stated under Totals.
 
 ## Versions at the research baseline
@@ -1038,9 +1137,9 @@ rows, the rows are counted and the difference is stated under Totals.
 ## Sources
 
 - The fact-check reviews of RES-02, RES-03, RES-04, RES-05, RES-06,
-  RES-07 and RES-08, and the drafters' notes for RES-02 to RES-07, written
+  RES-07, RES-08 and ARC-01, and the drafters' notes for RES-02 to RES-07, written
   2026-10-28.
 - Reports [01](01-spacelift-landscape.md) and [03](03-deploy-core-api-inventory.md) to [28](28-data-model.md) in this directory, as edited by those
-  reviews, and decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08.
+  reviews, decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08, and the [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md), as edited by ARC-01.
 - <https://spacelift.io/pricing>, read 2026-10-28 as raw HTML for RES-07.
 - The open questions the reviews raised: [30](30-open-questions.md).
