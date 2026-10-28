@@ -13,7 +13,11 @@
 //   - every decision record has a Status of Proposed, Accepted or Superseded,
 //     and docs/research/decisions/README.md lists it with that status;
 //   - every docs/….md path named in the repository's source, configuration
-//     and documentation exists.
+//     and documentation exists;
+//   - every tag of the Spacelift reference spec appears in report 26, so the
+//     scope decision accounts for every area of the API;
+//   - every report with an *(unverified)* claim is linked from report 30,
+//     the register of open questions.
 package docscheck
 
 import (
@@ -27,6 +31,8 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -34,6 +40,10 @@ const (
 	reportsDir   = "docs/research/reference"
 	decisionsDir = "docs/research/decisions"
 	decisionsIdx = decisionsDir + "/README.md"
+	scopeReport  = reportsDir + "/26-scope-and-tiers.md"
+	openReport   = reportsDir + "/30-open-questions.md"
+	referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
+	unverified   = "*(unverified)*"
 )
 
 // Finding is one problem at a file and line of the checked tree. Line is 1
@@ -67,6 +77,10 @@ func Check(repo fs.FS) ([]Finding, error) {
 		c.links(d)
 		c.report(d)
 		c.decision(d)
+	}
+	c.unverified()
+	if err := c.tags(); err != nil {
+		return nil, fmt.Errorf("docscheck: %w", err)
 	}
 	if err := c.mentions(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
@@ -314,6 +328,76 @@ func index(d *doc) map[string]indexEntry {
 		}
 	}
 	return out
+}
+
+// tags checks that report 26 names every tag of the reference spec. Without
+// report 26 there is no scope to check, and without the spec no tags.
+func (c *checker) tags() error {
+	scope, ok := c.docs[scopeReport]
+	if !ok {
+		return nil
+	}
+	b, err := fs.ReadFile(c.repo, referenceAPI)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read %s: %w", referenceAPI, err)
+	}
+	var spec struct {
+		Tags []struct {
+			Name string `yaml:"name"`
+		} `yaml:"tags"`
+	}
+	if err := yaml.Unmarshal(b, &spec); err != nil {
+		c.add(referenceAPI, 1, "cannot read its tags: %v", err)
+		return nil
+	}
+	text := strings.Join(scope.lines, "\n")
+	for _, t := range spec.Tags {
+		if !strings.Contains(text, t.Name) {
+			c.add(scope.path, 1, "tag %q of %s does not appear", t.Name, referenceAPI)
+		}
+	}
+	return nil
+}
+
+// unverified checks that report 30 links every report that marks a claim
+// *(unverified)*, so no open question is recorded only where it was found.
+func (c *checker) unverified() {
+	open, ok := c.docs[openReport]
+	if !ok {
+		return
+	}
+	linked := map[string]bool{}
+	for i, l := range open.lines {
+		if open.code[i] {
+			continue
+		}
+		for _, m := range mdLink.FindAllStringSubmatch(codeSpan.ReplaceAllString(l, ""), -1) {
+			if u, err := url.Parse(m[1]); err == nil && u.Scheme == "" && u.Path != "" {
+				linked[path.Join(path.Dir(open.path), u.Path)] = true
+			}
+		}
+	}
+	for _, d := range c.sorted() {
+		if d == open || !reportName.MatchString(d.path) || linked[d.path] {
+			continue
+		}
+		for i, l := range d.lines {
+			// A marker in a code span is a mention of the convention, not a claim.
+			if !d.code[i] && strings.Contains(codeSpan.ReplaceAllString(l, ""), unverified) {
+				c.add(
+					d.path,
+					i+1,
+					"report marks a claim %s but %s does not link it",
+					unverified,
+					path.Base(openReport),
+				)
+				break
+			}
+		}
+	}
 }
 
 var (

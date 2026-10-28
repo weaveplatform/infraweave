@@ -35,6 +35,7 @@ env:
   GOWORK: 'off'
   BRANCH: reference/openapi-spec-update
   LOCK: api/reference/spacelift/sources.lock.yaml
+  INVENTORY: docs/research/reference/29-data-model-inventory.md
 
 jobs:
   check:
@@ -150,7 +151,7 @@ jobs:
       - name: Regenerate the specification
         id: generate
         run: |
-          if make reference; then
+          if make reference reference-inventory; then
             echo "result=generated" >> "$GITHUB_OUTPUT"
           else
             echo "result=failed" >> "$GITHUB_OUTPUT"
@@ -164,21 +165,21 @@ jobs:
           RESULT: ${{ steps.generate.outputs.result }}
         run: |
           set -euo pipefail
-          # fetchedAt changes on every run; the spec is versioned by schema
-          # digest, so a forced run against an unchanged upstream changes
-          # nothing else and needs no PR.
-          others=$(git status --porcelain -- . ":(exclude)$LOCK")
+          # fetchedAt changes on every run, and report 29's header carries it;
+          # the spec is versioned by schema digest, so a forced run against an
+          # unchanged upstream changes nothing else and needs no PR.
+          others=$(git status --porcelain -- . ":(exclude)$LOCK" ":(exclude)$INVENTORY")
           pins=$(git diff -U0 -- "$LOCK" | grep -E '^[-+] ' | grep -v fetchedAt || true)
           if [ -z "$others" ] && [ -z "$pins" ]; then
             echo "upstream unchanged"
             exit 0
           fi
           title="feat(reference): update the Spacelift OpenAPI specification from upstream"
-          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review `api/reference/spacelift/coverage.md` for new, excluded and RPC-shaped operations.\n' "$SUMMARY" "$RESULT")
+          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review `api/reference/spacelift/coverage.md` for new, excluded and RPC-shaped operations. A new tag also needs a row in `docs/research/reference/26-scope-and-tiers.md`, which `make docs-check` enforces.\n' "$SUMMARY" "$RESULT")
           git config user.name "weaveplatform-release-please[bot]"
           git config user.email "weaveplatform-release-please[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A api/reference/spacelift
+          git add -A api/reference/spacelift "$INVENTORY"
           git commit -qm "$title"
           git push --force -u origin "$BRANCH"
           pr=$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')

@@ -25,6 +25,9 @@ func file(s string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(s)} }
 
 const goodReport = "# 01: A report\n\nChecked against: v1\n\nResearch baseline: **2026-10-28**.\n\n## Sources\n\n- <https://example.com>\n"
 
+// spec is a reference spec with two tags; report 26 must name both.
+const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack management.\n  - name: Runs\n"
+
 // tree is a repository that passes every check; each case changes one file.
 func tree() fstest.MapFS {
 	return fstest.MapFS{
@@ -183,6 +186,41 @@ func TestUnitCheckFindings(t *testing.T) {
 			where: "docs/research/decisions/0001-one.md:1",
 		},
 		{
+			name: "tag missing from report 26",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/reference/26-scope-and-tiers.md"] = file(
+					goodReport + "\nStacks are in scope.\n",
+				)
+				m["api/reference/spacelift/spacelift.openapi.yaml"] = file(spec)
+			},
+			want:  `tag "Runs" of api/reference/spacelift/spacelift.openapi.yaml does not appear`,
+			where: "docs/research/reference/26-scope-and-tiers.md:1",
+		},
+		{
+			name: "unreadable spec tags",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/reference/26-scope-and-tiers.md"] = file(goodReport)
+				m["api/reference/spacelift/spacelift.openapi.yaml"] = file("tags: {")
+			},
+			want:  "cannot read its tags",
+			where: "api/reference/spacelift/spacelift.openapi.yaml:1",
+		},
+		{
+			name: "unverified report not linked from report 30",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/reference/30-open-questions.md"] = file(goodReport +
+					"\n[01](01-a.md) [web](https://example.com/02-b.md) [self](#sources) `[02](02-b.md)`\n" +
+					"\n```\n[02](02-b.md)\n```\n\nOpen claims stay *(unverified)*.\n")
+				m["docs/research/reference/01-a.md"] = file(
+					goodReport + "\nIt is *(unverified)*.\n",
+				)
+				m["docs/research/reference/02-b.md"] = file(goodReport +
+					"\nThe `*(unverified)*` marker.\n\n```\n*(unverified)*\n```\n\nIt is *(unverified)*.\n\nSo is this *(unverified)*.\n")
+			},
+			want:  "report marks a claim *(unverified)* but 30-open-questions.md does not link it",
+			where: "docs/research/reference/02-b.md:17",
+		},
+		{
 			name:  "stale mention",
 			edit:  func(m fstest.MapFS) { m["internal/x/x.go"] = file("package x\n\n// docs/research/02-old.md\n") },
 			want:  "names docs/research/02-old.md, which does not exist",
@@ -209,6 +247,33 @@ func TestUnitCheckFindings(t *testing.T) {
 			if got := found[0].String(); !strings.HasPrefix(got, tc.where+": ") ||
 				!strings.Contains(got, tc.want) {
 				t.Errorf("got %q, want %s: …%s…", got, tc.where, tc.want)
+			}
+		})
+	}
+}
+
+// TestUnitCheckScopeAndOpenQuestions covers reports 26 and 30 when they
+// satisfy their checks, and report 26 without a spec to check it against.
+func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
+	m := tree()
+	m["docs/research/reference/26-scope-and-tiers.md"] = file(goodReport + "\n| Stacks | Runs |\n")
+	m["docs/research/reference/30-open-questions.md"] = file(
+		goodReport + "\n[01](./01-a.md#sources)\n",
+	)
+	m["docs/research/reference/01-a.md"] = file(goodReport + "\nIt is *(unverified)*.\n")
+	for name, withSpec := range map[string]bool{"with spec": true, "without spec": false} {
+		t.Run(name, func(t *testing.T) {
+			if withSpec {
+				m["api/reference/spacelift/spacelift.openapi.yaml"] = file(spec)
+			} else {
+				delete(m, "api/reference/spacelift/spacelift.openapi.yaml")
+			}
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, f := range found {
+				t.Error(f)
 			}
 		})
 	}
@@ -248,9 +313,12 @@ func (f failFS) Open(name string) (fs.File, error) {
 }
 
 func TestUnitCheckReadErrors(t *testing.T) {
-	for _, name := range []string{"docs/research/README.md", "internal/x/x.go", "docs", "internal"} {
+	for _, name := range []string{"docs/research/README.md", "internal/x/x.go", "docs", "internal", referenceAPI} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := Check(failFS{m: tree(), name: name}); !errors.Is(err, errRead) {
+			m := tree()
+			m[scopeReport] = file(goodReport)
+			m[referenceAPI] = file(spec)
+			if _, err := Check(failFS{m: m, name: name}); !errors.Is(err, errRead) {
 				t.Errorf("err = %v, want %v", err, errRead)
 			}
 		})
