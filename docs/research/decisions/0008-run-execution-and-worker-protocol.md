@@ -348,8 +348,8 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
 ### The launcher and the runner
 
-- **One binary, two subcommands.** `infraweave worker` (the launcher) registers,
-  polls, prepares and supervises; `infraweave worker exec` (hidden) executes the
+- **One binary, two subcommands.** `infraweave launcher` registers,
+  polls, prepares and supervises; `infraweave runner` (hidden) executes the
   phases inside the run container.
   0020 packages them and 0004 places the code.
 - **Preparation**, inside the preparing timeout: fetch the specification and

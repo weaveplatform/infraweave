@@ -3,7 +3,7 @@
 Detailed repository layout for option 2 of the
 [architecture options](README.md): one application core for the whole of
 infraweave, surrounded by adapters, with every dependency pointing at the
-core and a second, small hexagon for the worker role. Every package in
+core and a second, small hexagon for the worker side. Every package in
 today's tree is mapped; roadmap packages are marked with the phase of
 [report 26](../reference/26-scope-and-tiers.md#14-provisional-phase-spine)
 that creates them.
@@ -37,20 +37,20 @@ in `internal/adapter/driving/`, turn something outside into a call on a
 driving port: the HTTP server (the generated `deploy` strict server, the
 worker long-poll API and the hand-written protocols for VCS webhooks, the
 Terraform state backend and the registry), the queue consumers and cron of
-the scheduler role, and the gateways for VCS agents and Flows agents. Driven
+the scheduler process mode, and the gateways for VCS agents and Flows agents. Driven
 adapters, in `internal/adapter/driven/`, implement driven ports over real
 infrastructure: PostgreSQL, S3-compatible and local object storage, the
 queue that decision 0011 picks, embedded OPA, GitHub and the other VCS
 providers, AWS, Azure and GCP, KMS, SMTP and Slack.
 
-The worker role is a second hexagon, `internal/worker/`, because it runs on
+The worker side is a second hexagon, `internal/worker/`, because it runs on
 customer hosts with outbound HTTPS only
 ([report 10](../reference/10-workers-and-execution.md#42-transports)). Its
 core holds the launcher loop, the phase executor and the per-vendor command
 sets; its ports name the control plane, the container runtime, workspace
 transfer and tool binaries; its adapters speak the worker protocol, Docker
 and Kubernetes. It shares no package with the server's core or adapters, so
-the worker role's construction path links no PostgreSQL adapter, no object
+the worker side's construction path links no PostgreSQL adapter, no object
 storage credentials and no other domain's internals.
 
 Dependency rules:
@@ -93,15 +93,15 @@ uses.
 infraweave/
   cmd/
     infraweave/             main.go only: builds the cobra root from internal/app/cli
-                            and exits; roles serve, scheduler, worker, all (hidden: worker exec),
+                            and exits; process modes serve, scheduler, launcher, all (hidden: runner),
                             vcs-agent, flows-agent; migrate up, migrate status, version
     infraweavectl/          (P24) the CLI, a client over pkg/client/deploy; no server code
   internal/
-    app/                    NEW: composition root, one file per role, config, cobra tree
+    app/                    NEW: composition root, one file per process mode, config, cobra tree
     buildinfo/              ← internal/buildinfo (unchanged)
     core/                   NEW: the hexagon (kernel, ports, one package per domain)
     adapter/                NEW: driving/ and driven/ adapters
-    worker/                 NEW (P8): the worker role's own hexagon (core, ports, adapters)
+    worker/                 NEW (P8): the worker side's own hexagon (core, ports, adapters)
     contract/               NEW (P2): contract suites for driven ports
     tooling/                NEW: specref, openapibundle, stubgen, docscheck (dev tooling, not runtime)
   pkg/
@@ -128,13 +128,13 @@ What changes at the root and why:
   know about a package's permissions follows from which of the four it is
   under.
 - `cmd/infraweave` appears with P1 and stays a few lines long. The command
-  tree lives in `internal/app/cli`, because building a role means building
+  tree lives in `internal/app/cli`, because building a process mode means building
   adapters, and only the composition root may do that (rule 7).
 - `pkg/` keeps only the generated `deploy` client. Store, object storage and
   queue interfaces are driven ports owned by the core, not public packages,
   because the hexagon's contract is internal and publishing it would freeze
   it.
-- `api/` keeps its role as the source of truth for specifications. Only the
+- `api/` stays the source of truth for specifications. Only the
   generated server output path moves, from `internal/server/gen` to the
   driving HTTP adapter.
 
@@ -161,14 +161,14 @@ Status of each area at P1 and the phase that completes it:
 ```text
 internal/
   app/                                     composition root; the only package that sees everything
-    cli/                                   cobra tree: serve, scheduler, worker, all, vcs-agent, flows-agent,
-                                           migrate up, migrate status, version; hidden worker exec; binds
+    cli/                                   cobra tree: serve, scheduler, launcher, all, vcs-agent, flows-agent,
+                                           migrate up, migrate status, version; hidden runner; binds
                                            setting flags only (not --config)
     config/                                strict YAML decoded with viper UnmarshalExact; flag > env > file;
-                                           one Settings struct per role and per driven adapter
+                                           one Settings struct per process mode and per driven adapter
     (files listed under "Composition root")
   buildinfo/                               ← internal/buildinfo
-  tooling/                                 libraries behind tools/; never linked into a role
+  tooling/                                 libraries behind tools/; never linked into a process mode
     specref/                               ← internal/specref
     openapibundle/                         ← internal/openapibundle
     stubgen/                               ← internal/stubgen
@@ -289,7 +289,7 @@ internal/
                                            login.v1 and the token endpoint
         flowsapi/                          (P26) Flows API, flow HTTP endpoints, MCP endpoints
         mcp/                               (P25) platform MCP server
-      scheduler/                           (P7) the scheduler role's loops
+      scheduler/                           (P7) the scheduler process mode's loops
         consume.go                         one handler per job kind; calls the matching driving port
         cron.go                            cron and timers: drift, schedules, run expiry, retention
         ticker.go                          decision 0011's scheduler ticker: due rows claimed with
@@ -329,10 +329,10 @@ internal/
       flowsruntime/                        (P26) routes evaluations to agents through the gateway
       clock/                               system clock and ULID source
 
-  worker/                                  (P8) the worker role's hexagon; links nothing above
+  worker/                                  (P8) the worker side's hexagon; links nothing above
     core/
       launcher/                            register, poll, accept job, start container, relay signals
-      executor/                            phases and hooks inside the run container (worker exec)
+      executor/                            phases and hooks inside the run container (runner)
       vcsagent/                            (P19) vcs-agent: long-polls the gateway, checks each request
                                            against its provider allowlist, forwards it (decision 0012)
       flowsagent/                          (P26) flows-agent: WebSocket to the gateway, runtime pool
@@ -554,9 +554,9 @@ stack, the gates in `gates.go` decide `QUEUED` to `READY`; per pool,
 polls ([report 08](../reference/08-run-lifecycle.md#4-queueing-the-stack-lock-and-scheduling),
 [report 10](../reference/10-workers-and-execution.md#53-scheduling-inside-a-pool)).
 Claiming is the transition `READY` to `PREPARING` (T7), executed by the
-`serve` role inside the long-poll request, not by the scheduler: the worker
+`serve` process mode inside the long-poll request, not by the scheduler: the worker
 is waiting on that request, and a claim made elsewhere would need a second
-hop to reach it. The `scheduler` role runs everything with no client
+hop to reach it. The `scheduler` process mode runs everything with no client
 waiting: gate re-evaluation after a terminal run, the timers of
 [report 08](../reference/08-run-lifecycle.md#timers), stale-run sweeps and
 dependants (P16).
@@ -646,7 +646,7 @@ internal/core/worker/
   worker.go                                   Worker: status, busy, drained, metadata, availableAt
   registry.go                                 register, heartbeat decay, drain, undrain, cycle, reset
   service.go                                  implements driving.Workers
-internal/worker/                              the worker role (see the next tree)
+internal/worker/                              the worker side (see the next tree)
 ```
 
 ```text
@@ -657,7 +657,7 @@ internal/worker/
       job.go                                  Job: run ID, phase plan, image, env, mounts, URLs, token
       signals.go                              stop and kill relayed to the container
     executor/
-      exec.go                                 entry for `infraweave worker exec` inside the container
+      exec.go                                 entry for `infraweave runner` inside the container
       phases.go                               INITIALIZING, PLANNING, APPLYING, PERFORMING, DESTROYING
       hooks.go                                before and after hooks in one shell session per phase
       logs.go                                 masked log streaming in chunks through presigned URLs
@@ -672,14 +672,14 @@ internal/worker/
     workspace/ binaries/ rego/
 ```
 
-The worker role is a hexagon of its own with nothing in common with the
+The worker side is a hexagon of its own with nothing in common with the
 server's core except the wire format. Its core decides what to do with a
 job; its ports name the four things it needs (the control plane, a
 container runtime, workspace transfer and tool binaries); its adapters are
 the only code that touches HTTP or Docker. Two consequences follow. First,
-`internal/app/worker.go` builds the role from `internal/worker/...` alone, so
-a role that never opens a database cannot reach a PostgreSQL adapter by
-accident (rule 6 and the `app/worker.go` depguard entry). Second, the job
+`internal/app/launcher.go` builds the process mode from `internal/worker/...` alone, so
+a process mode that never opens a database cannot reach a PostgreSQL adapter by
+accident (rule 6 and the `app/launcher.go` depguard entry). Second, the job
 payload is defined twice: by the `worker` spec for the wire, and by
 `internal/worker/core/launcher/job.go` for the worker's own logic, with the
 conversion in `adapter/controlplane`. The duplication is the price of keeping
@@ -688,8 +688,8 @@ generated types out of a core.
 Pools grow by adapter: Docker workers at P8, Kubernetes at P14
 ([report 10](../reference/10-workers-and-execution.md#7-docker-based-and-kubernetes-workers)).
 A worker's binary is the same static `infraweave` executable; the launcher
-mounts it read-only into the runner image and starts `infraweave worker
-exec` as the container's root process, which is how Spacelift's launcher
+mounts it read-only into the runner image and starts `infraweave
+runner` as the container's root process, which is how Spacelift's launcher
 and worker binary split maps onto one binary
 ([report 10](../reference/10-workers-and-execution.md#4-the-launcher-and-the-worker-protocol)).
 
@@ -730,7 +730,7 @@ Intake is durable before acknowledgement
 ([report 27](../reference/27-reference-materials.md#12-cross-tool-comparison)):
 the HTTP adapter does no work beyond handing the raw body to the core, and
 the core's `Ingest` verifies, stores the delivery and enqueues processing in
-one transaction. The `scheduler` role then runs `Process`, which turns the
+one transaction. The `scheduler` process mode then runs `Process`, which turns the
 event into targets
 ([report 11](../reference/11-vcs-integrations.md#112-what-an-event-becomes))
 and drives the push policy and run creation through driving ports. The
@@ -920,9 +920,9 @@ dial the gateway, and `driven.Runtime` is the port to them (decision 0018).
 ```text
 internal/app/
   app.go                                      Open(ctx, cfg): shared driven adapters; Close
-  serve.go                                    the serve role: router with every driving HTTP adapter
-  scheduler.go                                (P7) the scheduler role: job handlers, cron, the ticker
-  worker.go                                   (P8) the worker role: internal/worker only
+  serve.go                                    the serve process mode: router with every driving HTTP adapter
+  scheduler.go                                (P7) the scheduler process mode: job handlers, cron, the ticker
+  launcher.go                                 (P8) the launcher process mode: internal/worker only
   agents.go                                   (P19, P26) vcs-agent and flows-agent: internal/worker only
   all.go                                      serve and scheduler in one process
   services.go                                 constructs every core service from driven adapters
@@ -958,21 +958,21 @@ func buildServices(d *driven) *ports {
 	return p
 }
 
-// internal/app/worker.go (P8): the worker role never calls buildServices
-func Worker(ctx context.Context, cfg config.Worker) error {
+// internal/app/launcher.go (P8): the launcher process mode never calls buildServices
+func Launcher(ctx context.Context, cfg config.Worker) error {
 	cp := controlplane.New(cfg.ServerURL, cfg.PoolToken)
 	return launcher.New(cp, docker.New(cfg.Docker), workspace.New(), binaries.New(cfg.Cache)).Run(ctx)
 }
 ```
 
-Roles are functions over the same constructors. `serve` builds every
+Process modes are functions over the same constructors. `serve` builds every
 service and every HTTP driving adapter; `scheduler` builds every service and
 the queue handlers, cron and the event fan-out; `all` does both in one process
-for single-node installs and the acceptance suite; `worker` builds the
+for single-node installs and the acceptance suite; `launcher` builds the
 worker hexagon only. Spacelift ships the same split, a server and a drain
 from one binary
 ([report 24](../reference/24-self-hosted-reference.md#21-process-inventory)),
-and the hexagon expresses it without a structural change: a role is a choice
+and the hexagon expresses it without a structural change: a process mode is a choice
 of driving adapters. The cost is that `services.go` is the one file that
 names every service and every cross-domain port; at P27 it constructs about
 twenty-five services and runs to several hundred lines, and every phase
@@ -1083,7 +1083,7 @@ linters:
             - github.com/weaveplatform/infraweave/internal/core/port
             - github.com/weaveplatform/infraweave/internal/core/kernel
         worker:                                 # rule 6
-          files: ["**/internal/worker/**", "**/internal/app/worker.go"]
+          files: ["**/internal/worker/**", "**/internal/app/launcher.go"]
           deny:
             - pkg: github.com/weaveplatform/infraweave/internal/core
             - pkg: github.com/weaveplatform/infraweave/internal/adapter
@@ -1117,25 +1117,25 @@ Coverage implications:
 2. `webhook.go`: reads the body under a size cap and calls `driving.Webhooks.Ingest`.
 3. `internal/core/vcs/ingest.go`: loads the integration through `driven.VCSStore`; asks `driven.VCSProvider` (`internal/adapter/driven/vcs/github/verify.go`) to check `X-Hub-Signature-256`.
 4. `ingest.go`: in one `driven.UnitOfWork.Tx` (`internal/adapter/driven/postgres`), stores the delivery (`postgres/vcs`) and enqueues `vcs.process_delivery` on the `vcs-inbox` queue through `driven.Queue` (`internal/adapter/driven/queue`); `webhook.go` answers `202`.
-5. Scheduler role, `internal/adapter/driving/scheduler/consume.go`: claims the job and calls `driving.Webhooks.Process`.
+5. Scheduler process mode, `internal/adapter/driving/scheduler/consume.go`: claims the job and calls `driving.Webhooks.Process`.
 6. `internal/core/vcs/normalize.go` with `vcs/github/parse.go`: the pull request event becomes one `PullRequestEvent`; `route.go` finds the stacks bound to the repository; `dedupe.go` drops a second event for the same SHA and run type.
 7. `internal/core/vcs/process.go`: calls `driving.PolicyDecisions.Push`, implemented by `internal/core/policy/decide.go`, which builds the push input (`policy/input/push.go`) and evaluates attached push policies through `driven.PolicyEngine` (`internal/adapter/driven/opa/engine.go`); the result is `propose`.
 8. `process.go`: calls `driving.Runs.Trigger` with type `PROPOSED`; `internal/core/run/trigger.go` inserts the run in `QUEUED` (T1), appends `RunStateChanged` to the outbox and enqueues `run.schedule`, all in one unit of work.
-9. Scheduler role: `run.schedule` runs `core/run/gates.go`; a proposed run takes no stack lock, so it moves to `READY` (T2).
-10. Serve role, `internal/adapter/driving/http/workerapi/poll.go`: a public-pool worker's held long-poll wakes and calls `driving.RunProgress.Claim`; `postgres/runs/claim.go` picks the run by tier and age; `core/run/progress.go` moves it to `PREPARING` (T7) and returns the job.
-11. Worker role, `internal/worker/core/launcher/launcher.go`: starts the runner container through `worker/adapter/docker`; inside it, `worker/core/executor/phases.go` runs `INITIALIZING` and `PLANNING` with `worker/core/iac/opentofu`, reporting each transition through `worker/adapter/controlplane` (T10, T12).
+9. Scheduler process mode: `run.schedule` runs `core/run/gates.go`; a proposed run takes no stack lock, so it moves to `READY` (T2).
+10. Serve process mode, `internal/adapter/driving/http/workerapi/poll.go`: a public-pool worker's held long-poll wakes and calls `driving.RunProgress.Claim`; `postgres/runs/claim.go` picks the run by tier and age; `core/run/progress.go` moves it to `PREPARING` (T7) and returns the job.
+11. Launcher process mode, `internal/worker/core/launcher/launcher.go`: starts the runner container through `worker/adapter/docker`; inside it, `worker/core/executor/phases.go` runs `INITIALIZING` and `PLANNING` with `worker/core/iac/opentofu`, reporting each transition through `worker/adapter/controlplane` (T10, T12).
 12. `executor/phases.go`: uploads the plan JSON through a presigned URL and reports the plan; `workerapi/server.go` calls `driving.RunProgress.Report`.
 13. `internal/core/run/progress.go`: asks `driving.Vendors.PlanInput` (`internal/core/iac/opentofu`) for the plan policy input, then `driving.PolicyDecisions.Plan`; `core/policy/decide.go` evaluates the plan policies, combines warnings and stores receipts.
 14. `core/run/progress.go`: no warning and a proposed run, so `PLANNING` to `FINISHED` (T17) in one unit of work with the receipts and the `RunStateChanged` outbox event.
-15. Scheduler role, `internal/adapter/driving/outbox/fanout.go`: hands the event to subscribers; `internal/core/vcs/feedback.go` sets the commit check, and `internal/core/event/route.go` asks `driving.PolicyDecisions.Notification` for routes.
+15. Scheduler process mode, `internal/adapter/driving/outbox/fanout.go`: hands the event to subscribers; `internal/core/vcs/feedback.go` sets the commit check, and `internal/core/event/route.go` asks `driving.PolicyDecisions.Notification` for routes.
 16. A notification policy `pull_request` rule returns a comment route with a deduplication key; `core/vcs/feedback.go` calls `driven.VCSProvider.Comment` (`vcs/github/comments.go`), which creates or edits the PR comment ([report 11](../reference/11-vcs-integrations.md#123-pull-request-comments)).
 
 ### A tracked run awaits approval and applies on a private worker
 
 1. A push to the tracked branch follows steps 1 to 7 above with the push decision `track`; `core/run/trigger.go` creates a `TRACKED` run on a stack whose worker pool is private.
 2. `core/run/gates.go`: the stack has an approval policy; `driving.PolicyDecisions.Approval` evaluates it on entering `QUEUED` and approves, and the stack lock is free, so `READY` (T2).
-3. Serve role, `workerapi/poll.go`: the private pool's worker, authenticated by its pool credentials (`workerapi/auth.go`), claims the run; `READY` to `PREPARING` (T7).
-4. Worker role on the customer's host: `worker/core/launcher` starts the container; `executor` plans with the OpenTofu command set; the state backend configuration it writes points at `adapter/driving/http/statebackend`, which accepts the run-scoped token because `core/state/access.go` sees a run in `PLANNING`.
+3. Serve process mode, `workerapi/poll.go`: the private pool's worker, authenticated by its pool credentials (`workerapi/auth.go`), claims the run; `READY` to `PREPARING` (T7).
+4. Launcher process mode on the customer's host: `worker/core/launcher` starts the container; `executor` plans with the OpenTofu command set; the state backend configuration it writes points at `adapter/driving/http/statebackend`, which accepts the run-scoped token because `core/state/access.go` sees a run in `PLANNING`.
 5. `core/run/progress.go`: the plan has changes and autodeploy is off, so `PLANNING` to `UNCONFIRMED` (T20); the worker uploads the encrypted workspace to the workspace bucket and leaves the run.
 6. `driving.PolicyDecisions.Approval` runs again on `UNCONFIRMED`; it requires two approvals, so `Run.canConfirm` is false.
 7. Two reviewers call `POST /runs/.../review`; `adapter/driving/http/deploy/runs` calls `driving.Runs.Review`; `core/run/actions.go` stores each review and re-evaluates approval; the second approves.
@@ -1248,13 +1248,13 @@ Placement choices settled in this file:
   they call, and store behaviour is proven by the contract suites against
   PostgreSQL in a container. A second full store implementation would double
   every table's code for no production use.
-- **The worker role is a second hexagon, not an adapter of the first.** Its
+- **The worker side is a second hexagon, not an adapter of the first.** Its
   logic (the launcher loop, phases, vendor command sets) is business logic
   of its own, and its isolation from server code is a security property,
   not a convenience.
-- **Claiming runs is a serve-role transition.** The long-poll request is
-  where the worker waits, so the claim happens there; the scheduler role
-  owns everything with no client waiting.
+- **Claiming runs is a transition in the serve process mode.** The long-poll
+  request is where the worker waits, so the claim happens there; the
+  scheduler process mode owns everything with no client waiting.
 - **The worker protocol client is internal.** Both ends ship in one binary;
   `pkg/client/deploy` stays the only public package.
 - **IaC vendor code lives under `iac/`, not `vendor/`.** The go command

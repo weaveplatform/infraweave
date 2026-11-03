@@ -35,7 +35,7 @@ Four constraints shape the runtime:
   surface; `flowctl` and `terraform-provider-flows`, both MIT, are the only
   evidence of its shape
   ([section 10](../reference/23-flows.md#10-the-flows-api)).
-- **One binary.** infraweave ships one `infraweave` binary with roles
+- **One binary.** infraweave ships one `infraweave` binary with process modes
   (decision 0020's topology,
   [0020](0020-reference-deployments-and-packaging.md)); Spacelift's three
   Flows backend processes (server, worker, gateway) must map onto it
@@ -80,7 +80,7 @@ Temporal cluster and no separate Flows engine.
   same transaction, one queue item of kind `flows.deliver` per linked input,
   keyed `(event, block, input)`. The item's handler evaluates the input's
   dynamic configuration and runs the block: core blocks in Go in the
-  `scheduler` role, app blocks and every expression on an agent.
+  `scheduler` process mode, app blocks and every expression on an agent.
 - **Effects commit with the step.** Events, pending events, timers and
   internal messages that a handler produces are buffered by the runtime
   and returned with the handler's result; the server commits them in one
@@ -135,7 +135,7 @@ neither.
   reads `flows_agent.endpoint`, `flows_agent.pool_id`,
   `flows_agent.pool_token`, `flows_agent.executor` and
   `flows_agent.pool_size` (default 3), dials the server and runs runtimes.
-- **Gateway in the `serve` role.** The agent connects to
+- **Gateway in the `serve` process mode.** The agent connects to
   `wss://<host>/flows/agent/v1/connect` on any `serve` replica, with the pool
   ID and token in the `Authorization` header. Pool tokens are 64 random
   characters, stored as SHA-256, shown once and rotated by

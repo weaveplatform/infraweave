@@ -37,11 +37,17 @@ const plan = "# Plan\n\n## Build status\n\n| P0 | done |\n\n## P0: Reference\n\n
 	"**Depends on:** nothing.\n\n**Tasks**\n\n1. Generate.\n\n**Exit criteria**\n\n- `make gate` passes.\n\n" +
 	"## P1a: Skeleton\n\nDecisions: none.\n\n**Depends on:** P0.\n\n**Tasks**\n\n1. Serve.\n\n```\n## P9: Not a phase\n```\n\n**Exit criteria**\n\n- Served.\n"
 
+// glossary is a root glossary whose second term's definition runs over two
+// lines.
+const glossary = "# Repo\n\nWhat it is.\n\n## Language\n\n**Stack**:\nA unit of infrastructure.\n_Avoid_: project\n\n" +
+	"**Run**:\nOne execution\nof a stack.\n_Avoid_: job, build\n\n```\n**Not**:\n```\n"
+
 // tree is a repository that passes every check; each case changes one file.
 func tree() fstest.MapFS {
 	return fstest.MapFS{
-		"README.md": file("# Repo\n\n## Make targets\n"),
-		"Makefile":  file("# see docs/research/README.md\n"),
+		"README.md":   file("# Repo\n\n## Make targets\n"),
+		"GLOSSARY.md": file(glossary),
+		"Makefile":    file("# see docs/research/README.md\n"),
 		"docs/research/README.md": file("# Research\n\n## How to read\n\n## How to read\n\n" +
 			"[01](reference/01-a.md#01-a-report) [index](decisions/README.md) [self](#how-to-read-1)\n" +
 			"[repo](../../README.md#make-targets) [web](https://example.com/x) [dir](reference/)\n" +
@@ -292,6 +298,56 @@ func TestUnitCheckFindings(t *testing.T) {
 			where: "docs/implementation/capability-roadmap.md:3",
 		},
 		{
+			name:  "no glossary",
+			edit:  func(m fstest.MapFS) { delete(m, "GLOSSARY.md") },
+			want:  "the glossary does not exist",
+			where: "GLOSSARY.md:1",
+		},
+		{
+			name:  "glossary without a title",
+			edit:  func(m fstest.MapFS) { m["GLOSSARY.md"] = file(strings.TrimPrefix(glossary, "# ")) },
+			want:  "the glossary has no title",
+			where: "GLOSSARY.md:1",
+		},
+		{
+			name: "glossary without a language section",
+			edit: func(m fstest.MapFS) {
+				m["GLOSSARY.md"] = file(strings.Replace(glossary, "## Language", "## Terms", 1))
+			},
+			want:  `the glossary has no "## Language" section`,
+			where: "GLOSSARY.md:1",
+		},
+		{
+			name: "glossary term defined twice",
+			edit: func(m fstest.MapFS) {
+				m["GLOSSARY.md"] = file(glossary + "\n**stack**:\nAgain.\n_Avoid_: pile\n")
+			},
+			want:  `term "stack" is defined again (first at line 7)`,
+			where: "GLOSSARY.md:20",
+		},
+		{
+			name: "glossary term without avoid",
+			edit: func(m fstest.MapFS) {
+				m["GLOSSARY.md"] = file(strings.Replace(glossary, "_Avoid_: project\n", "", 1))
+			},
+			want:  `term "Stack" has no "_Avoid_:" line`,
+			where: "GLOSSARY.md:7",
+		},
+		{
+			name: "glossary term without a definition",
+			edit: func(m fstest.MapFS) {
+				m["GLOSSARY.md"] = file(strings.Replace(glossary, "A unit of infrastructure.\n", "", 1))
+			},
+			want:  `term "Stack" has no definition`,
+			where: "GLOSSARY.md:7",
+		},
+		{
+			name:  "broken link in the glossary",
+			edit:  func(m fstest.MapFS) { m["GLOSSARY.md"] = file(glossary + "\n[x](gone.md)\n") },
+			want:  `broken link "gone.md"`,
+			where: "GLOSSARY.md:20",
+		},
+		{
 			name:  "stale mention",
 			edit:  func(m fstest.MapFS) { m["internal/x/x.go"] = file("package x\n\n// docs/research/02-old.md\n") },
 			want:  "names docs/research/02-old.md, which does not exist",
@@ -407,7 +463,7 @@ func (f failFS) Open(name string) (fs.File, error) {
 }
 
 func TestUnitCheckReadErrors(t *testing.T) {
-	for _, name := range []string{"docs/research/README.md", "internal/x/x.go", "docs", "internal", referenceAPI} {
+	for _, name := range []string{"docs/research/README.md", "internal/x/x.go", "docs", "internal", referenceAPI, glossaryDoc} {
 		t.Run(name, func(t *testing.T) {
 			m := tree()
 			m[scopeReport] = file(goodReport)

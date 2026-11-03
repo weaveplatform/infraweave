@@ -27,7 +27,7 @@ that adds the check; until then the row is a rule reviewers apply by hand.
 | Test names | From P1c: `TestUnitTestNames` fails on a top-level `Test` function that is neither `TestUnit…` nor `TestAcc…` |
 | Acceptance | `make accept`: the godog features in `test/acceptance/features` on `ubuntu-latest`, coverage written to `cover/accept`. From P1c, `TestAccFeatures` runs the built `cmd/infraweave` as a subprocess against containers started by testcontainers-go, with `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, split into the `accept-core`, `accept-runs` and `accept-integrations` jobs |
 | Feature partitions | From P1c: `TestUnitFeaturePartitions` fails when a scenario carries a tag no acceptance partition lists |
-| Contracts | A change to a storage or execution interface runs its contract suite: `sqltest`-backed store and module tests, `queuetest`, `objectstoretest`, `iactest` or `agenttest`, each from the phase that creates its interface |
+| Contracts | A change to a storage or execution interface runs its contract suite: `sqltest`-backed store and domain tests, `queuetest`, `objectstoretest`, `iactest` or `agenttest`, each from the phase that creates its interface |
 | Reference drift | `make verify-reference` (CI job `reference`): the committed Spacelift reference, `coverage.md` and report 29 are exactly what the snapshots generate |
 | Generated drift | `make verify-generate` (CI job `generated`): bundling, oapi-codegen and stubgen produce no diff in `api/*.openapi.yaml`, the generated servers or `pkg/client` |
 | Parity | From P1c: `make verify-parity` (CI job `parity`) decides served, served with divergence, superseded or missing for every reference operation, and fails on an unrecorded divergence or a served superseded operation |
@@ -80,7 +80,7 @@ A phase is complete when:
 Rules that apply to every change in every phase:
 
 - **Migrations** follow [0005](../research/decisions/0005-persistence-postgresql.md#migrations):
-  forward only, `NNNNN_snake_case.sql`, gap-free per module stream, expand
+  forward only, `NNNNN_snake_case.sql`, gap-free per domain stream, expand
   before contract across releases, large backfills as queue jobs, never in a
   migration.
 - **Errors** are RFC 9457 problems with the slugs of
@@ -104,21 +104,21 @@ Rules that apply to every change in every phase:
   `.testcoverage.yml` sets them, `make cover` enforces them, and the coverage
   job blocks the merge.
 - Acceptance coverage counts: the harness builds `cmd/infraweave` with
-  `-cover -covermode=atomic` and runs every role with `GOCOVERDIR` set, so
-  `serve`, `scheduler`, `worker` and `worker exec` contribute.
+  `-cover -covermode=atomic` and runs every process mode and the runner with `GOCOVERDIR` set, so
+  `serve`, `scheduler`, `launcher` and `runner` contribute.
 - Exclusions are exactly `cmd/`, `tools/`, generated server code and
-  `pkg/client/`; after [P1b](plan.md#p1b-module-layout-and-depguard) the
+  `pkg/client/`; after [P1b](plan.md#p1b-domain-layout-and-depguard) the
   generated paths are `internal/platform/gen/` and `internal/agent/wire/`.
   Adding an exclusion needs an amendment to decision 0016.
 - Unreachable defensive branches are removed, not excluded.
 - Code that needs PostgreSQL or object storage keeps its decisions in plain
   functions with unit tests; its queries are covered by `TestAcc` store,
-  module and contract tests on ubuntu, which the merge counts. SQL is never
+  domain and contract tests on ubuntu, which the merge counts. SQL is never
   mocked.
-- Thin `api/` and `module/` packages
+- Thin `api/` and `assembly/` packages
   ([0004](../research/decisions/0004-repository-architecture.md#constraints))
   keep their constructors and validation in the package, so each has
-  behaviour to test; `module/` packages are covered by `module_test.go`.
+  behaviour to test; `assembly/` packages are covered by `assembly_test.go`.
 - A new package aims for 95% on its own.
 
 ## Acceptance budget

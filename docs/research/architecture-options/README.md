@@ -22,7 +22,7 @@ records the recommendation.
 | 2 | [Hexagonal](2-hexagonal.md) | One application core with ports; driving and driven adapters around it |
 | 3 | [Clean](3-clean.md) | Concentric rings: entities, use cases, interface adapters, frameworks; imports point inward |
 | 4 | [Domain-driven design](4-ddd.md) | Bounded contexts, each with domain, application, infrastructure and interfaces packages, joined by a context map |
-| 5 | [Modular monolith](5-modular-monolith.md) | Business modules with published `api/` packages, an outbox between them, hexagons inside the larger modules |
+| 5 | [Modular monolith](5-modular-monolith.md) | Business domains with published `api/` packages, an outbox between them, hexagons inside the larger domains |
 
 Every option file has the same sections in the same order, so the options
 can be read side by side:
@@ -44,15 +44,15 @@ can be read side by side:
 
 Facts every option shares, so that the comparison is about structure alone:
 
-- one module and one server binary, `cmd/infraweave`, with the roles
-  `serve`, `scheduler`, `worker` and `all`, the hidden `worker exec`, and
+- one Go module and one server binary, `cmd/infraweave`, with the process
+  modes `serve`, `scheduler`, `launcher` and `all`, the hidden `runner`, and
   the `vcs-agent`, `flows-agent`, `migrate` and `version` subcommands
   ([Process topology](#process-topology)), plus the separate client
   binary `cmd/infraweavectl`;
 - PostgreSQL and object storage (decision 0005), decision 0011's own job
   queue in PostgreSQL, embedded OPA (decision 0009), and HTTP long-poll for
   workers (decision 0008) and VCS agents (decision 0012);
-- the worker role links no server-side persistence, because a private
+- the launcher process mode links no server-side persistence, because a private
   worker runs on customer hosts with outbound HTTPS only
   ([report 10, section 4.2](../reference/10-workers-and-execution.md#42-transports));
 - one generated strict server for the `deploy` API, composed from
@@ -104,7 +104,7 @@ only through a driving port.
 | Non-REST protocols (webhooks, state backend, registry, worker long-poll) are ordinary driving adapters | `core/port/driving/types.go`, `core/port/driven/stores.go`, the single migration stream and `app/services.go` are edited by every phase |
 | A new VCS provider or worker runtime is one adapter package plus contract fixtures | One depguard list per domain for rule 3; a domain added without its list is silently unguarded |
 | The worker hexagon shares no package with the server | Wide driving ports (`Runs`, `RunProgress`) and large fakes |
-| Roles are choices of driving adapters over the same constructors | No rule says which domains may write inside another's transaction; Flows shares the core and the schema stream |
+| Process modes are choices of driving adapters over the same constructors | No rule says which domains may write inside another's transaction; Flows shares the core and the schema stream |
 
 **Roadmap verdict.** Strong on the infrastructure-heavy phases (P2, P7,
 P8, P11, P12, P13, P14, P15, P19), each of which lands as an adapter behind
@@ -167,11 +167,11 @@ phases in one binary.
 
 ### Option 5: Modular monolith
 
-[5-modular-monolith.md](5-modular-monolith.md) makes each business domain
-a module, `internal/<module>/`, with a published `api/` package, a
-`module/` constructor that contributes routes, queue consumers and cron, an
+[5-modular-monolith.md](5-modular-monolith.md) gives each business domain
+its own directory, `internal/<domain>/`, with a published `api/` package, an
+`assembly/` constructor that contributes routes, queue consumers and cron, an
 `internal/` directory the compiler keeps private, and its own migration
-stream. Seventeen modules at P27 (access, stacks, configuration, runs,
+stream. Seventeen domains at P27 (access, stacks, configuration, runs,
 workers, vendors, state, vcs, policies, cloud, schedules, registry, events,
 templates, resources, intelligence, flows); shared infrastructure in
 `internal/platform`, value types in `internal/kernel`, pure vendor code in
@@ -180,19 +180,19 @@ templates, resources, intelligence, flows); shared infrastructure in
 
 | Pros | Cons |
 |---|---|
-| A run transition (run row, transition, stack run lock, queue item, receipts, outbox event) is one transaction inside one module | `runs` holds about a fifth of the hand-written code and is touched by P7, P9, P10, P13 and P16 |
-| The Go compiler enforces the module boundary through nested `internal/`; depguard needs 6 rules and about 75 entries | Stack state is runs data; a stack list filtered by state needs a read view across two schemas |
+| A run transition (run row, transition, stack run lock, queue item, receipts, outbox event) is one transaction inside one domain | `runs` holds about a fifth of the hand-written code and is touched by P7, P9, P10, P13 and P16 |
+| The Go compiler enforces the domain boundary through nested `internal/`; depguard needs 6 rules and about 75 entries | Stack state is runs data; a stack list filtered by state needs a read view across two schemas |
 | Policies own the input contract and return decisions as data, so policy hooks form no cycle | Three back edges (stacks to runs, runs to vcs, runs to cloud) are bound after construction |
-| `internal/agent` imports no module and no persistence | About 290 packages, about 35 thin ones under the 90% floor |
-| Each module contributes `Routes`, `Consumers` and `Cron`, which map straight onto `serve` and `scheduler` | Long import paths and every constructor package named `module`, so imports need aliases |
+| `internal/agent` imports no domain and no persistence | About 290 packages, about 35 thin ones under the 90% floor |
+| Each domain contributes `Routes`, `Consumers` and `Cron`, which map straight onto `serve` and `scheduler` | Long import paths and every constructor package named `assembly`, so imports need aliases |
 | A late domain is a new directory plus about 5 edits; Flows has its own schema and can be extracted | The single binary carries server code onto worker hosts, although the agent never imports it |
 
 **Roadmap verdict.** Fits the spine phase by phase: P1 to P6 add one
-module each; P7 to P10 happen inside `runs`, whose single-transaction
-transitions already hold them; P11 to P19 are new modules over existing
+domain each; P7 to P10 happen inside `runs`, whose single-transaction
+transitions already hold them; P11 to P19 are new domains over existing
 `api/` packages and the outbox; P20 touches only `internal/iac` and
 `internal/agent`; P21 to P26 add directories without changing existing
-ones. The cost comes early and stays: the module skeleton, thin packages
+ones. The cost comes early and stays: the domain skeleton, thin packages
 under the coverage floor, and the concentration of P7 to P16 work in
 `runs`.
 
@@ -232,13 +232,13 @@ How each option carries the 27-phase spine.
 |---|---|---|---|---|---|
 | Run-transaction integrity: run, lock, queue item, receipts and event in one transaction (P7 to P10) | Good | Good | Good | Fair | Good |
 | Policy hooks at run state points without import cycles (P13) | Fair | Good | Good | Good | Good |
-| Worker-side isolation: the worker role links no server persistence (P8, P14) | Good | Good | Good | Good | Good |
+| Worker-side isolation: the launcher process mode links no server persistence (P8, P14) | Good | Good | Good | Good | Good |
 | VCS provider growth (P12, P19) | Fair | Good | Good | Good | Good |
 | IaC vendor growth (P9, P20) | Good | Fair | Good | Fair | Good |
 | Event fan-out to inbox, Slack, webhooks, PR comments and audit (P18) | Fair | Fair | Fair | Good | Good |
 | Flows separability, with its own tenancy (P26) | Poor | Fair | Poor | Good | Good |
 | Late-domain addition without touching existing cores (P21, P22, P25) | Poor | Fair | Fair | Good | Good |
-| Process roles fall out of the structure (P7, P27) | Good | Good | Fair | Good | Good |
+| Process modes fall out of the structure (P7, P27) | Good | Good | Fair | Good | Good |
 | Extractability of a domain into a separate service | Poor | Poor | Poor | Good | Good |
 
 Notes:
@@ -249,7 +249,7 @@ Notes:
   hand-kept workflow order rather than on the domains.
 - Hexagonal and DDD are Fair on vendors: a vendor spans two hexagons in
   option 2, and the kernel plus four contexts in option 4.
-- Clean is Fair on roles because the worker side is a second axis across
+- Clean is Fair on process modes because the worker side is a second axis across
   the rings.
 
 ### Cost of the structure
@@ -304,7 +304,7 @@ tree is 13 packages.
 
 The repository shape and the process shape are separate questions. All five
 options build one Go module, and all five can produce either topology below;
-what differs is how cleanly each option's package graph yields the roles.
+what differs is how cleanly each option's package graph yields the process modes.
 
 ### Evidence
 
@@ -324,37 +324,37 @@ out.
 
 ### The choices
 
-| Concern | One binary, roles by subcommand | Separate binaries from one module | Separate services |
+| Concern | One binary, process modes by subcommand | Separate binaries from one Go module | Separate services |
 |---|---|---|---|
-| What ships | `infraweave` with `serve`, `scheduler`, `worker`, `all`, the hidden `worker exec`, `vcs-agent`, `flows-agent`, `migrate` and `version`; one image | `infraweave-server`, `infraweave-scheduler`, `infraweave-worker`; one image each | A service per domain or role, each with its own release |
-| Version skew | None between roles: one build | None if released together; possible if not | A real concern: API contracts between services need versioning |
-| A run transition in one transaction | Yes: serve and scheduler share the database and the same module code | Yes | No, once services own separate data: run, lock, queue and receipts need sagas or a shared database |
-| Independent scaling | Yes: each role is its own process and deployment | Yes | Yes |
+| What ships | `infraweave` with `serve`, `scheduler`, `launcher`, `all`, the hidden `runner`, `vcs-agent`, `flows-agent`, `migrate` and `version`; one image | `infraweave-server`, `infraweave-scheduler`, `infraweave-launcher`; one image each | A service per domain or process mode, each with its own release |
+| Version skew | None between process modes: one build | None if released together; possible if not | A real concern: API contracts between services need versioning |
+| A run transition in one transaction | Yes: serve and scheduler share the database and the same domain code | Yes | No, once services own separate data: run, lock, queue and receipts need sagas or a shared database |
+| Independent scaling | Yes: each process mode is its own process and deployment | Yes | Yes |
 | Isolation of API latency from queue load | Yes: `serve` never consumes queues | Yes | Yes |
 | Singletons (cron firing, timers, stale-run sweeps) | None needed: every `scheduler` replica's ticker claims due rows with `FOR UPDATE SKIP LOCKED` (decision 0011), where OTF instead runs exclusive subsystems on one replica under an advisory lock | Same | Same, per service |
-| Worker binary size and attack surface on customer hosts | Carries server code it never runs | Smallest: links only `worker` code | Smallest |
-| Mounting the binary into runner images (`worker exec`) | The same static binary the launcher runs | The worker binary | The worker binary |
+| Launcher binary size and attack surface on customer hosts | Carries server code it never runs | Smallest: links only launcher code | Smallest |
+| Mounting the binary into runner images (`runner`) | The same static binary the launcher runs | The launcher binary | The launcher binary |
 | Single-node installs and acceptance tests | `infraweave all` | Two processes | Many processes |
-| Configuration | One strict YAML schema, sections per role | One schema per binary, or a shared one | One per service |
+| Configuration | One strict YAML schema, sections per process mode | One schema per binary, or a shared one | One per service |
 | Matches Spacelift's shape | Yes for the backend; Spacelift ships its launcher separately | Close | No |
 
-Each option file shows how its structure produces the roles, and they
+Each option file shows how its structure produces the process modes, and they
 differ only in where the wiring lives:
 
-| Option | `serve` and `scheduler` | `worker` |
+| Option | `serve` and `scheduler` | `launcher` |
 |---|---|---|
 | 1 Layered | `internal/app` starts `transport` entry points: the router, or queue consumers and cron | `internal/worker`, a column beside the layers |
 | 2 Hexagonal | `internal/app` picks driving adapters over the same core | `internal/worker`, a second hexagon |
 | 3 Clean | `internal/app` starts controllers or job runners | `app/workerapp` over `usecase/agent` and `adapter/agent` |
 | 4 DDD | `internal/app` starts each context's `interfaces/rest` or `interfaces/consumers` and cron | `internal/execution/agent` |
-| 5 Modular monolith | `internal/app/roles.go` calls each module's `Routes`, or its `Consumers` and `Cron` | `internal/agent`, wired from `cmd/infraweave/worker.go` without `internal/app` |
+| 5 Modular monolith | `internal/app/modes.go` calls each domain's `Routes`, or its `Consumers` and `Cron` | `internal/agent`, wired from `cmd/infraweave/launcher.go` without `internal/app` |
 
 ### Verdict
 
-**One `infraweave` binary with the roles `serve`, `scheduler` and
-`worker`, plus `all` for single-node installs and acceptance tests, and a
-hidden `worker exec` inside run containers.** Separate services buy
-nothing the roles do not already give (independent scaling, isolation of
+**One `infraweave` binary with the process modes `serve`, `scheduler` and
+`launcher`, plus `all` for single-node installs and acceptance tests, and a
+hidden `runner` inside run containers.** Separate services buy
+nothing the process modes do not already give (independent scaling, isolation of
 API latency from queue load) and cost the one property the run lifecycle
 cannot do without: a run transition, its stack lock, its queue item, its
 policy receipts and its event committing together
@@ -369,21 +369,21 @@ Spacelift chart warns that with the standalone scheduler forced off on an
 older version nothing fires drift detection, scheduled runs, tasks or
 deletes ([report 24](../reference/24-self-hosted-reference.md#22-components-each-module-creates)).
 A gateway for VCS agents and Flows agents starts as listeners inside
-`serve`, and becomes a fourth role only if its long-lived connections need
+`serve`, and becomes a fourth process mode only if its long-lived connections need
 their own scaling.
 
-The worker is the one place where a separate build earns a mention. All
+The launcher is the one place where a separate build earns a mention. All
 five options keep worker-side code free of server packages, so a slim
-`cmd/infraweave-worker` that links only the worker tree is a one-file
+`cmd/infraweave-agent` that links only the agent tree is a one-file
 addition. It is not the default: one binary keeps the launcher and the
-mounted `worker exec` at the same version as the server by construction,
+mounted `runner` at the same version as the server by construction,
 which Spacelift gets by embedding the worker binary in its launcher
 ([report 24](../reference/24-self-hosted-reference.md#21-process-inventory)).
 
 ## Recommendation
 
 **Option 5, the modular monolith, built as one `infraweave` binary with
-the `serve`, `scheduler`, `worker` and `all` roles.** It leads the roadmap
+the `serve`, `scheduler`, `launcher` and `all` process modes.** It leads the roadmap
 table outright, is rated Poor on nothing, and is the only option whose
 boundary is enforced mainly by the Go compiler rather than by a growing
 lint configuration.
@@ -394,36 +394,36 @@ inside option 5 without changing its rules:
 - **Pure rules as pure packages (from option 3).** The run state machine
   and its transition table, the seven priority tiers, policy combination
   per type, space reachability and version numbering live in packages with
-  no I/O inside their modules (`runs/internal/core/lifecycle` and its
+  no I/O inside their domains (`runs/internal/core/lifecycle` and its
   peers) and are tested as tables.
 - **An anticorruption package per VCS provider (from option 4).** Each
   provider's webhook shapes, signatures and API quirks stay in its own
   package inside `vcs`, behind one normalised push and pull request event
   ([report 11, section 11.2](../reference/11-vcs-integrations.md#112-what-an-event-becomes)).
-- **Hexagons inside the large modules (from option 2).** `runs`, `vcs`,
+- **Hexagons inside the large domains (from option 2).** `runs`, `vcs`,
   `workers`, `access`, `registry`, `events`, `intelligence` and `flows`
   split `core/` from `adapters/`, as option 5 already lays out.
 
 ### What makes it hold
 
-- **The consistency boundary is a module boundary.** `runs` owns every
+- **The consistency boundary is a domain boundary.** `runs` owns every
   table a transition writes, so the five-part transition commits in one
-  transaction without a cross-module write
+  transaction without a cross-domain write
   ([5-modular-monolith.md](5-modular-monolith.md#run-execution-path)).
 - **Policies return decisions as data.** `policies` owns the input
   contract of [report 09](../reference/09-policies.md#8-where-each-type-is-evaluated)
   and imports none of its callers, so push, approval, plan, trigger and
   notification evaluation add no cycles.
 - **The compiler does most of the enforcement.** Nested `internal/`
-  directories make a module's insides unreachable; depguard covers six
+  directories make a domain's insides unreachable; depguard covers six
   rules with about 75 entries at P27, against 130 to 750 for the other
   options.
-- **The worker tree stays server-free.** `internal/agent` imports no module
+- **The worker tree stays server-free.** `internal/agent` imports no domain
   and no persistence, which keeps private workers outbound-only and keeps
-  the slim worker build a one-file option.
-- **Roles are module contributions.** `Routes`, `Consumers` and `Cron`
-  decide what `serve` and `scheduler` start, so a new module joins both
-  roles by implementing three methods.
+  the slim launcher build a one-file option.
+- **Process modes are domain contributions.** `Routes`, `Consumers` and
+  `Cron` decide what `serve` and `scheduler` start, so a new domain joins
+  both process modes by implementing three methods.
 - **Late domains are additive.** Templates, resources, Intelligence and
   Flows are new directories with their own migration streams; Flows keeps
   its own tenancy and can leave the binary if it must.
@@ -433,29 +433,29 @@ inside option 5 without changing its rules:
 - **Decision 0011 reversed in favour of Temporal.** 0011 rejects Temporal
   today. A workflow engine run as a separate
   cluster would own run orchestration, moving the run state machine out of
-  a PostgreSQL transaction and into workflow history. The `runs` module
+  a PostgreSQL transaction and into workflow history. The `runs` domain
   would become a workflow definition plus activities, and option 4's
   event-driven contexts would fit that shape better.
-- **`runs` outgrowing one module.** If the run module passes about a
+- **`runs` outgrowing one domain.** If the `runs` domain passes about a
   quarter of the hand-written code, or two phases routinely collide in it,
   split it along its own seams (lifecycle, scheduling, handover,
-  dependencies) as sub-modules with their own `api/`, keeping one
+  dependencies) as sub-domains with their own `api/`, keeping one
   migration stream.
 - **A requirement to deploy Flows or Intelligence separately.** The
-  modules' `api/` seams make extraction feasible; if it becomes a launch
+  domains' `api/` seams make extraction feasible; if it becomes a launch
   requirement rather than an option, option 4's published-event context
   map is the better starting point for those domains.
-- **Modules landing without their depguard entries.** Rules 4, 6 and 7
-  name each module, so a new module that skips its three or four entries
+- **Domains landing without their depguard entries.** Rules 4, 6 and 7
+  name each domain, so a new domain that skips its three or four entries
   is unguarded on those rules until someone notices. If that recurs, the
   entries have to be generated from the directory list, as option 3 does
   for its rule 2, and the enforcement cost rises toward the other options'.
-- **The coverage floor.** If the thin `api/` and `module/` packages cannot
+- **The coverage floor.** If the thin `api/` and `assembly/` packages cannot
   reach 90% without tests written for the floor, the coverage exclusions,
   not the layout, are the place to adjust, and that adjustment needs its
   own decision.
-- **Customer review of the worker binary.** If customers require a worker
-  build without server code, ship `cmd/infraweave-worker` alongside the
+- **Customer review of the agent binary.** If customers require a
+  build for worker hosts without server code, ship `cmd/infraweave-agent` alongside the
   one binary; nothing else in the layout changes.
 
 ## Appendix: distance from today's tree
