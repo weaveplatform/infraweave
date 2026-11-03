@@ -11374,7 +11374,7 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue_gen.go`, which `make generate`",
+            "4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.gen.go`, which `make generate`",
             "for the installation-level actions only: organizations, tiers, the billing switch",
             "Entitlement belongs to the organization: its tier plus its grants"
           ],

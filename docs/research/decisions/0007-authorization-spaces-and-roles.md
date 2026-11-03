@@ -187,7 +187,7 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 
 - **Source.** The action catalogue is the `Action` enum of the committed
   introspection snapshot (150 values). `specref` generates
-  `internal/authz/actions_gen.go` from it, and a hand-maintained
+  `internal/authz/actions.gen.go` from it, and a hand-maintained
   `internal/authz/actions.yaml` gives each value its subject, legacy fallback
   (`reader`, `writer`, `admin`), and `disabled` and `deprecated` flags, from
   report 14's table

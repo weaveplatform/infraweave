@@ -373,7 +373,7 @@ internal/
 │   │                                     events: EntitlementChanged
 │   ├── assembly/                         Middleware() for app/router.go; operator API partial; Consumers()
 │   └── internal/
-│       ├── catalogue/                    catalogue_gen.go, generated: capabilities, options, limits, requirements,
+│       ├── catalogue/                    catalogue.gen.go, generated: capabilities, options, limits, requirements,
 │       │                                 seeded tiers; a test fails on an operation or gated field without one
 │       ├── features/                     entitlement: tier plus grants, minus features.disabled, minus unmet
 │       │                                 requirements; per-organization snapshot rebuilt on infraweave_invalidate
@@ -1024,7 +1024,7 @@ internal/features/
 ├── assembly/              Middleware(); OperatorAPI (alias of the operator partial); Consumers()
 └── internal/
     ├── catalogue/
-    │   ├── catalogue_gen.go capabilities, options, limits, requirements and seeded tiers (decision 0021),
+    │   ├── catalogue.gen.go capabilities, options, limits, requirements and seeded tiers (decision 0021),
     │   │                    generated from docs/data/features.json by make generate
     │   └── coverage_test.go  every operation's x-infraweave-feature and every gated field names an entry
     ├── features/          entitlement: tier plus grants, minus features.disabled and unmet requirements; billing off
@@ -1784,7 +1784,7 @@ internals, and `events` never imports `flows`.
 7. `stacks/internal/http/convert.go`: map the generated variant.
 8. `docs/data/features.json`: the `vendor-pulumi` option on `StackVendor`, in every
    seeded tier; `make generate` rewrites
-   `internal/features/internal/catalogue/catalogue_gen.go`.
+   `internal/features/internal/catalogue/catalogue.gen.go`.
 9. `deploy/images/runner-pulumi/Dockerfile` and its CI build.
 10. `test/acceptance/features/pulumi.feature`, its steps, and a fixture
     project under `test/fixtures/`.
@@ -1822,7 +1822,7 @@ new files and 5 edited.
    `runs/api` and `access/api`), and one entry each in
    `constructors`, `shared-below-domains` and `agent-isolation`.
 10. `docs/data/features.json`, and
-    `internal/features/internal/catalogue/catalogue_gen.go` from it: the
+    `internal/features/internal/catalogue/catalogue.gen.go` from it: the
     `templates` and `blueprints` capabilities at Business; the coverage test fails until
     every new operation names one.
 11. `test/acceptance/features/templates.feature` and its steps.

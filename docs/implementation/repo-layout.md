@@ -149,7 +149,7 @@ infraweave/
 │   │
 │   ├── features/                  flat, at the bottom of the domain graph: catalogue, tiers, grants, entitlement,
 │   │   │                          the feature middleware and the operator API (P3b)
-│   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue_gen.go
+│   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.gen.go
 │   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
 │   │   └── api/ assembly/ internal/{expressions,http}/
 │   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, the OAuth
@@ -297,7 +297,7 @@ them; read a record's package name through this table.
 | `internal/run`, `internal/workerapi` | `internal/runs`; `internal/workers` (the `/worker/v1` adapter) |
 | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs/internal/adapters/<provider>`; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
 | `internal/authn`, `internal/authz` | `internal/access` |
-| `internal/authz/actions.yaml`, `internal/authz/actions_gen.go` | `internal/access/api`, because callers name an action when they call the authorizer |
+| `internal/authz/actions.yaml`, `internal/authz/actions.gen.go` | `internal/access/api`, because callers name an action when they call the authorizer |
 | `internal/statebackend`, `internal/registry` | `internal/state`, `internal/registry` |
 | `internal/events`, `internal/audit` | `internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox`, the audit write in `internal/platform/audit` |
 | `internal/expr` | `internal/platform/expr`; the editor endpoints in `internal/expressions` |
@@ -472,9 +472,9 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | `api/reference/spacelift/spacelift.openapi.yaml`, `coverage.md` | the snapshots and `rest-mapping.yaml` | `make reference` | `make verify-reference` |
 | `api/reference/spacelift/` snapshots and `sources.lock.yaml` | upstream at the pinned versions | `make reference-fetch` (network) | `openapi-spec-update.yml` |
 | [`docs/data/graphql-inventory.json`](../data/graphql-inventory.json), [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |
-| `internal/features/catalogue_gen.go` | [`docs/data/features.json`](../data/features.json), with the `tier-feature:` records of [`capabilities.json`](../data/capabilities.json) | `make generate` | `make verify-generate` ([0021](../research/decisions/0021-capability-scope-and-supersession.md#the-feature-catalogue-pd-05)) |
+| `internal/features/catalogue.gen.go` | [`docs/data/features.json`](../data/features.json), with the `tier-feature:` records of [`capabilities.json`](../data/capabilities.json) | `make generate` | `make verify-generate` ([0021](../research/decisions/0021-capability-scope-and-supersession.md#the-feature-catalogue-pd-05)) |
 | [`docs/implementation/tiers.md`](tiers.md) | `docs/data/features.json` and `capabilities.json` | `make generate` (dataview) | `make verify-generate`; `TestUnitCommittedView` |
-| `internal/access/api/actions_gen.go` | the `Action` enum of the introspection snapshot | `specref` | `make verify-reference` ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
+| `internal/access/api/actions.gen.go` | the `Action` enum of the introspection snapshot | `specref` | `make verify-reference` ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
 | `api/reference/provider-parity.yaml` | hand-maintained mapping (P24) | none | `specref provider-parity` |
 
 One generated `StrictServerInterface` spans many domains. `internal/app`

@@ -3124,8 +3124,7 @@
       "blocks": "whether a self-hosted install needs a public pool",
       "reports": [
         "docs/research/reference/26-scope-and-tiers.md",
-        "docs/research/reference/19-events-notifications-audit.md",
-        "docs/research/reference/31-review-log.md"
+        "docs/research/reference/19-events-notifications-audit.md"
       ]
     },
     {

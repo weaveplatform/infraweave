@@ -344,7 +344,7 @@ internal/
 │   │                                      except service/authz and service/features
 │   ├── authz/                             Decider: reachable spaces, actions, bindings; For(ctx, principal);
 │   │                                      Allowed(resource) for allowedActions                (P4)
-│   ├── features/                          catalogue_gen.go (generated), seeded tiers, grants, entitlement
+│   ├── features/                          catalogue.gen.go (generated), seeded tiers, grants, entitlement
 │   │                                      snapshot per organization rebuilt on infraweave_invalidate,
 │   │                                      billing switch, Capability, Option, Limit checks against the
 │   │                                      organization's pool and any account limit          (P3b)
@@ -909,7 +909,7 @@ request by `authz.Reachable`.
 ```text
 internal/model/feature.go                Feature, Kind, Tier, Grant; Entitlement.Has(feature), Limit(name)
 internal/service/features/
-├── catalogue_gen.go       every capability, option and limit: kind, requirements, seeded tiers, parity mapping;
+├── catalogue.gen.go       every capability, option and limit: kind, requirements, seeded tiers, parity mapping;
 │                          generated from docs/data/features.json by make generate
 ├── catalogue.go           validates the catalogue; the operation and field index
 ├── tiers.go grants.go     seeded Free, Starter, Starter+, Business, Enterprise; operator tiers; grants per
@@ -1540,7 +1540,7 @@ Coverage implications:
 8. `internal/worker/iac/pulumi/pulumi_test.go`, `testdata/`; `internal/service/iac/pulumi/pulumi_test.go`.
 9. `internal/support/rego/testdata/`: plan policy cases that read the `pulumi` block.
 10. `docs/data/features.json`: the `vendor-pulumi` option on `StackVendor`; `make generate` rewrites
-    `internal/service/features/catalogue_gen.go`.
+    `internal/service/features/catalogue.gen.go`.
 11. `test/acceptance/features/vendors_pulumi.feature` and steps: a Pulumi stack plans and
     applies on a Docker worker with a Pulumi runner image.
 
@@ -1570,7 +1570,7 @@ necessity: one runs in the server, the other on a customer host.
 9. `internal/model/event/template.go`: `TemplateDeploymentChanged` for audit and notifications.
 10. `internal/service/audit/catalogue.go`: the audit resource type and metadata.
 11. `internal/app/services.go` and `workflows.go`: construct the service and the workflow.
-12. `docs/data/features.json`, and `internal/service/features/catalogue_gen.go` from it: the
+12. `docs/data/features.json`, and `internal/service/features/catalogue.gen.go` from it: the
     `templates` and `blueprints` capabilities at Business; `internal/workflow/exprflow`: the template body surface.
 13. `.golangci.yml`: a `service-templates` rule, a `workflow-templateflow` rule, and the
     new workflow added to the deny lists of every earlier workflow rule.

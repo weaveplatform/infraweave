@@ -325,7 +325,7 @@ internal/
                                            emit; (P9) EventFeed for the streams; (P18) inbox, named and
                                            stack webhooks, audit trail, notification routing, message
                                            text rendered as text templates
-    feature/                               (P3b) catalogue_gen.go, tiers and their seed, organization tiers,
+    feature/                               (P3b) catalogue.gen.go, tiers and their seed, organization tiers,
                                            grants, pooled limits and account limits, entitlement
                                            snapshots, the billing switch, operator service
     expression/                            (P9) editor service: Check, Complete, Evaluate over the Surface
@@ -986,7 +986,7 @@ their own, minted by `core/account` and checked by the same `Decider`.
 
 ```text
 internal/core/feature/
-  catalogue_gen.go                            every capability, option and limit: kind, requirements,
+  catalogue.gen.go                            every capability, option and limit: kind, requirements,
                                               seeded tiers, covered BillingTierFeature values (decision 0021);
                                               generated from docs/data/features.json by make generate
   catalogue.go                                validates the catalogue; strict names

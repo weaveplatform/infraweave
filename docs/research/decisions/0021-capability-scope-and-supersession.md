@@ -186,7 +186,7 @@ behaviour, it replaces infraweave's choice through the lifecycle above.
 Every feature of infraweave is an entry in one catalogue, the register
 [docs/data/features.json](../../data/features.json), its one source. The
 `features` domain (decision 0004 places it) compiles it in:
-`make generate` writes `internal/features/catalogue_gen.go` from the
+`make generate` writes `internal/features/catalogue.gen.go` from the
 register, and `make verify-generate` fails when that file is stale. An
 entry has a name, a kind, a description, the features it requires, the
 lowest seeded tier that includes it and its owning phase. The
@@ -248,27 +248,13 @@ every organization has while billing is off. Enterprise+ is not seeded: it diffe
 how Spacelift installs and supports it (self-hosted, FedRAMP, air-gapped,
 escalation), none of which is a feature of infraweave.
 
-The features not in every seeded tier:
-
-| Lowest seeded tier | Features |
-|---|---|
-| Starter | Capabilities `policies`, `notifications`, `webhooks`, `modules`, `module-sharing`, `oidc-federation`, `oidc-sso`, `tasks`; option `notification-policies` (policy `type: NOTIFICATION`) |
-| Starter+ | Capabilities `drift-detection`, `private-worker-pools`, `ignored-runs`, `sessions` |
-| Business | Capabilities `scheduling`, `targeted-replan`, `blueprints`, `templates`, `terraform-provider-registry` (with the GPG Keys tag, whose keys sign provider releases); option `aggregated-vcs-checks` |
-| Enterprise | Capabilities `audit-trail`, `saml-sso`, `scim`, `mfa`, `vcs-agent-pools`, `servicenow`; options `oidc-api-keys` (API key type `OIDC`), `multiple-vcs-integrations` |
-
-Every other feature, including all of Flows, the console, every IaC vendor,
-`scans`, `ai-integrations`, `intent` and `organization` (the `Organization`
-tag, below), is in every seeded tier.
-
-Seeded limits, where no value means no limit:
-
-| Limit | Unit | Free | Starter | Starter+ | Business | Enterprise |
-|---|---|---|---|---|---|---|
-| `seats` | members, each once however many accounts admit it, and API keys as [14 section 4.4](../reference/14-spaces-rbac-and-identity.md#44-api-keys) counts them | 2 | 2 | | | |
-| `private-workers` | registered private workers | 0 | 0 | 2 | 3 | |
-| `public-worker-slots` | runs in flight on the public worker pool | 1 | 1 | 2 | 2 | |
-| `ai-budget` | the period budget of decision 0019's default AI integration | USD 10 per 30 days | | | | |
+Each feature's lowest seeded tier, and each limit's unit and seeded
+values, are members of its record in
+[docs/data/features.json](../../data/features.json); no value means no
+limit. The generated [tiers view](../../implementation/tiers.md) lays them
+out tier by tier. Flows, the console, every IaC vendor, `scans`,
+`ai-integrations`, `intent` and `organization` (the `Organization` tag,
+below) are in every seeded tier.
 
 Where Spacelift publishes no value for a tier (Starter's seats and public
 slots, Business's "configurable" public workers), the seed takes the value
@@ -469,43 +455,13 @@ with an honest local meaning, and otherwise refuses with
 ### Mapping from `BillingTierFeature`
 
 Each value maps to the infraweave features that cover it, so parity stays
-traceable. The `tier-feature:` records of
-[capabilities.json](../../data/capabilities.json) carry the same mapping for
-the catalogue, and a test checks that every live value has one.
-
-| `BillingTierFeature` | infraweave feature | Kind |
-|---|---|---|
-| `ACCESS_POLICIES` | none: superseded (S1), space role bindings replace it | |
-| `ADDITIONAL_PUBLIC_WORKER` | a grant raising `public-worker-slots` | limit |
-| `ADVANCED_SCHEDULING` | `scheduling` | capability |
-| `AGGREGATED_VCS_CHECKS` | `aggregated-vcs-checks` | option |
-| `API_KEYS_OIDC` | `oidc-api-keys` | option |
-| `AUDITING` | `audit-trail` | capability |
-| `AUDIT_WEBHOOKS` | `audit-trail`: superseded (S2) by `AUDITING` | capability |
-| `BLUEPRINTS` | `blueprints`, `templates` | capability |
-| `CAN_UPDATE_SSO_SAML` | `saml-sso` | capability |
-| `CLOUD_CREDENTIAL_GENERATION` | `cloud-integrations` | capability |
-| `CUSTOM_SSO_SAML` | `saml-sso` | capability |
-| `DRIFT_DETECTION` | `drift-detection` | capability |
-| `MFA` | `mfa` | capability |
-| `MULTIPLE_VCS` | `multiple-vcs-integrations` | option |
-| `NOTIFICATION_POLICIES` | `notification-policies`, `notifications` | option, capability |
-| `PRIVATE_MODULE_SHARING` | `module-sharing` | capability |
-| `PRIVATE_VCS` | `vcs-agent-pools` | capability |
-| `PRIVATE_WORKERS` | `private-worker-pools`, `private-workers` | capability, limit |
-| `RUN_STATE_CHANGE_WEBHOOKS` | `webhooks` | capability |
-| `TARGETED_REPLAN` | `targeted-replan` | capability |
-| `TERRAFORM_PROVIDER_VERSIONS` | `terraform-provider-registry` | capability |
-| `UNLIMITED_SEATS` | no `seats` value | limit |
-| `WORKFLOW_POLICIES` | `policies` | capability |
-| `OIDC_FEDERATION_TOKEN_GENERATION` | `oidc-federation` | capability |
-| `RUN_IGNORED_TRIGGERS` | `ignored-runs` | capability |
-| `ACCOUNT_AI_CONTROL` | `ai-account-controls` | capability |
-| `SPACELIFT_INTELLIGENCE` | `ai-integrations`, `intent` | capability |
-| `SERVICE_NOW_INTEGRATION` | `servicenow` | capability |
-| `BACKSTAGE_INTEGRATION` | `backstage` | capability |
-| `SCIM` | `scim` | capability |
-| `SCANS` | `scans` | capability |
+traceable. The mapping is the `infraweave.feature` member of the value's
+`tier-feature:` record in [capabilities.json](../../data/capabilities.json),
+which the generator reads with the catalogue, and a test checks that every
+live value has one. A value whose only meaning is a quantity maps to a limit
+or a grant that raises one, such as `ADDITIONAL_PUBLIC_WORKER`; a superseded
+value, such as `ACCESS_POLICIES`, maps to none and cites its supersession
+record.
 
 The first assignment of operations to capabilities starts from report 26's
 pairing, which is by name [I], and captures C14, C121 and C122 correct it.

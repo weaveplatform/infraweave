@@ -207,7 +207,7 @@ internal/
 ├── entity/                                  RING 1: pure rules, no I/O
 │   ├── id/                                  ULID, slug, slug-from-name (stackReslug)  (P2)
 │   ├── feature/                             decision 0021's model as pure data and functions  (P3b)
-│   │   ├── catalogue_gen.go catalogue.go    every capability, option and limit; generated from docs/data/features.json
+│   │   ├── catalogue.gen.go catalogue.go    every capability, option and limit; generated from docs/data/features.json
 │   │   ├── tier.go grant.go                 Tier{Name, Features, Limits} as data, not a ladder; Grant
 │   │   ├── entitle.go                       Entitlement(tier, grants, disabled): requirements closed,
 │   │   │                                    limit values from a grant, else the tier
@@ -901,7 +901,7 @@ test in `adapter/postgres/storetest` asserts the filter for each listing.
 
 ```text
 internal/entity/feature/
-  catalogue_gen.go   every capability, option and limit: name, kind, requirements, seeded tiers, the
+  catalogue.gen.go   every capability, option and limit: name, kind, requirements, seeded tiers, the
                      BillingTierFeature values it covers for parity (decision 0021); generated from
                      docs/data/features.json by make generate
   entitle.go         Entitlement(tier, grants, disabled) → features and limit values; pure, table-tested
@@ -1493,7 +1493,7 @@ whose failure paths need recorded fixtures.
 6. `internal/entity/iac/vendors.go`: register the kind.
 7. `internal/adapter/agent/toolchain/pulumi.go` and its test: binary resolution, or a no-op when the runner image carries it.
 8. `api/src/deploy/components-common.yaml`: the Pulumi vendor input, with `x-infraweave-feature: vendor-pulumi` on the `StackVendor` value; `make generate`.
-9. `docs/data/features.json`: the `vendor-pulumi` option, in every seeded tier; `make generate` rewrites `internal/entity/feature/catalogue_gen.go`.
+9. `docs/data/features.json`: the `vendor-pulumi` option, in every seeded tier; `make generate` rewrites `internal/entity/feature/catalogue.gen.go`.
 10. `internal/adapter/rest/presenter/stack.go`: map the new vendor input to `stack.Settings`.
 11. `test/acceptance/features/vendor_pulumi.feature` and its steps.
 
@@ -1512,7 +1512,7 @@ edited, two of them in rings other than ring 1.
 6. `internal/usecase/stack/input.go`: `CreateInput` gains the owning deployment.
 7. `internal/adapter/postgres/templates.go`, `migrations/NNNNN_templates.sql` (the templates stream of decision 0005), `storetest/templates.go`; `surfaces.go` gains the template `SurfaceContext` gateway.
 8. `api/src/deploy/paths-templates.yaml`, each operation tagged `x-infraweave-feature: templates`; `make generate`.
-9. `docs/data/features.json`, and `internal/entity/feature/catalogue_gen.go` from it: `templates` and `blueprints` at Business.
+9. `docs/data/features.json`, and `internal/entity/feature/catalogue.gen.go` from it: `templates` and `blueprints` at Business.
 10. `internal/adapter/rest/controller/template/*.go` and `presenter/template.go`, with `allowedActions` per template and deployment.
 11. `internal/adapter/rest/server.go`: embed the controller.
 12. `internal/app/usecases.go controllers.go surfaces.go`: wire three interactors and the template surface; `StackCreator` is filled with `stack.Interactor`.

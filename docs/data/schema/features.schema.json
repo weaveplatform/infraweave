@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "features.schema.json",
   "title": "The feature catalogue",
-  "description": "Every feature of infraweave, decision 0021's catalogue and its one source: make generate writes internal/features/catalogue_gen.go from it. A capability gates a set of operations, an option one value of a field, a limit a quantity, and the switch turns entitlement enforcement on for the installation. A feature is in every seeded tier from lowestTier up; a limit's tier with no value has no limit. The id is the name features.disabled, the tier object and grants carry.",
+  "description": "Every feature of infraweave, decision 0021's catalogue and its one source: make generate writes internal/features/catalogue.gen.go from it. A capability gates a set of operations, an option one value of a field, a limit a quantity, and the switch turns entitlement enforcement on for the installation. A feature is in every seeded tier from lowestTier up; a limit's tier with no value has no limit. The id is the name features.disabled, the tier object and grants carry.",
   "x-id-pattern": "[a-z][a-z0-9]*(-[a-z0-9]+)*",
   "type": "object",
   "required": ["$schema", "records"],

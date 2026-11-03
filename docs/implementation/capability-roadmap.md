@@ -33,7 +33,7 @@ the features against the seeded tiers and counts the rows each phase owns.
   its record in features.json. A feature is a capability (a set of
   operations), an option (one value of a field) or a limit (a quantity).
   The register is the catalogue's one source: `make generate` writes
-  `internal/features/catalogue_gen.go` from it, `make verify-generate`
+  `internal/features/catalogue.gen.go` from it, `make verify-generate`
   fails when that file is stale, and `TestUnitFeatureCatalogue` fails when
   an operation, a gated property or a live `BillingTierFeature` value has
   no entry.

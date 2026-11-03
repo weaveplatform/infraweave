@@ -37,7 +37,7 @@ are the records that can move.
   every such interface.
 - **Seeded tiers, billing off by default.** Every feature is an entry of one
   catalogue, [docs/data/features.json](../data/features.json), from which
-  `make generate` writes `internal/features/catalogue_gen.go`: a capability,
+  `make generate` writes `internal/features/catalogue.gen.go`: a capability,
   an option or a limit. Five tiers (Free, Starter, Starter+, Business and Enterprise) are
   seeded from report 26, and the operator can add its own. Billing is off
   by default, so every organization behaves as Enterprise: `tier` answers the
@@ -843,7 +843,7 @@ use.
    `accountToggleDeletionMark`, `accountCanBeDeleted`,
    `accountCanBeDeletedAt`, `accountConfirmDelete`. Feature:
    `account_settings.feature`.
-4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue_gen.go`, which `make generate`
+4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.gen.go`, which `make generate`
    writes from [docs/data/features.json](../data/features.json), the
    catalogue's one source, with the `BillingTierFeature` values each feature
    covers from the `tier-feature:` records of
@@ -966,7 +966,7 @@ Spaces and the evaluator decide every route from here on: deny by default,
    `accountToggleAllowNonRootAdminSpaceCreation`). Feature:
    `authz_spaces.feature`. Records DV-111.
 2. The action catalogue: `specref` generates
-   `internal/access/api/actions_gen.go` from the 150-value `Action` enum and
+   `internal/access/api/actions.gen.go` from the 150-value `Action` enum and
    `internal/access/api/actions.yaml` gives each its subject, fallback and
    flags; `make verify-reference` fails on a mismatch. The five system roles
    are seeded per account.

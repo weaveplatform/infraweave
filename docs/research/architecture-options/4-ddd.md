@@ -372,7 +372,7 @@ internal/
 │   │                                        Limits.Check(account, name, n); Catalogue.FeatureOf(operationID);
 │   │                                        events.go (EntitlementChanged)
 │   ├── domain/
-│   │   ├── catalogue/                       Catalogue: capabilities, options and limits from catalogue_gen.go,
+│   │   ├── catalogue/                       Catalogue: capabilities, options and limits from catalogue.gen.go,
 │   │   │                                    requirements, coverage of every operation and gated field
 │   │   ├── tier/                            Tier aggregate: a name, a feature set and limit values; data,
 │   │   │                                    not a ladder; Enterprise fixed and holding everything
@@ -390,7 +390,7 @@ internal/
 │   │   │                                    against the account limit
 │   │   └── seed/                            the five seeded tiers, installed once
 │   ├── infrastructure/
-│   │   ├── catalogue_gen.go                 decision 0021's catalogue, generated from docs/data/features.json
+│   │   ├── catalogue.gen.go                 decision 0021's catalogue, generated from docs/data/features.json
 │   │   └── persistence/{postgres,memory,persistencetest}/   tiers, tier_features, tier_limits,
 │   │                                        organization_entitlements, grants, account_limits, billing
 │   └── interfaces/
@@ -1769,7 +1769,7 @@ vocabulary.
 12. `internal/stackconfig/api/stacks.go` and `application/stacks/`: `CreateFromTemplate`, and the stack's nullable deployment reference.
 13. `internal/app/contexts.go`, `subscriptions.go`, `strict.go`: construct, subscribe,
     embed; hand the template surface to `expressions`.
-14. `docs/data/features.json`, and `internal/features/infrastructure/catalogue_gen.go` from it: the `templates` and `blueprints` capabilities at Business, so every new operation has its feature.
+14. `docs/data/features.json`, and `internal/features/infrastructure/catalogue.gen.go` from it: the `templates` and `blueprints` capabilities at Business, so every new operation has its feature.
 15. `.golangci.yml`: two new rules (`templates-boundary`, `templates-domain`) and `internal/templates/api` added to the seventeen other boundary rules.
 16. `test/acceptance/features/templates_deployments.feature` and steps.
 

@@ -99,30 +99,34 @@ changed. A second reader, who made none of the changes, cross-read the
 records, and each contradiction it found is fixed in the record that does
 not own the fact or listed as left open. The counting rule is DES-07's.
 
-## Totals
+## Findings
 
-| Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
-|---|---|---|---|---|---|---|---|---|
-| RES-02 | [01](01-spacelift-landscape.md), [03](03-deploy-core-api-inventory.md), [04](04-platform-api-inventory.md), [05](05-terraform-provider.md), [06](06-spacectl-and-clients.md) | about 320, plus every table row by script | 34 | 13 | 20 | 1 | 5 | 73 |
-| RES-03 | [07](07-stack-model.md), [08](08-run-lifecycle.md), [09](09-policies.md), [10](10-workers-and-execution.md), [13](13-configuration.md), [16](16-state-management.md) | 459 | 27 | 24 | 29 | 3 | 4 | 87 |
-| RES-04 | [11](11-vcs-integrations.md), [12](12-cloud-integrations-and-oidc.md), [14](14-spaces-rbac-and-identity.md), [19](19-events-notifications-audit.md) | about 400, plus about 500 table rows by script | 14 | 19 | 18 | 0 | 7 | 58 |
-| RES-05 | [15](15-module-and-provider-registry.md), [17](17-blueprints-and-templates.md), [18](18-scheduling-drift-dependencies.md), [20](20-vendors.md), [21](21-resources-scans-search.md), [25](25-other-integrations.md) | about 500, plus every schema table row by script | 21 | 16 | 25 | 2 | 2 | 66 |
-| RES-06 | [22](22-intelligence.md), [23](23-flows.md), [24](24-self-hosted-reference.md) | about 255, plus every link and generated row by script | 8 | 2 | 10 | 1 | 1 | 22 |
-| RES-07 | [26](26-scope-and-tiers.md), [27](27-reference-materials.md), [28](28-data-model.md) | about 175, plus every table row, link and typed field by script | 18 | 4 | 2 | 0 | 0 | 24 |
-| RES-08 | decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md) | about 765, plus every link, slug and shared name by script | 34 | 9 | 12 | 0 | 3 | 58 |
-| ARC-01 | [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md) | about 450, plus every heading, depguard block, matrix cell and mapping row by script | 61 | 5 | 13 | 0 | 3 | 82 |
-| IMP-01 | the [implementation documents](../../implementation/plan.md) and option 5 | about 400, plus every operationId, roadmap row and DV row by script | 28 | 3 | 9 | 0 | 2 | 42 |
-| DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script | 1 | 0 | 6 | 0 | 0 | 7 |
-| DES-07 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the [implementation documents](../../implementation/plan.md) | about 250, plus the phase graph, every roadmap row and every changed file's dashes by script | 34 | 0 | 17 | 0 | 4 | 55 |
-| DES-09 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), [30](30-open-questions.md) and the served deploy bundle | about 300, plus every served name and every reference Spacelift and root identifier by script | 22 | 0 | 8 | 0 | 2 | 32 |
-| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,310 | **302** | **95** | **169** | **7** | **33** | **606** |
+Every finding is a record of
+[review-findings.json](../../data/review-findings.json): its ID is the pass
+and the finding's number in that pass, such as `RES-02.06-16`, and it
+carries the severity label above, the finding, what the pass changed and a
+status. A `folded` finding names the phrases that show its change in the
+tree today, and the docs check fails when one of them disappears or when a
+removed error comes back; a `superseded` one says what later rewrite
+replaced the passage; an `open` one names the question of
+[30](30-open-questions.md) that still holds it. The counts by pass, label
+and status are queries of the register.
 
-The counts are of the findings tables' rows. Two reviews give summary
-counts that differ from their own rows. In RES-02, the 05 summary gives 15
-*wrong* where the rows give 12, and the 06 summary gives 15 *wrong*, 5
-*unsupported* and 6 *missing* where the rows give 14, 4 and 7. In RES-06,
-the summary gives 10 *wrong* and 8 *missing* where the rows give 8 and 10.
-The tables below follow the rows.
+| Pass | Reports | Claims checked by hand |
+|---|---|---|
+| RES-02 | [01](01-spacelift-landscape.md), [03](03-deploy-core-api-inventory.md), [04](04-platform-api-inventory.md), [05](05-terraform-provider.md), [06](06-spacectl-and-clients.md) | about 320, plus every table row by script |
+| RES-03 | [07](07-stack-model.md), [08](08-run-lifecycle.md), [09](09-policies.md), [10](10-workers-and-execution.md), [13](13-configuration.md), [16](16-state-management.md) | 459 |
+| RES-04 | [11](11-vcs-integrations.md), [12](12-cloud-integrations-and-oidc.md), [14](14-spaces-rbac-and-identity.md), [19](19-events-notifications-audit.md) | about 400, plus about 500 table rows by script |
+| RES-05 | [15](15-module-and-provider-registry.md), [17](17-blueprints-and-templates.md), [18](18-scheduling-drift-dependencies.md), [20](20-vendors.md), [21](21-resources-scans-search.md), [25](25-other-integrations.md) | about 500, plus every schema table row by script |
+| RES-06 | [22](22-intelligence.md), [23](23-flows.md), [24](24-self-hosted-reference.md) | about 255, plus every link and generated row by script |
+| RES-07 | [26](26-scope-and-tiers.md), [27](27-reference-materials.md), [28](28-data-model.md) | about 175, plus every table row, link and typed field by script |
+| RES-08 | decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md) | about 765, plus every link, slug and shared name by script |
+| ARC-01 | [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md) | about 450, plus every heading, depguard block, matrix cell and mapping row by script |
+| IMP-01 | the [implementation documents](../../implementation/plan.md) and option 5 | about 400, plus every operationId, roadmap row and DV row by script |
+| DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script |
+| DES-07 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the [implementation documents](../../implementation/plan.md) | about 250, plus the phase graph, every roadmap row and every changed file's dashes by script |
+| DES-09 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), [30](30-open-questions.md) and the served deploy bundle | about 300, plus every served name and every reference Spacelift and root identifier by script |
+| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,310 |
 
 ## RES-02: platform API inventories, provider and clients
 
@@ -146,95 +150,10 @@ The tables below follow the rows.
   section 4 routes and 233 links.
 - **Copy check:** two 12-word runs in 03, both rewritten; none elsewhere.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [01](01-spacelift-landscape.md) | 5 | 4 | 5 | 0 | 1 | 15 |
-| [03](03-deploy-core-api-inventory.md) | 1 | 1 | 1 | 1 | 1 | 5 |
-| [03](03-deploy-core-api-inventory.md) and [04](04-platform-api-inventory.md) | 2 | 1 | 1 | 0 | 0 | 4 |
-| [04](04-platform-api-inventory.md) | 0 | 0 | 1 | 0 | 0 | 1 |
-| [05](05-terraform-provider.md) | 12 | 3 | 5 | 0 | 1 | 21 |
-| [06](06-spacectl-and-clients.md) | 14 | 4 | 7 | 0 | 2 | 27 |
-| **All** | **34** | **13** | **20** | **1** | **5** | **73** |
-
 ### Findings
 
-| # | Report | Finding | Change |
-|---|---|---|---|
-| 1 | 01 | *wrong*: section 5 promised a repository table with a "Cloned at" column but held a copy of 04's Repos API tables (12 operation rows), so the repository inventory was absent | Replaced with a 93-row table generated from the GitHub API listing: licence, archived status, pin and purpose (the GitHub description, or a README summary) |
-| 2 | 01 | *wrong*: schema counts included the introspection meta-types (576 objects, 92 enums) | Now 570 objects, `Query` and `Mutation` included, and 90 enums, with the exclusion stated |
-| 3 | 01 | *unsupported*: the claim that the web UI, spacectl and the Terraform and Pulumi providers all use the one GraphQL endpoint cited a page that names only the provider and spacectl | Restated: the docs cover the endpoint and that subset; the Pulumi provider bridges terraform-provider-spacelift v1.9.3 (`provider/go.mod`); the web UI is inferred |
-| 4 | 01 | *wrong*: said two Bruno examples are dropped; `coverage.md` lists eight, six more being VCS and blob storage integration updates | Corrected, with the second cause |
-| 5 | 01 | *wrong*: the browser-login link `browserauth.go#L206-L250` ran past the file's 248 lines and did not show the `/cli_login?key=&port=` URL | Linked L113-L120 for the URL and L206-L246 for the token handling |
-| 6 | 01 | *missing*: the in-run token row lacked the documented limits: three hours, only in `PLANNING`, `APPLYING` and `PERFORMING`, and no access to state, runs, tasks or logs | Added from the docs |
-| 7 | 01 | *missing*: Spacelift tokens last about 10 hours, API keys may carry an expiry, and `validUntil` is a Unix timestamp | Added from the docs and schema |
-| 8 | 01 | *missing*: the self-hosted removals lacked the end of CloudFormation installs after v7 (v8.0.0 ships through a container registry) and the 2027-01-01 MQTT switch date | Added |
-| 9 | 01 | *unsupported*: said OIDC federation replaces the Azure and GCP integrations on self-hosted; the page only recommends it | Reworded |
-| 10 | 01 | *missing*: did not say that `spacelift-intent` and `spacelift-operator` are archived | Added, with an archived column in the table |
-| 11 | 01 | *unsupported*: the unauthenticated demo introspection endpoint had no source | Cited the API page's GraphDoc link and `internal/specref/fetch.go`; that the demo runs current SaaS is inferred |
-| 12 | 01 | *style*: said the changelog runs back to v0.0.7; its oldest entry is the change from v0.0.7 to v0.0.8 | Reworded |
-| 13 | 01 | *wrong*: "the 40 cloned" repositories; 50 clones exist, and report 23 pins the 10 `flows-app-*` clones, not `repos.tsv` | Reworded |
-| 14 | 03, 04 | *unsupported*: 131 RBAC cells (76 in 03, 55 in 04) paired operations with actions under schema and docs markers, which reads as documented; the pairing is a name inference | Every cell marks the pairing as inferred by name and the fallback as schema and docs; 03 section 1.2 says what the inference covers |
-| 15 | 03 | *wrong*: the `stackScheduledDeleteUpdate` cell cited the docs for `STACK_SCHEDULED_DELETE_UPDATE`, which the docs tables omit | Now cites the schema and notes the omission |
-| 16 | 03 | *missing*: section 1.2 named only the context, policy and cloud actions as disabled; the schema disables 18, `STACK_ROLE_BINDING_*` and `STACK_WEBHOOK_*` included | All 18 listed |
-| 17 | 03 | *unsupported*: section 1.3 implied that a docs page's plan gate applies to every operation under the tag | States that the plan belongs to the product feature and the operation's tag is inferred |
-| 18 | 03, 04 | *wrong*: `CUSTOM_SSO_SAML` (Enterprise) was attached to `oidcCreate`, `oidcUpdate`, `oidcDelete` and `oidcSettings`, and 04 section 2.7 put OIDC SSO on Enterprise; the SSO page asks only for a paid account, as report 14 says | Fixed the 03 section 10 row, four rows in 04 and the 2.7 prose; the gating feature is C14 |
-| 19 | 03 | *copied*: the `QUEUED` `RunState` and `low` `RunPriorityPreset` descriptions shared 12 or more words with the docs, because the schema text repeats the docs | Paraphrased, with a note |
-| 20 | 03, 04 | *wrong*: six Purpose cells only restated the field name | Rewritten from argument and return types |
-| 21 | 04 | *missing*: the `oauthUser` row gave only Bruno's note that the browser flow cannot complete with an API key, while the docs and spacectl use it to exchange a GitHub token | Added the docs fact, noting that the docs win |
-| 22 | 03, 04 | *missing*: 102 Purpose cells are Bruno request names (all Intent rows, role bindings, templates and managed users): correct but saying little | Not changed: no local source describes most of them; recorded as C16 |
-| 23 | 03 | *style*: section 1.1 credits the tables to generators in the research scratchpad, which is not committed | Reworded: reports describe their method and name no uncommitted scripts (PD-12) |
-| 24 | 01 | *unsupported*: that errors arrive at HTTP 200 was inferred from clients matching message text, but spacectl matches the text of non-200 bodies too | Now open (C2); the inferred list updated |
-| 25 | 01 | *missing*: did not say that the Pulumi provider is deprecated and goes read-only on 2026-12-10 | Added from its README |
-| 05-1 | 05 | *wrong*: six line anchors ran one line past the end of the file | Ranges end at the last line |
-| 05-2 | 05 | *wrong*: four anchors missed the cited code (`resource_user.go`, `resource_idp_group_mapping.go`, `resource_repo_file.go`, `resource_role_attachment.go`) | Re-anchored |
-| 05-3 | 05 | *wrong*: the `runTrigger` argument is `commitSha`, not `sha` | Corrected |
-| 05-4 | 05 | *wrong*: `spacelift_role_actions` queries `__schema` and keeps the `Action` enum; it does not use a nested `__type` | Rewritten, citing `internal/introspection.go` |
-| 05-5 | 05 | *wrong*: `spacelift_scheduled_delete_stack` has only `at` (required) and `delete_resources` (default true), with no `every` or `timezone` | Bullet split |
-| 05-6 | 05 | *missing*: `spacelift_webhook` import also accepts `module/$MODULE_ID/$WEBHOOK_ID` | Added |
-| 05-7 | 05 | *missing*: five VCS integration data sources take an optional `id` | Added |
-| 05-8 | 05 | *missing*: seven data sources showed no lookup keys or filter blocks | Added |
-| 05-9 | 05 | *missing*: the deprecated `policy` blocks on `spacelift_idp_group_mapping` and `spacelift_user` | Two rows added |
-| 05-10 | 05 | *unsupported*: the configuration element checksum was marked inferred, though the schema has `ConfigElement.checksum` | Now cites the schema; the hex encoding stays inferred |
-| 05-11 | 05 | *unsupported*: that the token carries its API base URL was marked inferred; the docs state it | Now cites the docs |
-| 05-12 | 05 | *missing*: the in-run token's documented limits | Added |
-| 05-13 | 05 | *unsupported*: the schema-loading claim cited the snapshot rather than `internal/specref/terraform.go` | Re-cited |
-| 05-14 | 05 | *wrong*: the matcher's `_id` candidate order was wrong, and its input object order was missing | Corrected, citing `enrich.go` |
-| 05-15 | 05 | *wrong*: AWS trust retries are five attempts with four 10-second sleeps | Reworded |
-| 05-16 | 05 | *wrong*: the stack destructor's create is not a no-op: it reads the stack and drops itself if the stack is gone | Reworded |
-| 05-17 | 05 | *wrong*: wait semantics: the resource polls until `finished` or `unconfirmed`, and the final state, lower-cased, must be in `continue_on_state` | Reworded |
-| 05-18 | 05 | *wrong*: template version validation runs when the planned state is `PUBLISHED` and `template` changes | Reworded |
-| 05-19 | 05 | *wrong*: the one-minute timeout applies to each HTTP attempt | Reworded |
-| 05-20 | 05 | *wrong*: the `unauthorized` hint replaces the GraphQL error formatting rather than adding to it | Reworded |
-| 05-21 | 05 | *style*: section 7 was in the future tense | Present tense |
-| 06-1 | 06 | *wrong*: 29 of the 37 MCP "Defined at" anchors pointed into the previous tool's body | Repointed to each `register…Tool` function |
-| 06-2 | 06 | *style*: three link labels disagreed with their URL lines | Fixed |
-| 06-3 | 06 | *wrong*: the `spacelift-io/graphql` link used a tag-object SHA (404) and the wrong range | Commit `87ff6fa23f4f`, L103 to L135 |
-| 06-4 | 06 | *wrong*: client headers were said to go on every request; the `Do` path and the key and OAuth exchanges do not send them | Qualified |
-| 06-5 | 06 | *missing*: presigned uploads and downloads use Go's default client, without the TLS and proxy settings, and the 60-second timeout was unstated | Added |
-| 06-6 | 06 | *missing*: an unknown instance type offers only `all` variants, and the schema calls `debugInfo` invalid on SaaS | Added (C20) |
-| 06-7 | 06 | *unsupported*: the API-token expiry behaviour was imprecise | Rewritten from source |
-| 06-8 | 06 | *missing*: profile file permissions (`0700`, `0600`); the reserved-alias link had no anchor | Added |
-| 06-9 | 06 | *missing*: the browser-login AES details (IV, PKCS#7, base64url) | Added |
-| 06-10 | 06 | *wrong*: the `unauthorized` check matches any error text, non-200 bodies included | Section 2.4 rewritten; it also changed 01 (finding 24) |
-| 06-11 | 06 | *wrong*: `runStack` returns a GraphQL `not found` error, not a null entity | Rewritten with exact lines (C5) |
-| 06-12 | 06 | *unsupported*: "no published rate limits" carried no marker, and "no retry" is wrong because proxy authentication retries once | Inferred marker added; the retry stated |
-| 06-13 | 06 | *wrong*: the stack prompt and `SPACECTL_SKIP_STACK_PROMPT` semantics, the viewer check and the `local-preview` paging limit | Section 2.5 fixed |
-| 06-14 | 06 | *wrong*: `run-external-dependency --status` also accepts `skipped` | Fixed |
-| 06-15 | 06 | *missing*: `workerpool watch` also sends `publicWorkerPool` or `workerPool.searchSchedulableRuns` | Added; operations from 73 to 74 |
-| 06-16 | 06 | *wrong*: `mcp server` was marked as running the viewer check | Mark removed |
-| 06-17 | 06 | *wrong*: `RegisterPlatformV2` is used from 3.0.0, not only on `latest` | Fixed in four places |
-| 06-18 | 06 | *wrong*: section 4's "used by" entries for `runConfirm`, `stack`, `runStack` and `viewer` | Fixed |
-| 06-19 | 06 | *wrong*: the MCP trigger, confirm and discard tools each send only their own mutation | Fixed |
-| 06-20 | 06 | *wrong*: logs poll only with `--tail`; otherwise they make one pass | Section 5.1 fixed |
-| 06-21 | 06 | *style*: "Self-Hosted 2.5.0+ variant" wording for the upload headers | Reworded |
-| 06-22 | 06 | *missing*: the Pulumi provider is deprecated and goes read-only on 2026-12-10 | Added, also in 01 |
-| 06-23 | 06 | *unsupported*: the drafter's `pulumi_cov.py` was cited as evidence | Replaced with a schema comparison |
-| 06-24 | 06 | *wrong*: the operator's `Run` CRD listed `run` as a root field; the "archive date" was the last commit date; past tense | Fixed |
-| 06-25 | 06 | *wrong*: `contextCreateV2` was called an old surface; the deprecated calls are `policyCreate` and `policyUpdate` | Fixed from the schema |
-| 06-26 | 06 | *unsupported*: Backstage "latest release 0.3.3" was cited to a `<VERSION>` placeholder | Re-sourced to the GitHub releases API |
-| 06-27 | 06 | *missing*: the method did not say that interface dispatch is not followed | Noted |
+The pass's findings are the `RES-02.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -284,109 +203,10 @@ environment page; 16 54. The checker opened 101 GitHub line links and
 fetched the policy contract (113,924 bytes). The copy check found three
 12-word runs, in 07, 08 and 10, all rewritten.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [07](07-stack-model.md) | 6 | 6 | 4 | 1 | 0 | 17 |
-| [08](08-run-lifecycle.md) | 1 | 6 | 6 | 1 | 2 | 16 |
-| [09](09-policies.md) | 5 | 4 | 5 | 0 | 2 | 16 |
-| [10](10-workers-and-execution.md) | 7 | 4 | 4 | 1 | 0 | 16 |
-| [13](13-configuration.md) | 3 | 3 | 4 | 0 | 0 | 10 |
-| [16](16-state-management.md) | 5 | 1 | 6 | 0 | 0 | 12 |
-| **All** | **27** | **24** | **29** | **3** | **4** | **87** |
-
 ### Findings
 
-| # | Report | Finding | Change |
-|---|---|---|---|
-| 08-1 | 08 | *copied*: the section 4 row on order within a stack shared a 12-word run with the run concepts page | Rewritten |
-| 08-2 | 08 | *wrong*: sections 1 and 6 said `spacelift_run` creates runs through `runResourceCreate`; at `c72b9bd2f3c3` the resource calls `runTrigger(runType:)` and nothing in the provider calls `runResourceCreate` | Both corrected with line links; `runResourceCreate` kept as a schema-only stub |
-| 08-3 | 08 | *unsupported*: T5, T24 and T29 gave an approval `reject` as `FAILED` only, while the approval page's walkthrough says Reject cancels the run | Both statements recorded; the target is open (C40) |
-| 08-4 | 08 | *unsupported*: T5 put drift runs on a drift-disabled pool on the `QUEUED` to `FAILED` edge; the drift page says such runs are created failed | Moved to the implied transitions; open (C43) |
-| 08-5 | 08 | *unsupported*: T13 tied `skipInitialization` to the `INITIALIZING` to `PERFORMING` edge with no source showing that such a task enters `INITIALIZING` | Open (C42); anchor corrected to `task#skipping-initialization` |
-| 08-6 | 08 | *style*: T16's run types ("all but `TASK` in `PERFORMING`") made no sense for an edge out of `INITIALIZING` | Reworded |
-| 08-7 | 08 | *missing*: `DESTROYING` reached by `DESTROY` was marked inferred, though `StackState.DESTROYING` is schema evidence | Raised to the schema |
-| 08-8 | 08 | *missing*: the `TESTING` creation route had no URL, and negative test cases were not covered | Link added; `negative: true` and `Run.expectFailure` recorded; the final state is open (C45) |
-| 08-9 | 08 | *missing*: no failed-handover edge for `PREPARING_REPLAN`, though T11 and T36 cover the other preparing states | Added to the implied transitions; open (C44) |
-| 08-10 | 08 | *unsupported*: "excess drift runs are skipped" left unclear whether that means the `SKIPPED` state | Clarified; open (C43) |
-| 08-11 | 08 | *missing*: the trigger policy priority rules lacked the deferral rule and the failure on an invalid value | Added |
-| 08-12 | 08 | *unsupported*: `runCancel` being valid from `QUEUED` and `READY` was given as schema fact; the schema says only that the run has not started | Marked inferred |
-| 08-13 | 08 | *unsupported*: `runPromote` from a finished `PROPOSED` run had no source; the docs' prerequisites are a newer commit, promotion enabled and the permission | Replaced with the documented prerequisites |
-| 08-14 | 08 | *missing*: the spacectl command list lacked `priority`, `prioritize` and `deprioritize` | Added |
-| 08-15 | 08 | *missing*: terminal states were justified only by a table column | A paragraph cites the docs for four states, the table for `CANCELED` and `SKIPPED`, and `RunStateTransition.terminal` |
-| 08-16 | 08 | *style*: `PENDING` being unused was attributed to the schema without saying it is the deprecation reason | Cited with the changelog entry of 2026-10-20 as well |
-| 07-1 | 07 | *wrong*: `StackInput.terraformVersion` was mapped to `terraform_version`; the provider never sends it, and `terraform_version` writes `vendorConfig.terraform.version` | Attribute set to none with the source line; added to the typing traps |
-| 07-2 | 07 | *copied*: a hook bullet shared a 12-word run with the stack settings page | Rewritten |
-| 07-3 | 07 | *wrong*: the Kubernetes `namespace` "may be empty"; the provider rejects an explicit `""` and sends `""` only when the attribute is omitted | Restated with `#L535` (C32) |
-| 07-4 | 07 | *wrong*: sensitive outputs were said to need the worker-pool variable everywhere; the public pool enables them, and only private pools need `SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED=true` | Rewritten |
-| 07-5 | 07 | *unsupported*: `#L48`, the start of `CustomizeDiff`, was cited for four different claims | Re-pointed to four specific lines |
-| 07-6 | 07 | *unsupported*: `#L869`, `#L1072` and `#L1472` pointed at function starts, not the checks | Re-pointed; the import refusal text added |
-| 07-7 | 07 | *unsupported*: the workflow-tool defaults were given as provider defaults; the attributes are optional and computed with no default | Now described as applied by the server, citing the attribute lines |
-| 07-8 | 07 | *unsupported*: "the Pulumi version comes from the runner image" cited a vendor page that does not say it | Re-cited to stack settings; language SDK selection added |
-| 07-9 | 07 | *wrong*: the `stackConfigAdd` and `stackConfigDelete` return types were merged and their argument types missing | `ConfigElement!` and `ConfigElement`, with `ID!` arguments |
-| 07-10 | 07 | *unsupported*: the `autoattach:*` scope blended two statements (contexts: own space and children; policies: inheriting spaces) | Split, each cited |
-| 07-11 | 07 | *wrong*: the stack list tabs omitted Failed and Finished and mislabelled the in-progress tab | All five tabs and the unlisted states recorded |
-| 07-12 | 07 | *missing*: OpenTofu `concise` covers plan, apply and destroy in the docs but plan, apply and refresh in the schema; the conflict was unrecorded | Both recorded (C31) |
-| 07-13 | 07 | *missing*: the RBAC levels of stack mutations | Added: Admin for create, update, delete and reslug; Writer for setting and syncing the tracked commit |
-| 07-14 | 07 | *missing*: the docs' per-vendor destroy commands for a task run before deletion | Added to 5.3 |
-| 07-15 | 07 | *missing*: a Kubernetes run fails when pruning leaves no YAML; the plugin label `*` attaches to every stack in the space | Added |
-| 07-16 | 07 | *unsupported*: the Terragrunt `terragruntVersion` default was uncited | Terragrunt reference page cited |
-| 07-17 | 07 | *wrong*: the Sources named an unused changelog entry (2026-08-18) and omitted three that the changelog markers rely on (2025-11-10, 2026-06-10, 2026-07-16) | Corrected |
-| 09-1 | 09 | *wrong*: 4.2 said the approval sample shows "the first four" `runtime_config` fields without naming them; they are `before_init`, `project_root`, `runner_image` and `terraform_version` | Fields named |
-| 09-2 | 09 | *missing*: the push input's `module` lacked the contract field `current_version` | Added (`0.0.0` before the first version) |
-| 09-3 | 09 | *missing*: trigger `stacks[]` items were said to match `stack`; the contract adds `queued_runs` | Added (C55) |
-| 09-4 | 09 | *missing*: push `commits[]` items carry their own `affected_files`, oldest first | Added |
-| 09-5 | 09 | *unsupported*: that notification input holds exactly one event object is stated by neither the docs nor the contract | Reworded |
-| 09-6 | 09 | *wrong*: said the provider rejects a login policy attachment; the provider has no such check, and the API refuses it | Reworded |
-| 09-7 | 09 | *wrong*: the default push policy was said to propose only on other branches; it proposes for every affected push or pull request, tracked branch included | Fixed |
-| 09-8 | 09 | *unsupported*: `policyDetach(id)` taking the attachment ID was marked as schema, but the argument is undescribed | Re-cited to the provider's `resource_policy_attachment.go#L162-L169` |
-| 09-9 | 09 | *unsupported*: `createdAt` and `updatedAt` were given as Unix seconds; the schema says only Unix timestamp | Unit marked as unstated (C56) |
-| 09-10 | 09 | *wrong*: `Policy.hasAttachedStacks` was said to count both kinds; it is a boolean | Reworded |
-| 09-11 | 09 | *style*: the CI exclusion reason was marked inferred, but the workflow comment at L37 states it | Marker removed; link widened |
-| 09-12 | 09 | *wrong*: `continuous-integration.yaml#L19-L51` missed the `opa test` step | Widened to L16-L58 |
-| 09-13 | 09 | *missing*: the Ansible plan input `ansible.dark` (unreachable hosts), with its page uncited | Added with its source |
-| 09-14 | 09 | *missing*: the migration table omitted that `input.run.creator_session` is new for initialization policies | Added |
-| 09-15 | 09 | *unsupported*: `deny_admin` keeping non-admin access comes from the contract, not the login page | Contract cited |
-| 09-16 | 09 | *style*: "was added on 2026-09-04" narrated history | Present tense |
-| 10-1 | 10 | *wrong*: the EC2 lifecycle manager was said to undrain a busy worker; it keeps the worker drained and heartbeats the hook, and only the autoscaler undrains | Split; the real retry schedule added |
-| 10-2 | 10 | *wrong*: `AUTOSCALING_SCALE_DOWN_DELAY_USE_IDLE_TIME` was called a declared flag; it switches the query to `availableAt`, and the default counts from `createdAt` | Rewritten |
-| 10-3 | 10 | *wrong*: the meaning of `ro_` and `wo_` was called undocumented and guessed as a run-type split; the environment page defines it by stage, as 13 says | The documented rule cited; the whitelist and mount behaviour left open (C66) |
-| 10-4 | 10 | *wrong*: the EC2 module has no `secure_env_vars` at `b83474a27024`; secrets go in `env_vars` with `sensitive = true` or in `secret_env_var_arns` | Fixed |
-| 10-5 | 10 | *wrong*: the module was said to refuse a `configuration` that exports the token; `secure_strings.tf` L40-L46 only warns | Rewritten |
-| 10-6 | 10 | *unsupported*: the order between the account default and launcher default runner images was marked inferred; the runtime configuration page states it | Raised to the docs |
-| 10-7 | 10 | *unsupported*: the MQTT server URL coming from the token had no support in the docs | Cited to `broker.endpoint` in `saas.tftpl` |
-| 10-8 | 10 | *missing*: self-hosted transport facts: long-poll from v6.4.0, MQTT deprecated in v7.1.0 with no removal release named, 2027-03-30 on the self-hosted page, changelog 2026-07-20 | Added (C70) |
-| 10-9 | 10 | *missing*: the Kubernetes upgrade rule: a stored `commsProtocol` is kept, and with none stored the pool switches to `poll` | Added |
-| 10-10 | 10 | *missing*: the CEL rule requiring `maxRuns` when `disabled` is false | Both CRD rows fixed |
-| 10-11 | 10 | *wrong*: the `gcp` and FIPS runner targets build on other bases, not `alpine:3.24` | Fixed |
-| 10-12 | 10 | *wrong*: `intentProjectDetachWorkerPool` takes only `intentProject` | Fixed |
-| 10-13 | 10 | *missing*: the autoscaler's sanity check also requires a desired capacity above the group minimum (`auto_scaler.go` L94) | Added |
-| 10-14 | 10 | *unsupported*: the Azure and GCP metadata keys were cited to `aws_controller.go` | The right files and lines cited |
-| 10-15 | 10 | *unsupported*: several anchors missed their content (`state.go`, `autoscaler.tf`, `aws.pkr.hcl`, `statefulset.yaml`, the EC2 variables) | Widened or split |
-| 10-16 | 10 | *copied*: the IoT topic-rule SQL matched the self-hosted message queues page; the same SQL is MIT code in `iot.tf` L55 | Restated in prose, citing the source first |
-| 13-1 | 13 | *wrong*: every environment variable and mounted file attribute was said to be `ForceNew`; `value_wo` and `content_wo` change through their `*_wo_version` | Narrowed and cited |
-| 13-2 | 13 | *unsupported*: interpolation was said to work across variables from every source; the page says variables defined in different ways, contexts included | Reworded |
-| 13-3 | 13 | *unsupported*: the secret table's download and visibility rows were uncited | Docs cited |
-| 13-4 | 13 | *wrong*: the self-hosted context page was said to lack hooks; its priority section ranks them | Corrected |
-| 13-5 | 13 | *missing*: `SPACELIFT_API_TOKEN`'s three-hour validity, its states (`PLANNING`, `APPLYING`, `PERFORMING`) and its scope | Added |
-| 13-6 | 13 | *missing*: the provider page contradicts itself on tokens for stacks without roles | Recorded with an inferred reading (C104) |
-| 13-7 | 13 | *wrong*: the runtime-file `version` note sat on precedence rank 1, though it swaps ranks 2 and 3 | Moved; the version 1 order stated |
-| 13-8 | 13 | *missing*: the configuration page's single context rank, and `feature:ignore_runtime_config`, which removes ranks 1 and 2 | Added |
-| 13-9 | 13 | *missing*: `RuntimeConfigInput` was described as environment and hooks only; it also has `yaml` (exclusive), `projectRoot`, `runnerImage` and `gitSparseCheckoutPaths` | Completed |
-| 13-10 | 13 | *unsupported*: that contexts contribute only variables, files and hooks was cited to a page that does not say it | Re-cited to the context page |
-| 16-1 | 16 | *wrong*: the provider was said to fold `manage_state` and Terragrunt `use_state_management` into one `isStateManaged`; it sends both (defaults true and false) and combines them with OR only in its own checks | Section 2.3 rewritten; the API's behaviour is open (C113) |
-| 16-2 | 16 | *wrong*: `terraform_external_state_access` was cited to L583-588, the opentofu block | L763-768 added |
-| 16-3 | 16 | *unsupported*: "takes precedence" was cited to L100-105, which does not say it | L826-831 cited |
-| 16-4 | 16 | *missing*: the provider's external-access check covers only the Terraform flag | Added |
-| 16-5 | 16 | *wrong*: state history built on object versioning was marked inferred; the self-hosted object storage page states it | Now cites the docs |
-| 16-6 | 16 | *wrong*: a cross-reference gave section 5 for state history; it is section 6 | Fixed |
-| 16-7 | 16 | *missing*: the S3-compatible store's requirements: version listing and copy, SigV4 pre-signed GET and PUT, multipart, path-style addressing and lifecycle rules | Added |
-| 16-8 | 16 | *missing*: the AWS module's conditional public access block, and the states bucket's lack of a lifecycle rule | Added (C249) |
-| 16-9 | 16 | *wrong*: Terragrunt stacks were said to be unable to read other state at all; the limit is on external dependencies reading state outside the stack | Narrowed |
-| 16-10 | 16 | *missing*: `searchTofuWorkspacesSuggestions`, and that no mutation matches `STACK_WORKSPACE_LOCK` | Added; the lock reading is inferred (C8) |
-| 16-11 | 16 | *missing*: the runtime key `terragrunt.use_state_management`, the per-run `RuntimeConfig` records, and the runtime file's inability to override OpenTofu external access | Added; open (C114) |
-| 16-12 | 16 | *missing*: the OpenTofu vendor migration keeps external access; CDKTF stacks must drop their local backend | Added with sources |
+The pass's findings are the `RES-03.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -447,78 +267,10 @@ links, 106 docs URLs, the exporter's 23 metric descriptors and the
 `NOTIFICATION` contract entry (254 paths, 9 differences from the docs). The
 copy check found only identifier lists and one example `sub` value.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [11](11-vcs-integrations.md) | 3 | 3 | 1 | 0 | 2 | 9 |
-| [12](12-cloud-integrations-and-oidc.md) | 4 | 3 | 2 | 0 | 1 | 10 |
-| [14](14-spaces-rbac-and-identity.md) | 1 | 7 | 7 | 0 | 2 | 17 |
-| [19](19-events-notifications-audit.md) | 6 | 6 | 8 | 0 | 2 | 22 |
-| **All** | **14** | **19** | **18** | **0** | **7** | **58** |
-
 ### Findings
 
-| # | Report | Finding | Change |
-|---|---|---|---|
-| 1 | 11 | *wrong*: sections 14.5 and 14.6 said the vcs-agent applies an allowlist with `--use-allowlist` and a blocklist with `--blocklist-path`; at `553aba3b3e54` both flags are defined but absent from the command's `Flags` list, so the agent always runs the empty blocklist, validates nothing, and ignores `--allowed-projects` | 14.6 and both flag rows rewritten, citing `main.go` L140-L153; urfave/cli's lookup behaviour is inferred; open (C78, P4) |
-| 2 | 11 | *unsupported*: the `--bugsnag-api-key` default was "built in"; the flag default is empty, and release builds embed the key through `-X main.BugsnagAPIKey` | Cited `.goreleaser.yaml` L11-L12 |
-| 3 | 11 | *wrong*: `VCSCheckOptions` fields were typed `Boolean`; they are `Boolean!` on the output type and `Boolean` only on the input | Fixed |
-| 4 | 11 | *unsupported*: the GitHub event list was presented as webhook subscriptions, while the docs step labels it organization permissions | List kept as docs; the subscription reading marked inferred |
-| 5 | 11 | *unsupported*: the pull request opened and synchronized rows said push policies are evaluated, without a marker; the GitHub webhook table says only that the record is stored or updated | Markers and the push policy citation added |
-| 6 | 11 | *missing*: only new comments drive comment actions; edits and deletions are never received | Added |
-| 7 | 11 | *wrong*: the addressing table put GitHub under the Terraform examples; there is no GitHub Enterprise resource | Noted |
-| 8 | 11 | *style*: the purpose paragraph named the drafter's scratch scripts | Reworded |
-| 9 | 11 | *style*: history narration ("still describes", "now carries", "the older one", "now takes") | Present tense |
-| 10 | 12 | *wrong*: the AWS session name conflict was settled for the provider, against the precedence rule, and missed the self-hosted first-setup page, which puts the account name in default session names | A three-source table; the docs' internal contradiction stated; the exact string open (C83) |
-| 11 | 12 | *wrong*: `spacelift_gcp_service_account.token_scopes` "forces new"; it has no `ForceNew`, needs at least one non-empty value, and updates in place by re-running `stackIntegrationGcpCreate` | Corrected |
-| 12 | 12 | *wrong*: that every space but `root` (and `legacy`) has a ULID suffix cited a page naming only `root`; the Azure page names both, and the overview's example subject shows a suffixed `legacy` | The three-page conflict recorded; open (C94) |
-| 13 | 12 | *unsupported*: the integration's space was said to be chosen at create; `space` is optional and its default undocumented | Open (C87) |
-| 14 | 12 | *missing*: the operations tables lacked `AwsIntegration.attachedStack`, `externalIdForStack`, `AzureIntegration.attachedStack` and the Azure `attachable*` fields, all of which the projection serves | Added with their REST paths |
-| 15 | 12 | *wrong*: all operations were said to carry the `Cloud Integrations` tag; six carry `Spaces`, `Stacks`, `Modules` or `Account` | Corrected |
-| 16 | 12 | *unsupported*: that AWS matches only `sub` and `aud` was stated as fact, while the docs hedge it | Restated with the hedge |
-| 17 | 12 | *unsupported*: the discovery document path, documented only for self-hosted, was applied to SaaS | The SaaS case marked inferred (C95) |
-| 18 | 12 | *missing*: the provider's 900 seconds equals the 15-minute minimum, and `durationSeconds` is nullable | Added (C82) |
-| 19 | 12 | *style*: the purpose paragraph named the drafter's scratch scripts | Reworded |
-| 20 | 14 | *missing*: the per-IdP SSO guides were not cited; AWS IAM Identity Center SAML, Okta OIDC and OneLogin OIDC were absent, with no settings, claim mappings or differences between identity providers | New section 6.4: a table of what Spacelift shows and needs per protocol, and a six-IdP table (settings, identity claim, group claim, provider URL, caveats such as Entra's 200-group limit and object IDs, Okta's `Teams` statement and AWS group support), plus the notes on Google Workspace and Cognito and the rule that groups arrive on the login assertion |
-| 21 | 14 | *wrong*: every OIDC block field of `spacelift_api_key` was said to force replacement; only `issuer`, `client_id`, `subject_expression` and adding or removing the block do | Corrected from `resource_api_key.go` L50-L80 and L233-L275 |
-| 22 | 14 | *unsupported*: the tier table paired `BillingTierFeature` names with capabilities as schema fact; only `SCIM` and `AUDITING` have descriptions naming the feature | Pairing marked inferred by name; tiers confirmed from docs notices and the pricing page (spaces from Starter+; SAML SSO, OIDC API keys and MFA on Enterprise); Free-tier spaces, custom roles and login policy plans open (C121) |
-| 23 | 14 | *missing*: `SpaceAccessLevel` had no semantics, propagation or inheritance | The docs' semantics and worked example added; the generalisation inferred; `ManagedUserUpdateInput.accessRules` from the schema (C126) |
-| 24 | 14 | *unsupported*: that Read climbs past the immediate parent was given as docs | Marked inferred with its basis (C127) |
-| 25 | 14 | *unsupported*: the non-root admin Edit cell ignored the settings page's contrary statement | Both recorded; open (C115) |
-| 26 | 14 | *unsupported*: the `space-admin` slug was cited to a page that does not show it | Re-cited to the roles-for-stacks page and the Terraform schema |
-| 27 | 14 | *unsupported*: that binding changes recompute without a new login was cited to a page that says the opposite | Cited to the changelog; the docs statement recorded (C128) |
-| 28 | 14 | *unsupported*: the IAM against login policy table made claims no source supports (an exception for keys a policy names; deactivated users under IAM) | Restated per the docs; deactivation inferred |
-| 29 | 14 | *unsupported*: `ADMIN_USERNAME` and `ADMIN_PASSWORD` were cited to a page that does not name them | General configuration page cited; empty values disable admin login |
-| 30 | 14 | *missing*: legacy blueprints have no RBAC actions | Added |
-| 31 | 14 | *missing*: who may change login policies | Added |
-| 32 | 14 | *missing*: SCIM details: Okta SCIM needs a SAML or SWA app; group deletion; a provisioned user with no role is refused | Added |
-| 33 | 14 | *missing*: the provider always sends `ApiKeyInput.admin = false` | Added (C124) |
-| 34 | 14 | *missing*: the `spacelift_space_by_path` path rules, and re-parenting in place through `spaceUpdate` | Added |
-| 35a | 14 | *style*: an unused repository pin | Removed |
-| 35b | 14 | *style*: references to the drafter's scratch scripts | Reworded |
-| 36 | 19 | *wrong*: `policy_receipts` was placed under `run_updated.run`; the contract, and Spacelift's own Datadog module, put it at `run_updated.policy_receipts` | Moved; the conflict recorded; open (C184) |
-| 37 | 19 | *wrong*: `run.type` was given as `PROPOSED` or `TRACKED`; the contract also allows `TASK`, `TESTING`, `DESTROY` and `PARSE` | Fixed |
-| 38 | 19 | *missing*: contract fields: `plan_policy_decision`, `pull_request_id`, `exist_on_tracked_branch`, `idp_subject`, the 19-value change `action` enum, `moved`, `git_sparse_checkout_paths`, the stack's `worker_pool`, `contexts`, globs and `terraform_workflow_tool`, `timing` semantics, and mutually exclusive events | Added from the contract |
-| 39 | 19 | *missing*: the `pull_request` rule lacked `truncate_body` and the integer type of `id` | Added; what `truncate_body` does is open (C174) |
-| 40 | 19 | *missing*: the audit action list lacked `identity.link` and `identity.unlink` | An action table added |
-| 41 | 19 | *unsupported*: `account.login_failed` cited only the changelog | The login policy page added |
-| 42 | 19 | *unsupported*: HMAC-SHA1 and HMAC-SHA256 were given as docs; the docs say only SHA1 or SHA256 by GitHub's mechanism | HMAC marked inferred, backed for SHA-256 by the example receiver's source, which has no licence and is not quoted |
-| 43 | 19 | *unsupported*: the audit payload's `remoteIP` and millisecond `timestamp` appear only in samples, and the `SecretSHA` the sample shows in place of the secret was left out | Marked as sample-only, milliseconds inferred; `SecretSHA` added |
-| 44 | 19 | *unsupported*: the `NOTIFICATION_POLICIES` and `RUN_STATE_CHANGE_WEBHOOKS` gates were marked as schema | Marked inferred by name; stack webhooks gained the docs' paid gate |
-| 45 | 19 | *missing*: the provider describes `include_runs` differently from the schema and docs | Conflict recorded; the schema and docs win (C182) |
-| 46 | 19 | *missing*: worker usage events go nowhere without a policy, apply to negotiated contracts only, and work on SaaS and self-hosted | Added |
-| 47 | 19 | *missing*: delivery retention was wholly open, though the self-hosted deliveries bucket is documented (one day suggested; Spacelift does not expire it) | Added; only SaaS retention stays open (C178) |
-| 48 | 19 | *missing*: managing the audit trail needs root space admin | Added |
-| 49 | 19 | *wrong*: every route was said to be in Bruno; `deliveries` and `deliveryDetails` are not | Reworded |
-| 50 | 19 | *wrong*: `spacelift_build_info` was "always 1"; it is absent on failed strict-mode scrapes | Corrected |
-| 51 | 19 | *wrong*: every secret header attribute was said to force replacement; `value_wo` does not | The four `ForceNew` attributes named |
-| 52 | 19 | *missing*: the `concurrencyPercentiles` default `[75, 90, 95, 99]` | Added |
-| 53 | 19 | *wrong*: the usage exporter was said to always write a local file; `--send-to-spacelift` skips it, and the script authenticates again for each batch | Reworded |
-| 54 | 19 | *unsupported*: the spacectl audit link L18-L21 did not cover the limit and search claims | Widened to L18-L52 |
-| 55a | 19 | *style*: scratchpad script paths in the header | Removed |
-| 55b | 19 | *style*: "no longer" history narration | Present tense |
-| 56 | 19 | *unsupported*: `Notification.type` was glossed as the kind of target and marked as schema | Reworded; the target reading marked inferred |
+The pass's findings are the `RES-04.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -581,88 +333,10 @@ hosts, compared with HashiCorp's protocol pages. The copy check found seven
 prose runs (four in 20, three in 25) and left only a kubectl command and
 liftoff commands.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [15](15-module-and-provider-registry.md) | 1 | 1 | 5 | 0 | 0 | 7 |
-| [17](17-blueprints-and-templates.md) | 5 | 2 | 4 | 0 | 0 | 11 |
-| [18](18-scheduling-drift-dependencies.md) | 2 | 0 | 3 | 0 | 0 | 5 |
-| [20](20-vendors.md) | 4 | 9 | 8 | 2 | 1 | 24 |
-| [21](21-resources-scans-search.md) | 3 | 3 | 4 | 0 | 0 | 10 |
-| [25](25-other-integrations.md) | 6 | 1 | 1 | 0 | 1 | 9 |
-| **All** | **21** | **16** | **25** | **2** | **2** | **66** |
-
 ### Findings
 
-| # | Report | Finding | Change |
-|---|---|---|---|
-| 1 | 15 | *wrong*: an unknown version's download was recorded as `404` with a JSON `not found` body; a re-capture returns `404` with the plain-text body `404 page not found`, and the JSON body belongs to unmatched paths, served as `text/plain` | Rows corrected from the capture |
-| 2 | 15 | *missing*: version parsing on download: `9.1` and `v9.1.0` resolve to the `9.1.0` archive, and `abc` returns `400 invalid module version: "abc"` | Rows added from the capture |
-| 3 | 15 | *missing*: an unknown module's versions call returns `200` with an empty list, which departs from the module registry protocol's `404` | Noted, with the protocol URL |
-| 4 | 15 | *missing*: whether failed or yanked versions appear in the list was left open, but the live list has gaps (`2.11.0`, `3.0.2`, `4.4.0`, `5.6.0`, `6.0.2`) that download `404`; as version numbers cannot be skipped, the protocol omits unusable versions | Recorded from the capture with an inference; the question narrowed to which state causes each gap (C133) |
-| 5 | 15 | *missing*: the archive layout and the signed URL's lifetime were not measured | Entries sit at the archive root; `Expires` measured 588 s after the request |
-| 6 | 15 | *unsupported*: the `workflow_tool` default `TERRAFORM_FOSS` was marked as a provider default; the attribute is computed with no default, and only its description names the server's default | Reworded |
-| 7 | 15 | *missing*: neither a module nor a version can be deleted while an Intent module deployment uses it | Added to the transitions table |
-| 8 | 18 | *wrong*: drift detection runs were said to come after every other run; the prioritization list puts all high-priority runs first whatever their type | Row rewritten from the run page |
-| 9 | 18 | *wrong*: the template schema's `maxLength: 1` on drift `cron` items was read as a restriction; draft-07 ignores keywords beside `$ref`, and such a cap would reject every cron expression | Rewritten as inferred |
-| 10 | 18 | *missing*: the cron pattern's gaps: no stepped range (`1-5/2`) and no comma list of ranges | Added (C156) |
-| 11 | 18 | *missing*: the UI marks a scheduled run's name optional while the schema requires it | Added (C153) |
-| 12 | 18 | *missing*: the provider's description narrows `ignoreState` to any final state | Added, with a new open item (C163) |
-| 13 | 20 | *missing*: the vendor pages' self-hosted parity was not recorded | Section 15: every vendor page exists in self-hosted v7.1.0, native OpenTofu and its migration included; four page groups differ (no Kubernetes Azure and GCP authentication, an added version-pinning note, different registry tier notes and hosts) |
-| 14 | 17 | *wrong*: `coverage.md` excludes 15 deprecated blueprint root fields, not 18 | Count corrected |
-| 15 | 17 | *wrong*: every deprecated item was said to point to templates as its replacement; the two `Action` values and `BlueprintStackCreation.stackID` and `runID` give other reasons, and input fields carry no deprecation | Rewritten |
-| 16 | 17 | *unsupported*: exactly one of `stack` or `stacks` was said to be allowed in a blueprint body; the schema neither requires nor forbids either | Restated as the schema rule; open (C140) |
-| 17 | 17 | *wrong*: `TemplateVersion.createdAt` and `updatedAt` are `Int!`, not `Int` | Fixed |
-| 18 | 17 | *wrong*: the ServiceNow beta shipped in self-hosted v2.6.0, not v2.5.0, because the 2.x headings name the change between versions; this also contradicted 25 | Fixed |
-| 19 | 17 | *missing*: the blueprint-to-template name map lacked `blueprintVersion(id)`, `searchBlueprintVersions` and its suggestions, `compatibleVersions`, `latestVersion`, `blueprintWithGroup*`, the change records and `sensitive` | Rows added, with the template-only features |
-| 20 | 17 | *missing*: the ticket asked which workflows templates replace; the report answered only per operation | New section 2.3: templates replace the versioned family, but not one-off stack creation, cloning or the ServiceNow attach; export is one-way; plain blueprints have no removal date |
-| 21 | 17 | *missing*: `BillingTierFeature.BLUEPRINTS` was absent, and the enum has no template value | Added; template gating inferred |
-| 22 | 17 | *unsupported*: `templateCreate.initialVersion` was said to create a draft, but the input has no `state` | Marked inferred |
-| 23 | 17 | *wrong*: a "default holder" column misread the RBAC page's legacy fallback, and "owner" should read "creator" | Fixed |
-| 24 | 17 | *missing*: several consumers were ignored: spacectl's MCP blueprint tools, the Flows Deploy Template and Deploy Blueprint blocks, the OpenTofu migration note, the Bruno note, and the docs calling `type` required where the schema does not | Added |
-| 25 | 21 | *wrong*: the provider was said never to call `Stack.runResourceState`; `wait.go#L139-L147` polls it, and the claim contradicted 05 and 08 | Fixed |
-| 26 | 21 | *wrong*: spacectl's ordering: the stack, module, policy, blueprint and template list pagers drop `orderBy`, stacks are not sent `starred DESC`, and the audit trail is not ordered | Rewritten, naming the commands that do send an order |
-| 27 | 21 | *unsupported*: ordering was called unverified although `searchRuns`' own description names orderable fields and saved views store a sort | Both schema texts recorded; ordering of `orderable` fields inferred (C200) |
-| 28 | 21 | *missing*: `searchRuns`' `offset` semantics and `SearchRunsOutput.total` | Added |
-| 29 | 21 | *wrong*: the suggestions twin of `openTofuMigrateSearch` is `openTofuMigrateSuggestions` | Fixed |
-| 30 | 21 | *unsupported*: `starSet` for modules was marked inferred; its description says stack or module | Now cites the schema |
-| 31 | 21 | *unsupported*: `hasAnsibleStacks` was described as a UI switch; the schema says only that the account has one | Its use marked inferred |
-| 32 | 21 | *missing*: the migration widgets were inferred only, and the OpenTofu tab was missing | Terragrunt and OpenTofu migration pages cited; mapped to `openTofuMigrationCounts` |
-| 33 | 21 | *missing*: the drift detection page (drifted resources), the organizing-stacks columns and the Ansible configuration management page were ignored | Added |
-| 34 | 21 | *missing*: the page-size evidence lacked spacectl `draw` asking for 100 worker pools per page | Added |
-| 35 | 20 | *unsupported*: the Terragrunt binary coming "from the image or a hook" had no docs support | Restated as the resolved `terragruntVersion`; delivery open (C185) |
-| 36 | 20 | *unsupported*: the default runner images for CloudFormation, Kubernetes, Terragrunt and Pulumi were inferred from 10 | The Docker page cited: runner-terraform is the default for all but native OpenTofu, and it has no Pulumi CLI |
-| 37 | 20 | *unsupported*: the Ansible default image was cited only to 10 | The worker pools page cited (`SPACELIFT_DEFAULT_ANSIBLE_RUNNER_IMAGE`) |
-| 38 | 20 | *unsupported*: "no Pulumi version setting" was inferred | The runtime configuration page cited: the version follows the image |
-| 39 | 20 | *missing*: the FOSS Terraform upper bound: liftoff routes Terraform after 1.5.7 to `CUSTOM` | Added |
-| 40 | 20 | *missing*: OpenTofu's `effectiveVersion` | Added |
-| 41 | 20 | *missing*: `Module.skipVendorBinaryDownload` | Added |
-| 42 | 20 | *missing*: `terragruntEffectiveVersion`'s `tool` takes only `TERRAFORM_FOSS` or `OPEN_TOFU` and defaults to `TERRAFORM_FOSS` | Added |
-| 43 | 20 | *wrong*: `effectiveTerraformVersion` is also null when the version is unset | Fixed |
-| 44 | 20 | *wrong*: a cross-reference pointed to section 4.6, which does not exist | Now 4.4 |
-| 45 | 20 | *unsupported*: the `TERRAFORM_FOSS` default was cited to a page that does not say it | Runtime configuration page and `resource_stack.go#L781-L785` cited |
-| 46 | 20 | *copied*: the paragraph on OpenTofu `CUSTOM` restrictions copied docs prose | Rewritten |
-| 47 | 20 | *copied*: a sentence on runs ignoring the stack's version for the newest copied runtime configuration prose | Rewritten |
-| 48 | 20 | *missing*: `LogsDownloadURL` lacked `deleted` | Added |
-| 49 | 20 | *missing*: `stackMigrateVendor` was offered for the single-stack OpenTofu migration, though its description limits it to Terragrunt | Narrowed; still open (C187) |
-| 50 | 20 | *unsupported*: Terragrunt's `OPEN_TOFU` was called the default without saying that the API input and the runtime block both default to `TERRAFORM_FOSS` | Both stated, matching 07 |
-| 51 | 20 | *missing*: the runtime `terragrunt` block: six keys, their defaults, and replacement rather than merging | Table added |
-| 52 | 20 | *wrong*: the Kubernetes custom workflow was said to share section 3.3's validation, but the page says nothing of parsing up front or `.yml` only | Row rewritten |
-| 53 | 20 | *unsupported*: `ANSIBLE_CONFIG` was cited to the wrong page | Re-cited to getting started |
-| 54 | 20 | *wrong*: runner-terraform was said to be Alpine 3.24 for every flavour; the `gcp` target is `google-cloud-cli:alpine` | Fixed from `docker-bake.hcl` |
-| 55 | 20 | *unsupported*: which vendors run Infracost was left open, though the plan policy page answers it (Terraform, OpenTofu and Terragrunt) | Docs cited; the open question removed |
-| 56 | 20 | *unsupported*: the custom-input merge path was cited only to 09 | Plan policy page cited |
-| 57 | 20 | *style*: an inconsistent Sources bullet | Fixed |
-| 58 | 25 | *wrong*: the link `self-hosted/latest/integrations/` does not exist | Replaced with the five existing pages |
-| 59 | 25 | *wrong*: `name_prefix` was cited to `schema.json#L5`; the text is at L4 | Fixed |
-| 60 | 25 | *wrong*: the SDK was said to rewrite `secretFromParameter`, but `generator.py#L256-L282` maps only variables | Fixed; an inferred row added (C254) |
-| 61 | 25 | *wrong*: in the external integration operations an input field sat in the REST column, and three operations lacked paths | Paths added from the projection |
-| 62 | 25 | *missing*: `IntegrationsCount.backstage` and `.serviceNow` | Added |
-| 63 | 25 | *wrong*: a stack in any other `StackState` was said to fail the Backstage zod check, but the zod enum holds all 16 values | Fixed |
-| 64 | 25 | *wrong*: the operator's `StackStatus` has only `id`, not an ID and a state | Fixed from `stack_types.go#L116-L118` |
-| 65 | 25 | *style*: the operator README fact was marked as a community source | Now source |
-| 66 | 25 | *unsupported*: `k8s-spacelift-operator` was called the operator's key identity; it is one example name in a login policy sample | Rewritten |
+The pass's findings are the `RES-05.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -715,41 +389,10 @@ flavour, the 135 Helm values with their schema types, and the 18
 docs; a 6-word check against the unlicensed Flows repositories and the
 `@slflows/sdk` typings found none.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [22](22-intelligence.md) | 0 | 0 | 1 | 0 | 0 | 1 |
-| [23](23-flows.md) | 2 | 0 | 0 | 0 | 0 | 2 |
-| [24](24-self-hosted-reference.md) | 6 | 2 | 9 | 1 | 1 | 19 |
-| **All** | **8** | **2** | **10** | **1** | **1** | **22** |
-
 ### Findings
 
-| # | Report | Finding | Change |
-|---|---|---|---|
-| 1 | 24 | *unsupported*: the 2027 MQTT dates cited the v7.1.0 release notes beside the worker pools page; the notes only ask for the switch by 2027-01-01 and name no removal date or release, and 2027-03-30 comes only from the self-hosted worker pools page | Section 3.4 attributes 2027-03-30 to that page and states what v7.1.0 does and does not say; consistent with 10 (C70) |
-| 2 | 24 | *wrong*: Secrets Manager was listed among what the master KMS key encrypts; neither the RDS connection-string secret nor the ECS shared secrets set a KMS key | Removed; the secrets use the AWS-managed key, cited |
-| 3 | 24 | *wrong*: `kms_arn` was described as bringing one's own key; it removes the whole `kms` module, so the in-application encryption and JWT signing keys are not created and their outputs are null | New bullet in 3.5 citing `main.tf` L13-L25 and `outputs.tf` L11-L19 (C248) |
-| 4 | 24 | *missing*: the EKS module's fourth KMS key, `aws_kms_key.ebs`, created when EBS encryption is on without a key ARN | Added to 3.5 and the section 6 encryption row |
-| 5 | 24 | *wrong*: section 14.1 left 97 schema types blank (types behind `$ref` unresolved) and listed `ingress.annotations` and `ingressV6.annotations` as `null` leaves; the real leaf is the `proxy-body-size` annotation with value `"0"` | Types filled from the schema; the two rows corrected to L229 and L254 |
-| 6 | 24 | *copied*: section 14.2 quoted 299 variable descriptions from MIT module repositories that no `NOTICE` covers | Description column dropped; a note points to the linked lines (PD-13) |
-| 7 | 24 | *wrong*: noncurrent-version expiry and multipart abort were applied to every bucket; expiry applies to 6 buckets and the abort to 9, the modules, states and binaries buckets keep every noncurrent version, binaries has no encryption, public access block or lifecycle, and versioning is on for 9 | Notes rewritten with line ranges (C249) |
-| 8 | 24 | *wrong*: SQS long polling was said to be on the async queues; it is on all six queues that are not dead-letter queues, the queues exist only with `create_sqs`, and the drain consuming every queue lacked the observability guide's support | Corrected and cited |
-| 9 | 24 | *missing*: `ENVIRONMENT=prod`, which every module sets | Row added; the table grows from 76 to 77 rows |
-| 10 | 24 | *wrong*: release-note labels "v3.x", "v4.x" and "v4.1.0 area" were vague and partly wrong: agent pools are v3.4.0, the ECS v2.0.0 and EKS v3.0.0 module updates are v4.0.0, FIPS images are v5.0.0, and the VCS Gateway on EKS, GKE and AKS is v4.1.0 | Sections 2.1, 9.3 and 12 relabelled |
-| 11 | 24 | *missing*: the Slack reference page: `SLACK_APP_CLIENT_ID`, `SLACK_APP_CLIENT_SECRET`, `SLACK_SECRET` and the GovSlack variables (environment only, read at start), one Slack integration at a time, and public reachability for callbacks | Two rows in 3.7; Sources updated |
-| 12 | 24 | *missing*: the air-gapped guide: VCS agents, the launcher from S3 through `s3_uri` with cycling on upgrade, and runner images with a provider cache | A paragraph in section 4 |
-| 13 | 24 | *missing*: `DATABASE_IAM_URL` and `DATABASE_IAM_READ_ONLY_URL` in the database secret (AWS module v3.2.0 or later, with `rds_iam_username`) | Added to the 3.1 IAM row |
-| 14 | 24 | *missing*: schema-only Helm keys (`podAnnotations`, `lifecycle`, `terminationGracePeriodSeconds`, `pdb.minAvailable` and `maxUnavailable`, `vcsGateway.service.type` and `appProtocol`, `mqttService.additionalSpec`), two of which GKE uses; every Kubernetes module passes the deprecated `shared.image` | A note after the section 7 table |
-| 15 | 24 | *unsupported*: "amd64 only" on ECS was argued from the task definitions alone, though the ECS guide states it | ECS guide cited |
-| 16 | 24 | *missing*: the condition on the ECS VCS Gateway service and task (`count` on `vcs_gateway_security_group_id`) | Added to 2.2 |
-| 17 | 24 | *missing*: the scheduler decision: a tag counts only if it matches `^v?X.Y.Z([-+].*)?$`, and with a digest only an explicit tag is read | A sentence added to 2.2 |
-| 18 | 24 | *missing*: the CloudFormation pages on advanced installations, disaster recovery, PostgreSQL upgrades and Slack setup were not covered | Recorded as a gap (C250) |
-| 19 | 24 | *style*: the ECR repositories were cited without lines | `ecr` L1 and L39 |
-| 20 | 23 | *wrong*: `defineApp(app)` was called the module's default export at L731; L731 declares it, it is a named SDK export (L1262), and an app's own module default-exports `defineApp(...)` | Rewritten |
-| 21 | 23 | *wrong*: the SDK was said to have eight lifecycle states; `EntityLifecycleStatus` and `AppLifecycleStatus` have seven, and `drifted` appears only in `blocks.list` | The 3.5 table, paragraph and closing bullet corrected (C240) |
-| 22 | 22 | *missing*: AI terms section 3 says Spacelift-hosted AI consumes Spacelift credits under usage limits, beside section 4's free-of-charge statement | A row added to 2.2; its relation to the USD 10 budget is open (C213) |
+The pass's findings are the `RES-06.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -803,47 +446,10 @@ plan's column. The copy check found one 12-word hit in 26, a schema
 deprecation reason quoted as [G]; a 10-word check of 27 against the MPL-2.0
 clones and Digger `ee/` found none.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [26](26-scope-and-tiers.md) | 9 | 1 | 2 | 0 | 0 | 12 |
-| [27](27-reference-materials.md) | 2 | 0 | 0 | 0 | 0 | 2 |
-| [28](28-data-model.md) | 7 | 3 | 0 | 0 | 0 | 10 |
-| **All** | **18** | **4** | **2** | **0** | **0** | **24** |
-
 ### Findings
 
-| # | Report | Finding | Change |
-|---|---|---|---|
-| 1 | 26 | *wrong*: how SaaS tiers apply to self-hosted was called undocumented; the self-hosted overview gives the Enterprise feature set where it applies, as report 01 says | "Feature set" row added; the open item narrowed to what `tier` and `tierFeatures` return (C122) |
-| 2 | 26 | *wrong*: whether self-hosted has a public pool was *(unverified)*; the self-hosted overview lists it as not available | Row cites the page; C262 resolved |
-| 3 | 26 | *missing*: the pricing comparison table was treated as unreadable; its HTML ticks place contexts, custom tasks, the module registry, webhooks, notifications and session management on Starter+ | Paragraph in 2.1; contexts and sessions rows corrected (C261) |
-| 4 | 26 | *wrong*: Starter was "not listed" on the pricing page; its FAQ describes a Starter plan with one private worker, and the docs give Free and Starter seat limits | Starter row, 2.2 and `UNLIMITED_SEATS` corrected (C260) |
-| 5 | 26 | *missing*: tasks need a paid account (report 03 records it) | Runs row and `spacelift_task` corrected |
-| 6 | 26 | *wrong*: the Stacks row omitted `RUN_IGNORED_TRIGGERS` (`searchRunIgnoredTriggers` is a Stacks operation) | Added |
-| 7 | 26 | *wrong*: the `spacelift_drift_detection` data source was `missing` because the operation map records no call; its read reuses the served `stack` query | `stub`, `1 [S]`; totals 51 missing and 7 stub |
-| 8 | 26 | *wrong*: the `spacelift_gcp_service_account` data source was said to call the deprecated GCP mutations; it reads `stack` or `module` and the deprecated `StackIntegrations.gcp` | Note and count corrected; still superseded |
-| 9 | 26 | *wrong*: the `spacelift_idp_group_mapping` and `spacelift_user` data sources were said to call deprecated mutations; they call `managedUserGroups` and `managedUsers` | Notes corrected |
-| 10 | 26 | *wrong*: the four deprecated alias rows gave 0 root fields; the map omits aliases | 4 [S] and 2 [S] |
-| 11 | 26 | *unsupported*: "no drift detection on Free [D]" joins a docs fact to a pricing fact | Marked [I] from [C] |
-| 12 | 26 | *wrong*: `pulumi-spacelift` "retired" on 2026-12-10, after the baseline | "Retirement set for" |
-| 13 | 27 | *wrong*: the Digger `ee/` licence was said to allow modification only for development and testing; it allows patches owned by Digger and usable only under licence, and forbids distribution | Cell rewritten from the file |
-| 14 | 27 | *wrong*: River v0.50.0 dated 2026-10-26; the GitHub release is 2026-10-27 UTC | Three dates corrected |
-| 15 | 28 | *wrong*: `ACCOUNT \|\|--\|\| PUBLIC_WORKER_POOL`; `publicWorkerPool` is nullable and absent on self-hosted and FedRAMP | `\|\|--o\|` |
-| 16 | 28 | *wrong*: `MANAGED_USER \|\|--o{ API_KEY`; `ApiKey.owner` is a nullable login | `\|o--o{` |
-| 17 | 28 | *wrong*: `TEMPLATE_DEPLOYMENT \|\|--o{ STACK` against nullable `Stack.templateDeployment` | `\|o--o{` |
-| 18 | 28 | *wrong*: `EXTERNAL_INTEGRATION \|\|--\|\| API_KEY` tied every API key to an integration | `}o--\|\|` |
-| 19 | 28 | *wrong*: `SPACE \|\|--o{ REPO` against nullable `Repo.space` | `\|o--o{` |
-| 20 | 28 | *wrong*: `STACK \|\|--\|\| STACK_SLACK_SUBSCRIPTION` against nullable `Stack.integrations` | `\|\|--o\|` |
-| 21 | 28 | *wrong*: group role bindings were said to share `role: Role!`; `UserGroupRoleBinding` has only `roleID` | Row corrected |
-| 22 | 28 | *unsupported*: `POLICY \|\|--o{ NOTIFICATION`; no `Notification` field names a policy | `\|o--o{` |
-| 23 | 28 | *unsupported*: `REPO_COMMIT \|o--o\| REPO_COMMIT` limited a commit to one child | `\|o--o{` |
-| 24 | 28 | *unsupported*: pull request to runs was one to many in the row and many to many in the diagram; no `Run` field names a pull request | Row rewritten, *(unverified)* (C269) |
-
-Two cross-report items are recorded, not fixed: report 14 section 11 still
-calls the self-hosted tier mapping undocumented, and report 08 does not
-record that tasks need a paid account.
+The pass's findings are the `RES-07.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -884,110 +490,10 @@ feature-file names against 0016, and 0021's served and not-served table
 against the records that own each candidate. The copy check found no
 12-word run shared with the docs mirror.
 
-### Findings by severity
-
-| Records | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [0005](../decisions/0005-persistence-postgresql.md) | 2 | 2 | 0 | 0 | 0 | 4 |
-| [0006](../decisions/0006-authentication-and-tokens.md) | 1 | 0 | 0 | 0 | 0 | 1 |
-| [0007](../decisions/0007-authorization-spaces-and-roles.md) | 0 | 0 | 1 | 0 | 0 | 1 |
-| [0008](../decisions/0008-run-execution-and-worker-protocol.md) | 1 | 1 | 0 | 0 | 0 | 2 |
-| [0009](../decisions/0009-policy-engine-opa.md) | 0 | 1 | 0 | 0 | 0 | 1 |
-| [0010](../decisions/0010-state-backend.md) | 1 | 0 | 0 | 0 | 0 | 1 |
-| [0011](../decisions/0011-persistent-work-queue.md) | 1 | 0 | 0 | 0 | 1 | 2 |
-| [0012](../decisions/0012-vcs-integration-model.md) | 0 | 1 | 0 | 0 | 0 | 1 |
-| [0013](../decisions/0013-secrets-at-rest.md) | 4 | 0 | 0 | 0 | 0 | 4 |
-| [0014](../decisions/0014-module-and-provider-registry.md) | 2 | 2 | 1 | 0 | 0 | 5 |
-| [0015](../decisions/0015-events-notifications-webhooks-audit.md) | 2 | 2 | 2 | 0 | 0 | 6 |
-| [0016](../decisions/0016-testing-and-acceptance.md) | 2 | 0 | 0 | 0 | 0 | 2 |
-| [0017](../decisions/0017-observability-and-health.md) | 1 | 0 | 0 | 0 | 0 | 1 |
-| [0019](../decisions/0019-ai-provider-boundary.md) | 1 | 0 | 1 | 0 | 0 | 2 |
-| [0020](../decisions/0020-reference-deployments-and-packaging.md) | 0 | 0 | 1 | 0 | 0 | 1 |
-| [0021](../decisions/0021-capability-scope-and-supersession.md) | 1 | 0 | 0 | 0 | 0 | 1 |
-| [0022](../decisions/0022-api-errors-and-update-semantics.md) | 3 | 0 | 0 | 0 | 1 | 4 |
-| Across records | 12 | 0 | 6 | 0 | 1 | 19 |
-| **All** | **34** | **9** | **12** | **0** | **3** | **58** |
-
-[0018](../decisions/0018-flows-runtime.md) had no finding of its own; it
-takes part in findings 40 and 55.
-
 ### Findings
 
-| # | Record | Finding | Change |
-|---|---|---|---|
-| 1 | 0005 | *unsupported*: migrations at start linked 24 section 9; the fact is in 2.1 | Anchor moved |
-| 2 | 0005 | *wrong*: self-hosted Spacelift "needs only" PostgreSQL and object storage; 24 section 3 also requires a registry and a runtime | "only mandatory data stores" |
-| 3 | 0005 | *unsupported*: retention said to follow Spacelift's buckets; `run-artifacts` has no match | Marked infraweave's |
-| 4 | 0005 | *wrong*: Spacelift's wire IDs called ULIDs; most entities are slug-addressed (28 section 1.2) | Corrected |
-| 5 | 0006 | *wrong*: Spacelift's self-hosted key "permanent"; the choice is permanent and the AWS module rotates keys yearly | Row rewritten |
-| 6 | 0007 | *missing*: the `worker-pool-controller` slug is *(unverified)* in report 14 | Named in the departure and Constraints |
-| 7 | 0008 | *wrong*: four Spacelift launcher variables have no equivalent | Named as left open |
-| 8 | 0008 | *unsupported*: the 4-byte masking minimum attributed to Spacelift | Attributed to 0013 |
-| 9 | 0009 | *unsupported*: "any reject rejects" is *(unverified)* in 09 section 3.3 | Listed as infraweave's |
-| 10 | 0010 | *wrong*: `terraform force-unlock` sends an empty body, not the holder's ID; OpenTofu sends the ID | Rewritten; design affected |
-| 11 | 0011 | *wrong*: River's dead letters called Pro; open-source River keeps `discarded` jobs and retries them | Rationale narrowed; decision stands |
-| 12 | 0011 | *style*: grammar "fixed by PD-09", a question | "0022's answer to PD-09" |
-| 13 | 0012 | *unsupported*: Digger dispatch is in 27 section 5.4 | Link added |
-| 14 | 0013 | *wrong*: a separate JWT key exists only in KMS mode | Corrected |
-| 15 | 0013 | *wrong*: Spacelift's keys "have no rotation path" | Corrected |
-| 16 | 0013 | *wrong*: FIPS 140-3 "needs no change"; `fips140=only` refuses caller-nonce AES-GCM, used by the object format and go-jose | Rewritten; design affected |
-| 17 | 0013 | *wrong*: a sealed VCS agent pool column; 0012 stores the key as SHA-256 | Row removed; key hashed |
-| 18 | 0014 | *wrong*: the Open Registry service is 27 section 4.1, not 4.3 | Anchor moved |
-| 19 | 0014 | *wrong*: `x-amz-checksum-sha256` takes base64, not hex | Conversion stated |
-| 20 | 0014 | *unsupported*: "Spacelift publishes without checking" | Reworded to 15 section 10.5 |
-| 21 | 0014 | *unsupported*: `tfconfig.LoadModule` reads one directory | Calls named |
-| 22 | 0014 | *missing*: deleting a `REVOKED` provider version is infraweave's choice (C136) | Marked |
-| 23 | 0015 | *missing*: most of the delivery contract is infraweave's while C178 is open | Separated |
-| 24 | 0015 | *missing*: the log placeholder cap (C172) and pull request bodies | Stated |
-| 25 | 0015 | *unsupported*: the audit retry schedule is open (C181) | Marked |
-| 26 | 0015 | *unsupported*: Atlantis and Digger cited by Terrakube's section | Links added |
-| 27 | 0015 | *wrong*: v3 made the broker optional, not dropped | Corrected |
-| 28 | 0016 | *wrong*: Windows runners have Docker, for Windows containers only | Corrected |
-| 29 | 0016 | *wrong*: MinIO is in the on-prem guide's examples, with a stopped upstream | Corrected; design affected |
-| 30 | 0017 | *wrong*: `deployment.environment` is deprecated for `deployment.environment.name` | Renamed |
-| 31 | 0019 | *wrong*: `openai-go`'s current major is `/v3` | Path corrected |
-| 32 | 0019 | *missing*: Bedrock discovery is in `service/bedrock` | Named |
-| 33 | 0020 | *missing*: self-hosted Spacelift has no GCP integration either | Added |
-| 34 | 0021 | *wrong*: `TERRAFORM_PLAN` aliases `PLAN` | Corrected |
-| 35 | 0022 | *wrong*: a merge-patch `null` removes the member (RFC 7396) | Stated; design affected |
-| 36 | 0022 | *wrong*: `time.LoadLocation` reads host zone data before `time/tzdata` | Corrected; design affected |
-| 37 | 0022 | *style*: `Etc/GMT+1` is a zone, not a link | Corrected |
-| 38 | 0022 | *wrong*: a constraint left open what the table decides | Reworded |
-| 39 | 0015 | *wrong*: "0022's conflict problem" does not exist | `already-exists` |
-| 40 | 0005, 0006, 0008, 0011, 0014, 0016 to 0021 | *wrong*: process and binary names contradicted decision 0004 (`infraweave server --roles` with `api`, `drain` and `vcs-gateway`, `infraweave launcher`, `runner` and `mcp`, one download for all), and 0017 and 0020 had a gRPC VCS gateway against 0012's long-poll | 0004's `serve`, `scheduler`, `all`, `worker`, `worker exec` and `infraweavectl`; VCS agent endpoints in `serve`; departure added |
-| 41 | 0007, 0009 | *wrong*: 0009 accepted the `ACCESS` type and three aliases that 0021 does not serve | Follows 0021 |
-| 42 | 0008 | *wrong*: `PENDING` served, against 0021 | Absent |
-| 43 | 0008, 0015 | *wrong*: a transition enqueued `run.state_changed`; 0015 emits `run_updated`, and lacked the commit-check sink 0012 relies on | Aligned; sink added |
-| 44 | 0017 | *wrong*: `[REDACTED]` against 0013's `[redacted]` | Aligned |
-| 45 | 0017 | *wrong*: event metric attributes and names differed from 0015's | 0015's kept; owners named |
-| 46 | 0017 | *wrong*: called open whether problem bodies carry the request ID; 0022 puts it in `instance` | Stated |
-| 47 | 0016 | *missing*: the `@flows-runtime` tag of 0018 | Tag and partition added |
-| 48 | 0016 | *wrong*: the partition test failed every multi-tag scenario | First matching partition |
-| 49 | 0008, 0009 | *style*: four feature names outside `<area>_<topic>` | Renamed |
-| 50 | 0022 | *missing*: a test file with no `TestUnit` name | `TestUnitProblemRegistry` |
-| 51 | 0005 | *wrong*: sealed stores omitted `run-artifacts` and state uploads | Listed |
-| 52 | 0005, 0010, 0013, 0015 | *missing*: derived keys not tied to `secrets.DeriveKey` purposes; no purpose for state upload tokens | Purposes named; `state-upload-url` added |
-| 53 | 0005 | *wrong*: `infraweave_vcs_agent` also carries request IDs | Both payloads |
-| 54 | 0006 | *wrong*: "the only unauthenticated route" overlooked protocol routes | Reworded |
-| 55 | 0018, 0021 | *wrong*: Flows switched off removed routes in one record and answered `feature-disabled` in the other | `feature-disabled` on Flows routes, empty integration on Deploy reads |
-| 56 | 0014, 0022 | *missing*: 409 and 422 answers without slugs; the `feature` member absent from 0022 | Named |
-| 57 | 0012 | *missing*: four providers deferred to 0021, which decides two | Stated; `SHOWCASE` left open |
-
-Design choices affected by a corrected fact, flagged for the maintainer and
-not changed: Terraform's force-unlock under 0010's matching-ID rule (10); a
-FIPS-only build of 0013 (16); the narrower case against River in 0011
-(11); MinIO in 0016's acceptance harness (29); a `PATCH` that cannot null a
-field with a non-null default (35); host-dependent timezone validation
-(36). Recorded, not fixed: 0021 does not decide the `SHOWCASE` provider; and,
-outside these records, report 26 section 2.3 and report 22 section 2.2
-disagree on whether run summaries ship on self-hosted.
-
-Resolved after the review, in reconciling with the architecture options:
-0013 gains the `worker_pool_ca` sealed row that 0008 names; 0005's
-migrations run as named streams with `schema_migrations` keyed by stream,
-because decision 0004's recommended layout gives each module a stream; and
-0018 puts Flows in its own `flows` PostgreSQL schema, the question 0005
-left to it.
+The pass's findings are the `RES-08.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -1027,64 +533,10 @@ v2.2.1 under golangci-lint 2.15.0 (list modes, prefix matching, the
 map-form `deny`), and embedding strict-server partials across nested
 `internal/` directories. The copy check found no docs prose.
 
-### Findings by severity
-
-| Files | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [1-layered](../architecture-options/1-layered.md), [2-hexagonal](../architecture-options/2-hexagonal.md) | 14 | 1 | 3 | 0 | 1 | 19 |
-| [3-clean](../architecture-options/3-clean.md), [4-ddd](../architecture-options/4-ddd.md) | 21 | 2 | 5 | 0 | 2 | 30 |
-| [5-modular-monolith](../architecture-options/5-modular-monolith.md), README, 0004 | 26 | 2 | 5 | 0 | 0 | 33 |
-| **All** | **61** | **5** | **13** | **0** | **3** | **82** |
-
-One finding (27) changed a matrix rating; it is counted as *wrong*.
-
 ### Findings
 
-| # | Finding | Change |
-|---|---|---|
-| 1 | Option 5 `app/router.go` embeds types from `internal/<module>/internal/http`; the compiler forbids the import (experiment) | Partials re-exported by alias from each `module/` package; comment explains why |
-| 2 | Option 5 `platform/cron` "leader-elected periodic jobs over sql advisory locks"; `Cron` comment "fired by the elected leader"; `platform/sql` "advisory locks". 0005 and 0011: no election, one advisory lock | Ticker over due rows with `SKIP LOCKED`, no leader; migration lock named as the only one |
-| 3 | README process topology: singletons by "one elected leader ... as OTF does with an advisory lock" | Row restated from 0011, with OTF's exclusive subsystems as the contrast |
-| 4 | 0004 `scheduler` row: "cron entries fired by one elected leader" | Restated from 0011 |
-| 5 | Option 5 `platform/queue` described SQS terms (visibility, receive count) and "implementation per decision 0011", as though open; 0011 decides its own PostgreSQL queue | 0011's terms: `EnqueueTx`, leases fenced by generation, ordering keys, dead state |
-| 6 | Option 5 `Transition` calls `queue.Enqueue` inside the transaction; 0011 reserves `Enqueue` for callers without one | `EnqueueTx(ctx, tx.From(ctx), ...)` |
-| 7 | Option 5 worker endpoints (`GET /worker/v1/jobs`, `/signals`, `/phases`, `heartbeat.go`) differ from 0008's operations | 0008's register, poll (heartbeat, assignment, signals, drain), deregister, spec, reports, upload URLs, log chunks, artifacts, workspace |
-| 8 | Option 5 waiter woken when a run "reaches `READY`"; 0008 claims `READY`, `CONFIRMED` and `REPLAN_REQUESTED`; tracked walkthrough "enqueue for the pool" | All three claimable states; confirm issues `NOTIFY`, runs are not jobs |
-| 9 | Option 5 `chi.RegisterMethod("LOCK", "UNLOCK")`; `go doc` shows one method per call | Two calls |
-| 10 | Option 5 outbox "per-consumer cursors" and a dispatch loop; 0015's outbox is an `events` row plus an `events.fanout` job, and only the audit shipper keeps a cursor | `platform/outbox` and `platform/events` restated from 0015 |
-| 11 | Option 5 audit entries appended to the outbox and consumed by `events`; 0015 records audit through `audit.Record(ctx, tx, entry)` in the change's transaction | New `platform/audit` (table owned by platform, as `events` and `jobs` are); `events/core/audit` keeps search, retention and shipping; rule 7 denies it to the agent |
-| 12 | Option 5 job kinds `runs.gate`, `vcs.process`, `flows.event` differ from 0008 (`run.schedule`), 0012 (`vcs.process_delivery` on `vcs-inbox`) and 0018 (`flows.deliver`, one per linked input) | Renamed throughout; intake answers `202`, or `200` for a duplicate |
-| 13 | Option 5 machine "the 43 transitions of report 08"; 0008 adds T44 | "report 08's 43 and decision 0008's T44" (also in options 1 to 4) |
-| 14 | Option 5 runner mount `/usr/local/bin/infraweave`; 0008 mounts `/opt/infraweave/bin/infraweave` | 0008's path |
-| 15 | Option 5 objectstore drivers `s3/ fs/`; 0005 has `s3`, `gcs`, `azureblob`, `fs`. Contract suite `objecttest`; 0005 and 0016 say `objectstoretest` | Four drivers; suite renamed |
-| 16 | Option 5 `crypt/kms` "AWS, GCP, Azure" omits 0013's `vault` and `local` providers; log masking (0013, worker side) had no package | `crypt/kek` with all five providers; `agent/mask` |
-| 17 | Option 5 policy table: TRIGGER "on the five terminal states of blocking runs"; report 09 section 8 says a tracked run or task | Corrected |
-| 18 | Option 5 "a timeout is a deny, as report 09 section 2.3 requires"; 2.3 lists timeouts only, decision 0009 makes errors fail closed | Cites 0009 |
-| 19 | Option 5 "67 example-library templates" cited report 09 section 7; the count is in section 10.2 | Anchor `#102-counts` |
-| 20 | Option 5 run-state encryption cited report 10 section 2; the claim is in 1.1 (and the CSR in 2.3) | Both anchors |
-| 21 | Option 5 store tests "skipped by the unit job on macOS and Windows"; 0016 makes them `TestAcc`, ubuntu only | Restated from 0016 |
-| 22 | Option 5 friction: the agent "shares only `internal/iac`" with the server; rule 7 also allows kernel and three platform packages | Corrected |
-| 23 | README shared facts and "What ships": roles only; README singletons and 0011 "chooses" wording | Full subcommand list, `infraweavectl`, VCS agents on long-poll; 0011's queue named as decided |
-| 24 | README "Every option moves the same six packages"; hexagonal keeps `internal/buildinfo` | Five in every option, six in all but hexagonal; appendix sentence too |
-| 25 | README verdict: Spacelift folded the scheduler "for the same reason": a forced-off scheduler "silently" stops timers. Report 24 section 2.2 gives no reason, the chart warns, and the list is drift detection, scheduled runs, tasks and deletes | Restated as what report 24 says |
-| 26 | README "Decision 0011 choosing Temporal" as a change trigger; 0011 already rejects Temporal | "0011 reversed in favour of Temporal" |
-| 27 | README matrix: Clean "shared hotspot files" Fair while hexagonal is Poor for the same pattern (`app/usecases.go`, `controllers.go`, `events.go`, `rest/server.go`, one migration stream, a generated lint block edited by every phase) | Clean Poor, with a note; totals Clean 5/8/7 |
-| 28 | README Clean con "not expressible as depguard prefixes"; the cause is that depguard has no variable for the importing package | Reworded |
-| 29 | 0004 `version` reads `internal/buildinfo`; option 5 moves it to `internal/platform/buildinfo` | Corrected |
-| 30 | 0004 `serve` omitted the VCS agent long-poll and Flows agent gateway; `internal/agent` omitted both agents and masking; `devtools` called `docscheck` a library behind `tools/` (it has no tool; `make docs-check` runs its test) | Rows corrected |
-| 31 | 0004 and options 1, 2, 5 cited report 23 section 3 for Flows tenancy; the hierarchy is section 2 | Anchors `#2-resource-hierarchy` |
-| 32 | 0004 gave no place for the flat package names that decisions 0005 to 0022 use | New "Package names in other records" table |
-| 33 | Option 5 Flows "its own PostgreSQL schema": 0005 defers it to 0018, which was silent | 0018 now sets the `flows` schema, and option 5 cites it |
-| 34-52 | Options 1 and 2 (helper): hexagonal allow+deny in original mode; layered `model` rule self-denial and version hedge; missing subcommands and agent code; elected scheduler; layered leader-run pool assignment against 0008's poll claim; worker endpoints; outbox cursors and audit subscriber against 0015; state backend routes and bucket versioning against 0010 and 0005; object store API and `azure` driver; webhook routes and job names against 0012; SQS queue vocabulary; five OPA built-ins removed where 0009 removes six; T44; migration and feature naming against 0005 and 0016; report 28 anchor (1.2 for 12.1); `httpout` signature claim; VCS route tables unreachable under worker isolation | Fixed in place, with the depguard and embedding claims settled by experiment |
-| 53-82 | Options 3 and 4 (helper): clean rule 1 deny-only against its allow-list text; rule-2 prefixes matching siblings (`usecase/stack` lets `usecase/stackcontrol` through); rule 6 missing the container clients and go-jose; per-pool assignment against 0008; worker ops and "MQTT owned by 0008"; job kinds and outbox relay against 0011 and 0015; routes against 0010 and 0012; missing subcommands; sealing format and masking with nowhere to live; cron grammar as a library; unsupported separate Flows schema; a count of use cases. DDD map-form `deny`; wrong vendored-package error text; "no operation in common with deploy" against 0018's six Flows-tag operations; a run spec snapshot at trigger with no source and against 0013; the busy-flag lag claim against report 10 section 3.3; claim missing T30 and `NOTIFY`; heartbeat endpoint and CSR registration against 0008; queue vocabulary; routes; Docker client module (`moby/moby/client`) and go-jose; shared seal format; package breakdown summing to about 292 against the stated 330; unstated departures from 0009 and 0005; feature naming | Fixed in place |
-
-After the review, the coordinator aligned the decisions with the options:
-0005 runs migrations as named streams and 0018 gives Flows its own schema
-(both before RES-08 merged); 0008's stack state write is placed by 0004;
-and 0004 lists the `secrets` subcommands of 0013. Left for the maintainer:
-option 5 allows no foreign key across modules, while 0005 keeps real
-foreign keys for polymorphic owners that span the configuration, stacks
-and registry modules.
+The pass's findings are the `ARC-01.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -1141,62 +593,10 @@ checked every row of the [deviations register](../../implementation/deviations.m
 (DV-001 to DV-091) against the record it cites and every departure named in
 decisions 0004 to 0022. The copy check found no docs prose.
 
-### Findings by severity
-
-| Files | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [plan](../../implementation/plan.md) | 18 | 1 | 3 | 0 | 2 | 24 |
-| [repo-layout](../../implementation/repo-layout.md), [definition of done](../../implementation/definition-of-done.md) | 5 | 0 | 1 | 0 | 0 | 6 |
-| [5-modular-monolith](../architecture-options/5-modular-monolith.md) | 1 | 0 | 2 | 0 | 0 | 3 |
-| [capability roadmap](../../implementation/capability-roadmap.md), [deviations](../../implementation/deviations.md), [0013](../decisions/0013-secrets-at-rest.md) | 4 | 2 | 3 | 0 | 0 | 9 |
-| **All** | **28** | **3** | **9** | **0** | **2** | **42** |
-
 ### Findings
 
-| # | Finding | Change |
-|---|---|---|
-| 1 | Plan critical path ran through P13 → P13b → P23; the longest chain of **Depends on** edges runs P10 → P11 → P20 → P20b → P22 → P22b → P24, one phase longer | Critical path recomputed (24 edges) with the shorter chains named |
-| 2 | P2b registered `blob.expire` "in P2c" and its `secrets rotate` enqueues `secrets.reseal` (0013), yet P2b depended on P2 only, so its expiry exit criterion could not hold | P2b depends on P2c and registers its own job and periodic task; P2c keeps `queue.prune` and `idempotency.purge` |
-| 3 | P4 exit: a hidden stack answers `404`; stacks arrive in P5, which depends on P4 | A hidden space |
-| 4 | P4b served stack role bindings, `stackRoleBindings` and `stacksWithAccessToSpace` without depending on P5 | P4b depends on P5 |
-| 5 | P8's handover carries "the resolved environment", which P6's `Environment.Resolve` provides; P8 did not depend on P6 | P6 added to P8's **Depends on** |
-| 6 | P14 enforced drift run limits in the claim before drift detection exists (P16) | Moved to P16 task 2 |
-| 7 | P15 served `moduleAttachableAwsIntegrations` and `moduleAttachableAzureIntegrations` (`/modules/{moduleId}/...`) before modules exist (P17) | Moved to P17, which depends on P15 |
-| 8 | P17 served `moduleAttachablePolicies` and `modulePolicyAttachment` without depending on P13, which builds policies | P17 depends on P13 and P15 |
-| 9 | P3 and P3b exits claimed decision 0016's evidence rule, whose denial scenario is a `403` under 0007; the authorizer lands in P4 | P3 and P3b prove success and failure; P4 and P4b exits carry their denials and the evidence rule |
-| 10 | P3 exit: report 26 shows API Keys `implemented`; `apiKeyApiKeyRoleBindings` is P4b's | API Keys `partial` at P4, complete at P4b |
-| 11 | P3b exit: Managed Users complete less group integrations; its two role-binding reads are P4b's | Both exceptions named |
-| 12 | P22 exit: the Search Suggestions tag meets the evidence rule, but its operations land with their searches in phases P22 does not depend on (P4b, P13b, P17, P18, P18b, P19b, P21) | Claim removed; task 2 says each suggestion lands with its search |
-| 13 | P20 exit: "every vendor of report 20" includes Ansible, which is P20b's | The four vendors P20 builds |
-| 14 | Milestones M5, M6 and M8 named one phase whose dependencies do not include P14, P15, P16, P17b (M5), P19b, P21 (M6) or P25b (M8) | "Reached after" lists every phase the outcome needs |
-| 15 | Parallel lanes: "six lanes run independently once P10 lands" put P14 (after P13), P15 (after P9), P17 (after P13) and P21 (also after P12) in lanes they are not in | Lanes rewritten from the graph |
-| 16 | P23 task 2 called `managedUserGroupIntegration*` IdP group mappings; they give a Slack channel access rules (report 14 section 4.3) and need P18, which P23 does not depend on | Moved to P18; P23 keeps the login mapping onto P3b's groups |
-| 17 | P24: "decision 0004 leaves the provider's repository open"; 0004 does not mention the provider's repository | Stated as an open item with no decision |
-| 18 | No open-items list: the web console, the provider's repository and the report 26 cells that 0008 and 0021 supersede (section 7.8's MQTT transport, 7.7's legacy AWS mutations, the provisional phase column) had no place | New Open items section; P28 task 3 amends report 26 when 0021 is accepted |
-| 19 | P3 task 3 did not say how `ApiKeyInput.admin` is handled after 0006 followed 0021 | Rejected with `400 invalid-request`; `admin` reads a root `space-admin` binding from P4b |
-| 20 | P3 exit replayed capture C17 (the in-run token's `sub`); the in-run token first exists in P9 | Moved to P9 |
-| 21 | P1b exit: "the repo layout matches the tree", which cannot hold while the tree names later modules | Every package `go list` shows sits where the layout places it |
-| 22 | The adjustments table omitted remaps from report 26's provisional phases: `spacelift_idp_group_mapping`, Billing, OAuth, Worker Pools | Added |
-| 23 | "Adjustments to the approved spine" named a plan outside the repository, and "still carries the earlier marks" narrated history | Rewritten against report 26 section 1.4 |
-| 24 | `plugins.feature` and `scans.feature` broke 0016's `<area>_<topic>.feature` | `vendors_plugins.feature`, `resources_scans.feature` |
-| 25 | repo-layout: "The Terraform provider is a separate repository", a choice no record makes | Open, linked to the plan's open items |
-| 26 | repo-layout and definition of done: `api/provider-parity.yaml`; 0016 and DV-002 say `api/reference/provider-parity.yaml` | 0016's path |
-| 27 | repo-layout phase marks: `vendors` and `iac` at P9, though P5 creates both; captures at P9, though P1c creates them; marks said to be option 5's, though they are the plan's | Marks corrected; the plan named as their source |
-| 28 | repo-layout lacked `kernel/search` and `platform/sql/search` (P5) and `resources/internal/scans` (P22b), and described `httpkit/strict` without the update semantics P5 puts there | Added |
-| 29 | repo-layout `deploy/helm/` held one chart and `images/` omitted the Flows runtime; 0020 ships the `infraweave` and `infraweave-workers` charts and a Flows runtime image | Tree reconciled with 0020 |
-| 30 | Definition of done: forbidigo "From P1c", though P1b enables it; the CLI row "From P24", though `infraweavectl` is P24b | P1b and P24b |
-| 31 | Option 5 `sqltest`: "one schema per test"; 0016 gives each case a database copied from a migrated template | 0016's rule |
-| 32 | Option 5's `cmd` list and composition root omitted the `secrets` subcommands that 0004 and 0013 define | `secrets` and `secrets.go` added |
-| 33 | Option 5 `deploy/` listed one Helm chart and no Compose file, Terraform modules or `check.sh` | Reconciled with 0020 |
-| 34 | Roadmap: `spacelift_idp_group_mapping` resource and data source at P23, though they call only P3b's `managedUserGroup*` operations | P3b |
-| 35 | Roadmap: five Terraform rows called operations of later phases without saying so (`spacelift_account`, `spacelift_default_runner_image`, `spacelift_stack`, `spacelift_tool_versions`, `spacelift_stack_destructor`) | Notes name the phases; the reading rule says a row is implemented only when all are |
-| 36 | Roadmap Also column omitted P4b on Stacks (`stackRoleBindings`) | Added |
-| 37 | Roadmap Managed Users note: "IdP group mappings are SSO's" | Slack channel access rules, P18 |
-| 38 | Roadmap supersession register: `ApiKeyInput.admin` still "pending", in conflict with 0006 | Replaced by a root `space-admin` binding, P4b |
-| 39 | DV-013 kept the field as a pending conflict; a pending-deviations row repeated it | Rewritten from 0006 and 0021; pending row removed |
-| 40 | DV-051 (values under 4 bytes are not masked) cited 0013, which states the rule but not as a departure | 0013's Rationale gains the departure |
-| 41 | DV-091 cited 0022's Rationale, which does not list it; 0022's Constraints calls it a deliberate departure | Source corrected |
-| 42 | DV-039 cited 0011's Decision only; the departure is in its Rationale table | Rationale cited |
+The pass's findings are the `IMP-01.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -1247,24 +647,10 @@ feature counts are the survey's; their class counts sum to 785, which the
 report states. Template text is restated, never quoted, since the docs
 carry no licence.
 
-### Findings by severity
-
-| Report | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| [23](23-flows.md) | 1 | 0 | 6 | 0 | 0 | 7 |
-| **All** | **1** | **0** | **6** | **0** | **0** | **7** |
-
 ### Findings
 
-| # | Finding | Change |
-|---|---|---|
-| 1 | *missing*: section 3.4 gave the language as JavaScript, as the docs do; the evaluator also accepts TypeScript non-null and type assertions, and types are inferred | Language row rewritten citing the mongodb-form (L67), self-service-forms-s3 (L128) and simple-teams-bot (L139) templates; a row says expressions run on agents in Node.js; section 13's `Expression` row points at 3.4 |
-| 2 | *wrong*: section 3.3 put Transform's expression on the input; in all 19 Transform blocks of the templates the input configuration is `{}` and the logic is the output's `outputCustomization` | Transform row corrected, citing the template index |
-| 3 | *missing*: the undocumented `raw` variable, the block's own output inside its output customization | Row added to 3.4, citing rundeck-jobs (L143) and spacelift-unconfirmed-runs-slack (L31) |
-| 4 | *missing*: the `ref("signal.…")` helper, named on the block management page and used 128 times in the MIT scenarios but never in the templates | Row added to 3.4; the static configuration bullet in 3.2 names it |
-| 5 | *missing*: `config` and `event`, listed by the definition reference, appear in none of the 1,021 expressions | Noted on their 3.4 row |
-| 6 | *missing*: static configuration also reads `secrets`: the Deploy Template block's `templateId` in four templates | Bullet added to 3.2, citing the four templates |
-| 7 | *missing*: no record of what flow authors write: 784 expressions in 46 templates and 237 in six MIT scenarios, where they sit, their usage classes, the language features and globals in use, the error guard idiom, sizes and who writes them | New section 3.7; the header, Sources and versions table name the templates (by URL, read 2026-11-03) and the scenario files (by commit); the closing bullet points at 3.7 |
+The pass's findings are the `DES-05.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -1301,73 +687,10 @@ every API tag, untagged operation, Terraform resource and data source and
 feature of decision 0021 and its seeded tier, and checked every changed
 file for em and en dashes. The copy check found no docs prose.
 
-### Findings by severity
-
-| Files | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| Decisions [0003](../decisions/0003-api-conventions.md) to [0024](../decisions/0024-expression-language.md) | 19 | 0 | 9 | 0 | 3 | 31 |
-| [plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [repo-layout](../../implementation/repo-layout.md), [definition of done](../../implementation/definition-of-done.md), [deviations](../../implementation/deviations.md), [docs index](../../README.md) | 15 | 0 | 8 | 0 | 1 | 24 |
-| **All** | **34** | **0** | **17** | **0** | **4** | **55** |
-
 ### Findings
 
-| # | Finding | Change |
-|---|---|---|
-| 1 | *wrong*: 0005, 0011, 0014 and 0017 attributed the process modes to 0020, and 0020 said it decided them; 0004 defines them | Each cites 0004; 0020 decides how they are deployed |
-| 2 | *missing*: 0020's subcommand table lacked `auth hash-password` (0006) and `secrets generate-kek`, `rewrap` and `rotate` (0013), and gave `internal/buildinfo`, which 0004 places at `internal/platform/buildinfo` | Rows added; path corrected |
-| 3 | *wrong*: 0020's example list named `shared-pool`; the glossary's term is the public worker pool | `public-worker-pool` |
-| 4 | *wrong*: 0020 said lost inbound VCS webhooks are re-synced by 0012's reconciliation; 0012 has none | They retry from the VCS side or are redelivered by hand |
-| 5 | *wrong*: 0006's signing key table held a `worker-pool-ca` purpose; 0008 and 0013 keep the pool CA in `worker_pool_ca` | Row removed |
-| 6 | *missing*: 0021 says decision 0006 issues operator credentials; 0006 had no operator principal | `operator` principal kind, keys in `auth.operator.keys`, exchanged at `POST /auth/token` for a token only the operator API accepts |
-| 7 | *wrong*: 0007 had the operator set `features.disabled` through the operator API, which 0021 keeps as configuration, and said 0021 "proposes" not serving a type | Configuration; "does not serve" |
-| 8 | *wrong*: 0008's "administration API", 0011's `/admin/queue/...` routes under the account administrator permission and its verification line, and 0013's `POST /admin/secrets/rotate`, against 0021's operator API | Operator API operations reachable only by operator principals; DV-039 follows |
-| 9 | *missing*: 0011 lacked the dequeue feature check of 0021 (outcome `skipped`, `infraweave.features.skipped`) and 0010's daily `state.retention` task | Both added |
-| 10 | *wrong*: 0021's S1 examples named the stack `administrative` flag and `WebhooksIntegration.secret`, which 0007, 0022 and 0015 serve | Moved to the served-and-ignored rows of 0021's PD-02 table and of the roadmap's deprecated-but-served table |
-| 11 | *missing*: 0015 sent the SHA-1 signature header unless `events.webhooks.fips` was set; 0013's `fips140=only` refuses SHA-1 | The header is also left out under `fips140=only` |
-| 12 | *wrong*: 0005 said Go's FIPS 140-3 mode refuses MD5 (only `fips140=only` does), left multi-account installations outside the record (0007 decides them), and 0004 and 0005 gave Flows a tenancy of its own (0018 maps its organization onto the account) | Corrected to each owning record |
-| 13 | *missing*: 0005's NOTIFY channel table lacked 0015's `infraweave_events` and `infraweave_logs` | Rows added |
-| 14 | *wrong*: 0010 ran its store contract on "both blob drivers"; 0005 has four. Its retention text narrated an old default | Every object store driver of 0005; present tense |
-| 15 | *wrong*: 0012 kept a `/spacelift` comment command and called `BLOB` and `ORIGIN` "capabilities", a feature kind in 0021 | `/infraweave`; interfaces |
-| 16 | *wrong*: 0024 tagged a scenario `@flows-runtime` (0016's tag is `@flows-agent`) and put all Flows evaluation in `scheduler`, though static configuration is checked in `serve` at save | Tag and sentence corrected |
-| 17 | *wrong*: 0023's list of paths that never fall back to `index.html` omitted `/flows/`, `/auth/`, `/worker/`, `/vcs-agent/`, `/webhooks/`, `/downloads/`, `/blobs/` and others | Only console routes fall back; every prefix another handler owns answers that handler's `404` |
-| 18 | *missing*: 0016's CI table lacked 0023's `console` and `console-e2e` jobs, and its steps used `pkg/client` where 0001 makes `pkg/sdk` the supported entry point | Jobs added and kept out of the merged Go coverage where 0023 says; steps use `pkg/sdk` |
-| 19 | *missing*: 0004's layout lacked `pkg/sdk`, `pkg/flows/appsdk` and `web/console/`, named "decisions 0005 to 0022", said coverage exclusions need their own decision (0016 owns them) and titled 0018 "Flows runtime" | Rows and references added |
-| 20 | *style*: 0003 narrated the time before authentication and persistence existed and used en dashes in ranges | Rewritten in the present tense against 0005 and 0006; "1 to 255", "1 to 100" |
-| 21 | *wrong*: 0014's discovery table listed `state.v2` and `tfe.v2*`, which 0010 does not serve; its object keys ignored 0005's `modules` store and key shape; "holds Read" used no 0007 action; its open captures started at C130 in one place and C129 in another; its proxy URL token was a JWS, unlike 0010's HMAC URL tokens | Discovery rows removed; 0005's store and keys; `SPACE_READ`; C129 to C138; HMAC-SHA256 token under `registry-file-url` |
-| 22 | *wrong*: 0014 gated the registry by `BillingTierFeature` names and its own problem types | 0021's `modules`, `module-sharing` and `terraform-provider-registry` with 0022's three slugs; 0014 Accepted |
-| 23 | *wrong*: 0017 served `/metrics/spacelift`, a Spacelift name on an infraweave surface; its queue metrics disagreed with 0011's labels; its shutdown order omitted 0015's stream `end`; it had "workers" run the launcher | `/metrics/accounts` with an `account` label (DV-061); 0011's metric set; the `end` step; worker hosts. 0017 Accepted |
-| 24 | *missing*: 0013's `DeriveKey` purposes lacked the `registry-file-url` key that 0014 uses | Row added |
-| 25 | *wrong*: 0006 kept a "no seat accounting" departure; 0021 counts API keys in the `seats` limit | Row removed |
-| 26 | *wrong*: 0004 let `internal/agent` import three `platform` packages; the runner also seals workspaces (0013) and renders workflow command templates (0024) | Five, adding `platform/seal` (formats, no keys) and `platform/expr` |
-| 27 | *missing*: 0004 placed neither the expression engine (0024) nor the features gate (0021) | `internal/platform/expr`; an `expressions` domain that collects surfaces through `Surfaces()`; the `features` domain at the bottom of the graph |
-| 28 | *wrong*: 0004's rationale counted 20 criteria with option 5 Good on 16; the comparison now rates 24, Good on 19, with depguard burden Fair | Counts and the Fair rating stated |
-| 29 | *wrong*: 0015 put the event kind registry in `internal/events`, a domain, though every emitting domain needs it | Envelope and registry in `platform/outbox`; `events` holds the sinks; Flows triggers are a fan-out consumer inside `flows` (0018 follows) |
-| 30 | *style*: "priority tiers" for run order clashed with the glossary's tier | "Priority levels" in 0004, the plan, the layout and this log |
-| 31 | *style*: 0009 called its sample bounds quotas, and 0020 called the runner a phase executor, both words the glossary avoids | Sample budgets; the runner |
-| 32 | *wrong*: the plan said decisions 0004 to 0022 were Proposed and carried an Open choice line per phase | All 24 Accepted; Open choice lines removed, capture-dependent choices pointed at the deviations a capture may change |
-| 33 | *wrong*: the plan and roadmap said infraweave has no editions and `tier` answers `V5_ENTERPRISE_PLUS` | Seeded tiers with billing off by default, so every account behaves as Enterprise; `tier` is a tier object |
-| 34 | *wrong*: Flows sat at P26 and P26b after every client phase, ran app blocks in a Node runtime image and tagged `@flows-runtime`, against 0018's Go engine on Deploy's events, OCI app images and `@flows-agent` | P18c and P18d directly after the events phases; the event envelope fixed in P2c; first-party app images in P27 |
-| 35 | *missing*: no phase built the console of 0023 | P24c after P24b |
-| 36 | *missing*: no phase built `pkg/sdk`, and the provider and CLI imported `pkg/client/deploy` | SDK in P1c with token exchange in P3; `infraweavectl` starts in P3b with the `operator` group; P24 and P24b build over `pkg/sdk`, Flows included |
-| 37 | *missing*: the `fips-only`, `postgres-next` and `objectstore-cloud` jobs and the RustFS, fake-gcs-server and Azurite emulators of 0016 had no phase | P2b and P2 |
-| 38 | *wrong*: the plan, layout and milestones used MinIO and PostgreSQL 15; 0016 and 0005 use RustFS and PostgreSQL 18 | Corrected |
-| 39 | *wrong*: P8 failed runs after three minutes unseen; 0008 marks the worker `OFFLINE` at 3 minutes and loses its run after `run.lost_after` (60 minutes) | P8 task and exit rewritten; DV-025, DV-092 |
-| 40 | *wrong*: P8 sealed the handover as a JWE; 0013 defines the P-256 pool envelope | Pool envelope; DV-093 |
-| 41 | *wrong*: P11 served a read-only `tfe` subset and `state.v2` in discovery, and the layout held a `tfe` package; 0010 serves no Terraform Cloud service | Removed |
-| 42 | *wrong*: P14 gave each account a public pool `parallelism` through the administration API | The `public-worker-slots` limit and the operator API; DV-078 |
-| 43 | *wrong*: P3b built `internal/platform/features` over `BillingTierFeature` names and no operator API | `internal/features` with the catalogue, seeded tiers, entitlement, billing switch and operator API |
-| 44 | *missing*: the expression surfaces of 0024 had no tasks, and P6 interpolated `${NAME}` | `internal/platform/expr` in P6 with `${{ env.NAME }}`; workflow files in P10, output references in P16, notification text in P18, templates in P21, Flows in P18c |
-| 45 | *wrong*: P18b served `/metrics/spacelift` with `TestUnitSpacelift*` tests | `/metrics/accounts` with 0017's test names |
-| 46 | *missing*: P18 lacked 0015's event streams and notification text templates | Tasks added; DV-095, DV-097 |
-| 47 | *wrong*: P2c served `/admin/queue/...` routes to root admins | The operator API serves them from P3b |
-| 48 | *style*: the plan named infraweave's provider data sources `spacelift_current_stack`, `spacelift_current_space` and `spacelift_idp_group_mapping`, called the Repos tag "Spacelift Repos", and used "public pool", "UI support" and "phase executor" | `infraweave_` names, the Repos tag, the glossary's terms |
-| 49 | *missing*: the open items still asked where the provider lives, which 0001 settles, and lacked the authorization server that 0019 and 0018 assume from 0006 | Replaced by where the provider's checks run, and the authorization server added |
-| 50 | *missing*: 0023's `allowedActions` on every resource had no task and no deviation row | P4 and P7 tasks; DV-108 |
-| 51 | *wrong*: the roadmap's Plan column used report 26's plans rather than the feature catalogue, kept P26 rows and a `parallelism` delivery, and listed two served fields as superseded | Feature and seeded-tier columns, a feature catalogue section with capabilities, options, limits and the billing switch; P18c; `public-worker-slots`; the register corrected |
-| 52 | *wrong*: the layout made `pkg/client/deploy` the clients' import, kept `flows-runtime`, `@flows-runtime`, MinIO, `platform/features`, `platform/events`, `tfe` and "no foreign key crosses a domain boundary" (0004 allows keys along the import direction) | Rewritten from 0001, 0004, 0016, 0018, 0021, 0023 and 0024, with `pkg/sdk`, `pkg/flows/appsdk`, `web/console/`, `api/proto/flows/app/v1/` and the operator API |
-| 53 | *missing*: the definition of done lacked the TypeScript gate, `fips-only`, `postgres-next`, `objectstore-cloud` and the app contract check, and reviewed "Proposed" decisions with each phase | Rows added; decisions change by amendment in place |
-| 54 | *wrong*: DV-008, DV-009, DV-018, DV-025, DV-036, DV-061, DV-071, DV-078, DV-079 and DV-085 disagreed with the accepted records, and their departures (60-minute lost run, `OFFLINE`, P-256 pool keys, `Content-MD5` under `fips140=only`, the tier object, names, streams, JavaScript-free Flows, the AI budget, first-party app images, CEL) had no rows | Rows corrected; DV-092 to DV-108 added, each linked to its record |
-| 55 | *wrong*: the docs index listed decisions 0001 to 0022 as Proposed and omitted the glossary | 0001 to 0024 Accepted; `GLOSSARY.md` listed |
+The pass's findings are the `DES-07.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -1409,50 +732,10 @@ rename table, and checked every changed file for em and en dashes and the
 spelling "organisation". `TestUnitServedNames` now holds the served bundle
 to the table. The copy check found no docs prose.
 
-### Findings by severity
-
-| Files | wrong | unsupported | missing | copied | style | Total |
-|---|---|---|---|---|---|---|
-| Decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), `api/deploy_test.go` and the served bundle | 22 | 0 | 7 | 0 | 2 | 31 |
-| [30](30-open-questions.md) | 0 | 0 | 1 | 0 | 0 | 1 |
-| **All** | **22** | **0** | **8** | **0** | **2** | **32** |
-
 ### Findings
 
-| # | Finding | Change |
-|---|---|---|
-| 1 | *wrong*: the served bundle offered `VCSProvider.SPACELIFT` and `ConfigElementCategory.SPACELIFT_ENVIRONMENT`, 0012 named the `SPACELIFT` provider, and 0001's rule against Spacelift names had no list of renames and no test | `INFRAWEAVE` and `INFRAWEAVE_ENVIRONMENT`; 0001's rename table under its own heading; `TestUnitServedNames` reads it and fails a fixture serving `spaceliftAwsAccountId` |
-| 2 | *wrong*: 0009's input carried `spacelift.request.timestamp_ns`, and imported Spacelift policies, whose bodies say `package spacelift`, failed 0009's own package rule | The `infraweave` namespace; the importer rewrites the package, `input.spacelift` and `data.spacelift`, and the corpus test runs after the rewrite |
-| 3 | *wrong*: 0017 served `SpaceliftMetrics` and labelled series by account alone | `AccountMetrics`; `account` and `organization` labels; the pooled seat count read from the organization |
-| 4 | *wrong*: 0019 left the Intelligence toggles under their Spacelift names, trusted a built-in list of client hosts that 0006 does not, and listed the OAuth paths (C226) as unverified | `aiEnabled`, `aiTermsAccepted`, `aiTermsLatestVersion`, `accountSetAiEnabled`; loopback and `oauthRedirectAllowedHosts` only; C226 no longer a constraint |
-| 5 | *missing*: 0018 and 0019 relied on an authorization server whose domain and allowlist setting no record named | 0006's server in the `access` domain (0004), with the account setting `oauthRedirectAllowedHosts` |
-| 6 | *wrong*: 0006 let any member an account admits read the reference's SSO operations, which describe every account's sign-in | The organization admin role, reads included; 0007's subject row covers the `SSO` tag |
-| 7 | *missing*: 0006 had organization admins replace the break-glass credential and gave the break-glass login no defined reach | Operator-held per organization in `organization_break_glass`; an organization admin with no account role and no seat; set through the operator API |
-| 8 | *wrong*: 0007 had the operator name the organization's first member, which only an email match could resolve, and 0006 refuses email matching | No member is named; the break-glass admin configures the first provider, whose `adminLogin` is an organization admin, and the first account is claimed once (`accounts.claimed_at`) |
-| 9 | *missing*: organization-level changes had no audit trail: 0015's trail is per account | An organization trail listed through the `Organization` tag, shown to no account |
-| 10 | *wrong*: 0021 kept the tier, grants, limits and `entitlement_version` on the account | On the organization; limits pooled with `account_limits` below; an account limit above the pool answers 422; the organization API section and `organization` capability; `infraweavectl operator organization` |
-| 11 | *wrong*: 0022's `feature-not-in-tier` and `limit-reached` described the account's entitlement and limit | The organization's entitlement; `limit-reached` carries `scope`; `validation-failed` names cross-organization shares and account limits above the pool |
-| 12 | *wrong*: 0008, 0020 and 0021 ran the public pool for every account with `public-worker-slots` per account | For every organization, with the slots pooled and an optional account limit |
-| 13 | *wrong*: 0015 read per-minute worker samples that 0008 did not record | 0008's `worker.sample` task writing `worker_pool_samples`, kept by `worker.samples.retention`, read through the workers domain; 0011 lists the task |
-| 14 | *missing*: 0008 named neither infraweave's run variables nor their config element category | `INFRAWEAVE_*`, `TF_VAR_infraweave_*` and `INFRAWEAVE_ENVIRONMENT` |
-| 15 | *missing*: 0005's `database.iam_auth` knew only `aws`, though 0020's Azure and Google modules use Entra and IAM database authentication | `azure` and `gcp` in `BeforeConnect`, TLS required, no Cloud SQL connector |
-| 16 | *wrong*: 0005's `gcs` and `azureblob` drivers deleted the object on a checksum mismatch, while 0020 says `serve` does not delete | The object stays under its `pending` row for `blob.expire`; `serve` holds `objectstore.Writer`; 0016's cloud job proves the writer's delete is refused; 0020's least-privilege table |
-| 17 | *wrong*: 0014 shared modules with any account of the installation, let root space admins manage keys, used the account name as namespace and the account's tier | The same organization or 422; account admins; the account slug; the organization's tier; revocation and in-flight runs tested |
-| 18 | *wrong*: 0012 tied a default integration to the root space, and 0015 used the root space for internal errors and worker usage | The account's top space |
-| 19 | *wrong*: 0018 gave the Flows organization a ceiling, an `audience` value, an admin, an OTLP export and registry subscriptions of its own, and kept `organizationID` and `organizationName` | All the account's: `audience: account`, the account admin, `accountID` and `accountName` |
-| 20 | *wrong*: 0011 checked a job against the account's entitlement | The entitlement of the job's organization |
-| 21 | *missing*: 0023 had no account switcher, organization level or consent route, let `/oauth/` fall back to `index.html`, and left `/flows/forms/` under a prefix that never falls back | All added; `/consent/{request ID}`; `/oauth/` never falls back; `/flows/forms/` is the one console route under such a prefix |
-| 22 | *wrong*: 0004 put the organization's limits in `features`, which imports no domain, while 0007 put the tier in `access`'s `organizations` table and 0021 locked that table | `features` owns `organization_entitlements` and `account_limits` without foreign keys; 0005's lock order starts with the organization entitlement |
-| 23 | *wrong*: 0013's sealed registry named `sso_settings`, which 0006 does not have | `identity_providers.secret_sealed` |
-| 24 | *wrong*: 0015 named 0012's `vcs_pr_comments` `pull_request_comments`, and kept the Slack app's credentials per account although the app is the installation's | 0012's name; `slack_app_config` holds the account's workspace installation |
-| 25 | *missing*: 0018 stored large Flows bodies under `flows/events/`, a store 0005 does not define | 0005's `flows-events` store with the account segment |
-| 26 | *wrong*: 0007 called module shares the one exception to account isolation, while 0014 makes public modules and providers readable by anyone | Public visibility stated as revealing no account's own data |
-| 27 | *wrong*: 0019 accepted API tokens on `/mcp`, which 0006's audience rule refused | 0006 states the `/mcp` exception |
-| 28 | *wrong*: 0020 took a bootstrap credential of 0006 from a Secret; 0006 has none | The operator keys, `auth.operator.keys` |
-| 29 | *wrong*: 0021's billing text and tests, 0014's test and 0015's rationale put the tier on the account | The organization |
-| 30 | *style*: 0004 and 0005 said Flows maps its organization onto the account | A Flows organization is an infraweave account |
-| 31 | *style*: -ise spellings in 0004, 0006, 0010, 0012, 0013, 0015, 0016 and 0018, and "cap", which the glossary avoids, for account limits | Oxford -ize; account limit |
-| 32 | *missing*: report 30 still listed C119, C226 and C238 as blocking designs that 0006 and 0018 now decide | Their Blocks cells say what the capture is still for |
+The pass's findings are the `DES-09.` records of the register
+[review-findings.json](../../data/review-findings.json).
 
 ### What survived
 
@@ -1500,14 +783,11 @@ to the table. The copy check found no docs prose.
   `wo_`), 17 against 25 (the ServiceNow version), 21 against 05 and 08
   (`runResourceState`), 24 against 10 (the MQTT dates), 01 against 06
   (error status codes) and 26 against 01 (the self-hosted feature set).
-- **Left as they were:** the 102 Purpose cells that are Bruno request names
-  (C16); the uncommitted generator scripts named by 03, 04, 05, 10 and 22 to
-  24 (PD-12); and one cross-report note from RES-05, that report 06 could
-  record the spacectl list pagers dropping `orderBy`, which 06 does not yet
-  do. From RES-07: report 14 section 11 still calls the self-hosted tier
-  mapping undocumented, and report 08 does not record that tasks need a
-  paid account. From RES-08: report 26 section 2.3 and report 22 section
-  2.2 disagree on whether run summaries ship on self-hosted.
+- **Left open:** the 102 Purpose cells that are Bruno request names
+  (C16), and whether self-hosted v7.1.0 ships run summaries, on which the
+  self-hosted Intelligence page and changelog that reports 22 and 26 cite
+  disagree (C270). The generator scripts named by 03, 04, 05, 10 and 22 to 24 are
+  not committed (PD-12): the reports describe their method instead.
 - **The decision records agree with each other** after RES-08: 19 of its
   58 findings were contradictions between records, and six corrected facts
   affect a proposed design choice, each flagged for the maintainer.
@@ -1522,9 +802,10 @@ to the table. The copy check found no docs prose.
 
 ## Inferred and undocumented
 
-This log adds no claims about Spacelift. Its counts come from the findings
-tables of the twelve reviews; where a review's own summary differs from its
-rows, the rows are counted and the difference is stated under Totals.
+This log adds no claims about Spacelift. Its counts of findings come from
+the register, one record per finding row of the twelve reviews; where a
+review's own summary gave other counts, the rows are what the register
+holds.
 
 ## Versions at the research baseline
 
