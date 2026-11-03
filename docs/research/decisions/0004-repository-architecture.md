@@ -202,7 +202,7 @@ both binaries is decision 0020's.
 The [comparison matrix](../architecture-options/README.md#comparison-matrix)
 rates all five options on 24 criteria. Option 5 rates Good on 19 and Poor on
 none, and leads the roadmap table outright. Its depguard burden rates Fair,
-about 26 rules and 230 entries, because the nested `internal/` directories
+about 26 rules and 270 entries, because the nested `internal/` directories
 leave the compiler to enforce most of each boundary.
 
 - **Option 1, layered**, keeps runs acyclic only by adding a `workflow`
@@ -272,6 +272,12 @@ change.
 - **depguard reports only new issues** against the merge base in this
   repository's configuration, so the rules are introduced with a clean run
   over the whole tree.
+- **depguard matches plain prefixes.** An allow entry without a trailing
+  `$` or `/` admits every package whose path starts with it, so
+  `$m/internal/stacks/api` would let `$m/internal/stacks/apiutil` through.
+  Allow entries end in `$` or `/`
+  ([repo layout](../../implementation/repo-layout.md#depguard-rules)), and
+  P1b's fixtures include a sibling import.
 - **Undecided neighbours.** The queue implementation is decision 0011's; a
   workflow engine run as a separate cluster would move run orchestration
   out of the `runs` transaction and reopen this decision. Packaging and

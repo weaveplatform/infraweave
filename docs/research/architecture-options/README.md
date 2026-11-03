@@ -384,7 +384,7 @@ The numbers behind the cost ratings:
 | Go packages | about 230 | about 200 | about 285 | about 375 | about 325 |
 | Top-level directories under `internal/` | 11 | 8 | 6 | 22 | 25 |
 | Dependency rules | 8 | 10 | 9 | 9 | 9 (1 by the compiler) |
-| depguard rules, entries | about 63, about 290 | about 33, about 145 | about 125, about 800 (116 generated) | 43, about 520 | 26, about 230 |
+| depguard rules, entries | about 63, about 290 | about 33, about 145 | about 125, about 800 (116 generated) | 43, about 520 | 26, about 270 |
 | Thin packages at risk under the 90% floor | about 10 | about 14 | about 30 | about 70 | about 40 |
 | Packages a stack update crosses | 8 | 6 | 10 | 8 | 7 |
 | Files to add a vendor | about 10 new, 6 edited | about 10 new, 4 edited | about 10 new, 4 edited | about 6 new, 5 edited | about 12 new, 5 edited |

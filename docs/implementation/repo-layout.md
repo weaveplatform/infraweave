@@ -423,11 +423,15 @@ these rules from option 5's
 section, where `$m` is `github.com/weaveplatform/infraweave`. The table
 lists the cross-cutting rules; the per-domain rules of decision 0004, one
 per domain listing the other domains' `api/` packages it may import, make
-up the rest.
+up the rest. depguard matches entries as plain string prefixes, so every
+allow entry ends in `$` (that package exactly) or `/` (the packages below
+it): a bare `$m/internal/stacks/api` would also admit
+`$m/internal/stacks/apiutil`. Deny entries stay bare, since over-matching
+only refuses more.
 
 | Rule | Files | Mode | Entries |
 |---|---|---|---|
-| `api-packages` (rule 3) | `**/internal/*/api/**` | strict allow | `$gostd`, `$m/internal/kernel`, `$m/internal/platform/outbox` |
+| `api-packages` (rule 3) | `**/internal/*/api/**` | strict allow | `$gostd`, `$m/internal/kernel$`, `$m/internal/kernel/`, `$m/internal/platform/outbox$` |
 | `constructors` (rule 4) | everything except `**/internal/app/**` and `**/cmd/**` | deny | `$m/internal/<domain>/assembly` for each of the 19 domains |
 | `core-not-adapters` (rule 5) | `**/internal/*/internal/core/**` | deny | `$m/internal/<domain>/internal/adapters` for each of the 8 hexagon domains |
 | `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 19 domain roots, `$m/internal/agent`, `$m/internal/app` |

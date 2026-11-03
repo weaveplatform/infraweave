@@ -449,7 +449,10 @@ with a clean run over the whole tree.
    `_test.go` files ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 5. `internal/app/depguard_test.go` (`TestUnitDepguardFixtures`): a fixture
    domain that imports another domain's `internal/` and `assembly/` packages,
-   and a platform package that imports a domain, each fail `make lint`.
+   a fixture domain that imports a sibling of an allowed `api/` package
+   (`internal/stacks/apiutil`), and a platform package that imports a
+   domain, each fail `make lint`; and every allow entry in `.golangci.yml`
+   ends in `$` or `/` ([repo layout](repo-layout.md#depguard-rules)).
 
 **Exit criteria**
 - `GOWORK=off go list ./...` shows no package under `internal/server`, and
