@@ -106,7 +106,7 @@ descriptions.
 The `preparingTimeoutSeconds` description says that raising it also requires
 raising `SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT` on the workers, or the
 worker stops downloading source before the server deadline [G]. Neither the
-platform default nor that variable's default is documented *(unverified)*.
+platform default nor that variable's default is documented *(unverified)* (C58).
 
 `PublicWorkerPool` has 15 fields [G]: `parallelism` (maximum simultaneous runs
 for the account), `activeRuns` (deprecated), `busyWorkers`, `pendingRuns`,
@@ -171,7 +171,7 @@ whose change re-triggers the cycle (`terraform-schema.json`).
 The token decodes to JSON. The worker-pool modules read `.broker.endpoint`
 from it to detect a FedRAMP control plane (`*.fedramp.spacelift.io`) and pick
 the FedRAMP launcher build [S] [saas.tftpl][ec2-ud]. No other token field is
-documented *(unverified)*.
+documented *(unverified)* (C59).
 
 ### 2.4 Pool settings with behaviour
 
@@ -184,7 +184,7 @@ documented *(unverified)*.
 
 How the API expresses "drift detection disabled" is not documented; the
 Kubernetes CRD has a separate `disabled` flag and `maxRuns` (section 7.2),
-and `driftDetectionRunLimit: 0` may be the API encoding *(unverified)*.
+and `driftDetectionRunLimit: 0` may be the API encoding *(unverified)* (C60).
 
 ## 3. Workers, status, drain and recycle
 
@@ -209,7 +209,7 @@ and `driftDetectionRunLimit: 0` may be the API encoding *(unverified)*.
 | `DRAINED` | Not accepting new work | [G]; [D] [worker-pools][wp] |
 
 Which status a worker that is both drained and busy reports is not
-documented *(unverified)*. The autoscaler treats `drained` and `busy` as
+documented *(unverified)* (C61). The autoscaler treats `drained` and `busy` as
 independent booleans [S] [worker.go][as-worker].
 
 ### 3.2 Worker metadata
@@ -231,7 +231,8 @@ The autoscaler keys on these: AWS uses `asg_id` and `instance_id` [S]
 [aws_controller.go][as-aws], Azure `vmss_name` and `instance_id` [S]
 [azure_controller.go][as-az], GCP `gcp_igm_id` and `gcp_instance_id` [S]
 [gcp_controller.go][as-gcp]. The GCP module at its pinned commit sets no
-`gcp_igm_id` tag [I] from a search of the module.
+`gcp_igm_id` tag [I] from a search of the module; how the autoscaler then
+finds its instance group is *(unverified)* (C71).
 
 ### 3.3 Drain, cycle and recycle
 
@@ -248,7 +249,7 @@ EC2, the launcher runs as a systemd service whose `ExecStopPost` powers the
 instance off after `poweroff_delay` seconds (default 15), so a launcher that
 exits takes its VM with it and the auto scaling group replaces it [S]
 [saas.tftpl][ec2-ud]. Whether a cycle waits for busy workers to finish is not
-documented *(unverified)*.
+documented *(unverified)* (C62).
 
 Both scale-in paths start the same way: drain the worker and read `busy` from
 the mutation result. They differ when the worker is busy:
@@ -267,7 +268,7 @@ at 15 minutes and at the hook timeout minus 60 seconds, and it gives up after
 minutes at the default [S] [ec2 variables.tf][ec2-hook].
 
 That a drained busy worker finishes its current run before going idle is
-implied by this protocol but not stated *(unverified)*.
+implied by this protocol but not stated *(unverified)* (C63).
 
 ## 4. The launcher and the worker protocol
 
@@ -327,7 +328,7 @@ current docs page also states [RN]; [D] [worker-pools][wp]. The self-hosted
 worker pools page gives the same 2027-03-30 date [D] [sh-worker-pools][sh-wp],
 while the self-hosted v7.1.0 changelog deprecates MQTT, including the built-in
 broker, without naming the release that removes it [D] [self-hosted
-changelog][sh-cl].
+changelog][sh-cl]; which release removes it is *(unverified)* (C70).
 
 Defaults differ by deployment path:
 
@@ -343,7 +344,7 @@ Defaults differ by deployment path:
 The modules render the choice as `export SPACELIFT_WORKER_COMMS_PROTOCOL` and,
 for poll, `export SPACELIFT_WORKER_COMMS_URL` in user data [S]
 [ec2 main.tf][ec2-main]. The poll endpoint paths and payloads are not
-published *(unverified)*.
+published *(unverified)* (C64).
 
 ### 4.3 MQTT topics and brokers (self-hosted)
 
@@ -362,7 +363,7 @@ published *(unverified)*.
 
 Workers need no inbound connectivity under either transport [D]
 [sh-networking][sh-net]. The MQTT payload schema is not published
-*(unverified)*. The Kubernetes CRD's `mqttReconnectRetryCount` (default 5)
+*(unverified)* (C65). The Kubernetes CRD's `mqttReconnectRetryCount` (default 5)
 bounds initial-connection retries to the broker [S] [workerpool CRD][crd-wp].
 The docs warn that an evicted controller may miss MQTT messages and fail runs
 temporarily [D] [kubernetes-workers][kw].
@@ -437,7 +438,7 @@ the same prefixes by stage: `ro_` reaches every read stage (everything except
 applying) and `wo_` only the applying stage [D] [environment][env]; report 13
 records that rule. That `SPACELIFT_WHITELIST_ENVS` prefixes and the RO and WO
 extra mounts follow the same stage split is [I] from the shared prefix names
-*(unverified)*. The default runner images in the launcher apply only when
+*(unverified)* (C66). The default runner images in the launcher apply only when
 neither the stack nor the account sets one [D] [worker-pools][wp]. The
 Spacelift worker AMIs install gVisor (`runsc`), which makes
 `SPACELIFT_WORKER_RUNTIME=runsc` available on them [S] [gvisor.sh][wi-gvisor];
@@ -459,7 +460,7 @@ The docs and the CRD disagree on the pod deadline default. The CRD
 describes the controller at v0.0.47 and explains the extra time as room for a
 timed-out run to report failure and run after-run hooks; docs are the higher
 source, so the docs' 70 minutes stands as documented behaviour with the CRD
-value recorded *(unverified)*.
+value recorded *(unverified)* (C67).
 
 ### 5.3 Scheduling inside a pool
 
@@ -767,7 +768,7 @@ including the worker-side initialization policy, which can call a verifier
 binary inside the image [D] [run][run]. The worker-side policy input therefore
 carries at least `run.user_provided_metadata`, `run.commit.hash` and
 `static_run_environment.stack_slug` [S] [initialization-policy.rego][sr-init];
-its full schema is not documented *(unverified)*.
+its full schema is not documented *(unverified)* (C68).
 
 ## 11. Worker outcomes and observability
 
@@ -803,7 +804,7 @@ The worker traces only the five run states listed, so `PREPARING` and the
 queue states have no worker metrics [G]. Workers upload these artifacts to a
 separate run observability bucket [RN] 2026-09-01. Which vendors besides
 Terraform produce data is not stated; OpenTofu is the likely producer given the
-Terraform-only exclusion *(unverified)*.
+Terraform-only exclusion *(unverified)* (C69).
 
 ## 12. Environment and usage
 
@@ -836,7 +837,9 @@ budget [D] [worker-usage][wu]. `workerUsage` exposes `cycle`,
 - A worker protocol must carry job assignment and stop and kill signals to
   workers with no inbound connectivity; Spacelift's surviving transport is
   worker-initiated HTTP long-poll, with MQTT topics per pool and worker as the
-  retiring alternative.
+  retiring alternative. Whether infraweave offers MQTT or long-poll only is
+  product decision PD-06, answered by decision 0008 with long-poll only; the MQTT transport is also among the deprecated interfaces of product
+  decision PD-02, answered by decision 0021, which does not serve it.
 - Pool credentials are a CSR-signed certificate plus a private key held only
   by the customer; run state for private pools is encrypted to that key.
 - Workers need the launcher variables in section 5.1, including image
@@ -857,23 +860,33 @@ budget [D] [worker-usage][wu]. `workerUsage` exposes `cycle`,
 ## Inferred and undocumented
 
 - The poll transport's endpoints and payloads, and the MQTT payload schema,
-  are not public (sections 4.2 and 4.3).
-- The token's JSON fields other than `broker.endpoint` (section 2.3).
+  are not public (sections 4.2 and 4.3; C64, C65).
+- The token's JSON fields other than `broker.endpoint` (section 2.3; C59).
 - Whether a drained busy worker finishes its run, and what a cycle does to a
-  busy worker (section 3.3).
-- `WorkerStatus` when a worker is both drained and busy (section 3.1).
+  busy worker (section 3.3; C62, C63).
+- `WorkerStatus` when a worker is both drained and busy (section 3.1; C61).
 - The platform default preparing timeout and the
-  `SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT` default (section 2.1).
-- How the API encodes "drift detection disabled" (section 2.4).
+  `SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT` default (section 2.1; C58).
+- How the API encodes "drift detection disabled" (section 2.4; C60).
 - Whether the `SPACELIFT_WHITELIST_ENVS` prefixes and the RO/WO extra mounts
   follow the environment page's read-stage and applying-stage split
-  (section 5.1).
-- The Kubernetes pod deadline default: docs and CRD differ (section 5.2).
-- The full worker-side initialization policy input (section 10).
+  (section 5.1; C66).
+- The Kubernetes pod deadline default: docs and CRD differ (section 5.2; C67).
+- The full worker-side initialization policy input (section 10; C68).
 - Which vendors produce worker metrics besides the excluded Terraform vendor
-  (section 11).
+  (section 11; C69).
 - The GCP module sets no `gcp_igm_id` tag although the autoscaler reads one
-  (section 3.2), inferred from searching the module.
+  (section 3.2), inferred from searching the module; how the autoscaler then
+  finds its instance group is *(unverified)* (C71).
+- *(unverified)* (C70) Which self-hosted release removes MQTT (section 4.2).
+- *(unverified)* (C39) The run state a launcher run timeout or no-log timeout
+  produces (section 5.2); report 08 lists it among the unpinned transitions.
+- *(unverified)* (C21) Which GraphQL operations the Kubernetes controller
+  (v0.0.47) sends, including those that auto-register pools (section 7.2); its
+  source is not public.
+- *(unverified)* (C267) Which worker processed a run, and where Spacelift
+  records it: no run field names the worker, and only the `Worker` CRD's
+  `status.currentRunID` links the two on Kubernetes (section 7.2).
 
 ## Versions at the research baseline
 

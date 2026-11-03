@@ -81,7 +81,7 @@ Every create mutation except GitHub's and Origin's takes `customInput: CustomVCS
 | `space` | `ID!` | Space after the update; an update can move an integration between spaces |
 | `description`, `labels`, `vcsChecks`, `vcsCheckOptions`, `useGitCheckout` | as above | `isDefault` and `name` are not updatable **[G]** |
 
-The default for `useGitCheckout` differs by source. The Terraform provider documents `true` for GitLab and Azure DevOps and `false` for Bitbucket Data Center **[S]** (`terraform-schema.json`, `spacelift_gitlab_integration.use_git_checkout`). Bitbucket Cloud always uses Git checkout, because Bitbucket's archive download does not accept API tokens **[G]** (`BitbucketCloudIntegration.useGitCheckout`). The GitHub page describes Git checkout as experimental and per stack, enabled with the label `feature:enable_git_checkout` or by support **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations), while every integration form carries a **Use Git checkout** toggle that sparse checkout requires **[D]**. The schema exposes only the per-integration field **[G]**; whether the label has any effect alongside it is *(unverified)*.
+The default for `useGitCheckout` differs by source. The Terraform provider documents `true` for GitLab and Azure DevOps and `false` for Bitbucket Data Center **[S]** (`terraform-schema.json`, `spacelift_gitlab_integration.use_git_checkout`). Bitbucket Cloud always uses Git checkout, because Bitbucket's archive download does not accept API tokens **[G]** (`BitbucketCloudIntegration.useGitCheckout`). The GitHub page describes Git checkout as experimental and per stack, enabled with the label `feature:enable_git_checkout` or by support **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations), while every integration form carries a **Use Git checkout** toggle that sparse checkout requires **[D]**. The schema exposes only the per-integration field **[G]**; whether the label has any effect alongside it is *(unverified)* (C72).
 
 ### 2.3 Default and space-level integrations
 
@@ -266,7 +266,7 @@ Terraform resource `spacelift_gitlab_integration` **[S]** (`terraform-schema.jso
 
 The Terraform provider has only a data source, `spacelift_bitbucket_cloud_integration`, whose `username` attribute is deprecated **[S]** (`terraform-schema.json`).
 
-**Authentication.** Atlassian deprecates Bitbucket App Passwords in favour of API tokens, so the current integration takes an Atlassian email and an API token created under **Create API token with scopes** for the Bitbucket app, with `read:repository:bitbucket`, `read:pullrequest:bitbucket` and `read:workspace:bitbucket` **[D]** [bitbucket-cloud](https://docs.spacelift.io/integrations/source-control/bitbucket-cloud#create-your-api-token). How commit statuses and comments are written with read-only scopes is not explained *(unverified)*.
+**Authentication.** Atlassian deprecates Bitbucket App Passwords in favour of API tokens, so the current integration takes an Atlassian email and an API token created under **Create API token with scopes** for the Bitbucket app, with `read:repository:bitbucket`, `read:pullrequest:bitbucket` and `read:workspace:bitbucket` **[D]** [bitbucket-cloud](https://docs.spacelift.io/integrations/source-control/bitbucket-cloud#create-your-api-token). How commit statuses and comments are written with read-only scopes is not explained *(unverified)* (C75).
 
 **Webhooks.** Per repository: Repository **Push**; Pull Request **Created**, **Updated**, **Approved**, **Approval removed**, **Merged**, **Comment created**; with the integration's URL and secret **[D]**. The **Pull Request Commit Links** app must be installed so the commit-to-PR API works; opening a commit's Pull requests view installs it **[D]**. Bitbucket Cloud signs payloads with the secret using HMAC-SHA256 in `X-Hub-Signature` **[I]** (Atlassian's documented behaviour).
 
@@ -349,7 +349,7 @@ Raw Git (`GIT`) builds a stack or module from any publicly reachable Git URL, in
 |---|---|---|
 | GitHub, GitHub Enterprise | Push | Matches the push to stacks and modules on that repository and evaluates each one's push policy; may create tracked or proposed runs; stops proposed runs superseded by a newer commit on their branch **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations) |
 | | Installation created | Creates a Spacelift account (built-in app) **[D]** |
-| | Organization renamed | The docs say the Spacelift account is renamed, for accounts created through GitHub **[D]**; the changelog of 2026-06-08 removes automatic subdomain renames on organization changes **[RN]**. The changelog is newer; the current behaviour is *(unverified)* |
+| | Organization renamed | The docs say the Spacelift account is renamed, for accounts created through GitHub **[D]**; the changelog of 2026-06-08 removes automatic subdomain renames on organization changes **[RN]**. The changelog is newer; the current behaviour is *(unverified)* (C76) |
 | | Pull request opened or reopened | Stores a PR record shown on the stack's PRs tab **[D]**; evaluates push policies with PR input **[D]** [push-policy](https://docs.spacelift.io/concepts/policy/push-policy#data-input-schema) |
 | | Pull request synchronized or renamed | Updates the record **[D]**; evaluates push policies **[D]** [push-policy](https://docs.spacelift.io/concepts/policy/push-policy#data-input-schema) |
 | | Pull request closed | Deletes the record **[D]** |
@@ -365,7 +365,7 @@ Raw Git (`GIT`) builds a stack or module from any publicly reachable Git URL, in
 | Azure DevOps | Code pushed; PR created, merge attempted, updated, commented on | As above **[D]** |
 | Raw Git | none | Manual Sync and Trigger |
 
-The PR comment page does not name the providers that support comment-driven actions; GitLab's documented triggers omit comment events *(unverified whether GitLab comments are processed)*.
+The PR comment page does not name the providers that support comment-driven actions; GitLab's documented triggers omit comment events *(unverified whether GitLab comments are processed)* (C74).
 
 ### 11.2 What an event becomes
 
@@ -412,7 +412,7 @@ Aggregated checks (Business plan and above) post three checks per commit **[D]**
 | `spacelift/proposed` | Proposed runs |
 | `spacelift/modules` | Module runs |
 
-The same three names are documented for GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps **[D]**. The individual check's name is not documented in the mirror *(unverified; the per-stack name format is unknown)*.
+The same three names are documented for GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps **[D]**. The individual check's name is not documented in the mirror *(unverified; the per-stack name format is unknown)* (C73).
 
 ### 12.2 What checks report
 
@@ -442,7 +442,7 @@ Bitbucket Cloud, Bitbucket Data Center and Azure DevOps have no documented deplo
 
 ### 12.5 Pull requests in Spacelift
 
-The stack's PRs tab lists open PRs against the tracked branch, each with its status and most recent run; it is read-only and a PR leaves the list when closed **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#pull-requests). The schema returns up to 50 open PRs **[G]**.
+The stack's PRs tab lists open PRs against the tracked branch, each with its status and most recent run; it is read-only and a PR leaves the list when closed **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#pull-requests). The schema returns up to 50 open PRs **[G]**. Whether one run can be listed under several pull requests is open: `PullRequest.runs` lists runs, but no `Run` field names a pull request *(unverified)* (C269).
 
 ## 13. Push policy interplay
 
@@ -509,7 +509,7 @@ An integration reaches a pool through the scheme `private://<pool-name>/<optiona
 | Integration pages **[D]** | `userFacingHost` = `private://<pool>` | `userFacingHost` = `private://<pool>/<organization>` |
 | Terraform provider examples **[S]** [resource.tf](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/examples/resources/spacelift_gitlab_integration/resource.tf) | `api_host` = `private://<pool>`, `user_facing_host` = the real URL | `user_facing_host` = `private://<pool>/<organization>` |
 
-The provider examples match the field meanings (API calls go through the agent, links shown to users use the real host) **[I]**. Which field the service reads for routing is *(unverified)*; the docs rank higher but are internally inconsistent with the field names.
+The provider examples match the field meanings (API calls go through the agent, links shown to users use the real host) **[I]**. Which field the service reads for routing is *(unverified)* (C77); the docs rank higher but are internally inconsistent with the field names.
 
 ### 14.3 Token
 
@@ -564,7 +564,7 @@ Every flag defined at the pinned commit **[S]** [main.go](https://github.com/spa
 
 ### 14.6 What it proxies: request validation
 
-The docs say the agent applies a strict allowlist of the paths Spacelift needs **[D]**. At the pinned commit the strategy starts as an empty blocklist, which lets every request through, and is replaced only when `--use-allowlist` is true or `--blocklist-path` is set **[S]** [main.go](https://github.com/spacelift-io/vcs-agent/blob/553aba3b3e54/cmd/spacelift-vcs-agent/main.go#L204-L221). Neither flag is in the command's `Flags` list **[S]** [main.go](https://github.com/spacelift-io/vcs-agent/blob/553aba3b3e54/cmd/spacelift-vcs-agent/main.go#L140-L153), so urfave/cli v3 does not parse them: passing either on the command line fails as an undefined flag, their environment variables are never read, and the lookups at L206 and L213 see them unset **[I]** (from urfave/cli v3's flag lookup; the library source is not in the local sources). The agent built from this commit therefore validates nothing, and `--allowed-projects` has no effect. The docs are the higher source by the README's precedence, so the conflict is recorded; what a released agent does is *(unverified against a running agent)*.
+The docs say the agent applies a strict allowlist of the paths Spacelift needs **[D]**. At the pinned commit the strategy starts as an empty blocklist, which lets every request through, and is replaced only when `--use-allowlist` is true or `--blocklist-path` is set **[S]** [main.go](https://github.com/spacelift-io/vcs-agent/blob/553aba3b3e54/cmd/spacelift-vcs-agent/main.go#L204-L221). Neither flag is in the command's `Flags` list **[S]** [main.go](https://github.com/spacelift-io/vcs-agent/blob/553aba3b3e54/cmd/spacelift-vcs-agent/main.go#L140-L153), so urfave/cli v3 does not parse them: passing either on the command line fails as an undefined flag, their environment variables are never read, and the lookups at L206 and L213 see them unset **[I]** (from urfave/cli v3's flag lookup; the library source is not in the local sources). The agent built from this commit therefore validates nothing, and `--allowed-projects` has no effect. The docs are the higher source by the README's precedence, so the conflict is recorded; what a released agent does is *(unverified against a running agent)* (C78). Which of the two infraweave's agent follows is product decision PD-04, answered by decision 0021, with the agent's flags in decision 0012.
 
 Blocklist: YAML with `version` and `rules`, each rule a unique `name`, a `method` regex and a `path` regex; a request matching any rule is blocked **[S]** [list.go](https://github.com/spacelift-io/vcs-agent/blob/553aba3b3e54/privatevcs/validation/blocklist/list.go#L14-L68), [rule.go](https://github.com/spacelift-io/vcs-agent/blob/553aba3b3e54/privatevcs/validation/blocklist/rule.go#L10-L47).
 
@@ -620,15 +620,15 @@ Report 26 owns the full tier map.
 
 ## Inferred and undocumented
 
-- Webhook signature schemes for GitHub, GitLab and both Bitbucket products are the providers' standard ones; Spacelift's verification code is not public **[I]**.
+- Webhook signature schemes for GitHub, GitLab and both Bitbucket products are the providers' standard ones; Spacelift's verification code is not public **[I]** (C80).
 - The built-in GitHub App uses installation tokens like the custom app **[I]**.
 - The VCS agent carries no VCS credentials; the gateway adds them as request headers **[I]** (from the agent copying gateway headers onto every request and having no credential settings).
 - `GitHubAppStatus` values show the app check runs through the agent **[I]**.
 - GitHub PR comments go through GitHub's GraphQL API **[I]**.
-- The check view's Preview and Deploy buttons are GitHub check run requested actions, delivered by the Check run event **[I]**.
-- The individual check name format, whether GitLab comment events are processed, whether the `feature:enable_git_checkout` label still has effect, how Bitbucket Cloud writes statuses with read-only token scopes, and the current organization-rename behaviour are *(unverified)*.
-- At the pinned commit the vcs-agent cannot enable its allowlist or blocklist, because neither flag is registered, so it validates nothing; this contradicts the docs' strict allowlist *(unverified against a running agent)*. That unregistered flags read as unset is **[I]** from urfave/cli v3's behaviour.
-- `BLOB` and `ORIGIN` sources are undocumented; only the schema and the Terraform provider describe them.
+- The check view's Preview and Deploy buttons are GitHub check run requested actions, delivered by the Check run event **[I]** (C79).
+- The individual check name format, whether GitLab comment events are processed, whether the `feature:enable_git_checkout` label still has effect, how Bitbucket Cloud writes statuses with read-only token scopes, and the current organization-rename behaviour are *(unverified)* (C73, C74, C72, C75, C76).
+- At the pinned commit the vcs-agent cannot enable its allowlist or blocklist, because neither flag is registered, so it validates nothing; this contradicts the docs' strict allowlist *(unverified against a running agent)* (C78). That unregistered flags read as unset is **[I]** from urfave/cli v3's behaviour.
+- `BLOB` and `ORIGIN` sources are undocumented; only the schema and the Terraform provider describe them. What they are in product terms, and whether they exist on self-hosted, is *(unverified)* (C11). infraweave builds them to the schema's shape: product decision PD-03, answered by decision 0021.
 
 ## Versions at the research baseline
 

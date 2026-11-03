@@ -17,12 +17,12 @@ Four product questions depend on the rule:
 
 | Question | Report 30 entry |
 |---|---|
-| Which deprecated or superseded interfaces does infraweave serve? | P2 |
-| Are capabilities known only from the schema and Bruno (scans, Origin, `BLOB`, the server side of plugin templates) built? | P3 |
-| Where Spacelift's docs and its own clients disagree, which does infraweave's CLI (`infraweavectl`) follow? | P4 |
-| Does infraweave gate features by Spacelift's editions and its 31 `BillingTierFeature` values? | P5 |
+| Which deprecated or superseded interfaces does infraweave serve? | PD-02 |
+| Are capabilities known only from the schema and Bruno (scans, Origin, `BLOB`, the server side of plugin templates) built? | PD-03 |
+| Where Spacelift's docs and its own clients disagree, which does infraweave's CLI (`infraweavectl`) follow? | PD-04 |
+| Does infraweave gate features by Spacelift's editions and its 31 `BillingTierFeature` values? | PD-05 |
 
-The maintainer's requirement for P5 is that every feature carries a tier
+The maintainer's requirement for PD-05 is that every feature carries a tier
 from the start, that billing is itself a feature, and that an installation
 behaves as Enterprise until an operator turns billing on. One installation
 hosts many organizations, each one agreement covering one or more accounts
@@ -33,7 +33,7 @@ Five facts shape the answers:
 
 - **Deprecation evidence is uneven.** The schema marks deprecated output
   fields and enum values, but the snapshot carries no input-field
-  deprecations (P15), and some interfaces have no schema element at all: a
+  deprecations (PD-15), and some interfaces have no schema element at all: a
   worker transport, an endpoint path, a Terraform resource, a client.
   Sources sometimes disagree, such as the docs deprecating the
   `INITIALIZATION` policy type while the schema keeps it live
@@ -86,7 +86,7 @@ these rules holds and no source of equal or higher rank
 | Rule | Condition | Examples at the baseline |
 |---|---|---|
 | S1 Retired | Spacelift removed or disabled it for every account, or the schema says it is no longer used | `ACCESS` policies (disabled 2026-05-30); `RunState.PENDING`; the `STACK_WEBHOOK_*` actions marked disabled |
-| S2 Schema-deprecated | The schema deprecates it and names a replacement that infraweave serves. For input fields, which the snapshot cannot mark (P15), a changelog deprecation counts | the 35 deprecated root fields of [26 section 7.1](../reference/26-scope-and-tiers.md#71-root-fields-outside-the-reference); the versioned-blueprint family; `ApiKeyInput.admin`; the flat hook fields |
+| S2 Schema-deprecated | The schema deprecates it and names a replacement that infraweave serves. For input fields, which the snapshot cannot mark (PD-15), a changelog deprecation counts | the 35 deprecated root fields of [26 section 7.1](../reference/26-scope-and-tiers.md#71-root-fields-outside-the-reference); the versioned-blueprint family; `ApiKeyInput.admin`; the flat hook fields |
 | S2a Shadowed twin | The schema holds a `V2` twin of the same operation, and the reference routes the twin in its place, so both cannot share one REST route | `bitbucketCloudIntegrationCreate`, `bitbucketCloudIntegrationUpdate`, `moduleUpdate`, `terraformProviderVersionRegisterPlatform` |
 | S3 Owner-deprecated | It has no schema element, and the source that owns it deprecates it and names a replacement: the docs for a protocol or path, a client's repository for that client | `/intent/mcp`; the MQTT worker transport; the `pulumi-spacelift` provider; the deprecated provider resources of [26 sections 7.6 and 7.7](../reference/26-scope-and-tiers.md#76-gcp-service-account-integration-replaced-by-oidc); the login policy `space_*` rules |
 
@@ -144,7 +144,7 @@ A `schema-only` operation carries `x-infraweave-basis: schema-only` in the
 served spec. It may reach `implemented`, but its parity claim covers shape
 only; the owning decision records each behaviour infraweave chose.
 
-### Deprecated and superseded candidates (P2)
+### Deprecated and superseded candidates (PD-02)
 
 | Candidate | Rule | Disposition |
 |---|---|---|
@@ -157,17 +157,17 @@ only; the owning decision records each behaviour infraweave chose.
 | Per-stack and per-module webhooks | in scope | Served, on the same delivery path as named webhooks ([0015](0015-events-notifications-webhooks-audit.md)) |
 | Per-stack Slack subscription | in scope | Served; what it sends is unverified (report 19) |
 | `/intent/mcp` | S3 | Not served; `/mcp` is ([0019](0019-ai-provider-boundary.md)) |
-| The standalone `spacelift-intent` stdio server | S3 | Not mirrored: the repository is archived and points to the hosted tools. Local stdio clients use `infraweavectl mcp`, which forwards to `/mcp` (0019 answers P10) |
+| The standalone `spacelift-intent` stdio server | S3 | Not mirrored: the repository is archived and points to the hosted tools. Local stdio clients use `infraweavectl mcp`, which forwards to `/mcp` (0019 answers PD-10) |
 | `ApiKeyInput.admin` | S2, through the changelog | Not accepted. Admin keys come from a `space-admin` binding on the account's top space (decision 0007) |
 | `RunState.PENDING` | S1 | Absent from the served enum |
 | The stack `administrative` flag | S1 for its behaviour; the field is live in the schema | Served, marked deprecated and ignored: `StackInput.administrative` is accepted and reads back `false` (decisions 0007 and 0022) |
 | `WebhooksIntegration.secret` | S1 for its value; the field is live in the schema | Served, marked deprecated, always an empty string ([0015](0015-events-notifications-webhooks-audit.md)) |
 | `TerraformWorkflowTool.OPEN_TOFU` | live in the schema | Served, marked deprecated for stacks only, since modules and Terragrunt still need it |
 | `INITIALIZATION` and `TASK` policy types | live in the schema | Served and marked deprecated. The aliases `TASK_RUN` (of `TASK`) and `TERRAFORM_PLAN` (of `PLAN`) are S2 and not served ([26 section 7.3](../reference/26-scope-and-tiers.md#73-policy-types)) |
-| MQTT worker transport | S3 | Not served, neither the SaaS IoT Core endpoint nor a self-hosted broker: long-poll is the replacement and the self-hosted v7.1.0 release deprecates the built-in broker too ([10 section 4.2](../reference/10-workers-and-execution.md#42-transports)). Decision 0008 owns the worker protocol and answers P6 |
+| MQTT worker transport | S3 | Not served, neither the SaaS IoT Core endpoint nor a self-hosted broker: long-poll is the replacement and the self-hosted v7.1.0 release deprecates the built-in broker too ([10 section 4.2](../reference/10-workers-and-execution.md#42-transports)). Decision 0008 owns the worker protocol and answers PD-06 |
 | `pulumi-spacelift` | S3 | No infraweave Pulumi provider. Pulumi users bridge infraweave's Terraform provider ([06 section 7.1](../reference/06-spacectl-and-clients.md#71-pulumi-provider)) |
 
-### Schema-only capabilities (P3)
+### Schema-only capabilities (PD-03)
 
 These are in scope, built to the schema's shape, with `basis: schema-only`.
 Each behaviour infraweave chooses where the sources are silent is recorded in
@@ -181,14 +181,19 @@ behaviour, it replaces infraweave's choice through the lifecycle above.
 | Origin integration (same section) | Spacelift backs it with its own global app. infraweave reads an operator-registered Origin app from `vcs.origin` configuration; without one, `originIntegrationInstallURL` answers `installation-unsupported` |
 | Plugin templates, server side ([25 section 2](../reference/25-other-integrations.md#2-plugins)) | Custom templates as the schema describes. Global templates are loaded from `spacelift-io/plugins` (MIT) at a pinned commit, with its notice under decision 0002's rules, plus any directory the operator adds in `plugins.catalog_paths` |
 
-### The feature catalogue (P5)
+### The feature catalogue (PD-05)
 
-Every feature of infraweave is an entry in one catalogue file,
-`internal/features/catalogue.yaml` (decision 0004 places the `features`
-domain). An entry has a name, a kind, a description, the features it
-requires, the seeded tiers that include it, and the `BillingTierFeature`
-values it covers for parity (the mapping section below). There are three
-kinds:
+Every feature of infraweave is an entry in one catalogue, the register
+[docs/data/features.json](../../data/features.json), its one source. The
+`features` domain (decision 0004 places it) compiles it in:
+`make generate` writes `internal/features/catalogue.gen.go` from the
+register, and `make verify-generate` fails when that file is stale. An
+entry has a name, a kind, a description, the features it requires, the
+lowest seeded tier that includes it and its owning phase. The
+`BillingTierFeature` values it covers for parity (the mapping section
+below) are the `tier-feature:` records of
+[docs/data/capabilities.json](../../data/capabilities.json), which the
+generator reads with it. There are three kinds:
 
 | Kind | Gates | Where the gate sits | Examples |
 |---|---|---|---|
@@ -243,27 +248,13 @@ every organization has while billing is off. Enterprise+ is not seeded: it diffe
 how Spacelift installs and supports it (self-hosted, FedRAMP, air-gapped,
 escalation), none of which is a feature of infraweave.
 
-The features not in every seeded tier:
-
-| Lowest seeded tier | Features |
-|---|---|
-| Starter | Capabilities `policies`, `notifications`, `webhooks`, `modules`, `module-sharing`, `oidc-federation`, `oidc-sso`, `tasks`; option `notification-policies` (policy `type: NOTIFICATION`) |
-| Starter+ | Capabilities `drift-detection`, `private-worker-pools`, `ignored-runs`, `sessions` |
-| Business | Capabilities `scheduling`, `targeted-replan`, `blueprints`, `templates`, `terraform-provider-registry` (with the GPG Keys tag, whose keys sign provider releases); option `aggregated-vcs-checks` |
-| Enterprise | Capabilities `audit-trail`, `saml-sso`, `scim`, `mfa`, `vcs-agent-pools`, `servicenow`; options `oidc-api-keys` (API key type `OIDC`), `multiple-vcs-integrations` |
-
-Every other feature, including all of Flows, the console, every IaC vendor,
-`scans`, `ai-integrations`, `intent` and `organization` (the `Organization`
-tag, below), is in every seeded tier.
-
-Seeded limits, where no value means no limit:
-
-| Limit | Unit | Free | Starter | Starter+ | Business | Enterprise |
-|---|---|---|---|---|---|---|
-| `seats` | members, each once however many accounts admit it, and API keys as [14 section 4.4](../reference/14-spaces-rbac-and-identity.md#44-api-keys) counts them | 2 | 2 | | | |
-| `private-workers` | registered private workers | 0 | 0 | 2 | 3 | |
-| `public-worker-slots` | runs in flight on the public worker pool | 1 | 1 | 2 | 2 | |
-| `ai-budget` | the period budget of decision 0019's default AI integration | USD 10 per 30 days | | | | |
+Each feature's lowest seeded tier, and each limit's unit and seeded
+values, are members of its record in
+[docs/data/features.json](../../data/features.json); no value means no
+limit. The generated [tiers view](../../implementation/tiers.md) lays them
+out tier by tier. Flows, the console, every IaC vendor, `scans`,
+`ai-integrations`, `intent` and `organization` (the `Organization` tag,
+below) are in every seeded tier.
 
 Where Spacelift publishes no value for a tier (Starter's seats and public
 slots, Business's "configurable" public workers), the seed takes the value
@@ -464,47 +455,18 @@ with an honest local meaning, and otherwise refuses with
 ### Mapping from `BillingTierFeature`
 
 Each value maps to the infraweave features that cover it, so parity stays
-traceable. The catalogue carries the same mapping, and a test checks that
-every live value has one.
-
-| `BillingTierFeature` | infraweave feature | Kind |
-|---|---|---|
-| `ACCESS_POLICIES` | none: superseded (S1), space role bindings replace it | |
-| `ADDITIONAL_PUBLIC_WORKER` | a grant raising `public-worker-slots` | limit |
-| `ADVANCED_SCHEDULING` | `scheduling` | capability |
-| `AGGREGATED_VCS_CHECKS` | `aggregated-vcs-checks` | option |
-| `API_KEYS_OIDC` | `oidc-api-keys` | option |
-| `AUDITING` | `audit-trail` | capability |
-| `AUDIT_WEBHOOKS` | `audit-trail`: superseded (S2) by `AUDITING` | capability |
-| `BLUEPRINTS` | `blueprints`, `templates` | capability |
-| `CAN_UPDATE_SSO_SAML` | `saml-sso` | capability |
-| `CLOUD_CREDENTIAL_GENERATION` | `cloud-integrations` | capability |
-| `CUSTOM_SSO_SAML` | `saml-sso` | capability |
-| `DRIFT_DETECTION` | `drift-detection` | capability |
-| `MFA` | `mfa` | capability |
-| `MULTIPLE_VCS` | `multiple-vcs-integrations` | option |
-| `NOTIFICATION_POLICIES` | `notification-policies`, `notifications` | option, capability |
-| `PRIVATE_MODULE_SHARING` | `module-sharing` | capability |
-| `PRIVATE_VCS` | `vcs-agent-pools` | capability |
-| `PRIVATE_WORKERS` | `private-worker-pools`, `private-workers` | capability, limit |
-| `RUN_STATE_CHANGE_WEBHOOKS` | `webhooks` | capability |
-| `TARGETED_REPLAN` | `targeted-replan` | capability |
-| `TERRAFORM_PROVIDER_VERSIONS` | `terraform-provider-registry` | capability |
-| `UNLIMITED_SEATS` | no `seats` value | limit |
-| `WORKFLOW_POLICIES` | `policies` | capability |
-| `OIDC_FEDERATION_TOKEN_GENERATION` | `oidc-federation` | capability |
-| `RUN_IGNORED_TRIGGERS` | `ignored-runs` | capability |
-| `ACCOUNT_AI_CONTROL` | `ai-account-controls` | capability |
-| `SPACELIFT_INTELLIGENCE` | `ai-integrations`, `intent` | capability |
-| `SERVICE_NOW_INTEGRATION` | `servicenow` | capability |
-| `BACKSTAGE_INTEGRATION` | `backstage` | capability |
-| `SCIM` | `scim` | capability |
-| `SCANS` | `scans` | capability |
+traceable. The mapping is the `infraweave.feature` member of the value's
+`tier-feature:` record in [capabilities.json](../../data/capabilities.json),
+which the generator reads with the catalogue, and a test checks that every
+live value has one. A value whose only meaning is a quantity maps to a limit
+or a grant that raises one, such as `ADDITIONAL_PUBLIC_WORKER`; a superseded
+value, such as `ACCESS_POLICIES`, maps to none and cites its supersession
+record.
 
 The first assignment of operations to capabilities starts from report 26's
 pairing, which is by name [I], and captures C14, C121 and C122 correct it.
 
-### Docs against clients (P4)
+### Docs against clients (PD-04)
 
 Where Spacelift's docs and its released clients disagree, a behaviour the
 server enforces, or that the user relies on for security, follows the docs.
@@ -529,7 +491,7 @@ acceptance feature that runs work therefore runs it on a private pool.
 
 ## Rationale
 
-- **P2, option (b) with a lifecycle, not (a) or (c).** Building an interface
+- **PD-02, option (b) with a lifecycle, not (a) or (c).** Building an interface
   that is superseded before infraweave reaches it is cost with no user,
   because infraweave's clients are its own (decision 0001). Removing an
   interface that infraweave already serves breaks those clients, though, so
@@ -542,10 +504,10 @@ acceptance feature that runs work therefore runs it on a private pool.
   rank equally, so a disagreement keeps the element live. S3 exists because
   a transport, a path or a client has no schema element, and the owner of
   the interface is the only authority on it.
-- **P3, option (a), not stubs.** A 501 is not delivery, and the scope rule
+- **PD-03, option (a), not stubs.** A 501 is not delivery, and the scope rule
   has no "until documented" clause. The `schema-only` basis keeps the
   weaker evidence visible instead of hiding it behind a stub.
-- **P5, tiers as data with per-feature switches, not (a) alone or a fixed
+- **PD-05, tiers as data with per-feature switches, not (a) alone or a fixed
   edition setting.** A gate added after clients and data exist is a breaking
   change, so every feature carries a tier from the start. Tiers as data let
   an operator who hosts infraweave for others package it as Spacelift does,
@@ -588,7 +550,7 @@ acceptance feature that runs work therefore runs it on a private pool.
 - **Refusal over simulation.** A fake billing or Entra success looks like
   progress in a test and fails in production. `installation-unsupported`
   is explicit and testable.
-- **P4, option (c) with a default.** Following the docs everywhere would
+- **PD-04, option (c) with a default.** Following the docs everywhere would
   copy a profile layout that the released CLI no longer uses. Following the
   clients everywhere would copy an agent that validates nothing. A rule
   plus a recorded case keeps both kinds of choice reviewable.
@@ -625,7 +587,7 @@ acceptance feature that runs work therefore runs it on a private pool.
   higher. Free's separate API key count is unpublished and not seeded. C260
   and C261 correct the seed; a correction changes data, not the design.
 - **Input deprecations.** Input deprecations rest on the changelog until
-  the snapshot fetcher requests them (P15).
+  the snapshot fetcher requests them (PD-15).
 - **Unverified operator equivalents.** Whether Origin supports
   customer-registered apps is unverified (C11). If it does not, Origin is
   refused on every installation, and the gap is recorded in report 26.
@@ -691,8 +653,9 @@ acceptance feature that runs work therefore runs it on a private pool.
   policy, carries `Deprecation`; a superseded value, such as policy type
   `ACCESS`, fails validation with the replacement named.
 - **The availability-state check.** `specref parity --states --check`
-  ([0016](0016-testing-and-acceptance.md)) fails when report 26 claims a
-  state the tests do not show. It also fails on:
+  ([0016](0016-testing-and-acceptance.md)) fails when a record of
+  [capabilities.json](../../data/capabilities.json) claims a state the tests
+  do not show. It also fails on:
   - a `superseded` row without its four recorded items;
   - a `schema-only` operation without `x-infraweave-basis`.
 
@@ -707,7 +670,7 @@ acceptance feature that runs work therefore runs it on a private pool.
   [API tags](../reference/26-scope-and-tiers.md#4-capability-table-api-tags),
   [supersession boundaries](../reference/26-scope-and-tiers.md#7-supersession-boundaries).
 - [30: product decisions](../reference/30-open-questions.md#product-decisions)
-  P2, P3, P4, P5 and P15; captures C11, C14, C121, C122, C260 and C261.
+  PD-02, PD-03, PD-04, PD-05 and PD-15; captures C11, C14, C121, C122, C260 and C261.
 - [01: what is out of scope](../reference/01-spacelift-landscape.md#13-what-is-out-of-scope).
 - [09: deprecated policy types](../reference/09-policies.md#12-deprecated-types-and-their-replacements).
 - [14: API key fields](../reference/14-spaces-rbac-and-identity.md#81-types-and-fields).

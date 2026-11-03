@@ -103,7 +103,9 @@ OAPI_CODEGEN := github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.1
 # One per api/src/<service>/; each needs api/oapi-{server,client}-<service>.yaml.
 SPECS := $(patsubst api/src/%/info.yaml,%,$(wildcard api/src/*/info.yaml))
 
-## generate: bundle the specs, then generate each strict chi server, Go client and 501 stubs
+DATA_VIEW := docs/implementation/tiers.md
+
+## generate: bundle the specs, generate each strict chi server, Go client and 501 stubs, and render the docs/data view
 generate: bundle
 	@for s in $(SPECS); do \
 		echo "generate $$s"; \
@@ -111,10 +113,11 @@ generate: bundle
 		$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-$$s.yaml api/$$s.openapi.yaml || exit 1; \
 		$(GO) run ./tools/stubgen internal/server/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
 	done
+	$(GO) run ./tools/dataview docs/data $(DATA_VIEW)
 
-## verify-generate: fail if the committed bundles or generated code differ from what make generate writes
+## verify-generate: fail if the committed bundles, generated code or docs/data view differ from what make generate writes
 verify-generate: generate
-	@git diff --exit-code -- api/*.openapi.yaml internal/server/gen pkg/client || \
+	@git diff --exit-code -- api/*.openapi.yaml internal/server/gen pkg/client $(DATA_VIEW) || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
 ## reference: regenerate the Spacelift OpenAPI reference and coverage report from the snapshots
@@ -122,15 +125,16 @@ reference:
 	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
 
 INVENTORY := docs/research/reference/29-data-model-inventory.md
+INVENTORY_REGISTER := docs/data/graphql-inventory.json
 
-## reference-inventory: regenerate report 29, the data model inventory, from the introspection snapshot
+## reference-inventory: regenerate the GraphQL inventory register and report 29 from the introspection snapshot
 reference-inventory:
-	$(GO) run ./tools/specref inventory --dir $(REFERENCE_DIR) --out $(INVENTORY)
+	$(GO) run ./tools/specref inventory --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
-## verify-reference: fail if the committed reference or report 29 is not what the snapshots generate
+## verify-reference: fail if the committed reference, report 29 or the inventory register is not what the snapshots generate
 verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
-	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY)
+	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
 ## docs-check: links, report headers and decision statuses under docs/ (internal/docscheck)
 docs-check:

@@ -30,19 +30,21 @@ facts shape the design.
   [0006](0006-authentication-and-tokens.md), the state backend is
   [0010](0010-state-backend.md) and source access is
   [0012](0012-vcs-integration-model.md). This record fixes how a run moves through
-  its states and how a worker takes part. It answers P6
+  its states and how a worker takes part. It answers PD-06
   ([30, product decisions](../reference/30-open-questions.md#product-decisions)).
 
 ## Decision
 
 ### The state machine is the authority
 
-- **One transition table.** `internal/run` holds report 08's transition table as
-  data: each edge T1 to T43 with its source state, target state, run types and the
-  driver allowed to take it
-  ([08 transition table](../reference/08-run-lifecycle.md#transition-table)). A
-  pair not in the table is refused. `UNKNOWN` is served in the enum and never
-  assigned; `PENDING` is absent from the served enum (decision 0021).
+- **One transition table.** `internal/run` holds the edges of the
+  [run-transitions register](../../data/run-transitions.json) as data: report
+  08's T1 to T43
+  ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
+  and T44 below, each with the register's source state, target state and run
+  types, and the driver allowed to take it. A pair not in the table is
+  refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
+  absent from the served enum (decision 0021).
 - **One entry point.** Every state change goes through
   `run.Transition(ctx, tx, req)` with the run ID, the expected `state_version`, the
   target state, the driver, the actor and a note. In the caller's transaction it:
@@ -530,7 +532,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
 
 ## Rationale
 
-- **P6: HTTP long-poll only (option a).** Spacelift retires MQTT for workers on
+- **PD-06: HTTP long-poll only (option a).** Spacelift retires MQTT for workers on
   2027-03-30 and long-poll already covers every deployment path. A broker would
   add a port, a component and a second delivery path to test, and buy nothing:
   Spacelift's launchers cannot talk to infraweave anyway

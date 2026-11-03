@@ -10,7 +10,7 @@ unspecified, and three product questions in report 30 block the families that
 the scaffolder is turning into served routes
 ([30, product decisions](../reference/30-open-questions.md#product-decisions)):
 
-- **P1, errors.** Spacelift answers failures as GraphQL `errors` with no
+- **PD-01, errors.** Spacelift answers failures as GraphQL `errors` with no
   documented status codes and no stable codes in `extensions`
   ([01 section 8](../reference/01-spacelift-landscape.md#8-error-behaviour)).
   Its own clients match message text: the Terraform provider treats any read
@@ -19,7 +19,7 @@ the scaffolder is turning into served routes
   and spacectl turns any error containing `unauthorized` into a re-login or
   missing-permission hint
   ([06 section 2.4](../reference/06-spacectl-and-clients.md#24-error-behaviour)).
-- **P8, updates.** Spacelift's update mutations take a whole input object.
+- **PD-08, updates.** Spacelift's update mutations take a whole input object.
   `stackUpdate` requires `name`, `branch` and `repository`, and whether an
   omitted optional field keeps or resets its value is unverified
   ([07 section 9](../reference/07-stack-model.md#9-typing-traps)). Configuration
@@ -28,7 +28,7 @@ the scaffolder is turning into served routes
   ([13 section 1.4](../reference/13-configuration.md#14-operations)). The
   reference maps every `xUpdate` to `PUT`
   ([02, rules](../reference/02-graphql-to-rest-mapping.md#rules)).
-- **P9, strictness.** Spacelift leaves several inputs loosely specified:
+- **PD-09, strictness.** Spacelift leaves several inputs loosely specified:
   unknown keys in `.spacelift/config.yml`
   ([07 section 7](../reference/07-stack-model.md#7-runtime-configuration-spaceliftconfigyml)),
   the length and characters of labels
@@ -37,14 +37,11 @@ the scaffolder is turning into served routes
   ([18 section 2.6](../reference/18-scheduling-drift-dependencies.md#26-cron-and-timezone)).
   The captures that would settle them (C2, C3, C5, C24, C26, C30, C97, C155,
   C156) are open
-  ([30, platform captures](../reference/30-open-questions.md#platform-api-and-clients-reports-01-to-06),
-  [stacks captures](../reference/30-open-questions.md#stacks-runs-and-policies-reports-07-to-09),
-  [configuration captures](../reference/30-open-questions.md#configuration-and-state-reports-13-and-16),
-  [scheduling captures](../reference/30-open-questions.md#scheduling-drift-and-dependencies-report-18)).
+  ([30, captures](../reference/30-open-questions.md#captures-needed)).
 
 ## Decision
 
-### Errors: a status per class, problem details, Spacelift's words kept (P1, option b)
+### Errors: a status per class, problem details, Spacelift's words kept (PD-01, option b)
 
 Every error response of the served API is `application/problem+json`
 ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)) using the `Problem` schema
@@ -54,42 +51,14 @@ and the `title` is fixed per slug. Where a ported Spacelift client matches
 text, the title carries that text, so the same substring test keeps working
 against infraweave.
 
-This table extends 0003's. 0003's five slugs keep their status and meaning
-unchanged and are repeated here only so the served API has one complete list.
-
-| Slug | Status | Fixed `title` | When |
-|---|---|---|---|
-| `invalid-request` | 400 | `invalid request` | The request does not match the operation's OpenAPI schema: malformed JSON, a wrong type, a missing required field, an unknown body field, a value outside an `enum`, `pattern`, `minLength` or `maxLength` |
-| `invalid-cursor` | 400 | (0003) | 0003 |
-| `unauthenticated` | 401 | `unauthorized: authentication required` | No credential, or one that is malformed, expired, revoked or for another audience. Sent with `WWW-Authenticate: Bearer` |
-| `forbidden` | 403 | `unauthorized: permission denied` | The caller can read the resource but lacks the action it asked for |
-| `feature-disabled` | 403 | `feature disabled` | The operator switched off, with `features.disabled`, the feature that gates the operation or the value it sets (decision 0021); the body carries the feature as `feature` |
-| `feature-not-in-tier` | 403 | `feature not in tier` | Billing is on and the entitlement of the caller's organization lacks the feature that gates the operation or the value it sets (decision 0021); the body carries `feature`, and `tiers`, the names of the tiers that include it |
-| `limit-reached` | 403 | `limit reached` | Billing is on and the request would take the organization above a pooled limit, or the account above its account limit, such as seats or private workers (decision 0021); the body carries `limit`, `scope` (`organization` or `account`, whichever was reached) and that scope's limit as `value` |
-| `installation-unsupported` | 403 | `installation unsupported` | The operation needs a service that only Spacelift operates, such as its billing or usage reporting (decision 0021) |
-| `not-found` | 404 | `not found` | The route's resource, or one of its parents, does not exist or is not readable by the caller |
-| `method-not-allowed` | 405 | `method not allowed` | The path exists without this method; sent with `Allow` |
-| `already-exists` | 409 | `already exists` | A create collides with a unique key, such as a slug in the account |
-| `invalid-state` | 409 | `invalid state` | An action that the resource's current state does not allow, such as confirming a run that is not `UNCONFIRMED`; the body carries `state` |
-| `resource-locked` | 409 | `resource locked` | The target is locked by someone else, such as a stack locked by another user or another push policy key; the body carries `lockedBy` |
-| `intent-project-locked` | 409 | `intent project locked` | Another session holds the Intent project's write lock (decision 0019) |
-| `idempotency-key-in-flight` | 409 | (0003) | 0003 |
-| `precondition-failed` | 412 | `precondition failed` | `If-Match` names an entity tag that is no longer current |
-| `payload-too-large` | 413 | `payload too large` | The body exceeds `api.max_body_bytes` (default 1 MiB) |
-| `unsupported-media-type` | 415 | `unsupported media type` | A body that is not `application/json`, or a `PATCH` that is not `application/merge-patch+json` |
-| `validation-failed` | 422 | `validation failed` | The request parses against the schema, but a domain rule rejects it: a branch that does not exist, a cron expression outside the grammar below, a space the caller may not place the resource in, a cloud role whose trust test fails, a module share naming an account of another organization (decision 0014), an account limit above the organization's pool (decision 0021) |
-| `webhook-verification-failed` | 422 | `webhook verification failed` | Setting an enabled audit trail webhook whose verification delivery is not answered with a 2xx (decision 0015) |
-| `idempotency-key-reuse` | 422 | (0003) | 0003 |
-| `rate-limited` | 429 | (0003) | 0003 |
-| `internal-error` | 500 | `internal error` | An unexpected failure. The body never carries the cause; `instance` identifies the request |
-| `not-implemented` | 501 | `not implemented` | A route that the spec serves but no handler implements yet |
-| `upstream-error` | 502 | `upstream error` | A synchronous call to a system infraweave depends on failed: a VCS host, a cloud API, a VCS agent pool with no connected agent |
-| `api-disabled` | 503 | (0003) | 0003 |
-| `service-unavailable` | 503 | `service unavailable` | infraweave cannot serve the request now: the database is unreachable, the server is shutting down, the request deadline passed. Sent with `Retry-After` |
+The problem register, [`docs/data/problems.json`](../../data/problems.json),
+is the one complete list of slugs, each with its status, fixed `title`, when
+it is sent and the record that defines it: 0003's five and this record's
+rest.
 
 Rules that apply to every problem:
 
-- **Matched text.** `not found` and `unauthorized` appear in the titles above
+- **Matched text.** `not found` and `unauthorized` appear in the register's titles
   exactly as the provider and spacectl match them. A `validation-failed` caused
   by a failed AWS role trust test starts its `detail` with
   `you need to configure trust relationship`, the text the provider retries on
@@ -118,15 +87,15 @@ Rules that apply to every problem:
   `http` state backend ([0010](0010-state-backend.md)), the registry protocol
   (decision 0014), and inbound VCS webhooks
   ([0012](0012-vcs-integration-model.md)). The worker API
-  ([0008](0008-run-execution-and-worker-protocol.md)) uses this table.
+  ([0008](0008-run-execution-and-worker-protocol.md)) uses this register.
 
-`internal/problem` holds the slug registry as Go constants. The table above is
-the source, and a test checks that the two agree. A
+`internal/problem` holds the slug registry as Go constants. The problem
+register is the source, and a test checks that the two agree. A
 handler returns a typed error (`problem.NotFound(...)`,
 `problem.InvalidState(state)`), and one chi middleware renders it; any other
 error becomes `internal-error` and is logged with its cause.
 
-### Updates: `PUT` replaces, `PATCH` merges (P8, option c)
+### Updates: `PUT` replaces, `PATCH` merges (PD-08, option c)
 
 Every update route keeps the reference's `PUT` and gains a `PATCH` on the same
 path.
@@ -161,7 +130,7 @@ path.
 - **Recorded divergences.** Each added `PATCH` and item `PUT` is listed in the
   operation's `x-infraweave-divergence`, as 0003 does for its additions.
 
-### Input strictness (P9, a rule per input)
+### Input strictness (PD-09, a rule per input)
 
 | Input | Rule |
 |---|---|
@@ -179,7 +148,7 @@ every request against the bundled spec before the handler (giving
 
 ## Rationale
 
-- **Option b for P1.** A status per class lets any HTTP client, proxy and
+- **Option b for PD-01.** A status per class lets any HTTP client, proxy and
   retry library behave correctly without parsing a body: retry on `429`, `503`
   and `502`, re-authenticate on `401`, drop the resource on `404`. Keeping
   `not found` and `unauthorized` in the fixed titles costs nothing and keeps
@@ -201,7 +170,7 @@ every request against the bundled spec before the handler (giving
 - **400 against 422.** The split follows who can detect the error: the
   schema validator (400) or the domain (422). A client generated from the spec
   never sends a 400 request; a 422 always needs a person or a decision.
-- **Both `PUT` and `PATCH` (option c for P8).** `PUT` is the reference's
+- **Both `PUT` and `PATCH` (option c for PD-08).** `PUT` is the reference's
   route and what a Terraform provider wants: it always sends the whole
   resource, as Spacelift's does
   ([07 section 9](../reference/07-stack-model.md#9-typing-traps)), and full
@@ -241,9 +210,10 @@ every request against the bundled spec before the handler (giving
 
 ## Constraints
 
-- **0003's slugs.** 0003 names this record's table as the complete list of
-  slugs, and `api/deploy_test.go` reads this table for every problem example
-  in the spec, and 0003's table for the slugs its components must use.
+- **One register for both records.** 0003's slugs and this record's live in
+  one problem register, each record marked with the decision that defines
+  it, and `api/deploy_test.go` reads it for every problem example in the
+  spec and for the slugs 0003's components must use.
 - **Unverified Spacelift behaviour.** C2, C3 and C5 may show that Spacelift
   puts stable codes in `extensions` or answers specific statuses; a stable
   code would become an extension member here, not a change of slug. C24, C26,
@@ -257,10 +227,10 @@ every request against the bundled spec before the handler (giving
 
 ## Verification
 
-- `internal/problem/problem_test.go` (`TestUnitProblemRegistry`): every slug in this record's table has a
-  constant with the same status and title, and every constant is in the table.
+- `internal/problem/problem_test.go` (`TestUnitProblemRegistry`): every slug in the problem register has a
+  constant with the same status and title, and every constant is in the register.
 - `api/deploy_test.go` (`TestUnitDeployProblemTypes`): every problem example in
-  the bundled spec uses a slug from the table with its status.
+  the bundled spec uses a slug from the problem register with its status and title.
 - `api/deploy_test.go`: every input schema sets `additionalProperties: false`;
   every update route has a matching `PATCH` with
   `application/merge-patch+json`; both are recorded in

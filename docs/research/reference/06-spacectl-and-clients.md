@@ -104,7 +104,7 @@ A command can carry several versioned implementations; the newest one the
 instance supports wins. Section 3 lists each command's variants. The schema
 describes `debugInfo` as not valid in SaaS **[G]** `Query.debugInfo`; spacectl
 reads an empty `selfHostedVersion` as SaaS, so the probe relies on SaaS
-answering with an empty value rather than an error **[I]** from `main.go`. `profile`,
+answering with an empty value rather than an error **[I]** from `main.go` (C20). `profile`,
 `whoami`, `registry` and `version` are not version-gated.
 
 ### 2.3 Credentials and sessions
@@ -165,7 +165,10 @@ Profiles:
 The docs and the source disagree on the profile layout. The source at the
 pinned commit holds every profile in one `config.json`; the docs page still
 describes per-alias files and a symlink. The source is what a reimplementation
-must read if it imports existing profiles **[I]** from the two.
+must read if it imports existing profiles **[I]** from the two. Which of
+the docs and the client infraweave's CLI follows, for the credential order
+and the profile layout, is product decision PD-04, answered by decision 0021
+(Accepted).
 
 Browser login (`profile login --method browser`)
 **[S]** [browserauth.go#L26](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/browserauth/browserauth.go#L26):
@@ -207,7 +210,7 @@ Spacelift MCP server, without the OAuth scope narrowing
 So the client depends on these server contracts: authorization failures
 carry the word `unauthorized` in the error text, and a missing or invisible
 entity usually comes back as `null`, except `runStack`, which errors with
-`not found` **[I]** from the handling above. The docs mirror names no rate
+`not found` **[I]** from the handling above (C5). The docs mirror names no rate
 limit for the GraphQL API **[I]** from a search of the mirror. spacectl has
 no rate-limit back-off; its only retry is a single resend after refreshing
 the proxy token on a suspected proxy rejection, besides the polling loops in
@@ -234,6 +237,17 @@ The tables mark this resolution **+R**:
 
 The tables mark **+V** where an empty `search…` page triggers `viewer` to tell
 "nothing visible" from "not logged in".
+
+The `stack`, `module`, `policy`, `blueprint` and `template` list commands
+build an `orderBy` (`starred` descending for stacks, `name` for the rest),
+but their pagers copy only `first` and `fullTextSearch`, so the order never
+reaches the server; `audit-trail list` and the module version and policy
+sample commands do send theirs, `createdAt` descending
+**[S]** [stack/list.go#L102-L108](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/list.go#L102-L108),
+[#L152-L155](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/list.go#L152-L155),
+[audittrail/list.go#L142-L146](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/audittrail/list.go#L142-L146).
+Report [21](21-resources-scans-search.md) covers what the server does with
+an order.
 
 ## 3. Command inventory
 
@@ -411,7 +425,7 @@ start-up `debugInfo` probe and, with an API key or GitHub token, an
 | Command | GraphQL operations | Flags that matter | Notes |
 |---|---|---|---|
 | `spacectl mcp` ([mcp.go#L24](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/mcp/mcp.go#L24)) | n/a | n/a | Command group. Manage MCP server. |
-| `spacectl mcp server` ([mcp.go#L34](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/mcp/mcp.go#L34)) | `runConfirm`, `runDiscard`, `runPrioritizeSet`, `runPrioritySet`, `runProposeLocalWorkspace`, `runTrigger`, `uploadLocalWorkspace`, `apiKey`, `apiKeys`, `blueprint`, `context`, `module`, `policy`, `searchBlueprints`, `searchContexts`, `searchModules`, `searchPolicies`, `searchStacks`, `searchWorkerPools`, `space`, `spaces`, `stack`, `stacks`, `workerPool`, +V | none | Serves the MCP tools in section 6 over stdio; the tools take IDs, so the directory-based stack resolution is not used. The 2.5.0+ variant enables upload headers for `local_preview`. Variants: Self-Hosted 2.5.0+. |
+| `spacectl mcp server` ([mcp.go#L34](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/mcp/mcp.go#L34)) | `runConfirm`, `runDiscard`, `runPrioritizeSet`, `runPrioritySet`, `runProposeLocalWorkspace`, `runTrigger`, `uploadLocalWorkspace`, `apiKey`, `apiKeys`, `blueprint`, `context`, `module`, `policy`, `searchBlueprints`, `searchContexts`, `searchModules`, `searchPolicies`, `searchStacks`, `searchWorkerPools`, `space`, `spaces`, `stack`, `stacks`, `workerPool`, +V | none | Serves the MCP tools in section 6 over stdio; the **+V** is theirs: `list_stacks`, `list_modules` and `search_modules` keep the viewer fallback on an empty page ([module/mcp.go#L605](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/module/mcp.go#L605)). The tools take IDs, so the directory-based stack resolution is not used. The 2.5.0+ variant enables upload headers for `local_preview`. Variants: Self-Hosted 2.5.0+. |
 
 ## 4. Operations spacectl sends
 
@@ -692,7 +706,7 @@ chart installs `public.ecr.aws/spacelift/kube-workerpool-controller` (chart
 `workers.spacelift.io/v1beta1` **[S]**
 [values.yaml](https://github.com/spacelift-io/spacelift-helm-charts/blob/4e02e1d22e73/spacelift-workerpool-controller/values.yaml).
 The controller's source is not public, so its GraphQL calls are not
-inventoried here *(unverified)*. Its `WorkerPool` spec shows what it does
+inventoried here *(unverified)* (C21). Its `WorkerPool` spec shows what it does
 with the API **[S]**
 [workers.spacelift.io_workerpools.yaml](https://github.com/spacelift-io/spacelift-helm-charts/blob/4e02e1d22e73/spacelift-workerpool-controller/config/crd/bases/workers.spacelift.io_workerpools.yaml):
 
@@ -819,7 +833,8 @@ has to provide. These are requirements on coverage, not design choices.
 - Clients key behaviour off error text (`unauthorized`) and `null` results,
   not HTTP status. A REST API that uses 401, 403 and 404 changes those
   contracts; the plan must state how infraweave's CLI and any compatibility
-  layer map them (section 2.4).
+  layer map them (section 2.4). That mapping is product decision PD-01,
+  answered by decision [0022](../decisions/0022-api-errors-and-update-semantics.md).
 - Several published clients pin old or deprecated surfaces: the Pulumi
   provider bridges Terraform provider v1.9.3 and is itself deprecated, with
   its repository going read-only on 2026-12-10; spacectl still calls
@@ -827,7 +842,8 @@ has to provide. These are requirements on coverage, not design choices.
   `terraformProviderVersionRegisterPlatform` against Self-Hosted before 3.0.0;
   the archived operator calls the deprecated `policyCreate` and
   `policyUpdate`. Parity work must decide which of these to serve
-  (sections 4 and 7).
+  (sections 4 and 7); that choice is product decision PD-02, answered by
+  decision [0021](../decisions/0021-capability-scope-and-supersession.md) (Accepted).
 - The Kubernetes worker-pool controller manages pools through the API with a
   dedicated system role and auto-registration; its calls are not public, so
   matching it needs captures (section 7.2).
@@ -838,14 +854,15 @@ has to provide. These are requirements on coverage, not design choices.
 | Item | Basis |
 |---|---|
 | Authorization errors carry `unauthorized` in their error text (a GraphQL error message or a non-200 body) | **[I]** from `determineClientError` matching the error string; no docs page states the format |
-| Unknown or invisible entities come back as `null`, not as errors, except `runStack`, which errors with `not found` | **[I]** from the null checks in the stack selector and log explorer, and the `not found` match in `stackGetByRunID` |
+| Unknown or invisible entities come back as `null`, not as errors, except `runStack`, which errors with `not found` | **[I]** from the null checks in the stack selector and log explorer, and the `not found` match in `stackGetByRunID` (C5) |
 | The GraphQL API has no published rate limit | **[I]** no page in the docs mirror names one |
-| SaaS answers `debugInfo` with an empty `selfHostedVersion` although the schema calls the field not valid in SaaS | **[I]** from spacectl treating an empty value as SaaS |
+| SaaS answers `debugInfo` with an empty `selfHostedVersion` although the schema calls the field not valid in SaaS | **[I]** from spacectl treating an empty value as SaaS (C20) |
 | `preview` can never send `runConfirm` | **[I]** the shared trigger code confirms only with `--auto-confirm`, which `preview` lacks |
 | Pulumi resources send the same operations as Terraform v1.9.3 | **[I]** the provider is a bridge over that version |
 | Worker and VCS-agent charts make no API calls themselves | **[I]** templates only set environment variables |
-| The worker-pool controller's GraphQL operations | *(unverified)*: source not public |
-| Whether spacectl's sessions are marked `SPACECTL` in `SessionChannel` because of the `Spacelift-Client-Type` header | *(unverified)*: the enum exists **[G]**, the mechanism is not documented |
+| The worker-pool controller's GraphQL operations | *(unverified)* (C21): source not public |
+| Whether spacectl's sessions are marked `SPACECTL` in `SessionChannel` because of the `Spacelift-Client-Type` header | *(unverified)* (C22): the enum exists **[G]**, the mechanism is not documented |
+| What the server sides of `/cli_login`, `/auth_success`, `/auth_failure` and `GET /usageanalytics/csv` accept and return | *(unverified)* (C23): only spacectl's client halves are known |
 | `Query` and `Mutate` return `nil` when a token cannot be obtained | **[S]** [client.go#L27](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/client/client.go#L27); behaviour, not intent, is recorded |
 
 ## Versions at the research baseline
@@ -858,7 +875,7 @@ has to provide. These are requirements on coverage, not design choices.
 | backstage-plugins | `27d06658468a`; latest release 0.3.3 (2026-08-31) | MIT |
 | setup-spacectl | `a359d07b6b87`; latest release v2.5.0 | MIT |
 | spacelift-helm-charts | `4e02e1d22e73` | MIT |
-| spacelift-operator | `341692ad7d56`, archived 2025-06-11 | MIT |
+| spacelift-operator | `341692ad7d56` (last commit 2025-06-11); archived | MIT |
 | Introspection schema | `b3255fe38f5e` | |
 
 ## Sources

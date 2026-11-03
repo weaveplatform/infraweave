@@ -11,8 +11,10 @@ criteria* that must hold before a phase counts as done.
 Every phase is also subject to the [definition of done](definition-of-done.md).
 The target package tree is in [repo-layout.md](repo-layout.md), every
 feature's kind, seeded tier and owning phase is in the
-[feature catalogue](capability-roadmap.md), and every deliberate difference
-from Spacelift is in the [deviations register](deviations.md). Research
+[feature catalogue](../data/features.json), which the
+[capability roadmap](capability-roadmap.md) explains, and every deliberate difference
+from Spacelift is in the [deviations register](../data/deviations.json),
+which [deviations.md](deviations.md) explains. Research
 baseline: **2026-10-28**. Implementation status is reviewed against `main`
 and the GitHub issues on the same date.
 
@@ -21,7 +23,7 @@ decision marks a behaviour as infraweave's choice until a capture of report
 [30](../research/reference/30-open-questions.md) settles it, the phase builds
 the choice and its scenarios assert it; P28 replays the captures, and the
 [deviations a capture may change](deviations.md#deviations-a-capture-may-change)
-list the rows that can move.
+are the records that can move.
 
 ## Scope direction
 
@@ -34,8 +36,9 @@ list the rows that can move.
   [supersession register](capability-roadmap.md#supersession-register) lists
   every such interface.
 - **Seeded tiers, billing off by default.** Every feature is an entry of one
-  catalogue, `internal/features/catalogue.yaml`: a capability, an option or a
-  limit. Five tiers (Free, Starter, Starter+, Business and Enterprise) are
+  catalogue, [docs/data/features.json](../data/features.json), from which
+  `make generate` writes `internal/features/catalogue.gen.go`: a capability,
+  an option or a limit. Five tiers (Free, Starter, Starter+, Business and Enterprise) are
   seeded from report 26, and the operator can add its own. Billing is off
   by default, so every organization behaves as Enterprise: `tier` answers the
   Enterprise tier object, `tierFeatures` lists every feature not in
@@ -73,7 +76,7 @@ list the rows that can move.
   served documents are `api/deploy.openapi.yaml`, `api/flows.openapi.yaml`
   and the operator API's `api/operator.openapi.yaml`. Each difference is
   recorded in `x-infraweave-divergence` and in the
-  [deviations register](deviations.md).
+  [deviations register](../data/deviations.json).
 - **infraweave's own clients.** `pkg/sdk` wraps the generated
   `pkg/client/<spec>` packages and is the only way infraweave's Go clients
   call the API ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)). It lands in P1c, where every acceptance step
@@ -102,8 +105,9 @@ list the rows that can move.
 - **Evidence over claims.** A capability is `implemented` only when decision
   [0016](../research/decisions/0016-testing-and-acceptance.md)'s evidence rule holds: every operation is served, answers
   something other than 501, and is named by passing `@op:` scenarios for a
-  success, a denial and a failure. Report 26's state column follows the
-  tests through `specref parity --states --check`, never the other way round.
+  success, a denial and a failure. The state of each record of
+  [capabilities.json](../data/capabilities.json) follows the tests through
+  `specref parity --states --check`, never the other way round.
 
 ## Open items
 
@@ -113,7 +117,10 @@ and invents no answer.
 | Item | State | What the plan does meanwhile |
 |---|---|---|
 | Where the provider's checks run | Decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md) places the provider's source in `weaveplatform/terraform-provider-infraweave`; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines `provider-parity` and `TestAccProvider` against a live `infraweave all` and lists the job in this repository's CI | P24 builds the provider in its own repository over `pkg/sdk`, and keeps `api/reference/provider-parity.yaml` and the `test/terraform/` configurations in this repository, which builds the provider at a pinned commit |
-| Report 26 cells that decisions supersede | Report 26 section 7.8 keeps the MQTT worker transport in scope for self-hosted; decisions [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) (P6) and [0021](../research/decisions/0021-capability-scope-and-supersession.md) (S3) supersede it. Section 7.7's open question on the legacy AWS mutations and the provisional phase column of section 1.4 are in the same position | The plan follows the decisions: P8 serves HTTP long-poll only, the [supersession register](capability-roadmap.md#supersession-register) lists MQTT, and the [feature catalogue](capability-roadmap.md) is the phase assignment. P28 task 3 amends report 26 |
+[feature catalogue](../data/features.json), which the
+[capability roadmap](capability-roadmap.md) explains, and every deliberate difference
+from Spacelift is in the [deviations register](../data/deviations.json),
+which [deviations.md](deviations.md) explains. Research
 
 ## Build status
 
@@ -216,7 +223,7 @@ flowchart LR
   P12 --> P13[P13 Policies]
   P13 --> P13b[P13b Login and other policies]
   P4b --> P13b
-  P13 --> P14[P14 Public pool and Kubernetes]
+  P13 --> P14[P14 Public worker pool and Kubernetes]
   P9 --> P15[P15 Cloud and OIDC]
   P10 --> P16[P16 Schedules and dependencies]
   P13 --> P17[P17 Module registry]
@@ -324,7 +331,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | P24c added for the console | Decision [0023](../research/decisions/0023-console.md) builds a console over the public API only, so it follows the last client phase and covers every surface |
 | P13, P17, P19, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
 | P28 added | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) replays captures as fixtures, and report [30](../research/reference/30-open-questions.md) lists 269 of them; qualification closes the loop once an authorized account is available |
-| Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. The [feature catalogue](capability-roadmap.md) is the assignment |
+| Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. [capabilities.json](../data/capabilities.json) is the assignment |
 
 ## P0: Specification reference
 
@@ -346,13 +353,16 @@ every field ([#5](https://github.com/weaveplatform/infraweave/issues/5)).
    `internal/specref/testdata/golden/`.
 2. `make reference-fetch`, `make reference` and `make verify-reference`, and
    the weekly `openapi-spec-update.yml` refresh.
-3. `specref inventory`, which generates report [29](../research/reference/29-data-model-inventory.md), and its drift check
-   in `make verify-reference`.
+3. `specref inventory`, which generates the register
+   [`graphql-inventory.json`](../data/graphql-inventory.json) and report
+   [29](../research/reference/29-data-model-inventory.md) that summarises it,
+   and their drift check in `make verify-reference`.
 
 **Exit criteria**
 - 725 reference operations in 53 tags plus 8 untagged, 622 routed root fields
   and 43 excluded, every exclusion with its reason in `coverage.md`.
-- `make verify-reference` fails on any drift of the reference or of report 29.
+- `make verify-reference` fails on any drift of the reference, of report 29
+  or of the GraphQL inventory register.
 - `make gate` passes at 95% in total and 90% per package.
 
 **Outcome: done.** The research and decision layer built on it is reports 01
@@ -833,10 +843,14 @@ use.
    `accountToggleDeletionMark`, `accountCanBeDeleted`,
    `accountCanBeDeletedAt`, `accountConfirmDelete`. Feature:
    `account_settings.feature`.
-4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.yaml` with every capability,
-   option and limit, its requirements, the `BillingTierFeature` values it
-   covers and its seeded tiers; the five seeded tiers and their limits,
-   installed once; `x-infraweave-feature` on every operation of every
+4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.gen.go`, which `make generate`
+   writes from [docs/data/features.json](../data/features.json), the
+   catalogue's one source, with the `BillingTierFeature` values each feature
+   covers from the `tier-feature:` records of
+   [capabilities.json](../data/capabilities.json): every capability, option
+   and limit, its requirements, those values and its seeded tiers, and
+   `make verify-generate` fails when the file is stale; the five seeded
+   tiers and their limits, installed once; `x-infraweave-feature` on every operation of every
    served document and on each gated schema property. The chi middleware
    after authentication answers `403 feature-disabled` and, with billing
    on, `403 feature-not-in-tier`; input validation checks options.
@@ -952,7 +966,7 @@ Spaces and the evaluator decide every route from here on: deny by default,
    `accountToggleAllowNonRootAdminSpaceCreation`). Feature:
    `authz_spaces.feature`. Records DV-111.
 2. The action catalogue: `specref` generates
-   `internal/access/api/actions_gen.go` from the 150-value `Action` enum and
+   `internal/access/api/actions.gen.go` from the 150-value `Action` enum and
    `internal/access/api/actions.yaml` gives each its subject, fallback and
    flags; `make verify-reference` fails on a mismatch. The five system roles
    are seeded per account.
@@ -1135,10 +1149,12 @@ queued; nothing executes them until P8.
    `stack_outputs`. `internal/kernel/run.go` holds the 22 `RunState`
    values (`PENDING` absent, `UNKNOWN` never assigned), `RunType`,
    `StackState` and `RunPriority`.
-2. `internal/runs/internal/core/machine`: report 08's transitions T1 to T43
-   plus T44 as data, with guards. Tests: `TestUnitTransitionTable` over
-   every edge and every illegal pair; `TestUnitReport08Edges` parses report
-   08's table and fails on a missing edge.
+2. `internal/runs/internal/core/machine`: the edges of the
+   [run-transitions register](../data/run-transitions.json), report 08's
+   T1 to T43 and decision 0008's T44, as data, with guards. Tests:
+   `TestUnitTransitionTable` over every edge and every illegal pair;
+   `TestUnitTransitionRegister` reads the register and fails on an edge the
+   machine is missing or has beyond it.
 3. `internal/runs/internal/core/lifecycle`: `Transition` with
    `state_version` fencing, the stack state update, `outbox.Append` of
    `run_updated`, terminal lock release and the `run.schedule` follow-up;
@@ -1517,7 +1533,7 @@ the tooling around evaluation: samples, captures, simulation and templates.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
    `Deprecation` headers. Feature: `platform_deprecation.feature`.
 3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
-   `policy_sample_quota`, sealed samples in `policy-inputs`;
+   `policy_sample_budgets`, sealed samples in `policy-inputs`;
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
    `policySearchEvaluationRecordSuggestions`, `policyInputCaptures`,
    `policyInputCapture`. Test: a sealing test that finds no input value in
@@ -1644,7 +1660,7 @@ with output references and external dependencies.
    `stackScheduledDelete`, `stackScheduledDeleteCreate`,
    `stackScheduledDeleteUpdate`, `stackScheduledDeleteDelete`. Records
    DV-090.
-2. Drift detection: `drift_detection` rows, drift runs at tiers 6 and 7 on
+2. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
    private pools, each pool's drift run limits enforced in the claim,
    reconcile. Operations:
    `stackIntegrationDriftDetectionCreate`,
@@ -1859,7 +1875,7 @@ own records, and the metrics and traces operators run infraweave with.
 3. Metrics in `internal/platform/observe`: the OpenTelemetry metric API,
    `/metrics` on the admin listener, infraweave's own instruments, and
    `/metrics/accounts` with the exporter's series under the `infraweave_`
-   prefix and an `account` label.
+   prefix and with `account` and `organization` labels.
    Tests: `TestUnitAccountCollectors`, `TestUnitAccountMetricNames`.
    Feature: `observability_metrics.feature`. Records DV-060, DV-061.
 4. Traces: OTLP export, sampling, spans for HTTP, pgx, object storage,
@@ -2320,9 +2336,9 @@ checks run is an [open item](#open-items).
 **Tasks**
 1. The provider over `pkg/sdk`, imported at a pinned version of this
    module, with the Terraform plugin framework and protocol 6: every
-   resource and data source the [feature catalogue](capability-roadmap.md)
-   lists as not superseded, named with the `infraweave_` prefix, with
-   import IDs from report 05, and the Flows resources as
+   resource and data source record of
+   [capabilities.json](../data/capabilities.json) that is not superseded,
+   named with the `infraweave_` prefix, with import IDs from report 05, and the Flows resources as
    `infraweave_flows_<name>`. Records DV-002.
 2. `specref provider-parity`: compare `terraform providers schema -json`
    with `api/reference/spacelift/terraform-schema.json`;
@@ -2541,7 +2557,8 @@ rules that make infraweave installable and upgradable.
 **Tasks**
 1. Release: archives for every platform with `SHA256SUMS`, the distroless
    server image with the console embedded (the build fails when the
-   embedded directory has no `index.html`), the FIPS image, runner images,
+   embedded directory has no `index.html`), which runs in FIPS 140-3 mode
+   by default so no separate FIPS image ships, runner images,
    and one image per first-party Flows app version listed in infraweave's
    first-party app registry, all signed with Sigstore and carrying SLSA
    provenance and an SPDX SBOM; the release workflow verifies each before
@@ -2588,14 +2605,13 @@ qualified against the tests.
 3. Amend in place each decision whose behaviour a capture changes, with
    its deviation row; amend the report 26 cells decision 0021's
    constraints name (section 7.8's MQTT transport, section 7.7's legacy AWS
-   mutations) and its phase column to the
-   [feature catalogue](capability-roadmap.md).
+   mutations).
 4. Run the `nightly` suite on the newest PostgreSQL, Terraform and OpenTofu
    releases and close what it finds.
 
 **Exit criteria**
 - Every capture of report 30 is replayed or recorded as unobtainable with
   its reason.
-- `specref parity --states --check` shows no row of report 26 in `missing`
-  or `partial`.
+- `specref parity --states --check` shows no tag or Terraform record of
+  [capabilities.json](../data/capabilities.json) in `missing` or `partial`.
 - `make gate` passes at 95% in total and 90% per package.

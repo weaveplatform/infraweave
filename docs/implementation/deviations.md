@@ -4,15 +4,18 @@ infraweave reproduces Spacelift's feature set behind its own REST API
 ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)). It is built
 with Spacelift's design in view, and where Spacelift's interface does not fit a
 self-hosted REST product, or where the research shows a limit worth avoiding,
-infraweave deliberately does something else. This register lists every such
+infraweave deliberately does something else. The deviations register,
+[`docs/data/deviations.json`](../data/deviations.json), lists every such
 departure in one place, so a reader comparing infraweave with Spacelift does not
-have to collect them from twenty decision records.
+have to collect them from twenty decision records. This page says what counts
+as a deviation and how to record one.
 
-Every row is a design commitment of an Accepted decision record.
+Every record is a design commitment of an Accepted decision record.
 Availability is the [build status](plan.md#build-status) of the phase that
-delivers it; phases in [plan.md](plan.md) cite the `DV-NNN` rows their tasks
-implement. A row that rests on Spacelift behaviour a capture has not yet
-shown is listed under [deviations a capture may change](#deviations-a-capture-may-change).
+delivers it; phases in [plan.md](plan.md) cite the `DV-NNN` records their tasks
+implement. A record that rests on Spacelift behaviour a capture has not yet
+shown carries a `pending` member, described under
+[deviations a capture may change](#deviations-a-capture-may-change).
 
 ## Scope
 
@@ -37,248 +40,147 @@ shown is listed under [deviations a capture may change](#deviations-a-capture-ma
 - **Client impact** is stated against Spacelift's own clients and integrations:
   spacectl, `terraform-provider-spacelift`, direct GraphQL callers, webhook and
   audit consumers, runner images, launchers and agents. Decision 0001 already
-  rules out re-pointing Spacelift's API clients unchanged, so for those rows the
-  impact says what a port must change.
+  rules out re-pointing Spacelift's API clients unchanged, so for those records
+  the impact says what a port must change.
 
 ## Adding an entry
 
-Add a row in the pull request that introduces the divergence, under the record
-that decides it, with the next free number. The record lists the departure in
-its Rationale and the row links back to it.
+Add a record to [`deviations.json`](../data/deviations.json) in the pull
+request that introduces the divergence, with the next free `DV-NNN` number;
+an ID is never reused, and a record that no longer holds keeps its ID and
+gains a `withdrawn` member. Its `group` is the heading below that names the
+deciding record, and a divergence whose subject has no group gets a new
+heading here and a new value in the schema's `group` list. The decision
+record lists the departure in its Rationale or Constraints, and the record's
+`source` links back to that section.
 
-| Field | Content |
-|---|---|
-| ID | `DV-NNN`, numbered across the whole file and never reused |
-| Spacelift | What Spacelift does, as a report records it. A behaviour the reports mark *(unverified)* says so |
-| infraweave | What infraweave does instead, with exact names of settings, routes and fields |
-| Why | The limit avoided or the property gained |
-| Client impact | `None`, with the reason, or what a Spacelift client, an operator or a script must change |
-| Source | The decision record, linked to the section that names the departure |
+The register's [schema](../data/schema/deviations.schema.json) says what each
+member holds. In short: `spacelift` is what Spacelift does as a report
+records it, saying so when the report marks it *(unverified)*; `infraweave`
+is what infraweave does instead, with the exact names of its settings,
+routes and fields; `why` is the limit avoided or the property gained; and
+`impact` is `None` with the reason, or what a Spacelift client, an operator
+or a script must change. Text members are markdown whose relative links
+start from `docs/data/`.
 
 ## Register
 
+Each heading is a value of a record's `group`: the subject, and the decisions
+that own it.
+
 ### API surface: decisions 0001 and 0003
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-001 | One GraphQL endpoint with 285 queries and 380 mutations ([report 02](../research/reference/02-graphql-to-rest-mapping.md)) | REST over JSON described by OpenAPI 3 (`api/deploy.openapi.yaml`); no GraphQL endpoint and no GraphQL facade. The reference spec projects every root field to a route, and the served spec is scaffolded from it family by family | Standard HTTP status codes, caching, per-route authorization and rate limits; the chi and oapi-codegen toolchain; Spacelift's clients use fixed selections, so GraphQL's client-shaped queries buy nothing | spacectl, `terraform-provider-spacelift`, the Bruno collection and direct GraphQL callers cannot talk to infraweave; a port changes transport, paths and bodies. Migration from Spacelift is a data import | [0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision) |
-| DV-002 | spacectl and `terraform-provider-spacelift` are the clients | infraweave's own clients: the provider (`weaveplatform/terraform-provider-infraweave`) and `infraweavectl`, both built on the SDK, `pkg/sdk`, and checked against Spacelift's provider schema and spacectl's command list ([0016](../research/decisions/0016-testing-and-acceptance.md#the-terraform-provider-parity-oracle)) | Follows from DV-001; a client that speaks GraphQL cannot reach a REST server | Terraform configurations change provider source and any renamed attributes recorded in `api/reference/provider-parity.yaml`; scripts move from `spacectl` to `infraweavectl` | [0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision) |
-| DV-003 | No retry-safety mechanism for mutations; a create that times out cannot be retried without risking a duplicate | `POST` and `PATCH` accept an optional `Idempotency-Key` header (1 to 255 characters), scoped to the caller and kept 24 hours by default. A finished request with the same fingerprint replays with `Idempotency-Replayed: true`; a different fingerprint answers `422` `idempotency-key-reuse`; one in flight answers `409` `idempotency-key-in-flight` | Terraform providers and CI scripts retry on network errors; only the client knows whether two requests are one intent | None for a client that sends no key; a retrying client opts in by sending one | [0003 Constraints](../research/decisions/0003-api-conventions.md#constraints) |
-| DV-004 | No published load contract per caller | One token bucket per caller per cost class, `standard` or `expensive`, named per operation in `x-infraweave-cost`. Every response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`; an empty bucket answers `429` `rate-limited` with `Retry-After` | Searches, batches and run triggers cost far more than reads; a visible budget lets clients slow down before they are throttled | Clients honour `429` and `Retry-After`; fan-out callers see the smaller `expensive` budget | [0003 Constraints](../research/decisions/0003-api-conventions.md#constraints) |
-| DV-005 | No per-caller API switch for the operator | The operator can disable the API for one caller, who receives `503` `api-disabled` with `Retry-After`; other callers are unaffected | Shedding one misbehaving caller without shedding everyone | None unless the operator disables the caller | [0003 Constraints](../research/decisions/0003-api-conventions.md#constraints) |
-| DV-006 | 95 list fields return bare arrays, such as `GET /stacks` in the reference | Every list `GET` takes `limit` (default 20, maximum 100, clamped) and an opaque `cursor`, and returns a `<Type>Page` with `items` and `nextCursor`, present only when another page exists; no total count. Cursors are keyset positions that never expire; a bad one answers `400` `invalid-cursor`. `POST .../search` keeps relay-style `first`, `after` and `pageInfo` | Unbounded lists load everything at once; offset paging is O(n) and unstable under writes | A port pages until `nextCursor` is absent instead of reading one array | [0003 Constraints](../research/decisions/0003-api-conventions.md#constraints) |
-| DV-007 | Error identity is message text in GraphQL `errors` | Each problem `type` is a URN, `urn:infraweave:problem:<slug>`, from one registry of slugs (0003's five, extended by DV-084) | RFC 9457 lets clients match on `type` without dereferencing it, and infraweave has no documentation host to resolve a URL to | Clients branch on the `type` slug; see DV-084 for the text kept for ported clients | [0003 Decision](../research/decisions/0003-api-conventions.md#decision) |
+REST and OpenAPI in place of GraphQL, infraweave's own clients, idempotency
+keys, rate limits per cost class, a per-caller API switch, cursor paging and
+problem types named by URN.
 
 ### Architecture and persistence: decisions 0004 and 0005
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-008 | Ships the launcher as a separate binary and image that embeds the worker binary ([report 10](../research/reference/10-workers-and-execution.md)) | The launcher is the `launcher` process mode of the one `infraweave` binary, and the phase executor inside the run container is the hidden `runner` subcommand of the same static binary, which the launcher mounts | Launcher, runner and server share a version by construction; the launcher's package graph stays free of server code, so `cmd/infraweave-agent`, a build for worker hosts that links only `internal/agent`, is a one-file change when image size or a review requires it | Worker hosts run `infraweave launcher` in place of Spacelift's launcher image; custom runner images need no embedded worker binary | [0004 Rationale](../research/decisions/0004-repository-architecture.md#rationale), [0004 Constraints](../research/decisions/0004-repository-architecture.md#constraints) |
-| DV-009 | Self-hosted supports PostgreSQL 14 to 18 ([report 24](../research/reference/24-self-hosted-reference.md)) | The floor is the newest major that Amazon RDS, Azure Database for PostgreSQL Flexible Server and Cloud SQL all offer, PostgreSQL 18 at the baseline; it rises in the first release after all three offer the next major | Every reference deployment can create a database at the floor, and CI gates on one major while the next runs beside it | An operator on PostgreSQL 14 to 17 upgrades before installing | [0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale) |
-| DV-010 | Self-hosted provisions one bucket per purpose | One bucket with a prefix per store by default; a per-store override keeps separate buckets where policy requires them | Eleven buckets are eleven pieces of infrastructure to provision before a first run | Operators may provision one bucket; existing per-purpose buckets map through the override | [0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale) |
-| DV-011 | Relies on bucket lifecycle rules for expiry and asks for bucket versioning on the states bucket | infraweave writes every object under an immutable key, records it in `blob_objects`, and expires and versions objects itself; state history needs no bucket versioning. A lifecycle rule is at most an operator backstop set longer than the store's retention | Retention and state history become database facts the API can list and test; the local-disk driver and minimal S3-compatible stores need neither feature | Operators drop versioning and lifecycle requirements from the bucket; tooling that read old state versions from bucket versions reads them through the API | [0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale), [0010 Rationale](../research/decisions/0010-state-backend.md#rationale), [0020 Constraints](../research/decisions/0020-reference-deployments-and-packaging.md#constraints) |
+The launcher and runner as process modes of the one binary, the PostgreSQL
+floor, one bucket with a prefix per store, and object expiry and versioning
+kept by infraweave rather than by the bucket.
 
 ### Tenancy: decisions 0006, 0007, 0014 and 0021
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-109 | The account is the top level: each holds its own plan, users, identity provider and spaces, and nothing groups accounts ([report 14](../research/reference/14-spaces-rbac-and-identity.md)) | Root, organization, account, spaces. `root` is the installation's top node, which only operators act on and which holds nothing but organizations. An organization is a customer's agreement: its tier and grants, which every account inherits; its limits, pooled across its accounts, with account limits an organization admin may set below the pool; and its members and identity providers. An account is a separate business entity and the data boundary, as a Spacelift account is. Organization admins create and remove accounts and see usage across them through the served `Organization` tag, outside the parity surface, but read none of an account's stacks, runs, state or secrets. Nothing inherits from root or from the organization. The operator API keeps the installation-level actions: creating organizations, each with its first account, tiers, grants and the billing switch | One agreement can cover separate business entities, such as two national arms of one company, whose data must stay apart while their tier, limits and people stay shared | None for an account's own clients, which see one account as on Spacelift; the `Organization` tag is new and no Spacelift client uses it | [0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision), [0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#decision) |
-| DV-110 | Identity is per account: each account configures its own identity provider, MFA enforcement and users, so a person in two accounts is two users | Authentication happens at the organization: its identity providers, one or more, its MFA enforcement and its session lifetime. A person is one member of the organization, with roles per account; a role in one account grants nothing in another. Authorization happens per account: the account's `LOGIN` policies, evaluated on its top space, decide access and roles when the member enters it, and a member no account admits sees an empty account switcher. A session or API key works in one account at a time, API keys belong to an account, and organization keys reach only the `Organization` tag. A member counts once against `seats`; identities from two identity providers are two members until an organization admin links them, explicitly and after one sign-in through each provider, into one member ID, and nothing is linked by e-mail address | One sign-in for every account of one agreement, and one seat per person; linking by e-mail would let whoever controls an address at one provider take over a member | SSO, SCIM and MFA settings configure the organization's identity, so a change applies to every account of the organization; scripts that manage users per account manage the account's role bindings instead | [0006 Decision](../research/decisions/0006-authentication-and-tokens.md#decision), [0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision) |
-| DV-111 | A "root admin" is `space-admin` on the `root` space, and settings name "non-root admins" (`accountToggleAllowNonRootAdminSpaceCreation`, `/account/api-key-non-root-managers`); Spacelift Flows has its own "organization admin" | The account admin is `space-admin` on the account's top space, which the account's immutable slug addresses. Served names say "admin" and "non-admin": `allowNonAdminSpaceCreation`, `accountToggleAllowNonAdminSpaceCreation`, `apiKeyEnableNonAdminManagers` at `/account/api-key-non-admin-managers`, and `apiKeysManagedByNonAdmins`. Spacelift Flows' organization admin is the account admin too. No served space or name is `root`, which names only the installation's top node | `root` is the installation's, and no account reaches it | Ports address the top space by the account's slug, bind admins there, and call the renamed operations | [0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision), [0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision) |
-| DV-112 | `moduleShare` shares a module with any other Spacelift account | A share is the one exception to account isolation, and works only between accounts of the same organization; a share to an account of another organization answers `422` `validation-failed`. It exposes the module's fields and version downloads only, needs `module-sharing` in both accounts' entitlement, and its revocation hides the module while runs in flight finish | The organization is the agreement boundary, and accounts of different customers never see each other | Shares to accounts outside the organization are refused | [0014 Decision](../research/decisions/0014-module-and-provider-registry.md#decision), [0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision) |
+The root, organization, account and space hierarchy, authentication at the
+organization, the account admin as a role on the account's top space, and
+shares between accounts of one organization.
 
 ### Identity and access: decisions 0006 and 0007
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-012 | The in-run API token's issuer is Spacelift's | `iss` defaults to the public URL and is configurable; the other claim formats match Spacelift's by default, with configurable templates | The in-run token's issuer is infraweave's public URL like every other infraweave token, and an operator can change it | None for the provider, which reads `sub`; code that checks `iss` sees the installation's URL | [0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale) |
-| DV-013 | `ApiKeyInput.admin`, a required `Boolean!`, makes an admin key; the changelog deprecates it and the schema does not ([report 14](../research/reference/14-spaces-rbac-and-identity.md#81-types-and-fields)) | The field is not accepted: a body that sets it answers `400` `invalid-request` like any unknown field. A key becomes an administrator through a `space-admin` role binding on the account's top space, and the key's `admin` reads whether that binding exists | One source of truth for access; decision 0021 treats the changelog-deprecated field as superseded | A port drops the field, which Spacelift's provider always sends as `false`, and binds the key to `space-admin` on the account's top space instead | [0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale) |
-| DV-014 | Fetches OIDC API key issuers as configured | Issuers are fetched over HTTPS only, optionally restricted to `auth.oidc_api_keys.allowed_issuers` | A self-hosted server fetching user-supplied URLs is an SSRF path | OIDC API keys whose issuer is plain HTTP, or outside a configured allowlist, are refused | [0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale) |
-| DV-015 | Self-hosted documents no rotation of its JWT signing key ([report 24](../research/reference/24-self-hosted-reference.md#35-encryption-and-kms)) | Signing keys rotate automatically every 90 days | Rotation limits key exposure | Relying parties read the JWKS document rather than pinning one key | [0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale) |
-| DV-016 | Does not document reissue of the federation token during a run ([report 12](../research/reference/12-cloud-integrations-and-oidc.md)) | The federation token file is refreshed during long runs | A run past one hour otherwise loses cloud access | None; runs longer than the token lifetime keep their cloud credentials | [0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale) |
-| DV-017 | Browser session lifetime is undocumented | Session lifetimes are stated, configurable defaults | A self-hosted operator needs a known value | None | [0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale) |
-| DV-019 | The `legacy` space carries access-policy behaviour | `legacy` is an ordinary space with no special semantics | Access policies, its only special behaviour, are superseded | None for clients; imported access policies follow the supersession register | [0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale) |
-| DV-020 | System role contents are not published ([report 14](../research/reference/14-spaces-rbac-and-identity.md)) | System role contents are derived from the legacy fallback column of the action catalogue; parity is checked against `Role.actions` once captured | A role either grants an action or the fallback level decides, as one set-membership test | A system role's action list may differ from Spacelift's until the capture lands | [0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale) |
-| DV-021 | The worker pool controller and drift detection system roles' slugs are unrecorded | Their slugs are `worker-pool-controller` and `drift-detection-manager` | A slug is needed to bind them | Configurations that name Spacelift's slugs for these roles may need the name changed | [0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale) |
-| DV-022 | The schema marks some actions "do not use" | Disabled actions cannot be assigned to roles; operations they would govern use their fallback | A role must not depend on an action that grants nothing | A role create or update naming a disabled action is rejected | [0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale) |
-| DV-023 | Two statements conflict on whether an `ACTIVE` managed user with no binding can log in | Such a user logs in with empty grants | The newer changelog statement wins | None | [0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale) |
-| DV-113 | `/mcp` clients authorize through Spacelift's OAuth discovery, client registration, authorization and token endpoints, whose details beyond the consent page and the redirect hosts are undocumented ([report 22](../research/reference/22-intelligence.md)); Spacelift Flows authorizes on an `oauth.` subdomain | A minimal built-in OAuth authorization server for `/mcp` and `/flows/mcp`: RFC 8414 metadata, RFC 7591 dynamic client registration, and authorization and token endpoints; PKCE with `S256` only; a consent page in the console, on the console session; access tokens lasting about an hour, with rotating refresh tokens; `mcp:read` and `mcp:write` scopes, narrowed by the member's normal permissions; redirect URIs limited to loopback plus the allowlist that account admins maintain | A self-hosted installation has no external authorization server, and each rule is a stated default where Spacelift's are unpublished | MCP clients register and authorize as with any OAuth server; a client that sends `plain` PKCE or an unlisted redirect URI is refused | [0006 Decision](../research/decisions/0006-authentication-and-tokens.md#decision), [0019 Decision](../research/decisions/0019-ai-provider-boundary.md#decision) |
+Token claims, administrator API keys as role bindings, OIDC issuers over
+HTTPS, signing key rotation, federation token refresh, session lifetimes, the
+`legacy` space, system roles and disabled actions, and the OAuth server for
+MCP.
 
 ### Runs, workers and policies: decisions 0008 and 0009
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-024 | Workers talk MQTT or HTTP long-poll; self-hosted runs a built-in broker or bridges to IoT Core, and keeps an `iot` queue for worker messages | HTTP long-poll only, under `/worker/v1`; no MQTT transport, broker listener or IoT Core bridge, and no `iot` queue | Spacelift retires MQTT for workers on 2027-03-30; a broker adds a port, a component and a second delivery path; Spacelift's launchers cannot reach infraweave anyway (DV-001) | Worker networks need outbound HTTPS to `serve` only; load balancer idle timeouts must exceed the poll hold by 15 seconds | [0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale), [0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale), [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale) |
-| DV-025 | Leaves a run alone while a worker executes it, for up to 30 days | A run whose worker stays offline for `run.lost_after` (default 60 minutes) is a lost run: it fails with note `worker lost` and releases the stack. A worker that returns in time lets its run continue | A stack should not stay locked for weeks behind a dead host, and an hour rides out restarts and short outages without killing a half-applied run | A run on a crashed worker fails after an hour and can then be retried, instead of holding the stack | [0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale) |
-| DV-026 | Defaults to Spacelift's own runner images | Defaults to infraweave's own runner images; the shared image contract (UID 1983, the same configuration precedence) keeps Spacelift's images usable | An installation does not depend on another vendor's registry | None for stacks that name an image; stacks on the default get infraweave's | [0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale) |
-| DV-027 | Launcher settings are `SPACELIFT_*` environment variables | Launcher settings are named `INFRAWEAVE_LAUNCHER_*` | The launcher is infraweave's client, not Spacelift's | Worker deployment configuration renames its variables | [0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale) |
-| DV-092 | The worker list has no state for a worker that holds a run but has stopped polling | A worker unseen for `worker.offline_after` (default 3 minutes) is an offline worker, listed with status `OFFLINE`, a fourth `WorkerStatus`, and claims no new run; its run keeps its state and stack lock until DV-025 applies | An operator needs to see which worker a waiting run depends on | Clients that switch on `WorkerStatus` handle `OFFLINE` | [0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale) |
-| DV-093 | The documented worker pool setup generates an RSA 4096 key ([report 10](../research/reference/10-workers-and-execution.md#23-credentials)) | The pool key must be EC P-256; a CSR with any other key answers `422` `validation-failed`. Run secrets are sealed to it with infraweave's own envelope (ECDH P-256, HKDF-SHA256, AES-256-GCM) | The envelope runs under Go's FIPS 140-3 mode, and one key per pool serves both registration and sealing | Pool setup scripts generate a P-256 key in place of RSA | [0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale), [0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale) |
-| DV-028 | `REGO_V0` is the provider's default engine; the API's default is unverified | `REGO_V1` is the default when a create omits the engine | Rego v1 is OPA's current language | A policy written for v0 sets the engine explicitly | [0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale) |
-| DV-029 | Removes `http.send`, `opa.runtime`, `rego.parse_module`, `time.now_ns` and `trace` from policies | Also removes `net.lookup_ip_addr` | DNS lookups from the server reach the network the other removals keep policies away from | A policy using `net.lookup_ip_addr` fails to compile at save | [0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale) |
-| DV-030 | Documents no outcome for a policy evaluation error | Each policy type has a stated fail-closed outcome; an `APPROVAL` error leaves the run waiting | A policy that cannot be evaluated must not let a plan apply or a user log in | None for policies that evaluate; a broken policy blocks rather than passes | [0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale) |
-| DV-031 | The `sanitized` helper's truncation of SHA-256 is unverified ([report 20](../research/reference/20-vendors.md#13-resource-sanitization)) | `sanitized` uses infraweave's own truncation | A rule is needed until a capture shows Spacelift's | A policy comparing sanitized values with strings produced by Spacelift may not match | [0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale) |
+The worker long-poll protocol in place of MQTT, lost runs and offline
+workers, runner images and launcher settings, the pool key, and the policy
+engine's default version, removed builtins, fail-closed outcomes and
+`sanitized` helper.
 
 ### State and queue: decisions 0010 and 0011
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-032 | External state access uses the Terraform `remote` backend | External access uses the Terraform `http` backend with a token | The `remote` API is a second surface with its own JSON:API shapes and login flow; `http` already serves `terraform_remote_state` and `terraform state pull` | Configurations that read state from outside change to `backend "http"` | [0010 Rationale](../research/decisions/0010-state-backend.md#rationale) |
-| DV-033 | State upload and download URLs point at the object store | They point at infraweave, which proxies and keeps state sealed at rest | The server holds the encryption; states are small enough to proxy | Worker networks need no route to the bucket for state | [0010 Rationale](../research/decisions/0010-state-backend.md#rationale) |
-| DV-034 | The lock kind taken while planning is undocumented | Planning takes a shared lock | Concurrent read-only plans need not serialise | None | [0010 Rationale](../research/decisions/0010-state-backend.md#rationale) |
-| DV-035 | A stopped run can leave a state lock behind | A run's locks are released when it ends | No stuck lock needs a manual unlock | None; manual unlock is rarely needed | [0010 Rationale](../research/decisions/0010-state-backend.md#rationale) |
-| DV-036 | SaaS keeps non-current state versions for 30 days | Non-current versions are kept 90 days by default (`state.noncurrent_retention`; `0` keeps them forever) | Long enough to roll back past a quarter's changes, while storage stays bounded | Rollback reaches further back than on SaaS; an operator may shorten or lengthen it | [0010 Rationale](../research/decisions/0010-state-backend.md#rationale) |
-| DV-094 | Terraform's and OpenTofu's `http` clients send `Content-MD5`, which a backend checks | `Content-MD5` is checked as usual, except under `GODEBUG=fips140=only`, where Go refuses MD5: the header is accepted and ignored, and the body's SHA-256 is recorded and checked instead | FIPS 140-3 mode must run without an MD5 exemption, and the SHA-256 that every write records already detects a corrupt body | None for Terraform and OpenTofu; under `fips140=only` a bad `Content-MD5` no longer answers `400` | [0010 Rationale](../research/decisions/0010-state-backend.md#rationale), [0013 Decision](../research/decisions/0013-secrets-at-rest.md#fips-140-3) |
-| DV-037 | Self-hosted offers SQS or a PostgreSQL queue | The PostgreSQL queue only | Enqueue joins the change's transaction, which SQS cannot | Operators provision no SQS queues | [0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale), [0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale) |
-| DV-038 | A fixed receive count of 3 before dead-lettering | A retry limit per job kind, default 5, with exponential backoff and full jitter | Different kinds tolerate different numbers of failures | None | [0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale) |
-| DV-039 | Separate dead-letter queues | A `dead` job state kept 30 days, listed and acted on through three operations of the operator API, outside the Spacelift surface: `GET /operator/v1/queue/jobs`, `POST /operator/v1/queue/jobs/{id}/retry`, `DELETE /operator/v1/queue/jobs/{id}` | Dead work is inspectable and retryable in place | New operator API; no Spacelift client uses it | [0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale), [0011 Decision](../research/decisions/0011-persistent-work-queue.md#decision) |
-| DV-040 | A separate FIFO queue | Ordering keys on jobs | Ordering applies per key, not per queue | None | [0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale) |
+The state backend over `http`, proxied and sealed state, plan and run locks,
+retention of state versions, `Content-MD5` under FIPS, and the PostgreSQL
+work queue with retry limits, dead jobs and ordering keys.
 
 ### VCS: decision 0012
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-041 | SaaS installs Spacelift's GitHub Marketplace app | The operator registers a GitHub App, as self-hosted Spacelift requires | infraweave has no global app of its own | Operators create and register an app; repositories install that app | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale) |
-| DV-042 | Spacelift's own webhook endpoints | Webhook URLs under `/webhooks/vcs/` | One route family for every provider | VCS webhook configurations point at the new path | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale) |
-| DV-043 | One webhook secret at a time | The previous secret is accepted for a window after rotation | Rotation without dropped deliveries | None | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale) |
-| DV-044 | No delivery listing or replay | Routes to list received deliveries and replay one | Debugging a missed trigger without the provider's console | New operations; no Spacelift client uses them | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale) |
-| DV-045 | VCS agents speak gRPC to a separate gateway service with its own load balancer | `infraweave vcs-agent` long-polls `serve` over HTTPS with its own token layout; no gateway process and no gRPC listener | Reuses the worker protocol's shape and any HTTPS load balancer | `spacelift-vcs-agent` does not connect; agent pools run `infraweave vcs-agent` | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale), [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale) |
-| DV-046 | The docs promise a strict request allowlist; the released agent at the research pin validates nothing | The allowlist is on by default, derived from the client's own route table, and the agent refuses unmatched Azure DevOps requests | Without validation the agent is a general proxy into a private network | Integrations that relied on unvalidated proxying fail until their route is listed | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale) |
-| DV-047 | The individual commit check name is undocumented | `infraweave/<stack slug>` | A stable name is needed for branch protection | Branch protection rules copied from Spacelift need the check name changed | [0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale) |
+The operator's GitHub App, webhook routes, secret rotation, delivery replay,
+the VCS agent's transport and allowlist, and commit check names.
 
 ### Secrets: decision 0013
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-048 | The choice between KMS and an RSA key is permanent; only KMS keys rotate, yearly | `infraweave secrets rewrap` moves the keyring between a local key, KMS providers or a new key in a few statements | Operators change custody without a reinstall | None | [0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale) |
-| DV-049 | Kubernetes deployments can use only RSA | GCP KMS, Azure Key Vault and Vault are offered beside AWS KMS | Every reference deployment gets a managed key option | None | [0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale) |
-| DV-050 | In the local-key mode one RSA key both encrypts and signs | The JWT signing key is a separate sealed row, apart from the encryption root | Rotating one never touches the other | None | [0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale) |
-| DV-051 | Documents no minimum length for masked values | Values shorter than 4 bytes are not masked in run logs | Masking `1` or `on` destroys the log and protects nothing | A secret shorter than 4 bytes appears in logs; such secrets should be lengthened | [0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale) |
+Rewrapping the keyring, the KMS providers offered, the separate JWT signing
+key, and masking of short values.
 
 ### Registry: decision 0014
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-052 | Splits registry discovery (`spacelift.io`) from the protocol host (`app.spacelift.io`) | Discovery and the protocol share the installation's host | One host to deploy, certify and allow | Module and provider source addresses use the installation host | [0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale) |
-| DV-053 | A failed provider verification blocks neither publishing nor use | Publishing a provider version checks that every uploaded file exists and matches its declared checksum | A bad upload fails at publish, not at `terraform init` | Publishing pipelines see an error for a bad upload | [0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale) |
-| DV-054 | Labels registry protocol 404 bodies `text/plain` | Serves them as `application/json` | The body is JSON | None for Terraform and OpenTofu | [0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale) |
-| DV-055 | Behaviour for yanked versions is uncaptured | Yanked versions are neither listed nor downloadable, even by an exact pin | A yanked version is withdrawn | An exact pin to a yanked version fails to install | [0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale) |
+Discovery on the installation's host, checksum checks on publishing, error
+body types, and yanked versions.
 
 ### Events: decision 0015
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-056 | Its own delivery headers | Adds `X-Infraweave-Delivery` and `X-Infraweave-Event` to every HTTP delivery | Receivers can deduplicate and route without parsing the body | None; receivers may use them | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale) |
-| DV-057 | `retryOnFailure` retries `5xx` | Also retries network errors, timeouts and `429` | A receiver that is down or throttling is a transient failure | Receivers may see more retries and deduplicate by `X-Infraweave-Delivery` | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale) |
-| DV-058 | Fixed audit, notification and delivery retention | Each retention is an operator setting | Storage and compliance needs are the operator's | None | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale) |
-| DV-059 | Raises worker usage events for negotiated contracts | Requires `events.worker_usage.limit` and `events.worker_usage.percentile`; without a limit the event is never raised | infraweave has no contracts | Consumers of the usage event configure a limit first | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale) |
-| DV-095 | Clients poll for run logs, run state and worker pool queues | Run logs, run state, worker pool queues and Flows events are also served as server-sent-event streams in the public API, each with a polling equivalent; the console's live views use them | Live views without a request per second per viewer, for the console, `infraweavectl` and integrators | None; polling still works, and a client may switch to the streams | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale), [0023 Decision](../research/decisions/0023-console.md#decision) |
-| DV-096 | Flows reaches Deploy through a separately linked integration | Deploy events are Flows events natively, in one event model; the event kinds include drift, policy outcomes, notifications and worker changes | A run state change or a drift result triggers a flow without a bridge | None for Deploy clients; flows that reacted to Spacelift Deploy use the Deploy trigger blocks | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale), [0018 Decision](../research/decisions/0018-flows-runtime.md#decision) |
-| DV-097 | Notification policies return strings with `spacelift::logs::*` placeholders | Strings a notification policy returns are text templates ([0024](../research/decisions/0024-expression-language.md)), and `logs(phase)` replaces the placeholders | One template form across Deploy and Flows | Notification policies that used the placeholders call `logs(phase)` | [0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale), [0024 Rationale](../research/decisions/0024-expression-language.md#rationale) |
+Delivery headers and retries, retention settings, the worker usage event,
+server-sent-event streams, Deploy events as Flows events, and notification
+templates.
 
 ### Observability: decision 0017
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-060 | Selects a `Datadog` or `AWS` observability vendor | OTLP is the only export; Datadog and X-Ray are reached through OTLP-capable agents | Each vendor SDK adds dependencies and code paths to test | Operators point an OTLP collector or agent at infraweave | [0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale) |
-| DV-061 | A separate Prometheus exporter process queries the API with an API key | infraweave serves the exporter's series itself at `/metrics/accounts` on the admin listener, with the `spacelift_` prefix renamed `infraweave_` and an `account` label on every series | No extra process, credential or per-replica duplication; one installation hosts many accounts | Scrape configurations target infraweave instead of the exporter, and dashboards rename the metric prefix | [0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale) |
-| DV-062 | Probes are `/readiness` and `/startup` on `:8080` | Probes are `/livez`, `/readyz` and `/startupz` on `:9090`; `:8080` is the API listener | Probes stay off the public listener | Orchestrator probe configuration changes | [0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale) |
-| DV-063 | Workers upload traces, CPU profiles and logs to a run observability bucket | Workers export traces over OTLP to the operator's collector | One telemetry path, owned by the operator | Operators run a collector the workers can reach | [0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale) |
-| DV-064 | Logs queries per request | No per-request query logging at `info`; the access log records the route pattern, never the body | Bodies carry secrets and personal data | Log pipelines that parsed query logs lose them | [0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale) |
+OTLP as the only export, the exporter's series served at
+`/metrics/accounts`, the probe routes, worker traces and the access log.
 
 ### Flows: decision 0018
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-065 | Flows is a separately linked organization with its own login | Flows belongs to the infraweave account, which takes the place of Spacelift Flows' organization: its projects, apps and agent pools are the account's, its users are the account's members, and the Deploy link is implicit | One identity and access model across the product | No linking step; Flows users are the members the account admits | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-066 | HTTP Endpoint and MCP surfaces use subdomains (`mcp.`, `oauth.`) | Endpoint addresses fall back to paths when no wildcard domain is configured; MCP is served at `/flows/mcp` | A self-hosted install may have no wildcard DNS | Clients configured with Spacelift's subdomains use the paths | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-067 | A GraphQL Request Deploy block | An API Request block over the REST API | infraweave serves no GraphQL (DV-001) | Flows using the GraphQL block are rewritten to the API Request block | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-068 | Self-hosted Flows runs on EKS only | Flows runs wherever infraweave runs; agents run in Kubernetes or Docker | Every reference deployment carries Flows | None | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-069 | `flowctl` and `terraform-provider-flows` call RPC-style `/cli/...` and `/provider/...` routes | The Flows API is REST under `/flows/v1/`; infraweave's CLI and provider replace both clients | Decision 0001's REST rule applies to every family | `flowctl` and `terraform-provider-flows` do not work; their operations remain the parity list | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-098 | Flows apps are JavaScript bundles written against `@slflows/sdk/v1` and run by agents in Node.js runtimes | An app version is a multi-architecture OCI image whose program serves the versioned `App` gRPC contract; `infraweave flows-agent` runs each app in its own container. infraweave has no JavaScript runtime and no compatibility layer, and refuses a JavaScript bundle with `422` `validation-failed` | A protobuf contract evolves safely across releases, any gRPC language can serve it, and apps get ordinary libraries and networking | Spacelift's apps and app registries do not work; an app is rebuilt as an image, in Go on `pkg/flows/appsdk` or in any gRPC language | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-099 | Apps may ship browser code (`ui.js`, `uiCode`) | Apps contribute declarative widgets only, of fixed types the console renders | No third-party script runs in the console's origin under the user's session | Apps that drew their own interface declare widgets instead | [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale), [0023 Decision](../research/decisions/0023-console.md#decision) |
+Flows in the infraweave account, endpoint addresses and MCP, the API Request
+block, where Flows and its agents run, the REST Flows API, app images and
+declarative widgets.
 
 ### Intelligence: decision 0019
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-070 | Intent's `discover`, `query` and `mutate` tools work over GraphQL | They work over infraweave's OpenAPI operations | infraweave serves no GraphQL (DV-001) | MCP clients see OpenAPI operation names in tool results | [0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale) |
-| DV-071 | The provided AI integration is Spacelift's, flagged `isSpaceliftProvided`, with a budget on the Free tier | The provided integration is the operator's, flagged `isInstallationProvided`. Its budget is the `ai-budget` limit of each organization's tier, pooled across its accounts and metered in US dollars per 30 days from the operator's model prices; a request beyond it answers `403` `limit-reached` | The installation, not Spacelift, pays for the model, and a tier limit gives callers one refusal for every limit | Clients read `isInstallationProvided`; operators price the default model and set `ai-budget` per tier or grant | [0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale) |
-| DV-072 | The chat transport is unpublished | An infraweave-defined SSE endpoint | A transport is needed and none is documented | Chat clients use infraweave's endpoint | [0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale) |
-| DV-073 | Spacelift's terms and documentation search | The terms are the operator's, and `search_docs` searches infraweave's documentation | infraweave cannot accept terms or search docs on Spacelift's behalf | None | [0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale) |
-| DV-074 | `spacelift-intent` does not verify provider checksums or signatures | Intent verifies provider checksums and signatures | Providers run with cloud credentials on workers | An unsigned or mismatched provider is refused | [0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale) |
+AI tools over infraweave's operations, the operator's provided integration
+and its budget, the chat endpoint, the operator's terms, and Intent's
+provider checks.
 
 ### Packaging: decision 0020
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-075 | Ships ECS and CloudFormation reference deployments | No ECS or CloudFormation reference deployment | The supported set stays testable | ECS operators adapt the container image themselves | [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale) |
-| DV-076 | Infrastructure modules and the Helm chart version separately from the application | Modules and chart share the application's version | One version answers which artefacts fit together | Operators pin one version | [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale) |
-| DV-100 | Ships a Flows runtime image in which agents run every app | No runtime image: each first-party Flows app is an OCI image of its own per app version, a Go program on `pkg/flows/appsdk`, signed and listed in infraweave's first-party app registry | Apps carry their own dependencies, and an app upgrades without an infraweave release | Air-gapped installs mirror the app images they use into their own registry | [0020 Decision](../research/decisions/0020-reference-deployments-and-packaging.md#decision), [0018 Decision](../research/decisions/0018-flows-runtime.md#decision) |
-| DV-077 | Launchers download from Spacelift and are verified with GPG keys from a public key server | Launchers download from the installation itself and are verified with Sigstore | Air-gapped installs reach nothing else; no second trust root | Worker bootstrap scripts change their download and verification steps | [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale) |
-| DV-078 | Self-hosted needs a licence token and lacks the public pool and the Azure and GCP integrations | No licence token; those limits are not inherited, and the public worker pool is a chart option (`publicWorkerPool.enabled`) | infraweave mirrors SaaS, not the self-hosted subset | None | [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale), [0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#self-hosted-limits-are-not-inherited) |
+The reference deployments, one version for application, modules and chart,
+first-party Flows apps as images, launcher downloads, and no licence token.
 
 ### Scope, tiers and clients: decision 0021
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-018 | Seat limits by plan | Seats are the `seats` limit of the organization's tier, pooled across its accounts, counting each member once and API keys as Spacelift counts them, and enforced only while billing is on (DV-101); a seat beyond the pool, or beyond an account limit an organization admin sets, answers `403` `limit-reached` | Seats are one more tier limit, with one refusal for every limit | None while billing is off; with billing on, the limits of Spacelift's documented plans until the operator changes them | [0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#tiers) |
-| DV-079 | `tier` answers a `BillingTier` enum value, and `tierFeatures` lists `BillingTierFeature` values | `tier` answers a tier object: `name`, `features` (sorted infraweave feature names) and `limits` (limit name to value). `tierFeatures` answers the entitlement of the account's organization as infraweave feature names. Every operation names its capability in `x-infraweave-feature`; a switched-off feature answers `403` `feature-disabled`, and with billing on a feature outside the entitlement answers `403` `feature-not-in-tier` | Tiers are data an operator defines, which the enum cannot express, and feature names are infraweave's own | Clients that branch on `tier` read the object's `name` or `features`; the [feature catalogue](capability-roadmap.md#feature-catalogue) maps each `BillingTierFeature` value to its features | [0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale) |
-| DV-101 | Each account's plan gates its features | `billing` is a feature of the installation, off by default: no entitlement check runs and every organization behaves as Enterprise. Tiers, organization tiers and grants are data managed through the operator API (`api/operator.openapi.yaml`) and `infraweavectl operator`, effective without a restart; five tiers (Free, Starter, Starter+, Business, Enterprise) are seeded from Spacelift's documented plans | Most installations serve one company and want every feature; one that hosts others turns billing on and gets Spacelift's packaging without writing it | None while billing is off; with billing on, organizations see Spacelift's documented gates | [0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale) |
-| DV-080 | Billing mutations change a Stripe subscription | Billing mutations answer `403` `installation-unsupported`; reads answer with local meaning (`billedExternally: true`, `usage` over a trailing 30 days, empty add-on lists) | A fake success looks like progress in a test and fails in production | Billing automation receives an explicit refusal | [0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale) |
-| DV-081 | The Azure integration, Origin and global plugin templates rely on Spacelift's own apps and catalogue | They rely on operator-registered apps and catalogues: `cloud.azure`, `vcs.origin` and `plugins.catalog_paths`; without one, the operation answers `installation-unsupported` | infraweave operates no global apps | Operators register the apps before these features work | [0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale) |
-| DV-082 | Accepts some superseded enum values in a disabled state | A superseded enum value is rejected outright | A request that would do nothing should fail visibly | Clients sending a superseded value receive `400` `invalid-request` | [0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale) |
-| DV-083 | spacectl picks one credential when several are set, in an order its docs and source disagree on, and stores profiles in `config.json` or a file per alias | `infraweavectl` errors when two methods are set without `INFRAWEAVE_API_PREFERRED_METHOD`, and stores profiles in one strict YAML file, `$XDG_CONFIG_HOME/infraweave/config.yaml`, written `0600` | Never pick silently between conflicting inputs; one strict file | Scripts set one credential method or the preference variable | [0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale) |
+Seats and tiers, billing as an installation feature, operator-registered apps
+and catalogues, superseded enum values, and `infraweavectl` authentication.
 
 ### Names: decision 0001 and the glossary
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-102 | Spacelift's names on every surface: `SPACELIFT_*` run variables, `/mnt/workspace/spacelift.oidc`, `.spacelift/` repository files, `package spacelift` policies, `spacelift_` provider resources, spacectl, `flowctl` | infraweave's own names, with no Spacelift alias: `INFRAWEAVE_*` run variables such as `INFRAWEAVE_API_TOKEN` and `INFRAWEAVE_OIDC_TOKEN`, `/mnt/workspace/infraweave.oidc`, `.infraweave/config.yml` and `.infraweave/workflow.yml`, `package infraweave` with `data.infraweave.result`, `infraweave_` provider resources, and `infraweavectl`. DV-027, DV-047, DV-056 and DV-061 apply the same rule to launcher settings, check names, delivery headers and metrics | infraweave mirrors Spacelift's capabilities, not its interface; a Spacelift name would claim a compatibility infraweave does not offer | Hooks, policies, repositories and configurations rename the prefix: `SPACELIFT_` to `INFRAWEAVE_`, `.spacelift/` to `.infraweave/`, `package spacelift` to `package infraweave`, `spacelift_` to `infraweave_` | [0001 Rationale](../research/decisions/0001-rest-first-spacelift-surface.md#rationale), [GLOSSARY](../../GLOSSARY.md) |
-| DV-114 | Served API names carry Spacelift's brand: `spaceliftIntelligenceEnabled`, `accountSetSpaceliftIntelligenceEnabled`, `spaceliftIntelligenceTermsAccepted`, `spaceliftIntelligenceTermsLatestVersion`, `spaceliftAwsAccountId`, the VCS provider `SPACELIFT`, the `SpaceliftMetrics` schema and the policy input `spacelift.*` | No served operationId, schema, property, enum value, header, environment variable, policy input key or description contains "spacelift". One rename table in decision 0001 maps each reference name to its infraweave name: `aiEnabled`, `accountSetAiEnabled`, `aiTermsAccepted`, `aiTermsLatestVersion`, `installationAwsAccountId`, `INFRAWEAVE`, `AccountMetrics`, `INFRAWEAVE_*` and `infraweave.*`, with DV-111's admin names. `TestUnitServedNames` checks every served bundle against the rule and the table | DV-102's rule applied to the API itself: a Spacelift name would claim a compatibility infraweave does not offer, and one table keeps every rename findable | Ports rename these operations, fields, enum values and policy input keys as the table lists; `specref parity` treats each rename as a recorded divergence | [0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision) |
+infraweave's own names on every surface, with no Spacelift alias.
 
 ### Errors, updates and input: decision 0022
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-084 | GraphQL `errors` with message text; no documented status codes or stable codes ([report 06](../research/reference/06-spacectl-and-clients.md#24-error-behaviour)) | An HTTP status per failure class and `application/problem+json` from one slug registry; fixed titles keep `not found` and `unauthorized` as the provider and spacectl match them; hidden and missing resources both answer `404`; field errors carry `errors` with `pointer` and `reason`; protocol endpoints answer what their own clients expect | Any HTTP client, proxy and retry library can act on the status; ported string matches keep working | A port changes transport only; its message-text checks still match | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-085 | Updates are whole-input mutations (`stackUpdate`, `stackConfigAdd`) | Every update route keeps `PUT`, which replaces, and gains `PATCH` with `application/merge-patch+json`, in which `null` resets a field to its default; configuration elements get an item `PUT` that answers `201` or `200` | Providers want full replacement, people want to change one field | Providers use `PUT`; CLIs and scripts may use `PATCH` | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-086 | Last write wins | Item `GET`, `PUT` and `PATCH` return a strong `ETag`; `PUT`, `PATCH` and `DELETE` accept `If-Match`, and a stale tag answers `412` `precondition-failed`. Without `If-Match`, last write wins | Optional protection against lost updates | None unless the client sends `If-Match` | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-087 | An unset relation reads as `null` | A sub-read of an unset optional relation answers `204 No Content` | `404` on such a route always means the parent is missing or hidden | Clients treat `204` as "none" | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-088 | Unknown input fields are not documented as rejected | Request bodies are strict: an unknown field answers `400` `invalid-request` with reason `unknown-field`; `StackInput.administrative` stays, deprecated and ignored | A misspelt body field silently ignored writes the wrong state | Clients that send extra fields remove them | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-089 | Label limits are undocumented | Labels are 1 to 255 characters of UTF-8 with no control characters or edge whitespace, at most 100 per entity, compared byte for byte; a duplicate answers `422` `validation-failed` | Bounded, unambiguous labels | Imports with longer, more numerous or duplicate labels fail with the field named | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-090 | Cron and timezone acceptance is unverified | Five-field cron with `*`, `n`, `a-b` and `/step`, Vixie day matching; names, `?`, `L`, `W`, `#` and `@` macros are rejected. Timezones are IANA names (embedded `time/tzdata`), absent means `UTC`; abbreviations and numeric offsets are rejected | Schedules must fire when the user expects, or fail loudly | Imports with an expression or zone outside these rules fail with a pointer to the field | [0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale) |
-| DV-091 | Unknown keys in `.spacelift/config.yml` are unverified | Known keys are typed strictly and fail the run in `INITIALIZING`; unknown keys warn in the run log and `Run.runtimeConfig`, or fail with `runs.runtime_config.unknown_keys: reject` | Failing every stack because a key is newer than infraweave turns schema lag into an outage | Repositories with a mistyped known key see the run fail with the key's path | [0022 Constraints](../research/decisions/0022-api-errors-and-update-semantics.md#constraints) |
+Status codes and problem types, `PATCH` with merge patch, `ETag` and
+`If-Match`, unset sub-reads, strict request bodies, label rules, cron syntax
+and the keys of the repository configuration file.
 
 ### Console: decision 0023
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-108 | Some entities carry the actions the caller may take, and the web interface decides the rest itself | Every resource the API returns carries `allowedActions`, computed by the code that enforces those actions: the caller's grants and, for a resource with a state machine such as a run, the transitions its state allows | The console shows, hides or disables controls from that list alone and never decides a permission or a transition | An added read-only field; clients that ignore it are unaffected | [0023 Decision](../research/decisions/0023-console.md#decision) |
+`allowedActions` on every resource the API returns.
 
 ### Expressions: decision 0024
 
-| ID | Spacelift | infraweave | Why | Client impact | Source |
-|---|---|---|---|---|---|
-| DV-103 | Flows expressions are JavaScript, evaluated by agents in Node.js runtimes | Every expression a user writes, in Flows and in Deploy, is CEL, type-checked against its context and evaluated on the server in the `scheduler` process mode with a cost limit; agents never see an expression. Multi-step logic uses `cel.bind`, named expressions and the Transform block's steps form; there is no Script block | Expressions are bounded, deterministic and checked while the user edits, and one language serves Deploy and Flows | Flow definitions from Spacelift import only after their expressions are rewritten in CEL | [0024 Rationale](../research/decisions/0024-expression-language.md#rationale), [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale) |
-| DV-104 | `.spacelift/workflow.yml` commands are Go templates | `.infraweave/workflow.yml` commands are text templates (`${{ … }}`) rendered by the runner, with every interpolated value quoted for the shell | A target or workspace name can never become shell syntax | Custom workflow files are rewritten in the text-template form | [0024 Rationale](../research/decisions/0024-expression-language.md#rationale) |
-| DV-105 | Environment variable values interpolate `${NAME}` | Interpolation is `${{ env.NAME }}`, rendered on the server; `${NAME}` is left to the shell | One template form, and no ambiguity with shell syntax | Values that relied on `${NAME}` interpolation switch to `${{ env.NAME }}` | [0024 Rationale](../research/decisions/0024-expression-language.md#rationale) |
-| DV-106 | Blueprint and template context values for time and randomness change on each render | They are fixed per rendered change and stored with it, so re-rendering reproduces them | Retries and replays give the same result | None for a single render; re-renders no longer drift | [0024 Rationale](../research/decisions/0024-expression-language.md#rationale) |
-| DV-107 | A stack dependency output reference copies an output as it is | An output reference may carry an expression that shapes the value | Simple reshaping needs no extra stack | None; references without an expression behave as on Spacelift | [0024 Rationale](../research/decisions/0024-expression-language.md#rationale) |
+CEL for every expression, text templates in workflow files and environment
+values, a fixed render context, and expressions on output references.
 
 ## Deviations a capture may change
 
-These rows rest on Spacelift behaviour that a capture of
-[report 30](../research/reference/30-open-questions.md#captures-needed) has not
-yet shown. When the capture lands, the row stays, changes or is withdrawn
-with the owning record.
-
-| Capture | What it settles | Rows | Record |
-|---|---|---|---|
-| Capture C78 | Whether the released VCS agent validates requests decides whether DV-046 departs from the agent as well as from the docs | DV-046 | [0012](../research/decisions/0012-vcs-integration-model.md) |
-| Capture C132 | What Spacelift does with yanked versions | DV-055 | [0014](../research/decisions/0014-module-and-provider-registry.md) |
-| Captures C17, C81, C83, C91 | The in-run token `sub`, external ID suffixes, `RoleSessionName` and the federation algorithm | DV-012 | [0006](../research/decisions/0006-authentication-and-tokens.md) |
-| Captures C2, C3, C5, C24, C26, C30, C97, C155, C156 | Whether Spacelift has stable error codes or is looser than infraweave's input rules | DV-084 to DV-091 | [0022](../research/decisions/0022-api-errors-and-update-semantics.md) |
+A record with a `pending` member rests on Spacelift behaviour that a capture
+of [report 30](../research/reference/30-open-questions.md#captures-needed)
+has not yet shown. The member names the captures and what they settle for
+that record. When a capture lands, the record stays, changes or is withdrawn
+with the owning decision, and the `pending` member goes once no capture is
+left.
 
 ## Not deviations
 

@@ -136,11 +136,14 @@ custom runtime config is the same document a manual tracked run can take [D] sch
 
 Typing traps:
 - `timestampSchedule` is `Int` on inputs and `Float` on the objects [G].
+- The deprecations of `ScheduledDeleteInput.cronSchedule` and `timezone` come from the
+  changelog alone, because the schema snapshot carries no input-field deprecations;
+  whether the snapshot fetcher requests them is product decision PD-15, which is open.
 - `ScheduledRunInput.name` is required by the schema [G], but the UI marks the name
   optional [D] scheduling, and the provider's `name` is optional and is sent only when
   set [S]
   ([`resource_scheduled_run.go#L247-L250`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_scheduled_run.go#L247-L250)).
-  What the API does with an empty name is *(unverified)*.
+  What the API does with an empty name is *(unverified)* (C153).
 
 ### 2.3 Operations
 
@@ -193,12 +196,12 @@ editor gained these permissions in July 2026 [RN] (2026-07-10).
   destroy run and deletes the stack only once that run succeeds [D] scheduling. The UI
   takes the time in the browser's timezone or UTC [D] scheduling; the API takes Unix
   seconds [G]. What happens when the destroy run fails, or when the stack has downstream
-  dependants (which block deletion, section 4.9), is *(unverified)*.
+  dependants (which block deletion, section 4.9), is *(unverified)* (C161).
 - **One-shot completion.** `nextSchedule` is null once a timestamp schedule has fired
-  [G]. Whether the fired schedule object is then removed or kept is *(unverified)*.
+  [G]. Whether the fired schedule object is then removed or kept is *(unverified)* (C160).
 - **Run trigger attribution.** `TF_VAR_spacelift_run_trigger` lists a schedule
   identifier among its example values [D] environment; the exact format is
-  *(unverified)*.
+  *(unverified)* (C162).
 - **Audit.** `AuditTrailResourceType` has `SCHEDULED_RUN`, `SCHEDULED_TASK` and
   `SCHEDULED_DELETE`, with metadata `{id, stackId}` [G]; report 19 owns the audit trail.
 
@@ -208,13 +211,13 @@ editor gained these permissions in July 2026 [RN] (2026-07-10).
 |---|---|---|
 | Expressions per schedule | A list; each expression adds firing times | `[String!]` [G]; the drift detection page allows several cron rules [D] drift |
 | Field count | Five: minute, hour, day of month, month, day of week | The template schema's `cron_schedule` pattern requires exactly five whitespace-separated fields [D] template-config; the provider examples use five fields (`0 7 * * 1-5`, `*/15 * * * *`) [S] ([examples/resources/spacelift_scheduled_run/resource.tf](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/examples/resources/spacelift_scheduled_run/resource.tf)) |
-| Field syntax | `*`, a number, `a-b`, `a/b`, `*/b`, or a comma list of numbers | The template schema pattern [D] template-config. Names (`MON`, `JAN`), `?`, `L`, `#` and macros such as `@daily` do not match it. Whether the API itself rejects them is *(unverified)* |
-| Timezone default | `UTC` | `DriftDetectionIntegrationInput.timezone` says so [G]; every provider resource defaults `timezone` to `UTC` [S] ([`resource_drift_detection.go#L58-L63`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_drift_detection.go#L58-L63)). The API default for run and task schedules is *(unverified)* |
-| Timezone names | IANA names; the provider example uses `CET` | [S] (provider examples). The accepted list is *(unverified)* |
+| Field syntax | `*`, a number, `a-b`, `a/b`, `*/b`, or a comma list of numbers | The template schema pattern [D] template-config. Names (`MON`, `JAN`), `?`, `L`, `#` and macros such as `@daily` do not match it. Whether the API itself rejects them is *(unverified)* (C156) |
+| Timezone default | `UTC` | `DriftDetectionIntegrationInput.timezone` says so [G]; every provider resource defaults `timezone` to `UTC` [S] ([`resource_drift_detection.go#L58-L63`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_drift_detection.go#L58-L63)). The API default for run and task schedules is *(unverified)* (C154) |
+| Timezone names | IANA names; the provider example uses `CET` | [S] (provider examples). The accepted list is *(unverified)* (C155) |
 | Timezone with a timestamp | Not allowed by the provider | `timezone` conflicts with `at` [S] |
-| Minimum interval | none documented | The provider example fires drift detection every 15 minutes [S] ([examples/resources/spacelift_drift_detection/resource.tf](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/examples/resources/spacelift_drift_detection/resource.tf)); any lower bound is *(unverified)* |
-| Daylight saving | not documented | *(unverified)* |
-| Missed firings (worker down, stack locked) | not documented | *(unverified)* |
+| Minimum interval | none documented | The provider example fires drift detection every 15 minutes [S] ([examples/resources/spacelift_drift_detection/resource.tf](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/examples/resources/spacelift_drift_detection/resource.tf)); any lower bound is *(unverified)* (C157) |
+| Daylight saving | not documented | *(unverified)* (C158) |
+| Missed firings (worker down, stack locked) | not documented | *(unverified)* (C159) |
 
 The template JSON schema (draft-07) puts `maxLength: 1` beside the `$ref` on each drift
 detection `cron` item and `minLength: 1` on each task `cron` item [D] template-config.
@@ -225,6 +228,10 @@ Schema draft-07 `$ref` semantics]. Its task schedule takes either `cron` or
 
 The pattern has no combined range-with-step (`1-5/2`) and no comma list of ranges
 (`1-3,5`) [D] template-config.
+
+How strictly infraweave parses cron forms and timezone names that Spacelift leaves
+loosely specified is product decision PD-09, which decision 0022 answers with a rule
+per input.
 
 ### 2.7 Terraform resources
 
@@ -270,7 +277,7 @@ One drift detection configuration per stack, held under `Stack.integrations.drif
 |---|---|---|
 | `schedule` | `[String!]!` | required |
 | `reconcile` | `Boolean!` | required; the provider sends `false` when unset [I: provider attribute is optional with no default, [`resource_drift_detection.go#L30-L40`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_drift_detection.go#L30-L40)] |
-| `ignoreState` | `Boolean` | `false` [I: schema description says detection then runs only on finished stacks]. The provider's description narrows "ignore state" to any final state rather than only `FINISHED` [S] ([`resource_drift_detection.go#L36-L40`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_drift_detection.go#L36-L40)); the schema says the stack state is ignored [G]. Which states qualify is *(unverified)* |
+| `ignoreState` | `Boolean` | `false` [I: schema description says detection then runs only on finished stacks]. The provider's description narrows "ignore state" to any final state rather than only `FINISHED` [S] ([`resource_drift_detection.go#L36-L40`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_drift_detection.go#L36-L40)); the schema says the stack state is ignored [G]. Which states qualify is *(unverified)* (C163) |
 | `timezone` | `String` | `UTC` [G] |
 
 | GraphQL | Arguments | REST projection | Action |
@@ -299,8 +306,8 @@ A data source of the same name reads it [S].
 | Worker | Only private workers execute it | [D] drift |
 | Queue order | Normal and low drift detection runs take positions 6 and 7 of the seven-step pool order, behind even low-priority tracked and proposed runs. A drift detection run raised to high priority joins position 1, with every other high-priority run, oldest first | [D] run (run prioritization); `RunPriorityPreset.low` [G]; report 10 |
 | Pool limit | `WorkerPool.driftDetectionRunLimit` caps concurrent drift detection runs; null or negative means no limit | [G]; set by `workerPoolCreate` and `workerPoolUpdate` [G] |
-| Over the limit | Further drift detection runs are skipped until running ones complete; no queue builds up | [D] drift |
-| Disabled on the pool | Drift detection runs are not executed; failed runs with an explanatory note are created as a record; new schedules cannot be created for stacks on that pool | [D] drift. How "disabled" maps onto `driftDetectionRunLimit` (for example `0`) is *(unverified)* |
+| Over the limit | Further drift detection runs are skipped until running ones complete; no queue builds up | [D] drift. Whether they end `SKIPPED` or are never created is *(unverified)* (C43) |
+| Disabled on the pool | Drift detection runs are not executed; failed runs with an explanatory note are created as a record; new schedules cannot be created for stacks on that pool | [D] drift. How "disabled" maps onto `driftDetectionRunLimit` (for example `0`) is *(unverified)* (C60). Whether such a run is created directly in `FAILED` is *(unverified)* (C43) |
 | No drift | The proposed run finishes; nothing else happens; it is visible in the account runs list filtered by drift detection | [D] drift |
 | Drift, `reconcile = false` | Drifted resources are marked in the stack and account resources views | [D] drift; `ManagedEntity.drifted` (Unix time) [G]; report 21 |
 | Drift, `reconcile = true` | A tracked reconciliation run is triggered, unless the stack's head commit changed during detection | [D] drift |
@@ -317,7 +324,7 @@ Per vendor:
 - CloudFormation stacks detect drift with AWS's `DetectStackDrift` API and are excluded
   from reconciliation [D] cloudformation.
 - Drift detection support for Kubernetes, Ansible and Terragrunt is not stated on the
-  drift page *(unverified)*; report 20 owns vendor detail.
+  drift page *(unverified)* (C164); report 20 owns vendor detail.
 
 The worker pool limit is also settable on auto-registered Kubernetes pools through
 `driftDetectionRunLimits: {disabled, maxRuns}`; `maxRuns` must be unset when `disabled`
@@ -364,7 +371,7 @@ have its dependencies edited from stack settings [G] (report 17).
 | `triggerAlways` | `Boolean!` | Trigger downstream even when this output's value has not changed |
 
 On inputs, `type` and `triggerAlways` are optional [G]. The default `type` is
-*(unverified)*; the docs describe only environment variables [D] deps, and the provider
+*(unverified)* (C165); the docs describe only environment variables [D] deps, and the provider
 does not expose `type` [S] ([`terraform-schema.json`](../../../api/reference/spacelift/terraform-schema.json)).
 
 Graph fields: `Stack.dependsOn`, `Stack.isDependedOnBy`, `Stack.dependenciesFullGraph`
@@ -414,7 +421,7 @@ both stacks by ID and name [G].
 | Downstream not reachable from an upstream that has no run | It does not wait for that upstream | [D] deps (scenario 2: services do not wait on `Storage`) |
 | One push touches several stacks of one graph | Ordering still follows the graph; each stack runs once in order | [D] deps (scenarios 4 and 5) |
 | Batch trigger | `runTriggerBatch` resolves dependants across all requested stacks together; a shared dependant gets one run | [G] `runTriggerBatch` |
-| Upstream run fails | The chain breaks; runs below the failure are cancelled (overview) or skipped (scenario 3); stacks at the same level are unaffected | [D] deps. Which terminal state they end in is *(unverified)*: the page uses both words |
+| Upstream run fails | The chain breaks; runs below the failure are cancelled (overview) or skipped (scenario 3); stacks at the same level are unaffected | [D] deps. Which terminal state they end in is *(unverified)* (C38): the page uses both words |
 | All referenced outputs unchanged, no `triggerAlways`, no referenceless edge | The downstream run is skipped | [D] deps; `Run.triggeredRuns` excludes runs in `SKIPPED` [G] |
 | A referenceless edge into the downstream stack exists | The downstream runs whenever that upstream finishes, regardless of references on other edges | [D] deps (scenario 2) |
 | Upstream lacks a referenced output, but another edge forces the run | The input is not injected | [D] deps (scenario 2) |
@@ -477,13 +484,13 @@ the bottom of the graph up [D] deps. The destructor resource is report 05.
 ### 4.9 Stack deletion
 
 Deleting an upstream stack fails while downstream dependencies exist [D] deps. The
-interaction with a scheduled delete on such a stack is *(unverified)* (section 2.5).
+interaction with a scheduled delete on such a stack is *(unverified)* (C161; section 2.5).
 
 ### 4.10 Permissions
 
 The docs ask for reader permission on the dependent stack and admin permission on the
 other stack to create a dependency [D] deps; which side needs which is ambiguous in the
-wording *(unverified)*. Creating a dependency no longer needs read access to the space
+wording *(unverified)* (C166). Creating a dependency no longer needs read access to the space
 [RN] (2026-06-23).
 
 ## 5. Force apply
@@ -507,7 +514,7 @@ wording *(unverified)*. Creating a dependency no longer needs read access to the
 The documented purpose is to make an apply phase happen so outputs, including imported
 ones, are uploaded for references [D] deps. Without force apply a no-change tracked run
 goes from planning straight to `FINISHED` [D] tracked. Whether a force-applied
-zero-change run passes through `UNCONFIRMED` when autodeploy is off is *(unverified)*.
+zero-change run passes through `UNCONFIRMED` when autodeploy is off is *(unverified)* (C167).
 The older workaround is to add and remove a dummy output [D] deps.
 
 ## 6. External dependencies
@@ -534,7 +541,7 @@ runs holding the ID]. spacectl's `--status` help text names only `finished` and
 ([`flags.go#L11-L15`](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/run_external_dependency/flags.go#L11-L15)).
 A run held by an unresolved dependency is subject to the 30-day unfinished-run
 termination [I: the rule applies to every non-terminal run, [RN] 2026-09-17]. Marking
-an ID before any run carries it, and re-marking a completed ID, are *(unverified)*.
+an ID before any run carries it, and re-marking a completed ID, are *(unverified)* (C168).
 
 ## 7. Trigger policies beside these features
 
@@ -594,7 +601,8 @@ Report 09 owns trigger policy rules and input. The interplay that matters here:
   missed firings; the fate of a fired one-shot schedule; the destroy-failure path of a
   scheduled delete and its interaction with downstream dependants; the
   `TF_VAR_spacelift_run_trigger` value for scheduled runs; how "disabled" maps onto
-  `driftDetectionRunLimit`; which stack states `ignoreState` admits; drift detection
+  `driftDetectionRunLimit`; whether drift runs over the limit end `SKIPPED` and runs on a
+  disabled pool start in `FAILED` (C43); which stack states `ignoreState` admits; drift detection
   for Kubernetes, Ansible and Terragrunt;
   whether downstream runs end `CANCELED` or `SKIPPED` after an upstream failure; the
   default `ConfigType` of a reference; which side of a dependency needs admin; whether a

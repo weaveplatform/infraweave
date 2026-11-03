@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "problems.schema.json",
+  "title": "Problem types of the served APIs",
+  "description": "The one complete list of problem slugs. A problem's type is urn:infraweave:problem:<id>. Decision 0003 defines the idempotency, rate-limit and cursor slugs; decision 0022 defines the rest and the response format.",
+  "x-id-pattern": "[a-z]+(-[a-z]+)*",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "schema/problems.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "title", "when", "decision"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "status": {"type": "integer", "minimum": 400, "maximum": 599},
+          "title": {"description": "The fixed title member.", "type": "string", "minLength": 1},
+          "when": {"$ref": "common.schema.json#/$defs/markdown"},
+          "decision": {"$ref": "common.schema.json#/$defs/decision"}
+        }
+      }
+    }
+  }
+}

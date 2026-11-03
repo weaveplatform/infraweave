@@ -134,7 +134,7 @@ inheritance on), `spacelift_spaces` (filter by `labels`) and
 | Actor | Create | Edit | Delete | Move | Toggle inheritance |
 |---|---|---|---|---|---|
 | Root space admin | anywhere | any space | any empty space except `root`/`legacy` | any | yes |
-| Non-root space admin, setting off (default) | no | the spaces they administer [D] [create-space]; the settings page says they cannot modify spaces at all [D] [nonroot-spaces] *(unverified which holds)* | no | no | no |
+| Non-root space admin, setting off (default) | no | the spaces they administer [D] [create-space]; the settings page says they cannot modify spaces at all [D] [nonroot-spaces] *(unverified which holds)* (C115) | no | no | no |
 | Non-root space admin, setting on | children of spaces they administer | those spaces and their children | those spaces and their children | within them | cannot disable; their new spaces always inherit |
 
 Sources: [D] [nonroot-spaces], [D] [create-space], [D] [structuring]. The
@@ -148,7 +148,7 @@ Three mechanisms extend a binding beyond the space it names [D] [how-access]:
 |---|---|---|---|---|
 | Resident | none | yes | the bound role | A binding directly on the space |
 | Access propagation | down to every descendant | yes; ignores the inheritance toggle | the bound role, unchanged | A binding on `root` reaches the whole account |
-| Resource inheritance (`inheritEntities`) | up to the parent | per-space toggle; resource use chains while every link inherits [D]; Read reaching a grandparent follows by applying the rule again at the parent [I] from the same page | Read only | Anyone with any access to an inheriting space gets Read on the parent; it does not spread sideways to siblings. Stacks in the child can use the parent's attachable resources |
+| Resource inheritance (`inheritEntities`) | up to the parent | per-space toggle; resource use chains while every link inherits [D]; Read reaching a grandparent follows by applying the rule again at the parent [I] from the same page (C127) | Read only | Anyone with any access to an inheriting space gets Read on the parent; it does not spread sideways to siblings. Stacks in the child can use the parent's attachable resources |
 | Implicit stack self-read | the stack's home space, then down | yes, not removable | Read | No binding exists behind it |
 | Implicit stack read-up | to each inheriting parent | follows the toggle | Read, folded to the Space reader role whatever the bound role | Shown as `Inherited from child space` |
 
@@ -251,7 +251,7 @@ section 3.3 defines action by action [D] [rbac]. The docs' worked example
 grants levels (Write, Admin) and shows them propagating down and Read climbing
 through inheritance exactly as role bindings do [D] [how-access]; that
 legacy levels follow the same propagation rules in every case is [I] from that
-example. The space diagram shows each user's level per space, except to a
+example (C126). The space diagram shows each user's level per space, except to a
 `root` admin, who is admin everywhere [D] [create-space].
 
 `SpaceAccessRule` (object) [G]:
@@ -346,12 +346,12 @@ computed `slug`), data sources `spacelift_role` (by `role_id` or `slug`) and
 | Space reader | `space-reader` | View stacks, contexts, policies, runs; comment on runs | [D] [rbac]; slug from the example in [D] [roles-stacks] |
 | Space writer | `space-writer` | Reader plus trigger runs, run tasks, edit stack environment variables; includes `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` | [D] [rbac], [D] [roles-stacks]; slug from [D] [migrate-spaces] |
 | Space admin | `space-admin` | Writer plus create and change stacks, contexts, policies, Intent projects, space settings, bindings in its spaces | [D] [rbac]; slug from [D] [roles-stacks] and [S] `terraform-schema.json` `spacelift_role` |
-| Worker pool controller | *(unverified)* | `SPACE_READ`, `WORKER_POOL_CREATE`, `WORKER_POOL_UPDATE`, `WORKER_POOL_DELETE`; for the Kubernetes controller | [D] [rbac] |
-| Drift detection role | *(unverified)* | A system role for managing a stack's drift detection settings | [RN] 2026-02-16 |
+| Worker pool controller | *(unverified)* (C116) | `SPACE_READ`, `WORKER_POOL_CREATE`, `WORKER_POOL_UPDATE`, `WORKER_POOL_DELETE`; for the Kubernetes controller | [D] [rbac] |
+| Drift detection role | *(unverified)* (C116) | A system role for managing a stack's drift detection settings | [RN] 2026-02-16 |
 
 The invite form offers Space reader, Space writer, Space admin and Worker pool
 controller [D] [invite]. The exact action set of each built-in role is not
-published; `Role.actions` returns it at run time [G] *(unverified)*.
+published; `Role.actions` returns it at run time [G] *(unverified)* (C116).
 
 ### 3.3 The action catalogue
 
@@ -510,7 +510,7 @@ label and the legacy access level that grants the action when no role does
 | `STACK_WEBHOOK_DELETE` | Delete webhook | Admin | "Disabled. Do not use." |
 | **Scheduling** | | | |
 | `STACK_SCHEDULED_DELETE_CREATE` | Create scheduled delete | Admin | |
-| `STACK_SCHEDULED_DELETE_UPDATE` | not documented | *(unverified)* | |
+| `STACK_SCHEDULED_DELETE_UPDATE` | not documented | *(unverified)* (C117) | |
 | `STACK_SCHEDULED_DELETE_DELETE` | Delete scheduled delete | Admin | |
 | `STACK_SCHEDULED_TASK_CREATE` | Create scheduled task | Admin | |
 | `STACK_SCHEDULED_TASK_UPDATE` | Update scheduled task | Admin | |
@@ -534,7 +534,7 @@ Notes on the catalogue:
   the schema description "Disabled. Do not use." while the docs list them as
   assignable [G] `Action`, [D] [rbac]. The schema is the higher source for
   the current API: these values exist but are not usable in roles yet
-  *(unverified)*.
+  *(unverified)* (C6).
 - AI integration actions are checked in the integration's own space; the
   Spacelift-provided integration has no space, so toggling it is checked in
   `root`, and it cannot be created, updated or deleted [D] [rbac].
@@ -644,7 +644,7 @@ mutation for users and the single-create mutations for the rest
   Spacelift recomputes the per-session space access instead of ending
   sessions (since 2026-03-19) [RN] 2026-03-19, 2026-03-30. The role-assignment
   page still says such changes force re-authentication when needed
-  [D] [roles-users]; the later changelog entry is the newer statement.
+  [D] [roles-users]; the later changelog entry is the newer statement (C128).
 - Under login policies, roles come from the `roles` rule at login and stay
   fixed for the session; a newly created space is visible to its creator at
   once, but to others only after they log in again [D] [roles-users].
@@ -654,7 +654,7 @@ mutation for users and the single-create mutations for the rest
   snapshot rather than HTTP 403 (since 2026-04-14) [RN]. Under IAM, a
   non-admin with no role anywhere is refused at login [D] [iam-admin]. The two
   statements disagree; the later changelog entry is recorded and the
-  conflict is an open question *(unverified)*.
+  conflict is an open question *(unverified)* (C118).
 
 ### 4.3 Users and IdP groups
 
@@ -1038,7 +1038,7 @@ Source: [D] [mfa]. Schema [G]:
 Operations: `enforceMFA`, `securityKeys` (account), `User.securityKeys`
 (own), `securityKeyDelete(id)`, `userSecurityKeyDeleteAll`,
 `accountToggleEnforcingMFA` [G]. The registration ceremony itself is not in
-GraphQL *(unverified)*: no mutation registers a key.
+GraphQL *(unverified)* (C120): no mutation registers a key.
 
 ### 7.3 Backup credentials
 
@@ -1155,6 +1155,7 @@ rules or role bindings with root admin) but the snapshot does not mark it
 deprecated [RN], [G]. The schema wins for the current shape; the field is
 still required (`Boolean!`). The Terraform provider always sends `false` and
 grants access only through role attachments [S] [tf-api-key-admin].
+Whether `admin: true` still grants root admin is open *(unverified)* (C124).
 
 ### 8.2 Lifecycle
 
@@ -1203,7 +1204,7 @@ then only the owner can delete it [G]. `disabledReason` records why
 (`ADMIN`, `ACCOUNT`, `DEPROVISIONED`, `SCHEME`) [G]. They are active only
 under IAM and become ordinary keys under login policies [D] [iam-admin].
 `User.canCreatePersonalApiKey` and `accountRequestPersonalApiKeysEnabling`
-support the UI [G]. The docs say little else *(unverified)* (owner removal
+support the UI [G]. The docs say little else *(unverified)* (C123) (owner removal
 behaviour beyond `DEPROVISIONED`).
 
 ### 8.4 Other ways to get a token
@@ -1356,7 +1357,7 @@ Status lifecycle [D] [iam-admin], [G] `UserStatus`:
 
 `UserStatus` has no `EXPIRED` value [G]; the docs show it in the list
 [D] [iam-admin]. Expiry is presumably derived from `latestInvitation.sentAt`
-[I] from `ManagedUserInvitation`.
+[I] from `ManagedUserInvitation` (C125).
 
 Rules: a new invite for an email is refused while a pending or expired one
 exists; "Resend invite" is `managedUserResendInvite`; "Revoke access" removes
@@ -1443,9 +1444,9 @@ Source: [G].
 | Root-admin only | Managing sessions | [D] [access-control] |
 
 The session lifetime for browser logins is not documented
-*(unverified)*. The docs mention shorter sessions as a mitigation for login-time IP
+*(unverified)* (C119). The docs mention shorter sessions as a mitigation for login-time IP
 checks, which implies a configurable timeout, but no setting exists in the
-schema [D] [migrate-spaces], [G] *(unverified)*.
+schema [D] [migrate-spaces], [G] *(unverified)* (C119).
 
 ## 11. Tier gates
 
@@ -1490,18 +1491,18 @@ page say which plan has each.
 
 | Capability | Gate | Source |
 |---|---|---|
-| Spaces | Listed from Starter+ on the pricing page; no gate in the docs or schema | [C] [pricing] *(unverified for Free)* |
-| Custom roles and bindings | No gate stated anywhere | *(unverified)* |
-| Login policies | Policies need a paid account; some plans exclude login policies | [D] [policy], [D] [login-policy] *(unverified which plan)* |
+| Spaces | Listed from Starter+ on the pricing page; no gate in the docs or schema | [C] [pricing] *(unverified for Free)* (C121) |
+| Custom roles and bindings | No gate stated anywhere | *(unverified)* (C121) |
+| Login policies | Policies need a paid account; some plans exclude login policies | [D] [policy], [D] [login-policy] *(unverified which plan)* (C121) |
 | Access policies | `ACCESS_POLICIES`; disabled for all on 2026-05-30 | [G], [D] [stack-access-policy] |
 | SAML SSO | Enterprise; `CUSTOM_SSO_SAML`, `CAN_UPDATE_SSO_SAML` | [D] [sso], [G], [C] [pricing] |
-| OIDC SSO | Paid accounts | [D] [sso] |
+| OIDC SSO | Paid accounts; no `BillingTierFeature` name matches (C14) | [D] [sso] |
 | SCIM | Enterprise; `SCIM` | [D] [scim], [G] |
 | MFA | Enterprise with SSO; `MFA` | [D] [mfa], [G], [C] [pricing] |
 | OIDC API keys | Enterprise; `API_KEYS_OIDC` | [D] [api], [G], [C] [pricing] |
 | Session listing and deletion | Not on Starter | [G] `sessions`, `sessionDelete` |
 | Seats | Free: 2 users; Free and Starter have seat limits; `UNLIMITED_SEATS` | [C] [pricing], [D] [iam-admin], [G] |
-| Self-hosted | The Enterprise tier's features, except those that make no sense self-hosted (such as the public worker pool); new SaaS features arrive with a later self-hosted release ([self-hosted](https://docs.spacelift.io/self-hosted)) | [D] |
+| Self-hosted | The Enterprise tier's features, except those that make no sense self-hosted (such as the public worker pool); new SaaS features arrive with a later self-hosted release ([self-hosted](https://docs.spacelift.io/self-hosted)); what `tier` and `tierFeatures` return there is open (C122) | [D] |
 
 The `BillingTierFeature` name in each row is paired with the capability by
 name [I]; only `SCIM` and `AUDITING` carry a description that names the
@@ -1536,7 +1537,10 @@ owns tiers).
   account-level key settings; seat accounting for keys.
 - Sessions per channel with a precomputed access snapshot that is
   recomputed live under one strategy and frozen under the other.
-- Feature gates mapped to `BillingTierFeature` names.
+- Feature gates mapped to `BillingTierFeature` names. Whether infraweave
+  gates features by Spacelift's editions is product decision PD-05, answered
+  by decision 0021 (Accepted): infraweave keeps its own feature catalogue and
+  tiers, with billing off by default.
 
 ## Inferred and undocumented
 
@@ -1559,6 +1563,9 @@ owns tiers).
   custom roles and spaces on Free;
   personal key behaviour when the owner is removed; whether a non-root space
   admin can edit their spaces while non-root space management is off.
+- Which client header sets a session's `channel` is not documented; whether
+  `Spacelift-Client-Type: spacectl` records `SPACECTL` is open
+  *(unverified)* (C22).
 
 ## Versions at the research baseline
 

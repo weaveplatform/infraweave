@@ -1,0 +1,608 @@
+{
+  "$schema": "schema/features.schema.json",
+  "records": [
+    {
+      "id": "account-details",
+      "kind": "capability",
+      "gates": "The Account tag",
+      "lowestTier": "Free",
+      "phase": "P3"
+    },
+    {
+      "id": "account-settings",
+      "kind": "capability",
+      "gates": "The Account Settings tag, less the settings a finer feature gates",
+      "lowestTier": "Free",
+      "phase": "P3b"
+    },
+    {
+      "id": "aggregated-vcs-checks",
+      "kind": "option",
+      "field": "`vcsChecks: AGGREGATED` on a VCS integration",
+      "lowestTier": "Business",
+      "phase": "P12"
+    },
+    {
+      "id": "ai-account-controls",
+      "kind": "capability",
+      "gates": "The account switches for AI integrations and Infra Assistant",
+      "lowestTier": "Free",
+      "phase": "P25"
+    },
+    {
+      "id": "ai-budget",
+      "kind": "limit",
+      "unit": "spend of the installation's default AI integration across the organization's accounts, in USD per 30 days",
+      "values": {
+        "free": 10
+      },
+      "phase": "P25"
+    },
+    {
+      "id": "ai-integrations",
+      "kind": "capability",
+      "gates": "The AI Integrations tag, Infra Assistant, run summaries and the hosted `/mcp` server",
+      "lowestTier": "Free",
+      "phase": "P25"
+    },
+    {
+      "id": "ansible",
+      "kind": "capability",
+      "gates": "The Ansible tag",
+      "lowestTier": "Free",
+      "phase": "P20b"
+    },
+    {
+      "id": "api-keys",
+      "kind": "capability",
+      "gates": "The API Keys tag",
+      "lowestTier": "Free",
+      "phase": "P3"
+    },
+    {
+      "id": "audit-trail",
+      "kind": "capability",
+      "gates": "The Audit Trail tag",
+      "lowestTier": "Enterprise",
+      "phase": "P18b"
+    },
+    {
+      "id": "auth",
+      "kind": "capability",
+      "gates": "The Auth tag and `identityFederationUnlink`",
+      "lowestTier": "Free",
+      "phase": "P3"
+    },
+    {
+      "id": "backstage",
+      "kind": "capability",
+      "gates": "The Backstage integration key and its seat exemption",
+      "lowestTier": "Free",
+      "phase": "P21"
+    },
+    {
+      "id": "billing",
+      "kind": "switch",
+      "gates": "Entitlement enforcement for the whole installation, off by default; the operator API sets it",
+      "phase": "P3b",
+      "notes": "A feature of the installation, not of a tier: no tier holds it, and `features.disabled` rejects it as it rejects any unknown name"
+    },
+    {
+      "id": "blob-storage",
+      "kind": "capability",
+      "gates": "The Blob Storage tag",
+      "lowestTier": "Free",
+      "phase": "P19b"
+    },
+    {
+      "id": "blueprints",
+      "kind": "capability",
+      "gates": "The Blueprints tag",
+      "lowestTier": "Business",
+      "phase": "P21"
+    },
+    {
+      "id": "cloud-integrations",
+      "kind": "capability",
+      "gates": "The Cloud Integrations tag",
+      "lowestTier": "Free",
+      "phase": "P15"
+    },
+    {
+      "id": "console",
+      "kind": "capability",
+      "gates": "The console, and the Feature Flags, Forms, UI State and User Guide tags it alone uses",
+      "lowestTier": "Free",
+      "phase": "P24c"
+    },
+    {
+      "id": "contexts",
+      "kind": "capability",
+      "gates": "The Contexts tag",
+      "lowestTier": "Free",
+      "phase": "P6"
+    },
+    {
+      "id": "debug",
+      "kind": "capability",
+      "gates": "The Debug tag",
+      "lowestTier": "Free",
+      "phase": "P27"
+    },
+    {
+      "id": "drift-detection",
+      "kind": "capability",
+      "gates": "The Drift Detection tag",
+      "lowestTier": "Starter+",
+      "requires": [
+        "private-worker-pools"
+      ],
+      "phase": "P16"
+    },
+    {
+      "id": "flows-agents",
+      "kind": "capability",
+      "gates": "Flows agent pools, their tokens and the agent gateway",
+      "lowestTier": "Free",
+      "requires": [
+        "flows-engine"
+      ],
+      "phase": "P18d"
+    },
+    {
+      "id": "flows-apps",
+      "kind": "capability",
+      "gates": "App installations, custom apps, app versions and registry subscriptions",
+      "lowestTier": "Free",
+      "requires": [
+        "flows-engine"
+      ],
+      "phase": "P18d"
+    },
+    {
+      "id": "flows-data-tables",
+      "kind": "capability",
+      "gates": "Data tables, their rows and the Data Table blocks",
+      "lowestTier": "Free",
+      "requires": [
+        "flows-engine"
+      ],
+      "phase": "P18c"
+    },
+    {
+      "id": "flows-engine",
+      "kind": "capability",
+      "gates": "Projects, flows, blocks, events, invocations, secrets, named expressions, core blocks, the Deploy triggers and the Flows tag; Flows belongs to the account, which takes the place of Spacelift Flows' organization",
+      "lowestTier": "Free",
+      "phase": "P18c"
+    },
+    {
+      "id": "flows-forms",
+      "kind": "capability",
+      "gates": "Forms, and the Form Opened and Show Form blocks",
+      "lowestTier": "Free",
+      "requires": [
+        "flows-engine"
+      ],
+      "phase": "P18c"
+    },
+    {
+      "id": "flows-mcp-tools",
+      "kind": "capability",
+      "gates": "MCP Tool blocks and the flow and platform Flows MCP servers",
+      "lowestTier": "Free",
+      "requires": [
+        "flows-engine"
+      ],
+      "phase": "P18c"
+    },
+    {
+      "id": "ignored-runs",
+      "kind": "capability",
+      "gates": "`stackSearchRunIgnoredTriggers` and the ignored-run warnings",
+      "lowestTier": "Starter+",
+      "phase": "P12"
+    },
+    {
+      "id": "infrastructure",
+      "kind": "capability",
+      "gates": "The Infrastructure tag",
+      "lowestTier": "Free",
+      "phase": "P27"
+    },
+    {
+      "id": "intent",
+      "kind": "capability",
+      "gates": "The Intent tag and the hosted `intent` tool",
+      "lowestTier": "Free",
+      "phase": "P25b"
+    },
+    {
+      "id": "managed-users",
+      "kind": "capability",
+      "gates": "The Managed Users tag",
+      "lowestTier": "Free",
+      "phase": "P3b"
+    },
+    {
+      "id": "mfa",
+      "kind": "capability",
+      "gates": "Enforced MFA and security keys",
+      "lowestTier": "Enterprise",
+      "phase": "P23"
+    },
+    {
+      "id": "module-sharing",
+      "kind": "capability",
+      "gates": "`moduleShare` and `sharedModulesV2`, between accounts of one organization and in both accounts' entitlement",
+      "lowestTier": "Starter",
+      "requires": [
+        "modules"
+      ],
+      "phase": "P17"
+    },
+    {
+      "id": "modules",
+      "kind": "capability",
+      "gates": "The Modules tag less sharing, and the module registry protocol",
+      "lowestTier": "Starter",
+      "phase": "P17"
+    },
+    {
+      "id": "multiple-vcs-integrations",
+      "kind": "option",
+      "field": "`isDefault: false` on a VCS integration",
+      "lowestTier": "Enterprise",
+      "phase": "P19"
+    },
+    {
+      "id": "notification-policies",
+      "kind": "option",
+      "field": "Policy `type: NOTIFICATION`",
+      "lowestTier": "Starter",
+      "phase": "P18"
+    },
+    {
+      "id": "notifications",
+      "kind": "capability",
+      "gates": "The Notifications tag",
+      "lowestTier": "Starter",
+      "phase": "P18"
+    },
+    {
+      "id": "oidc-api-keys",
+      "kind": "option",
+      "field": "API key type `OIDC`",
+      "lowestTier": "Enterprise",
+      "phase": "P3"
+    },
+    {
+      "id": "oidc-federation",
+      "kind": "capability",
+      "gates": "The OIDC token in every run, the subject template and the discovery documents",
+      "lowestTier": "Starter",
+      "phase": "P15"
+    },
+    {
+      "id": "oidc-sso",
+      "kind": "capability",
+      "gates": "OIDC single sign-on",
+      "lowestTier": "Starter",
+      "phase": "P23"
+    },
+    {
+      "id": "opentofu-migration",
+      "kind": "capability",
+      "gates": "The OpenTofu Migration tag, `openTofuMigrate`, `openTofuMigrationQueueClean` and `stackMigrateVendorAll`",
+      "lowestTier": "Free",
+      "phase": "P20b"
+    },
+    {
+      "id": "organization",
+      "kind": "capability",
+      "gates": "The served `Organization` tag, outside the parity surface: the organization, its accounts, members, identity linking, account limits and usage across accounts; its identity provider operations carry `oidc-sso` or `saml-sso`, by provider kind",
+      "lowestTier": "Free",
+      "phase": "P3b"
+    },
+    {
+      "id": "origin-integration",
+      "kind": "capability",
+      "gates": "The Origin Integration tag",
+      "lowestTier": "Free",
+      "phase": "P19b"
+    },
+    {
+      "id": "personal-api-keys",
+      "kind": "capability",
+      "gates": "The Personal API Keys tag",
+      "lowestTier": "Free",
+      "phase": "P3b"
+    },
+    {
+      "id": "plugins",
+      "kind": "capability",
+      "gates": "The Plugins tag",
+      "lowestTier": "Free",
+      "phase": "P20b"
+    },
+    {
+      "id": "policies",
+      "kind": "capability",
+      "gates": "The Policies tag",
+      "lowestTier": "Starter",
+      "phase": "P13"
+    },
+    {
+      "id": "private-worker-pools",
+      "kind": "capability",
+      "gates": "Private worker pools in the Worker Pools tag",
+      "lowestTier": "Starter+",
+      "phase": "P8"
+    },
+    {
+      "id": "private-workers",
+      "kind": "limit",
+      "unit": "registered private workers",
+      "values": {
+        "free": 0,
+        "starter": 0,
+        "starterPlus": 2,
+        "business": 3
+      },
+      "phase": "P8"
+    },
+    {
+      "id": "public-worker-slots",
+      "kind": "limit",
+      "unit": "runs in flight on the public worker pool; a run beyond it waits",
+      "values": {
+        "free": 1,
+        "starter": 1,
+        "starterPlus": 2,
+        "business": 2
+      },
+      "phase": "P14"
+    },
+    {
+      "id": "repos",
+      "kind": "capability",
+      "gates": "The Repos tag",
+      "lowestTier": "Free",
+      "phase": "P19b"
+    },
+    {
+      "id": "resources",
+      "kind": "capability",
+      "gates": "The Resources tag",
+      "lowestTier": "Free",
+      "phase": "P22"
+    },
+    {
+      "id": "roles",
+      "kind": "capability",
+      "gates": "The Roles tag",
+      "lowestTier": "Free",
+      "phase": "P4b"
+    },
+    {
+      "id": "runs",
+      "kind": "capability",
+      "gates": "The Runs tag, less tasks and targeted replan",
+      "lowestTier": "Free",
+      "phase": "P10"
+    },
+    {
+      "id": "saml-sso",
+      "kind": "capability",
+      "gates": "SAML single sign-on and its settings",
+      "lowestTier": "Enterprise",
+      "phase": "P23"
+    },
+    {
+      "id": "saved-filters",
+      "kind": "capability",
+      "gates": "The Saved Filters tag",
+      "lowestTier": "Free",
+      "phase": "P22"
+    },
+    {
+      "id": "scans",
+      "kind": "capability",
+      "gates": "The Scans tag",
+      "lowestTier": "Free",
+      "phase": "P22b"
+    },
+    {
+      "id": "scheduling",
+      "kind": "capability",
+      "gates": "Scheduled runs, tasks and deletes",
+      "lowestTier": "Business",
+      "phase": "P16"
+    },
+    {
+      "id": "scim",
+      "kind": "capability",
+      "gates": "SCIM v2 provisioning and its OAuth client",
+      "lowestTier": "Enterprise",
+      "phase": "P23"
+    },
+    {
+      "id": "seats",
+      "kind": "limit",
+      "unit": "members, each counted once however many accounts admit it, and API keys as Spacelift counts them",
+      "values": {
+        "free": 2,
+        "starter": 2
+      },
+      "phase": "P3b"
+    },
+    {
+      "id": "servicenow",
+      "kind": "capability",
+      "gates": "The External Integrations tag and the blueprint attachments to it",
+      "lowestTier": "Enterprise",
+      "phase": "P21"
+    },
+    {
+      "id": "sessions",
+      "kind": "capability",
+      "gates": "Session listing and revocation",
+      "lowestTier": "Starter+",
+      "phase": "P3"
+    },
+    {
+      "id": "slack",
+      "kind": "capability",
+      "gates": "The Slack and OAuth tags",
+      "lowestTier": "Free",
+      "phase": "P18"
+    },
+    {
+      "id": "spaces",
+      "kind": "capability",
+      "gates": "The Spaces tag",
+      "lowestTier": "Free",
+      "phase": "P4"
+    },
+    {
+      "id": "stacks",
+      "kind": "capability",
+      "gates": "The Stacks tag, less the operations a finer feature gates",
+      "lowestTier": "Free",
+      "phase": "P5"
+    },
+    {
+      "id": "targeted-replan",
+      "kind": "capability",
+      "gates": "`runTargetedReplan`",
+      "lowestTier": "Business",
+      "phase": "P10"
+    },
+    {
+      "id": "tasks",
+      "kind": "capability",
+      "gates": "Task runs",
+      "lowestTier": "Starter",
+      "phase": "P10"
+    },
+    {
+      "id": "templates",
+      "kind": "capability",
+      "gates": "The Templates tag",
+      "lowestTier": "Business",
+      "phase": "P21"
+    },
+    {
+      "id": "terraform-provider-registry",
+      "kind": "capability",
+      "gates": "The Terraform Providers and GPG Keys tags, and the provider registry protocol",
+      "lowestTier": "Business",
+      "phase": "P17b"
+    },
+    {
+      "id": "tofu-workspaces",
+      "kind": "capability",
+      "gates": "The Tofu Workspaces tag",
+      "lowestTier": "Free",
+      "phase": "P11"
+    },
+    {
+      "id": "usage",
+      "kind": "capability",
+      "gates": "The Billing tag",
+      "lowestTier": "Free",
+      "phase": "P3b"
+    },
+    {
+      "id": "vcs-agent-pools",
+      "kind": "capability",
+      "gates": "The VCS Agent Pools tag",
+      "lowestTier": "Enterprise",
+      "phase": "P19b"
+    },
+    {
+      "id": "vcs-integrations",
+      "kind": "capability",
+      "gates": "The VCS Integrations tag",
+      "lowestTier": "Free",
+      "phase": "P12"
+    },
+    {
+      "id": "vendor-ansible",
+      "kind": "option",
+      "field": "`StackVendor` Ansible",
+      "lowestTier": "Free",
+      "phase": "P20b"
+    },
+    {
+      "id": "vendor-cloudformation",
+      "kind": "option",
+      "field": "`StackVendor` CloudFormation",
+      "lowestTier": "Free",
+      "phase": "P20"
+    },
+    {
+      "id": "vendor-kubernetes",
+      "kind": "option",
+      "field": "`StackVendor` Kubernetes",
+      "lowestTier": "Free",
+      "phase": "P20"
+    },
+    {
+      "id": "vendor-opentofu",
+      "kind": "option",
+      "field": "`StackVendor` OpenTofu",
+      "lowestTier": "Free",
+      "phase": "P5"
+    },
+    {
+      "id": "vendor-pulumi",
+      "kind": "option",
+      "field": "`StackVendor` Pulumi",
+      "lowestTier": "Free",
+      "phase": "P20"
+    },
+    {
+      "id": "vendor-terraform",
+      "kind": "option",
+      "field": "`StackVendor` Terraform",
+      "lowestTier": "Free",
+      "phase": "P5"
+    },
+    {
+      "id": "vendor-terragrunt",
+      "kind": "option",
+      "field": "`StackVendor` Terragrunt",
+      "lowestTier": "Free",
+      "phase": "P20"
+    },
+    {
+      "id": "version-catalog",
+      "kind": "capability",
+      "gates": "The Version Catalog tag",
+      "lowestTier": "Free",
+      "phase": "P5"
+    },
+    {
+      "id": "viewer",
+      "kind": "capability",
+      "gates": "The Viewer tag",
+      "lowestTier": "Free",
+      "phase": "P3"
+    },
+    {
+      "id": "webhooks",
+      "kind": "capability",
+      "gates": "The Webhooks tag",
+      "lowestTier": "Starter",
+      "phase": "P18"
+    },
+    {
+      "id": "worker-pools",
+      "kind": "capability",
+      "gates": "The Worker Pools tag less private pools: the public worker pool and the reads every pool shares",
+      "lowestTier": "Free",
+      "phase": "P8"
+    }
+  ]
+}

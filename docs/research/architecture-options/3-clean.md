@@ -23,7 +23,8 @@ Conventions in the trees:
 The tree is organised by ring first and by subject second. Ring 1,
 `internal/entity`, holds infraweave's enterprise rules as pure Go with no
 I/O: the run state machine with its 22 `RunState` values and the
-transition table of [report 08](../reference/08-run-lifecycle.md#3-transitions),
+transition table of the [run-transitions register](../../data/run-transitions.json),
+report 08's 43 transitions and decision 0008's T44,
 the seven priority levels, policy combination semantics per type, space
 reachability and inheritance, module and provider version numbering, the
 per-vendor command sets and change models, the Flows invocation status
@@ -206,7 +207,7 @@ internal/
 ├── entity/                                  RING 1: pure rules, no I/O
 │   ├── id/                                  ULID, slug, slug-from-name (stackReslug)  (P2)
 │   ├── feature/                             decision 0021's model as pure data and functions  (P3b)
-│   │   ├── catalogue.yaml catalogue.go      every capability, option and limit; embedded, parsed once
+│   │   ├── catalogue.gen.go catalogue.go    every capability, option and limit; generated from docs/data/features.json
 │   │   ├── tier.go grant.go                 Tier{Name, Features, Limits} as data, not a ladder; Grant
 │   │   ├── entitle.go                       Entitlement(tier, grants, disabled): requirements closed,
 │   │   │                                    limit values from a grant, else the tier
@@ -572,9 +573,10 @@ commit together.
 ```text
 internal/entity/run/
   machine.go         Next(run, Event) (State, error): the only legal way to change state
-  transitions.go     the table of report 08: (type, from, event) → to, guard
+  transitions.go     report 08's 43 transitions and decision 0008's T44, from
+                     docs/data/run-transitions.json: (type, from, event) → to, guard
   guards.go          canConfirm, canDiscard, canRetry, canStop, blocking run rules
-  priority.go        Tier(run) 1..7; Less(a, b) by tier then creation time
+  priority.go        Level(run) 1..7; Less(a, b) by priority level then creation time
   timers.go          deadlines: 2 days (proposed, testing), 7 days (blocking), 30 days (all)
   followups.go       FollowUps(run, to) []job.Kind: schedule, evaluate approval, notify
 internal/usecase/runstate/
@@ -899,8 +901,9 @@ test in `adapter/postgres/storetest` asserts the filter for each listing.
 
 ```text
 internal/entity/feature/
-  catalogue.yaml     every capability, option and limit: name, kind, requirements, seeded tiers, the
-                     BillingTierFeature values it covers for parity (decision 0021)
+  catalogue.gen.go   every capability, option and limit: name, kind, requirements, seeded tiers, the
+                     BillingTierFeature values it covers for parity (decision 0021); generated from
+                     docs/data/features.json by make generate
   entitle.go         Entitlement(tier, grants, disabled) → features and limit values; pure, table-tested
   decide.go          Gate: feature-disabled wins over feature-not-in-tier; CheckLimit → limit-reached
 internal/usecase/entitlement/
@@ -1490,7 +1493,7 @@ whose failure paths need recorded fixtures.
 6. `internal/entity/iac/vendors.go`: register the kind.
 7. `internal/adapter/agent/toolchain/pulumi.go` and its test: binary resolution, or a no-op when the runner image carries it.
 8. `api/src/deploy/components-common.yaml`: the Pulumi vendor input, with `x-infraweave-feature: vendor-pulumi` on the `StackVendor` value; `make generate`.
-9. `internal/entity/feature/catalogue.yaml`: the `vendor-pulumi` option, in every seeded tier.
+9. `docs/data/features.json`: the `vendor-pulumi` option, in every seeded tier; `make generate` rewrites `internal/entity/feature/catalogue.gen.go`.
 10. `internal/adapter/rest/presenter/stack.go`: map the new vendor input to `stack.Settings`.
 11. `test/acceptance/features/vendor_pulumi.feature` and its steps.
 
@@ -1507,9 +1510,9 @@ edited, two of them in rings other than ring 1.
 4. `internal/usecase/templateversion/port.go publish.go deprecate.go *_test.go`.
 5. `internal/usecase/templatedeployment/port.go deploy.go update.go delete.go *_test.go`: creates stacks through a `StackCreator` port and runs through `runstate`; renders bodies with `entity/expr`, with `now` and the seed stored on the change record.
 6. `internal/usecase/stack/input.go`: `CreateInput` gains the owning deployment.
-7. `internal/adapter/postgres/templates.go`, `migrations/NNNNN_templates.sql` (decision 0005's single stream), `storetest/templates.go`; `surfaces.go` gains the template `SurfaceContext` gateway.
+7. `internal/adapter/postgres/templates.go`, `migrations/NNNNN_templates.sql` (the templates stream of decision 0005), `storetest/templates.go`; `surfaces.go` gains the template `SurfaceContext` gateway.
 8. `api/src/deploy/paths-templates.yaml`, each operation tagged `x-infraweave-feature: templates`; `make generate`.
-9. `internal/entity/feature/catalogue.yaml`: `templates` and `blueprints` at Business.
+9. `docs/data/features.json`, and `internal/entity/feature/catalogue.gen.go` from it: `templates` and `blueprints` at Business.
 10. `internal/adapter/rest/controller/template/*.go` and `presenter/template.go`, with `allowedActions` per template and deployment.
 11. `internal/adapter/rest/server.go`: embed the controller.
 12. `internal/app/usecases.go controllers.go surfaces.go`: wire three interactors and the template surface; `StackCreator` is filled with `stack.Interactor`.

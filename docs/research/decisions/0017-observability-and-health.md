@@ -73,7 +73,7 @@ fails a request, a job or a run.
 | Rule | Effect |
 |---|---|
 | A value of a type that holds a secret (the sealed-value types of decision 0013, API key secrets, tokens, private keys) | its `LogValue` returns `[redacted]` (decision 0013); no code path can print the plaintext through slog |
-| An attribute whose key, case-folded, is `authorization`, `cookie`, `set-cookie`, `password`, `secret`, `token`, `private_key`, `client_secret`, or ends in `_secret`, `_token` or `_password` | value replaced with `[REDACTED]` |
+| An attribute whose key, case-folded, is `authorization`, `cookie`, `set-cookie`, `password`, `secret`, `token`, `private_key`, `client_secret`, or ends in `_secret`, `_token` or `_password` | value replaced with `[redacted]`, decision 0013's marker |
 | A string value that matches the masking set of decision 0013 for the current run (secret environment variables and mounted files) | the matched substrings replaced as run logs replace them |
 | Header maps | only an allowlist of headers is logged (`Content-Type`, `User-Agent`, `X-Request-Id`, `Idempotency-Key`) |
 

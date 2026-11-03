@@ -3,10 +3,10 @@ package api_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -17,13 +17,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/openapibundle"
 )
 
-// conventions is decision 0003, whose table holds the slugs its spec
-// components use.
-const conventions = "../docs/research/decisions/0003-api-conventions.md"
+// problems is the register of problem types, the one complete list of
+// slugs, each with the status and title its responses carry.
+const problems = "../docs/data/problems.json"
 
-// problems is decision 0022, whose table is the complete list of problem
-// slugs. Its rows for 0003's slugs must keep 0003's status.
-const problems = "../docs/research/decisions/0022-api-errors-and-update-semantics.md"
+// renames is the register of reference names infraweave serves under
+// another name (decision 0001).
+const renames = "../docs/data/renames.json"
 
 const problemPrefix = "urn:infraweave:problem:"
 
@@ -87,32 +87,46 @@ func TestUnitDeployConventionComponents(t *testing.T) {
 	}
 }
 
-// slugTable reads a decision record's problem table: every row that starts
-// with a backticked slug and a three-digit status.
-func slugTable(t *testing.T, record string) map[string]int {
+type problem struct {
+	ID       string `json:"id"`
+	Status   int    `json:"status"`
+	Title    string `json:"title"`
+	Decision string `json:"decision"`
+}
+
+// problemTypes reads the problem register, keyed by slug.
+func problemTypes(t *testing.T) map[string]problem {
 	t.Helper()
-	text, err := os.ReadFile(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	listed := map[string]int{}
-	for _, m := range regexp.MustCompile("(?m)^\\| `([a-z-]+)` \\| ([0-9]{3}) \\|").
-		FindAllStringSubmatch(string(text), -1) {
-		listed[m[1]], _ = strconv.Atoi(m[2])
+	var reg struct{ Records []problem }
+	readRegister(t, problems, &reg)
+	listed := map[string]problem{}
+	for _, p := range reg.Records {
+		listed[p.ID] = p
 	}
 	if len(listed) == 0 {
-		t.Fatalf("%s lists no problem slugs", record)
+		t.Fatalf("%s lists no problem types", problems)
 	}
 	return listed
 }
 
+func readRegister(t *testing.T, file string, v any) {
+	t.Helper()
+	b, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(b, v); err != nil {
+		t.Fatalf("%s: %v", file, err)
+	}
+}
+
 // TestUnitDeployProblemTypes checks that every problem example in the spec
-// uses a slug decision 0022 lists, with the status the record gives it, so
-// that record stays the one complete list of problem types. It also checks
-// that every slug decision 0003 defines is used and has the same status in
-// both records.
+// uses a slug the problem register lists, with its status and title, so the
+// register stays the one complete list of problem types. It also checks that
+// every slug decision 0003 defines has a response that uses it, since 0003's
+// components exist to carry them.
 func TestUnitDeployProblemTypes(t *testing.T) {
-	listed := slugTable(t, problems)
+	listed := problemTypes(t)
 	used := map[string]bool{}
 	for name, r := range loadDeploy(t).Components.Responses {
 		mt := r.Value.Content.Get("application/problem+json")
@@ -122,28 +136,23 @@ func TestUnitDeployProblemTypes(t *testing.T) {
 		}
 		typ, _ := ex["type"].(string)
 		slug, found := strings.CutPrefix(typ, problemPrefix)
-		status, known := listed[slug]
+		p, known := listed[slug]
 		switch {
 		case !found || !known:
 			t.Errorf("response %s: type %q is not a slug listed in %s", name, typ, problems)
-		case ex["status"] != float64(status):
-			t.Errorf("response %s: status %v, record says %d", name, ex["status"], status)
+		case ex["status"] != float64(p.Status):
+			t.Errorf("response %s: status %v, %s says %d", name, ex["status"], problems, p.Status)
+		case ex["title"] != p.Title:
+			t.Errorf("response %s: title %v, %s says %q", name, ex["title"], problems, p.Title)
 		}
 		used[slug] = true
 	}
-	for slug, status := range slugTable(t, conventions) {
-		if !used[slug] {
-			t.Errorf("%s lists %s, but no response uses it", conventions, slug)
-		}
-		if listed[slug] != status {
-			t.Errorf("%s gives %s status %d, %s gives %d", conventions, slug, status, problems, listed[slug])
+	for slug, p := range listed {
+		if p.Decision == "0003" && !used[slug] {
+			t.Errorf("%s gives %s to decision 0003, but no response uses it", problems, slug)
 		}
 	}
 }
-
-// naming is decision 0001, whose rename table maps each reference name to
-// the name infraweave serves in its place.
-const naming = "../docs/research/decisions/0001-rest-first-spacelift-surface.md"
 
 // servedName is one name a served document shows its clients. owner is the
 // component schema that holds a property or enum value, and is empty for
@@ -279,7 +288,7 @@ func servedNames(doc *openapi3.T) []servedName {
 	return w.names
 }
 
-// renamed is one identifier row of decision 0001's rename table. pattern
+// renamed is one identifier record of the rename register. pattern
 // matches the reference name, with * standing for any run of characters;
 // owner, when set, limits the match to names that component schema holds.
 type renamed struct {
@@ -287,42 +296,33 @@ type renamed struct {
 	pattern                      *regexp.Regexp
 }
 
-// renameTable reads the table under 0001's "### Rename table" heading: every
-// row whose two cells are each one code span. A reference cell `Schema.name`
-// names a property or enum value of that schema only, so a common word such
-// as organizationID is refused only where it means what the reference meant.
-// Rows that describe a name in words are concepts, not identifiers, and are
+// renameTable reads the identifier records of the rename register. A record
+// with a schema names a property or enum value of that schema only, so a
+// common word such as organizationID is refused only where it means what the
+// reference meant. Concept records name a reference concept in words and are
 // skipped.
 func renameTable(t *testing.T) []renamed {
 	t.Helper()
-	text, err := os.ReadFile(naming)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// A Windows checkout gives the record CRLF line endings, which the
-	// heading and the row pattern's $ would otherwise never match.
-	doc := strings.ReplaceAll(string(text), "\r\n", "\n")
-	_, section, found := strings.Cut(doc, "\n### Rename table\n")
-	if !found {
-		t.Fatalf("%s has no ### Rename table heading", naming)
-	}
-	if end := strings.Index(section, "\n#"); end >= 0 {
-		section = section[:end]
-	}
-	qualified := regexp.MustCompile(`^([A-Z][A-Za-z0-9]*)\.([A-Za-z0-9_]+)$`)
-	var rows []renamed
-	for _, m := range regexp.MustCompile("(?m)^\\| `([^`]+)` \\| `([^`]+)` \\|$").
-		FindAllStringSubmatch(section, -1) {
-		r := renamed{reference: m[1], infraweave: m[2]}
-		name := m[1]
-		if q := qualified.FindStringSubmatch(name); q != nil {
-			r.owner, name = q[1], q[2]
+	var reg struct {
+		Records []struct {
+			Kind, Schema, Reference, Infraweave string
 		}
-		r.pattern = regexp.MustCompile("^" + strings.ReplaceAll(regexp.QuoteMeta(name), `\*`, ".*") + "$")
-		rows = append(rows, r)
+	}
+	readRegister(t, renames, &reg)
+	var rows []renamed
+	for _, rec := range reg.Records {
+		if rec.Kind != "identifier" {
+			continue
+		}
+		rows = append(rows, renamed{
+			owner:      rec.Schema,
+			reference:  rec.Reference,
+			infraweave: rec.Infraweave,
+			pattern:    regexp.MustCompile("^" + strings.ReplaceAll(regexp.QuoteMeta(rec.Reference), `\*`, ".*") + "$"),
+		})
 	}
 	if len(rows) == 0 {
-		t.Fatalf("%s has no identifier rows under ### Rename table", naming)
+		t.Fatalf("%s has no identifier records", renames)
 	}
 	return rows
 }
@@ -390,7 +390,7 @@ func renameViolations(names []servedName, rows []renamed) []string {
 		for _, r := range rows {
 			if (r.owner == "" || r.owner == n.owner) && r.pattern.MatchString(n.name) {
 				found = append(found, n.where+": "+n.name+" is the reference name "+
-					r.reference+", which 0001 renames to "+r.infraweave)
+					r.reference+", which the rename register renames to "+r.infraweave)
 			}
 		}
 	}
@@ -417,8 +417,8 @@ components:
 `
 
 // TestUnitServedNames fails when the deploy API serves text that says
-// spacelift in any case, or a reference name that decision 0001's rename
-// table replaces. Families are scaffolded from Spacelift's spec, so each
+// spacelift in any case, or a reference name that the rename register
+// replaces. Families are scaffolded from Spacelift's spec, so each
 // arrives carrying Spacelift's names and descriptions; a scaffold that keeps
 // one would make infraweave's clients, SDK and provider depend on a vendor's
 // name, and its generated docs describe infraweave as Spacelift. The
@@ -429,7 +429,7 @@ func TestUnitServedNames(t *testing.T) {
 	rows := renameTable(t)
 	for _, r := range rows {
 		if strings.Contains(strings.ToLower(r.infraweave), "spacelift") {
-			t.Errorf("%s renames %s to %s, which contains spacelift", naming, r.reference, r.infraweave)
+			t.Errorf("%s renames %s to %s, which contains spacelift", renames, r.reference, r.infraweave)
 		}
 	}
 	t.Run("deploy", func(t *testing.T) {

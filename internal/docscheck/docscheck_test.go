@@ -25,14 +25,33 @@ func file(s string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(s)} }
 
 const goodReport = "# 01: A report\n\nChecked against: v1\n\nResearch baseline: **2026-10-28**.\n\n## Sources\n\n- <https://example.com>\n"
 
-// spec is a reference spec with two tags; report 26 must name both.
+// spec is a reference spec with two tags; the capabilities register must
+// hold both.
 const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack management.\n  - name: Runs\n"
+
+// anySchema accepts any register; the phase and tag checks read records
+// whatever their schema says.
+const anySchema = `{"x-id-pattern": ".+"}`
+
+// features, capabilities and supersessions are registers that name only
+// phases the plan has. Report 26's wording in a capability's spacelift
+// member and a phase in a code span are not assignments.
+const (
+	features = `{"$schema": "schema/features.schema.json", "records": [
+  {"id": "stacks", "phase": "P0", "notes": "` + "`P42`" + ` is a name"}]}`
+	capabilities = `{"$schema": "schema/capabilities.schema.json", "records": [
+  {"id": "tag:Stacks", "spacelift": {"notes": "P99 in report 26"}, "infraweave": {"phase": "P0"}},
+  {"id": "tag:Runs", "infraweave": {"phase": "P1a", "also": "P0"}},
+  {"id": "operation:x", "infraweave": {"phase": "P1a"}}]}`
+	supersessions = `{"$schema": "schema/supersessions.schema.json", "records": [
+  {"id": "SUP-01", "replacementPhase": "P0, P1a"}]}`
+)
 
 // option is an architecture option's outline. H3s outside the nested
 // sections may differ between options.
 const option = "# Option\n\n## Summary\n\n### Rules\n\n## Deep dives\n\n### Runs\n\n## Walkthroughs\n\n### A push\n"
 
-// plan is an implementation plan with two phases; the roadmap names both.
+// plan is an implementation plan with two phases; the registers name both.
 const plan = "# Plan\n\n## Build status\n\n| P0 | done |\n\n## P0: Reference\n\nDecisions: [0001](../research/decisions/0001-one.md)\n\n" +
 	"**Depends on:** nothing.\n\n**Tasks**\n\n1. Generate.\n\n**Exit criteria**\n\n- `make gate` passes.\n\n" +
 	"## P1a: Skeleton\n\nDecisions: none.\n\n**Depends on:** P0.\n\n**Tasks**\n\n1. Serve.\n\n```\n## P9: Not a phase\n```\n\n**Exit criteria**\n\n- Served.\n"
@@ -71,12 +90,16 @@ func tree() fstest.MapFS {
 		"docs/research/architecture-options/2-b.md": file(
 			option + "\n```\n## Not a heading\n```\n",
 		),
-		"docs/implementation/plan.md": file(plan),
-		"docs/implementation/capability-roadmap.md": file(
-			"# Roadmap\n\nP99 in prose is not an assignment.\n\n| Stacks | P0 | `P42` |\n| Runs | P1a |\n",
-		),
-		".git/description.md":     file("docs/missing.md\n"),
-		".github/workflows/w.yml": file("# docs/research/README.md\n"),
+		"docs/implementation/plan.md":                file(plan),
+		"docs/data/schema/common.schema.json":        file(commonSchema),
+		"docs/data/schema/features.schema.json":      file(anySchema),
+		"docs/data/schema/capabilities.schema.json":  file(anySchema),
+		"docs/data/schema/supersessions.schema.json": file(anySchema),
+		"docs/data/features.json":                    file(features),
+		"docs/data/capabilities.json":                file(capabilities),
+		"docs/data/supersessions.json":               file(supersessions),
+		".git/description.md":                        file("docs/missing.md\n"),
+		".github/workflows/w.yml":                    file("# docs/research/README.md\n"),
 		"api/spec.yaml": file(
 			"description: see docs/research/reference/01-a.md and ../docs/x.md\n",
 		),
@@ -209,39 +232,60 @@ func TestUnitCheckFindings(t *testing.T) {
 			where: "docs/research/decisions/0001-one.md:1",
 		},
 		{
-			name: "tag missing from report 26",
+			name: "tag missing from the capabilities register",
 			edit: func(m fstest.MapFS) {
-				m["docs/research/reference/26-scope-and-tiers.md"] = file(
-					goodReport + "\nStacks are in scope.\n",
+				m["api/reference/spacelift/spacelift.openapi.yaml"] = file(
+					spec + "  - name: Spaces\n",
 				)
-				m["api/reference/spacelift/spacelift.openapi.yaml"] = file(spec)
 			},
-			want:  `tag "Runs" of api/reference/spacelift/spacelift.openapi.yaml does not appear`,
-			where: "docs/research/reference/26-scope-and-tiers.md:1",
+			want:  `has no record tag:Spaces for tag "Spaces" of api/reference/spacelift/spacelift.openapi.yaml`,
+			where: "docs/data/capabilities.json:1",
+		},
+		{
+			name: "tag record the spec lacks",
+			edit: func(m fstest.MapFS) {
+				m["api/reference/spacelift/spacelift.openapi.yaml"] = file(
+					strings.Replace(spec, "  - name: Runs\n", "", 1),
+				)
+			},
+			want:  "record tag:Runs names a tag api/reference/spacelift/spacelift.openapi.yaml does not have",
+			where: "docs/data/capabilities.json:3",
 		},
 		{
 			name: "unreadable spec tags",
 			edit: func(m fstest.MapFS) {
-				m["docs/research/reference/26-scope-and-tiers.md"] = file(goodReport)
 				m["api/reference/spacelift/spacelift.openapi.yaml"] = file("tags: {")
 			},
 			want:  "cannot read its tags",
 			where: "api/reference/spacelift/spacelift.openapi.yaml:1",
 		},
 		{
-			name: "unverified report not linked from report 30",
+			name: "unverified report not listed by an open question",
 			edit: func(m fstest.MapFS) {
+				openQuestions(m, "docs/research/reference/01-a.md")
 				m["docs/research/reference/30-open-questions.md"] = file(goodReport +
-					"\n[01](01-a.md) [web](https://example.com/02-b.md) [self](#sources) `[02](02-b.md)`\n" +
-					"\n```\n[02](02-b.md)\n```\n\nOpen claims stay *(unverified)*.\n")
+					"\nOpen claims stay *(unverified)*.\n")
 				m["docs/research/reference/01-a.md"] = file(
-					goodReport + "\nIt is *(unverified)*.\n",
+					goodReport + "\nIt is *(unverified)* (C1).\n",
 				)
 				m["docs/research/reference/02-b.md"] = file(goodReport +
 					"\nThe `*(unverified)*` marker.\n\n```\n*(unverified)*\n```\n\nIt is *(unverified)*.\n\nSo is this *(unverified)*.\n")
 			},
-			want:  "report marks a claim *(unverified)* but 30-open-questions.md does not link it",
+			want:  "report marks a claim *(unverified)* but no record of docs/data/open-questions.json lists it",
 			where: "docs/research/reference/02-b.md:17",
+		},
+		{
+			name: "open questions not JSON",
+			edit: func(m fstest.MapFS) {
+				openQuestions(m)
+				// Without a register that uses it, the schema would be a
+				// second finding.
+				delete(m, "docs/data/schema/open-questions.schema.json")
+				m[openRegister] = file("{")
+				m["docs/research/reference/02-b.md"] = file(goodReport + "\nIt is *(unverified)*.\n")
+			},
+			want:  "not JSON",
+			where: "docs/data/open-questions.json:1",
 		},
 		{
 			name: "option heading differs",
@@ -274,7 +318,9 @@ func TestUnitCheckFindings(t *testing.T) {
 		{
 			name: "phase without exit criteria",
 			edit: func(m fstest.MapFS) {
-				m["docs/implementation/plan.md"] = file(strings.Replace(plan, "**Exit criteria**\n\n- Served.\n", "", 1))
+				m["docs/implementation/plan.md"] = file(
+					strings.Replace(plan, "**Exit criteria**\n\n- Served.\n", "", 1),
+				)
 			},
 			want:  `phase P1a has no "**Exit criteria**"`,
 			where: "docs/implementation/plan.md:21",
@@ -283,19 +329,44 @@ func TestUnitCheckFindings(t *testing.T) {
 			name: "phase without decisions",
 			edit: func(m fstest.MapFS) {
 				m["docs/implementation/plan.md"] = file(
-					strings.Replace(plan, "Decisions: [0001](../research/decisions/0001-one.md)\n\n", "", 1),
+					strings.Replace(
+						plan,
+						"Decisions: [0001](../research/decisions/0001-one.md)\n\n",
+						"",
+						1,
+					),
 				)
 			},
 			want:  `phase P0 has no "Decisions:"`,
 			where: "docs/implementation/plan.md:7",
 		},
 		{
-			name: "roadmap names a missing phase",
+			name: "feature names a missing phase",
 			edit: func(m fstest.MapFS) {
-				m["docs/implementation/capability-roadmap.md"] = file("# Roadmap\n\n| Stacks | P0, P2 |\n")
+				m["docs/data/features.json"] = file(strings.Replace(features, `"P0"`, `"P2"`, 1))
 			},
-			want:  "names phase P2, which plan.md does not have",
-			where: "docs/implementation/capability-roadmap.md:3",
+			want:  "stacks names phase P2, which plan.md does not have",
+			where: "docs/data/features.json:2",
+		},
+		{
+			name: "capability names a missing phase",
+			edit: func(m fstest.MapFS) {
+				m["docs/data/capabilities.json"] = file(
+					strings.Replace(capabilities, `"also": "P0"`, `"also": "P0, P3"`, 1),
+				)
+			},
+			want:  "tag:Runs names phase P3, which plan.md does not have",
+			where: "docs/data/capabilities.json:3",
+		},
+		{
+			name: "replacement in a missing phase",
+			edit: func(m fstest.MapFS) {
+				m["docs/data/supersessions.json"] = file(
+					strings.Replace(supersessions, "P1a", "P1b", 1),
+				)
+			},
+			want:  "SUP-01 names phase P1b, which plan.md does not have",
+			where: "docs/data/supersessions.json:2",
 		},
 		{
 			name:  "no glossary",
@@ -336,7 +407,9 @@ func TestUnitCheckFindings(t *testing.T) {
 		{
 			name: "glossary term without a definition",
 			edit: func(m fstest.MapFS) {
-				m["GLOSSARY.md"] = file(strings.Replace(glossary, "A unit of infrastructure.\n", "", 1))
+				m["GLOSSARY.md"] = file(
+					strings.Replace(glossary, "A unit of infrastructure.\n", "", 1),
+				)
 			},
 			want:  `term "Stack" has no definition`,
 			where: "GLOSSARY.md:7",
@@ -379,15 +452,30 @@ func TestUnitCheckFindings(t *testing.T) {
 	}
 }
 
-// TestUnitCheckScopeAndOpenQuestions covers reports 26 and 30 when they
-// satisfy their checks, and report 26 without a spec to check it against.
+// openSchema is a minimal open-questions schema: records are cited as C<n>
+// and name the reports that must cite them.
+const openSchema = `{"x-id-pattern": "C[0-9]+", "x-cite-pattern": "\\bC[0-9]+\\b", "x-cited-in": "reports"}`
+
+// openQuestions adds an open-questions register whose one record, C1, lists
+// reports.
+func openQuestions(m fstest.MapFS, reports ...string) {
+	m["docs/data/schema/common.schema.json"] = file(commonSchema)
+	m["docs/data/schema/open-questions.schema.json"] = file(openSchema)
+	m[openRegister] = file(`{"$schema": "schema/open-questions.schema.json", "records": [{"id": "C1", "reports": ["` +
+		strings.Join(reports, `", "`) + `"]}]}`)
+}
+
+// TestUnitCheckScopeAndOpenQuestions covers the capabilities register,
+// report 30 and the open-questions register when they satisfy their checks,
+// and the register without a spec to check it against. Report 30 defines the
+// marker, so no record lists it.
 func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
 	m := tree()
-	m["docs/research/reference/26-scope-and-tiers.md"] = file(goodReport + "\n| Stacks | Runs |\n")
 	m["docs/research/reference/30-open-questions.md"] = file(
-		goodReport + "\n[01](./01-a.md#sources)\n",
+		goodReport + "\n| *(unverified)* | A claim no primary source confirms |\n",
 	)
-	m["docs/research/reference/01-a.md"] = file(goodReport + "\nIt is *(unverified)*.\n")
+	openQuestions(m, "docs/research/reference/01-a.md")
+	m["docs/research/reference/01-a.md"] = file(goodReport + "\nIt is *(unverified)* (C1).\n")
 	for name, withSpec := range map[string]bool{"with spec": true, "without spec": false} {
 		t.Run(name, func(t *testing.T) {
 			if withSpec {
@@ -407,17 +495,24 @@ func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
 }
 
 // TestUnitCheckWithoutPlan covers trees from before the implementation
-// plan, with and without its capability roadmap.
+// plan, and trees without the registers that assign phases, where a spec's
+// tags have no register to be checked against.
 func TestUnitCheckWithoutPlan(t *testing.T) {
+	registers := []string{
+		"docs/data/features.json", "docs/data/capabilities.json", "docs/data/supersessions.json",
+		"docs/data/schema/features.schema.json", "docs/data/schema/capabilities.schema.json",
+		"docs/data/schema/supersessions.schema.json",
+	}
 	for name, gone := range map[string][]string{
-		"no plan":    {"docs/implementation/plan.md", "docs/implementation/capability-roadmap.md"},
-		"no roadmap": {"docs/implementation/capability-roadmap.md"},
+		"no plan":      {"docs/implementation/plan.md"},
+		"no registers": registers,
 	} {
 		t.Run(name, func(t *testing.T) {
 			m := tree()
 			for _, p := range gone {
 				delete(m, p)
 			}
+			m[referenceAPI] = file(spec)
 			found, err := Check(m)
 			if err != nil {
 				t.Fatal(err)
@@ -466,7 +561,6 @@ func TestUnitCheckReadErrors(t *testing.T) {
 	for _, name := range []string{"docs/research/README.md", "internal/x/x.go", "docs", "internal", referenceAPI, glossaryDoc} {
 		t.Run(name, func(t *testing.T) {
 			m := tree()
-			m[scopeReport] = file(goodReport)
 			m[referenceAPI] = file(spec)
 			if _, err := Check(failFS{m: m, name: name}); !errors.Is(err, errRead) {
 				t.Errorf("err = %v, want %v", err, errRead)

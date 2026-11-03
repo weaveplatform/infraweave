@@ -1,0 +1,263 @@
+{
+  "$schema": "schema/renames.schema.json",
+  "records": [
+    {
+      "id": "RN-01",
+      "kind": "identifier",
+      "reference": "spaceliftIntelligenceEnabled",
+      "infraweave": "aiEnabled"
+    },
+    {
+      "id": "RN-02",
+      "kind": "identifier",
+      "reference": "/spacelift-intelligence-enabled",
+      "infraweave": "/ai-enabled"
+    },
+    {
+      "id": "RN-03",
+      "kind": "identifier",
+      "reference": "spaceliftIntelligenceTermsAccepted",
+      "infraweave": "aiTermsAccepted"
+    },
+    {
+      "id": "RN-04",
+      "kind": "identifier",
+      "reference": "/spacelift-intelligence-terms-accepted",
+      "infraweave": "/ai-terms-accepted"
+    },
+    {
+      "id": "RN-05",
+      "kind": "identifier",
+      "reference": "spaceliftIntelligenceTermsLatestVersion",
+      "infraweave": "aiTermsLatestVersion"
+    },
+    {
+      "id": "RN-06",
+      "kind": "identifier",
+      "reference": "/spacelift-intelligence-terms-latest-version",
+      "infraweave": "/ai-terms-latest-version"
+    },
+    {
+      "id": "RN-07",
+      "kind": "identifier",
+      "reference": "accountSetSpaceliftIntelligenceEnabled",
+      "infraweave": "accountSetAiEnabled"
+    },
+    {
+      "id": "RN-08",
+      "kind": "identifier",
+      "reference": "/account/set-spacelift-intelligence-enabled",
+      "infraweave": "/account/set-ai-enabled"
+    },
+    {
+      "id": "RN-09",
+      "kind": "identifier",
+      "reference": "AccountSetSpaceliftIntelligenceEnabledRequest",
+      "infraweave": "AccountSetAiEnabledRequest"
+    },
+    {
+      "id": "RN-10",
+      "kind": "identifier",
+      "schema": "AIIntegration",
+      "reference": "isSpaceliftProvided",
+      "infraweave": "isInstallationProvided"
+    },
+    {
+      "id": "RN-11",
+      "kind": "identifier",
+      "reference": "spaceliftAwsAccountId",
+      "infraweave": "installationAwsAccountId"
+    },
+    {
+      "id": "RN-12",
+      "kind": "identifier",
+      "reference": "/spacelift-aws-account-id",
+      "infraweave": "/installation-aws-account-id"
+    },
+    {
+      "id": "RN-13",
+      "kind": "identifier",
+      "reference": "SpaceliftMetrics",
+      "infraweave": "AccountMetrics"
+    },
+    {
+      "id": "RN-14",
+      "kind": "identifier",
+      "schema": "VCSProvider",
+      "reference": "SPACELIFT",
+      "infraweave": "INFRAWEAVE"
+    },
+    {
+      "id": "RN-15",
+      "kind": "identifier",
+      "schema": "ConfigElementCategory",
+      "reference": "SPACELIFT_ENVIRONMENT",
+      "infraweave": "INFRAWEAVE_ENVIRONMENT"
+    },
+    {
+      "id": "RN-16",
+      "kind": "identifier",
+      "schema": "SessionChannel",
+      "reference": "SPACECTL",
+      "infraweave": "INFRAWEAVECTL"
+    },
+    {
+      "id": "RN-17",
+      "kind": "identifier",
+      "reference": "apiKeyEnableNonRootManagers",
+      "infraweave": "apiKeyEnableNonAdminManagers"
+    },
+    {
+      "id": "RN-18",
+      "kind": "identifier",
+      "reference": "/account/api-key-non-root-managers",
+      "infraweave": "/account/api-key-non-admin-managers"
+    },
+    {
+      "id": "RN-19",
+      "kind": "identifier",
+      "reference": "ApiKeyEnableNonRootManagersRequest",
+      "infraweave": "ApiKeyEnableNonAdminManagersRequest"
+    },
+    {
+      "id": "RN-20",
+      "kind": "identifier",
+      "reference": "apiKeysManagedByNonRootAdmins",
+      "infraweave": "apiKeysManagedByNonAdmins"
+    },
+    {
+      "id": "RN-21",
+      "kind": "identifier",
+      "reference": "/api-keys-managed-by-non-root-admins",
+      "infraweave": "/api-keys-managed-by-non-admins"
+    },
+    {
+      "id": "RN-22",
+      "kind": "identifier",
+      "reference": "accountToggleAllowNonRootAdminSpaceCreation",
+      "infraweave": "accountToggleAllowNonAdminSpaceCreation"
+    },
+    {
+      "id": "RN-23",
+      "kind": "identifier",
+      "reference": "/account/toggle-allow-non-root-admin-space-creation",
+      "infraweave": "/account/toggle-allow-non-admin-space-creation"
+    },
+    {
+      "id": "RN-24",
+      "kind": "identifier",
+      "reference": "allowNonRootAdminSpaceCreation",
+      "infraweave": "allowNonAdminSpaceCreation"
+    },
+    {
+      "id": "RN-25",
+      "kind": "identifier",
+      "reference": "/allow-non-root-admin-space-creation",
+      "infraweave": "/allow-non-admin-space-creation"
+    },
+    {
+      "id": "RN-26",
+      "kind": "identifier",
+      "schema": "FlowsIntegration",
+      "reference": "organizationID",
+      "infraweave": "accountID"
+    },
+    {
+      "id": "RN-27",
+      "kind": "identifier",
+      "schema": "FlowsIntegration",
+      "reference": "organizationName",
+      "infraweave": "accountName"
+    },
+    {
+      "id": "RN-28",
+      "kind": "identifier",
+      "reference": "SPACELIFT_*",
+      "infraweave": "INFRAWEAVE_*"
+    },
+    {
+      "id": "RN-29",
+      "kind": "identifier",
+      "reference": "TF_VAR_spacelift_*",
+      "infraweave": "TF_VAR_infraweave_*"
+    },
+    {
+      "id": "RN-30",
+      "kind": "identifier",
+      "reference": "spacelift.*",
+      "infraweave": "infraweave.*"
+    },
+    {
+      "id": "RN-31",
+      "kind": "identifier",
+      "reference": "spacelift_*",
+      "infraweave": "infraweave_*"
+    },
+    {
+      "id": "RN-32",
+      "kind": "identifier",
+      "reference": "spacelift-promex",
+      "infraweave": "/metrics/accounts"
+    },
+    {
+      "id": "RN-33",
+      "kind": "identifier",
+      "reference": ".spacelift/config.yml",
+      "infraweave": ".infraweave/config.yml"
+    },
+    {
+      "id": "RN-34",
+      "kind": "identifier",
+      "reference": ".spacelift/workflow.yml",
+      "infraweave": ".infraweave/workflow.yml"
+    },
+    {
+      "id": "RN-35",
+      "kind": "identifier",
+      "reference": "/mnt/workspace/spacelift.oidc",
+      "infraweave": "/mnt/workspace/infraweave.oidc"
+    },
+    {
+      "id": "RN-36",
+      "kind": "identifier",
+      "reference": "/spacelift",
+      "infraweave": "/infraweave"
+    },
+    {
+      "id": "RN-37",
+      "kind": "identifier",
+      "reference": "spacectl",
+      "infraweave": "infraweavectl"
+    },
+    {
+      "id": "RN-38",
+      "kind": "concept",
+      "reference": "Root admin: `space-admin` on `root`",
+      "infraweave": "Account admin: `space-admin` on the account's top space"
+    },
+    {
+      "id": "RN-39",
+      "kind": "concept",
+      "reference": "Non-root admin",
+      "infraweave": "Non-admin: a space admin below the account's top space"
+    },
+    {
+      "id": "RN-40",
+      "kind": "concept",
+      "reference": "The `root` space",
+      "infraweave": "The account's top space, whose ID is the account's slug"
+    },
+    {
+      "id": "RN-41",
+      "kind": "concept",
+      "reference": "Flows organization and its organization admin",
+      "infraweave": "The account and its account admin"
+    },
+    {
+      "id": "RN-42",
+      "kind": "concept",
+      "reference": "Flows HTTP Endpoint `audience` value `organization`",
+      "infraweave": "`account`"
+    }
+  ]
+}

@@ -78,7 +78,7 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
   missing or wrong trust policy fails the attach with the message
   `you need to configure trust relationship section in your AWS account`, and the UI then
   shows a tailored trust policy [D](https://docs.spacelift.io/getting-started/integrate-cloud/AWS),
-  [D](https://docs.spacelift.io/integrations/cloud-providers/aws).
+  [D](https://docs.spacelift.io/integrations/cloud-providers/aws). That attach checks the trust policy this way is *(unverified)* beyond the docs (C19).
 - **Credential lifetime.** Credentials are fetched once at run start and never refreshed;
   a run outliving them fails with `ExpiredToken`
   [D](https://docs.spacelift.io/integrations/cloud-providers/aws#session-duration).
@@ -101,7 +101,7 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
 
 - The suffix is `read` for the planning phase and `write` for the applying phase
   [D](https://docs.spacelift.io/getting-started/integrate-cloud/AWS). Which suffix a task, a
-  destroy run or a module test run uses is not documented *(unverified)*.
+  destroy run or a module test run uses is not documented *(unverified)* (C81).
 - The integration ID is a ULID, as in the example `spacelifter@01GE7K9SR2DQBCRQ90DH70JF6Y@stack-1@write`
   [D](https://docs.spacelift.io/integrations/cloud-providers/aws) [I: from the example's shape].
 - Because each segment is predictable, a trust policy can scope by account
@@ -124,7 +124,7 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
   are the higher source, but they contradict each other: the first-setup guide and the
   provider agree that the account name is part of the name, which the AWS page's "the run
   ID becomes the session name" leaves out. The exact string, including what replaces
-  `$stackID` for a module run, is *(unverified)*.
+  `$stackID` for a module run, is *(unverified)* (C83).
 
 ### 2.3 Session duration
 
@@ -143,7 +143,7 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
   optional on create and required on update [G], and `AwsIntegration.durationSeconds` is
   nullable [G]. Both hold: an API create without a duration gets the server default (1 hour
   per the docs), while a Terraform-managed integration gets 900 seconds unless set. The
-  server default itself is *(unverified)* beyond the docs.
+  server default itself is *(unverified)* (C82) beyond the docs.
 
 ### 2.4 Assume role on worker
 
@@ -157,7 +157,7 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
 - The longer 12-hour ceiling requires this mode, so the stack must run on a private pool
   [D](https://docs.spacelift.io/integrations/cloud-providers/aws#session-duration).
 - What the worker sends to STS as `RoleSessionName`, and whether it applies session tags,
-  is not documented *(unverified)*.
+  is not documented *(unverified)* (C84).
 
 ### 2.5 Session tagging
 
@@ -173,13 +173,13 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
   they survive role chaining; the trust policy needs `sts:TagSession`
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc/aws-oidc#session-tagging),
   [D](https://docs.spacelift.io/concepts/stack/stack-settings#labels). The OIDC flow runs
-  inside the run, so who performs that call is not stated *(unverified)*.
-- Whether the native integration's tags are transitive is not documented *(unverified)*.
+  inside the run, so who performs that call is not stated *(unverified)* (C85).
+- Whether the native integration's tags are transitive is not documented *(unverified)* (C86).
 
 ### 2.6 Attachment: read, write and scope
 
 - An integration lives in a space (`space`, optional on create [G]; the space used when it
-  is omitted is *(unverified)*) and is attachable to stacks and modules that can see that
+  is omitted is *(unverified)* (C87)) and is attachable to stacks and modules that can see that
   space, including through inheritance
   [G] `attachableAwsIntegrationsInSpace`, [D](https://docs.spacelift.io/concepts/spaces/how-access-works).
 - `awsIntegrationAttach(id, stack, read, write)`: at least one of `read`/`write` must be
@@ -188,7 +188,7 @@ Spacelift offers two ways for a run to reach a cloud without static secrets
   [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_aws_integration_attachment.go#L101).
 - A read attachment serves read phases (planning) and a write attachment serves the write
   phase (applying) [I: from the external ID suffix and the field descriptions]. Which
-  credentials a phase receives when only one kind is attached is *(unverified)*.
+  credentials a phase receives when only one kind is attached is *(unverified)* (C88).
 - The provider defaults both `read` and `write` to `true`
   [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_aws_integration_attachment.go#L59).
   `integration_id`, `stack_id` and `module_id` force a new attachment; `read`/`write`
@@ -316,7 +316,7 @@ Sources: [`resource_aws_integration.go`](https://github.com/spacelift-io/terrafo
   `ARM_CLIENT_ID`, `ARM_TENANT_ID` and `ARM_CLIENT_SECRET` in use
   [D](https://docs.spacelift.io/vendors/kubernetes/authenticating). That
   `ARM_SUBSCRIPTION_ID` is also set, from the attachment's `subscriptionId` or the
-  integration's `defaultSubscriptionId`, is *(unverified)* [I: from the subscription fields].
+  integration's `defaultSubscriptionId`, is *(unverified)* (C89) [I: from the subscription fields].
 - **Subscription.** `defaultSubscriptionId` applies when an attachment sets no
   `subscriptionId`; it is required for auto-attach
   [D](https://docs.spacelift.io/integrations/cloud-providers/azure#auto-attach-integrations), [G].
@@ -408,7 +408,7 @@ Bruno covers these under `Cloud Integrations/Azure/` [B].
   `STACK_AZURE_INTEGRATION_ATTACH`, `STACK_AZURE_INTEGRATION_DETACH` and
   `STACK_AZURE_INTEGRATION_UPDATE`, each described as "Disabled. Do not use." [G]. The
   schema is the higher source for what the API accepts; the docs describe intended
-  behaviour. Which check guards attachment today is *(unverified)*. The full `Action`
+  behaviour. Which check guards attachment today is *(unverified)* (C6). The full `Action`
   list is in report 14.
 - `INTENT_PROJECT_CLOUD_INTEGRATION_ATTACH` and `INTENT_PROJECT_CLOUD_INTEGRATION_DETACH`
   govern Intent project attachments [G], [D](https://docs.spacelift.io/concepts/authorization/rbac-system).
@@ -461,7 +461,7 @@ Bruno covers these under `Cloud Integrations/Azure/` [B].
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc).
 - The token is valid for one hour [D](https://docs.spacelift.io/integrations/cloud-providers/oidc).
   Whether it is reissued for runs longer than an hour, or for the apply phase of a run whose
-  planning token has expired, is not documented *(unverified)*.
+  planning token has expired, is not documented *(unverified)* (C90).
 - No Spacelift-side configuration is needed beyond the optional subject template
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc).
 
@@ -471,7 +471,7 @@ Bruno covers these under `Cloud Integrations/Azure/` [B].
 |---|---|---|
 | Issuer (`iss`) | The account URL with scheme, such as `https://demo.app.spacelift.io`; unique per account | [D](https://docs.spacelift.io/integrations/cloud-providers/oidc) |
 | Audience (`aud`) | The account hostname without scheme, such as `demo.app.spacelift.io` | [D](https://docs.spacelift.io/integrations/cloud-providers/oidc) |
-| Discovery document | `/.well-known/openid-configuration` on the server; only the self-hosted page names the path, and that SaaS serves it under the account URL is [I] from Vault's `oidc_discovery_url` being the account URL | [D](https://docs.spacelift.io/self-hosted/latest/integrations/cloud-providers/oidc) |
+| Discovery document | `/.well-known/openid-configuration` on the server; only the self-hosted page names the path, and that SaaS serves it under the account URL is [I] from Vault's `oidc_discovery_url` being the account URL (C95) | [D](https://docs.spacelift.io/self-hosted/latest/integrations/cloud-providers/oidc) |
 | Key set | `/.well-known/jwks`; keys carry `use: sig` since 2026-01-13 | [D](https://docs.spacelift.io/self-hosted/latest/integrations/cloud-providers/oidc), [RN](https://docs.spacelift.io/product/changelog) |
 | Vault `oidc_discovery_url` | The same account URL as the issuer | [D](https://docs.spacelift.io/integrations/cloud-providers/oidc/vault-oidc) |
 
@@ -491,7 +491,7 @@ Bruno covers these under `Cloud Integrations/Azure/` [B].
   Spacelift's `kmsjwt` library signs JWTs with KMS using `PS512`
   [S](https://github.com/spacelift-io/kmsjwt/blob/0372dc710a8c/kmsjwt.go#L17). That the
   federation tokens are signed with this key and algorithm is inferred
-  [I: from the key description and the library] *(unverified)*.
+  [I: from the key description and the library] *(unverified)* (C91).
 
 ### 6.3 Claims
 
@@ -515,7 +515,7 @@ Bruno covers these under `Cloud Integrations/Azure/` [B].
 - The changelog entry "space ancestry claim" (2026-02-25) is taken to be `spacePath`
   [RN](https://docs.spacelift.io/product/changelog) [I: no other ancestry claim is documented].
 - The `RunType` enum also has `UNKNOWN` and `PARSE` [G]; whether parse runs receive a token
-  is *(unverified)*.
+  is *(unverified)* (C92).
 - The claims are advisory: the relying party decides which to enforce
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc).
 
@@ -535,7 +535,7 @@ page's example credential list for a module includes both
 `run_type:TESTING:scope:read` and `run_type:TESTING:scope:write`
 [D](https://docs.spacelift.io/integrations/cloud-providers/oidc/azure-oidc), which the
 scope table does not explain. The overview is the more specific statement; whether testing
-runs ever carry `read` is *(unverified)*.
+runs ever carry `read` is *(unverified)* (C93).
 
 ### 6.5 Subject and subject templates
 
@@ -583,7 +583,7 @@ runs ever carry `read` is *(unverified)*.
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc/azure-oidc), and the
   overview's example subject carries `legacy-01KJMM56VS4W3AL9YZWVCXBX8D`
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc). Whether the `legacy`
-  space ID has a suffix is *(unverified)*.
+  space ID has a suffix is *(unverified)* (C94).
 - **Availability.** The UI feature flag was removed on 2026-07-15
   [RN](https://docs.spacelift.io/product/changelog); self-hosted gained the template in
   v6.3.0 [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/changelog).
@@ -660,7 +660,7 @@ GCP caps the mapped `google.subject` at 127 characters, which a long stack ID or
   pre-registered for a space that does not exist yet, except `root` and `legacy`
   [D](https://docs.spacelift.io/integrations/cloud-providers/oidc/azure-oidc).
 - Azure caps federated credentials per app registration (the self-hosted changelog mentions
-  the cap without a number) [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/changelog).
+  the cap without a number) [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/changelog). The number is open (C96).
 - Provider configuration: `azurerm` with `use_oidc = true` and
   `oidc_token_file_path = "/mnt/workspace/spacelift.oidc"`, plus `ARM_CLIENT_ID`,
   `ARM_TENANT_ID` and `ARM_SUBSCRIPTION_ID` on the stack
@@ -689,7 +689,9 @@ GCP caps the mapped `google.subject` at 127 characters, which a long stack ID or
   write-only labels), and per-stack or per-module attachments split into read and write,
   with the one-read-one-write rule and an attach-time trust check.
 - A deterministic AWS external ID and session name that customers write into trust
-  policies; changing their format breaks every customer role.
+  policies; changing their format breaks every customer role. Whether infraweave reproduces
+  these formats, with the OIDC claims and subject template, is product decision PD-07,
+  answered by decision 0006.
 - A per-integration managed secret lifecycle for Azure (application creation, admin
   consent URL, daily secret rotation, encrypted storage) if the Azure model is mirrored.
 - An OIDC issuer per account (or per installation, with issuer and JWKS overrides): a
@@ -702,37 +704,39 @@ GCP caps the mapped `google.subject` at 127 characters, which a long stack ID or
 - Authorization for attach, detach and update (report 14), audit entries for integration
   changes, and integration notifications (report 19).
 - The deprecated GCP service-account path, which the scope rules allow infraweave to treat
-  as superseded by OIDC, with the evidence in section 5.
+  as superseded by OIDC, with the evidence in section 5. Which deprecated interfaces
+  infraweave serves, this path and the legacy per-stack AWS role among them, is product
+  decision PD-02, answered by decision 0021.
 
 ## Inferred and undocumented
 
 - Self-hosted's role-assuming principal is the installation's server, drain and scheduler
   roles (from the IAM statements).
 - The OIDC tokens are signed with the KMS `RSA_4096` key, likely with `PS512` (from the key
-  description and the `kmsjwt` library); *(unverified)*.
+  description and the `kmsjwt` library); *(unverified)* (C91).
 - The 2026-02-25 "space ancestry claim" is `spacePath`.
 - A read attachment serves planning and a write attachment serves applying; behaviour with
-  only one kind attached is *(unverified)*.
-- The external ID suffix for tasks, destroy runs and module tests *(unverified)*.
+  only one kind attached is *(unverified)* (C88).
+- The external ID suffix for tasks, destroy runs and module tests *(unverified)* (C81).
 - The AWS duration default when the API argument is omitted (1 hour per docs; Terraform
-  sends 900) *(unverified)* beyond the docs.
+  sends 900) *(unverified)* (C82) beyond the docs.
 - The exact AWS `RoleSessionName` on shared workers: run ID alone (AWS page) or
   `$runID@$stackID@$accountName` truncated to 64 characters (provider, and the self-hosted
-  first-setup page's mention of the account name) *(unverified)*.
-- The space an integration lands in when `space` is omitted on create *(unverified)*.
+  first-setup page's mention of the account name) *(unverified)* (C83).
+- The space an integration lands in when `space` is omitted on create *(unverified)* (C87).
 - Whether the `legacy` space ID carries a ULID suffix (the OIDC pages disagree)
-  *(unverified)*.
+  *(unverified)* (C94).
 - That SaaS serves the OIDC discovery document under the account URL (only the self-hosted
-  page names the path) [I].
-- `ARM_SUBSCRIPTION_ID` injection by the Azure integration *(unverified)*.
-- Whether worker-side assumption sets a session name or session tags *(unverified)*.
-- Whether the native AWS session tags are transitive *(unverified)*.
+  page names the path) [I] (C95).
+- `ARM_SUBSCRIPTION_ID` injection by the Azure integration *(unverified)* (C89).
+- Whether worker-side assumption sets a session name or session tags *(unverified)* (C84).
+- Whether the native AWS session tags are transitive *(unverified)* (C86).
 - Whether OIDC tokens are refreshed for long runs or reissued for the apply phase
-  *(unverified)*.
-- Whether parse runs receive an OIDC token *(unverified)*.
-- Whether testing runs carry `scope: read` (the Azure page implies so) *(unverified)*.
+  *(unverified)* (C90).
+- Whether parse runs receive an OIDC token *(unverified)* (C92).
+- Whether testing runs carry `scope: read` (the Azure page implies so) *(unverified)* (C93).
 - Which permission check governs integration attachment while the `STACK_*_INTEGRATION_*`
-  actions are marked disabled *(unverified)*.
+  actions are marked disabled *(unverified)* (C6).
 - That a null subject template restores the default, and that integration CRUD needs
   space admin (from the API shape and the setup pages).
 

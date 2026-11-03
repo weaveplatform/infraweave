@@ -36,8 +36,8 @@ outbox; everything another context must do as a result happens later, in that co
 own transaction, when the event bus delivers the event. The aggregate that matters most
 is `orchestration/domain/queue.StackQueue`: the stack's non-terminal runs, its blocker,
 its human lock and its policy lock key. Because the stack lock and the run state machine
-are one aggregate, every run transition of [report
-08](../reference/08-run-lifecycle.md#3-transitions) commits in one transaction with the
+are one aggregate, every run transition, report 08's 43 and decision 0008's T44 in the
+[run-transitions register](../../data/run-transitions.json), commits in one transaction with the
 lock it depends on, and nothing else is in that transaction.
 
 Contexts reach each other in two ways only: a synchronous call to another context's
@@ -372,7 +372,7 @@ internal/
 │   │                                        Limits.Check(account, name, n); Catalogue.FeatureOf(operationID);
 │   │                                        events.go (EntitlementChanged)
 │   ├── domain/
-│   │   ├── catalogue/                       Catalogue: capabilities, options and limits from catalogue.yaml,
+│   │   ├── catalogue/                       Catalogue: capabilities, options and limits from catalogue.gen.go,
 │   │   │                                    requirements, coverage of every operation and gated field
 │   │   ├── tier/                            Tier aggregate: a name, a feature set and limit values; data,
 │   │   │                                    not a ladder; Enterprise fixed and holding everything
@@ -390,7 +390,7 @@ internal/
 │   │   │                                    against the account limit
 │   │   └── seed/                            the five seeded tiers, installed once
 │   ├── infrastructure/
-│   │   ├── catalogue.yaml                   embedded; the one catalogue file of decision 0021
+│   │   ├── catalogue.gen.go                 decision 0021's catalogue, generated from docs/data/features.json
 │   │   └── persistence/{postgres,memory,persistencetest}/   tiers, tier_features, tier_limits,
 │   │                                        organization_entitlements, grants, account_limits, billing
 │   └── interfaces/
@@ -431,8 +431,9 @@ internal/
 │   ├── domain/
 │   │   ├── queue/                           StackQueue aggregate: non-terminal runs, blocker, human lock,
 │   │   │                                    policy lock key; every transition goes through it
-│   │   ├── run/                             Run entity, RunState machine (22 states, 43 transitions),
-│   │   │                                    RunType, Priority and tier, guards (canConfirm, canPromote)
+│   │   ├── run/                             Run entity, RunState machine (22 states; report 08's 43
+│   │   │                                    transitions and decision 0008's T44), RunType, Priority
+│   │   │                                    and tier, guards (canConfirm, canPromote)
 │   │   ├── review/                          RunReview value object, newest-per-reviewer rule
 │   │   ├── timer/                           the 2, 7 and 30 day rules as a domain service
 │   │   ├── schedule/                        ScheduledJob aggregate: run, task, delete (P16)
@@ -740,8 +741,9 @@ internal/orchestration/
 │   └── repository.go        Load(ctx, stack) with SELECT ... FOR UPDATE on stack_queues; Save
 ├── domain/run/
 │   ├── state.go             the 22 RunState values, terminal and passive flags
-│   ├── machine.go           allowed transitions T1 to T43 as a table, per run type
-│   ├── priority.go          presets and the seven pool tiers of report 08
+│   ├── machine.go           allowed transitions T1 to T44 as a table, per run type: report 08's 43
+│   │                        and decision 0008's T44, from docs/data/run-transitions.json
+│   ├── priority.go          presets and the seven priority levels of report 08
 │   └── run.go               Run entity: type, state, state version, commit, priority, workflow ID
 ├── domain/timer/rules.go    2, 7 and 30 day rules
 ├── application/
@@ -838,7 +840,7 @@ internal/governance/
 └── infrastructure/opa/
     ├── engine.go            implements application/port.Engine with github.com/open-policy-agent/opa/v1/rego
     ├── prepared.go          PrepareForEval per (policy ID, body hash, Rego version), shared across goroutines
-    ├── capabilities.go      the five disabled built-ins removed from ast.CapabilitiesForThisVersion()
+    ├── capabilities.go      the six disabled built-ins removed from ast.CapabilitiesForThisVersion()
     └── preamble/            per-type preamble modules, embedded
 ```
 
@@ -1654,7 +1656,7 @@ Scheduler process mode:
 8. `internal/sourcecontrol/application/routing/push.go`: per stack, builds a `governance/api.PushInput` and calls `Evaluator.Push`.
 9. `internal/governance/application/evaluate/push.go`: no push policy is attached, so the default policy runs: a changed file under the project root on a non-tracked branch gives `propose`. `PolicyEvaluated` and a receipt are stored in governance's transaction.
 10. `internal/sourcecontrol/application/routing/dedupe.go`: no run exists for this SHA and run type on the stack.
-11. `internal/orchestration/api.Runs.Trigger` into `orchestration/application/trigger/trigger.go`: takes the run specification from `stackconfig/api.Stacks.RunSpec`; no approval policy is attached.
+11. `internal/orchestration/api.Runs.Trigger` into `orchestration/application/trigger/trigger.go`: records the run's type, commit and target; the run specification is read at handover in step 16; no approval policy is attached.
 12. `internal/orchestration/domain/queue/queue.go`: `Enqueue` creates the `PROPOSED` run in `QUEUED` and moves it to `READY` in the same transaction (proposed runs take no stack lock); `RunCreated` and `RunStateChanged` go to the outbox; `AfterCommit` wakes the pool.
 13. `internal/sourcecontrol/interfaces/consumers/run.go`: `RunStateChanged` sets a pending check through `application/feedback/checks.go` and `infrastructure/github/checks.go`.
 
@@ -1680,7 +1682,7 @@ Scheduler process mode, consequences:
 ### A tracked run awaits approval and applies on a private worker
 
 1. `POST /stacks/{id}/runs` reaches `orchestration/interfaces/rest/runs.go` through the composed strict server; `identity/interfaces/middleware/authn.go` has set the principal.
-2. `internal/orchestration/application/trigger/trigger.go`: `identity/api.Decider.Can(TriggerRun, space)`; `RunSpec` snapshot.
+2. `internal/orchestration/application/trigger/trigger.go`: `identity/api.Decider.Can(TriggerRun, space)`; the run's type, commit and target are recorded, and the run specification is read at handover.
 3. `governance/api.Evaluator.Approval` at `QUEUED` approves.
 4. `internal/orchestration/domain/queue/queue.go`: `Enqueue` creates the `TRACKED` run; no other blocking run holds the stack, so the run takes the lock and moves to `READY`.
 5. `internal/execution/agent/launcher` on the customer's host polls with the private pool's credentials; `Dispatcher.Claim` gives `PREPARING`.
@@ -1767,7 +1769,7 @@ vocabulary.
 12. `internal/stackconfig/api/stacks.go` and `application/stacks/`: `CreateFromTemplate`, and the stack's nullable deployment reference.
 13. `internal/app/contexts.go`, `subscriptions.go`, `strict.go`: construct, subscribe,
     embed; hand the template surface to `expressions`.
-14. `internal/features/infrastructure/catalogue.yaml`: the `templates` and `blueprints` capabilities at Business, so every new operation has its feature.
+14. `docs/data/features.json`, and `internal/features/infrastructure/catalogue.gen.go` from it: the `templates` and `blueprints` capabilities at Business, so every new operation has its feature.
 15. `.golangci.yml`: two new rules (`templates-boundary`, `templates-domain`) and `internal/templates/api` added to the seventeen other boundary rules.
 16. `test/acceptance/features/templates_deployments.feature` and steps.
 
@@ -1845,9 +1847,8 @@ Placement choices settled in this file:
 - **Flows has its own spec, tables and projects**, reads Deploy events through the
   shared kernel's envelope, and calls Deploy through an outbound anticorruption layer.
 - **Persistence is per context**, one migration stream each, no foreign keys across
-  contexts; identifiers cross as kernel IDs. Decision 0005 describes one gap-free
-  stream in `internal/store/migrations`, so this option needs that decision to allow
-  per-context streams.
+  contexts; identifiers cross as kernel IDs. Decision 0005's named streams, one per
+  domain, are these streams, so the option needs no departure from it.
 - **The sealed formats sit in the kernel.** Decision 0013 has the runner seal
   workspaces and the launcher open specs with the same code the server uses, and rule 7
   keeps the agent away from `shared/crypt`, so the object and pool envelope formats are

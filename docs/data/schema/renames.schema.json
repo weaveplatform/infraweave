@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "renames.schema.json",
+  "title": "Reference names infraweave serves or reads under another name",
+  "description": "Decision 0001's rename table. An identifier row names one reference name and its replacement; TestUnitServedNames refuses the reference name in every served bundle. A concept row names a reference concept in words.",
+  "x-id-pattern": "RN-[0-9]{2}",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "schema/renames.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "reference", "infraweave"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"enum": ["identifier", "concept"]},
+          "schema": {
+            "description": "For an identifier: the component schema whose property or enum value is renamed. Absent, the name is renamed wherever it is served.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*$"
+          },
+          "reference": {
+            "description": "For an identifier, the reference name, where * stands for any run of characters; for a concept, markdown.",
+            "type": "string",
+            "minLength": 1
+          },
+          "infraweave": {"type": "string", "minLength": 1}
+        },
+        "if": {"properties": {"kind": {"const": "concept"}}},
+        "then": {"not": {"required": ["schema"]}}
+      }
+    }
+  }
+}

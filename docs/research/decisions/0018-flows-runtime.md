@@ -364,7 +364,10 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   returns this installation; `flowsIntegration` returns the built-in link,
   whose `accountID` and `accountName` name the caller's account where
   Spacelift's `organizationID` and `organizationName` name the Flows
-  organization (0001's rename table).
+  organization (0001's rename table). All six are gated by `flows-engine`,
+  so with Flows switched off or outside the entitlement they answer
+  `403 feature-disabled` or `403 feature-not-in-tier`, like every Flows
+  operation, rather than an empty result.
 - **Access control.** The four project roles of
   [section 9.1](../reference/23-flows.md#91-roles), and the account admin
   in place of its organization admin, are enforced in the API
@@ -484,7 +487,7 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   the `drifted` state (C240), Deploy block `kind` values (C239), the
   Flows MCP server's tool list (C231) and scope names (C232) follow
   infraweave's own definitions until captures exist
-  ([30, Flows](../reference/30-open-questions.md#flows-report-23)).
+  ([30, Flows](../reference/30-open-questions.md#captures-needed)).
 - Code placement (`internal/flows`, `internal/agent/flowsagent`,
   `pkg/flows/appsdk`, `api/proto/flows/app/v1/`) is indicative; decision
   0004 owns the layout.

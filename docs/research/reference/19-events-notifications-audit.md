@@ -38,14 +38,14 @@ entry of the policy contract, fetched 2026-10-28.
 |---|---|---|---|---|
 | Notification inbox | `Notification` records shown in the UI | internal errors (always) and notification policy `inbox` rules | nothing, or a notification policy | paid accounts **[D]** [notifications][d-notif] |
 | Notification policy routes | inbox entries, Slack messages, webhook requests, PR comments | run updates, module version updates, internal errors, worker usage | a `NOTIFICATION` policy in a space | Cloud tier or above **[D]** [datadog][d-dd]; the `NOTIFICATION_POLICIES` tier feature gates it [I] (by name; the value has no description **[G]**) |
-| Slack | channel messages, mentions, DMs; interactive confirm/discard | notification policy `slack` rules; Slack slash commands and buttons | account Slack integration (OAuth) | *(unverified)*: no tier stated on the page |
+| Slack | channel messages, mentions, DMs; interactive confirm/discard | notification policy `slack` rules; Slack slash commands and buttons | account Slack integration (OAuth) | *(unverified)* (C169): no tier stated on the page |
 | Microsoft Teams | adaptive cards posted by a Teams workflow | notification policy `webhook` rules | a named webhook plus a policy, packaged as a Terraform module | Cloud tier or above **[D]** [msteams][d-teams] |
 | Named webhooks | HTTP requests to a user endpoint | notification policy `webhook` rules | `NamedWebhooksIntegration` in a space | paid accounts **[D]** [webhooks][d-webhooks] |
 | Stack and module webhooks | one POST per run state change | every run state change on the stack or module | `WebhooksIntegration` on the stack or module | paid accounts **[D]** [webhooks][d-webhooks]; the `RUN_STATE_CHANGE_WEBHOOKS` tier feature gates it [I] (by name; the value has no description **[G]**) |
 | Audit trail | built-in log; one POST per audited action | every mutation that changes a resource; optionally run state changes | `AuditTrailWebhook` on the account | Enterprise plan **[D]** [audit trail][d-audit]; `AUDITING` tier feature **[G]** |
 | Datadog | metric series to Datadog's API | runs reaching a terminal state | a named webhook, a secret header and a notification policy (Terraform module) | Cloud tier or above **[D]** [datadog][d-dd] |
 | Prometheus exporter | `/metrics` scrape endpoint | Prometheus scrapes | a separate process with an API key | any account whose key can read the root space **[S]** [README][s-promex-readme] |
-| Usage data | CSV and JSON exports; usage reports to Spacelift | user request, or the self-hosted drain | the Usage page, spacectl, the CSV endpoint, `SPACELIFT_PUBLIC_API` | all accounts *(unverified)* |
+| Usage data | CSV and JSON exports; usage reports to Spacelift | user request, or the self-hosted drain | the Usage page, spacectl, the CSV endpoint, `SPACELIFT_PUBLIC_API` | all accounts *(unverified)* (C169) |
 
 ## 2. The notification inbox
 
@@ -93,7 +93,7 @@ into one notification rather than producing one row each [I] (from the field des
 The changelog and the worker usage page call the usage event a `WORKER_USAGE` notification **[RN]**
 [changelog 2026-09-04][rn] **[D]** [worker usage][d-wu], but `NotificationType` has no such value
 **[G]**. The policy input object is `worker_usage`; whether the resulting inbox entry carries type
-`ACCOUNT` is *(unverified)*.
+`ACCOUNT` is *(unverified)* (C170).
 
 ### Operations **[G]**
 
@@ -119,8 +119,8 @@ policy is evaluated; this section covers what it receives and what its rules pro
 |---|---|
 | Run updated | policies in the run's space, including those inherited from other spaces |
 | Internal error | policies in the root space, unless the error concerns a component whose space can be determined; then that space and the spaces it inherits from. Components are checked in the order stack, worker pool, AWS integration, policy |
-| Module version updated | *(unverified)*: presumably the module's space [I] (the input carries `module_version.module.space`) |
-| Worker usage | *(unverified)*: presumably the root space [I] (the event is account-wide) |
+| Module version updated | *(unverified)* (C171): presumably the module's space [I] (the input carries `module_version.module.space`) |
+| Worker usage | *(unverified)* (C171): presumably the root space [I] (the event is account-wide) |
 
 The policy also always verifies that its space can access whatever the evaluated action concerns
 **[D]** [notification policy][d-np].
@@ -131,7 +131,9 @@ The docs name the `NOTIFICATION` entry of
 `https://app.spacelift.io/.well-known/policy-contract.json` as the most current schema **[D]**
 [notification policy][d-np]. Where the page and the contract differ below, the contract wins, and the
 difference is stated. In the contract each evaluation carries exactly one event object: `run_updated`,
-`internal_error`, `module_version` and `worker_usage` exclude one another **[D]** [policy contract][d-contract].
+`internal_error`, `module_version` and `worker_usage` exclude one another **[D]** [policy contract][d-contract]. The contract is read from the
+network, not from a committed snapshot; whether it is pinned beside the introspection schema is
+product decision PD-14, which is open.
 
 | Top-level key | Present for | Content |
 |---|---|---|
@@ -157,7 +159,7 @@ difference is stated. In the contract each evaluation carries exactly one event 
 | `force_apply_mode` | `DISABLED`, `SINGLE` or `CASCADE` |
 | `promoted` | Whether the run was promoted from a proposed run |
 | `runtime_config` | Every hook list (`before_init` to `after_run`), `environment`, `project_root`, `runner_image`, `terraform_version`; the contract adds `git_sparse_checkout_paths` |
-| `policy_receipts[]` | `flags`, `name`, `outcome`, `type` of each evaluated policy. The page nests it under `run`; the contract puts it at `run_updated.policy_receipts` (null when the run has none), and Spacelift's Datadog module reads it there **[D]** [policy contract][d-contract] **[S]** [policy.rego.tpl][s-dd-rego] |
+| `policy_receipts[]` | `flags`, `name`, `outcome`, `type` of each evaluated policy. The page nests it under `run`; the contract puts it at `run_updated.policy_receipts` (null when the run has none), and Spacelift's Datadog module reads it there **[D]** [policy contract][d-contract] **[S]** [policy.rego.tpl][s-dd-rego]. Whether it also still appears under `run` is *(unverified)* (C184) |
 | `states_history[]` | `new_state`, `note`, `username` |
 | `trigger` | For runs started by a stack dependency: `run.id`, `stack.id` and a nested `trigger` for the next link up the chain; null otherwise |
 | `triggered_by` | Who or what triggered the run, or null |
@@ -196,7 +198,7 @@ carries `commit`, `created_at`, `id`, `latest`, `number`, `state` (`ACTIVE` or `
 | `inbox` | `title`, `body`, `severity` (all optional) | Creates an inbox notification |
 | `slack` | `channel_id` (required), `message`, `mention_users`, `mention_groups`, `thread_key` | Posts to a Slack channel |
 | `webhook` | `endpoint_id` (required; a named webhook's ID), `headers`, `payload`, `method` | Sends an HTTP request through a named webhook |
-| `pull_request` | `id` (an integer in the contract), `commit`, `branch`, `body`, `deduplication_key` (all optional); the contract adds a boolean `truncate_body` that the page does not describe **[D]** [policy contract][d-contract] | Comments on pull requests |
+| `pull_request` | `id` (an integer in the contract), `commit`, `branch`, `body`, `deduplication_key` (all optional); the contract adds a boolean `truncate_body` that the page does not describe **[D]** [policy contract][d-contract]; what it does is *(unverified)* (C174) | Comments on pull requests |
 
 Behaviour of each route:
 - **Slack threading.** Without `thread_key`, Spacelift sends one default message per run and edits it on
@@ -213,7 +215,7 @@ Behaviour of each route:
 - **Log placeholders.** In any JSON value of a webhook `payload`, and in a pull request `body`, the
   strings `spacelift::logs::initializing`, `spacelift::logs::preparing`, `spacelift::logs::planning` and
   `spacelift::logs::applying` are replaced with that phase's logs. Placeholders in JSON keys are not
-  replaced **[D]** [notification policy][d-np]. Size limits on the substituted logs are *(unverified)*.
+  replaced **[D]** [notification policy][d-np]. Size limits on the substituted logs are *(unverified)* (C172).
 - **Pull request targeting.** `id` names the PR directly; `commit` asks Spacelift to find the PR for a
   SHA, which can fail with GitHub Enterprise Server or forks; `branch` targets every PR whose base is
   that branch. `run.commit.pull_request_id` exists only under some push policy configurations (report
@@ -224,7 +226,7 @@ Behaviour of each route:
 - **Internal errors.** Inbox delivery of internal errors happens without any policy **[D]**
   [notification policy][d-np].
 
-Which VCS providers support the `pull_request` route is *(unverified)*; the docs' larger example says
+Which VCS providers support the `pull_request` route is *(unverified)* (C173); the docs' larger example says
 it targets GitHub. Report 11 covers PR comments made by the VCS integrations themselves.
 
 ## 4. Slack
@@ -322,7 +324,9 @@ account when the workspace is disconnected or replaced. The federation key in po
 `channelNames: [String!]!`, the channels subscribed to a stack or module's events **[G]**. The
 `/spacelift subscribe|unsubscribe|help` slash command is the subscription path [I] (from the manifest's
 usage hint). The docs do not describe this path and send users to notification policies **[D]**
-[slack][d-slack]; what a subscription sends is *(unverified)*.
+[slack][d-slack]; what a subscription sends is *(unverified)* (C175). Whether infraweave serves this
+legacy path, and per-stack webhooks beside named webhooks (section 7), is product decision PD-02,
+answered by decision 0021: both are in scope and served.
 
 ## 5. Microsoft Teams
 
@@ -402,7 +406,7 @@ deleting and recreating the webhook **[D]** [webhooks][d-webhooks]. The schema's
 carries `secret` **[G]**, and the provider sends a new secret through `namedWebhooksIntegrationUpdate`
 in place, sending none when the secret is unchanged so that the stored one survives **[S]**
 [provider L199-L207][s-tf-named-update]. The higher sources disagree; whether the API honours a new
-secret on update is *(unverified)*. For stack webhooks and the audit trail webhook the provider forces
+secret on update is *(unverified)* (C176). For stack webhooks and the audit trail webhook the provider forces
 replacement on a secret change, which agrees with the docs **[S]** [resource_webhook.go][s-tf-webhook]
 [resource_audit_trail_webhook.go][s-tf-audit].
 
@@ -421,7 +425,7 @@ The Terraform resource `spacelift_named_webhook_secret_header` manages one heade
 value means a new header resource **[S]**
 [resource_named_webhook_secret_header.go][s-tf-header]. The Datadog module uses one to carry
 `DD-API-KEY` (section 9). A policy rule's `headers` add to these per request **[D]**
-[notification policy][d-np]; which wins on a name clash is *(unverified)*.
+[notification policy][d-np]; which wins on a name clash is *(unverified)* (C177).
 
 ### Delivery, signatures and retries
 
@@ -439,7 +443,7 @@ value means a new header resource **[S]**
 Not documented: retry back-off and timing, the request timeout, whether network errors and 429 count as
 retryable, what counts as a "failure" for auto-disable, the `Content-Type` and `User-Agent` headers, the
 signature's prefix for `X-Signature` (`sha1=` by analogy with GitHub [I]), and how long SaaS keeps
-deliveries. All are *(unverified)*. With a policy `payload`, the signature covers the body actually sent [I]
+deliveries. All are *(unverified)* (C178). With a policy `payload`, the signature covers the body actually sent [I]
 (from the GitHub mechanism the docs cite).
 
 ### Delivery records **[G]**
@@ -464,8 +468,8 @@ single webhook or audit trail delivery").
 |---|---|---|
 | Run state change | `account` (subdomain), `state` (run state), `stateVersion` (ordinal of the state, for ordering out-of-order deliveries), `timestamp` (Unix seconds of the transition), `run` (`id`, `branch`, `commit` {`authorLogin`, `authorName`, `hash`, `message`, `timestamp`, `url`}, `createdAt`, `delta` {`added`, `changed`, `deleted`, `resources`}, `triggeredBy`, `type`), `stack` (`id`, `name`, `description`, `labels`) | **[D]** [webhooks][d-webhooks] |
 | Internal error | `title`, `body`, `error`, `severity` (`INFO`, `WARNING`, `ERROR`), `account` | **[D]** [webhooks][d-webhooks] |
-| Module version | not documented | *(unverified)* |
-| Worker usage | not documented; the docs' examples always build a custom `payload` | *(unverified)* |
+| Module version | not documented | *(unverified)* (C179) |
+| Worker usage | not documented; the docs' examples always build a custom `payload` | *(unverified)* (C179) |
 
 The default run payload is camelCase and uses Unix seconds, while the policy input is snake_case with
 nanoseconds; the two are distinct documents [I] (from comparing the two pages).
@@ -539,7 +543,7 @@ The `action` field has no enum in the schema **[G]**. Action names seen in the d
 
 Login failures are also audited on self-hosted since v3.2.0 **[RN]** [self-hosted
 changelog][d-sh-changelog]. The names follow `<resource>.<verb>` in snake case [I] (from these six). The full list of action strings is
-*(unverified)*. The RBAC `Action` enum (report 14) is a separate permission vocabulary.
+*(unverified)* (C180). The RBAC `Action` enum (report 14) is a separate permission vocabulary.
 
 ### Resource types and metadata **[G]**
 
@@ -666,7 +670,7 @@ Behaviour:
   bug that cleared it **[RN]** [self-hosted changelog][d-sh-changelog].
 - **Signatures.** `X-Signature` and `X-Signature-256` as for named webhooks **[D]** [audit trail][d-audit].
 - **Failures.** Deliveries are retried on failure **[D]** [audit trail][d-audit]; the schedule is
-  *(unverified)*, and so is whether the docs' unconditional retry or the `retryOnFailure` flag governs.
+  *(unverified)* (C181), and so is whether the docs' unconditional retry or the `retryOnFailure` flag governs.
 - **Custom headers.** Added on self-hosted in v2.2.0 **[RN]** [self-hosted changelog][d-sh-changelog].
 
 Payload fields **[D]** [audit trail][d-audit]:
@@ -684,7 +688,7 @@ Payload fields **[D]** [audit trail][d-audit]:
 
 The payload differs from `AuditTrailEntry`: it uses `actor` as a single string and `timestamp` in
 milliseconds, while the entry has a structured `actor` and `createdAt` in seconds [I] (from comparing
-the docs sample with the schema). The shape of run events sent under `includeRuns` is *(unverified)*,
+the docs sample with the schema). The shape of run events sent under `includeRuns` is *(unverified)* (C182),
 and is presumably the run webhook payload of section 6 [I]. Spacelift publishes a reference receiver
 that verifies the signature and writes events to S3 through Kinesis Firehose
 ([terraform-aws-spacelift-events-collector][s-collector-repo], no licence; cited, not quoted).
@@ -774,7 +778,7 @@ cannot null the others' data [collector.go L1-L9][s-promex-collector].
 
 | Metric | Labels | Collector | GraphQL source | Notes |
 |---|---|---|---|---|
-| `spacelift_public_worker_pool_runs_pending` | | `publicworkerpool` | `publicWorkerPool.pendingRuns` | Zero on self-hosted ([publicworkerpool.go][s-promex-pub]) |
+| `spacelift_public_worker_pool_runs_pending` | | `publicworkerpool` | `publicWorkerPool.pendingRuns` | Zero on self-hosted, which has no public worker pool (C262, resolved) ([publicworkerpool.go][s-promex-pub]) |
 | `spacelift_public_worker_pool_workers_busy` | | `publicworkerpool` | `publicWorkerPool.busyWorkers` | |
 | `spacelift_public_worker_pool_parallelism` | | `publicworkerpool` | `publicWorkerPool.parallelism` | |
 | `spacelift_worker_pool_runs_pending` | `worker_pool_id`, `worker_pool_name` | `workerpools` | `workerPools[].pendingRuns` | ([workerpools.go][s-promex-wp]) |
@@ -878,7 +882,8 @@ How the worker usage figures are computed **[D]** [worker usage][d-wu]:
 | spacectl | `spacectl profile usage-csv` with `--since` and `--until` (`YYYY-MM-DD`; defaults 30 days ago and today), `--aspect` (`worker-count` default, or `run-minutes`), `--group-by` (`run-type` default, or `run-state`; sent only for `run-minutes`), `--file` (created exclusively, mode 0600) | **[S]** [flags.go L83-L170][s-spacectl-flags] |
 
 The HTTP query parameters are `since`, `until`, `aspect` and, for run minutes, `groupBy` **[S]**
-[usage_view_csv_command.go L85-L96][s-spacectl-csv]. The CSV columns, as the docs' PostgreSQL load
+[usage_view_csv_command.go L85-L96][s-spacectl-csv]; only this client half is known, and what the
+server accepts and returns beyond it is *(unverified)* (C23). The CSV columns, as the docs' PostgreSQL load
 script lays them out **[D]** [usage][d-usage]:
 
 | Aspect | Columns |
@@ -918,7 +923,7 @@ The script at `3ed9f8feef07` **[S]** [export.py][s-usage-export]:
 - **Flags.** `--skip-tls-verification` disables certificate checks.
 
 The JSON envelope carries `account.ulid`, `account.license_id` and `time_range.start`/`end` [I] (from
-the fields the script reads); the full table list is *(unverified)*.
+the fields the script reads); the full table list is *(unverified)* (C183).
 
 ## 12. Tier gates
 
@@ -935,6 +940,8 @@ The docs say webhooks and the inbox need a paid account, notification-policy int
 Teams) need Cloud tier or above, and the audit trail needs the Enterprise plan **[D]**
 [webhooks][d-webhooks] [notifications][d-notif] [datadog][d-dd] [audit trail][d-audit]. Self-hosted
 pages carry no tier notices **[D]** [self-hosted webhooks][d-sh-webhooks]. Report 26 maps tiers.
+Whether infraweave gates features by these values is product decision PD-05, answered by decision
+0021: infraweave keeps its own feature catalogue and tiers, with billing off by default.
 
 ## 13. Operations and Terraform resources
 
@@ -969,7 +976,7 @@ Terraform provider v1.57.0 **[S]** (schema in `api/reference/spacelift/terraform
 |---|---|---|
 | `spacelift_named_webhook` (resource) | `name`, `space_id`, `endpoint`, `enabled` (required); `labels` (set), `retry_on_failure` (default `false`), `secret` (deprecated), `secret_wo` with `secret_wo_version` (write-only, Terraform/OpenTofu 1.11+) | `namedWebhooksIntegrationCreate`, `...Update`, `...Delete`, `namedWebhooksIntegration` |
 | `spacelift_named_webhook` (data) | `webhook_id`; returns the fields plus `secret_header_keys` | `namedWebhooksIntegration` |
-| `spacelift_named_webhook_secret_header` | `webhook_id`, `key`, `value` (deprecated) or `value_wo` with `value_wo_version`; all force replacement | `namedWebhooksIntegrationSetHeaders`, `...DeleteHeaders` |
+| `spacelift_named_webhook_secret_header` | `webhook_id`, `key`, `value` (deprecated) or `value_wo` with `value_wo_version`; all but `value_wo` force replacement | `namedWebhooksIntegrationSetHeaders`, `...DeleteHeaders` |
 | `spacelift_webhook` (resource and data) | `endpoint`; exactly one of `stack_id`, `module_id`; `enabled` (default `true`), `retry_on_failure`, `secret` or `secret_wo` (force replacement) | `webhooksIntegrationCreate`, `...Update`, `...Delete` |
 | `spacelift_audit_trail_webhook` | `endpoint`, `enabled` (required); `include_runs`, `retry_on_failure`, `custom_headers` (map); `secret` or `secret_wo` required, forcing replacement | `auditTrailSetWebhook`, `auditTrailDeleteWebhook`, `auditTrailWebhook` |
 
@@ -1014,31 +1021,32 @@ The provider has no resource for Slack, notifications or managed user group inte
 
 - Repeated notifications collapse by `groupingKey` [I] (field descriptions only).
 - Module version notifications use the module's space and worker usage notifications use the root
-  space for policy selection *(unverified)*.
-- Default webhook payloads for module version and worker usage events *(unverified)*.
-- Which `NotificationType` a worker usage inbox entry carries *(unverified)*.
-- Whether a named webhook's secret can be changed by update *(unverified)*; the docs and the provider
+  space for policy selection *(unverified)* (C171).
+- Default webhook payloads for module version and worker usage events *(unverified)* (C179).
+- Which `NotificationType` a worker usage inbox entry carries *(unverified)* (C170).
+- Whether a named webhook's secret can be changed by update *(unverified)* (C176); the docs and the provider
   disagree.
 - Retry schedule, request timeout, retryable statuses, failure counting for auto-disable, request
-  `Content-Type` and `User-Agent`, and delivery-log retention on SaaS *(unverified)*.
+  `Content-Type` and `User-Agent`, and delivery-log retention on SaaS *(unverified)* (C178).
 - The `X-Signature` prefix `sha1=` [I] (GitHub's convention, which the docs cite).
-- Precedence between secret headers and policy `headers` on the same name *(unverified)*.
-- Size limits on `spacelift::logs::*` substitution *(unverified)*.
-- Which VCS providers accept the `pull_request` route *(unverified)*.
-- What the legacy per-stack Slack subscription sends *(unverified)*.
+- Precedence between secret headers and policy `headers` on the same name *(unverified)* (C177).
+- Size limits on `spacelift::logs::*` substitution *(unverified)* (C172).
+- Which VCS providers accept the `pull_request` route *(unverified)* (C173).
+- What the legacy per-stack Slack subscription sends *(unverified)* (C175).
 - The full set of audit `action` strings and the `actor` prefixes for API keys and other identity
-  sources *(unverified)*.
+  sources *(unverified)* (C180).
 - The audit webhook's retry schedule and the role of `retryOnFailure` against the docs' unconditional
-  retry *(unverified)*.
-- The shape of run events sent to the audit webhook under `includeRuns` *(unverified)*.
-- The self-hosted usage export's table list and envelope *(unverified)*.
-- What the contract-only `pull_request` rule field `truncate_body` does *(unverified)*.
+  retry *(unverified)* (C181).
+- The shape of run events sent to the audit webhook under `includeRuns` *(unverified)* (C182).
+- The self-hosted usage export's table list and envelope *(unverified)* (C183).
+- What the server side of `GET /usageanalytics/csv` accepts and returns *(unverified)* (C23).
+- What the contract-only `pull_request` rule field `truncate_body` does *(unverified)* (C174).
 - Whether `policy_receipts` also still appears under `run_updated.run`, as the docs page shows, or only
-  at `run_updated` as the contract and the Datadog module have it *(unverified)*.
+  at `run_updated` as the contract and the Datadog module have it *(unverified)* (C184).
 - That both signatures are HMACs keyed by the secret [I] (GitHub's mechanism, and the example
   receiver for SHA-256).
 - The pairing of `AuditTrailResourceType` values with metadata types [I] (by name).
-- The tier for the Slack integration and for usage export *(unverified)*.
+- The tier for the Slack integration and for usage export *(unverified)* (C169).
 
 ## Versions at the research baseline
 

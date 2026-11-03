@@ -101,11 +101,11 @@ the migration mutations in sections 5 and 6.8 change it (report 07, section 3).
 |---|---|---|---|---|---|
 | `Terraform` | `terraform` | Downloaded per run, verified and mounted read-only at `/bin/terraform` [D] tf-version | `terraform plan` [D] tf-workflow | `terraform apply` of the saved plan file [D] tf-workflow | `public.ecr.aws/spacelift/runner-terraform:latest` [D] docker |
 | `OpenTofu` | `opentofu` | Downloaded per run, verified and mounted; not baked into the image [D] opentofu | `tofu plan` [D] tofu-workflow | `tofu apply` of the saved plan file [D] tofu-workflow | `public.ecr.aws/spacelift/runner-opentofu:latest` [D] opentofu |
-| `Terragrunt` | `terragrunt` | `terragrunt` at the resolved `terragruntVersion`; how that binary reaches the container is not documented *(unverified)*. The underlying OpenTofu or Terraform is downloaded and pointed to by `TG_TFPATH` [D] tg-tool | `terragrunt plan`, or `run-all` [D] tg-run-all | A fresh plan and apply unless `skipReplan` [D] tg-limits [G] | runner-terraform, the default for every vendor except native OpenTofu [D] docker; it carries `terragrunt` v0.93.3 [S] [rt-df] |
+| `Terragrunt` | `terragrunt` | `terragrunt` at the resolved `terragruntVersion`; how that binary reaches the container is not documented *(unverified)* (C185). The underlying OpenTofu or Terraform is downloaded and pointed to by `TG_TFPATH` [D] tg-tool | `terragrunt plan`, or `run-all` [D] tg-run-all | A fresh plan and apply unless `skipReplan` [D] tg-limits [G] | runner-terraform, the default for every vendor except native OpenTofu [D] docker; it carries `terragrunt` v0.93.3 [S] [rt-df] |
 | `Pulumi` | `pulumi` | The runner image; the docs state that Pulumi versions follow the Docker image [D] runtime-config, and `StackConfigVendorPulumi` has only `loginURL` and `stackName` [G] | `pulumi preview --refresh --diff --show-replacement-steps` [D] pulumi | `pulumi up --refresh --diff --show-replacement-steps` [D] pulumi | runner-terraform by the general default [D] docker, which has no Pulumi CLI [S] [rt-df]; the docs tell users to set a `runner-pulumi-<language>` image [D] pulumi-lang |
 | `CloudFormation` | `cloudformation` | AWS APIs; no IaC binary | Uploads templates to the template bucket and builds a change set [D] cfn-reference [D] plan-policy | Applies the change and streams stack events [D] cfn-start | runner-terraform, the general default [D] docker |
 | `Kubernetes` | `kubernetes` | `kubectl` downloaded at the chosen `kubectlVersion` [D] create-stack | `kubectl apply --dry-run=server` or `=client` [D] k8s-start | `kubectl apply` then `kubectl rollout status` [D] k8s-workflow | runner-terraform, the general default [D] docker; the getting-started guide asks for a custom image with `kubectl` [D] k8s-start |
-| `Ansible` | `ansible` | The runner image | The playbook in Ansible check mode [D] ansible-reference | The playbook [D] ansible-reference | `public.ecr.aws/spacelift/runner-ansible:latest`, the launcher's default for Ansible runs [D] worker-pools |
+| `Ansible` | `ansible` | The runner image | The playbook in Ansible check mode [D] ansible-reference | The playbook [D] ansible-reference | `public.ecr.aws/spacelift/runner-ansible:latest`, the launcher's default for Ansible runs, set by `SPACELIFT_DEFAULT_ANSIBLE_RUNNER_IMAGE` [D] worker-pools |
 
 Each vendor input carries the settings below. Types, defaults and Terraform
 attribute names for every field are tabulated in report 07, sections 3.1 to 3.7.
@@ -319,7 +319,7 @@ with the same two limits as Terraform [D] tofu-workflow.
 | `CONCISE_PLAN` | `-concise` on plan | 1.7 | |
 | `CONCISE` | `-concise` on apply and destroy | 1.10 | |
 | `STATE_ENCRYPTION` | State encryption | 1.7 | Report 16, section 9 |
-| `OTEL_TRACING` | OpenTelemetry tracing | not in the docs table | *(unverified)*; the OpenTofu Tracing plugin (report 25) collects traces [S] [plugin-tracing] |
+| `OTEL_TRACING` | OpenTelemetry tracing | not in the docs table | *(unverified)* (C186); the OpenTofu Tracing plugin (report 25) collects traces [S] [plugin-tracing] |
 | `CPU_PROFILING` | `TOFU_CPU_PROFILE` | 1.11 | |
 | `EPHEMERAL_RESOURCES` | Ephemeral resources and values | 1.11 | |
 | `JSON_INTO` | Structured logs written by `-json-into` | 1.12 | |
@@ -350,7 +350,7 @@ profiling [D] tofu-migration.
 
 The schema says concise applies to plan, apply and refresh [G]; the docs say
 plan, apply and destroy [D] opentofu. The docs describe the built-in commands
-and are the higher source for behaviour; the disagreement is recorded here.
+and are the higher source for behaviour; the disagreement is recorded here (C31).
 
 ## 5. Native OpenTofu migration
 
@@ -426,7 +426,7 @@ oldest blocking runs up to 10, and `totalCount`; only on `TO_MIGRATE` or
 | Provider | After migration `spacelift_stack` should use an `opentofu` block (`version`, `workspace`, `use_smart_sanitization`, `external_state_access`, `workflow_tool`, nested `logging { concise }`); with the legacy attributes it plans no change but warns that the stack is native OpenTofu | [D] tofu-migration |
 | Runtime configuration | Replace `terraform_version` or `opentofu_version` with an `opentofu` block; keep `terraform_version` under individual Terraform stacks rather than `stack_defaults` in mixed repositories | [D] tofu-migration |
 
-Which API the single-stack banner calls is *(unverified)*. The schema
+Which API the single-stack banner calls is *(unverified)* (C187). The schema
 describes `stackMigrateVendor` as migrating between `terragrunt`-labelled
 Terraform stacks and native Terragrunt only [G], so a one-stack
 `openTofuMigrate` is the likelier path [I] from that description.
@@ -478,7 +478,7 @@ resets the tool version in state [D] tg-reference.
 The schema's description of `skipReplanWhenRunAll` says that stacks without
 run-all reuse the plan by default [G], which contradicts the limitations page's
 statement that plan files are never used in apply [D] tg-limits. The schema is
-the higher source for the field, but which behaviour holds for non-run-all stacks without `skipReplan` is *(unverified)*.
+the higher source for the field, but which behaviour holds for non-run-all stacks without `skipReplan` is *(unverified)* (C188).
 `skipReplan` arrived for run-all on 2026-02-20 and for every Terragrunt stack on
 2026-05-25; `skipReplanWhenRunAll` is deprecated [RN].
 
@@ -537,7 +537,7 @@ stacks of other vendors [D] runtime-config.
 | Explicit stacks without run-all: no consistent way to inject the backend | [D] tg-limits |
 | Mocked outputs can reach plan policies | [D] tg-limits |
 | `run_cmd` works only with `--terragrunt-quiet` | [D] tg-limits |
-| Resource deletion on stack deletion: the stack page says native Terragrunt does not support it [D] create-stack; the changelog says it was implemented on 2026-02-26 [RN]. Report 07 records the docs statement. The changelog describes the later change, so deletion is probably supported, but this is *(unverified)*. | [D] [RN] |
+| Resource deletion on stack deletion: the stack page says native Terragrunt does not support it [D] create-stack; the changelog says it was implemented on 2026-02-26 [RN]. Report 07 records the docs statement. The changelog describes the later change, so deletion is probably supported, but this is *(unverified)* (C189). | [D] [RN] |
 | Debug logging: `TERRAGRUNT_LOG_LEVEL` (`info` default, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`) or `--terragrunt-log-level debug` through `TF_CLI_ARGS` | [D] tf-terragrunt |
 
 ### 6.7 Choosing the tool binary for legacy Terragrunt
@@ -586,7 +586,7 @@ The Pulumi page carries a feature-preview notice [D] pulumi.
 
 The docs order (Pulumi login before pre-initialization hooks) differs from the
 general rule that `before_init` hooks run first [D] run; which order the worker
-uses is *(unverified)*.
+uses is *(unverified)* (C190).
 
 | Setting or variable | Behaviour | Source |
 |---|---|---|
@@ -750,13 +750,13 @@ policy that reads `third_party_metadata.infracost` [S] [plugin-infracost]. A
 `<key>.custom.spacelift.json` file is merged at
 `third_party_metadata.custom.<key>` [D] plan-policy, so the plugin's file would
 land at `custom.infracost`, not at the path its policy reads [I] from comparing
-the two; the actual path is *(unverified)*.
+the two; the actual path is *(unverified)* (C191).
 
 ## 13. Resource sanitization
 
 | Mode | Behaviour | Source |
 |---|---|---|
-| Default | Every string value in plan policy input and the resources view is replaced by a hash. The policy page describes it as the last 8 bytes of a SHA-256 hash; the examples show 8 hexadecimal characters, which is 4 bytes, so the exact truncation is *(unverified)* | [D] sanitization; [D] plan-policy |
+| Default | Every string value in plan policy input and the resources view is replaced by a hash. The policy page describes it as the last 8 bytes of a SHA-256 hash; the examples show 8 hexadecimal characters, which is 4 bytes, so the exact truncation is *(unverified)* (C192) | [D] sanitization; [D] plan-policy |
 | Smart (`useSmartSanitization`) | Only values Terraform or OpenTofu marks sensitive are hashed; needs Terraform 1.0.1 or later and fails on older versions. On by default for new OpenTofu stacks. | [D] sanitization; [D] opentofu |
 | Disabled | Label `feature:disable_resource_sanitization`; future runs are not sanitized | [D] sanitization |
 | Policy helper | `sanitized(string)` hashes a constant for comparison; needed under default mode, and under smart mode only for sensitive values | [D] sanitization |
@@ -846,14 +846,14 @@ not that it behaves identically [I].
 
 - Neither the Kubernetes nor the CloudFormation page names a runner image; the
   runner-terraform default comes from the general Docker page [D] docker.
-- Pulumi destroy runs `pulumi destroy` [I] from `SPACELIFT_PULUMI_CLI_ARGS_destroy`.
+- Pulumi destroy runs `pulumi destroy` [I] from `SPACELIFT_PULUMI_CLI_ARGS_destroy` (C193).
 - `TERRAFORM_FOSS` stops at Terraform 1.5.7 because later releases are not
   open source [I] from the schema's description of the value and the liftoff
   docs' cutoff.
 - A one-stack `openTofuMigrate` backs the single-stack banner [I] from
   `stackMigrateVendor` being described as Terragrunt-only.
-- CloudFormation apply executes the change set built in planning [I].
-- Ansible runs `ansible-playbook` [I].
+- CloudFormation apply executes the change set built in planning [I] (C193).
+- Ansible runs `ansible-playbook` [I] (C193).
 - Terragrunt init runs `terragrunt init` [I] from `TG_CLI_ARGS_init`.
 - `StackMigrateVendorAllResult.left` implies repeated calls [I].
 - Unverified: whether Pulumi login precedes `before_init` hooks; the

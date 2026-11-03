@@ -187,7 +187,7 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 
 - **Source.** The action catalogue is the `Action` enum of the committed
   introspection snapshot (150 values). `specref` generates
-  `internal/authz/actions_gen.go` from it, and a hand-maintained
+  `internal/authz/actions.gen.go` from it, and a hand-maintained
   `internal/authz/actions.yaml` gives each value its subject, legacy fallback
   (`reader`, `writer`, `admin`), and `disabled` and `deprecated` flags, from
   report 14's table
@@ -360,7 +360,7 @@ so that member sees an empty list.
 ### Superseded interfaces
 
 - **Access policies** are never evaluated. Whether the API stores or refuses
-  `ACCESS` policies is decision 0021's (P2), which does not serve the
+  `ACCESS` policies is decision 0021's (PD-02), which does not serve the
   type; they grant nothing,
   and `User.cannotEvaluateAccessPolicies` is always `true`.
 - **The stack `administrative` flag** is accepted and reads back `false`. An
@@ -436,9 +436,10 @@ Departures from Spacelift, for the plan's deviations register:
   installation per organization.
 - **Staleness bound.** A lost invalidation message leaves a replica at most 5
   seconds behind.
-- **Unverified facts** this record decides around: what space admins below
-  the top space may edit with the creation setting off, and the login conflict above
-  (report 14, *(unverified)* markers). Each is a constant or a table row to
+- **Unverified facts** this record decides around: the slugs Spacelift gives
+  the worker pool controller and drift detection system roles, what space
+  admins below the top space may edit with the creation setting off, and the
+  login conflict above (report 14, *(unverified)* markers). Each is a constant or a table row to
   change.
 - **Out of scope.** Flows-side permissions for `flows_project` bindings are
   decision 0018's; tier gates on custom roles or login policies are 0021's;

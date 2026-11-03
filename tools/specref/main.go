@@ -2,7 +2,8 @@
 // api/reference/spacelift: fetch refreshes the pinned upstream snapshots,
 // generate derives the OpenAPI spec and coverage report from them, check
 // fails when the committed output is stale, and inventory writes or checks
-// report 29, the data model inventory. Logic lives in internal/specref.
+// the GraphQL inventory register and report 29, which summarises it. Logic
+// lives in internal/specref.
 package main
 
 import (
@@ -49,6 +50,7 @@ type config struct {
 	Timeout         string `mapstructure:"timeout"`
 	Tag             string `mapstructure:"tag"`
 	Out             string `mapstructure:"out"`
+	Register        string `mapstructure:"register"`
 	Force           bool   `mapstructure:"force"`
 	Check           bool   `mapstructure:"check"`
 }
@@ -199,17 +201,18 @@ func newRoot() *cobra.Command {
 	sf.Bool("force", false, "overwrite an existing fragment")
 	inventory := &cobra.Command{
 		Use:   "inventory",
-		Short: "Write report 29, the data model inventory, from the introspection snapshot",
+		Short: "Write the GraphQL inventory register and report 29 from the introspection snapshot",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			c, err := decode(v)
 			if err != nil {
 				return err
 			}
+			out := specref.InventoryOutputs{Report: c.Out, Register: c.Register}
 			if c.Check {
-				return specref.CheckInventory(c.Dir, c.Out)
+				return specref.CheckInventory(c.Dir, out)
 			}
-			return specref.InventoryFile(c.Dir, c.Out)
+			return specref.InventoryFile(c.Dir, out)
 		},
 	}
 	inf := inventory.Flags()
@@ -218,7 +221,12 @@ func newRoot() *cobra.Command {
 		filepath.Join("docs", "research", "reference", "29-data-model-inventory.md"),
 		"report to write",
 	)
-	inf.Bool("check", false, "fail if the report is stale instead of writing it")
+	inf.String(
+		"register",
+		filepath.Join("docs", "data", "graphql-inventory.json"),
+		"register to write",
+	)
+	inf.Bool("check", false, "fail if the report or register is stale instead of writing them")
 	root.AddCommand(fetch, generate, check, scaffold, inventory)
 	return root
 }

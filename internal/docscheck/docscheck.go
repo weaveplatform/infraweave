@@ -14,22 +14,28 @@
 //     and docs/research/decisions/README.md lists it with that status;
 //   - every docs/….md path named in the repository's source, configuration
 //     and documentation exists;
-//   - every tag of the Spacelift reference spec appears in report 26, so the
-//     scope decision accounts for every area of the API;
-//   - every report with an *(unverified)* claim is linked from report 30,
-//     the register of open questions;
+//   - every tag of the Spacelift reference spec has a tag: record in
+//     docs/data/capabilities.json, and every tag: record is a tag of the
+//     spec, so the scope accounts for every area of the API;
+//     a record of docs/data/open-questions.json, the register of open
+//     questions, which in turn makes the report cite that record's id;
 //   - every numbered architecture option has the same outline as the first,
 //     so the comparison in docs/research/architecture-options/README.md
 //     compares like with like;
 //   - every phase of docs/implementation/plan.md states its decisions,
-//     dependencies, tasks and exit criteria, and every phase the capability
-//     roadmap names is a phase of the plan;
+//     dependencies, tasks and exit criteria, and every phase the features,
+//     capabilities and supersessions registers name is a phase of the plan;
 //   - GLOSSARY.md, infraweave's own language, defines each term once, with
-//     a definition and the words to avoid.
+//     a definition and the words to avoid;
+//   - every register under docs/data matches its schema in docs/data/schema,
+//     its record ids are unique, its links resolve, every id a document or
+//     register cites exists, and the files and phrases its records name
+//     agree with it (registers.go).
 package docscheck
 
 import (
 	"cmp"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -51,9 +57,12 @@ const (
 	decisionsIdx = decisionsDir + "/README.md"
 	optionsDir   = "docs/research/architecture-options"
 	planDoc      = "docs/implementation/plan.md"
-	roadmapDoc   = "docs/implementation/capability-roadmap.md"
-	scopeReport  = reportsDir + "/26-scope-and-tiers.md"
+	featuresReg  = "docs/data/features.json"
+	capsReg      = "docs/data/capabilities.json"
+	supersReg    = "docs/data/supersessions.json"
+	tagPrefix    = "tag:"
 	openReport   = reportsDir + "/30-open-questions.md"
+	openRegister = "docs/data/open-questions.json"
 	referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
 	unverified   = "*(unverified)*"
 )
@@ -95,6 +104,10 @@ func Check(repo fs.FS) ([]Finding, error) {
 	}
 	c.unverified()
 	c.options()
+	// The plan and tag checks read the registers, so they load first.
+	if err := c.registers(); err != nil {
+		return nil, fmt.Errorf("docscheck: %w", err)
+	}
 	c.plan()
 	if err := c.tags(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
@@ -112,6 +125,7 @@ func Check(repo fs.FS) ([]Finding, error) {
 type checker struct {
 	repo  fs.FS
 	docs  map[string]*doc
+	regs  []*register
 	found []Finding
 }
 
@@ -347,11 +361,24 @@ func index(d *doc) map[string]indexEntry {
 	return out
 }
 
-// tags checks that report 26 names every tag of the reference spec. Without
-// report 26 there is no scope to check, and without the spec no tags.
+// reg is the loaded register at p, or nil when it is absent or failed its
+// schema, which registers() has already reported.
+func (c *checker) reg(p string) *register {
+	for _, r := range c.regs {
+		if r.path == p {
+			return r
+		}
+	}
+	return nil
+}
+
+// tags checks that the capabilities register holds a tag: record for every
+// tag of the reference spec and none for a tag the spec lacks, so a tag the
+// weekly reference update adds or renames cannot go unplaced. Without the
+// register there is no scope to check, and without the spec no tags.
 func (c *checker) tags() error {
-	scope, ok := c.docs[scopeReport]
-	if !ok {
+	reg := c.reg(capsReg)
+	if reg == nil {
 		return nil
 	}
 	b, err := fs.ReadFile(c.repo, referenceAPI)
@@ -370,35 +397,62 @@ func (c *checker) tags() error {
 		c.add(referenceAPI, 1, "cannot read its tags: %v", err)
 		return nil
 	}
-	text := strings.Join(scope.lines, "\n")
+	inSpec := map[string]bool{}
 	for _, t := range spec.Tags {
-		if !strings.Contains(text, t.Name) {
-			c.add(scope.path, 1, "tag %q of %s does not appear", t.Name, referenceAPI)
+		inSpec[t.Name] = true
+		if !reg.ids[tagPrefix+t.Name] {
+			c.add(
+				reg.path,
+				1,
+				"has no record %s%s for tag %q of %s",
+				tagPrefix,
+				t.Name,
+				t.Name,
+				referenceAPI,
+			)
+		}
+	}
+	for _, rec := range reg.records {
+		id, _ := rec["id"].(string)
+		if name, ok := strings.CutPrefix(id, tagPrefix); ok && !inSpec[name] {
+			c.add(
+				reg.path,
+				reg.line(id),
+				"record %s names a tag %s does not have",
+				id,
+				referenceAPI,
+			)
 		}
 	}
 	return nil
 }
 
-// unverified checks that report 30 links every report that marks a claim
-// *(unverified)*, so no open question is recorded only where it was found.
+// unverified checks that an open-questions record lists every report that
+// marks a claim *(unverified)*, so no open question is recorded only where it
+// was found. Report 30 is exempt: it defines the marker rather than using it.
+// Without the register there is nothing to check against, and a register
+// that does not decode is a finding of registers().
 func (c *checker) unverified() {
-	open, ok := c.docs[openReport]
-	if !ok {
+	b, err := fs.ReadFile(c.repo, openRegister)
+	if err != nil {
 		return
 	}
-	linked := map[string]bool{}
-	for i, l := range open.lines {
-		if open.code[i] {
-			continue
-		}
-		for _, m := range mdLink.FindAllStringSubmatch(codeSpan.ReplaceAllString(l, ""), -1) {
-			if u, err := url.Parse(m[1]); err == nil && u.Scheme == "" && u.Path != "" {
-				linked[path.Join(path.Dir(open.path), u.Path)] = true
-			}
+	var reg struct {
+		Records []struct {
+			Reports []string `json:"reports"`
+		} `json:"records"`
+	}
+	if json.Unmarshal(b, &reg) != nil {
+		return
+	}
+	listed := map[string]bool{}
+	for _, r := range reg.Records {
+		for _, p := range r.Reports {
+			listed[p] = true
 		}
 	}
 	for _, d := range c.sorted() {
-		if d == open || !reportName.MatchString(d.path) || linked[d.path] {
+		if d.path == openReport || !reportName.MatchString(d.path) || listed[d.path] {
 			continue
 		}
 		for i, l := range d.lines {
@@ -407,9 +461,9 @@ func (c *checker) unverified() {
 				c.add(
 					d.path,
 					i+1,
-					"report marks a claim %s but %s does not link it",
+					"report marks a claim %s but no record of %s lists it",
 					unverified,
-					path.Base(openReport),
+					openRegister,
 				)
 				break
 			}
@@ -540,9 +594,17 @@ var (
 // its blockers or a way to tell that it is finished.
 var phaseParts = []string{"Decisions:", "**Depends on:**", "**Tasks**", "**Exit criteria**"}
 
+// phaseMembers says where each register assigns phases: "" for the whole
+// record, or the one member that holds infraweave's plan. A capability's
+// spacelift member keeps report 26's wording, which names the research's
+// provisional phases rather than the plan's, so it is not read.
+var phaseMembers = []struct{ reg, member string }{
+	{featuresReg, ""}, {capsReg, "infraweave"}, {supersReg, ""},
+}
+
 // plan checks each phase of the implementation plan for its parts, and
-// that the capability roadmap assigns capabilities only to phases the plan
-// has.
+// that the registers assign features, reference rows and replacements only
+// to phases the plan has.
 func (c *checker) plan() {
 	d, ok := c.docs[planDoc]
 	if !ok {
@@ -584,18 +646,33 @@ func (c *checker) plan() {
 	if id != "" {
 		check()
 	}
-	r, ok := c.docs[roadmapDoc]
-	if !ok {
-		return
-	}
-	for i, l := range r.lines {
-		// Phases are assigned in table rows; prose may name a phase range.
-		if r.code[i] || !strings.HasPrefix(l, "|") {
+	for _, pm := range phaseMembers {
+		r := c.reg(pm.reg)
+		if r == nil {
 			continue
 		}
-		for _, p := range phaseRef.FindAllString(codeSpan.ReplaceAllString(l, ""), -1) {
-			if !phases[p] {
-				c.add(r.path, i+1, "names phase %s, which %s does not have", p, path.Base(planDoc))
+		for _, rec := range r.records {
+			id, _ := rec["id"].(string)
+			var v any = r.text(rec)
+			if pm.member != "" {
+				v = rec[pm.member]
+			}
+			var texts []string
+			stringsOf(v, &texts)
+			for _, s := range texts {
+				// A phase in a code span is a name, such as a file's, not an assignment.
+				for _, ph := range phaseRef.FindAllString(codeSpan.ReplaceAllString(s, ""), -1) {
+					if !phases[ph] {
+						c.add(
+							r.path,
+							r.line(id),
+							"%s names phase %s, which %s does not have",
+							id,
+							ph,
+							path.Base(planDoc),
+						)
+					}
+				}
 			}
 		}
 	}

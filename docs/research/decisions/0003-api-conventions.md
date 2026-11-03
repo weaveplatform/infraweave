@@ -109,18 +109,13 @@ change to retrofit once clients exist:
 
 ### Problem types
 
-Each problem `type` is `urn:infraweave:problem:<slug>`. The complete list of
-slugs is the errors table of
-[0022](0022-api-errors-and-update-semantics.md), which repeats these five
-unchanged; this table holds the slugs this record defines.
-
-| Slug | Status | Meaning |
-|---|---|---|
-| `idempotency-key-reuse` | 422 | The key was used with a different request |
-| `idempotency-key-in-flight` | 409 | The first request with this key hasn't finished |
-| `rate-limited` | 429 | The caller's bucket for this cost class is empty |
-| `api-disabled` | 503 | The operator has disabled the API for this caller |
-| `invalid-cursor` | 400 | The cursor doesn't decode or belongs to another list |
+Each problem `type` is `urn:infraweave:problem:<slug>`. This record defines
+five slugs: `idempotency-key-reuse` (422), `idempotency-key-in-flight` (409),
+`rate-limited` (429), `api-disabled` (503) and `invalid-cursor` (400). The
+problem register, [`docs/data/problems.json`](../../data/problems.json),
+holds them with the rest of
+[0022](0022-api-errors-and-update-semantics.md)'s list, each with its
+status, title and meaning.
 
 A URN rather than a URL: RFC 9457 lets clients match on the `type` without
 dereferencing it, and infraweave has no documentation host to resolve one to.
@@ -201,9 +196,9 @@ The scaffolder adds them to each operation and records each addition in
 ## Verification
 
 - `api/deploy_test.go` checks that every component named above exists in the
-  bundled spec, that every problem response's example `type` is a slug from
-  0022's complete list with the status it gives, and that every slug in the
-  table above is used by a response and listed in 0022 with the same status.
+  bundled spec, that every problem response's example `type` is a slug of
+  the problem register with its status and title, and that a response uses
+  every slug the register gives to this record.
 - Server behaviour (replay, 409, 422, 429, the operator switch, cursor
   round-trips) is verified by unit and Gherkin acceptance tests in the
   server's middleware packages (#15).

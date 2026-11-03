@@ -39,9 +39,9 @@ script, then enriched from the docs.
 | `PROPOSED` | Change preview or drift detection | A preview of what the code on a branch would change; reports to VCS ([proposed](https://docs.spacelift.io/concepts/run/proposed)) [D] | A push or PR event on a branch other than the tracked branch, under the default or a custom push policy's `propose` rule ([push policy](https://docs.spacelift.io/concepts/policy/push-policy)) [D]; a drift detection schedule ([drift detection](https://docs.spacelift.io/concepts/stack/drift-detection)) [D]; `runTrigger(runType: PROPOSED)` [G]; `runProposeLocalWorkspace` (local preview) [G]; the **Preview** action on a GitHub check ([GitHub](https://docs.spacelift.io/integrations/source-control/github)) [D]; `runResourceCreate(proposed: true)` [G]; the `spacelift_run` resource with `proposed = true`, which calls `runTrigger(runType: PROPOSED)` ([`resource_run.go`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_run.go#L109)) [S] | No. Only tracked runs and tasks take the lock ([run](https://docs.spacelift.io/concepts/run)) [D] |
 | `TRACKED` | A deployment candidate | A deployment that can apply the plan ([tracked](https://docs.spacelift.io/concepts/run/tracked)) [D] | A push to the tracked branch, or a push policy `track` rule [D]; manual trigger by an admin or stack writer [D]; `runTrigger` (default type) and `runTriggerBatch` [G]; trigger policies ([trigger policy](https://docs.spacelift.io/concepts/policy/trigger-policy)) [D]; stack dependencies ([stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies)) [D]; promotion of a proposed run (`runPromote`) [G]; drift reconciliation [D]; scheduled runs (`stackScheduledRunCreate`) [G]; the **Deploy** action on a GitHub check [D]; a PR comment that a push policy maps to `track` ([PR comments](https://docs.spacelift.io/concepts/run/pull-request-comments)) [D] | Yes [D] |
 | `TASK` | One-off run started by the user | A custom command run after initialization, wrapped in `sh -c` ([task](https://docs.spacelift.io/concepts/run/task)) [D] | `taskCreate(command, skipInitialization)` [G]; scheduled tasks (`stackScheduledTaskCreate`) [G]; the `spacelift_task` resource [S] | Yes; tasks never run concurrently with each other or with a tracked run [D]. Tasks need a paid account ([task](https://docs.spacelift.io/concepts/run/task)) [D] |
-| `TESTING` | Test case for a module | A module test case: like an autodeployed tracked run followed by a destroy ([test case](https://docs.spacelift.io/concepts/run/test-case)) [D]. A test case marked `negative: true` in the module's `.spacelift/config.yml` is expected to fail ([module registry](https://docs.spacelift.io/vendors/terraform/module-registry)) [D], exposed as `Run.expectFailure` [G]; which final state a negative test that fails reaches is *(unverified)* | Commits to a module's repository; the module runs its test cases on each commit ([module registry](https://docs.spacelift.io/vendors/terraform/module-registry)) [D]; report 15 | *(unverified)* |
+| `TESTING` | Test case for a module | A module test case: like an autodeployed tracked run followed by a destroy ([test case](https://docs.spacelift.io/concepts/run/test-case)) [D]. A test case marked `negative: true` in the module's `.spacelift/config.yml` is expected to fail ([module registry](https://docs.spacelift.io/vendors/terraform/module-registry)) [D], exposed as `Run.expectFailure` [G]; which final state a negative test that fails reaches is *(unverified)* (C45) | Commits to a module's repository; the module runs its test cases on each commit ([module registry](https://docs.spacelift.io/vendors/terraform/module-registry)) [D]; report 15 | *(unverified)* (C35) |
 | `DESTROY` | Resource destruction job | Runs the vendor's destroy command when a stack is deleted with its resources ([workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool)) [D] | `stackDelete(destroyResources: true)` [G]; a scheduled stack deletion that removes resources ([scheduling](https://docs.spacelift.io/concepts/stack/scheduling)) [D]; the `spacelift_stack_destructor` resource on `terraform destroy` [D] [S] | Yes; the scheduling order names destroy runs as blocking [D] |
-| `PARSE` | Source code parsing job | Listed only as a possible value of `TF_VAR_spacelift_run_type` ([environment](https://docs.spacelift.io/concepts/configuration/environment)) [D] | Not documented *(unverified)* | *(unverified)* |
+| `PARSE` | Source code parsing job | Listed only as a possible value of `TF_VAR_spacelift_run_type` ([environment](https://docs.spacelift.io/concepts/configuration/environment)) [D] | Not documented *(unverified)* (C33) | *(unverified)* (C33) |
 
 The docs group tracked runs, destroy runs and tasks as **blocking** runs, and
 proposed and drift detection runs as non-blocking, for scheduling
@@ -108,8 +108,8 @@ no run is ongoing [G].
 
 ### State diagram
 
-Each edge carries its ID from the transition table below, and the marker of
-its strongest evidence. Terminal states lead to the end marker.
+Each edge carries its ID in the [transition table](#transition-table) and
+the marker of its strongest evidence. Terminal states lead to the end marker.
 
 ```mermaid
 stateDiagram-v2
@@ -177,63 +177,37 @@ follow `DISCARDED`, `FAILED`, `STOPPED` or `FINISHED`
 
 ### Transition table
 
-| ID | From | To | Run types | Cause | Evidence |
-|---|---|---|---|---|---|
-| T1 | (new) | `QUEUED` | All | A run is created by any route in section 1. A queued run waits for the stack lock, approval, upstream stacks or external dependencies | [D] [run](https://docs.spacelift.io/concepts/run#queued); [G] `runTrigger`, `taskCreate`, `runPromote` |
-| T2 | `QUEUED` | `READY` | All | Nothing blocks the run any more: no blocking run holds the stack lock, approval policies approved, upstream dependency runs finished, every external dependency is `FINISHED` or `SKIPPED` | [D] [run](https://docs.spacelift.io/concepts/run#queued), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy) |
-| T3 | `QUEUED` | `DISCARDED` | All | A user discards the queued run | [D] [run](https://docs.spacelift.io/concepts/run#queued) |
-| T4 | `QUEUED` | `CANCELED` | All | `runCancel` on a run that has not started [G]; a newer run's push policy `cancel` rule (same run type only, best effort) [D] [push policy](https://docs.spacelift.io/concepts/policy/push-policy#canceling-in-progress-runs); cancellation of a run pending approval [D]; proposed and test runs still queued or ready after two days [D] [RN 2026-09-01]; any run still waiting after 30 days [D] [RN 2026-09-17]; downstream runs when a dependency chain breaks [D] [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies#dependencies-overview) | [G] [D] [RN] |
-| T5 | `QUEUED` | `FAILED` | All | An approval policy `reject` rule fires: the rules section says the run fails at once [D], while the review walkthrough on the same page describes **Reject** as canceling the run [D], so `CANCELED` is possible and the target is *(unverified)*; an external dependency is marked `FAILED` [D] | [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies) |
-| T6 | `QUEUED` | `SKIPPED` | `TRACKED` | A dependent stack's run whose referenced upstream outputs did not change, unless `Trigger always` is set; also the documented example of runs after a failed upstream run | [D] [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies) |
-| T7 | `READY` | `PREPARING` | All | A worker in the stack's pool becomes available | [D] [run](https://docs.spacelift.io/concepts/run#ready) |
-| T8 | `READY` | `DISCARDED` | All | A user discards the ready run, including the bulk **Discard** on a worker pool queue | [D] [run](https://docs.spacelift.io/concepts/run#ready), [bulk actions](https://docs.spacelift.io/product/bulk-actions) |
-| T9 | `READY` | `CANCELED` | All | No worker picks the run up: two days for proposed and test runs, seven days for tracked runs, tasks and destroy runs; a push policy `cancel`; the 30-day rule | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01] |
-| T10 | `PREPARING` | `INITIALIZING` | All | The worker pulls the runner image and starts the container | [D] [run](https://docs.spacelift.io/concepts/run#preparing) |
-| T11 | `PREPARING` | `FAILED` | All | The handover between the server and the worker fails | [D] [run](https://docs.spacelift.io/concepts/run#preparing) |
-| T12 | `INITIALIZING` | `PLANNING` | `PROPOSED`, `TRACKED`, `TESTING` | Initialization succeeds; the next state depends on the run type | [D] [run](https://docs.spacelift.io/concepts/run#initializing), [proposed](https://docs.spacelift.io/concepts/run/proposed#planning) |
-| T13 | `INITIALIZING` | `PERFORMING` | `TASK` | Initialization succeeds. With `skipInitialization` the vendor initialization does not run; whether the run then still passes through `INITIALIZING` or goes from `PREPARING` straight to `PERFORMING` is *(unverified)* | [D] [task](https://docs.spacelift.io/concepts/run/task#skipping-initialization); [G] `taskCreate` |
-| T14 | `INITIALIZING` | `DESTROYING` | `DESTROY` | Initialization succeeds and the destroy command runs | [I] from the `DESTROYING` description [G], the `destroy` workflow command used when a stack is deleted [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool), and the `before_destroy` hook being used during stack destruction [D] [stack settings](https://docs.spacelift.io/concepts/stack/stack-settings#customizing-workflow). Whether a destroy run plans and waits for confirmation first is *(unverified)* |
-| T15 | `INITIALIZING` | `FAILED` | All | A before-init hook or vendor initialization fails | [D] [run](https://docs.spacelift.io/concepts/run#initializing) |
-| T16 | `INITIALIZING` | `STOPPED` | All that reach `INITIALIZING`; a task cannot be stopped once it is `PERFORMING` [D] | A user sends a stop signal (`runStop`), which the worker may honour | [D] [run](https://docs.spacelift.io/concepts/run#stopped); [G] `runStop` |
-| T17 | `PLANNING` | `FINISHED` | `PROPOSED`; `TRACKED` | A proposed run plans successfully with no approval policy hold; a tracked run's plan has no changes to resources or outputs (a no-op), unless force apply is set | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria), [tracked](https://docs.spacelift.io/concepts/run/tracked#handling-no-op-changes); [G] `ForceApplyMode` |
-| T18 | `PLANNING` | `FAILED` | `PROPOSED`, `TRACKED`, `TESTING` | Invalid code, provider API errors, a plan policy `deny`, or a worker crash | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria) |
-| T19 | `PLANNING` | `STOPPED` | `PROPOSED`, `TRACKED` | A user stops the run; Spacelift stops a proposed run when a newer commit is pushed to its branch | [D] [run](https://docs.spacelift.io/concepts/run#stopped), [GitHub](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations) |
-| T20 | `PLANNING` | `UNCONFIRMED` | `TRACKED` | The plan has changes and either autodeploy is off, a plan policy warns, or the stack is locked (locking disables autodeploy). The worker encrypts the workspace, uploads it to object storage and leaves the run | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [creating a stack](https://docs.spacelift.io/concepts/stack/creating-a-stack#lock-a-stack-in-spacelift) |
-| T21 | `PLANNING` | `APPLYING` | `TRACKED`, `TESTING` | Autodeploy is on and no plan policy warns; a module test case always proceeds as if autodeployed. No second handover happens | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#approval-flow), [test case](https://docs.spacelift.io/concepts/run/test-case) |
-| T22 | `PLANNING` | `PENDING_REVIEW` | `PROPOSED` | A plan policy returns a warning and approval policies are attached | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review) |
-| T23 | `PENDING_REVIEW` | `FINISHED` | `PROPOSED` | Every attached approval policy approves | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review) |
-| T24 | `PENDING_REVIEW` | `FAILED` | `PROPOSED` | An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5) | [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules) |
-| T25 | `PENDING_REVIEW` | `CANCELED` | `PROPOSED` | 30 days after creation | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review), [run](https://docs.spacelift.io/concepts/run#automatic-termination) |
-| T26 | `UNCONFIRMED` | `CONFIRMED` | `TRACKED` | A user confirms (`runConfirm`), only after approval policies approve | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#review-a-run); [G] `runConfirm` |
-| T27 | `UNCONFIRMED` | `DISCARDED` | `TRACKED` | A user discards (`runDiscard`, `runDiscardAll`); seven days without change; the 30-day rule | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard` |
-| T28 | `UNCONFIRMED` | `REPLAN_REQUESTED` | `TRACKED` | A user picks resources from the plan and requests a targeted replan (`runTargetedReplan(targets)`) | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#targeted-replan); [G] `runTargetedReplan`, `REPLAN_REQUESTED` |
-| T29 | `UNCONFIRMED` | `FAILED` | `TRACKED` | An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5) | [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules) |
-| T30 | `REPLAN_REQUESTED` | `PREPARING_REPLAN` | `TRACKED` | The scheduler picks the run up and a worker restores the saved workspace | [G] state descriptions; order [I] from them |
-| T31 | `REPLAN_REQUESTED` | `FAILED` | `TRACKED` | Seven days without change: the saved workspace is kept for seven days only | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01] |
-| T32 | `PREPARING_REPLAN` | `PLANNING` | `TRACKED` | The replan executes `plan` with the selected targets | [I] from the `.Targets` plan template parameter, which the workflow tool fills "during targeted replans" [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool#how-does-it-work), and from `RunStateTransition.stateVersion`, which lets a state recur in one run [G] |
-| T33 | `CONFIRMED` | `PREPARING_APPLY` | `TRACKED` | A worker picks the confirmed run up; a second handover starts | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying); [G] |
-| T34 | `CONFIRMED` | `FAILED` | `TRACKED` | Seven days without change, or the 30-day rule | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01] |
-| T35 | `PREPARING_APPLY` | `APPLYING` | `TRACKED` | The handover succeeds | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying) |
-| T36 | `PREPARING_APPLY` | `FAILED` | `TRACKED` | The handover fails, for example the worker disappears | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying) |
-| T37 | `APPLYING` | `FINISHED` | `TRACKED` | The apply succeeds, or `SPACELIFT_SKIP_APPLYING=true` skips it | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#success-criteria) |
-| T38 | `APPLYING` | `FAILED` | `TRACKED` | The apply fails | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#success-criteria) |
-| T39 | `APPLYING` | `DESTROYING` | `TESTING` | Always, whether the apply succeeded or failed | [D] [test case](https://docs.spacelift.io/concepts/run/test-case) |
-| T40 | `DESTROYING` | `FINISHED` | `TESTING`, `DESTROY` | The destroy succeeds and, for a test case, every earlier phase succeeded | [D] [test case](https://docs.spacelift.io/concepts/run/test-case#success-criteria) |
-| T41 | `DESTROYING` | `FAILED` | `TESTING`, `DESTROY` | The destroy fails, or a test case's apply had failed | [D] [test case](https://docs.spacelift.io/concepts/run/test-case#success-criteria) |
-| T42 | `PERFORMING` | `FINISHED` | `TASK` | The command exits 0 | [D] [task](https://docs.spacelift.io/concepts/run/task#performing-a-task) |
-| T43 | `PERFORMING` | `FAILED` | `TASK` | The command exits non-zero | [D] [task](https://docs.spacelift.io/concepts/run/task#performing-a-task) |
+The transitions are records of the run-transitions register,
+[`docs/data/run-transitions.json`](../../data/run-transitions.json). Each
+record names the state the run leaves (none for T1, which creates the run),
+the state it enters, the run types that take the edge, the cause, and the
+evidence with the markers above. T1 to T43 are the 43 edges the sources
+describe for Spacelift, and this report is their source. T44, the failed
+handover in `PREPARING_REPLAN`, is the edge no source describes (see the
+implied transitions below); decision
+[0008](../decisions/0008-run-execution-and-worker-protocol.md#the-state-machine-is-the-authority)
+adds it as the analogue of T11 and T36, and its record names 0008 as its
+source. The state diagram above draws T1 to T43 only.
+
+Three edges rest on inference rather than a statement: T14, T30 and T32,
+each with its basis in its record. T5, T24 and T29 give an approval policy
+`reject` as `FAILED`, while the approval page's walkthrough describes
+**Reject** as canceling the run, so their target is *(unverified)*. T13
+leaves open whether a task with `skipInitialization` still passes through
+`INITIALIZING`, and T14 whether a destroy run plans and waits for
+confirmation first.
 
 Transitions the sources imply but do not pin to a target state:
 
 | Situation | Likely target | Status |
 |---|---|---|
-| A push policy `cancel` rule names a run that is awaiting confirmation (`in_progress` includes unconfirmed runs) | `CANCELED` or `DISCARDED` | *(unverified)* |
-| `runKill` sends SIGKILL to a run in progress | `FAILED` or `STOPPED` | *(unverified)* |
-| The launcher kills a job that produced no logs for `SPACELIFT_LAUNCHER_LOGS_TIMEOUT` (default 7 minutes) or ran past `SPACELIFT_LAUNCHER_RUN_TIMEOUT` (default 70 minutes) ([worker pools](https://docs.spacelift.io/concepts/worker-pools)) [D] | `FAILED` | *(unverified)* |
+| A push policy `cancel` rule names a run that is awaiting confirmation (`in_progress` includes unconfirmed runs) | `CANCELED` or `DISCARDED` | *(unverified)* (C37) |
+| `runKill` sends SIGKILL to a run in progress | `FAILED` or `STOPPED` | *(unverified)* (C36) |
+| The launcher kills a job that produced no logs for `SPACELIFT_LAUNCHER_LOGS_TIMEOUT` (default 7 minutes) or ran past `SPACELIFT_LAUNCHER_RUN_TIMEOUT` (default 70 minutes) ([worker pools](https://docs.spacelift.io/concepts/worker-pools)) [D] | `FAILED` | *(unverified)* (C39) |
 | A worker abandons a run mid-plan; the 30-day rule then fails it ([run](https://docs.spacelift.io/concepts/run#automatic-termination)) [D] | `FAILED` | Documented for the 30-day sweep only |
-| A drift detection run on a pool whose drift runs are disabled is created failed, with an explanatory note ([drift detection](https://docs.spacelift.io/concepts/stack/drift-detection#drift-detection-run-limits)) [D] | `FAILED`, possibly without passing `QUEUED` | Whether it is created directly in `FAILED` is *(unverified)* |
-| The handover in `PREPARING_REPLAN` fails, as T11 and T36 do for the other preparing states | `FAILED` | *(unverified)*; no source describes it |
-| A run in a broken dependency chain | `CANCELED` (prose) or `SKIPPED` (worked example) | The [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies) page states both [D]; `Run.triggeredRuns` excludes runs "in the Skipped state" [G], so `SKIPPED` is real; which one a failed upstream produces is *(unverified)* |
+| A drift detection run on a pool whose drift runs are disabled is created failed, with an explanatory note ([drift detection](https://docs.spacelift.io/concepts/stack/drift-detection#drift-detection-run-limits)) [D] | `FAILED`, possibly without passing `QUEUED` | Whether it is created directly in `FAILED` is *(unverified)* (C43) |
+| The handover in `PREPARING_REPLAN` fails, as T11 and T36 do for the other preparing states | `FAILED` | *(unverified)* (C44); no source describes it. Decision 0008 takes it as T44 |
+| A run in a broken dependency chain | `CANCELED` (prose) or `SKIPPED` (worked example) | The [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies) page states both [D]; `Run.triggeredRuns` excludes runs "in the Skipped state" [G], so `SKIPPED` is real; which one a failed upstream produces is *(unverified)* (C38) |
 
 ### Per-type paths
 
@@ -245,7 +219,7 @@ Transitions the sources imply but do not pin to a target state:
 | `TASK` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `PERFORMING` → `FINISHED` | `PERFORMING` cannot be stopped [D] |
 | `TESTING` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `PLANNING` → `APPLYING` → `DESTROYING` → `FINISHED` | `SPACELIFT_SKIP_DESTROYING=true` skips the destroy phase [D] |
 | `DESTROY` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `DESTROYING` → `FINISHED` | [I]; see T14 |
-| `PARSE` | Not documented | *(unverified)* |
+| `PARSE` | Not documented | *(unverified)* (C33) |
 
 ### Timers
 
@@ -284,7 +258,7 @@ changing [I], from the run page listing them as separate rules.
 | VCS event limit | An account can cap runs created per VCS event, up to 500 | [D] [run](https://docs.spacelift.io/concepts/run#limit-runs); [G] `vcsEventTriggeredRunsLimit` |
 | Event deduplication | Runs created by push and PR events for one stack are deduplicated on commit SHA plus run type; a `/spacelift` PR comment yielding `propose` bypasses deduplication | [D] [push policy](https://docs.spacelift.io/concepts/policy/push-policy#deduplicating-events), [PR comments](https://docs.spacelift.io/concepts/run/pull-request-comments) |
 | Workflow grouping | `Run.workflowId` is shared by every run in one chain (dependency fan-out, trigger policies, promotion); a standalone run's `workflowId` is its own ID | [G] |
-| Drift detection limits | A private pool can cap concurrent drift runs or disable them. Over the cap, further drift runs are skipped until running ones finish; with drift runs disabled, failed runs carrying an explanatory note are created for the record. Whether "skipped" means the `SKIPPED` state or no run at all is *(unverified)* | [D] [drift detection](https://docs.spacelift.io/concepts/stack/drift-detection#drift-detection-run-limits) |
+| Drift detection limits | A private pool can cap concurrent drift runs or disable them. Over the cap, further drift runs are skipped until running ones finish; with drift runs disabled, failed runs carrying an explanatory note are created for the record. Whether "skipped" means the `SKIPPED` state or no run at all is *(unverified)* (C43) | [D] [drift detection](https://docs.spacelift.io/concepts/stack/drift-detection#drift-detection-run-limits) |
 
 ### Priority
 
@@ -387,9 +361,9 @@ Plugins also run at phase boundaries such as `before_init`, `after_plan` and
 | Confirm | `runConfirm(stack, run?, note)` | `UNCONFIRMED`, once approval policies approve | `CONFIRMED` | Confirm run | Without `run`, confirms the blocker [G]; `Run.canConfirm` and `Run.confirmBlocker` say whether and why not [G] |
 | Review | `runReview(stack, run?, decision, note)` | `QUEUED`, `UNCONFIRMED`, `PENDING_REVIEW` when approval policies apply | A `RunReview`; approval policies re-evaluate | Review run | `RunReviewDecision` is `APPROVE` or `REJECT`; only a reviewer's newest review counts [G] [D] |
 | Targeted replan | `runTargetedReplan(stack, run, targets)` | `UNCONFIRMED` | `REPLAN_REQUESTED` | Replan targeted run | Business tier and above [D]. The schema and Bruno say it sets the state to `PENDING_PLAN`, a value that does not exist in `RunState` [G] [B] |
-| Stop | `runStop(stack, run, note, state)` | In progress: `INITIALIZING`, `PLANNING` | `STOPPED`; the worker may ignore the signal | Stop run / Stop blocking run | `CONFIRMED` and `PERFORMING` cannot be stopped [D]; the purpose of the optional `state` argument is *(unverified)* |
-| Kill | `runKill(stack, run, note, state)` | In progress, after a stop that did not end the process | SIGKILL to the process | Kill run / Kill blocking run | [G] [B]; resulting state *(unverified)* |
-| Retry | `runRetry(stack, run)` | A finished run (`Run.canRetry`, `Run.retryBlocker`) | Returns a `Run` | Retry run / Retry blocking run | Schema and Bruno say "a PR run"; spacectl calls it "Retry a failed run" [S]; whether it creates a new run or reuses the ID is *(unverified)*; a retry never triggers dependent stacks [D] |
+| Stop | `runStop(stack, run, note, state)` | In progress: `INITIALIZING`, `PLANNING` | `STOPPED`; the worker may ignore the signal | Stop run / Stop blocking run | `CONFIRMED` and `PERFORMING` cannot be stopped [D]; the purpose of the optional `state` argument is *(unverified)* (C36) |
+| Kill | `runKill(stack, run, note, state)` | In progress, after a stop that did not end the process | SIGKILL to the process | Kill run / Kill blocking run | [G] [B]; resulting state *(unverified)* (C36) |
+| Retry | `runRetry(stack, run)` | A finished run (`Run.canRetry`, `Run.retryBlocker`) | Returns a `Run` | Retry run / Retry blocking run | Schema and Bruno say "a PR run"; spacectl calls it "Retry a failed run" [S]; whether it creates a new run or reuses the ID is *(unverified)* (C10); a retry never triggers dependent stacks [D] |
 | Promote | `runPromote(stack, run)` | A `PROPOSED` run on a commit newer than the stack's current commit, with promotion allowed (`Run.canPromote`, `Run.promoteBlocker`) [G] [D] | A new `TRACKED` run on the same commit | Promote run | Section 7 |
 | Prioritize | `runPrioritySet(stack, run, preset)` | Non-terminal, private pool | `priorityPreset` changes | Prioritize run | Section 4 |
 | Comment | `runComment(stack, run, body)` | Any | A `RunComment` (Markdown body, username, timestamp) | Comment on run | Comments on the run in Spacelift, not on the PR [G] |
@@ -459,8 +433,8 @@ needs the Starter+ tier ([ignored triggers](https://docs.spacelift.io/concepts/r
 |---|---|---|
 | `NO_AFFECTED_FILES_IN_PROJECT_ROOT` | The change is outside the project root (and project globs) | [I] from the name |
 | `TAGS_IGNORED_BY_DEFAULT` | A tag was pushed | [I] from the name |
-| `DISABLED_BY_LABEL` | The default push policy is disabled and no custom push policy is attached | [I]; the label that disables the default policy is not documented *(unverified)* |
-| `CUSTOM_POLICY` | Custom push policies evaluated and ignored the commit | [I]; the split between this and the next value is *(unverified)* |
+| `DISABLED_BY_LABEL` | The default push policy is disabled and no custom push policy is attached | [I]; the label that disables the default policy is not documented *(unverified)* (C46) |
+| `CUSTOM_POLICY` | Custom push policies evaluated and ignored the commit | [I]; the split between this and the next value is *(unverified)* (C46) |
 | `CUSTOM_POLICY_NO_TRIGGER` | As above, where the policy produced no trigger at all | [I] |
 
 A `RunIgnoredTrigger` carries `id`, `createdAt`, `reasonType`, `commit` and
@@ -578,7 +552,8 @@ and `finished` [G].
 
 - A run state machine with all 22 `RunState` values on the wire, of which 20
   are reachable, and the 43 transitions above, including the replan loop and
-  the second handover after confirmation.
+  the second handover after confirmation, plus an edge for a failed handover
+  in `PREPARING_REPLAN`, which decision 0008 adds as T44.
 - Run types `PROPOSED`, `TRACKED`, `TASK`, `TESTING` and `DESTROY` with
   their distinct paths, and a decision on `PARSE`, which no source documents.
 - A per-stack exclusive lock for blocking runs, a human lock that excludes
@@ -606,7 +581,7 @@ and `finished` [G].
 - **[I]** `DESTROY` runs go `INITIALIZING` → `DESTROYING` (T14), from the
   `DESTROYING` description, the workflow tool's `destroy` command and the
   `before_destroy` hook's use during stack destruction. Whether a destroy run
-  plans or asks for confirmation first is *(unverified)*.
+  plans or asks for confirmation first is *(unverified)* (C34).
 - **[I]** `REPLAN_REQUESTED` → `PREPARING_REPLAN` → `PLANNING` (T30, T32),
   from the schema descriptions, the `.Targets` plan parameter and
   `stateVersion`.
@@ -615,27 +590,27 @@ and `finished` [G].
 - **[I]** The mapping of `RunIgnoredTriggerReasonType` values to the four
   documented reasons, from their names.
 - **[I]** The seven-day unconfirmed rule fires before the 30-day rule.
-- *(unverified)* What `PARSE` runs are and how they move.
-- *(unverified)* Whether `TESTING` runs take the module's lock.
-- *(unverified)* The state a killed run ends in; what the `state` argument of
+- *(unverified)* (C33) What `PARSE` runs are and how they move.
+- *(unverified)* (C35) Whether `TESTING` runs take the module's lock.
+- *(unverified)* (C36) The state a killed run ends in; what the `state` argument of
   `runStop` and `runKill` does.
-- *(unverified)* The state a push policy `cancel` leaves an unconfirmed run in.
-- *(unverified)* Whether a failed upstream run cancels or skips downstream
+- *(unverified)* (C37) The state a push policy `cancel` leaves an unconfirmed run in.
+- *(unverified)* (C38) Whether a failed upstream run cancels or skips downstream
   runs; the dependencies page says both.
-- *(unverified)* Whether `runRetry` creates a new run, and which run types it
+- *(unverified)* (C10) Whether `runRetry` creates a new run, and which run types it
   accepts beyond "PR runs".
-- *(unverified)* The state a launcher timeout (logs or run) produces.
-- *(unverified)* Whether an approval policy `reject` fails or cancels the
+- *(unverified)* (C39) The state a launcher timeout (logs or run) produces.
+- *(unverified)* (C40) Whether an approval policy `reject` fails or cancels the
   run; the approval policy page says both (T5, T24, T29).
-- *(unverified)* Whether a task with `skipInitialization` passes through
+- *(unverified)* (C42) Whether a task with `skipInitialization` passes through
   `INITIALIZING` (T13).
-- *(unverified)* Whether a drift detection run on a pool with drift runs
+- *(unverified)* (C43) Whether a drift detection run on a pool with drift runs
   disabled is created directly in `FAILED`, and whether runs over the drift
   limit become `SKIPPED` or are not created.
-- *(unverified)* `PREPARING_REPLAN` → `FAILED` on a failed handover.
-- *(unverified)* The final state of a negative (`expectFailure`) module test
+- *(unverified)* (C44) `PREPARING_REPLAN` → `FAILED` on a failed handover.
+- *(unverified)* (C45) The final state of a negative (`expectFailure`) module test
   case that fails as expected.
-- *(unverified)* The label behind `DISABLED_BY_LABEL`, and the difference
+- *(unverified)* (C46) The label behind `DISABLED_BY_LABEL`, and the difference
   between `CUSTOM_POLICY` and `CUSTOM_POLICY_NO_TRIGGER`.
 - The schema and Bruno describe `runTargetedReplan` as setting `PENDING_PLAN`,
   which is not a `RunState` value; `REPLAN_REQUESTED` is the state that

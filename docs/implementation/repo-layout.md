@@ -75,6 +75,7 @@ infraweave/
 │   │   ├── specref/               reference generation, scaffold, inventory, parity       ← internal/specref
 │   │   ├── openapibundle/         fragment bundler                                         ← internal/openapibundle
 │   │   ├── stubgen/               501 UnimplementedStrict generator                        ← internal/stubgen
+│   │   ├── dataview/              tiers.md from the docs/data registers                    ← internal/dataview
 │   │   └── docscheck/             links, report headers, decision statuses, plan structure ← internal/docscheck
 │   ├── kernel/                    value types shared by domain APIs; parsing only, no I/O
 │   │   ├── ids.go                 ULID, Slug, UUID (Flows)
@@ -148,7 +149,7 @@ infraweave/
 │   │
 │   ├── features/                  flat, at the bottom of the domain graph: catalogue, tiers, grants, entitlement,
 │   │   │                          the feature middleware and the operator API (P3b)
-│   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.yaml
+│   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.gen.go
 │   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
 │   │   └── api/ assembly/ internal/{expressions,http}/
 │   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, the OAuth
@@ -221,10 +222,11 @@ infraweave/
 ├── tools/                         thin mains over internal/devtools; excluded from coverage
 │   ├── specref/                   fetch, generate, check, scaffold, inventory, parity, provider-parity
 │   ├── openapi-bundle/
-│   └── stubgen/
+│   ├── stubgen/
+│   └── dataview/
 ├── deploy/                        decision 0020's packaging and reference deployments (P27)
 │   ├── images/                    image definitions: runner-terraform and runner-opentofu (P9), the other
-│   │                              runners (P20, P20b), the server and FIPS images (P27)
+│   │                              runners (P20, P20b), the server image (P27)
 │   ├── compose/compose.yaml       one infraweave all and one infraweave launcher on Docker
 │   ├── helm/infraweave/           chart for serve and scheduler, one Deployment per process mode
 │   ├── helm/infraweave-workers/   chart for infraweave launcher
@@ -232,7 +234,7 @@ infraweave/
 │   ├── terraform/examples/<cloud>/<scenario>/
 │   └── check.sh                   static checks of every deployment root, run in the quality gate
 ├── docs/                          research, decisions, architecture options, this implementation plan
-├── Makefile                       every gate target; generate writes internal/platform/gen and internal/agent/wire
+├── Makefile                       every gate target; generate writes internal/platform/gen, internal/agent/wire and docs/implementation/tiers.md
 ├── .golangci.yml                  the only linter; depguard rules below
 ├── .testcoverage.yml              95% total, 90% per package; generated paths excluded
 └── go.mod                         one module, full patch Go version
@@ -270,8 +272,9 @@ with no behaviour change.
 | `internal/openapibundle` | `internal/devtools/openapibundle` | `tools/openapi-bundle` import path |
 | `internal/stubgen` | `internal/devtools/stubgen` | `tools/stubgen` import path; `make generate` stub input path |
 | `internal/docscheck` | `internal/devtools/docscheck` | `make docs-check` package path |
+| `internal/dataview` | `internal/devtools/dataview` | `tools/dataview` import path |
 | `pkg/client/deploy` | unchanged | |
-| `tools/openapi-bundle`, `tools/specref`, `tools/stubgen` | unchanged | library import paths |
+| `tools/openapi-bundle`, `tools/specref`, `tools/stubgen`, `tools/dataview` | unchanged | library import paths |
 | `test/acceptance` | unchanged | runs the built binary as a subprocess from P1c |
 | `Makefile` | unchanged path | `generate` and `verify-generate` paths, `LDFLAGS`, `docs-check` path |
 | `.golangci.yml` | unchanged path | depguard enabled with option 5's rules |
@@ -294,7 +297,7 @@ them; read a record's package name through this table.
 | `internal/run`, `internal/workerapi` | `internal/runs`; `internal/workers` (the `/worker/v1` adapter) |
 | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs/internal/adapters/<provider>`; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
 | `internal/authn`, `internal/authz` | `internal/access` |
-| `internal/authz/actions.yaml`, `internal/authz/actions_gen.go` | `internal/access/api`, because callers name an action when they call the authorizer |
+| `internal/authz/actions.yaml`, `internal/authz/actions.gen.go` | `internal/access/api`, because callers name an action when they call the authorizer |
 | `internal/statebackend`, `internal/registry` | `internal/state`, `internal/registry` |
 | `internal/events`, `internal/audit` | `internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox`, the audit write in `internal/platform/audit` |
 | `internal/expr` | `internal/platform/expr`; the editor endpoints in `internal/expressions` |
@@ -468,8 +471,10 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | The `App` and `Host` stubs | `api/proto/flows/app/v1/` | `make generate` | `make verify-generate`; `buf breaking` against the last release |
 | `api/reference/spacelift/spacelift.openapi.yaml`, `coverage.md` | the snapshots and `rest-mapping.yaml` | `make reference` | `make verify-reference` |
 | `api/reference/spacelift/` snapshots and `sources.lock.yaml` | upstream at the pinned versions | `make reference-fetch` (network) | `openapi-spec-update.yml` |
-| [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |
-| `internal/access/api/actions_gen.go` | the `Action` enum of the introspection snapshot | `specref` | `make verify-reference` ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
+| [`docs/data/graphql-inventory.json`](../data/graphql-inventory.json), [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |
+| `internal/features/catalogue.gen.go` | [`docs/data/features.json`](../data/features.json), with the `tier-feature:` records of [`capabilities.json`](../data/capabilities.json) | `make generate` | `make verify-generate` ([0021](../research/decisions/0021-capability-scope-and-supersession.md#the-feature-catalogue-pd-05)) |
+| [`docs/implementation/tiers.md`](tiers.md) | `docs/data/features.json` and `capabilities.json` | `make generate` (dataview) | `make verify-generate`; `TestUnitCommittedView` |
+| `internal/access/api/actions.gen.go` | the `Action` enum of the introspection snapshot | `specref` | `make verify-reference` ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
 | `api/reference/provider-parity.yaml` | hand-maintained mapping (P24) | none | `specref provider-parity` |
 
 One generated `StrictServerInterface` spans many domains. `internal/app`

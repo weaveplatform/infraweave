@@ -1,0 +1,3587 @@
+{
+  "$schema": "schema/capabilities.schema.json",
+  "records": [
+    {
+      "id": "tag:AI Integrations",
+      "kind": "tag",
+      "ops": 5,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[22](../research/reference/22-intelligence.md)",
+        "plan": "All [D]",
+        "tierFeatures": "`SPACELIFT_INTELLIGENCE`",
+        "notes": "Spacelift-provided integration absent on self-hosted [D]"
+      },
+      "infraweave": {
+        "feature": "`ai-integrations`",
+        "lowestTier": "Free",
+        "phase": "P25",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:API Keys",
+      "kind": "tag",
+      "ops": 8,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All; OIDC keys Enterprise [D]",
+        "tierFeatures": "`API_KEYS_OIDC`"
+      },
+      "infraweave": {
+        "feature": "`api-keys`; option `oidc-api-keys`",
+        "lowestTier": "Free; Enterprise for `oidc-api-keys`",
+        "phase": "P3",
+        "also": "P4b (`apiKeyApiKeyRoleBindings`)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Account",
+      "kind": "tag",
+      "ops": 7,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md), [10](../research/reference/10-workers-and-execution.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "notes": "Default runner image reads belong to report 10"
+      },
+      "infraweave": {
+        "feature": "`account-details`",
+        "lowestTier": "Free",
+        "phase": "P3",
+        "also": "P8, P14, P15",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Account Settings",
+      "kind": "tag",
+      "ops": 42,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md), [14](../research/reference/14-spaces-rbac-and-identity.md), [22](../research/reference/22-intelligence.md)",
+        "plan": "All; MFA enforcement Enterprise [D]",
+        "tierFeatures": "`ACCOUNT_AI_CONTROL`, `MFA`, `OIDC_FEDERATION_TOKEN_GENERATION`",
+        "notes": "Settings span P3, P4, P18 and P25 by subject"
+      },
+      "infraweave": {
+        "feature": "`account-settings`; each setting with its subject's feature, such as `mfa` and `ai-account-controls`",
+        "lowestTier": "Free; Enterprise for `mfa`",
+        "phase": "P3b",
+        "also": "P4, P8, P10, P12, P13b, P15, P18b, P20b, P23, P25",
+        "state": "missing",
+        "notes": "Each setting lands with the phase that owns its subject"
+      }
+    },
+    {
+      "id": "tag:Ansible",
+      "kind": "tag",
+      "ops": 7,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[20](../research/reference/20-vendors.md), [21](../research/reference/21-resources-scans-search.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`ansible`",
+        "lowestTier": "Free",
+        "phase": "P20b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Audit Trail",
+      "kind": "tag",
+      "ops": 6,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Enterprise [D] [C]",
+        "tierFeatures": "`AUDITING`"
+      },
+      "infraweave": {
+        "feature": "`audit-trail`",
+        "lowestTier": "Enterprise",
+        "phase": "P18b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Auth",
+      "kind": "tag",
+      "ops": 6,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md), [01](../research/reference/01-spacelift-landscape.md)",
+        "plan": "All",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`auth`",
+        "lowestTier": "Free",
+        "phase": "P3",
+        "also": "P23 (`oauthRedirect`, `oauthToken`, `oauthUser`)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Billing",
+      "kind": "tag",
+      "ops": 14,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md), [19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "notes": "Subscription and tier mutations are SaaS commerce; usage queries are report 19"
+      },
+      "infraweave": {
+        "feature": "`usage`",
+        "lowestTier": "Free",
+        "phase": "P3b",
+        "also": "P18b (`usage`)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Blob Storage",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "notes": "No docs page; a `BLOB` source provider"
+      },
+      "infraweave": {
+        "feature": "`blob-storage`",
+        "lowestTier": "Free",
+        "phase": "P19b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Blueprints",
+      "kind": "tag",
+      "ops": 15,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D] [C]",
+        "tierFeatures": "`BLUEPRINTS`",
+        "notes": "Single-body blueprints are live; the versioned family is superseded and not in the reference (report 26 section 7.2)"
+      },
+      "infraweave": {
+        "feature": "`blueprints`",
+        "lowestTier": "Business",
+        "phase": "P21",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Cloud Integrations",
+      "kind": "tag",
+      "ops": 27,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]; no docs notice",
+        "tierFeatures": "none",
+        "notes": "Self-hosted offers AWS only [D]; GCP service accounts superseded (report 26 section 7.6)"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "phase": "P15",
+        "also": "P25b (Intent project attachments)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Contexts",
+      "kind": "tag",
+      "ops": 13,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Starter+ [C]; Free not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`contexts`",
+        "lowestTier": "Free",
+        "phase": "P6",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Debug",
+      "kind": "tag",
+      "ops": 1,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[24](../research/reference/24-self-hosted-reference.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "notes": "Licence and build details; empty on SaaS [G]"
+      },
+      "infraweave": {
+        "feature": "`debug`",
+        "lowestTier": "Free",
+        "phase": "P27",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Drift Detection",
+      "kind": "tag",
+      "ops": 3,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "`DRIFT_DETECTION`",
+        "notes": "Private workers only [D]"
+      },
+      "infraweave": {
+        "feature": "`drift-detection`",
+        "lowestTier": "Starter+",
+        "phase": "P16",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:External Integrations",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[25](../research/reference/25-other-integrations.md)",
+        "plan": "Enterprise for ServiceNow [D]",
+        "tierFeatures": "`SERVICE_NOW_INTEGRATION`",
+        "notes": "ServiceNow attaches to blueprints"
+      },
+      "infraweave": {
+        "feature": "`servicenow`",
+        "lowestTier": "Enterprise",
+        "phase": "P21",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Feature Flags",
+      "kind": "tag",
+      "ops": 1,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
+        "plan": "UI support",
+        "tierFeatures": "none",
+        "notes": "Spacelift-set flags; read-only"
+      },
+      "infraweave": {
+        "feature": "`console`",
+        "lowestTier": "Free",
+        "phase": "P3b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Flows",
+      "kind": "tag",
+      "ops": 6,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[23](../research/reference/23-flows.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`flows-engine`",
+        "lowestTier": "Free",
+        "phase": "P18c",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Forms",
+      "kind": "tag",
+      "ops": 3,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
+        "plan": "UI support",
+        "tierFeatures": "none",
+        "notes": "Web UI questionnaires"
+      },
+      "infraweave": {
+        "feature": "`console`",
+        "lowestTier": "Free",
+        "phase": "P22",
+        "state": "missing",
+        "notes": "Questionnaires Spacelift's web interface shows"
+      }
+    },
+    {
+      "id": "tag:GPG Keys",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Business [I] from the provider registry gate",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`terraform-provider-registry`",
+        "lowestTier": "Business",
+        "phase": "P17b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Infrastructure",
+      "kind": "tag",
+      "ops": 3,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[24](../research/reference/24-self-hosted-reference.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "notes": "Installation internals for self-hosted operators"
+      },
+      "infraweave": {
+        "feature": "`infrastructure`",
+        "lowestTier": "Free",
+        "phase": "P27",
+        "also": "P2c (`messageQueueStats`), P13 (`policyRuntime`)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Intent",
+      "kind": "tag",
+      "ops": 40,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[22](../research/reference/22-intelligence.md)",
+        "plan": "All [D]",
+        "tierFeatures": "`SPACELIFT_INTELLIGENCE`"
+      },
+      "infraweave": {
+        "feature": "`intent`",
+        "lowestTier": "Free",
+        "phase": "P25b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Managed Users",
+      "kind": "tag",
+      "ops": 23,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All; Free holds 2 users [C]",
+        "tierFeatures": "none",
+        "notes": "IdP group mappings are P23"
+      },
+      "infraweave": {
+        "feature": "`managed-users`; limit `seats`",
+        "lowestTier": "Free; `seats` 2 on Free and Starter",
+        "phase": "P3b",
+        "also": "P4b (role bindings), P18 (group integrations)",
+        "state": "missing",
+        "notes": "A managed user is an organization member as one account sees it; group integrations give a Slack channel access rules (report 14 section 4.3)"
+      }
+    },
+    {
+      "id": "tag:Modules",
+      "kind": "tag",
+      "ops": 34,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`PRIVATE_MODULE_SHARING`"
+      },
+      "infraweave": {
+        "feature": "`modules`, `module-sharing`",
+        "lowestTier": "Starter",
+        "phase": "P17",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Notifications",
+      "kind": "tag",
+      "ops": 5,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`NOTIFICATION_POLICIES`"
+      },
+      "infraweave": {
+        "feature": "`notifications`",
+        "lowestTier": "Starter",
+        "phase": "P18",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:OAuth",
+      "kind": "tag",
+      "ops": 1,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "notes": "The Slack redirect belongs to report 19"
+      },
+      "infraweave": {
+        "feature": "`slack`",
+        "lowestTier": "Free",
+        "phase": "P18",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:OpenTofu Migration",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[20](../research/reference/20-vendors.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`opentofu-migration`",
+        "lowestTier": "Free",
+        "phase": "P20b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Origin Integration",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "notes": "No docs page; an `ORIGIN` source provider"
+      },
+      "infraweave": {
+        "feature": "`origin-integration`",
+        "lowestTier": "Free",
+        "phase": "P19b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Personal API Keys",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`personal-api-keys`",
+        "lowestTier": "Free",
+        "phase": "P3b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Plugins",
+      "kind": "tag",
+      "ops": 9,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[25](../research/reference/25-other-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "notes": "Plugins run inside runs; placed with vendor tooling"
+      },
+      "infraweave": {
+        "feature": "`plugins`",
+        "lowestTier": "Free",
+        "phase": "P20b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Policies",
+      "kind": "tag",
+      "ops": 21,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[09](../research/reference/09-policies.md)",
+        "plan": "Paid [D]; Starter+ [C]",
+        "tierFeatures": "`WORKFLOW_POLICIES`"
+      },
+      "infraweave": {
+        "feature": "`policies`; option `notification-policies`",
+        "lowestTier": "Starter",
+        "phase": "P13",
+        "also": "P13b, P25b (Intent project attachments)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Repos",
+      "kind": "tag",
+      "ops": 12,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "notes": "Spacelift Repos, the `SPACELIFT` source provider"
+      },
+      "infraweave": {
+        "feature": "`repos`",
+        "lowestTier": "Free",
+        "phase": "P19b",
+        "state": "missing",
+        "notes": "Hosted repositories, served as the `INFRAWEAVE` source provider (the reference's `SPACELIFT`)"
+      }
+    },
+    {
+      "id": "tag:Resources",
+      "kind": "tag",
+      "ops": 4,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`resources`",
+        "lowestTier": "Free",
+        "phase": "P22",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Roles",
+      "kind": "tag",
+      "ops": 25,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`roles`",
+        "lowestTier": "Free",
+        "phase": "P4b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Runs",
+      "kind": "tag",
+      "ops": 35,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[08](../research/reference/08-run-lifecycle.md)",
+        "plan": "All; tasks paid [D]; targeted replan Business [D]; ignored triggers Starter+ [D]",
+        "tierFeatures": "`TARGETED_REPLAN`",
+        "notes": "P9 delivers the tracked path first; 3 of 35 operations are 501 stubs: `proposeWithOverrides`, `runTrigger`, `taskCreate`"
+      },
+      "infraweave": {
+        "feature": "`runs`, `tasks`, `targeted-replan`, `ignored-runs`",
+        "lowestTier": "Free; Starter for `tasks`; Starter+ for `ignored-runs`; Business for `targeted-replan`",
+        "phase": "P10",
+        "also": "P7, P9, P13, P16, P18b, P20b, P22",
+        "state": "missing",
+        "notes": "3 of 35 operations are 501 stubs at the baseline: `proposeWithOverrides`, `runTrigger`, `taskCreate`"
+      }
+    },
+    {
+      "id": "tag:SSO",
+      "kind": "tag",
+      "ops": 11,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "SAML and SCIM Enterprise; OIDC SSO paid [D]",
+        "tierFeatures": "`CUSTOM_SSO_SAML`, `SCIM`"
+      },
+      "infraweave": {
+        "feature": "`oidc-sso`, `saml-sso`, `scim`",
+        "lowestTier": "Starter for `oidc-sso`; Enterprise for `saml-sso` and `scim`",
+        "phase": "P23",
+        "state": "missing",
+        "notes": "Configures the organization's identity providers, which every account of it shares"
+      }
+    },
+    {
+      "id": "tag:Saved Filters",
+      "kind": "tag",
+      "ops": 5,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "UI support",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`saved-filters`",
+        "lowestTier": "Free",
+        "phase": "P22",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Scans",
+      "kind": "tag",
+      "ops": 17,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "Not stated",
+        "tierFeatures": "`SCANS`",
+        "notes": "No docs page"
+      },
+      "infraweave": {
+        "feature": "`scans`",
+        "lowestTier": "Free",
+        "phase": "P22b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Search Suggestions",
+      "kind": "tag",
+      "ops": 30,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "UI support",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "the capability of the search each completes",
+        "lowestTier": "that capability's",
+        "phase": "P22",
+        "also": "each suggestion operation lands with its search, from P5",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Sessions and Security Keys",
+      "kind": "tag",
+      "ops": 5,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not on Starter [G]; session management from Starter+ [C]",
+        "tierFeatures": "none",
+        "notes": "Security keys are MFA, Enterprise [D]"
+      },
+      "infraweave": {
+        "feature": "`sessions`, `mfa`",
+        "lowestTier": "Starter+ for `sessions`; Enterprise for `mfa`",
+        "phase": "P3",
+        "also": "P3b (`securityEmail`), P23 (security keys)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Slack",
+      "kind": "tag",
+      "ops": 7,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`slack`",
+        "lowestTier": "Free",
+        "phase": "P18",
+        "also": "P12 (`githubAppGenerateManifest`, `githubAppCreateFromManifest`)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Spaces",
+      "kind": "tag",
+      "ops": 22,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Starter+ [C]; Free not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`spaces`",
+        "lowestTier": "Free",
+        "phase": "P4",
+        "also": "P4b, P6, P8, P12, P13, P15, P21, P22",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Stacks",
+      "kind": "tag",
+      "ops": 69,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[07](../research/reference/07-stack-model.md), [16](../research/reference/16-state-management.md), [18](../research/reference/18-scheduling-drift-dependencies.md), [19](../research/reference/19-events-notifications-audit.md), [21](../research/reference/21-resources-scans-search.md)",
+        "plan": "All; scheduling Business [D]; dependencies Starter+ [C]; ignored triggers Starter+ [D]",
+        "tierFeatures": "`ADVANCED_SCHEDULING`, `RUN_IGNORED_TRIGGERS`, `RUN_STATE_CHANGE_WEBHOOKS`",
+        "notes": "Sub-tags: state P11, schedules and dependencies P16, webhooks P18"
+      },
+      "infraweave": {
+        "feature": "`stacks`, `scheduling`, `ignored-runs`; the vendor options",
+        "lowestTier": "Free; Starter+ for `ignored-runs`; Business for `scheduling`",
+        "phase": "P5",
+        "also": "P4b (`stackRoleBindings`), P6, P7, P8, P9, P11, P12, P13, P15, P16, P18, P20b, P22",
+        "state": "stub",
+        "notes": "Every operation is a 501 stub at the baseline; state, schedules, dependencies and webhooks land with their own phases"
+      }
+    },
+    {
+      "id": "tag:Templates",
+      "kind": "tag",
+      "ops": 23,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D] [C]",
+        "tierFeatures": "`BLUEPRINTS`"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "phase": "P21",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Terraform Providers",
+      "kind": "tag",
+      "ops": 17,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Business [D] [C]",
+        "tierFeatures": "`TERRAFORM_PROVIDER_VERSIONS`"
+      },
+      "infraweave": {
+        "feature": "`terraform-provider-registry`",
+        "lowestTier": "Business",
+        "phase": "P17b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Tofu Workspaces",
+      "kind": "tag",
+      "ops": 3,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[16](../research/reference/16-state-management.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`tofu-workspaces`",
+        "lowestTier": "Free",
+        "phase": "P11",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:UI State",
+      "kind": "tag",
+      "ops": 2,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "UI support",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`console`",
+        "lowestTier": "Free",
+        "phase": "P22",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:User Guide",
+      "kind": "tag",
+      "ops": 20,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
+        "plan": "UI support",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`console`",
+        "lowestTier": "Free",
+        "phase": "P22",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:VCS Agent Pools",
+      "kind": "tag",
+      "ops": 6,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Enterprise [D] [C]",
+        "tierFeatures": "`PRIVATE_VCS`"
+      },
+      "infraweave": {
+        "feature": "`vcs-agent-pools`",
+        "lowestTier": "Enterprise",
+        "phase": "P19b",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:VCS Integrations",
+      "kind": "tag",
+      "ops": 44,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All; aggregated checks Business; space-level integrations Enterprise [D]",
+        "tierFeatures": "`AGGREGATED_VCS_CHECKS`",
+        "notes": "GitHub in P12; GitLab, Bitbucket and Azure DevOps in P19"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`; options `aggregated-vcs-checks`, `multiple-vcs-integrations`",
+        "lowestTier": "Free; Business for `aggregated-vcs-checks`; Enterprise for `multiple-vcs-integrations`",
+        "phase": "P12",
+        "also": "P19 (GitLab, Bitbucket, Azure DevOps)",
+        "state": "missing",
+        "notes": "GitHub and GitHub Enterprise first; the other providers later"
+      }
+    },
+    {
+      "id": "tag:Version Catalog",
+      "kind": "tag",
+      "ops": 7,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[20](../research/reference/20-vendors.md), [17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "notes": "Tool versions a stack may select"
+      },
+      "infraweave": {
+        "feature": "`version-catalog`",
+        "lowestTier": "Free",
+        "phase": "P5",
+        "also": "P20 (`terragruntVersions`, `terragruntEffectiveVersion`, `kubectlVersions`)",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Viewer",
+      "kind": "tag",
+      "ops": 1,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`viewer`",
+        "lowestTier": "Free",
+        "phase": "P3",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Webhooks",
+      "kind": "tag",
+      "ops": 9,
+      "spacelift": {
+        "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`RUN_STATE_CHANGE_WEBHOOKS`"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "lowestTier": "Starter",
+        "phase": "P18",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Worker Pools",
+      "kind": "tag",
+      "ops": 19,
+      "spacelift": {
+        "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
+        "plan": "Public pool all plans; private pools Starter+ [D]",
+        "tierFeatures": "`PRIVATE_WORKERS`",
+        "notes": "The public pool is P8"
+      },
+      "infraweave": {
+        "feature": "`worker-pools`, `private-worker-pools`; limits `private-workers`, `public-worker-slots`",
+        "lowestTier": "Free; Starter+ for `private-worker-pools`",
+        "phase": "P8",
+        "also": "P14, P25b",
+        "state": "missing",
+        "notes": "Private pools first; the public worker pool later, as an option"
+      }
+    },
+    {
+      "id": "operation:identityFederationUnlink",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`auth`",
+        "lowestTier": "Free",
+        "phase": "P23"
+      }
+    },
+    {
+      "id": "operation:openTofuMigrationQueueClean",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`opentofu-migration`",
+        "lowestTier": "Free",
+        "phase": "P20b"
+      }
+    },
+    {
+      "id": "operation:openTofuMigrate",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`opentofu-migration`",
+        "lowestTier": "Free",
+        "phase": "P20b"
+      }
+    },
+    {
+      "id": "operation:deleteOauthClientForSCIM",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`scim`",
+        "lowestTier": "Enterprise",
+        "phase": "P23"
+      }
+    },
+    {
+      "id": "operation:resetOauthClientForSCIM",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`scim`",
+        "lowestTier": "Enterprise",
+        "phase": "P23"
+      }
+    },
+    {
+      "id": "operation:userSecurityKeyDeleteAll",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`mfa`",
+        "lowestTier": "Enterprise",
+        "phase": "P23"
+      }
+    },
+    {
+      "id": "operation:sessionDeleteAll",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`sessions`",
+        "lowestTier": "Starter+",
+        "phase": "P3"
+      }
+    },
+    {
+      "id": "operation:stackMigrateVendorAll",
+      "kind": "operation",
+      "infraweave": {
+        "feature": "`opentofu-migration`",
+        "lowestTier": "Free",
+        "phase": "P20b"
+      }
+    },
+    {
+      "id": "resource:spacelift_ai_integration",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[22](../research/reference/22-intelligence.md)",
+        "plan": "All [D]",
+        "tierFeatures": "`SPACELIFT_INTELLIGENCE`",
+        "rootFields": "6"
+      },
+      "infraweave": {
+        "feature": "`ai-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P25",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_api_key",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All; OIDC keys Enterprise [D]",
+        "tierFeatures": "`API_KEYS_OIDC`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`api-keys`",
+        "lowestTier": "Free",
+        "apiPhase": "P3",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_audit_trail_webhook",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Enterprise [D]",
+        "tierFeatures": "`AUDITING`",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`audit-trail`",
+        "lowestTier": "Enterprise",
+        "apiPhase": "P18b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_aws_integration",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_aws_integration_attachment",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_aws_role",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4",
+        "notes": "Legacy per-stack role; replaced by `spacelift_aws_integration` (report 26 section 7.7)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-22](supersessions.json)"
+      }
+    },
+    {
+      "id": "resource:spacelift_azure_devops_integration",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "`AGGREGATED_VCS_CHECKS`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_azure_integration",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4",
+        "notes": "Not offered on self-hosted [D]"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_azure_integration_attachment",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_bitbucket_datacenter_integration",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "`AGGREGATED_VCS_CHECKS`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_blueprint",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`BLUEPRINTS`",
+        "rootFields": "5",
+        "notes": "Single-body blueprint; not superseded"
+      },
+      "infraweave": {
+        "feature": "`blueprints`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_context",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_context_attachment",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_default_runner_image",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`worker-pools`",
+        "lowestTier": "Free",
+        "apiPhase": "P8",
+        "providerPhase": "P24",
+        "state": "missing",
+        "notes": "Also reads `defaultPublicWorkerPoolRunnerImage` (P14)"
+      }
+    },
+    {
+      "id": "resource:spacelift_drift_detection",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "`DRIFT_DETECTION`",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`drift-detection`",
+        "lowestTier": "Starter+",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_environment_variable",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "7"
+      },
+      "infraweave": {
+        "feature": "`stacks`, `contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_gcp_service_account",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4",
+        "notes": "Calls the deprecated `stackIntegrationGcp*` mutations (report 26 section 7.6)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-23](supersessions.json)"
+      }
+    },
+    {
+      "id": "resource:spacelift_gitlab_integration",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "`AGGREGATED_VCS_CHECKS`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_idp_group_mapping",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4",
+        "notes": "Calls deprecated V1 group mutations (report 26 section 7.5); the resource is live"
+      },
+      "infraweave": {
+        "feature": "`managed-users`",
+        "lowestTier": "Free",
+        "apiPhase": "P3b",
+        "providerPhase": "P24",
+        "state": "missing",
+        "notes": "A managed user group: calls `managedUserGroup` and `managedUserGroupDelete`, and deprecated V1 group mutations whose `V2` forms P3b serves (report 26 section 7.5); the resource is live. Logins map IdP groups onto it from P23"
+      }
+    },
+    {
+      "id": "resource:spacelift_module",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`PRIVATE_MODULE_SHARING`",
+        "rootFields": "6"
+      },
+      "infraweave": {
+        "feature": "`modules`",
+        "lowestTier": "Starter",
+        "apiPhase": "P17",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_mounted_file",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "7"
+      },
+      "infraweave": {
+        "feature": "`stacks`, `contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_named_webhook",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`RUN_STATE_CHANGE_WEBHOOKS`",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "lowestTier": "Starter",
+        "apiPhase": "P18",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_named_webhook_secret_header",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "lowestTier": "Starter",
+        "apiPhase": "P18",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_plugin",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[25](../research/reference/25-other-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`plugins`",
+        "lowestTier": "Free",
+        "apiPhase": "P20b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_plugin_template",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[25](../research/reference/25-other-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`plugins`",
+        "lowestTier": "Free",
+        "apiPhase": "P20b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_policy",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[09](../research/reference/09-policies.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`WORKFLOW_POLICIES`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`policies`",
+        "lowestTier": "Starter",
+        "apiPhase": "P13",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_policy_attachment",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[09](../research/reference/09-policies.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`WORKFLOW_POLICIES`",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`policies`",
+        "lowestTier": "Starter",
+        "apiPhase": "P13",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_repo",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`repos`",
+        "lowestTier": "Free",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_repo_file",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "2",
+        "notes": "Calls the deprecated `revisionCreate`; `repoCommitCreate` replaces the call, not the resource"
+      },
+      "infraweave": {
+        "feature": "`repos`",
+        "lowestTier": "Free",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_role",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`roles`",
+        "lowestTier": "Free",
+        "apiPhase": "P4b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_role_attachment",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "12"
+      },
+      "infraweave": {
+        "feature": "`roles`",
+        "lowestTier": "Free",
+        "apiPhase": "P4b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_run",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[08](../research/reference/08-run-lifecycle.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`runs`",
+        "lowestTier": "Free",
+        "apiPhase": "P9",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_saved_filter",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "UI support",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`saved-filters`",
+        "lowestTier": "Free",
+        "apiPhase": "P22",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_scheduled_delete_stack",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`ADVANCED_SCHEDULING`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "lowestTier": "Business",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_scheduled_run",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`ADVANCED_SCHEDULING`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "lowestTier": "Business",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_scheduled_task",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`ADVANCED_SCHEDULING`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "lowestTier": "Business",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_security_email",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "2"
+      },
+      "infraweave": {
+        "feature": "`account-settings`",
+        "lowestTier": "Free",
+        "apiPhase": "P3b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_space",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`spaces`",
+        "lowestTier": "Free",
+        "apiPhase": "P4",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "6"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P5",
+        "providerPhase": "P24",
+        "state": "stub",
+        "notes": "Also calls `stateUploadUrl` (P11) and `stackMigrateVendor` (P20b)"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack_activator",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P5",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack_aws_role",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4 [S]",
+        "notes": "Deprecated alias of `spacelift_aws_role` (report 26 section 7.7)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-22](supersessions.json)"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack_dependency",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack_dependency_reference",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack_destructor",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "4",
+        "notes": "Also calls `runDiscardAll` (Runs)"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P5",
+        "providerPhase": "P24",
+        "state": "missing",
+        "notes": "Also calls `runDiscardAll` (Runs, P10)"
+      }
+    },
+    {
+      "id": "resource:spacelift_stack_gcp_service_account",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "4 [S]",
+        "notes": "Deprecated alias of `spacelift_gcp_service_account` (report 26 section 7.6)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-23](supersessions.json)"
+      }
+    },
+    {
+      "id": "resource:spacelift_task",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[08](../research/reference/08-run-lifecycle.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`tasks`",
+        "lowestTier": "Starter",
+        "apiPhase": "P10",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "resource:spacelift_template",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`BLUEPRINTS`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_template_deployment",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`BLUEPRINTS`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_template_version",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`BLUEPRINTS`",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_terraform_provider",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "`TERRAFORM_PROVIDER_VERSIONS`",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`terraform-provider-registry`",
+        "lowestTier": "Business",
+        "apiPhase": "P17b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_user",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All; Free holds 2 users [C]",
+        "tierFeatures": "none",
+        "rootFields": "4",
+        "notes": "Calls the deprecated `managedUserInvite` (report 26 section 7.5); the resource is live"
+      },
+      "infraweave": {
+        "feature": "`managed-users`",
+        "lowestTier": "Free",
+        "apiPhase": "P3b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_vcs_agent_pool",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Enterprise [D]",
+        "tierFeatures": "`PRIVATE_VCS`",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-agent-pools`",
+        "lowestTier": "Enterprise",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_version",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "2"
+      },
+      "infraweave": {
+        "feature": "`modules`",
+        "lowestTier": "Starter",
+        "apiPhase": "P17",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_webhook",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "`RUN_STATE_CHANGE_WEBHOOKS`",
+        "rootFields": "6"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "lowestTier": "Starter",
+        "apiPhase": "P18",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_worker_pool",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "`PRIVATE_WORKERS`",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`private-worker-pools`",
+        "lowestTier": "Starter+",
+        "apiPhase": "P8",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "resource:spacelift_worker_pool_recycle",
+      "kind": "resource",
+      "spacelift": {
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "`PRIVATE_WORKERS`",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`private-worker-pools`",
+        "lowestTier": "Starter+",
+        "apiPhase": "P8",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_account",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`account-details`",
+        "lowestTier": "Free",
+        "apiPhase": "P3",
+        "providerPhase": "P24",
+        "state": "missing",
+        "notes": "Also reads `tier` (P3b) and `installationAwsAccountId` (P15), the reference's `spaceliftAwsAccountId`"
+      }
+    },
+    {
+      "id": "data-source:spacelift_ai_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[22](../research/reference/22-intelligence.md)",
+        "plan": "All [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`ai-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P25",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_ai_integrations",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[22](../research/reference/22-intelligence.md)",
+        "plan": "All [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`ai-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P25",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_aws_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "2"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_aws_integration_attachment",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_aws_integration_attachment_external_id",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "2"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_aws_integrations",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_aws_role",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "2",
+        "notes": "Legacy per-stack role; replaced by `spacelift_aws_integration` (report 26 section 7.7)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-22](supersessions.json)"
+      }
+    },
+    {
+      "id": "data-source:spacelift_azure_devops_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_azure_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "2",
+        "notes": "Not offered on self-hosted [D]"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_azure_integration_attachment",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_azure_integrations",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P15",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_bitbucket_cloud_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_bitbucket_datacenter_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_context",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_context_attachment",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_contexts",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_current_space",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "2",
+        "notes": "Resolves the space of the stack or module the run belongs to"
+      },
+      "infraweave": {
+        "feature": "`spaces`",
+        "lowestTier": "Free",
+        "apiPhase": "P9",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_current_stack",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md), [05](../research/reference/05-terraform-provider.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "0",
+        "notes": "No API call: reads the `sub` claim of the in-run token [S]"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P9",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_drift_detection",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "none",
+        "rootFields": "1 [S]",
+        "notes": "The operation map records no call; the read reuses the resource's `stack` query [S] [`data_drift_detection.go`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/data_drift_detection.go#L54-L62)"
+      },
+      "infraweave": {
+        "feature": "`drift-detection`",
+        "lowestTier": "Starter+",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_environment_variable",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`stacks`, `contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_gcp_service_account",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "2 [S]",
+        "notes": "Reads `stack` or `module` and the deprecated `StackIntegrations.gcp` field through the resource's read; the operation map records no call [S] [`data_gcp_service_account.go`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/data_gcp_service_account.go#L62-L75) (report 26 section 7.6)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-23](supersessions.json)"
+      }
+    },
+    {
+      "id": "data-source:spacelift_github_enterprise_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P12",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_gitlab_integration",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_gitlab_webhook_endpoint",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`vcs-integrations`",
+        "lowestTier": "Free",
+        "apiPhase": "P19",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_idp_group_mapping",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "1",
+        "notes": "Reads `managedUserGroups`; its `policy` attribute is deprecated (report 26 section 7.4) [S]"
+      },
+      "infraweave": {
+        "feature": "`managed-users`",
+        "lowestTier": "Free",
+        "apiPhase": "P3b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_ips",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[04](../research/reference/04-platform-api-inventory.md), [10](../research/reference/10-workers-and-execution.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1",
+        "notes": "Outgoing addresses of the public pool"
+      },
+      "infraweave": {
+        "feature": "`worker-pools`",
+        "lowestTier": "Free",
+        "apiPhase": "P14",
+        "providerPhase": "P24",
+        "state": "missing",
+        "notes": "Outgoing addresses of the public worker pool"
+      }
+    },
+    {
+      "id": "data-source:spacelift_module",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`modules`",
+        "lowestTier": "Starter",
+        "apiPhase": "P17",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_modules",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`modules`",
+        "lowestTier": "Starter",
+        "apiPhase": "P17",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_mounted_file",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[13](../research/reference/13-configuration.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "3"
+      },
+      "infraweave": {
+        "feature": "`stacks`, `contexts`",
+        "lowestTier": "Free",
+        "apiPhase": "P6",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_named_webhook",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "lowestTier": "Starter",
+        "apiPhase": "P18",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_plugin",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[25](../research/reference/25-other-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`plugins`",
+        "lowestTier": "Free",
+        "apiPhase": "P20b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_plugin_template",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[25](../research/reference/25-other-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`plugins`",
+        "lowestTier": "Free",
+        "apiPhase": "P20b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_policies",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[09](../research/reference/09-policies.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "5"
+      },
+      "infraweave": {
+        "feature": "`policies`",
+        "lowestTier": "Starter",
+        "apiPhase": "P13",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_policy",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[09](../research/reference/09-policies.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`policies`",
+        "lowestTier": "Starter",
+        "apiPhase": "P13",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_repo",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`repos`",
+        "lowestTier": "Free",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_repos",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`repos`",
+        "lowestTier": "Free",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_role",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`roles`",
+        "lowestTier": "Free",
+        "apiPhase": "P4b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_role_actions",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "0",
+        "notes": "Reads the `Action` enum by introspection [S]"
+      },
+      "infraweave": {
+        "feature": "`roles`",
+        "lowestTier": "Free",
+        "apiPhase": "P4",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_saved_filter",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "UI support",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`saved-filters`",
+        "lowestTier": "Free",
+        "apiPhase": "P22",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_saved_filters",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
+        "plan": "UI support",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`saved-filters`",
+        "lowestTier": "Free",
+        "apiPhase": "P22",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_scheduled_delete_stack",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "lowestTier": "Business",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_scheduled_run",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "lowestTier": "Business",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_scheduled_task",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "lowestTier": "Business",
+        "apiPhase": "P16",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_space",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`spaces`",
+        "lowestTier": "Free",
+        "apiPhase": "P4",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_space_by_path",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`spaces`",
+        "lowestTier": "Free",
+        "apiPhase": "P4",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_spaces",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "Starter+ [C]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`spaces`",
+        "lowestTier": "Free",
+        "apiPhase": "P4",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_stack",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P5",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_stack_aws_role",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "2 [S]",
+        "notes": "Deprecated alias of `spacelift_aws_role` (report 26 section 7.7)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-22](supersessions.json)"
+      }
+    },
+    {
+      "id": "data-source:spacelift_stack_gcp_service_account",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none",
+        "rootFields": "2 [S]",
+        "notes": "Deprecated alias of `spacelift_gcp_service_account` (report 26 section 7.6)"
+      },
+      "infraweave": {
+        "feature": "none",
+        "lowestTier": "none",
+        "apiPhase": "none",
+        "providerPhase": "none",
+        "state": "superseded",
+        "notes": "See [SUP-23](supersessions.json)"
+      }
+    },
+    {
+      "id": "data-source:spacelift_stack_outputs",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md), [18](../research/reference/18-scheduling-drift-dependencies.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1",
+        "notes": "Outputs come from runs; output references are report 18"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P10",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_stacks",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[07](../research/reference/07-stack-model.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`stacks`",
+        "lowestTier": "Free",
+        "apiPhase": "P5",
+        "providerPhase": "P24",
+        "state": "stub"
+      }
+    },
+    {
+      "id": "data-source:spacelift_template",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_template_deployment",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_template_version",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
+        "plan": "Business [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`templates`",
+        "lowestTier": "Business",
+        "apiPhase": "P21",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_tool_versions",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[20](../research/reference/20-vendors.md)",
+        "plan": "All",
+        "tierFeatures": "none",
+        "rootFields": "4"
+      },
+      "infraweave": {
+        "feature": "`version-catalog`",
+        "lowestTier": "Free",
+        "apiPhase": "P5",
+        "providerPhase": "P24",
+        "state": "missing",
+        "notes": "Also reads `terragruntVersions` and `kubectlVersions` (P20)"
+      }
+    },
+    {
+      "id": "data-source:spacelift_user",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
+        "plan": "All; Free holds 2 users [C]",
+        "tierFeatures": "none",
+        "rootFields": "1",
+        "notes": "Reads `managedUsers` [S]"
+      },
+      "infraweave": {
+        "feature": "`managed-users`",
+        "lowestTier": "Free",
+        "apiPhase": "P3b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_vcs_agent_pool",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Enterprise [D]",
+        "tierFeatures": "`PRIVATE_VCS`",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`vcs-agent-pools`",
+        "lowestTier": "Enterprise",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_vcs_agent_pools",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
+        "plan": "Enterprise [D]",
+        "tierFeatures": "`PRIVATE_VCS`",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`vcs-agent-pools`",
+        "lowestTier": "Enterprise",
+        "apiPhase": "P19b",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_webhook",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
+        "plan": "Paid [D]",
+        "tierFeatures": "none",
+        "rootFields": "2"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "lowestTier": "Starter",
+        "apiPhase": "P18",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_worker_pool",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`private-worker-pools`",
+        "lowestTier": "Starter+",
+        "apiPhase": "P8",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "data-source:spacelift_worker_pools",
+      "kind": "data-source",
+      "spacelift": {
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
+        "plan": "Starter+ [D]",
+        "tierFeatures": "none",
+        "rootFields": "1"
+      },
+      "infraweave": {
+        "feature": "`private-worker-pools`",
+        "lowestTier": "Starter+",
+        "apiPhase": "P8",
+        "providerPhase": "P24",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tier-feature:ACCESS_POLICIES",
+      "kind": "tier-feature",
+      "number": 1,
+      "spacelift": {
+        "meaning": "Per-stack and per-module access policies (`ACCESS` policy type) [I] from the name",
+        "plan": "Not stated",
+        "selfHosted": "Access policies are disabled for all accounts since 2026-05-30 [D]; superseded (report 26 section 7.4)",
+        "operationsTagged": 0,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md), [09](../research/reference/09-policies.md)"
+      },
+      "infraweave": {
+        "feature": "none: superseded (S1, [SUP-01](supersessions.json))",
+        "phase": "P3b",
+        "delivers": "Absent from the catalogue and from `tierFeatures`; space role bindings replace it ([SUP-01](supersessions.json))"
+      }
+    },
+    {
+      "id": "tier-feature:ADDITIONAL_PUBLIC_WORKER",
+      "kind": "tier-feature",
+      "number": 2,
+      "spacelift": {
+        "meaning": "Public worker capacity above the plan default [I] from the name",
+        "plan": "Free has 1 public worker, Starter+ 2, Business and above configurable [C]",
+        "selfHosted": "FedRAMP has no public workers [D]",
+        "operationsTagged": 0,
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)"
+      },
+      "infraweave": {
+        "feature": "a grant raising `public-worker-slots`",
+        "phase": "P14",
+        "delivers": "The `public-worker-slots` limit, applied in the claim"
+      }
+    },
+    {
+      "id": "tier-feature:ADVANCED_SCHEDULING",
+      "kind": "tier-feature",
+      "number": 3,
+      "spacelift": {
+        "meaning": "Scheduled runs, tasks and deletes [I] from the operations gated",
+        "plan": "Business [D] [C]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 9,
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)"
+      },
+      "infraweave": {
+        "feature": "`scheduling`",
+        "phase": "P16",
+        "delivers": "Scheduled runs, tasks and deletes"
+      }
+    },
+    {
+      "id": "tier-feature:AGGREGATED_VCS_CHECKS",
+      "kind": "tier-feature",
+      "number": 4,
+      "spacelift": {
+        "meaning": "`AGGREGATED` commit checks on a VCS integration",
+        "plan": "Business [D]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 10,
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)"
+      },
+      "infraweave": {
+        "feature": "`aggregated-vcs-checks`",
+        "phase": "P12",
+        "delivers": "`AGGREGATED` and `ALL` check modes"
+      }
+    },
+    {
+      "id": "tier-feature:API_KEYS_OIDC",
+      "kind": "tier-feature",
+      "number": 5,
+      "spacelift": {
+        "meaning": "OIDC-based API keys",
+        "plan": "Enterprise [D] [C]",
+        "operationsTagged": 1,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
+      },
+      "infraweave": {
+        "feature": "`oidc-api-keys`",
+        "phase": "P3",
+        "delivers": "OIDC API keys, `@oidc` scenarios"
+      }
+    },
+    {
+      "id": "tier-feature:AUDITING",
+      "kind": "tier-feature",
+      "number": 6,
+      "spacelift": {
+        "meaning": "The audit trail, including audit webhooks [G]",
+        "plan": "Enterprise [D] [C]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 6,
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)"
+      },
+      "infraweave": {
+        "feature": "`audit-trail`",
+        "phase": "P18b",
+        "delivers": "Audit trail and audit webhook"
+      }
+    },
+    {
+      "id": "tier-feature:AUDIT_WEBHOOKS",
+      "kind": "tier-feature",
+      "number": 7,
+      "spacelift": {
+        "meaning": "Audit webhooks; deprecated in favour of `AUDITING` [G] (deprecated [G])",
+        "plan": "Enterprise, as `AUDITING`",
+        "selfHosted": "Superseded (report 26 section 7.5)",
+        "operationsTagged": 0,
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)"
+      },
+      "infraweave": {
+        "feature": "`audit-trail`: superseded (S2, [SUP-18](supersessions.json)) by `AUDITING`",
+        "phase": "P3b",
+        "delivers": "Absent from the catalogue and from `tierFeatures`; `audit-trail` covers it"
+      }
+    },
+    {
+      "id": "tier-feature:BLUEPRINTS",
+      "kind": "tier-feature",
+      "number": 8,
+      "spacelift": {
+        "meaning": "Blueprints, and templates by shared naming [I]",
+        "plan": "Business [D] [C]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 26,
+        "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)"
+      },
+      "infraweave": {
+        "feature": "`blueprints`, `templates`",
+        "phase": "P21",
+        "delivers": "Blueprints and templates"
+      }
+    },
+    {
+      "id": "tier-feature:CAN_UPDATE_SSO_SAML",
+      "kind": "tier-feature",
+      "number": 9,
+      "spacelift": {
+        "meaning": "Changing SAML settings after setup [I] from the name",
+        "plan": "Enterprise [I] with SAML",
+        "operationsTagged": 0,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
+      },
+      "infraweave": {
+        "feature": "`saml-sso`",
+        "phase": "P23",
+        "delivers": "SAML settings updates"
+      }
+    },
+    {
+      "id": "tier-feature:CLOUD_CREDENTIAL_GENERATION",
+      "kind": "tier-feature",
+      "number": 10,
+      "spacelift": {
+        "meaning": "Cloud credentials generated by Spacelift for runs [I] from the name",
+        "plan": "Not stated; cloud integrations are listed from Starter+ [C]",
+        "selfHosted": "Self-hosted offers AWS only [D]",
+        "operationsTagged": 0,
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)"
+      },
+      "infraweave": {
+        "feature": "`cloud-integrations`",
+        "phase": "P15",
+        "delivers": "AWS, Azure and GCP credentials for runs"
+      }
+    },
+    {
+      "id": "tier-feature:CUSTOM_SSO_SAML",
+      "kind": "tier-feature",
+      "number": 11,
+      "spacelift": {
+        "meaning": "SAML single sign-on",
+        "plan": "Enterprise [D] [C]",
+        "operationsTagged": 4,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
+      },
+      "infraweave": {
+        "feature": "`saml-sso`",
+        "phase": "P23",
+        "delivers": "SAML single sign-on"
+      }
+    },
+    {
+      "id": "tier-feature:DRIFT_DETECTION",
+      "kind": "tier-feature",
+      "number": 12,
+      "spacelift": {
+        "meaning": "Drift detection",
+        "plan": "Starter+ [D] [C]",
+        "selfHosted": "Private workers only [D]; so none on a Free account, which has no private worker [I] from [C]",
+        "operationsTagged": 3,
+        "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)"
+      },
+      "infraweave": {
+        "feature": "`drift-detection`",
+        "phase": "P16",
+        "delivers": "Drift detection integrations"
+      }
+    },
+    {
+      "id": "tier-feature:MFA",
+      "kind": "tier-feature",
+      "number": 13,
+      "spacelift": {
+        "meaning": "Enforced multi-factor authentication",
+        "plan": "Enterprise, with SSO on [D] [C]",
+        "operationsTagged": 2,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
+      },
+      "infraweave": {
+        "feature": "`mfa`",
+        "phase": "P23",
+        "delivers": "Enforced MFA and security keys"
+      }
+    },
+    {
+      "id": "tier-feature:MULTIPLE_VCS",
+      "kind": "tier-feature",
+      "number": 14,
+      "spacelift": {
+        "meaning": "More than one integration per VCS provider [I] from the name",
+        "plan": "Enterprise: concurrent VCS connections [C]; space-level integrations [D]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 0,
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)"
+      },
+      "infraweave": {
+        "feature": "`multiple-vcs-integrations`",
+        "phase": "P19",
+        "delivers": "More than one integration per provider and space-level integrations"
+      }
+    },
+    {
+      "id": "tier-feature:NOTIFICATION_POLICIES",
+      "kind": "tier-feature",
+      "number": 15,
+      "spacelift": {
+        "meaning": "Notification policies and the inbox",
+        "plan": "Paid [D]",
+        "operationsTagged": 2,
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md), [09](../research/reference/09-policies.md)"
+      },
+      "infraweave": {
+        "feature": "`notification-policies`, `notifications`",
+        "phase": "P18",
+        "delivers": "Notification policy routing and the inbox"
+      }
+    },
+    {
+      "id": "tier-feature:PRIVATE_MODULE_SHARING",
+      "kind": "tier-feature",
+      "number": 16,
+      "spacelift": {
+        "meaning": "Sharing private modules with other accounts [I] from the name",
+        "plan": "Not stated; the module registry is paid [D]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 2,
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)"
+      },
+      "infraweave": {
+        "feature": "`module-sharing`",
+        "phase": "P17",
+        "delivers": "`moduleShare`, `sharedModulesV2`, between accounts of one organization"
+      }
+    },
+    {
+      "id": "tier-feature:PRIVATE_VCS",
+      "kind": "tier-feature",
+      "number": 17,
+      "spacelift": {
+        "meaning": "VCS agent pools for VCS systems the internet cannot reach",
+        "plan": "Enterprise [D] [C]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 6,
+        "owningReport": "[11](../research/reference/11-vcs-integrations.md)"
+      },
+      "infraweave": {
+        "feature": "`vcs-agent-pools`",
+        "phase": "P19b",
+        "delivers": "VCS agent pools"
+      }
+    },
+    {
+      "id": "tier-feature:PRIVATE_WORKERS",
+      "kind": "tier-feature",
+      "number": 18,
+      "spacelift": {
+        "meaning": "Private worker pools",
+        "plan": "Starter+ [D] [C]",
+        "selfHosted": "FedRAMP runs on private workers only [D]",
+        "operationsTagged": 6,
+        "owningReport": "[10](../research/reference/10-workers-and-execution.md)"
+      },
+      "infraweave": {
+        "feature": "`private-worker-pools`, `private-workers`",
+        "phase": "P8",
+        "delivers": "Private worker pools"
+      }
+    },
+    {
+      "id": "tier-feature:RUN_STATE_CHANGE_WEBHOOKS",
+      "kind": "tier-feature",
+      "number": 19,
+      "spacelift": {
+        "meaning": "Stack, module and named webhooks",
+        "plan": "Paid [D]",
+        "selfHosted": "No notice on self-hosted pages [D]",
+        "operationsTagged": 4,
+        "owningReport": "[19](../research/reference/19-events-notifications-audit.md)"
+      },
+      "infraweave": {
+        "feature": "`webhooks`",
+        "phase": "P18",
+        "delivers": "Per-stack, per-module and named webhooks"
+      }
+    },
+    {
+      "id": "tier-feature:TARGETED_REPLAN",
+      "kind": "tier-feature",
+      "number": 20,
+      "spacelift": {
+        "meaning": "Targeted replan of an unconfirmed run",
+        "plan": "Business [D] [C]",
+        "operationsTagged": 1,
+        "owningReport": "[08](../research/reference/08-run-lifecycle.md)"
+      },
+      "infraweave": {
+        "feature": "`targeted-replan`",
+        "phase": "P10",
+        "delivers": "`runTargetedReplan`"
+      }
+    },
+    {
+      "id": "tier-feature:TERRAFORM_PROVIDER_VERSIONS",
+      "kind": "tier-feature",
+      "number": 21,
+      "spacelift": {
+        "meaning": "The private provider registry",
+        "plan": "Business [D] [C]",
+        "selfHosted": "Self-hosted has both registries [D]",
+        "operationsTagged": 12,
+        "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)"
+      },
+      "infraweave": {
+        "feature": "`terraform-provider-registry`",
+        "phase": "P17b",
+        "delivers": "Provider registry"
+      }
+    },
+    {
+      "id": "tier-feature:UNLIMITED_SEATS",
+      "kind": "tier-feature",
+      "number": 22,
+      "spacelift": {
+        "meaning": "No cap on users",
+        "plan": "Starter+ and above: unlimited users; Free: 2 users [C]; Free and Starter have seat limits [D]",
+        "operationsTagged": 0,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
+      },
+      "infraweave": {
+        "feature": "no `seats` value",
+        "phase": "P3b",
+        "delivers": "`seats` reports no limit"
+      }
+    },
+    {
+      "id": "tier-feature:WORKFLOW_POLICIES",
+      "kind": "tier-feature",
+      "number": 23,
+      "spacelift": {
+        "meaning": "Policies that drive the run workflow [I] from the name",
+        "plan": "Paid [D]; policy engine from Starter+ [C]",
+        "selfHosted": "Which types it covers is *(unverified)*",
+        "operationsTagged": 3,
+        "owningReport": "[09](../research/reference/09-policies.md)"
+      },
+      "infraweave": {
+        "feature": "`policies`",
+        "phase": "P13",
+        "delivers": "Workflow policy types; the gated set is open (capture C48)"
+      }
+    },
+    {
+      "id": "tier-feature:OIDC_FEDERATION_TOKEN_GENERATION",
+      "kind": "tier-feature",
+      "number": 24,
+      "spacelift": {
+        "meaning": "The OIDC token in every run, and the subject template",
+        "plan": "Paid [D]",
+        "operationsTagged": 1,
+        "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)"
+      },
+      "infraweave": {
+        "feature": "`oidc-federation`",
+        "phase": "P15",
+        "delivers": "Run OIDC token and subject template"
+      }
+    },
+    {
+      "id": "tier-feature:RUN_IGNORED_TRIGGERS",
+      "kind": "tier-feature",
+      "number": 25,
+      "spacelift": {
+        "meaning": "The ignored-runs list and warnings",
+        "plan": "Starter+ [D]",
+        "operationsTagged": 1,
+        "owningReport": "[08](../research/reference/08-run-lifecycle.md), [11](../research/reference/11-vcs-integrations.md)"
+      },
+      "infraweave": {
+        "feature": "`ignored-runs`",
+        "phase": "P12",
+        "delivers": "`stackSearchRunIgnoredTriggers` and ignored-run warnings"
+      }
+    },
+    {
+      "id": "tier-feature:ACCOUNT_AI_CONTROL",
+      "kind": "tier-feature",
+      "number": 26,
+      "spacelift": {
+        "meaning": "Account switches for Spacelift Intelligence and Infra Assistant [I] from the operations gated",
+        "plan": "Not stated",
+        "operationsTagged": 4,
+        "owningReport": "[22](../research/reference/22-intelligence.md)"
+      },
+      "infraweave": {
+        "feature": "`ai-account-controls`",
+        "phase": "P25",
+        "delivers": "Account AI switches"
+      }
+    },
+    {
+      "id": "tier-feature:SPACELIFT_INTELLIGENCE",
+      "kind": "tier-feature",
+      "number": 27,
+      "spacelift": {
+        "meaning": "Spacelift Intelligence: AI integrations and Intent [I] from the operations gated",
+        "plan": "Not stated; Infra Assistant is on every plan [D]",
+        "selfHosted": "Self-hosted: Intent and Infra Assistant work, the Spacelift-provided AI integration does not [D]",
+        "operationsTagged": 23,
+        "owningReport": "[22](../research/reference/22-intelligence.md)"
+      },
+      "infraweave": {
+        "feature": "`ai-integrations`, `intent`",
+        "phase": "P25",
+        "delivers": "AI integrations, Infra Assistant; Intent in P25b"
+      }
+    },
+    {
+      "id": "tier-feature:SERVICE_NOW_INTEGRATION",
+      "kind": "tier-feature",
+      "number": 28,
+      "spacelift": {
+        "meaning": "The ServiceNow external integration",
+        "plan": "Enterprise [D]",
+        "operationsTagged": 1,
+        "owningReport": "[25](../research/reference/25-other-integrations.md)"
+      },
+      "infraweave": {
+        "feature": "`servicenow`",
+        "phase": "P21",
+        "delivers": "ServiceNow external integration"
+      }
+    },
+    {
+      "id": "tier-feature:BACKSTAGE_INTEGRATION",
+      "kind": "tier-feature",
+      "number": 29,
+      "spacelift": {
+        "meaning": "The Backstage plugins [I] from the name",
+        "plan": "Not stated",
+        "operationsTagged": 0,
+        "owningReport": "[25](../research/reference/25-other-integrations.md)"
+      },
+      "infraweave": {
+        "feature": "`backstage`",
+        "phase": "P21",
+        "delivers": "Backstage integration key and seat exemption (capture C257)"
+      }
+    },
+    {
+      "id": "tier-feature:SCIM",
+      "kind": "tier-feature",
+      "number": 30,
+      "spacelift": {
+        "meaning": "SCIM v2 provisioning APIs [G]",
+        "plan": "Enterprise [D]",
+        "operationsTagged": 4,
+        "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
+      },
+      "infraweave": {
+        "feature": "`scim`",
+        "phase": "P23",
+        "delivers": "SCIM v2 provisioning"
+      }
+    },
+    {
+      "id": "tier-feature:SCANS",
+      "kind": "tier-feature",
+      "number": 31,
+      "spacelift": {
+        "meaning": "Scans [G]",
+        "plan": "Not stated",
+        "operationsTagged": 6,
+        "owningReport": "[21](../research/reference/21-resources-scans-search.md)"
+      },
+      "infraweave": {
+        "feature": "`scans`",
+        "phase": "P22b",
+        "delivers": "Scans"
+      }
+    }
+  ]
+}

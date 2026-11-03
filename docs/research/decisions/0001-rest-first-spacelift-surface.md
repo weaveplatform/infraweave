@@ -69,64 +69,19 @@ any feature work begins.
 
 ### Rename table
 
-This table is the one list of reference names that infraweave serves or
-reads under another name; records that rename a name cite it rather than
-repeat it. A row whose two cells are each one code span names an
-identifier, and `TestUnitServedNames` reads those rows: `Schema.name` limits
-a row to that schema's property or enum value, and `*` stands for any run of
-characters. A row in words names a concept rather than an identifier. The
+The rename register, [`docs/data/renames.json`](../../data/renames.json),
+is the one list of reference names that infraweave serves or reads under
+another name; records that rename a name cite it rather than repeat it. An
+`identifier` record names one reference name, where `*` stands for any run
+of characters, and its replacement, and `TestUnitServedNames` reads those
+records; a `schema` member limits the record to that schema's property or
+enum value. A `concept` record names a reference concept in words. The
 records that own the renamed behaviour are 0006 (the AWS account ID, the
 session channel, the token file), 0007 (admins and the top space), 0008
 (run variables and the config element category), 0009 (the policy input),
 0010 and 0012 (environment variables, the `INFRAWEAVE` provider, the
 comment command), 0017 (metrics), 0018 (Flows), 0019 (AI), 0022 and 0024
 (repository files).
-
-| Reference name | infraweave name |
-|---|---|
-| `spaceliftIntelligenceEnabled` | `aiEnabled` |
-| `/spacelift-intelligence-enabled` | `/ai-enabled` |
-| `spaceliftIntelligenceTermsAccepted` | `aiTermsAccepted` |
-| `/spacelift-intelligence-terms-accepted` | `/ai-terms-accepted` |
-| `spaceliftIntelligenceTermsLatestVersion` | `aiTermsLatestVersion` |
-| `/spacelift-intelligence-terms-latest-version` | `/ai-terms-latest-version` |
-| `accountSetSpaceliftIntelligenceEnabled` | `accountSetAiEnabled` |
-| `/account/set-spacelift-intelligence-enabled` | `/account/set-ai-enabled` |
-| `AccountSetSpaceliftIntelligenceEnabledRequest` | `AccountSetAiEnabledRequest` |
-| `AIIntegration.isSpaceliftProvided` | `isInstallationProvided` |
-| `spaceliftAwsAccountId` | `installationAwsAccountId` |
-| `/spacelift-aws-account-id` | `/installation-aws-account-id` |
-| `SpaceliftMetrics` | `AccountMetrics` |
-| `VCSProvider.SPACELIFT` | `INFRAWEAVE` |
-| `ConfigElementCategory.SPACELIFT_ENVIRONMENT` | `INFRAWEAVE_ENVIRONMENT` |
-| `SessionChannel.SPACECTL` | `INFRAWEAVECTL` |
-| `apiKeyEnableNonRootManagers` | `apiKeyEnableNonAdminManagers` |
-| `/account/api-key-non-root-managers` | `/account/api-key-non-admin-managers` |
-| `ApiKeyEnableNonRootManagersRequest` | `ApiKeyEnableNonAdminManagersRequest` |
-| `apiKeysManagedByNonRootAdmins` | `apiKeysManagedByNonAdmins` |
-| `/api-keys-managed-by-non-root-admins` | `/api-keys-managed-by-non-admins` |
-| `accountToggleAllowNonRootAdminSpaceCreation` | `accountToggleAllowNonAdminSpaceCreation` |
-| `/account/toggle-allow-non-root-admin-space-creation` | `/account/toggle-allow-non-admin-space-creation` |
-| `allowNonRootAdminSpaceCreation` | `allowNonAdminSpaceCreation` |
-| `/allow-non-root-admin-space-creation` | `/allow-non-admin-space-creation` |
-| `FlowsIntegration.organizationID` | `accountID` |
-| `FlowsIntegration.organizationName` | `accountName` |
-| `SPACELIFT_*` | `INFRAWEAVE_*` |
-| `TF_VAR_spacelift_*` | `TF_VAR_infraweave_*` |
-| `spacelift.*` | `infraweave.*` |
-| `spacelift_*` | `infraweave_*` |
-| `spacelift-promex` | `/metrics/accounts` |
-| `.spacelift/config.yml` | `.infraweave/config.yml` |
-| `.spacelift/workflow.yml` | `.infraweave/workflow.yml` |
-| `/mnt/workspace/spacelift.oidc` | `/mnt/workspace/infraweave.oidc` |
-| `/spacelift` | `/infraweave` |
-| `spacectl` | `infraweavectl` |
-| Root admin: `space-admin` on `root` | Account admin: `space-admin` on the account's top space |
-| Non-root admin | Non-admin: a space admin below the account's top space |
-| The `root` space | The account's top space, whose ID is the account's slug |
-| Flows organization and its organization admin | The account and its account admin |
-| Flows HTTP Endpoint `audience` value `organization` | `account` |
-
 `BillingTierFeature` is not served, so its values are mapped to feature
 names rather than renamed; decision 0021's mapping table covers
 `SPACELIFT_INTELLIGENCE` with the rest.
@@ -303,8 +258,8 @@ Implemented:
   of the served deploy bundle outside the mapping extensions, descriptions
   and enum descriptions included, contains "spacelift" in any case; when a
   path, tag, operationId, schema, property, enum value, parameter or header
-  name matches a reference name in the rename table above; or when a row's
-  infraweave name says spacelift. A fixture that serves the property
+  name matches an identifier record of the rename register; or when a
+  record's infraweave name says spacelift. A fixture that serves the property
   `spaceliftAwsAccountId` and a description that names Spacelift proves
   that both checks reach what they claim to read, and its `x-terraform`
   value proves that the mapping extensions pass.

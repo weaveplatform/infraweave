@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "deviations.schema.json",
+  "title": "Deviations from Spacelift",
+  "description": "Every place infraweave departs from Spacelift on purpose, each a design commitment of an Accepted decision record. docs/implementation/deviations.md says what counts as a deviation and how to add one.",
+  "x-id-pattern": "DV-[0-9]{3}",
+  "x-cite-pattern": "\\bDV-[0-9]{3}\\b",
+  "type": "object",
+  "required": [
+    "$schema",
+    "records"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "schema/deviations.schema.json"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "group",
+          "spacelift",
+          "infraweave",
+          "why",
+          "impact",
+          "source"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "DV-NNN, numbered across the register and never reused.",
+            "type": "string"
+          },
+          "group": {
+            "description": "The subject and the decisions that own it. Each group is a heading of the Register section of docs/implementation/deviations.md, so its anchor there is the heading's slug.",
+            "enum": [
+              "API surface: decisions 0001 and 0003",
+              "Architecture and persistence: decisions 0004 and 0005",
+              "Tenancy: decisions 0006, 0007, 0014 and 0021",
+              "Identity and access: decisions 0006 and 0007",
+              "Runs, workers and policies: decisions 0008 and 0009",
+              "State and queue: decisions 0010 and 0011",
+              "VCS: decision 0012",
+              "Secrets: decision 0013",
+              "Registry: decision 0014",
+              "Events: decision 0015",
+              "Observability: decision 0017",
+              "Flows: decision 0018",
+              "Intelligence: decision 0019",
+              "Packaging: decision 0020",
+              "Scope, tiers and clients: decision 0021",
+              "Names: decision 0001 and the glossary",
+              "Errors, updates and input: decision 0022",
+              "Console: decision 0023",
+              "Expressions: decision 0024"
+            ]
+          },
+          "spacelift": {
+            "description": "What Spacelift does, as a report records it. A behaviour the reports mark *(unverified)* says so.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "infraweave": {
+            "description": "What infraweave does instead, with the exact names of settings, routes and fields.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "why": {
+            "description": "The limit avoided or the property gained.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "impact": {
+            "description": "None, with the reason, or what a Spacelift client, an operator or a script must change.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "source": {
+            "description": "The decision record, linked to the section that names the departure.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "pending": {
+            "description": "Present while the record rests on Spacelift behaviour that a capture of report 30 has not yet shown. When the capture lands, the record stays, changes or is withdrawn with its decision.",
+            "type": "object",
+            "required": [
+              "captures",
+              "settles"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "captures": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^C[0-9]+$"
+                }
+              },
+              "settles": {
+                "description": "What the captures settle for this record.",
+                "$ref": "common.schema.json#/$defs/markdown"
+              }
+            }
+          },
+          "withdrawn": {
+            "description": "Present on a record that no longer holds: why, and the decision that withdrew it. The ID stays reserved.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          }
+        }
+      }
+    }
+  }
+}

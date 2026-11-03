@@ -59,7 +59,9 @@ Facts every option shares, so that the comparison is about structure alone:
 
 - one Go module and one server binary, `cmd/infraweave`, with the process
   modes `serve`, `scheduler`, `launcher` and `all`, the hidden `runner`, and
-  the `vcs-agent`, `flows-agent`, `migrate` and `version` subcommands
+  the `vcs-agent`, `flows-agent`, `migrate`, `auth hash-password`,
+  `secrets generate-kek`, `secrets rewrap`, `secrets rotate` and `version`
+  subcommands
   ([Process topology](#process-topology)); the slim `cmd/infraweave-agent`
   build of the agent process modes alone; and the separate client binary
   `cmd/infraweavectl` over the SDK, `pkg/sdk`, which wraps the generated
@@ -436,7 +438,7 @@ out.
 
 | Concern | One binary, process modes by subcommand | Separate binaries from one Go module | Separate services |
 |---|---|---|---|
-| What ships | `infraweave` with `serve`, `scheduler`, `launcher`, `all`, the hidden `runner`, `vcs-agent`, `flows-agent`, `migrate` and `version`; the slim `infraweave-agent` with only the agent process modes; Flows apps as their authors' own images | `infraweave-server`, `infraweave-scheduler`, `infraweave-launcher`, `infraweave-flows-agent`; one image each | A service per domain or process mode, each with its own release |
+| What ships | `infraweave` with `serve`, `scheduler`, `launcher`, `all`, the hidden `runner`, `vcs-agent`, `flows-agent`, `migrate`, `auth hash-password`, the `secrets` key operations and `version`; the slim `infraweave-agent` with only the agent process modes; Flows apps as their authors' own images | `infraweave-server`, `infraweave-scheduler`, `infraweave-launcher`, `infraweave-flows-agent`; one image each | A service per domain or process mode, each with its own release |
 | Version skew | None between process modes: one build | None if released together; possible if not | A real concern: API contracts between services need versioning |
 | A run transition in one transaction | Yes: serve and scheduler share the database and the same domain code | Yes | No, once services own separate data: run, lock, queue and receipts need sagas or a shared database |
 | Independent scaling | Yes: each process mode is its own process and deployment | Yes | Yes |

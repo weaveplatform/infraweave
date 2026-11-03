@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-findings.schema.json",
+  "title": "Findings of the fact-check passes",
+  "description": "One record per finding of a review pass in report 31. The id is the pass and the finding's number in that pass, so RES-02.06-16 is RES-02's sixteenth finding on report 06, and a letter tells apart two findings a pass gave one number. A folded finding carries the phrases that show its change in the tree today, so a later edit that undoes a correction fails the docs check.",
+  "x-id-pattern": "(RES|ARC|IMP|DES)-[0-9]{2}\\.[0-9]+[a-z]?(-[0-9]+)?",
+  "x-cite-pattern": "\\b(?:RES|ARC|IMP|DES)-[0-9]{2}\\.[0-9]+[a-z]?(?:-[0-9]+)?\\b",
+  "x-evidence": "evidence",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "schema/review-findings.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "finding", "change", "status", "files"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "subject": {"description": "The reports or records the pass named for the finding, as it named them.", "type": "string", "minLength": 1},
+          "severity": {
+            "description": "The pass's label, defined in report 31. ARC-01 and IMP-01 gave none.",
+            "enum": ["wrong", "unsupported", "missing", "copied", "style"]
+          },
+          "finding": {"$ref": "common.schema.json#/$defs/markdown"},
+          "change": {"description": "What the pass changed, as it recorded it.", "$ref": "common.schema.json#/$defs/markdown"},
+          "status": {
+            "description": "folded: the change holds in the tree, shown by evidence. superseded: a later decision or rewrite replaced the text the finding was about, said in by. open: the question it raised is unanswered, named in question.",
+            "enum": ["folded", "superseded", "open"]
+          },
+          "files": {
+            "description": "The files the change lives in today.",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "common.schema.json#/$defs/path"}
+          },
+          "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "common.schema.json#/$defs/evidence"}},
+          "by": {"$ref": "common.schema.json#/$defs/markdown"},
+          "question": {"description": "The open question of report 30 that carries the finding.", "type": "string", "pattern": "^C[0-9]+$"}
+        },
+        "allOf": [
+          {"if": {"properties": {"status": {"const": "folded"}}}, "then": {"required": ["evidence"]}},
+          {"if": {"properties": {"status": {"const": "superseded"}}}, "then": {"required": ["by"]}},
+          {"if": {"properties": {"status": {"const": "open"}}}, "then": {"required": ["question"]}}
+        ]
+      }
+    }
+  }
+}

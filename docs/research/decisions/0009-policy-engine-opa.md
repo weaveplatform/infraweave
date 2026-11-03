@@ -236,7 +236,7 @@ Who calls the engine, when, and what the result does to the run of decision
 - **Sampling.** When `sample` is true (login by default), the engine stores a record of
   input, body, engine type, result, outcome, error and print output.
   - Hourly sample budgets per account: 200 for `NOTIFICATION`, 200 for `GIT_PUSH`, 500 for all
-    other types together, counted in `policy_sample_quota (account_id, hour, bucket)` with
+    other types together, counted in `policy_sample_budgets (account_id, hour, bucket)` with
     an atomic upsert. Over budget, the evaluation is recorded but not sampled.
   - The record is JSON, sealed with the streaming blob sealing of decision
     [0013](0013-secrets-at-rest.md) into the `policy-inputs` store (decision
@@ -318,7 +318,7 @@ Who calls the engine, when, and what the result does to the run of decision
   ([09 section 3.3](../reference/09-policies.md#33-approval)), and what a flag set by a
   type with no run does. infraweave fails the run in both reject cases and ignores such
   flags.
-- Whether infraweave pins Spacelift's policy contract as a committed snapshot is P14,
+- Whether infraweave pins Spacelift's policy contract as a committed snapshot is PD-14,
   outside this record.
 
 ## Verification
