@@ -147,7 +147,7 @@ gateways; a gateway becomes a process mode of its own only if its long-lived
 connections need separate scaling
 ([process topology](../architecture-options/README.md#process-topology)).
 The infraweave CLI is a separate client binary, `infraweavectl`, built from
-`cmd/infraweavectl` over `pkg/client/deploy`; it is not a process mode. Packaging
+`cmd/infraweavectl` over the SDK, `pkg/sdk`; it is not a process mode. Packaging
 both binaries is decision 0020's.
 
 ## Rationale
