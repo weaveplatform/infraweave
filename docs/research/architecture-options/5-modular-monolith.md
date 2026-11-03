@@ -1,10 +1,10 @@
 # Option 5: Modular monolith, detailed layout
 
 Detailed repository layout for option 5 of the
-[architecture options](README.md): business modules under
-`internal/<module>/`, each owning its model, its tables, its HTTP surface and
+[architecture options](README.md): business domains under
+`internal/<domain>/`, each owning its model, its tables, its HTTP surface and
 a published `api/` package, with ports and adapters inside the larger
-modules, one binary with several roles and one database. Every package in
+domains, one binary with several process modes and one database. Every package in
 today's tree is mapped; roadmap packages are marked with the phase of
 [report 26](../reference/26-scope-and-tiers.md#14-provisional-phase-spine)
 that creates them.
@@ -18,25 +18,25 @@ Conventions in the trees:
 
 ## Summary
 
-The tree is organised by business domain first. Each domain is a module
-under `internal/<module>/` with the same four parts: a published `api/`
-package (interfaces, input and output types, events), a `module/` package
-holding the constructor and the module's contributions to each process role,
+The tree is organised by business domain first. Each domain is a directory
+under `internal/<domain>/` with the same four parts: a published `api/`
+package (interfaces, input and output types, events), an `assembly/` package
+holding the constructor and the domain's contributions to each process mode,
 an `internal/` directory with everything else, and one migration stream.
-Modules talk to each other only through `api/` packages: synchronously for
+Domains talk to each other only through `api/` packages: synchronously for
 queries, authorisation and policy decisions, and asynchronously through
 events appended to a transactional outbox in the producer's own transaction.
-The Go compiler enforces most of the boundary, because a module's
-`internal/<module>/internal/...` packages are importable only from inside
-`internal/<module>/`.
+The Go compiler enforces most of the boundary, because a domain's
+`internal/<domain>/internal/...` packages are importable only from inside
+`internal/<domain>/`.
 
-Module boundaries are drawn by consistency. A run transition changes the run
+Domain boundaries are drawn by consistency. A run transition changes the run
 row, its transition record, the stack's run lock and run state, the queue item
 that moves it on, the policy receipts that justified it and the event other
-modules hear, and all of that commits or none of it does. So the `runs`
-module owns every one of those tables: the run lock and the stack's
+domains hear, and all of that commits or none of it does. So the `runs`
+domain owns every one of those tables: the run lock and the stack's
 `StackState` mirror live in `runs`, not in `stacks`, and `stacks` reads them
-through `runs/api`. The large modules (`runs`, `vcs`, `workers`, `access`,
+through `runs/api`. The large domains (`runs`, `vcs`, `workers`, `access`,
 `registry`, `events`, `intelligence`, `flows`) are hexagons inside, with
 `internal/core/` and `internal/adapters/`; the small ones are flat.
 
@@ -44,33 +44,33 @@ Shared infrastructure with no business rules lives in `internal/platform/`:
 PostgreSQL access, the context-carried unit of work, the outbox, decision
 0011's job queue and cron ticker, object storage, envelope encryption, the
 HTTP kit with problem details, the generated servers, and the embedded OPA
-runtime. Value types used across module APIs, such as IDs, spaces,
+runtime. Value types used across domain APIs, such as IDs, spaces,
 principals and the run state vocabulary, live in `internal/kernel/`. Pure
 vendor knowledge (settings, workflow keys, plan parsing) that both the server
 and the worker need lives in `internal/iac/`. Everything that runs on a
-worker host lives in `internal/agent/`, which links no module and no
+worker host lives in `internal/agent/`, which links no domain and no
 server-side persistence.
 
 Dependency rules:
 
-1. Nothing outside `internal/<module>/` imports
-   `internal/<module>/internal/...`. The Go compiler enforces this; depguard
+1. Nothing outside `internal/<domain>/` imports
+   `internal/<domain>/internal/...`. The Go compiler enforces this; depguard
    does not need to.
-2. A package under `internal/<module>/` imports only `internal/platform/...`,
-   `internal/kernel/...`, `internal/iac/...`, its own module, other
-   modules' `internal/<other>/api/...`, and third-party libraries.
-3. An `internal/<module>/api/` package imports only `internal/kernel/...`,
+2. A package under `internal/<domain>/` imports only `internal/platform/...`,
+   `internal/kernel/...`, `internal/iac/...`, its own domain, other
+   domains' `internal/<other>/api/...`, and third-party libraries.
+3. An `internal/<domain>/api/` package imports only `internal/kernel/...`,
    `internal/platform/outbox` (for the event envelope) and the standard
    library, so `api/` packages can never form a cycle.
-4. Only `internal/app/...` and `cmd/...` import `internal/<module>/module`,
+4. Only `internal/app/...` and `cmd/...` import `internal/<domain>/assembly`,
    the constructor packages.
-5. Inside a module, `internal/<module>/internal/core/...` never imports
-   `internal/<module>/internal/adapters/...`.
+5. Inside a domain, `internal/<domain>/internal/core/...` never imports
+   `internal/<domain>/internal/adapters/...`.
 6. `internal/platform/...`, `internal/kernel/...` and `internal/iac/...`
-   import no module, no `internal/agent/...` and no `internal/app/...`.
+   import no domain, no `internal/agent/...` and no `internal/app/...`.
 7. `internal/agent/...` imports only `internal/kernel/...`,
    `internal/iac/...`, `internal/platform/{buildinfo,rego,httpkit/client}`
-   and its own tree. It never imports a module (not even an `api/` package),
+   and its own tree. It never imports a domain (not even an `api/` package),
    `internal/platform/{sql,tx,outbox,audit,queue,objectstore,crypt}` or a database
    driver.
 8. `internal/devtools/...` is imported only by `tools/...` and its own tests.
@@ -84,10 +84,10 @@ Rules 2 to 8 are depguard rules in `.golangci.yml`; rule 1 is the compiler's
 ```text
 infraweave/
 ├── cmd/
-│   ├── infraweave/             one binary: serve, scheduler, all, worker, hidden worker exec,
+│   ├── infraweave/             one binary: serve, scheduler, all, launcher, hidden runner,
 │   │                           vcs-agent, flows-agent, migrate up and status, secrets, version
 │   └── infraweavectl/          (P24) the CLI, a client over pkg/client/deploy
-├── internal/                   app/ kernel/ platform/ iac/ agent/ devtools/ and one directory per module
+├── internal/                   app/ kernel/ platform/ iac/ agent/ devtools/ and one directory per domain
 ├── pkg/
 │   └── client/deploy/          generated deploy client; the Terraform provider repository imports it
 ├── api/                        unchanged layout; oapi-server-*.yaml outputs move to internal/platform/gen
@@ -100,31 +100,31 @@ infraweave/
 ├── tools/                      unchanged: thin mains over internal/devtools
 ├── deploy/                     (P27) decision 0020's images, charts, Compose file and Terraform modules
 │   ├── images/                 server, runner (P9, P20) and Flows runtime image definitions
-│   ├── compose/                compose.yaml: one infraweave all and one worker
-│   ├── helm/                   infraweave/ (serve, scheduler) and infraweave-workers/ (worker)
+│   ├── compose/                compose.yaml: one infraweave all and one launcher
+│   ├── helm/                   infraweave/ (serve, scheduler) and infraweave-workers/ (launcher)
 │   ├── terraform/              modules/<cloud>/ for aws, azure and google, and examples/
 │   └── check.sh                static checks of every deployment root
 ├── docs/                       research, decisions, the implementation plan
 ├── Makefile                    generate writes to internal/platform/gen and internal/agent/wire
 ├── .golangci.yml               depguard enabled with the rules in "Tests and enforcement"
 ├── .testcoverage.yml           exclusions follow the generated paths
-└── go.mod                      one module
+└── go.mod                      one Go module
 ```
 
 What changes at the root and why:
 
 - `cmd/` gains its first binary. `cmd/infraweave` holds one cobra file per
-  role and hands off to `internal/app` (serve, scheduler, all, migrate) or
-  to `internal/agent` (worker, worker exec, vcs-agent, flows-agent). Report 24 shows Spacelift running
+  process mode and hands off to `internal/app` (serve, scheduler, all, migrate) or
+  to `internal/agent` (launcher, runner, vcs-agent, flows-agent). Report 24 shows Spacelift running
   its server, drain and scheduler as subcommands of one binary
   ([24, section 2.1](../reference/24-self-hosted-reference.md#21-process-inventory)),
   and this layout produces the same shape.
-- `pkg/` stays small: generated clients only. Every module, the platform
-  and the agent are internal, because publishing them would freeze module
+- `pkg/` stays small: generated clients only. Every domain, the platform
+  and the agent are internal, because publishing them would freeze domain
   internals as a public API. The worker protocol client is internal too
   (see [Worker protocol and pools](#worker-protocol-and-pools)).
-- `internal/` gains one directory per module. The set grows phase by phase,
-  and a module directory appears with the phase that creates it.
+- `internal/` gains one directory per domain. The set grows phase by phase,
+  and a domain directory appears with the phase that creates it.
 - `api/` stays the source of truth for specifications; only the generated
   server output paths move, to `internal/platform/gen/<spec>`.
 - `deploy/` arrives with packaging (P27); runner images arrive earlier,
@@ -132,18 +132,18 @@ What changes at the root and why:
 
 ## Full package tree
 
-### Module status by phase
+### Domain status by phase
 
-| Module or tree | Status at P1 | Created or completed by |
+| Domain or tree | Status at P1 | Created or completed by |
 | --- | --- | --- |
-| `platform`, `kernel`, `devtools`, `app` | partial: buildinfo, httpkit/problem, gen/deploy, devtools, the serve role | P1 to P2; queue P7; rego P13; observe P18 |
+| `platform`, `kernel`, `devtools`, `app` | partial: buildinfo, httpkit/problem, gen/deploy, devtools, the serve process mode | P1 to P2; queue P7; rego P13; observe P18 |
 | `access` | absent | P3 identity and tokens, P4 spaces and RBAC, P23 SSO and SCIM |
 | `stacks` | routes only (69 Stacks operations answer 501) | P5; stack dependencies P16 |
 | `configuration` | absent | P6 |
 | `runs` | routes only (3 Runs operations answer 501) | P7 scheduler and queue gates, P9 first run, P10 completeness, P16 dependencies |
 | `workers` | absent | P8 protocol and public pool, P14 private pools |
-| `agent` (worker-side tree) | absent | P8 launcher, P9 phase executor, P14 Docker and Kubernetes executors, P20 vendors |
-| `iac` (pure library), `vendors` (catalogue module) | absent | P9 Terraform and OpenTofu, P20 the rest |
+| `agent` (worker-side tree) | absent | P8 launcher, P9 runner, P14 Docker and Kubernetes executors, P20 vendors |
+| `iac` (pure library), `vendors` (catalogue domain) | absent | P9 Terraform and OpenTofu, P20 the rest |
 | `state` | absent | P11 |
 | `vcs` | absent | P12 GitHub, P19 other providers and VCS agent pools |
 | `policies` | absent | P13 |
@@ -156,22 +156,22 @@ What changes at the root and why:
 | `intelligence` | absent | P25 |
 | `flows` | absent | P26 |
 
-Every module has the same skeleton. A flat module has one logic package and
+Every domain has the same skeleton. A flat domain has one logic package and
 one store package under its `internal/`; a hexagon splits `core/` from
 `adapters/`.
 
 ```text
-internal/<module>/
-├── api/                       PUBLISHED: interfaces other modules call, input and output types, events
-├── module/                    New(Deps) (*Module, error); Routes(); Consumers(); Cron(); Close()
+internal/<domain>/
+├── api/                       PUBLISHED: interfaces other domains call, input and output types, events
+├── assembly/                  New(Deps) (*Assembly, error); Routes(); Consumers(); Cron(); Close()
 └── internal/
     ├── core/                  hexagon only: domain types, services, ports; no adapters import
     │   └── port/              driven ports: store, object storage, clocks, outbound clients
     ├── adapters/              hexagon only
     │   ├── http/              strict-server partial implementation and hand-written chi routes
-    │   ├── pg/                PostgreSQL store; migrations/ embedded, one stream per module
+    │   ├── pg/                PostgreSQL store; migrations/ embedded, one stream per domain
     │   └── <outbound>/        provider clients, protocol gateways
-    ├── <module>/              flat only: logic, ports and handlers in one package
+    ├── <domain>/              flat only: logic, ports and handlers in one package
     └── pg/                    flat only: the store
 ```
 
@@ -180,20 +180,20 @@ The complete tree at the end of P27:
 ```text
 internal/
 ├── app/                                  composition root for serve, scheduler and all
-│   ├── config/                           strict YAML, flag > env > file; one Settings field per module
+│   ├── config/                           strict YAML, flag > env > file; one Settings field per domain
 │   ├── platform.go                       open PostgreSQL, migrate, object storage, keyring, queue, outbox
-│   ├── modules.go                        construct modules in dependency order; register gates
+│   ├── domains.go                        construct domains in dependency order; register gates
 │   ├── router.go                         chi router, middleware, strict servers composed by embedding
-│   ├── discovery.go                      /.well-known/terraform.json from module contributions (P11, P17)
-│   ├── roles.go                          Serve, Scheduler, All: which module parts each role starts
-│   └── *_test.go                         lifecycle tests per role
+│   ├── discovery.go                      /.well-known/terraform.json from domain contributions (P11, P17)
+│   ├── modes.go                          Serve, Scheduler, All: which domain parts each process mode starts
+│   └── *_test.go                         lifecycle tests per process mode
 ├── devtools/                             libraries behind tools/; never linked into cmd/infraweave
 │   ├── specref/                                                         ← internal/specref
 │   ├── openapibundle/                                                   ← internal/openapibundle
 │   ├── stubgen/                                                         ← internal/stubgen
 │   └── docscheck/                                                       ← internal/docscheck
 │
-├── kernel/                               value types shared by module APIs; parsing only, no I/O
+├── kernel/                               value types shared by domain APIs; parsing only, no I/O
 │   ├── ids.go                            ULID, Slug, UUID (Flows)
 │   ├── account.go space.go               AccountID, SpaceID, the root space
 │   ├── principal.go                      Principal: user, API key, run, worker, stack, Flows project
@@ -201,13 +201,13 @@ internal/
 │   ├── run.go                            RunState (22 values), RunType, StackState, RunPriority: wire names
 │   ├── vendor.go                         VendorKind
 │   ├── vcsroutes/                        provider API route tables shared by vcs and agent/vcsagent (P19)
-│   ├── audit.go                          AuditEntry: the entry every module records
+│   ├── audit.go                          AuditEntry: the entry every domain records
 │   └── page.go                           Cursor and Page of decision 0003
 │
 ├── platform/                             infrastructure with no business rules
 │   ├── buildinfo/                                                       ← internal/buildinfo
 │   ├── sql/                              pgx pool; the migrator, whose advisory lock is the only one (decision 0005)
-│   │   ├── migrate/                      embedded streams, schema_migrations keyed by module
+│   │   ├── migrate/                      embedded streams, schema_migrations keyed by domain
 │   │   ├── notify/                       LISTEN and NOTIFY fan-out between replicas (P7)
 │   │   └── sqltest/                      testcontainers PostgreSQL, a database per case from a migrated template
 │   ├── tx/                               Tx(ctx, fn), AfterCommit; the unit of work on the context
@@ -247,14 +247,14 @@ internal/
 │   ├── terragrunt/ pulumi/ cloudformation/ kubernetes/ ansible/   (P20)
 │   └── iactest/                          contract suite every vendor passes
 │
-├── agent/                                worker-side tree; links no module and no server persistence (P8)
+├── agent/                                worker-side tree; links no domain and no server persistence (P8)
 │   ├── config/                           launcher settings: pool token, comms URL, executor, mounts
 │   ├── launcher/                         register, long-poll for jobs and signals, heartbeat, drain
 │   ├── wire/                             generated worker protocol client (P8)
 │   ├── executor/
 │   │   ├── docker/                       one run container per job, own binary mounted as root process (P8)
 │   │   └── kubernetes/                   controller for WorkerPool and Worker resources, pod per run (P14)
-│   ├── exec/                             `worker exec`: phases, hooks, workspace, log streaming (P9)
+│   ├── exec/                             `runner`: phases, hooks, workspace, log streaming (P9)
 │   ├── vendors/                          command sets per vendor; implements iac.Workflow on the host
 │   │   ├── terraform/ opentofu/          (P9)
 │   │   └── terragrunt/ pulumi/ cloudformation/ kubernetes/ ansible/   (P20)
@@ -273,7 +273,7 @@ internal/
 │   │   ├── tokens.go                     Tokens: IssueRunToken, IssueWorkerToken, Introspect, JWKS
 │   │   ├── identity.go                   Users, Groups, APIKeys (reads)
 │   │   └── events.go                     UserCreated, APIKeyRevoked, SpaceChanged, RoleBindingChanged
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── core/
 │       │   ├── account/ user/ group/ apikey/ session/ token/   (P3)
@@ -290,7 +290,7 @@ internal/
 │
 ├── stacks/                               flat: stacks, settings, hooks, labels, human lock, enable and disable
 │   ├── api/                              Stacks: Get, ByRepository, LockForRun, Settings; events: StackChanged
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── stacks/                       service, validation through iac.ValidateSettings, hooks, reslug
 │       ├── dependency/                   stack dependency DAG, references, cycle rejection (P16)
@@ -299,7 +299,7 @@ internal/
 │
 ├── configuration/                        flat: config elements, contexts, attachments, auto-attach (P6)
 │   ├── api/                              Environment.Resolve(target) → ordered elements and hooks
-│   ├── module/
+│   ├── assembly/
 │   └── internal/{configuration,http,pg}/ config_elements, contexts, context_attachments
 │
 ├── runs/                                 the run engine; owns every table a transition touches
@@ -310,7 +310,7 @@ internal/
 │   │   ├── stackstatus.go                StackStatus: State, Blocker, IsLocked for the Stacks API
 │   │   ├── access.go                     StateAccess(run, stack) → read, write, lock (P11)
 │   │   └── events.go                     RunCreated, RunStateChanged, RunFinished, PlanReady
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── core/
 │       │   ├── machine/                  T1 to T44: report 08's 43 transitions and decision 0008's T44; guards
@@ -331,7 +331,7 @@ internal/
 │
 ├── workers/                              pools, workers, credentials, the worker protocol endpoints (P8, P14)
 │   ├── api/                              Pools: Get, ForStack; Workers: Busy, Drain; events: WorkerChanged
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── core/{pool,worker,credential,drain,waiter,port}/
 │       └── adapters/
@@ -340,14 +340,14 @@ internal/
 │           └── pg/                       worker_pools, workers, public_pool
 │
 ├── vendors/                              flat: version catalogue for Terraform, OpenTofu, kubectl (P9, P20)
-│   └── api/ module/ internal/{vendors,http,pg}/
+│   └── api/ assembly/ internal/{vendors,http,pg}/
 ├── state/                                Terraform http backend, versions, locks, import, rollback (P11)
 │   ├── api/                              Versions: Latest, Outputs; events: StateVersionCreated
-│   ├── module/
+│   ├── assembly/
 │   └── internal/{state,backend,tfe,http,pg}/
 ├── vcs/                                  integrations, webhooks, routing, feedback (P12, P19)
 │   ├── api/                              Integrations, Sources (archive URL, checkout spec), Feedback, PullRequests
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── core/{integration,intake,normalize,route,feedback,pullrequest,port}/
 │       └── adapters/
@@ -358,35 +358,35 @@ internal/
 │           └── pg/                       vcs_integrations, vcs_deliveries, pull_requests, vcs_agent_pools
 ├── policies/                             policy objects, attachments, evaluation, samples, simulation (P13)
 │   ├── api/                              Evaluator and the input contract per type; events: PolicyChanged
-│   ├── module/
+│   ├── assembly/
 │   └── internal/{policies,inputs,combine,sample,http,pg}/
 ├── cloud/                                AWS, Azure, GCP integrations, attachments, OIDC run tokens (P15)
-│   └── api/ module/ internal/{cloud,oidc,aws,azure,gcp,http,pg}/
+│   └── api/ assembly/ internal/{cloud,oidc,aws,azure,gcp,http,pg}/
 ├── schedules/                            scheduled runs, tasks, deletes, drift detection (P16)
-│   └── api/ module/ internal/{schedules,http,pg}/
+│   └── api/ assembly/ internal/{schedules,http,pg}/
 ├── registry/                             modules, versions, test cases, providers, GPG keys (P17)
 │   ├── api/                              Modules: ByRepository, CreateVersion; Providers; events
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── core/{module,version,testcase,provider,gpg,sharing,port}/
 │       └── adapters/{http,protocol,pg}/
 ├── events/                               inbox, named and stack webhooks, audit trail, Slack, Teams (P18)
 │   ├── api/                              Router (notification policy sink choice), Inbox; audit query
-│   ├── module/
+│   ├── assembly/
 │   └── internal/
 │       ├── core/{catalogue,inbox,webhook,delivery,audit,metrics,port}/
 │       └── adapters/{http,slack,pg}/
 ├── templates/                            blueprints, templates, versions, deployments (P21)
-│   └── api/ module/ internal/{templates,render,http,pg}/
+│   └── api/ assembly/ internal/{templates,render,http,pg}/
 ├── resources/                            managed entities, scans, generic search (P22)
-│   └── api/ module/ internal/{resources,search,http,pg}/
+│   └── api/ assembly/ internal/{resources,search,http,pg}/
 ├── intelligence/                         AI integrations, Infra Assistant, Intent, MCP (P25)
-│   ├── api/ module/
+│   ├── api/ assembly/
 │   └── internal/
 │       ├── core/{aiintegration,assistant,intent,tools,port}/
 │       └── adapters/{http,mcp,providers,pg}/
 └── flows/                                Flows, with its own tenancy (P26)
-    ├── api/ module/
+    ├── api/ assembly/
     └── internal/
         ├── core/{org,project,flow,block,invocation,event,app,agentpool,secret,datatable,port}/
         └── adapters/{http,gateway,mcp,pg}/
@@ -404,7 +404,7 @@ pkg/
 internal/stacks/
 ├── api/stacks.go          Stacks: Get, Search, ByRepository(integration, repo, branch), LockForRun
 ├── api/events.go          StackCreated, StackUpdated, StackDeleted, StackLocked
-├── module/module.go       New(Deps{Tx, SQL, Outbox, Audit, Authz accessapi.Authorizer, Spaces accessapi.Spaces,
+├── assembly/assembly.go   New(Deps{Tx, SQL, Outbox, Audit, Authz accessapi.Authorizer, Spaces accessapi.Spaces,
 │                          Status runsapi.StackStatus, Pools workersapi.Pools, Vendors iac.Registry})
 └── internal/
     ├── stacks/
@@ -423,7 +423,7 @@ internal/configuration/internal/configuration/   attach, detach, auto-attach on 
 ```
 
 A `PATCH /api/v1/stacks/{id}` passes through `platform/httpkit/middleware`
-(idempotency key, rate limit), the access module's authn middleware, then
+(idempotency key, rate limit), the access domain's authn middleware, then
 `stacks/internal/http/strict.go`, which converts the generated request type
 and calls the service. The service checks `stack:update` (the action name is
 decision 0007's) on the stack's space through `accessapi.Decider`, validates
@@ -432,7 +432,7 @@ with an audit entry (decision 0015's `audit.Record`) and a `StackUpdated` event 
 
 ```go
 // Update applies a stack update. Labels can change which contexts and
-// policies auto-attach, and those modules learn of it from StackUpdated in
+// policies auto-attach, and those domains learn of it from StackUpdated in
 // the same transaction, so a rolled-back update never re-attaches anything.
 func (s *Service) Update(ctx context.Context, p kernel.Principal, id kernel.Slug, in Input) (Stack, error) {
 	return tx.Do(ctx, s.tx, func(ctx context.Context) (Stack, error) {
@@ -465,10 +465,10 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id kernel.Slug
 A stack's response carries `state`, `blocked`, `blocker` and `lockedBy`. The
 first three are runs-owned and come from `runsapi.StackStatus`; only
 `lockedBy` (the human lock) is a stacks column. A list filtered by state
-joins across two modules, which the store answers with a read of
+joins across two domains, which the store answers with a read of
 `runs`' `stack_run_state` view granted to the stacks schema (see the
-friction list). Configuration elements and contexts are a separate module
-because they attach to stacks, modules and contexts alike, through polymorphic
+friction list). Configuration elements and contexts are a separate domain
+because they attach to stacks, registry modules and contexts alike, through polymorphic
 owners ([28, section 12.1](../reference/28-data-model.md#121-shapes-that-recur)):
 `configuration` subscribes to `StackUpdated` to recompute auto-attachments,
 and `runs` calls `configurationapi.Environment.Resolve` at handover to get
@@ -496,7 +496,7 @@ internal/runs/internal/core/
 ├── handover/
 │   ├── payload.go         settings snapshot, environment, hooks, cloud credentials, run token
 │   └── urls.go            presigned workspace, plan and log URLs from platform/objectstore
-├── timers/                cron jobs registered for the scheduler role (P10)
+├── timers/                cron jobs registered for the scheduler process mode (P10)
 └── gates/                 described under "Policy evaluation with embedded OPA"
 ```
 
@@ -510,7 +510,7 @@ The path from trigger to worker:
    ([07, section 5](../reference/07-stack-model.md#5-lock-and-unlock-enable-and-disable)).
    It inserts the run in `QUEUED`, enqueues `run.schedule` and appends
    `RunCreated`.
-2. **Queue gates.** The scheduler role consumes `run.schedule`.
+2. **Queue gates.** The scheduler process mode consumes `run.schedule`.
    `queuegate/gate.go` evaluates approval policies on entering `QUEUED`,
    checks the stack lock for blocking runs, upstream runs and external
    dependencies
@@ -575,7 +575,7 @@ Timers, the 2, 7 and 30 day rules of
 evidence that Spacelift moved cron into the drain
 ([24, section 2.1](../reference/24-self-hosted-reference.md#21-process-inventory))
 is why `runs` registers both its queue consumers and its cron jobs with the
-scheduler role rather than a separate cron role.
+scheduler process mode rather than a separate cron process mode.
 
 ### Policy evaluation with embedded OPA
 
@@ -591,7 +591,7 @@ internal/policies/
 │   ├── inputs.go      the input contract per type (report 09 section 4), built by the caller
 │   ├── decisions.go   PushDecision, ApprovalDecision, PlanDecision, ... each with []Receipt
 │   └── events.go      PolicyChanged, PolicyAttached
-├── module/
+├── assembly/
 └── internal/
     ├── policies/      CRUD, attachment, auto-attach by label and space inheritance, aliases of 3 legacy types
     ├── inputs/        JSON rendering of the contract; sanitized helper; custom inputs
@@ -603,7 +603,7 @@ internal/policies/
 
 The input contract belongs to `policies` because it is the published
 contract of [report 09](../reference/09-policies.md#4-input-documents).
-The modules that own a state point build the input and call the evaluator;
+The domains that own a state point build the input and call the evaluator;
 `policies` never imports `runs`, `vcs`, `access` or `events`, so no cycle can
 form. The state points of
 [report 09, section 8](../reference/09-policies.md#8-where-each-type-is-evaluated)
@@ -611,7 +611,7 @@ map to callers:
 
 | Policy type | Caller | State point |
 | --- | --- | --- |
-| `GIT_PUSH` | `vcs/internal/core/route` | per stack and module for each event, before any run exists |
+| `GIT_PUSH` | `vcs/internal/core/route` | per stack and registry module for each event, before any run exists |
 | `APPROVAL` | `runs/internal/core/gates` | on entering `QUEUED`, `UNCONFIRMED`, `PENDING_REVIEW`, and on each review |
 | `PLAN` | `runs/internal/core/gates` | when the worker reports a successful plan; on each targeted replan |
 | `TRIGGER` | `runs/internal/core/gates` | when a tracked run or task reaches one of five terminal states; `registry` on module release |
@@ -658,7 +658,7 @@ internal/agent/wire/                  generated client (oapi-client-worker.yaml 
 internal/workers/
 ├── api/pools.go                      Pools: Get, ForStack, Settings (drift limit, preparing timeout)
 ├── api/workers.go                    Workers: List, Drain, Undrain, Cycle; events: WorkerRegistered, WorkerGone
-├── module/
+├── assembly/
 └── internal/
     ├── core/
     │   ├── pool/                     public and private pools, credentials (CSR-signed certificate)
@@ -679,7 +679,7 @@ internal/workers/
 internal/agent/
 ├── launcher/launcher.go              Run(ctx, cfg): register, then loop: poll, start executor, report
 ├── executor/docker/                  docker run <runner image> with the binary mounted at /opt/infraweave/bin/infraweave (decision 0008)
-├── exec/                             `infraweave worker exec`: phases from the job, hooks, vendor commands
+├── exec/                             `infraweave runner`: phases from the job, hooks, vendor commands
 └── vendors/<kind>/                   command sets for init, plan, show, outputs, apply, destroy
 ```
 
@@ -703,7 +703,7 @@ third-party code to depend on a protocol that changes with the launcher. The
 wire protocol is still versioned (`/worker/v1`), because customers upgrade
 launchers later than servers.
 
-The worker role imports nothing from `workers`: rule 7 keeps the agent tree
+The launcher process mode imports nothing from `workers`: rule 7 keeps the agent tree
 to the generated client, `internal/iac` and `platform/rego`. The private
 pool's encryption of run state to the pool key
 ([report 10, sections 1.1](../reference/10-workers-and-execution.md#11-public-and-private-pools-compared)
@@ -720,7 +720,7 @@ internal/vcs/
 │   ├── feedback.go      Feedback: Check, Comment(key, body), Deployment
 │   ├── pullrequests.go  PullRequests: ForStack, Get
 │   └── events.go        PushReceived, PullRequestChanged, CommentCommand
-├── module/
+├── assembly/
 └── internal/
     ├── core/
     │   ├── intake/      Accept(delivery): store and enqueue in one tx; nothing else before the ack
@@ -745,7 +745,7 @@ queue in one transaction, and answers `202` (`200` for a duplicate,
 decision 0012). Large bodies go to object storage first, as Spacelift's large
 queue messages bucket does
 ([24, section 3.2](../reference/24-self-hosted-reference.md#32-object-storage-buckets)).
-The scheduler role consumes `vcs.process_delivery`: `normalize` builds the provider
+The scheduler process mode consumes `vcs.process_delivery`: `normalize` builds the provider
 neutral input, `route` finds the targets and evaluates each one's push policy
 through `policiesapi.Evaluator.Push`, and calls `runsapi.Runs.Create` with a
 dedupe key of stack, commit SHA and run type
@@ -757,7 +757,7 @@ acyclic at the package level.
 
 VCS agent pools (P19) split the same way as workers. `vcs/internal/adapters/agentgateway`
 serves the `/vcs-agent/v1` long-poll inside `serve`, and the `vcs-agent`
-subcommand runs `internal/agent/vcsagent`, which imports no module. The
+subcommand runs `internal/agent/vcsagent`, which imports no domain. The
 provider route tables that the agent's allowlist compiles in (decision 0012)
 are pure data in `internal/kernel/vcsroutes`, the one package both sides
 import, so the allowlist and the provider clients cannot drift.
@@ -767,7 +767,7 @@ import, so the allowlist and the provider clients cannot drift.
 ```text
 internal/state/
 ├── api/versions.go       Versions: Latest(stack), Outputs(stack) for dependencies and templates
-├── module/
+├── assembly/
 └── internal/
     ├── backend/          Terraform http backend: GET, POST, LOCK, UNLOCK; lock ID checks
     ├── state/            versions, import (100 MB cap), rollback as a new version, retention
@@ -786,8 +786,8 @@ State bodies live in the states bucket with object versions; the
 `managed_state_versions` row records the object version ID, so history and
 rollback rest on the store's versioning
 ([16, section 6](../reference/16-state-management.md#6-state-history-and-rollback)).
-The module contributes `state.v2` and `tfe.v2*` to service discovery through
-`module.Discovery()`, which `app/discovery.go` merges.
+The domain contributes `state.v2` and `tfe.v2*` to service discovery through
+`assembly.Discovery()`, which `app/discovery.go` merges.
 
 ### Module and provider registry protocol
 
@@ -795,7 +795,7 @@ The module contributes `state.v2` and `tfe.v2*` to service discovery through
 internal/registry/
 ├── api/modules.go        Modules: ByRepository, CreateVersion(from push policy), Consumers
 ├── api/events.go         ModuleVersionCreated, ModuleVersionFailed, ProviderVersionPublished
-├── module/
+├── assembly/
 └── internal/
     ├── core/
     │   ├── module/       module as a stack variant without state: source, space, pool, environment
@@ -827,7 +827,7 @@ policy decides the version number.
 ```text
 internal/access/
 ├── api/authz.go          type Decider interface { Can(Action, kernel.SpaceID) bool; Reachable(Action) []kernel.SpaceID }
-├── module/module.go      New(...); Middleware() for app/router.go; Routes(); Cron() (session and key expiry)
+├── assembly/assembly.go  New(...); Middleware() for app/router.go; Routes(); Cron() (session and key expiry)
 └── internal/core/
     ├── space/            tree, immutable root, re-parenting with reachability, inheritance toggle
     ├── role/ binding/    150-value action catalogue, system roles, custom roles, five actor kinds
@@ -838,7 +838,7 @@ internal/access/
 
 How a request gets identity and permission:
 
-1. `app/router.go` installs `access/module.Middleware()` before every
+1. `app/router.go` installs `access/assembly.Middleware()` before every
    strict and hand-written route. It authenticates the bearer token or
    session and puts a `kernel.Principal` in the context.
 2. A handler such as `stacks/internal/http/strict.go` reads the principal
@@ -856,11 +856,11 @@ How a request gets identity and permission:
 
 ```text
 internal/platform/outbox/    Append(ctx, Event): events row and events.fanout job in the caller's tx; retention
-internal/platform/events/    Subscribe(kind, consumer, Handler); fan-out jobs consumed in the scheduler role
+internal/platform/events/    Subscribe(kind, consumer, Handler); fan-out jobs consumed in the scheduler process mode
 internal/events/
 ├── api/router.go            Router: Route(ctx, NotificationInput) → []Route (inbox, slack, webhook, pull_request)
-├── api/inbox.go             Inbox: Raise(ctx, Notification) for internal errors from any module
-├── module/
+├── api/inbox.go             Inbox: Raise(ctx, Notification) for internal errors from any domain
+├── assembly/
 └── internal/
     ├── core/
     │   ├── catalogue/       outbox topics → notification policy input documents (report 19 section 3)
@@ -877,7 +877,7 @@ enqueues an `events.fanout` job in the producer's transaction, as decision
 0015 records, and the fan-out enqueues one job per subscribed consumer
 (notifications, stack webhooks, VCS feedback, resources indexing and Flows
 subscriptions), each keyed so that a second fan-out adds nothing. Only
-the audit shipper keeps a cursor. Audit entries are not events: each module
+the audit shipper keeps a cursor. Audit entries are not events: each domain
 records them through `platform/audit` in the change's transaction, so a
 rolled-back write leaves no entry and the audit trail never records a change
 that did not happen
@@ -893,7 +893,7 @@ Delivery bodies go to the deliveries bucket with a short expiry
 ```text
 internal/flows/
 ├── api/flows.go             Projects for Deploy role bindings; FlowEvents for Deploy subscription blocks
-├── module/module.go         Routes() (REST, MCP, flow HTTP endpoints), Gateway() listener, Consumers()
+├── assembly/assembly.go     Routes() (REST, MCP, flow HTTP endpoints), Gateway() listener, Consumers()
 └── internal/
     ├── core/
     │   ├── org/ project/    organizations and projects: Flows' own tenancy, UUID identity
@@ -912,18 +912,18 @@ internal/flows/
                              flow_events, flow_invocations, app_installations, agent_pools, secrets, tables
 ```
 
-Flows is a module like the others but with its own tenancy ([report 23, section 2](../reference/23-flows.md#2-resource-hierarchy))
+Flows is a domain like the others but with its own tenancy ([report 23, section 2](../reference/23-flows.md#2-resource-hierarchy))
 and its own PostgreSQL schema, `flows`, as decision 0018 sets; nothing in Deploy imports `flows/api`, while
 `flows` imports `runsapi`, `stacksapi` and `accessapi`. Event processing is
-queue work in the scheduler role (`flows.deliver` jobs, one per linked
+queue work in the scheduler process mode (`flows.deliver` jobs, one per linked
 input of an emitted event, decision 0018), and JavaScript runs on agents,
 started by the `flows-agent` subcommand from `internal/agent/flowsagent`,
 that dial the gateway
 ([23, section 8](../reference/23-flows.md#8-agents-and-agent-pools)). Spacelift
 self-hosts Flows as server, worker and gateway from one image
 ([23, section 14.1](../reference/23-flows.md#141-components)), which maps
-onto this layout's serve (REST and gateway listener) and scheduler roles
-without a new server role.
+onto this layout's serve (REST and gateway listener) and scheduler process modes
+without a new server process mode.
 
 ### Composition root
 
@@ -933,32 +933,32 @@ cmd/infraweave/
 ├── serve.go              app.Serve(ctx, cfg)
 ├── scheduler.go          app.Scheduler(ctx, cfg)
 ├── all.go                app.All(ctx, cfg): serve and scheduler in one process
-├── worker.go             agent/launcher.Run(ctx, agentcfg); imports no internal/app
-├── exec.go               hidden `worker exec`: agent/exec.Main inside the run container
+├── launcher.go           agent/launcher.Run(ctx, agentcfg); imports no internal/app
+├── runner.go             hidden `runner`: agent/exec.Main inside the run container
 ├── vcsagent.go           `vcs-agent`: agent/vcsagent.Run (P19)
 ├── flowsagent.go         `flows-agent`: agent/flowsagent.Run (P26)
 ├── migrate.go            `migrate up` and `migrate status`: app.Migrate, then exit
 ├── secrets.go            `secrets generate-kek`, `secrets rewrap`, `secrets rotate` (decision 0013), then exit
 └── version.go            `version`: platform/buildinfo
 internal/app/
-├── config/               config.go (Settings: Server, Database, ObjectStore, Crypt, Queue, one field per module)
+├── config/               config.go (Settings: Server, Database, ObjectStore, Crypt, Queue, one field per domain)
 ├── platform.go           open pgx pool, migrate every stream, object stores, keyring, queue, outbox, cron
-├── modules.go            construct modules in dependency order; hand api values to dependants
+├── domains.go            construct domains in dependency order; hand api values to dependants
 ├── router.go             chi router: middleware, deploy strict server, hand-written mounts
 ├── discovery.go          service discovery document merged from Discovery() contributions
-└── roles.go              which module parts each role starts
+└── modes.go              which domain parts each process mode starts
 ```
 
-Every module's `module` package returns a value with the same method set,
-and the roles pick from it:
+Every domain's `assembly` package returns a value with the same method set,
+and the process modes pick from it:
 
 ```go
-// internal/app/roles.go
+// internal/app/modes.go
 //
-// part is what every module contributes. A role starts only the parts it
-// needs: serve mounts routes and never consumes the queue, so a burst of
-// webhook processing cannot starve API latency; scheduler consumes queues
-// and fires cron and serves only the readiness port.
+// part is what every domain contributes. A process mode starts only the
+// parts it needs: serve mounts routes and never consumes the queue, so a
+// burst of webhook processing cannot starve API latency; scheduler consumes
+// queues and fires cron and serves only the readiness port.
 type part interface {
 	Routes(r chi.Router)               // hand-written routes; strict partials go through Strict()
 	Consumers(q queue.Registry)        // queue handlers and outbox subscriptions
@@ -967,7 +967,7 @@ type part interface {
 }
 
 func Scheduler(ctx context.Context, cfg config.Settings) error {
-	p, m, err := open(ctx, cfg) // platform, then modules in dependency order
+	p, m, err := open(ctx, cfg) // platform, then domains in dependency order
 	if err != nil {
 		return err
 	}
@@ -979,28 +979,28 @@ func Scheduler(ctx context.Context, cfg config.Settings) error {
 }
 ```
 
-Wiring order at the end of P27, from `modules.go`: access, stacks,
+Wiring order at the end of P27, from `domains.go`: access, stacks,
 configuration, vendors, workers, policies, runs, state, vcs, cloud,
 schedules, registry, events, templates, resources, intelligence, flows. A
-module's `Deps` takes only `api` values of modules built before it, plus
+domain's `Deps` takes only `api` values of domains built before it, plus
 late-bound interfaces for the three back edges that the dependency order
 cannot satisfy: `stacks` reads `runsapi.StackStatus`, `runs` reads
 `vcsapi.Sources` and `cloudapi.Credentials` at handover. Those are set with
 `SetX` calls after construction, so the function stays a linear list of
 about 250 lines.
 
-The roles map onto Spacelift's processes: `serve` is its server, `scheduler`
-its drain with cron folded in, and `worker` its launcher
+The process modes map onto Spacelift's processes: `serve` is its server,
+`scheduler` its drain with cron folded in, and `launcher` its launcher
 ([24, section 2.1](../reference/24-self-hosted-reference.md#21-process-inventory)).
-The worker role is wired outside `internal/app`, so `cmd/infraweave/worker.go`
-is the only place where the worker path meets the rest of the binary, and
+The launcher process mode is wired outside `internal/app`, so
+`cmd/infraweave/launcher.go` is the only place where the launcher path meets the rest of the binary, and
 it imports `internal/agent` only.
 
 ### Generated code
 
 | Spec | Fragments | Generated server | Implemented by | Client |
 | --- | --- | --- | --- | --- |
-| deploy | `api/src/deploy/` | `internal/platform/gen/deploy` | each module's `internal/.../http` partial, composed in `app/router.go` | `pkg/client/deploy` |
+| deploy | `api/src/deploy/` | `internal/platform/gen/deploy` | each domain's `internal/.../http` partial, composed in `app/router.go` | `pkg/client/deploy` |
 | worker | `api/src/worker/` (P8) | `internal/platform/gen/worker` | `workers/internal/adapters/protocol` | `internal/agent/wire` |
 | flows | `api/src/flows/` (P26) | `internal/platform/gen/flows` | `flows/internal/adapters/http` | `pkg/client/flows` |
 | none (hand-written) | | | VCS webhooks (`vcs`), http state backend and `tfe` (`state`), discovery (`app`), modules.v1 and providers.v1 (`registry`), `login.v1` (`access`) | |
@@ -1009,23 +1009,23 @@ it imports `internal/agent` only.
 scaffolding fragments; `internal/devtools/openapibundle` bundles them;
 oapi-codegen writes the strict servers; `internal/devtools/stubgen` writes
 `UnimplementedStrict` next to each. One generated `StrictServerInterface`
-spans many modules, so the router composes it by embedding:
+spans many domains, so the router composes it by embedding:
 
 ```go
 // internal/app/router.go (excerpt)
 //
-// deployServer implements deploy.StrictServerInterface. Each module's
+// deployServer implements deploy.StrictServerInterface. Each domain's
 // partial sits at depth one and the 501 stubs at depth two, so an
-// implemented operation shadows its stub, and two modules implementing the
+// implemented operation shadows its stub, and two domains implementing the
 // same operation make the method ambiguous and the assignment below fails
-// to compile. internal/app cannot import a module's internal/.../http
-// package, so each module/ package re-exports its partial as an alias:
+// to compile. internal/app cannot import a domain's internal/.../http
+// package, so each assembly/ package re-exports its partial as an alias:
 // type DeployAPI = http.DeployAPI.
 type deployServer struct {
-	*stacksmodule.DeployAPI
-	*runsmodule.DeployAPI
-	*accessmodule.DeployAPI
-	*policiesmodule.DeployAPI // (P13)
+	*stacksassembly.DeployAPI
+	*runsassembly.DeployAPI
+	*accessassembly.DeployAPI
+	*policiesassembly.DeployAPI // (P13)
 	stubs
 }
 
@@ -1042,13 +1042,13 @@ stubgen reads `internal/platform/gen/<spec>/server.gen.go`.
 
 | Kind | Location |
 | --- | --- |
-| Unit tests | beside the code in every package; `core/` packages use fakes of other modules' `api` |
-| Store tests | `internal/<module>/internal/.../pg/*_test.go` against PostgreSQL through `platform/sql/sqltest` (testcontainers) |
+| Unit tests | beside the code in every package; `core/` packages use fakes of other domains' `api` |
+| Store tests | `internal/<domain>/internal/.../pg/*_test.go` against PostgreSQL through `platform/sql/sqltest` (testcontainers) |
 | Contract suites | `platform/queue/queuetest`, `platform/objectstore/objectstoretest`, `iac/iactest`, `agent/agenttest` |
-| Module tests | `internal/<module>/module/module_test.go`: the module built on sqltest with fake `api` dependencies |
+| Domain tests | `internal/<domain>/assembly/assembly_test.go`: the domain built on sqltest with fake `api` dependencies |
 | Machine tests | `runs/internal/core/machine`: every transition row and every illegal pair |
 | Policy corpus | `policies/internal/combine` and `platform/rego` over the 67 example-library templates ([report 09, section 10.2](../reference/09-policies.md#102-counts)) |
-| Acceptance | `test/acceptance/`: the binary in `all` mode plus a `worker`, real PostgreSQL, S3-compatible store, a real OpenTofu run |
+| Acceptance | `test/acceptance/`: the binary in `all` mode plus a `launcher`, real PostgreSQL, S3-compatible store, a real OpenTofu run |
 
 Enforcement is golangci-lint's depguard, the repository's only linter, plus
 the compiler's `internal` rule. depguard lists match package path prefixes,
@@ -1064,25 +1064,25 @@ linters:
           list-mode: strict
           files: ["**/internal/*/api/**"]
           allow: [$gostd, $m/internal/kernel, $m/internal/platform/outbox]
-        constructors:                       # rule 4: one entry per module
+        constructors:                       # rule 4: one entry per domain
           files: ["$all", "!**/internal/app/**", "!**/cmd/**"]
           deny:
-            - pkg: $m/internal/access/module
-            - pkg: $m/internal/stacks/module
-            - pkg: $m/internal/runs/module
-            # ... 17 entries, one per module
-        core-not-adapters:                  # rule 5: one entry per hexagon module
+            - pkg: $m/internal/access/assembly
+            - pkg: $m/internal/stacks/assembly
+            - pkg: $m/internal/runs/assembly
+            # ... 17 entries, one per domain
+        core-not-adapters:                  # rule 5: one entry per hexagon domain
           files: ["**/internal/*/internal/core/**"]
           deny:
             - pkg: $m/internal/runs/internal/adapters
             - pkg: $m/internal/vcs/internal/adapters
             # ... 8 entries
-        shared-below-modules:               # rule 6
+        shared-below-domains:               # rule 6
           files: ["**/internal/platform/**", "**/internal/kernel/**", "**/internal/iac/**"]
           deny:
             - pkg: $m/internal/access
             - pkg: $m/internal/stacks
-            # ... 17 module roots, then:
+            # ... 17 domain roots, then:
             - pkg: $m/internal/agent
             - pkg: $m/internal/app
         agent-isolation:                    # rule 7
@@ -1096,19 +1096,19 @@ linters:
             - pkg: $m/internal/platform/objectstore
             - pkg: $m/internal/platform/crypt
             - pkg: github.com/jackc/pgx
-            # plus the 17 module roots and internal/app
+            # plus the 17 domain roots and internal/app
         devtools:                           # rule 8
           files: ["$all", "!**/tools/**", "!**/internal/devtools/**"]
           deny:
             - pkg: $m/internal/devtools
 ```
 
-Rule 2 (modules reach other modules only through `api/`) costs no entry:
+Rule 2 (domains reach other domains only through `api/`) costs no entry:
 the compiler already stops imports of `internal/<other>/internal/...`, and
-rule 4 stops imports of `internal/<other>/module`, so the `api/` package is
-the only importable part of another module. In total there are 6 rules and
-about 75 entries; a new module adds one entry to `constructors`, one to
-`shared-below-modules`, one to `agent-isolation` and, if it is a hexagon,
+rule 4 stops imports of `internal/<other>/assembly`, so the `api/` package is
+the only importable part of another domain. In total there are 6 rules and
+about 75 entries; a new domain adds one entry to `constructors`, one to
+`shared-below-domains`, one to `agent-isolation` and, if it is a hexagon,
 one to `core-not-adapters`.
 
 Coverage:
@@ -1119,9 +1119,9 @@ Coverage:
   real logic. Packages likely to struggle with the 90% floor: `api/`
   packages that hold only interfaces and types (keep constructors and
   validation there so each has something to test, or exclude interface-only
-  files), `module/` packages (covered by `module_test.go`), migration embed
+  files), `assembly/` packages (covered by `assembly_test.go`), migration embed
   packages, and the Kubernetes executor.
-- Store and module tests need PostgreSQL, so they are `TestAcc` suites
+- Store and domain tests need PostgreSQL, so they are `TestAcc` suites
   (decision 0016) that run on ubuntu only; the merged profile takes their
   coverage from that run, which `make cover` already merges.
 
@@ -1233,7 +1233,7 @@ Coverage:
 9. `test/acceptance/features/pulumi.feature`, its steps, and a fixture
    project under `test/fixtures/`.
 
-No module's core changes: stacks validate through `internal/iac`, runs
+No domain's core changes: stacks validate through `internal/iac`, runs
 parse through it, and the agent executes through its own registry. About 12
 new files and 4 edited.
 
@@ -1254,24 +1254,24 @@ new files and 4 edited.
    (templates, template_versions, template_deployments, changes, blueprints).
 6. `internal/templates/internal/http/strict.go`: the partial for the
    Templates and Blueprints tags.
-7. `internal/templates/module/module.go`: `New(Deps{Stacks stacksapi.Stacks,
+7. `internal/templates/assembly/assembly.go`: `New(Deps{Stacks stacksapi.Stacks,
    Runs runsapi.Runs, Authz accessapi.Authorizer, ...})`; subscribes to
    `RunStateChanged` to compute deployment state.
-8. `internal/app/modules.go`, `router.go` (embed the partial),
+8. `internal/app/domains.go`, `router.go` (embed the partial),
    `config/config.go` (Settings field).
 9. `.golangci.yml`: one entry each in `constructors`,
-   `shared-below-modules` and `agent-isolation`.
+   `shared-below-domains` and `agent-isolation`.
 10. `test/acceptance/features/templates.feature` and its steps.
 
 Managed stacks are created through `stacksapi.Stacks.Create` with a
 `managedBy` reference; `stacks` gains a read-only check for managed stacks,
-the only edit to an existing module. About 20 new files and 5 edited.
+the only edit to an existing domain. About 20 new files and 5 edited.
 
 ## Package mapping
 
 | Today's package | New location | Notes |
 | --- | --- | --- |
-| `cmd/` (`cmd/README.md` only) | `cmd/infraweave`, later `cmd/infraweavectl` (P24) | one file per role; README kept |
+| `cmd/` (`cmd/README.md` only) | `cmd/infraweave`, later `cmd/infraweavectl` (P24) | one file per process mode; README kept |
 | `api` (`api/doc.go`, `api/deploy_test.go`) | `api` | unchanged; embeds stay, a `Worker` embed joins at P8 |
 | `api/src/deploy` | `api/src/deploy` | grows one `paths-<family>.yaml` per family |
 | `api/reference/spacelift` | `api/reference/spacelift` | unchanged |
@@ -1279,7 +1279,7 @@ the only edit to an existing module. About 20 new files and 5 edited.
 | `internal/docscheck` | `internal/devtools/docscheck` | `make docs-check` path changes |
 | `internal/openapibundle` | `internal/devtools/openapibundle` | |
 | `internal/server/gen/deploy` | `internal/platform/gen/deploy` | regenerated, not moved by hand |
-| `internal/server/problem` | `internal/platform/httpkit/problem` | used by every module's HTTP adapter |
+| `internal/server/problem` | `internal/platform/httpkit/problem` | used by every domain's HTTP adapter |
 | `internal/specref` | `internal/devtools/specref` | |
 | `internal/stubgen` | `internal/devtools/stubgen` | |
 | `pkg/client/deploy` | `pkg/client/deploy` | unchanged |
@@ -1299,14 +1299,14 @@ Estimates, from the domains of report 26 and the trees above.
 | Measure | Today (P1) | End of P27 |
 | --- | --- | --- |
 | Go packages | 16 (13 today plus `cmd/infraweave`, `internal/app`, `app/config`) | about 290 |
-| Top-level directories under `internal/` | 4 (`app`, `kernel`, `platform`, `devtools`) | 23 (6 shared plus 17 modules) |
+| Top-level directories under `internal/` | 4 (`app`, `kernel`, `platform`, `devtools`) | 23 (6 shared plus 17 domains) |
 | Dependency rules | 8 (1 compiler, 7 depguard-checked, of which rule 2 needs no entry) | same |
 | depguard rules and entries | 6 rules, about 20 entries | 6 rules, about 75 entries |
 | Files touched to add a vendor | n/a | about 12 new, 4 edited |
 | Files touched to add a domain | n/a | about 20 new, 5 edited |
 | Packages a stack update crosses | 4 (`platform/httpkit/middleware`, `stacks/internal/http`, `stacks/internal/stacks`, `stacks/internal/pg`) | 6 (adds `access` middleware and `accessapi`) |
 | Largest package | `internal/platform/gen/deploy` (generated, 24k lines) | `runs/internal/core/lifecycle` among hand-written ones, about 5k lines |
-| Thin packages at risk under the 90% floor | `app/config` | about 35: `api/` and `module/` packages, migration embeds, the Kubernetes executor |
+| Thin packages at risk under the 90% floor | `app/config` | about 35: `api/` and `assembly/` packages, migration embeds, the Kubernetes executor |
 
 ## Placement choices and friction
 
@@ -1314,12 +1314,12 @@ Placement choices settled in this file:
 
 - **Runs own every table a transition writes.** The run lock, the stack's
   run state, assignments, receipts and outputs are runs tables, so a
-  transition is one transaction inside one module.
+  transition is one transaction inside one domain.
 - **Policies own the input contract and never call back.** Callers build
   inputs and act on decisions; trigger decisions come back as data.
-- **Module internals sit under a nested `internal/`**, so the compiler
+- **Domain internals sit under a nested `internal/`**, so the compiler
   enforces the main boundary and depguard handles only the rest.
-- **The agent tree is outside every module**, imports no persistence, and
+- **The agent tree is outside every domain**, imports no persistence, and
   shares only `internal/kernel`, `internal/iac` and three platform packages
   with the server.
 - **Vendor knowledge is a pure library**, used by stacks for validation, by
@@ -1328,8 +1328,8 @@ Placement choices settled in this file:
   the go command treats any `vendor` path element as a vendor directory, so
   `go list ./...` skips it and imports of it fail.
 - **Object storage, encryption, queue, outbox and OPA are platform**, because
-  several modules use each and none of them carry business rules.
-- **One migration stream per module, no cross-module foreign keys**; Flows
+  several domains use each and none of them carry business rules.
+- **One migration stream per domain, no cross-domain foreign keys**; Flows
   gets its own schema as well as its own stream.
 - **The worker protocol client is internal**; only `pkg/client/deploy`
   (and `pkg/client/flows` at P26) are public.
@@ -1338,22 +1338,22 @@ Where this layout rubs against the system:
 
 - **Stack reads cross into runs.** Stack state, blocker and run lock are
   runs data; a stack list filtered or sorted by state needs a read view
-  across two schemas, the one sanctioned cross-module read.
+  across two schemas, the one sanctioned cross-domain read.
 - **Run creation reads the stack row inside its transaction**
-  (`LockForRun`), a cross-module transaction that couples `runs` to the
+  (`LockForRun`), a cross-domain transaction that couples `runs` to the
   stacks schema's locking.
 - **`runs` is the gravity well.** It holds the machine, gates, scheduler,
   handover, timers, promotion and dependencies: about a fifth of the
-  hand-written code, and the module most phases (P7, P9, P10, P13, P16)
+  hand-written code, and the domain most phases (P7, P9, P10, P13, P16)
   touch.
 - **Back edges need late binding.** `stacks` reads `runsapi`, and `runs`
-  reads `vcsapi` and `cloudapi`, so `modules.go` sets three dependencies
+  reads `vcsapi` and `cloudapi`, so `domains.go` sets three dependencies
   after construction.
 - **One binary carries server code to worker hosts.** The agent packages do
   not import it, but the linked binary contains it; a separate
-  `cmd/infraweave-worker` is the fallback if image size or a customer's
+  `cmd/infraweave-agent` is the fallback if image size or a customer's
   review demands it.
-- **Constructor packages all named `module`** need import aliases in
+- **Constructor packages all named `assembly`** need import aliases in
   `internal/app`, and the nested `internal/` makes import paths long
   (`internal/runs/internal/core/lifecycle`).
 - **Boundaries for intelligence and flows are drawn before their phases.**

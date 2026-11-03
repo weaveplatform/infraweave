@@ -86,7 +86,7 @@ once per container, so cases run in parallel without sharing rows.
   Steps that drive the API use the generated client in `pkg/client`.
 - **The binary under test.** The harness builds `cmd/infraweave` once with
   `-cover -covermode=atomic` and runs it as a subprocess with `GOCOVERDIR`
-  set to `cover/accept`, so `infraweave serve`, `scheduler`, `worker` and `worker exec` all
+  set to `cover/accept`, so `infraweave serve`, `scheduler`, `launcher` and `runner` all
   contribute coverage to the merge. In-process servers are not used for
   acceptance: they would skip flag parsing, config decoding and signal
   handling.
@@ -112,7 +112,7 @@ once per container, so cases run in parallel without sharing rows.
 | `@flows-runtime` | the Flows runtime image built from the repository's definition, and an `infraweave flows-agent` subprocess | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
 
 - **A real run.** `@terraform` and `@tofu` scenarios exercise the full
-  path: the server, a private worker pool, `infraweave worker` as a host
+  path: the server, a private worker pool, `infraweave launcher` as a host
   subprocess talking to the Docker daemon, and the runner image built by
   the harness from the repository's image definition
   ([0020](0020-reference-deployments-and-packaging.md)) and tagged
@@ -284,7 +284,7 @@ coverage it would contribute is not waived.
 ## Rationale
 
 - **Subprocess binaries, not in-process servers.** The deployable artefact
-  is what users run; config strictness, role selection, migrations at
+  is what users run; config strictness, process mode selection, migrations at
   start and signal handling are part of the contract. Go's `-cover` build
   makes subprocess coverage count toward the gate.
 - **A real run in the suite.** Runs are infraweave's core behaviour. A fake

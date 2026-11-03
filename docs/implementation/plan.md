@@ -78,7 +78,7 @@ and lint is clean.
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | In progress | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs. Open: [#11](https://github.com/weaveplatform/infraweave/issues/11) parity report, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
-| P1b Module layout and depguard | Not started | |
+| P1b Domain layout and depguard | Not started | |
 | P1c Test harness and parity tooling | Not started | **M1** |
 | P2 PostgreSQL, migrations and operability | Not started | |
 | P2b Object storage and secrets at rest | Not started | |
@@ -126,7 +126,7 @@ and lint is clean.
 
 | Milestone | Reached after | Demonstrable outcome |
 |---|---|---|
-| M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces the module layout |
+| M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces the domain layout |
 | M2 Authorized API on PostgreSQL | P5 | An API key exchanges for a token; spaces and roles decide every route; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
 | M3 First run | P9 | `runs_terraform.feature` and `runs_tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into MinIO, masks a secret in its log and reaches `FINISHED` |
 | M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against Gitea: a push opens a proposed run, a plan policy warns, the check and the pull request comment appear, and an approval policy holds a tracked run until a review |
@@ -142,7 +142,7 @@ and lint is clean.
 ```mermaid
 flowchart LR
   P0[P0 Reference] --> P1[P1 Served skeleton]
-  P1 --> P1b[P1b Module layout]
+  P1 --> P1b[P1b Domain layout]
   P1b --> P1c[P1c Test harness]
   P1c --> P2[P2 PostgreSQL]
   P2 --> P2c[P2c Queue and outbox]
@@ -240,15 +240,15 @@ the events chain (P12 → P13 → P18 → P18b) are each one phase shorter.
 [26 section 1.4](../research/reference/26-scope-and-tiers.md#14-provisional-phase-spine)
 gives a provisional phase spine. Each change below follows a dependency the
 research shows. Where option 5's
-[module status table](../research/architecture-options/5-modular-monolith.md#module-status-by-phase)
-assigns a module to another phase, this plan's assignment holds.
+[domain status table](../research/architecture-options/5-modular-monolith.md#domain-status-by-phase)
+assigns a domain to another phase, this plan's assignment holds.
 
 | Change | Why |
 |---|---|
-| P1b and P1c inserted after P1 | Decision [0004](../research/decisions/0004-repository-architecture.md) moves today's packages into the module layout and enables depguard; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines the harness, the test-name split and the parity outcomes. Doing both before persistence lands every later phase in its final package and inside a working test loop, as `CLAUDE.md`'s correctness-loop rule requires |
+| P1b and P1c inserted after P1 | Decision [0004](../research/decisions/0004-repository-architecture.md) moves today's packages into the domain layout and enables depguard; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines the harness, the test-name split and the parity outcomes. Doing both before persistence lands every later phase in its final package and inside a working test loop, as `CLAUDE.md`'s correctness-loop rule requires |
 | P2 split into P2, P2c and P2b | P3 seals signing keys and idempotency bodies ([0006](../research/decisions/0006-authentication-and-tokens.md), [0005](../research/decisions/0005-persistence-postgresql.md)), so object storage and the keyring ([0013](../research/decisions/0013-secrets-at-rest.md)) come first, and they run their jobs on the queue |
 | The work queue, cron and outbox move from P7 to P2c | `blob.expire` and `blob.delete` ([0005](../research/decisions/0005-persistence-postgresql.md)), `authn.keys.rotate` and `authn.sessions.expire` ([0006](../research/decisions/0006-authentication-and-tokens.md)) and `idempotency.purge` are queue jobs and periodic tasks ([0011](../research/decisions/0011-persistent-work-queue.md)), needed long before runs. P7 keeps the run state machine and `run.schedule` |
-| Process logging, request IDs and the admin listener's health endpoints move from P18 to P2 | Every role reports `/readyz` against PostgreSQL from its first connection ([0017](../research/decisions/0017-observability-and-health.md), [0020](../research/decisions/0020-reference-deployments-and-packaging.md)); P18b keeps metrics, the Spacelift exporter series and run tracing |
+| Process logging, request IDs and the admin listener's health endpoints move from P18 to P2 | Every process mode reports `/readyz` against PostgreSQL from its first connection ([0017](../research/decisions/0017-observability-and-health.md), [0020](../research/decisions/0020-reference-deployments-and-packaging.md)); P18b keeps metrics, the Spacelift exporter series and run tracing |
 | P3 and P4 split into P3, P3b, P4 and P4b | Size: about 110 identity operations and 47 spaces and roles operations |
 | Private pools move from P14 to P8; the public pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public pool is an optional operator-run pool on the same protocol |
 | P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces |
@@ -342,18 +342,18 @@ package paths are today's (`internal/server/...`); P1b moves them.
   other reference operation in the baseline.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P1b: Module layout and depguard
+## P1b: Domain layout and depguard
 
 Decisions: [0004](../research/decisions/0004-repository-architecture.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P1.
 
-Today's packages move into option 5's tree before any module exists, so no
+Today's packages move into option 5's tree before any domain exists, so no
 later phase pays for a move, and depguard starts enforcing the boundaries
 with a clean run over the whole tree.
 
 Open choice: decision [0004](../research/decisions/0004-repository-architecture.md) (option 5, the modular monolith, with one
-binary in roles) is Proposed; every later package path assumes it.
+binary in process modes) is Proposed; every later package path assumes it.
 
 **Tasks**
 1. Move per option 5's [package mapping](../research/architecture-options/5-modular-monolith.md#package-mapping):
@@ -368,21 +368,21 @@ binary in roles) is Proposed; every later package path assumes it.
 2. Regenerate the strict server into `internal/platform/gen/deploy` by
    changing `api/oapi-server-deploy.yaml`'s output; stubgen reads the new
    path. `internal/app/router.go` composes a `deployServer` struct that
-   embeds each module's partial and `UnimplementedStrict` one level deeper,
+   embeds each domain's partial and `UnimplementedStrict` one level deeper,
    with `var _ deploy.StrictServerInterface = deployServer{}`.
 3. Create `internal/kernel` with `ids.go` (ULID and slug), `page.go`
    (decision 0003's cursor and page) and `principal.go`; create the empty
-   `internal/app/{config,roles.go,platform.go,modules.go}` and one cobra file
-   per role in `cmd/infraweave` (`serve`, `version`; the others land with
+   `internal/app/{config,modes.go,platform.go,domains.go}` and one cobra file
+   per process mode in `cmd/infraweave` (`serve`, `version`; the others land with
    their phases).
 4. `.golangci.yml`: enable depguard with option 5's six rules
    ([tests and enforcement](../research/architecture-options/5-modular-monolith.md#tests-and-enforcement)): `api-packages`,
-   `constructors`, `core-not-adapters`, `shared-below-modules`,
+   `constructors`, `core-not-adapters`, `shared-below-domains`,
    `agent-isolation`, `devtools`. Add forbidigo for `time.Sleep` in
    `_test.go` files ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 5. `internal/app/depguard_test.go` (`TestUnitDepguardFixtures`): a fixture
-   module that imports another module's `internal/` and `module/` packages,
-   and a platform package that imports a module, each fail `make lint`.
+   domain that imports another domain's `internal/` and `assembly/` packages,
+   and a platform package that imports a domain, each fail `make lint`.
 
 **Exit criteria**
 - `GOWORK=off go list ./...` shows no package under `internal/server`, and
@@ -401,7 +401,7 @@ Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](
 **Depends on:** P1b.
 
 The acceptance harness and the parity outcomes of decision 0016 exist before
-the first module, so every later operation is proved by the same rule: served,
+the first domain, so every later operation is proved by the same rule: served,
 not `501`, and named by passing success, denial and failure scenarios.
 
 Open choice: decision [0016](../research/decisions/0016-testing-and-acceptance.md) is Proposed, including the CI partitions
@@ -411,7 +411,7 @@ and the three-scenario rule.
 1. Test names: rename every top-level test to `TestUnit...` or `TestAcc...`;
    `api/testnames_test.go` (`TestUnitTestNames`) fails on any other name.
    `make test` selects `-run '^TestUnit'` across all packages and
-   `make accept` selects `-run '^TestAcc'`, so store and module suites beside
+   `make accept` selects `-run '^TestAcc'`, so store and domain suites beside
    the code run in the acceptance job.
 2. `test/acceptance`: `TestAccFeatures` runs godog with `Strict: true` over
    `features/<area>_<topic>.feature`; the harness builds `cmd/infraweave`
@@ -459,8 +459,8 @@ Decisions: [0005](../research/decisions/0005-persistence-postgresql.md), [0017](
 
 **Depends on:** P1c.
 
-PostgreSQL becomes the only store, with the migration runner every module
-uses, and the binary gains the roles, logs and health endpoints an operator
+PostgreSQL becomes the only store, with the migration runner every domain
+uses, and the binary gains the process modes, logs and health endpoints an operator
 needs from its first database connection.
 
 Open choice: decision [0005](../research/decisions/0005-persistence-postgresql.md)'s floor of PostgreSQL 15 and its forward-only
@@ -493,7 +493,7 @@ migrations are Proposed.
    `X-Request-Id` validation and echo, the redacting handler, the access log;
    the admin listener `server.admin_listen` (`:9090`) with `/livez`,
    `/readyz` and `/startupz`; graceful shutdown order. `infraweave scheduler`
-   and `infraweave all` roles start with no consumers yet. Tests:
+   and `infraweave all` process modes start with no consumers yet. Tests:
    `TestUnitRedactHandler`, `TestUnitRequestID`,
    `TestUnitServerListeners`, `observability_health.feature` (readiness
    fails while PostgreSQL is stopped and recovers). Records DV-009 and
@@ -517,7 +517,7 @@ Decisions: [0005](../research/decisions/0005-persistence-postgresql.md), [0013](
 **Depends on:** P2, P2c.
 
 Object storage and envelope encryption are platform services every later
-module writes through: state, logs, artifacts, archives and every sealed
+domain writes through: state, logs, artifacts, archives and every sealed
 column.
 
 Open choice: decision [0013](../research/decisions/0013-secrets-at-rest.md)'s KEK providers and its reversible
@@ -561,8 +561,8 @@ Decisions: [0011](../research/decisions/0011-persistent-work-queue.md), [0015](.
 **Depends on:** P2.
 
 Background work, periodic tasks and the transactional outbox run on
-PostgreSQL in the `scheduler` role, so that storage, identity and every later
-module can enqueue work in the transaction that asks for it.
+PostgreSQL in the `scheduler` process mode, so that storage, identity and every later
+domain can enqueue work in the transaction that asks for it.
 
 Open choice: decision [0011](../research/decisions/0011-persistent-work-queue.md) rules out a separate workflow engine; a
 different answer would move run orchestration and reopen decision 0004.
@@ -586,7 +586,7 @@ different answer would move run orchestration and reopen decision 0004.
    `internal/platform/audit` records `audit_trail_entries` in the caller's
    transaction (the audit API lands in P18b).
 4. Periodic tasks: `queue.prune` and `idempotency.purge`. The
-   `scheduler` role starts queue workers and the ticker. Admin routes
+   `scheduler` process mode starts queue workers and the ticker. Admin routes
    `GET /admin/queue/jobs`, `POST /admin/queue/jobs/{id}/retry`,
    `DELETE /admin/queue/jobs/{id}` (root admins from P4). Records DV-037 to
    DV-040.
@@ -609,13 +609,13 @@ Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [000
 
 Every API request carries a principal: API keys exchange for tokens, sessions
 can be listed and revoked, and the break-glass admin can log in before any SSO
-exists. The `access` module is created.
+exists. The `access` domain is created.
 
 Open choice: decision [0006](../research/decisions/0006-authentication-and-tokens.md) reproduces Spacelift's token formats
 (report 30 P7) and the session lifetimes it states are infraweave's.
 
 **Tasks**
-1. `internal/access` skeleton (`api/`, `module/`, `internal/core`,
+1. `internal/access` skeleton (`api/`, `assembly/`, `internal/core`,
    `internal/adapters/{http,pg}`) with its migration stream: `accounts`,
    `users`, `api_keys`, `sessions`, `signing_keys`. `internal/kernel`
    `account.go` and `principal.go`.
@@ -817,7 +817,7 @@ Open choice: decision [0022](../research/decisions/0022-api-errors-and-update-se
 (report 30 P8 and P9) are Proposed.
 
 **Tasks**
-1. `internal/stacks` (flat module) with its migration stream (`stacks`,
+1. `internal/stacks` (flat domain) with its migration stream (`stacks`,
    `stack_hooks`, labels); `api/` with `Stacks.Get`, `ByRepository`,
    `LockForRun`, `Settings` and `StackChanged`. Operations: `stacks`,
    `stack`, `stackCreate`, `stackUpdate`, `stackDelete`, `stackReslug`,
@@ -863,7 +863,7 @@ auto-attachment by label and one resolver that hands a run its ordered
 environment.
 
 **Tasks**
-1. `internal/configuration` (flat module): `config_elements` with
+1. `internal/configuration` (flat domain): `config_elements` with
    `value_sealed` for every element and `checksum`, `write_only`;
    `contexts`, `context_attachments` with priorities and
    `is_autoattached`. Operations: `contexts`, `context`, `contextCreateV2`,
@@ -898,7 +898,7 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 
 **Depends on:** P5, P2c.
 
-The `runs` module owns every table a run transition writes, and one function
+The `runs` domain owns every table a run transition writes, and one function
 moves a run between states in one transaction. Runs can be created and
 queued; nothing executes them until P8.
 
@@ -939,7 +939,7 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 
 **Depends on:** P7, P6, P4, P2b.
 
-Private worker pools, the `/worker/v1` protocol and `infraweave worker`, which
+Private worker pools, the `/worker/v1` protocol and `infraweave launcher`, which
 claims a run, prepares it and starts a container from the same binary. The
 container runs a stub executor until P9.
 
@@ -972,7 +972,7 @@ transport (report 30 P6).
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
    cycle), `executor/docker` (the launcher's own binary bind-mounted
    read-only as the container's root process, UID 1983) and `agenttest`.
-   `infraweave worker` and the hidden `infraweave worker exec` in
+   `infraweave launcher` and the hidden `infraweave runner` in
    `cmd/infraweave`.
 5. Liveness: `worker.reap` fails runs held by a worker unseen for three
    minutes; drain, cycle and reset as decision 0008's table.
@@ -997,7 +997,7 @@ token, so the first run stores its state in infraweave rather than in its
 workspace.
 
 **Tasks**
-1. `internal/state` (flat module) with `state_workspaces`, `state_locks` and
+1. `internal/state` (flat domain) with `state_workspaces`, `state_locks` and
    `managed_state_versions`; `api/` with `Versions.Latest` and `Outputs`.
 2. `internal/state/internal/backend`: `GET`, `POST`, `LOCK` and `UNLOCK` on
    `/state/v1/stacks/{stack}` and the workspace form, registered with
@@ -1033,7 +1033,7 @@ masked and stored, plan recorded, confirmation honoured and state written
 through the backend.
 
 **Tasks**
-1. `internal/agent/exec`: the phase executor of `worker exec`, with
+1. `internal/agent/exec`: the phase executor of `runner`, with
    `before_*` and `after_*` hooks in one shell session, reports per phase,
    `pause` and `exit` answers. `internal/agent/vendors/{terraform,opentofu}`
    and `internal/iac/{terraform,opentofu}` with plan JSON parsing into
@@ -1060,7 +1060,7 @@ through the backend.
 6. Runner images: `deploy/images/runner-terraform` and
    `deploy/images/runner-opentofu` definitions meeting decision 0008's
    contract; the harness builds `infraweave-runner:acceptance`. In-run
-   `SPACELIFT_API_TOKEN` with `sub` `<stack>/<run>`, so
+   `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so
    `spacelift_current_stack` and `spacelift_current_space` have their data.
 
 **Exit criteria**
@@ -1218,7 +1218,7 @@ or fetches it (report 30 P14).
    timeouts and print capture. `policyRuntime` (Infrastructure tag).
    Tests: `TestUnitRegoEngines`, `TestUnitRemovedBuiltins`,
    `TestUnitPolicyTimeout`.
-2. `internal/policies` (flat module): `policies`, attachments and
+2. `internal/policies` (flat domain): `policies`, attachments and
    auto-attachment by label, `run_policy_receipts`, `run_flags`.
    Operations: `policies`, `policy`, `policyCreatev2`, `policyUpdatev2`,
    `policyDelete`, `policyAttach`, `policyDetach`, `policyAttachedStack`,
@@ -1332,12 +1332,12 @@ applications through an operator-registered application, or answers
 1. Federation: the `federation` signing key, `GET
    /.well-known/openid-configuration` and `GET /.well-known/jwks`; the token
    with report 12's claims and scope table, injected as
-   `SPACELIFT_OIDC_TOKEN` and `/mnt/workspace/spacelift.oidc` and refreshed
+   `INFRAWEAVE_OIDC_TOKEN` and `/mnt/workspace/infraweave.oidc` and refreshed
    in long runs; the subject template with `accountSetOIDCSubjectTemplate`
    and its validation. Tests: golden claims and placeholders. Feature:
    `oidc_federation.feature` (a Vault container's `jwt` auth accepts the
    token with `bound_claims` on `spacePath`). Records DV-016.
-2. `internal/cloud` (flat module): AWS integrations and attachments with the
+2. `internal/cloud` (flat domain): AWS integrations and attachments with the
    fixed external ID and `RoleSessionName` formats, the role trust check
    with decision 0022's matched text, credentials assumed by the server or
    on the worker. Operations: `awsIntegrations`, `awsIntegration`,
@@ -1377,7 +1377,7 @@ Scheduled runs, tasks and deletes, drift detection, and stack dependencies
 with output references and external dependencies.
 
 **Tasks**
-1. `internal/schedules` (flat module): `scheduled_jobs` with `next_fire_at`
+1. `internal/schedules` (flat domain): `scheduled_jobs` with `next_fire_at`
    claimed by the cron ticker; missed firings coalesced. Operations:
    `stackScheduledRun`, `stackScheduledRunCreate`,
    `stackScheduledRunUpdate`, `stackScheduledRunDelete`,
@@ -1742,7 +1742,7 @@ Single-body blueprints, templates with versions and deployments, and the
 ServiceNow and Backstage integrations that attach to them.
 
 **Tasks**
-1. `internal/templates` (flat module) with a CEL renderer in
+1. `internal/templates` (flat domain) with a CEL renderer in
    `internal/templates/internal/render`. Blueprints: `blueprint`,
    `blueprintCreate`, `blueprintUpdate`, `blueprintDelete`, `blueprintClone`,
    `blueprintCreateStack`, `blueprintParseTemplate`, `blueprintSchema`,
@@ -1786,7 +1786,7 @@ The resources view built from state and plans, the remaining searches and
 suggestions, and the operations Spacelift's web UI uses.
 
 **Tasks**
-1. `internal/resources` (flat module): managed entities indexed from
+1. `internal/resources` (flat domain): managed entities indexed from
    `state.indexed` and plan changes. Operations: `searchManagedEntities`,
    `searchManagedEntitiesSuggestions`,
    `searchManagedEntitiesGroupByProviders`,
@@ -1937,7 +1937,7 @@ Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](
    credential methods without `INFRAWEAVE_API_PREFERRED_METHOD`. Records
    DV-083.
 2. Login: API key, token and the loopback browser flow with
-   `cliConfirmationToken`; the `SPACECTL` session channel.
+   `cliConfirmationToken`; the `INFRAWEAVECTL` session channel.
 3. Commands per report 06 section 8 row: stacks, runs (with log tailing
    and local preview), modules, providers, worker pools, blueprints and
    templates, policies, profiles, version.
@@ -2068,7 +2068,7 @@ Temporal cluster, and serves REST under `/flows/v1/` (DV-069).
    schedules through the cron ticker, limits and retention. Tests:
    `TestUnitFlowsDelivery`, `TestUnitFlowsInvocationStatus`,
    `TestUnitFlowsLimits`, `TestUnitFlowsDefinitionParse`.
-4. Core blocks in Go in the `scheduler` role; Deploy-side reads:
+4. Core blocks in Go in the `scheduler` process mode; Deploy-side reads:
    `flowsIntegration`, `flowsProjects`, `flowsInstances`,
    `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
    `flowsProjectRoleBindingDelete`; `flows.enabled: false`.
@@ -2163,7 +2163,7 @@ qualified against the tests.
    and check them in under `test/fixtures/captures/C<n>/`; mark each entry
    resolved in report 30 and change the report's marker.
 2. `TestAccCaptures` replays every `expect.yaml`; a failing expectation is a
-   parity bug, fixed in the owning module with its deviation row if
+   parity bug, fixed in the owning domain with its deviation row if
    infraweave keeps its choice.
 3. Resolve report 30's product decisions still open and move each Proposed
    decision to Accepted or Superseded; amend the report 26 cells decision

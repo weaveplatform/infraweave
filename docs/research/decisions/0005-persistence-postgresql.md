@@ -106,7 +106,7 @@ in the same database, in the `flows` PostgreSQL schema that
 
 - **Embedded streams.** Migrations are SQL files embedded with `embed.FS`, in
   one or more named streams. Decision 0004 places the streams: its
-  recommended layout gives each module one. Within a stream, files are named
+  recommended layout gives each domain one. Within a stream, files are named
   `NNNNN_snake_case.sql` (five digits, gap-free). The composition root
   registers the streams in a fixed order, and the runner applies them in that
   order, so a stream may refer to tables of the streams registered before it.
@@ -277,7 +277,7 @@ sees the same keys, buckets and switches.
 
 1. **Shared state only.** Replicas share nothing but PostgreSQL and object
    storage. Any `serve` replica serves any request, including the worker API and
-   webhook intake, and any `scheduler` replica takes any job (process roles
+   webhook intake, and any `scheduler` replica takes any job (process modes
    are decision 0020's).
 2. **Caches.** An in-process cache either lives at most 5 seconds or is
    cleared through `infraweave_invalidate`. Nothing that affects an

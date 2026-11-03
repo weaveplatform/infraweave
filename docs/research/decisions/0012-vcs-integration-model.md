@@ -47,7 +47,7 @@ not provider names.
 | Interface | Methods (summary) | Providers |
 |---|---|---|
 | `Webhooks` | `Verify(req, body, secrets)`, `DeliveryID(req, body)`, `Parse(req, body) ([]Event, error)` | all but raw Git |
-| `Source` | `ResolveRef`, `AffectedFiles(base, head)`, `ReadFile(ref, path)` (for `.spacelift/config.yml`), `SourceCredential(run)` | all |
+| `Source` | `ResolveRef`, `AffectedFiles(base, head)`, `ReadFile(ref, path)` (for `.infraweave/config.yml`), `SourceCredential(run)` | all |
 | `Browse` | `Repositories`, `Branches` | all |
 | `Checks` | `SetIndividual`, `SetAggregated` | all but raw Git |
 | `Comments` | `Upsert(pr, dedupKey, body)` | all but raw Git |
@@ -201,8 +201,8 @@ model is decision 0015's), never inline in a transition.
 - **Checks.** `vcs.report_check` jobs carry the run and check, with unique key
   `(run, check name)` so a newer state coalesces into a pending job, and
   ordering key the run so states post in order. Individual checks are named
-  `spacelift/<stack slug>`; aggregated checks are `spacelift/tracked`,
-  `spacelift/proposed` and `spacelift/modules`. `vcs_checks` (`INDIVIDUAL`,
+  `infraweave/<stack slug>`; aggregated checks are `infraweave/tracked`,
+  `infraweave/proposed` and `infraweave/modules`. `vcs_checks` (`INDIVIDUAL`,
   `AGGREGATED`, `ALL`) and the options `individualFailuresOnly` and
   `individualSkipUnchanged` apply as
   [11 section 12.1](../reference/11-vcs-integrations.md#121-vcs-check-modes) says.
@@ -322,7 +322,7 @@ the launcher's mapping of pool names to endpoints is 0008's.
   under `/webhooks/vcs/`; acceptance of the previous webhook secret for a
   window; the delivery listing and replay routes; the HTTP long-poll agent
   protocol and token layout; refusal of unmatched Azure DevOps requests by the
-  agent; and `spacelift/<stack slug>` as the individual check name, which
+  agent; and `infraweave/<stack slug>` as the individual check name, which
   Spacelift does not document.
 
 ## Constraints

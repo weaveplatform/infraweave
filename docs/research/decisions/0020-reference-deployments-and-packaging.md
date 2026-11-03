@@ -24,14 +24,14 @@ and upgraded is part of the product. Self-hosted Spacelift sets the bar
   ([24 section 9](../reference/24-self-hosted-reference.md#9-upgrades-the-v2-to-v3-kit-and-what-changed)).
 
 This record decides packaging and deployment: the artefacts, the process
-roles they run, the reference deployments, and the upgrade rules. Decision
+modes they run, the reference deployments, and the upgrade rules. Decision
 0004 owns the code structure. Decisions 0005 (persistence and object
 storage), 0008 (workers and runner images), 0012 (the VCS agent) and 0013
 (keys) own the behaviour that the artefacts carry.
 
 ## Decision
 
-### Two binaries, one server binary with several roles
+### Two binaries, one server binary with several process modes
 
 The repository builds two Go binaries with `CGO_ENABLED=0`. Their code
 layout is decision 0004's.
@@ -41,11 +41,11 @@ layout is decision 0004's.
 
 | Subcommand | Runs | State | Listeners |
 |---|---|---|---|
-| `infraweave serve` | the API role (table below) | stateless | API and admin |
-| `infraweave scheduler` | the scheduler role (table below) | stateless | admin only |
+| `infraweave serve` | the API process mode (table below) | stateless | API and admin |
+| `infraweave scheduler` | the scheduler process mode (table below) | stateless | admin only |
 | `infraweave all` | `serve` and `scheduler` in one process, for single-node installs | stateless | API and admin |
-| `infraweave worker` | the launcher: registration, work delivery and run containers (decision 0008) | none | admin only |
-| `infraweave worker exec` | hidden; the phase executor inside the run container (decision 0008) | none | none |
+| `infraweave launcher` | the launcher: registration, work delivery and run containers (decision 0008) | none | admin only |
+| `infraweave runner` | hidden; the phase executor inside the run container (decision 0008) | none | none |
 | `infraweave vcs-agent` | the VCS agent (decision 0012) | none | admin only |
 | `infraweave flows-agent` | Flows app execution ([0018](0018-flows-runtime.md)) | none | admin only |
 | `infraweave migrate up`, `infraweave migrate status` | the schema migrations of decision 0005, then exit | none | none |
@@ -58,9 +58,9 @@ layout is decision 0004's.
 
 Operators and workers download `infraweave`; users download `infraweavectl`.
 
-Server roles:
+Server process modes:
 
-| Role | Does | Scales on |
+| Process mode | Does | Scales on |
 |---|---|---|
 | `serve` | The REST API, web UI assets, inbound VCS webhooks, the registry protocol ([0014](0014-module-and-provider-registry.md)), the state backend (decision 0010), `/mcp` ([0019](0019-ai-provider-boundary.md)), the worker long-poll endpoints (decision 0008), the VCS agent endpoints ([0012](0012-vcs-integration-model.md)), the Flows endpoints and agent gateway ([0018](0018-flows-runtime.md)), and the launcher downloads below | request rate and CPU |
 | `scheduler` | The consumers of the persistent work queue (decision 0011), including the outbox, the scheduler ticker and cron, event delivery ([0015](0015-events-notifications-webhooks-audit.md)) and notification policies | queue depth |
@@ -68,11 +68,11 @@ Server roles:
 - **Single node.** `infraweave all` is a complete installation in one
   process.
 - **VCS agents.** The VCS agent's long-poll endpoints are part of `serve`
-  (decision 0012). They become a role of their own only if their
+  (decision 0012). They become a process mode of their own only if their
   connections need their own scaling, as decision 0004 states.
-- **Coordination.** Roles never coordinate through process memory. Any
+- **Coordination.** Process modes never coordinate through process memory. Any
   number of `serve` and `scheduler` replicas may run against one database, so
-  every role relies on decision 0011's claims and decision 0005's
+  every process mode relies on decision 0011's claims and decision 0005's
   multi-replica rules.
 
 Listeners:
@@ -91,7 +91,7 @@ Listeners:
 | FIPS image | The same, built with `GOFIPS140` set to the validated Go cryptographic module | `ghcr.io/weaveplatform/infraweave:<version>-fips` |
 | Runner images | Built from the repository's runner image definitions, whose contents (Terraform, OpenTofu and the other vendor tools of report 20) decision 0008 defines. The acceptance harness builds the same definitions locally as `infraweave-runner:acceptance` ([0016](0016-testing-and-acceptance.md)) | `ghcr.io/weaveplatform/infraweave-runner-<vendor>:<version>` |
 | Flows runtime image | The Node runtime that executes Flows app bundles ([0018](0018-flows-runtime.md)) | `ghcr.io/weaveplatform/infraweave-flows-runtime:<version>` |
-| Helm chart | `infraweave` (`serve` and `scheduler`) and `infraweave-workers` (`infraweave worker`) | `oci://ghcr.io/weaveplatform/charts/<chart>:<version>` |
+| Helm chart | `infraweave` (`serve` and `scheduler`) and `infraweave-workers` (`infraweave launcher`) | `oci://ghcr.io/weaveplatform/charts/<chart>:<version>` |
 | Terraform modules | `deploy/terraform/modules/<cloud>` (see reference deployments) | Git source in this repository at the release tag |
 | Compose file | `deploy/compose/compose.yaml` | Release asset |
 
@@ -107,14 +107,14 @@ Listeners:
   application versions exists.
 - **Image references.** The chart references images by tag and accepts
   `image.digest`. When a digest is set, the tag is ignored.
-- **Additional tools.** A role that needs a binary beside `infraweave`, such
+- **Additional tools.** A process mode that needs a binary beside `infraweave`, such
   as `git` for raw-git sources, gets it only if its owning decision names
   it. The image then switches to a distroless base that carries that tool,
   and the change is recorded here. Go-native libraries are preferred.
 
 ### Launcher distribution
 
-The `serve` role serves the `infraweave` Linux binaries of its own version, which workers run as `infraweave worker`:
+The `serve` process mode serves the `infraweave` Linux binaries of its own version, which workers run as `infraweave launcher`:
 - `GET /downloads/launcher/<version>/linux-<arch>`, for `amd64` and `arm64`;
 - `GET /downloads/launcher/<version>/SHA256SUMS`;
 - the matching Sigstore bundles.
@@ -134,7 +134,7 @@ carries the same binary.
   file references. The chart renders `values.config` into a `ConfigMap`, so
   a key that infraweave does not know fails the pod at start rather than
   being ignored.
-- **Public URL.** `server.public_url`, required when the `serve` role runs,
+- **Public URL.** `server.public_url`, required when the `serve` process mode runs,
   is the HTTPS origin that clients and workers use. Every absolute URL
   infraweave emits derives from it: the registry host
   ([0014](0014-module-and-provider-registry.md)), webhook and Slack
@@ -157,7 +157,7 @@ subcommands:
 
 | Reference | Compute | PostgreSQL | Object storage | Key root (decision 0013) | Identity for storage and keys |
 |---|---|---|---|---|---|
-| `deploy/compose` | one `infraweave all` plus one `infraweave worker` on Docker | `postgres` container, volume | local disk volume (decision 0005) | local key file | none |
+| `deploy/compose` | one `infraweave all` plus one `infraweave launcher` on Docker | `postgres` container, volume | local disk volume (decision 0005) | local key file | none |
 | `deploy/helm` on any Kubernetes | chart Deployments | operator-supplied | S3-compatible or local persistent volume | local key in a Secret | none |
 | `deploy/terraform/modules/aws` | EKS, Auto Mode | RDS for PostgreSQL, Multi-AZ, IAM authentication | S3, one bucket with store prefixes | AWS KMS | EKS Pod Identity |
 | `deploy/terraform/modules/azure` | AKS | Azure Database for PostgreSQL Flexible Server, private access, Entra authentication | Blob Storage, one account | Azure Key Vault key | Microsoft Entra Workload ID |
@@ -176,7 +176,7 @@ Rules every cloud module follows:
   transaction-mode pooler in front of the database.
 - **Images.** It pins the chart and images to the module's own release.
 - **No static credentials.** Workloads use the cloud's workload identity,
-  one identity per role, with least privilege: `scheduler` deletes expired
+  one identity per process mode, with least privilege: `scheduler` deletes expired
   objects and `serve` does not. Object storage is private, and browsers and
   workers reach it through pre-signed URLs only.
 - **Outputs.** It outputs the server URL and the worker registration
@@ -195,9 +195,9 @@ because they scale on different signals:
 | `serve.autoscaling` | CPU-based `HorizontalPodAutoscaler`, off |
 | `scheduler.autoscaling` | on `infraweave_queue_jobs` with `state="pending"` ([0017](0017-observability-and-health.md)), through KEDA when installed, off |
 | `sharedPool.enabled` | `false`: an operator-run pool that every space may use, standing in for Spacelift's public pool ([0021](0021-capability-scope-and-supersession.md)) |
-| `podDisruptionBudget.maxUnavailable` | `1` per role |
+| `podDisruptionBudget.maxUnavailable` | `1` per process mode |
 | `terminationGracePeriodSeconds` | `serve` 45, `scheduler` 120; both exceed 0017's ready delay, request drain and flush caps combined |
-| `migrations.mode` | `hook`: a `pre-install,pre-upgrade` Job runs `infraweave migrate up`, and the roles run with `database.migrate: check`; `startup` leaves decision 0005's default, `database.migrate: auto` |
+| `migrations.mode` | `hook`: a `pre-install,pre-upgrade` Job runs `infraweave migrate up`, and the process modes run with `database.migrate: check`; `startup` leaves decision 0005's default, `database.migrate: auto` |
 
 ### Upgrades
 
@@ -207,10 +207,10 @@ because they scale on different signals:
   asks decision 0005's migration runner to refuse otherwise and name that
   version.
 - **Mixed versions during a rollout.** Version N and N-1 of every server
-  role run together against the schema of version N, under decision 0005's
+  process mode run together against the schema of version N, under decision 0005's
   forward-only migration rules.
 - **Order.** Infrastructure (a module upgrade), then `migrate up`, then the
-  server roles by rolling update, then the launchers. The chart and the
+  server process modes by rolling update, then the launchers. The chart and the
   modules encode this order, so an operator applies one release.
 - **Launchers.** A launcher older than the server by one minor keeps
   working: decision 0008 versions the worker protocol, and the server
@@ -233,12 +233,12 @@ because they scale on different signals:
 | PostgreSQL | Point-in-time backups; the queue is covered by them |
 | Object storage | Replication or versioning for the classes decision 0005 marks durable (state, registry artefacts, run logs, policy samples); the rest is transient |
 | Key root | The KMS key's replication, or the local key file kept outside the cluster; losing it loses every sealed value (decision 0013) |
-| Server roles | Nothing: stateless, redeployed |
+| Server process modes | Nothing: stateless, redeployed |
 
 ## Rationale
 
-- **One server binary with roles, not one binary per service.** The roles
-  share the domain, the store and the queue. Separate binaries would add
+- **One server binary with process modes, not one binary per service.** The
+  process modes share the domain, the store and the queue. Separate binaries would add
   images, release steps and version skew between processes that must agree
   on a schema. `infraweave all` makes the compose path and local
   development a single command. The client CLI is separate because users
@@ -246,7 +246,7 @@ because they scale on different signals:
   keeps a webhook or delivery backlog from taking API capacity, as
   Spacelift's own split does.
 - **Rejected: a cron process apart from the queue consumers.** Spacelift
-  folded its scheduler into the drain, and the `scheduler` role does the
+  folded its scheduler into the drain, and the `scheduler` process mode does the
   same; decision 0011's claims make cron safe on any number of
   `scheduler` replicas.
 - **Kubernetes on every cloud, not ECS.** Three Kubernetes modules share
@@ -321,7 +321,7 @@ because they scale on different signals:
   - `migrate up` refuses to skip a major.
 - `test/acceptance/features/deploy_helm.feature` (`@kubernetes`
   `@postgres` `@objectstore`): the chart installs into the k3s container
-  of [0016](0016-testing-and-acceptance.md), every role reports `/readyz`,
+  of [0016](0016-testing-and-acceptance.md), every process mode reports `/readyz`,
   and one tracked run finishes on an `infraweave-workers` launcher.
 - **Release.** The release workflow verifies every signature and
   attestation it produced with `cosign verify` before it publishes the

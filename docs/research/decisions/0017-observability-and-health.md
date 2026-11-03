@@ -29,8 +29,8 @@ That exporter cannot talk to infraweave, which serves no GraphQL (decision
 built on its metric names exist.
 
 infraweave's server binary runs as `infraweave serve`, `infraweave
-scheduler`, or both in `infraweave all`, and workers run `infraweave worker`
-([0020](0020-reference-deployments-and-packaging.md)). Each role depends on
+scheduler`, or both in `infraweave all`, and workers run `infraweave launcher`
+([0020](0020-reference-deployments-and-packaging.md)). Each process mode depends on
 different things, so one probe cannot serve all of them.
 
 ## Decision
@@ -51,7 +51,7 @@ placement). It never fails a request, a job or a run.
 |---|---|
 | `time`, `level`, `msg` | slog's own, RFC 3339 with nanoseconds, UTC |
 | `service` | `infraweave` |
-| `role` | the subcommand: `serve`, `scheduler`, `worker`, `vcs-agent` or `flows-agent`; `serve,scheduler` for `infraweave all` |
+| `mode` | the process mode: `serve`, `scheduler`, `launcher`, `vcs-agent` or `flows-agent`; `serve,scheduler` for `infraweave all` |
 | `version` | the build version from `internal/buildinfo` |
 | `request_id` | on lines inside an HTTP request |
 | `trace_id`, `span_id` | when a span is active |
@@ -92,7 +92,7 @@ placement). It never fails a request, a job or a run.
   the standard `OTEL_EXPORTER_OTLP_*` variables apply, so a Datadog Agent,
   an ADOT collector or Grafana Alloy receives traces without infraweave
   knowing which vendor it is.
-- **Resource.** `service.name` is `infraweave-<role>` (or `infraweave` for
+- **Resource.** `service.name` is `infraweave-<mode>` (or `infraweave` for
   `infraweave all`), plus `service.version`, `service.instance.id` (a
   random ID per process) and `deployment.environment.name` (the
   semantic-convention name that replaces the deprecated
@@ -167,7 +167,7 @@ and `infraweave.audit.*` instruments,
 ### Spacelift's exporter metrics, built in
 
 - **Endpoint.** `GET /metrics/spacelift` on the admin listener of the `serve`
-  role serves every metric `spacelift-promex` publishes, with the same
+  process mode serves every metric `spacelift-promex` publishes, with the same
   names, types, labels and units, listed in
   [19 section 10](../reference/19-events-notifications-audit.md#10-the-prometheus-exporter).
   A separate path keeps account-wide series off the per-process
@@ -185,7 +185,7 @@ and `infraweave.audit.*` instruments,
 | `aggregates` | the `metrics` read: stacks by state, resources by drift, average stack size, and average and median run duration in nanoseconds, the unit Spacelift uses despite the name |
 
 - **Configuration**, mirroring promex's flags:
-  `telemetry.spacelift_metrics.enabled` (default `true`),
+  `telemetry.platform_metrics.enabled` (default `true`),
   `.collectors` (default all four), `.scrape_timeout` (default `5s`, one
   deadline for the whole scrape) and `.partial_scrapes` (default `false`).
   Collectors run concurrently.
@@ -207,16 +207,16 @@ API listener serves no probe.
 | Probe | Answers 200 when | Answers 503 when |
 |---|---|---|
 | `GET /livez` | the process serves HTTP | never while the process runs; a hung process fails by timeout |
-| `GET /startupz` | every startup check of the process's roles has passed once | until then; it never returns to 503 |
-| `GET /readyz` | every readiness check of the process's roles passes and shutdown has not begun | otherwise |
+| `GET /startupz` | every startup check of the process's modes has passed once | until then; it never returns to 503 |
+| `GET /readyz` | every readiness check of the process's modes passes and shutdown has not begun | otherwise |
 
-Checks per role:
+Checks per process mode:
 
-| Role | Startup checks | Readiness checks |
+| Process mode | Startup checks | Readiness checks |
 |---|---|---|
 | `serve` | config decoded; schema at the version this binary expects (decision 0005); signing keys loaded (decision 0006); object storage bucket reachable | PostgreSQL answers `SELECT 1` through the pool |
 | `scheduler` | as `serve` for schema; every queue kind has a registered handler | PostgreSQL answers; the lease loop has completed a poll within twice its interval |
-| `worker` | registered with the server with a valid pool token; the container runtime (Docker or Kubernetes) answers | the server answered a poll within three poll intervals; the runtime answers |
+| `launcher` | registered with the server with a valid pool token; the container runtime (Docker or Kubernetes) answers | the server answered a poll within three poll intervals; the runtime answers |
 
 - Each check runs with a 2-second timeout, and results are cached for one
   second so that frequent probing does not load the database.
@@ -240,7 +240,7 @@ On `SIGTERM` or `SIGINT` a server process:
    `server.shutdown.timeout` (default `30s`). Worker long-polls answer
    "no work" at once, so launchers reconnect to another replica
    (decision 0008);
-4. the `scheduler` role stops leasing jobs and hands back the leases it holds
+4. the `scheduler` process mode stops leasing jobs and hands back the leases it holds
    without counting an attempt (decision 0011);
 5. flushes traces and metrics, with a 5-second cap;
 6. exits 0. A second signal exits at once with status 1.

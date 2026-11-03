@@ -9,7 +9,8 @@ infraweave uses a term differently, the infraweave sense follows. A term's
 presence here does not mean infraweave implements it. Each meaning links
 the report that defines the term; where several reports use it, the first
 link is the defining one. Terms that several products share, such as agent
-or drain, carry the product or component in brackets.
+or drain, carry the product or component in brackets. infraweave's own language is in the root
+[GLOSSARY.md](../../../GLOSSARY.md).
 
 | Term | Meaning |
 |---|---|

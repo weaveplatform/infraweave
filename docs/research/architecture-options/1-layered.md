@@ -3,7 +3,7 @@
 Detailed repository layout for option 1 of the
 [architecture options](README.md): horizontal technical layers (transport,
 workflow, service, repository and infrastructure, model) stacked over each
-other, with packages grouped by technical role first and by business domain
+other, with packages grouped by technical layer first and by business domain
 second. Every package in today's tree is mapped; roadmap packages are marked
 with the phase of
 [report 26](../reference/26-scope-and-tiers.md#14-provisional-phase-spine)
@@ -48,7 +48,7 @@ declared order and a workflow imports only workflows earlier in that order,
 so the run state machine (`runflow`, first in the order) can be reached by
 everything and reaches nothing above it.
 
-The worker role sits beside the layers, not in them. `internal/worker/...`
+The launcher and runner process modes sit beside the layers, not in them. `internal/worker/...`
 is a separate column (launcher, phase executor, vendor command sets,
 container runtimes) that talks to the server only through a generated
 worker-protocol client, so a private worker on a customer host links no
@@ -91,7 +91,7 @@ this option. Rule 6 exists because one binary carries a second program.
 ```text
 infraweave/
 ├── cmd/
-│   ├── infraweave/             NEW: cobra root; serve, scheduler, all, worker, hidden worker exec,
+│   ├── infraweave/             NEW: cobra root; serve, scheduler, all, launcher, hidden runner,
 │   │                           vcs-agent, flows-agent, migrate up, migrate status, version;
 │   │                           thin: builds config and calls internal/app or internal/worker
 │   └── infraweavectl/          (P24) the CLI over pkg/client/deploy
@@ -174,10 +174,10 @@ internal/
 │   ├── schedule.go                        Schedule: queue workers and the scheduler ticker of decision 0011 (P7)
 │   ├── migrate.go                         Migrate, MigrateStatus: the embedded migrations of decision 0005 (P2)
 │   ├── all.go                             All: Serve and Schedule in one process
-│   └── *_test.go                          role start-up and shutdown against testcontainers PostgreSQL
+│   └── *_test.go                          process mode start-up and shutdown against testcontainers PostgreSQL
 ├── config/                                strict YAML (UnmarshalExact), flag > env > file; Server, Scheduler,
 │                                          Worker sections; only setting flags are bound
-├── tooling/                               libraries behind tools/; not part of any role
+├── tooling/                               libraries behind tools/; not part of any process mode
 │   ├── specref/                           Spacelift reference generator      ← internal/specref
 │   ├── openapibundle/                     fragment bundler                   ← internal/openapibundle
 │   ├── stubgen/                           UnimplementedStrict writer         ← internal/stubgen
@@ -356,13 +356,13 @@ internal/
 │   ├── ws/flowsgateway/                   Flows agents over WebSockets                      (P26)
 │   └── scheduler/                         queue consumers and cron entries; calls workflows  (P7)
 │
-└── worker/                                SEPARATE COLUMN: the worker role; imports model, support, own code
+└── worker/                                SEPARATE COLUMN: launcher and runner; imports model, support, own code
     ├── protoclient/                       generated worker-protocol client (from api/src/worker) (P8)
     ├── launcher/                          register, long-poll, start a container per job, stop and kill (P8)
     ├── runtime/docker/                    Docker socket, mounts the infraweave binary as root process (P8)
     ├── runtime/kubernetes/                pod per run                                       (P14)
     ├── controller/                        Kubernetes WorkerPool controller                  (P14)
-    ├── exec/                              `worker exec`: phases, hooks, log shipping, workspace save and restore (P8)
+    ├── exec/                              `infraweave runner`: phases, hooks, log shipping, workspace save and restore (P8)
     ├── iac/                               command sets per vendor
     │   ├── iac.go                         Commands: Init, Plan, Show, Outputs, Apply, Destroy
     │   ├── terraform/ opentofu/           (P9)
@@ -552,7 +552,7 @@ How a run moves, and which package drives each step:
 | --- | --- | --- |
 | Trigger | (new) to `QUEUED` | `transport/http/api/runs`, `workflow/vcsevent`, `transport/scheduler/cron.go`, `runflow/trigger.go` call `runflow.Create` |
 | Gates | `QUEUED` to `READY` | `runflow/schedule.go` and `gates.go` in the `run.schedule` job, enqueued on create and on every event that can release a gate (lock released, review, upstream finished) |
-| Claim | `READY` to `PREPARING` | `transport/http/workerapi/poll.go` in the `serve` role calls `runflow/claim.go`, which takes the oldest run of the highest of [report 08's tiers](../reference/08-run-lifecycle.md#priority) with `SKIP LOCKED` (decision 0008) |
+| Claim | `READY` to `PREPARING` | `transport/http/workerapi/poll.go` in the `serve` process mode calls `runflow/claim.go`, which takes the oldest run of the highest of [report 08's tiers](../reference/08-run-lifecycle.md#priority) with `SKIP LOCKED` (decision 0008) |
 | Execution | `INITIALIZING` to `PLANNING`, `APPLYING`, `PERFORMING`, `DESTROYING` | the worker reports through `transport/http/workerapi`; `runflow/report.go` transitions |
 | Plan outcome | `PLANNING` to `UNCONFIRMED`, `PENDING_REVIEW`, `APPLYING`, `FINISHED`, `FAILED` | `runflow/plan.go` after the plan policy |
 | People | `UNCONFIRMED` to `CONFIRMED`, `DISCARDED`, `REPLAN_REQUESTED` | `transport/http/api/runs` to `runflow/review.go`, `confirm.go` |
@@ -646,7 +646,7 @@ internal/service/workers/
 └── limits.go              drift run limit, preparing timeout                                  (P14)
 internal/repository/workers/             pools.go workers.go assignments.go
 internal/worker/                         the column (tree above)
-cmd/infraweave/worker.go                 `worker` and hidden `worker exec`
+cmd/infraweave/launcher.go               `launcher` and hidden `runner`
 ```
 
 The protocol is HTTP long-poll, worker-initiated
@@ -658,12 +658,12 @@ moves a run.
 
 On the worker side, the column is a small program of its own:
 
-| Package | Role |
+| Package | Purpose |
 | --- | --- |
 | `worker/protoclient` | generated client of `api/src/worker`; internal because the protocol is versioned with the binary (`/worker/v1`) and is not a public contract |
 | `worker/launcher` | registers, long-polls, evaluates the worker-side initialization policy, starts a container per job, relays stop and kill |
 | `worker/runtime/docker`, `kubernetes` | how a job container or pod starts; the launcher mounts its own static binary into the runner image |
-| `worker/exec` | `infraweave worker exec`, the container's root process: hooks, vendor commands, log shipping by pre-signed URL, workspace encryption to the pool key |
+| `worker/exec` | `infraweave runner`, the container's root process: hooks, vendor commands, log shipping by pre-signed URL, workspace encryption to the pool key |
 | `worker/iac/<v>` | command sets per vendor (init, plan, show, outputs, apply, destroy) |
 
 The column shares `internal/model` and `internal/support` with the server,
@@ -703,7 +703,7 @@ Intake is durable before the acknowledgement
 decision 0012): the transport package calls `service/vcs.Intake`, which
 verifies the signature, stores the delivery and enqueues a
 `vcs.process_delivery` job on the `vcs-inbox` queue in the same transaction, then answers `202`. The heavy work runs in the
-scheduler role: `transport/scheduler/consumers.go` takes the job and calls
+scheduler process mode: `transport/scheduler/consumers.go` takes the job and calls
 `workflow/vcsevent.Handle`, which follows
 [report 11](../reference/11-vcs-integrations.md#112-what-an-event-becomes)
 step by step. Provider differences stay in two places, the provider's
@@ -855,7 +855,7 @@ a Flows directory, so extracting it later means cutting six trees.
 cmd/infraweave/
 ├── main.go                cobra root; binds setting flags only (not --config or --help)
 ├── serve.go scheduler.go all.go   each: config.Load, app.Serve / app.Schedule / app.All
-├── worker.go              worker: config.LoadWorker, worker/launcher.Run; worker exec: worker/exec.Main
+├── launcher.go            launcher: config.LoadWorker, worker/launcher.Run; runner: worker/exec.Main
 ├── agents.go              vcs-agent: worker/vcsagent.Run (P19); flows-agent: worker/flowsagent.Run (P26)
 ├── migrate.go             migrate up, migrate status: app.Migrate, app.MigrateStatus (P2)
 └── version.go             support/buildinfo
@@ -881,21 +881,21 @@ func buildWorkflows(p *platform, s *services) *workflows {
 }
 ```
 
-The server roles are functions over one `platform`; the agent and worker
-roles never build it:
+The server process modes are functions over one `platform`; the agent,
+launcher and runner process modes never build it:
 
-| Role | Builds | Starts |
+| Process mode | Builds | Starts |
 | --- | --- | --- |
 | `serve` | platform, services, workflows, transport/http | the chi server; no queue consumers |
 | `scheduler` | platform, services, workflows, transport/scheduler | queue workers and the scheduler ticker, the same on every replica (decision 0011) |
 | `all` | both | both, for single-node installs and acceptance tests |
-| `worker` | none of the above | `internal/worker/launcher`, with `worker/protoclient` pointed at the server URL |
+| `launcher` | none of the above | `internal/worker/launcher`, with `worker/protoclient` pointed at the server URL |
 | `vcs-agent`, `flows-agent` | none of the above | `internal/worker/vcsagent` or `internal/worker/flowsagent`, dialling `serve` |
 | `migrate up`, `migrate status` | the database only | `app.Migrate` or `app.MigrateStatus`, then exit |
 
 `serve` and `scheduler` build the same services and workflows, so the
 split costs nothing in code; the difference is which transport packages
-start. The worker role does not go through `internal/app` at all, which is
+start. The launcher and runner do not go through `internal/app` at all, which is
 what rule 6 protects. By P27 `services.go` holds about 45 constructors and
 `workflows.go` seven, each written out by hand.
 
@@ -934,7 +934,7 @@ path it passes (`internal/transport/http/gen/$$s/server.gen.go`), and
 `internal/server/gen`. `api/oapi-server-deploy.yaml` changes its `output`
 to `internal/transport/http/gen/deploy/server.gen.go`;
 `api/oapi-client-deploy.yaml` is unchanged. `internal/tooling/specref` and
-`tools/specref` keep their roles (reference generation, scaffolding, report
+`tools/specref` keep their responsibilities (reference generation, scaffolding, report
 29), and `internal/tooling/openapibundle` keeps bundling `api/src/<spec>`.
 
 ### Tests and enforcement
@@ -1052,7 +1052,7 @@ Coverage implications:
    integration's secret (sealed by `infra/crypto`); in one `repository.Tx` the delivery is
    stored by `repository/vcs/deliveries.go` and a `vcs.process_delivery` job is enqueued by
    `infra/queue.EnqueueTx`. The handler answers `202`.
-3. `internal/transport/scheduler/consumers.go` (scheduler role): takes the job and calls
+3. `internal/transport/scheduler/consumers.go` (scheduler process mode): takes the job and calls
    `workflow/vcsevent.Handle`.
 4. `internal/workflow/vcsevent/handle.go`: `service/vcs.Normalize` turns the payload into a
    `model.PushEvent` for a branch other than the tracked branch; `service/stacks` matches
@@ -1067,13 +1067,13 @@ Coverage implications:
 7. `internal/workflow/notifyflow/checks.go`: consumes `RunStateChanged` and asks
    `service/vcs.ReportCheck` to set the GitHub check to in progress through
    `infra/vcsclient/github`.
-8. `internal/transport/http/workerapi/poll.go` (serve role): a free worker's held poll wakes;
+8. `internal/transport/http/workerapi/poll.go` (serve process mode): a free worker's held poll wakes;
    `runflow/claim.go` takes the run in `service/runs.PickOrder` (normal proposed is tier 3),
    moves it to `PREPARING` and issues the run token.
 9. `internal/worker/launcher/poll.go` on the worker host: its open long-poll returns the
    assignment; the launcher fetches the run specification and starts the runner image
    through `worker/runtime/docker` with the binary mounted.
-10. `internal/worker/exec/`: `infraweave worker exec` runs hooks and
+10. `internal/worker/exec/`: `infraweave runner` runs hooks and
     `worker/iac/opentofu` init and plan, shipping logs through pre-signed URLs from
     `workerapi/uploads.go`; each phase start is a report that `runflow/report.go` turns into a
     transition (`INITIALIZING`, `PLANNING`).

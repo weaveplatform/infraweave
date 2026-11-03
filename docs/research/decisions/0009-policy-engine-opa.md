@@ -60,17 +60,17 @@ Report 27 compares the ways other tools run Rego
 
 ### Preamble, package and save-time validation
 
-- **Every body is `package spacelift`.** Another package answers `422`, problem
+- **Every body is `package infraweave`.** Another package answers `422`, problem
   `validation-failed`, at save.
 - **Preamble.** For each type, `internal/policy` holds a generated Rego v1 module in
-  `package spacelift` that defines `result` as an object naming every rule of the type,
+  `package infraweave` that defines `result` as an object naming every rule of the type,
   `default` values for its boolean rules and an always-false placeholder for each set rule
   ([09 section 3](../reference/09-policies.md#3-rules-outcomes-and-combination-per-type)).
   The preamble is compiled beside the user's module, each parsed under its own Rego
   version. A body that redefines a preamble rule with another kind (a boolean `deny` on a
   plan policy, a second `default allow`) fails compilation, and the save answers `422`,
   problem `validation-failed`, with OPA's error and line in the `errors` member.
-- **The query** is `data.spacelift.result`. The engine reads only the rules of the type
+- **The query** is `data.infraweave.result`. The engine reads only the rules of the type
   from the result; anything else the policy defines is ignored.
 - **Save-time compile.** Create, update and simulate compile the body with the preamble,
   the capability set and the custom built-ins before anything is stored, so a policy

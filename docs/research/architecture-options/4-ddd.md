@@ -75,7 +75,7 @@ Dependency rules:
 9. `internal/tooling/...` is imported only by `tools/...`; `pkg/...` never imports
    `internal/...` or `cmd/...`.
 
-Rule 7 is what keeps the worker role honest: the launcher and the in-container executor
+Rule 7 is what keeps the worker side honest: the launcher and the in-container executor
 run on customer hosts with outbound HTTPS only ([report
 10](../reference/10-workers-and-execution.md#42-transports)), so their package graph
 holds no SQL driver, no object-storage credential and no other context's model.
@@ -85,7 +85,7 @@ holds no SQL driver, no object-storage credential and no other context's model.
 ```text
 infraweave/
 ├── cmd/
-│   ├── infraweave/             NEW: cobra root; serve, scheduler, all, worker, hidden worker exec,
+│   ├── infraweave/             NEW: cobra root; serve, scheduler, all, launcher, hidden runner,
 │   │                           vcs-agent, flows-agent, migrate up and status, version
 │   └── infraweavectl/          (P24) CLI over pkg/client/deploy
 ├── internal/                   REORGANISED: kernel/ shared/ tooling/ app/ and one directory per context
@@ -112,7 +112,7 @@ infraweave/
 
 What changes at the root and why:
 
-- `cmd/infraweave` is the first binary. Its `worker` subcommands import only
+- `cmd/infraweave` is the first binary. Its `launcher` and `runner` subcommands import only
   `internal/execution/agent/...`, and `vcs-agent` and `flows-agent` only their contexts'
   `agent/` trees; its `serve`, `scheduler`, `all` and `migrate` subcommands import
   `internal/app`. The binary links both graphs, which is the cost of one artefact; the
@@ -186,13 +186,13 @@ with behaviour stays in a context.
 
 ```text
 internal/
-├── app/                                     composition root: contexts, subscriptions, strict server, roles
+├── app/                                     composition root: contexts, subscriptions, strict server, process modes
 │   ├── app.go                               Serve(ctx), Schedule(ctx), All(ctx); open shared infrastructure, close
 │   ├── contexts.go                          one constructor call per context, in dependency order
 │   ├── subscriptions.go                     every bus.Subscribe line, the readable map of who reacts to what
 │   ├── strict.go                            composes the deploy StrictServerInterface from context slices
 │   ├── protocols.go                         mounts hand-written protocol routes (webhooks, state, registry)
-│   ├── roles.go                             which consumers, cron entries and listeners each role starts
+│   ├── modes.go                             which consumers, cron entries and listeners each process mode starts
 │   └── config/                              strict YAML, flag > env > file; one section per context
 │
 ├── kernel/                                  shared kernel: value types, no behaviour beyond parsing
@@ -349,14 +349,14 @@ internal/
 │   │   ├── rest/                            strict slice: worker pools, workers, drain, cycle
 │   │   ├── workerproto/                     implements shared/gen/worker: register, poll, report, signals (P8)
 │   │   └── consumers/                       RunClaimed marks the worker busy; RunStopRequested signals it
-│   └── agent/                               WORKER SIDE: rule 7; builds into the worker role only
-│       ├── launcher/                        infraweave worker: register, long-poll, decrypt the spec (JWE),
+│   └── agent/                               WORKER SIDE: rule 7; builds into the launcher and runner only
+│       ├── launcher/                        infraweave launcher: register, long-poll, decrypt the spec (JWE),
 │       │                                    start a container per run
 │       ├── protocol/                        thin wrapper over pkg/client/worker, retries, backoff
 │       ├── docker/                          Docker socket runtime (P8)
 │       ├── kubernetes/                      pod per run (P14)
 │       ├── initpolicy/                      worker-side initialization policy with OPA v1 (P14)
-│       ├── executor/                        infraweave worker exec: phases and hooks inside the container
+│       ├── executor/                        infraweave runner: phases and hooks inside the container
 │       ├── masking/                         secret masking in log streams
 │       └── workspace/                       workspace archive, encrypt, upload and restore
 │
@@ -730,7 +730,7 @@ internal/execution/
     ├── launcher/launcher.go         register, poll loop, one container per job, spot notice handling
     ├── launcher/mount.go            mounts os.Executable() into the runner image as the root process
     ├── docker/ kubernetes/          container runtimes
-    ├── executor/phases.go           infraweave worker exec: before and after hooks, vendor commands
+    ├── executor/phases.go           infraweave runner: before and after hooks, vendor commands
     ├── executor/report.go           state changes over pkg/client/worker
     └── workspace/                   archive, encrypt and upload at UNCONFIRMED; restore at PREPARING_APPLY
 pkg/client/worker/                   generated client (P8)
@@ -744,13 +744,13 @@ Pools and workers are aggregates in execution; runs are not. Execution conforms 
 orchestration's run model: it may claim, report and forward, but every run state change
 is made by orchestration's aggregate.
 
-The worker role links only `execution/agent`:
+The launcher and runner link only `execution/agent`:
 
 ```go
-// cmd/infraweave/worker.go
-func newWorkerCmd() *cobra.Command {
+// cmd/infraweave/launcher.go
+func newLauncherCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "worker",
+		Use:   "launcher",
 		Short: "Run a launcher for a worker pool",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := agentconfig.Load(cmd) // strict YAML, flag > env > file
@@ -760,7 +760,6 @@ func newWorkerCmd() *cobra.Command {
 			return launcher.Run(cmd.Context(), cfg) // internal/execution/agent/launcher
 		},
 	}
-	cmd.AddCommand(newWorkerExecCmd()) // hidden: the in-container phase executor
 	return cmd
 }
 ```
@@ -795,7 +794,7 @@ internal/sourcecontrol/
 
 Ingest is durable from the moment of acknowledgement: `receive.go` saves the `Delivery`
 aggregate (large bodies in object storage) and appends `DeliveryReceived` in one
-transaction, then answers `202`. Processing runs in the scheduler role from the event,
+transaction, then answers `202`. Processing runs in the scheduler process mode from the event,
 whose dispatch plays the part of decision 0012's `vcs.process_delivery` job.
 The rule comes from [report
 27](../reference/27-reference-materials.md#12-cross-tool-comparison), which records the
@@ -976,17 +975,17 @@ REST API.
 
 ```text
 internal/app/
-├── app.go               Serve, Schedule, All: open shared infrastructure, build contexts, start the role
+├── app.go               Serve, Schedule, All: open shared infrastructure, build contexts, start the process mode
 ├── contexts.go          constructors in dependency order; setters for the two api cycles
 ├── subscriptions.go     every bus.Subscribe; about 70 lines at P27
 ├── strict.go            deploy strict server composed from context slices
 ├── protocols.go         webhooks, state backend, registry protocol, login.v1, worker protocol
-├── roles.go             serve: router; scheduler: bus dispatch, cron, timers, process managers
+├── modes.go             serve: router; scheduler: bus dispatch, cron, timers, process managers
 └── config/              config.go plus one section type per context
 cmd/infraweave/
 ├── main.go              cobra root
 ├── serve.go scheduler.go all.go migrate.go   call internal/app
-├── worker.go exec.go                  call internal/execution/agent only
+├── launcher.go runner.go              call internal/execution/agent only
 ├── vcsagent.go flowsagent.go          call their contexts' agent/ trees only
 └── version.go                         prints shared/buildinfo
 ```
@@ -1016,15 +1015,15 @@ func buildContexts(rt *runtime) (*contexts, error) {
 }
 ```
 
-Roles start different interfaces of the same contexts:
+Process modes start different interfaces of the same contexts:
 
-| Role | Starts |
+| Process mode | Starts |
 |---|---|
 | `serve` | the chi router: strict server, protocol routes, worker protocol, readiness on its own port |
 | `scheduler` | `shared/eventbus` dispatch, every context's `interfaces/consumers`, cron entries (timers, schedules, drift, retention), process managers |
 | `all` | both, in one process, for single-node installs and acceptance tests |
-| `worker` | `execution/agent/launcher` only; `internal/app` is not called |
-| `worker exec` (hidden) | `execution/agent/executor` inside the run container |
+| `launcher` | `execution/agent/launcher` only; `internal/app` is not called |
+| `runner` (hidden) | `execution/agent/executor` inside the run container |
 | `vcs-agent` | `sourcecontrol/agent` only, long-polling `serve` (decision 0012) |
 | `flows-agent` | `flows/agent` only, dialling the gateway in `serve` (decision 0018) |
 | `migrate up`, `migrate status` | `shared/sql/migrate`, then exit (decision 0005) |
@@ -1159,14 +1158,14 @@ skeleton contexts in the phase that creates them.
 
 ### A GitHub push becomes a proposed run, a plan policy and a PR comment
 
-Serve role:
+Serve process mode:
 
 1. `internal/app/protocols.go`: the router mounts `sourcecontrol/interfaces/webhook` at `/webhooks/vcs/{integration}`, outside the strict server.
 2. `internal/shared/httpkit`: request ID, body limit, recovery.
 3. `internal/sourcecontrol/interfaces/webhook/receive.go`: loads the `VCSIntegration` and calls `infrastructure/github/verify.go`, which checks `X-Hub-Signature-256` against the integration's webhook secret.
 4. `internal/sourcecontrol/application/ingest/receive.go`: in one `shared/sql/uow` transaction saves the `Delivery` aggregate and appends `DeliveryReceived` through `shared/outbox`; answers `202`.
 
-Scheduler role:
+Scheduler process mode:
 
 5. `internal/shared/eventbus/bus.go`: delivers `DeliveryReceived` to `sourcecontrol/interfaces/consumers/delivery.go`.
 6. `internal/sourcecontrol/infrastructure/github/translate.go`: the `pull_request` payload becomes a `domain/event.PullRequest` with head SHA, branch, diff paths and the GitHub meaning of `mergeable`.
@@ -1178,19 +1177,19 @@ Scheduler role:
 12. `internal/orchestration/domain/queue/queue.go`: `Enqueue` creates the `PROPOSED` run in `QUEUED` and moves it to `READY` in the same transaction (proposed runs take no stack lock); `RunCreated` and `RunStateChanged` go to the outbox; `AfterCommit` wakes the pool.
 13. `internal/sourcecontrol/interfaces/consumers/run.go`: `RunStateChanged` sets a pending check through `application/feedback/checks.go` and `infrastructure/github/checks.go`.
 
-Worker and serve roles:
+Launcher, runner and serve process modes:
 
 14. `internal/execution/agent/launcher/launcher.go` (on the public pool's host): its long-poll to `execution/interfaces/workerproto/poll.go` is open.
 15. `internal/execution/application/poll/poll.go`: `orchestration/api.Dispatcher.Claim` moves the run to `PREPARING` (see [Run execution path](#run-execution-path)).
 16. `internal/execution/application/payload/assemble.go`: run spec, `identity/api.RunTokens.Issue` for state and API access, the source archive URL from `sourcecontrol/api.Archives`, presigned log URLs.
 17. `internal/execution/agent/launcher/mount.go` and `agent/docker/`: starts the runner container with the binary mounted as root process.
-18. `internal/execution/agent/executor/phases.go`: `infraweave worker exec` runs `before_init`, `vendors/api.For(terraform)` init and plan commands, and reports each phase through `executor/report.go`.
+18. `internal/execution/agent/executor/phases.go`: `infraweave runner` runs `before_init`, `vendors/api.For(terraform)` init and plan commands, and reports each phase through `executor/report.go`.
 19. `internal/execution/interfaces/workerproto/report.go` to `orchestration/api.Runs.Advance`: `INITIALIZING`, then `PLANNING`.
 20. The executor uploads the plan JSON with a presigned URL and reports `PlanReady` with the vendor's `ChangeSet`.
 21. `internal/orchestration/application/plan/recorded.go`: builds a `governance/api.PlanInput` with the vendor block from `vendors/api` and calls `Evaluator.Plan`. The plan policy passes with no warning.
 22. `internal/orchestration/domain/queue/queue.go`: `PLANNING` to `FINISHED` (T17) with the receipt IDs; `RunStateChanged` and `RunFinished` to the outbox.
 
-Scheduler role, consequences:
+Scheduler process mode, consequences:
 
 23. `internal/sourcecontrol/application/feedback/checks.go`: the check becomes success with the change summary.
 24. `internal/notifications/interfaces/consumers/run.go` to `application/route/route.go`: `governance/api.Evaluator.Notification` returns a `pull_request` rule with a body and a deduplication key.
@@ -1265,7 +1264,7 @@ About 14 new packages and 35 files; edits outside `internal/templates` touch
 
 | Today's package | New location | Notes |
 |---|---|---|
-| `cmd/` (`cmd/README.md` only) | `cmd/infraweave`, `cmd/infraweavectl` (P24) | serve, scheduler, all and migrate call `internal/app`; worker and worker exec call `internal/execution/agent`; vcs-agent and flows-agent call their contexts' `agent/` trees |
+| `cmd/` (`cmd/README.md` only) | `cmd/infraweave`, `cmd/infraweavectl` (P24) | serve, scheduler, all and migrate call `internal/app`; launcher and runner call `internal/execution/agent`; vcs-agent and flows-agent call their contexts' `agent/` trees |
 | `api` (`api/doc.go`, `api/deploy_test.go`) | `api` | unchanged; gains embeds for the worker (P8) and flows (P26) specs |
 | `api/src/deploy` | `api/src/deploy` | stays flat; each `paths-*.yaml` names its owning context in its header comment |
 | `api/reference/spacelift` | `api/reference/spacelift` | unchanged |

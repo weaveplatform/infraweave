@@ -37,7 +37,7 @@ backend's `state.v2` and `tfe.v2*` services behave belongs to decision 0010.
 
 ### Routes and packages
 
-The protocol is served by the `serve` role
+The protocol is served by the `serve` process mode
 ([0020](0020-reference-deployments-and-packaging.md)) and routed with chi
 in `internal/registry`. Decision 0004 owns package placement. The routes
 are described in their own OpenAPI document,
@@ -322,7 +322,7 @@ only when the version itself is deleted.
   Dependabot, Renovate and scripts that probe the registry working as they
   do against Spacelift, and costs nothing.
 - **Presigned object-store URLs by default.** They move archive bytes off
-  the `serve` role, as Spacelift's CloudFront URLs do. The `proxy` mode covers
+  the `serve` process mode, as Spacelift's CloudFront URLs do. The `proxy` mode covers
   local disk and networks where workers cannot reach the store.
 - **Checksums enforced by the store.** A checksum header in the presigned
   `PUT` rejects a corrupt upload at the source, instead of a later

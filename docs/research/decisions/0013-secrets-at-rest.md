@@ -223,7 +223,7 @@ server never has unmasked output to leak.
 | Source of masked values | Rule |
 |---|---|
 | Secret configuration elements | The value of every element with `write_only` set, as delivered in the spec. A mounted file's content is masked line by line |
-| `SPACELIFT_MASK_ENVS` on the launcher | The values of the named variables |
+| `INFRAWEAVE_LAUNCHER_MASK_ENVS` on the launcher | The values of the named variables |
 | `::add-mask v1 v2 ...` printed by a hook or phase | Each whitespace-separated word, from that line on |
 | Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/secrets/mask` |
 

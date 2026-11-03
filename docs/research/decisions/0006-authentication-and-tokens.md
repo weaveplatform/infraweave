@@ -49,10 +49,10 @@ signs and verifies all of them, the same library
 |---|---|---|---|---|---|
 | API token | `POST /auth/token` with a secret or OIDC API key | 10 hours, never past the key's `expiresAt` | the API base URL | `api::<key ULID>`, or `api::oidc::<client ID>::<key ULID>` | yes, channel `UNKNOWN` |
 | Browser session | SSO, GitHub OAuth or break-glass login | idle 12 hours, absolute 7 days | none: an opaque cookie, not a JWT | n/a | yes, channel `WEB` |
-| CLI token | loopback login from `infraweavectl` | expires with the browser session it came from | the API base URL | user login | yes, channel `SPACECTL` |
+| CLI token | loopback login from `infraweavectl` | expires with the browser session it came from | the API base URL | user login | yes, channel `INFRAWEAVECTL` |
 | Terraform CLI token | `terraform login` against the registry's `login.v1` service | 30 days | the API base URL | user login | yes, channel `TERRAFORM_CLI` |
-| In-run API token | injected into runs as `SPACELIFT_API_TOKEN` | 3 hours, and only while the run is `PLANNING`, `APPLYING` or `PERFORMING` | the API base URL | `<stack or module slug>/<run ULID>` | yes, actor kind `run` |
-| OIDC federation token | injected into runs as `SPACELIFT_OIDC_TOKEN` and `/mnt/workspace/spacelift.oidc` | 1 hour | the federation audience | the rendered subject template | no |
+| In-run API token | injected into runs as `INFRAWEAVE_API_TOKEN` | 3 hours, and only while the run is `PLANNING`, `APPLYING` or `PERFORMING` | the API base URL | `<stack or module slug>/<run ULID>` | yes, actor kind `run` |
+| OIDC federation token | injected into runs as `INFRAWEAVE_OIDC_TOKEN` and `/mnt/workspace/infraweave.oidc` | 1 hour | the federation audience | the rendered subject template | no |
 | Worker session token | launcher registration ([0008](0008-run-execution-and-worker-protocol.md)) | 1 hour, renewed in poll responses | `infraweave-worker` | worker ULID | no |
 | Run token | handover of a run to a worker ([0008](0008-run-execution-and-worker-protocol.md)) | until the run ends, plus 1 hour | `infraweave-runner` | run ULID | no |
 
@@ -61,7 +61,7 @@ defaults. Every API-facing JWT carries:
 
 | Claim | Value |
 |---|---|
-| `iss` | `auth.api_issuer`, default the public URL; the in-run token uses `auth.run_api_token.issuer`, default `spacelift` |
+| `iss` | `auth.api_issuer`, default the public URL; the in-run token uses `auth.run_api_token.issuer`, default the public URL |
 | `aud` | exactly one string, the API base URL (`server.public_url` plus the API prefix), because clients take the endpoint from it |
 | `sub` | as in the table |
 | `jti` | the session ULID; revoking the session revokes the token |
@@ -240,7 +240,7 @@ reports, and only the break-glass login works.
   `422`, problem `validation-failed`, whose `errors` entry names the
   offending placeholder or character.
 - **Refresh.** The runner asks for a new token 15 minutes before expiry and
-  rewrites `/mnt/workspace/spacelift.oidc`; the environment variable keeps the
+  rewrites `/mnt/workspace/infraweave.oidc`; the environment variable keeps the
   token of the phase start. A tracked run without autodeploy gets a `read`
   token for planning and a new `write` token at the `PREPARING_APPLY`
   handover.
@@ -338,7 +338,7 @@ Departures from Spacelift, for the plan's deviations register:
 
 | Departure | Why |
 |---|---|
-| The in-run token's `iss` defaults to `spacelift` but is configurable | Keeps `spacelift_current_stack` working while letting an operator brand the issuer |
+| The in-run token's `iss` defaults to the public URL and is configurable | The in-run token's issuer is infraweave's public URL like every other infraweave token, and an operator can change it |
 | `ApiKeyInput.admin` is not accepted; a root `space-admin` binding grants admin | One source of truth for access; the changelog deprecates the flag and decision 0021 excludes it |
 | OIDC API key issuers are fetched over HTTPS only, optionally from an allowlist | A self-hosted server fetching user-supplied URLs is an SSRF path |
 | Signing keys rotate automatically every 90 days | Self-hosted Spacelift documents no rotation of its JWT signing key, while its AWS module rotates only the master and in-app encryption keys yearly ([24 section 3.5](../reference/24-self-hosted-reference.md#35-encryption-and-kms)); rotation limits key exposure |

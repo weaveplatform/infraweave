@@ -53,46 +53,46 @@ with its dependency rules as written there. In summary:
 
 | Tree | Holds | May import |
 |---|---|---|
-| `internal/<module>/` | One business domain: a published `api/` package, a `module/` constructor package, a private `internal/` tree, and its own migration stream | `internal/platform`, `internal/kernel`, `internal/iac`, its own tree, other modules' `api/` packages, third-party libraries |
-| `internal/<module>/api/` | Interfaces, input and output types and events other modules use | `internal/kernel`, `internal/platform/outbox`, the standard library |
-| `internal/platform/` | Infrastructure with no business rules: SQL and the unit of work, the outbox, decision 0011's job queue and cron ticker, object storage, envelope encryption, the HTTP kit with problem details, the generated servers, the embedded OPA runtime, build information | no module, no `internal/agent`, no `internal/app` |
-| `internal/kernel/` | Value types shared by module APIs: IDs, spaces, principals, the run state vocabulary | the same as `platform` |
+| `internal/<domain>/` | One business domain: a published `api/` package, an `assembly/` constructor package, a private `internal/` tree, and its own migration stream | `internal/platform`, `internal/kernel`, `internal/iac`, its own tree, other domains' `api/` packages, third-party libraries |
+| `internal/<domain>/api/` | Interfaces, input and output types and events other domains use | `internal/kernel`, `internal/platform/outbox`, the standard library |
+| `internal/platform/` | Infrastructure with no business rules: SQL and the unit of work, the outbox, decision 0011's job queue and cron ticker, object storage, envelope encryption, the HTTP kit with problem details, the generated servers, the embedded OPA runtime, build information | no domain, no `internal/agent`, no `internal/app` |
+| `internal/kernel/` | Value types shared by domain APIs: IDs, spaces, principals, the run state vocabulary | the same as `platform` |
 | `internal/iac/` | Pure IaC vendor knowledge used by both the server and the worker | the same as `platform` |
-| `internal/agent/` | Everything that runs on a customer host: the launcher, the phase executor, vendor command sets, container runtimes, log masking, the internal worker-protocol client, the VCS agent and the Flows agent | `internal/kernel`, `internal/iac`, three named `platform` packages, its own tree; never a module, never SQL, the queue, object storage credentials or encryption |
-| `internal/app/` | The composition root and the roles | everything |
+| `internal/agent/` | Everything that runs on a customer host: the launcher, the runner, vendor command sets, container runtimes, log masking, the internal worker-protocol client, the VCS agent and the Flows agent | `internal/kernel`, `internal/iac`, three named `platform` packages, its own tree; never a domain, never SQL, the queue, object storage credentials or encryption |
+| `internal/app/` | The composition root and the process modes | everything |
 | `internal/devtools/` | Libraries behind `tools/` (`specref`, `openapibundle`, `stubgen`) and the docs check (`docscheck`, run by `make docs-check`) | imported only by `tools/` and their own tests |
 | `pkg/client/` | Generated public clients | nothing under `internal/` |
 
-- **Boundaries.** A module reaches another module only through its `api/`
+- **Boundaries.** A domain reaches another domain only through its `api/`
   package. The Go compiler enforces the private part through the nested
   `internal/` directory; golangci-lint's depguard enforces the rest, with
   the rules listed in the option file's
   [tests and enforcement](../architecture-options/5-modular-monolith.md#tests-and-enforcement)
   section. depguard is enabled in `.golangci.yml` as part of this
   decision.
-- **Consistency.** Module boundaries follow consistency: the `runs` module
+- **Consistency.** Domain boundaries follow consistency: the `runs` domain
   owns every table a run transition writes, including the stack's run lock
   and run state, and commits a transition in one transaction
   ([run execution path](../architecture-options/5-modular-monolith.md#run-execution-path)).
-  No foreign key crosses a module boundary.
-- **Cross-module effects.** Queries, authorisation and policy decisions are
+  No foreign key crosses a domain boundary.
+- **Cross-domain effects.** Queries, authorisation and policy decisions are
   synchronous calls on `api/` interfaces. Consequences are events appended
   to a transactional outbox in the producer's transaction. The `policies`
-  module owns the input contracts and returns decisions as data; it
+  domain owns the input contracts and returns decisions as data; it
   imports none of its callers.
-- **Inside a module.** Large modules split `internal/core/` from
+- **Inside a domain.** Large domains split `internal/core/` from
   `internal/adapters/`, and core never imports adapters. Rules with no
   I/O, such as the run transition table, priority tiers, policy combination
   and version numbering, sit in packages of their own and are tested as
   tables. Each VCS provider's webhook and API shapes stay in a package of
   its own inside `vcs`, behind one normalised event.
 - **Generated code.** Each spec's strict server is generated into
-  `internal/platform/gen/<spec>`; `internal/app` composes the per-module
+  `internal/platform/gen/<spec>`; `internal/app` composes the per-domain
   partial implementations by embedding, with `UnimplementedStrict` one
   level deeper, so an operation with two owners fails to compile. Protocols
   that are not infraweave's REST API (VCS webhooks, the Terraform `http`
   state backend, service discovery, the registry protocols, `login.v1`)
-  are hand-written chi routes that modules contribute.
+  are hand-written chi routes that domains contribute.
 - **No package path element is named `vendor`**, because the go tool
   treats such a directory as vendored code; IaC vendor code lives under
   `internal/iac`.
@@ -102,7 +102,7 @@ with its dependency rules as written there. In summary:
 
   | Named in a record | Place |
   |---|---|
-  | `internal/store`, `internal/store/migrations` | `internal/platform/sql`; each module's migrations under its `pg/migrations` |
+  | `internal/store`, `internal/store/migrations` | `internal/platform/sql`; each domain's migrations under its `pg/migrations` |
   | `internal/queue`, `internal/cron` | `internal/platform/queue`, `internal/platform/cron` |
   | `internal/objectstore` | `internal/platform/objectstore` |
   | `internal/secrets` | `internal/platform/crypt`; `internal/secrets/mask` is `internal/agent/mask` |
@@ -117,37 +117,37 @@ with its dependency rules as written there. In summary:
   | `internal/problem`, `internal/buildinfo`, `internal/telemetry`, `internal/clock` | `internal/platform/httpkit/problem`, `internal/platform/buildinfo`, `internal/platform/observe`, `internal/platform/testkit` |
 
   A package no row names joins `internal/platform` when it holds no
-  business rule, and the module that owns its rule otherwise.
+  business rule, and the domain that owns its rule otherwise.
 - **Today's packages** move as the
   [package mapping](../architecture-options/5-modular-monolith.md#package-mapping)
   lists; `api/`, `pkg/client/deploy`, `tools/` and `test/acceptance` stay
   where they are.
 
-### Process topology: one binary, several roles
+### Process topology: one binary, several process modes
 
 infraweave ships one binary, `infraweave`, built from `cmd/infraweave`,
 with these cobra subcommands:
 
-| Role | Starts | Spacelift equivalent |
+| Process mode | Starts | Spacelift equivalent |
 |---|---|---|
-| `serve` | Each module's routes: the `deploy` REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue | server, and the VCS and Flows gateways |
-| `scheduler` | Each module's queue consumers and outbox subscriptions, and the cron ticker, which every replica runs: due rows are claimed with `FOR UPDATE SKIP LOCKED`, so no leader is elected (decision 0011) | drain, with the scheduler folded in |
-| `worker` | The launcher for a worker pool, from `internal/agent` only; it never calls `internal/app` | launcher |
+| `serve` | Each domain's routes: the `deploy` REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue | server, and the VCS and Flows gateways |
+| `scheduler` | Each domain's queue consumers and outbox subscriptions, and the cron ticker, which every replica runs: due rows are claimed with `FOR UPDATE SKIP LOCKED`, so no leader is elected (decision 0011) | drain, with the scheduler folded in |
+| `launcher` | The launcher for a worker pool, from `internal/agent` only; it never calls `internal/app` | launcher |
 | `all` | `serve` and `scheduler` in one process, for single-node installs and acceptance tests | none |
-| `worker exec` (hidden) | The phase executor inside a run container, from the same static binary the launcher mounts | worker binary |
+| `runner` (hidden) | The runner, which executes a run's phases inside the run container, from the same static binary the launcher mounts | worker binary |
 | `vcs-agent` | The VCS agent for a VCS agent pool; it long-polls `serve` (decision 0012) | VCS agent |
 | `flows-agent` | The Flows agent for a Flows agent pool (decision 0018) | Flows agent |
 | `migrate up`, `migrate status` | Applies or reports the embedded migrations, then exits (decision 0005) | none |
 | `version` | Build information from `internal/platform/buildinfo` | none |
 | `secrets generate-kek`, `secrets rewrap`, `secrets rotate` | Key operations of decision 0013 against the database, then exits | none |
 
-The roles share one PostgreSQL database and are each stateless, so each
+The process modes share one PostgreSQL database and are each stateless, so each
 scales as its own deployment. `serve` also holds the VCS and Flows agent
-gateways; a gateway becomes a role of its own only if its long-lived
+gateways; a gateway becomes a process mode of its own only if its long-lived
 connections need separate scaling
 ([process topology](../architecture-options/README.md#process-topology)).
 The infraweave CLI is a separate client binary, `infraweavectl`, built from
-`cmd/infraweavectl` over `pkg/client/deploy`; it is not a role. Packaging
+`cmd/infraweavectl` over `pkg/client/deploy`; it is not a process mode. Packaging
 both binaries is decision 0020's.
 
 ## Rationale
@@ -182,31 +182,32 @@ what makes it hold.
 For topology, the [process topology](../architecture-options/README.md#process-topology)
 section weighs one binary against separate binaries and separate services.
 Separate services would split the data a run transition must commit
-together and add version skew between roles, while the roles already give
+together and add version skew between process modes, while the process modes already give
 independent scaling and keep queue load away from API latency. Spacelift
 reached the same shape: two stateless processes from one binary after
 folding its scheduler into its drain, and the same pattern for Flows.
 
 **Departure from Spacelift.** Spacelift ships its launcher as a separate
-binary and image that embeds the worker binary. infraweave's worker role is
-the same `infraweave` binary, so the launcher, the mounted executor and the
-server share a version by construction. The worker's package graph stays
-free of server code, so a separate worker build remains a one-file change.
+binary and image that embeds the worker binary. infraweave's launcher process
+mode is the same `infraweave` binary, so the launcher, the mounted runner and
+the server share a version by construction. The launcher's package graph
+stays free of server code, so a separate launcher build remains a one-file
+change.
 
 ## Constraints
 
 - **`runs` concentrates work.** It holds the state machine, queue gates,
   scheduling, handover, timers, promotion and dependencies. If it
   dominates the hand-written code or causes routine collisions, it splits
-  into sub-modules along those seams, keeping one migration stream.
+  into sub-domains along those seams, keeping one migration stream.
 - **Back edges** (stacks reading run state, runs reading VCS sources and
   cloud credentials at handover) are bound after construction in
   `internal/app`. A stack list filtered by run state reads across two
   schemas through one sanctioned read view.
-- **The worker binary carries server code** it never executes. If image
-  size or a customer's review requires it, `cmd/infraweave-worker` links
+- **The binary on worker hosts carries server code** it never executes. If
+  image size or a customer's review requires it, `cmd/infraweave-agent` links
   only `internal/agent`.
-- **Thin packages and the 90% floor.** `api/` and `module/` packages hold
+- **Thin packages and the 90% floor.** `api/` and `assembly/` packages hold
   little logic; keeping validation and constructors there gives each a
   test surface. Changing coverage exclusions needs its own decision.
 - **depguard reports only new issues** against the merge base in this
@@ -216,7 +217,7 @@ free of server code, so a separate worker build remains a one-file change.
   workflow engine run as a separate cluster would move run orchestration
   out of the `runs` transaction and reopen this decision. Packaging and
   deployment artefacts are decision 0020's; this decision owns the code
-  layout and the roles.
+  layout and the process modes.
 
 ## Verification
 
@@ -224,8 +225,8 @@ free of server code, so a separate worker build remains a one-file change.
   [tests and enforcement](../architecture-options/5-modular-monolith.md#tests-and-enforcement)
   section; `make lint`, inside `make gate`, fails on a forbidden import.
 - `make build` cross-compiles `cmd/infraweave` with CGO disabled, which the
-  worker role needs to mount the binary into runner images.
-- Acceptance features start `infraweave all` and a `worker` against real
+  launcher process mode needs to mount the binary into runner images.
+- Acceptance features start `infraweave all` and an `infraweave launcher` against real
   PostgreSQL and object storage (decision 0016).
 - `make verify-generate` checks the generated servers at their
   `internal/platform/gen/<spec>` paths.

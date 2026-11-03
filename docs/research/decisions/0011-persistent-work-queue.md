@@ -80,7 +80,7 @@ The migration sets aggressive autovacuum storage parameters on `jobs`
 update-heavy table.
 
 **Logical queues.** Queue workers and the scheduler ticker run in replicas
-with the `scheduler` role (decision 0020). Each queue has its own worker count per
+with the `scheduler` process mode (decision 0020). Each queue has its own worker count per
 replica, so a
 backlog in one never starves another.
 

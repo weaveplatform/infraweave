@@ -57,9 +57,9 @@ and `UNLOCK` registered as methods through `chi.RegisterMethod`.
   token is not in a saved workspace or a log.
 - **Lock timeout.** The runner passes `-lock-timeout=5m` to commands that lock (setting
   `runner.state_lock_timeout`). The stack environment variable
-  `SPACELIFT_DISABLE_STATE_LOCK` (report [13](../reference/13-configuration.md#22-user-tunable-spacelift_-variables))
-  makes the runner pass `-lock=false` to `plan`, under its Spacelift name so stacks moved
-  from Spacelift keep their behaviour.
+  `INFRAWEAVE_DISABLE_STATE_LOCK`, the counterpart of Spacelift's `SPACELIFT_DISABLE_STATE_LOCK`
+  (report [13](../reference/13-configuration.md#22-user-tunable-spacelift_-variables)), makes the
+  runner pass `-lock=false` to `plan`.
 
 ### Who may call what
 

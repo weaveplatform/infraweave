@@ -3,7 +3,7 @@
 Detailed repository layout for option 3 of the
 [architecture options](README.md): four concentric rings (entities, use
 cases, adapters, frameworks) with every dependency pointing inward, and a
-second axis that keeps the worker role's package graph apart from the
+second axis that keeps the worker side's package graph apart from the
 server's. Every package in today's tree is mapped; roadmap packages are
 marked with the phase of
 [report 26](../reference/26-scope-and-tiers.md#14-provisional-phase-spine)
@@ -36,8 +36,8 @@ problems, and gateways implement the ports over PostgreSQL, object storage,
 OPA, VCS provider APIs and the queue. Ring 4, `internal/infrastructure`, is
 frameworks and drivers: the chi router and `http.Server` lifecycle, the pgx
 pool and migrator, strict configuration, telemetry. `internal/app` is the
-composition root and builds the `serve`, `scheduler`, `worker` and `all`
-roles of the single `infraweave` binary.
+composition root and builds the `serve`, `scheduler`, `launcher` and `all`
+process modes of the single `infraweave` binary.
 
 Rings say how code depends; they say nothing about which side of the wire it
 runs on. A private worker runs on a customer host with outbound HTTPS only
@@ -93,17 +93,17 @@ controllers implementing it do not import outward.
 ```text
 infraweave/
 ├── cmd/
-│   ├── infraweave/             NEW (P1): cobra root; serve, scheduler, all, worker, hidden worker exec,
+│   ├── infraweave/             NEW (P1): cobra root; serve, scheduler, all, launcher, hidden runner,
 │   │                           vcs-agent, flows-agent, migrate up and status, version;
 │   │                           hands off to internal/app or app/workerapp
-│   └── infraweavectl/          (P24) CLI over pkg/client/deploy, not a server role
+│   └── infraweavectl/          (P24) CLI over pkg/client/deploy, not a server process mode
 ├── internal/
 │   ├── entity/                 NEW ring 1: pure rules, no I/O
 │   ├── usecase/                NEW ring 2: one interactor package per operation family; agent/ is worker side
 │   ├── adapter/                NEW ring 3: controllers, presenters, gateways; agent/ is worker side;
 │   │                           absorbs internal/server/problem and internal/server/gen/deploy
 │   ├── infrastructure/         NEW ring 4: chi assembly, http.Server, pgx, config, telemetry, buildinfo
-│   ├── app/                    NEW composition root: one constructor per role; workerapp/ for the worker
+│   ├── app/                    NEW composition root: one constructor per process mode; workerapp/ for the worker side
 │   └── devtool/                specref, openapibundle, stubgen, docscheck: maintainer tooling, outside the rings
 ├── pkg/
 │   └── client/
@@ -113,7 +113,7 @@ infraweave/
 │   └── src/deploy/ src/worker/ (P8) src/flows/ (P26)
 ├── test/
 │   └── acceptance/             unchanged; features grow per phase
-├── tools/                      openapi-bundle, specref, stubgen keep their roles and import internal/devtool;
+├── tools/                      openapi-bundle, specref, stubgen keep their responsibilities and import internal/devtool;
 │                               depguardgen (P1) writes the per-use-case depguard rules
 ├── docs/                       research, decisions; the implementation plan (IMP-01) describes the rings
 ├── deploy/                     (P27) Helm chart, Terraform modules, container image definitions
@@ -155,7 +155,7 @@ Ring status today and at the end of the roadmap:
 | `adapter/opa`, `adapter/vcs`, `adapter/keyring` | absent | P13, P12, P2 and P15 |
 | `adapter/agent` | absent | P8, P14 |
 | `infrastructure` | `buildinfo`, `httpserver`, `config` | P2 `postgres`, P18 `telemetry` |
-| `app` | `serve` and `all` roles | P7 `scheduler`, P8 `worker` |
+| `app` | `serve` and `all` process modes | P7 `scheduler`, P8 `launcher` |
 | `devtool` | `specref`, `openapibundle`, `stubgen`, `docscheck` | stable |
 
 ```text
@@ -332,9 +332,9 @@ internal/
 │   └── telemetry/                           slog, OpenTelemetry, Prometheus  (P18)
 │
 ├── app/                                     composition root
-│   ├── roles.go                             serve, scheduler, all
+│   ├── modes.go                             serve, scheduler, all
 │   ├── usecases.go controllers.go jobs.go events.go
-│   └── workerapp/                           worker, worker exec, vcs-agent, flows-agent; worker-side graph only  (P8)
+│   └── workerapp/                           launcher, runner, vcs-agent, flows-agent; worker-side graph only  (P8)
 │
 └── devtool/
     ├── specref/                                                        ← internal/specref
@@ -518,7 +518,7 @@ func (a *Applier) Apply(ctx context.Context, id id.Run, e run.Event) (run.Run, e
 }
 ```
 
-Scheduling has two levels, as decision 0008 sets out. The scheduler role
+Scheduling has two levels, as decision 0008 sets out. The scheduler process mode
 runs `usecase/scheduler` for the `run.schedule` job of one stack: the gates
 before `READY` (stack lock, approval in `QUEUED`, upstream dependencies,
 external dependencies,
@@ -618,18 +618,18 @@ internal/usecase/agent/executor/
   executor.go        phases: prepare, before_init, init, after_init, plan, ..., after_run
 internal/adapter/agent/workerclient/  implements launcher.Server and executor.Server over gen/
 internal/adapter/agent/container/docker/ kubernetes/   implement launcher.Containers
-internal/app/workerapp/      worker (launcher) and worker exec (executor) composition
+internal/app/workerapp/      launcher and runner (executor) composition
 ```
 
-The worker role's graph is entities plus `usecase/agent`, `adapter/agent`,
+The worker side's graph is entities plus `usecase/agent`, `adapter/agent`,
 `adapter/opa` (for the worker-side initialization policy of
 [report 10 section 10](../reference/10-workers-and-execution.md#10-signed-runs-and-worker-side-policy))
-and container libraries. `cmd/infraweave worker` calls
-`workerapp.Launcher(cfg)` and `worker exec` calls `workerapp.Exec(cfg)`;
+and container libraries. `cmd/infraweave launcher` calls
+`workerapp.Launcher(cfg)` and `runner` calls `workerapp.Exec(cfg)`;
 neither constructs a store. The launcher mounts its own static binary
 (the Makefile already builds with `CGO_ENABLED=0` for six platforms) into
 the runner image as the container's root process, which then runs
-`worker exec`.
+`infraweave runner`.
 
 Long-poll is a controller detail: `workerapi.Poll` holds the request until
 `jobdispatch.Poll` returns or the configured hold (60 seconds by default,
@@ -665,7 +665,7 @@ internal/adapter/vcs/github/
 Durable intake comes first ([report 27](../reference/27-reference-materials.md#12-cross-tool-comparison)):
 `vcsingest.Receive` commits the delivery row and the `vcs.process_delivery` job
 before the controller answers, and does no matching or policy work in the
-request. Processing runs in the scheduler role. Signature verification is
+request. Processing runs in the scheduler process mode. Signature verification is
 pure (HMAC SHA-256, shared token, basic auth per provider) and lives in
 `entity/vcs`, so the provider adapters only decode. The steps of
 [report 11 section 11.2](../reference/11-vcs-integrations.md#112-what-an-event-becomes)
@@ -831,21 +831,21 @@ launcher.
 
 ```text
 internal/app/
-  roles.go           Serve(ctx, cfg), Scheduler(ctx, cfg), All(ctx, cfg): open what each role needs
+  modes.go           Serve(ctx, cfg), Scheduler(ctx, cfg), All(ctx, cfg): open what each process mode needs
   runtime.go         pgx pool, migrations, object storage, keyring, queue, outbox
   usecases.go        constructs every interactor with its ports (about 110 at P27)
   controllers.go     constructs controllers, presenters and the strict-server aggregate
-  jobs.go            job kind → job.Handler (scheduler role)
-  events.go          event kind → consumers (scheduler role)
+  jobs.go            job kind → job.Handler (scheduler process mode)
+  events.go          event kind → consumers (scheduler process mode)
   workerapp/         Launcher, Exec, VCSAgent, FlowsAgent: worker-side graph only
 cmd/infraweave/main.go   cobra root; binds only setting flags; subcommands call app
 ```
 
 ```go
-// internal/app/roles.go (excerpt)
+// internal/app/modes.go (excerpt)
 //
 // Serve and Scheduler build the same use cases over the same runtime; a
-// role differs only in which driving adapters it starts. That keeps "all"
+// process mode differs only in which driving adapters it starts. That keeps "all"
 // a union rather than a third wiring.
 func Serve(ctx context.Context, cfg config.Config) error {
 	rt, err := openRuntime(ctx, cfg)
@@ -884,8 +884,8 @@ wiring aid that the implementation plan can weigh.
 | flows (P26) | `api/src/flows/` | `internal/adapter/rest/gen/flows` | `controller/flows` | `pkg/client/flows` |
 | hand-written | none (`handwritten` tag) | none | `adapter/protocol/*` | none |
 
-The worker client stays internal: only `infraweave worker` speaks the
-protocol, the binary on both ends ships from this repository, and
+The worker client stays internal: only `infraweave launcher` and
+`infraweave runner` speak the protocol, the binary on both ends ships from this repository, and
 external autoscalers read pool load through the deploy API.
 
 ```go
@@ -1018,18 +1018,18 @@ cloud and VCS gateways, whose failure paths need recorded fixtures.
 
 ### A GitHub push becomes a proposed run, a plan policy and a PR comment
 
-1. `infrastructure/httpserver/router.go` (serve role) has mounted `adapter/protocol/vcswebhook` at `/webhooks/vcs/{provider}/{integrationId}`.
+1. `infrastructure/httpserver/router.go` (serve process mode) has mounted `adapter/protocol/vcswebhook` at `/webhooks/vcs/{provider}/{integrationId}`.
 2. `adapter/protocol/vcswebhook/github.go` reads the bounded body and the `X-Hub-Signature-256` and `X-GitHub-Event` headers into an `entity/vcs.Delivery`.
 3. `usecase/vcsingest/receive.go` loads the integration through `IntegrationReader` (`adapter/postgres/vcs_integrations.go`), verifies the HMAC with `entity/vcs/verify.go`, and in one `unitofwork.Do` stores the delivery and enqueues `vcs.process_delivery` (`adapter/postgres/queue.go`).
 4. `vcswebhook` answers `202`. Nothing else happens in the request.
-5. `adapter/jobrunner` (scheduler role) claims the job and calls `usecase/vcsevent/process.go`.
+5. `adapter/jobrunner` (scheduler process mode) claims the job and calls `usecase/vcsevent/process.go`.
 6. `adapter/vcs/github/normalize.go` turns the payload into an `entity/vcs.Push` for a branch that is not tracked.
 7. `vcsevent` finds matching stacks through `StackMatcher` (`adapter/postgres/stacks.go`, index on integration, repository, branch) and the changed files through `ChangedFiles` (`adapter/vcs/github/compare.go`).
 8. `vcsevent` calls its `PushPolicy` port; `usecase/policyeval/push.go` builds `entity/policy/input.PushInput`, evaluates attached push policies through `adapter/opa/engine.go`, combines with `entity/policy/combine.go` and stores the sample; outcome `propose`.
 9. `entity/vcs/dedupe.go` gives the key (stack, SHA, `PROPOSED`); `runstate/create.go` inserts the run `QUEUED`, cancels superseded proposed runs on the branch through `Apply`, appends `RunStateChanged` and enqueues `run.schedule`, in one transaction.
 10. `usecase/scheduler/schedule.go` (the `run.schedule` job) finds no gate closed for a proposed run and moves it to `READY` through `runstate`, which issues `NOTIFY infraweave_runs` for the pool.
-11. `adapter/workerapi/controller.go` (serve role) wakes the worker's held poll; `usecase/jobdispatch/poll.go` claims the pool's runs in `entity/run/priority.go` order (tier 3, normal proposed), moves this one to `PREPARING` and returns the assignment with its run token.
-12. On the worker, `usecase/agent/launcher` starts the runner container; `worker exec` runs `usecase/agent/executor`, which takes the plan commands from `entity/iac/terraform`, uploads the plan JSON to a pre-signed URL and calls `ReportPlan`.
+11. `adapter/workerapi/controller.go` (serve process mode) wakes the worker's held poll; `usecase/jobdispatch/poll.go` claims the pool's runs in `entity/run/priority.go` order (tier 3, normal proposed), moves this one to `PREPARING` and returns the assignment with its run token.
+12. On the worker, `usecase/agent/launcher` starts the runner container; `infraweave runner` runs `usecase/agent/executor`, which takes the plan commands from `entity/iac/terraform`, uploads the plan JSON to a pre-signed URL and calls `ReportPlan`.
 13. `usecase/runreport/plan.go` reads the plan through its `PlanObjects` port (`adapter/objectstore`), parses changes with `entity/iac/terraform`, and calls its `PlanPolicy` port (`policyeval/plan.go`): no deny, no warn.
 14. `runreport` applies `PLANNING → FINISHED` through `runstate`; the outbox gets `RunStateChanged`.
 15. `adapter/outboxrelay` delivers it to `usecase/vcsfeedback/checks.go` (commit check through `adapter/vcs/github/checks.go`) and to `usecase/notification/route.go`, which evaluates notification policies; a `pull_request` rule calls `PullRequestCommenter`, implemented by `adapter/vcs/github/comments.go`, with the rule's deduplication key.
@@ -1040,7 +1040,7 @@ cloud and VCS gateways, whose failure paths need recorded fixtures.
 2. `runstate/create.go` inserts a `TRACKED` run; `entity/stack/lock.go` says a blocking run takes the stack lock, applied in the same transaction.
 3. The follow-up `approval.evaluate` job runs `policyeval/approval.go` for `QUEUED`; no approval policy blocks queueing.
 4. `usecase/scheduler` finds the stack lock free and moves the run to `READY`; the private pool's claim order puts it in tier 2.
-5. A launcher on the customer's host, started as `infraweave worker` with the pool's certificate, holds a poll on `adapter/workerapi`; `workerapi/auth.go` checks the session token against `usecase/workerregistry`, and `jobdispatch` claims the run to `PREPARING`.
+5. A launcher on the customer's host, started as `infraweave launcher` with the pool's certificate, holds a poll on `adapter/workerapi`; `workerapi/auth.go` checks the session token against `usecase/workerregistry`, and `jobdispatch` claims the run to `PREPARING`.
 6. `usecase/agent/launcher` evaluates the worker-side initialization policy (`usecase/agent/initpolicy` over `adapter/opa`) and starts the container through `adapter/agent/container/docker`.
 7. `usecase/agent/executor` restores the source archive (`adapter/agent/workspace`), downloads the vendor binary (`adapter/agent/toolchain`), plans, and reports. Terraform reads state through `adapter/protocol/statehttp` with the run token; `entity/state/access.go` allows read and lock in `PLANNING`.
 8. `runreport/plan.go` evaluates plan policies; a `warn` sends the run to `UNCONFIRMED`. The executor uploads the workspace to the workspaces bucket and exits.

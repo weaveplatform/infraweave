@@ -23,7 +23,9 @@
 //     compares like with like;
 //   - every phase of docs/implementation/plan.md states its decisions,
 //     dependencies, tasks and exit criteria, and every phase the capability
-//     roadmap names is a phase of the plan.
+//     roadmap names is a phase of the plan;
+//   - GLOSSARY.md, infraweave's own language, defines each term once, with
+//     a definition and the words to avoid.
 package docscheck
 
 import (
@@ -43,6 +45,7 @@ import (
 
 const (
 	docsDir      = "docs"
+	glossaryDoc  = "GLOSSARY.md"
 	reportsDir   = "docs/research/reference"
 	decisionsDir = "docs/research/decisions"
 	decisionsIdx = decisionsDir + "/README.md"
@@ -80,6 +83,9 @@ func Check(repo fs.FS) ([]Finding, error) {
 		return err
 	})
 	if err != nil {
+		return nil, fmt.Errorf("docscheck: %w", err)
+	}
+	if err := c.glossary(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
 	for _, d := range c.sorted() {
@@ -593,4 +599,59 @@ func (c *checker) plan() {
 			}
 		}
 	}
+}
+
+var glossaryTerm = regexp.MustCompile(`^\*\*(.+)\*\*:$`)
+
+// glossary checks the root glossary's shape: a title, a "## Language"
+// section, and terms that each open a block of a definition and an "_Avoid_:"
+// line, so a term can't be left without the synonyms it replaces. Terms are
+// unique regardless of case, because two entries for one word would let
+// documents disagree on its meaning.
+func (c *checker) glossary() error {
+	if _, err := fs.Stat(c.repo, glossaryDoc); errors.Is(err, fs.ErrNotExist) {
+		c.add(glossaryDoc, 1, "the glossary does not exist")
+		return nil
+	}
+	d, err := c.load(glossaryDoc)
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(d.lines[0], "# ") {
+		c.add(d.path, 1, "the glossary has no title")
+	}
+	if !slices.Contains(d.lines, "## Language") {
+		c.add(d.path, 1, `the glossary has no "## Language" section`)
+	}
+	first := map[string]int{}
+	for i, l := range d.lines {
+		m := glossaryTerm.FindStringSubmatch(l)
+		if d.code[i] || m == nil {
+			continue
+		}
+		term, line := m[1], i+1
+		if at, ok := first[strings.ToLower(term)]; ok {
+			c.add(d.path, line, "term %q is defined again (first at line %d)", term, at)
+		} else {
+			first[strings.ToLower(term)] = line
+		}
+		var block []string
+		for _, b := range d.lines[i+1:] {
+			if strings.TrimSpace(b) == "" {
+				break
+			}
+			block = append(block, b)
+		}
+		avoid := slices.IndexFunc(
+			block,
+			func(b string) bool { return strings.HasPrefix(b, "_Avoid_:") },
+		)
+		switch avoid {
+		case -1:
+			c.add(d.path, line, `term %q has no "_Avoid_:" line`, term)
+		case 0:
+			c.add(d.path, line, "term %q has no definition", term)
+		}
+	}
+	return nil
 }

@@ -76,7 +76,7 @@ stored data needs migrating, since its state is a local SQLite file.
 ### Provider abstraction
 
 `internal/ai` holds one interface, and every model call in infraweave goes
-through it in the `serve` role. This is the AI provider proxy that
+through it in the `serve` process mode. This is the AI provider proxy that
 `AIIntegration.enabled` implies
 ([22 section 3.1](../reference/22-intelligence.md#31-the-entity)): the
 browser, MCP clients and agents never hold a provider key.
@@ -234,7 +234,7 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 
 | Aspect | Contract |
 |---|---|
-| Endpoint | `/mcp` on the `serve` role, MCP Streamable HTTP, implemented with `github.com/modelcontextprotocol/go-sdk` |
+| Endpoint | `/mcp` on the `serve` process mode, MCP Streamable HTTP, implemented with `github.com/modelcontextprotocol/go-sdk` |
 | Tools | `discover`, `query`, `provider`, `mutate`, `intent` from the shared tool layer |
 | OAuth | Protected-resource metadata at `/.well-known/oauth-protected-resource/mcp`; authorization code with PKCE and dynamic client registration on decision 0006's authorization server |
 | Scopes | `mcp:read` (`discover`, `query`, `provider`) and `mcp:write` (adds `mutate`, `intent`; implies `mcp:read`), as [22 section 7.3](../reference/22-intelligence.md#73-authentication) records |
