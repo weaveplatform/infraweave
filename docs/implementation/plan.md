@@ -62,8 +62,8 @@ list the rows that can move.
   [0021](../research/decisions/0021-capability-scope-and-supersession.md),
   P3, P3b, P4, P13b, P23).
 - **infraweave's own names.** No served operationId, schema, property, enum
-  value, header, environment variable or policy input key contains
-  "spacelift". Decision 0001's rename table maps each reference name that
+  value, header, environment variable, policy input key or description
+  contains "spacelift". Decision 0001's rename table maps each reference name that
   does to its infraweave name, such as `spaceliftAwsAccountId` to
   `installationAwsAccountId`, and "root admin" becomes "account admin";
   `TestUnitServedNames` checks every served bundle against both from P1c.
@@ -507,8 +507,8 @@ passing success, denial and failure scenarios.
    slug registry in `internal/platform/httpkit/problem` gains every slug of
    decision 0022 (`TestUnitProblemRegistry`). `TestUnitServedNames`, the
    rename-table test, fails when an operationId, schema, property, enum
-   value, header, environment variable or policy input key of any served
-   bundle contains "spacelift" in any case, and when a row of decision
+   value, header, environment variable, policy input key or description of
+   any served bundle contains "spacelift" in any case, and when a row of decision
    0001's rename table is served under its reference name rather than its
    infraweave name. Each later bundle (worker, flows, registry, operator)
    joins the test in the phase that adds it. Records DV-114.
@@ -537,7 +537,8 @@ passing success, denial and failure scenarios.
 - No acceptance step calls `pkg/client` directly; `pkg/sdk` meets the
   per-package coverage bar.
 - `TestUnitServedNames` passes on `api/deploy.openapi.yaml`, and a fixture
-  bundle with a property named `spaceliftAwsAccountId` fails it.
+  bundle with a property named `spaceliftAwsAccountId` and a description
+  that names Spacelift fails it.
 - `make gate` passes at 95% in total and 90% per package; CI fails a run in
   which any scenario was skipped.
 

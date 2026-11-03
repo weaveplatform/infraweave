@@ -1460,8 +1460,8 @@ to the table. The copy check found no docs prose.
 - **The served bundle:** after `SPACELIFT_ENVIRONMENT` and `SPACELIFT`
   became `INFRAWEAVE_ENVIRONMENT` and `INFRAWEAVE`, no served name contains
   spacelift or matches a reference name of the rename table.
-- **Settled after the pass:** the sampling task is `worker.sample` with `worker.samples.retention`, matching the singular prefix of `worker.offline_after` and `worker.reap` (`runs.` and `workers.` name tables, not keys); 0018 gives the default Flows agent pool the account isolation 0008 gives the public worker pool; the plan no longer counts C226 and C238 as blocking.
-- **Left open, as style rather than contradiction:** object keys written with and without the store prefix (0005 owns the form); deploy routes written with and without `/api/v1` (0003 owns it); and served descriptions copied from the reference that still say Spacelift, which the name test does not read and which each family's scaffold rewrites when the family is implemented.
+- **Settled after the pass:** the sampling task is `worker.sample` with `worker.samples.retention`, matching the singular prefix of `worker.offline_after` and `worker.reap` (`runs.` and `workers.` name tables, not keys); 0018 gives the default Flows agent pool the account isolation 0008 gives the public worker pool; the plan no longer counts C226 and C238 as blocking; served descriptions no longer name Spacelift, and `TestUnitServedNames` reads every served string outside the mapping extensions.
+- **Left open, as style rather than contradiction:** object keys written with and without the store prefix (0005 owns the form) and deploy routes written with and without `/api/v1` (0003 owns it).
 
 ## What survived across the set
 

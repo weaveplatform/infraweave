@@ -3,7 +3,7 @@
 components:
   schemas:
     Action:
-      description: Action represents an action in Spacelift that can be performed by a user.
+      description: Action represents an action that a user can perform.
       enum:
         - CONTEXT_CREATE
         - CONTEXT_DELETE
@@ -241,7 +241,7 @@ components:
           description: Indicates whether any stacks are attached to this policy, either directly or via auto-attachment.
           type: boolean
         id:
-          description: The unique ID for managing the integration within Spacelift.
+          description: The unique ID for managing the integration.
           type: string
         kind:
           description: The concrete type, for union and interface responses.
@@ -407,7 +407,7 @@ components:
           description: Indicates whether any stacks are attached to this policy, either directly or via auto-attachment.
           type: boolean
         id:
-          description: The unique ID for managing the integration within Spacelift.
+          description: The unique ID for managing the integration.
           type: string
         labels:
           description: User-defined labels set on the integration.
@@ -1620,7 +1620,7 @@ components:
           nullable: true
           type: integer
         id:
-          description: ID of the ManagedEntity in Spacelift.
+          description: ID of the ManagedEntity.
           type: string
         name:
           description: ManagedEntity Name.
@@ -1923,13 +1923,13 @@ components:
       properties:
         concise:
           description: |-
-            When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+            When enabled, infraweave passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
             Requires OpenTofu 1.7+ at runtime; the flag is silently omitted on older versions.
             If you're running OpenTofu 1.10+, concise flag will be also used in apply.
           type: boolean
         enableCPUProfiling:
           description: |-
-            When enabled, Spacelift captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
+            When enabled, infraweave captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
             Requires OpenTofu 1.11+ at runtime; silently omitted on older versions.
           type: boolean
         externalStateAccessEnabled:
@@ -2031,7 +2031,7 @@ components:
     Policy:
       description: |-
         Policy is a rule or collection of rules that allow injecting custom logic into
-        Spacelift's decision points.
+        infraweave's decision points.
       properties:
         attachedIntentProjects:
           description: List of intent projects attached to this Policy
@@ -2244,7 +2244,7 @@ components:
       type: object
       x-graphql-type: PolicyStackAttachment
     PolicyType:
-      description: PolicyType represents a type of Spacelift policy.
+      description: PolicyType represents a type of policy.
       enum:
         - ACCESS
         - LOGIN
@@ -2267,7 +2267,7 @@ components:
       x-enum-descriptions:
         ACCESS: Access policy - stack or module level RBAC.
         APPROVAL: Approval policy, allows approving or rejecting runs and tasks.
-        GIT_PUSH: Git push policy - customizing Spacelift's reaction to VCS events.
+        GIT_PUSH: Git push policy - customizing infraweave's reaction to VCS events.
         INITIALIZATION: Initialization policy - allows blocking runs from executing.
         INTENT: Intent policy - allow/deny operations on resources
         LOGIN: Login policy - account-level RBAC.
@@ -2290,7 +2290,7 @@ components:
       type: object
       x-graphql-args-of: proposeWithOverrides
     PullRequest:
-      description: PullRequest is Spacelift's representation of Pull Request on GitHub.
+      description: PullRequest is infraweave's representation of a pull request on GitHub.
       properties:
         authorLogin:
           description: GitHub username of the PullRequest creator.
@@ -2446,7 +2446,7 @@ components:
       type: object
       x-graphql-type: Role
     Run:
-      description: Run represents the main concept in Spacelift.
+      description: Run represents one execution of a stack.
       properties:
         branch:
           description: Name of the branch for which this Run has been created.
@@ -2914,7 +2914,7 @@ components:
     RunResourceState:
       description: |-
         RunResourceState represents a state of the Run.
-        It's for Terraform-Provider, to allow spacelift run to read the state of another run.
+        It lets the Terraform provider, inside a run, read the state of another run.
       properties:
         finished:
           description: Convenience helper, allowing a quick check on whether the Run has finished.
@@ -4096,7 +4096,7 @@ components:
       type: object
       x-graphql-type: Space
     Stack:
-      description: Stack represents a single Spacelift project.
+      description: Stack represents a single infrastructure project.
       properties:
         additionalProjectGlobs:
           description: |-
@@ -4297,7 +4297,7 @@ components:
         gitSparseCheckoutPaths:
           description: |-
             The list of paths that are used for sparse checkout, if any. If empty sparse checkout is not used - whole repository is checked out.
-            Note: this field is only used if git checkout is enabled. See https://docs.spacelift.io/concepts/stack/stack-settings#labels
+            Note: this field is only used if git checkout is enabled.
           items:
             type: string
           nullable: true
@@ -4361,10 +4361,10 @@ components:
           nullable: true
           type: string
         managesStateFile:
-          description: Is Spacelift responsible for managing the Terraform state file.
+          description: Is infraweave responsible for managing the Terraform state file.
           type: boolean
         moduleVersionsUsed:
-          description: Versions of modules hosted on Spacelift the latest run on this Stack uses.
+          description: Versions of modules hosted in infraweave's module registry that the latest run on this Stack uses.
           items:
             $ref: '#/components/schemas/Version'
           type: array
@@ -4604,7 +4604,7 @@ components:
         externalId:
           description: |-
             AWS external ID. This will contain your custom external ID when using role-assumption on the
-            worker, and otherwise will contain an external ID generated by Spacelift.
+            worker, and otherwise will contain an external ID generated by infraweave.
           type: string
         generateCredentialsInWorker:
           description: AWS credentials will be generated in the private worker.
@@ -4864,7 +4864,7 @@ components:
       properties:
         concise:
           description: |-
-            When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+            When enabled, infraweave passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
             Requires OpenTofu 1.7+. A stack on an older version cannot enable it.
             If you're running OpenTofu 1.10+, concise flag will be also used in apply.
           type: boolean
@@ -4877,11 +4877,11 @@ components:
           type: string
         enableCPUProfiling:
           description: |-
-            When enabled, Spacelift captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
+            When enabled, infraweave captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
             Requires OpenTofu 1.11+ at runtime; silently omitted on older versions.
           type: boolean
         externalStateAccessEnabled:
-          description: Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+          description: Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
           type: boolean
         kind:
           description: The concrete type, for union and interface responses.
@@ -4923,7 +4923,7 @@ components:
       properties:
         concise:
           description: |-
-            When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+            When enabled, infraweave passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
             Requires OpenTofu 1.7+. A stack on an older version cannot enable it.
             If you're running OpenTofu 1.10+, concise flag will be also used in apply.
             When unset on create, defaults to true on OpenTofu 1.7+ and to false on older versions.
@@ -4931,13 +4931,13 @@ components:
           type: boolean
         enableCPUProfiling:
           description: |-
-            When enabled, Spacelift captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
+            When enabled, infraweave captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
             Requires OpenTofu 1.11+ at runtime; silently omitted on older versions.
             When unset on create, defaults to true on OpenTofu 1.11+ and to false on older versions.
           nullable: true
           type: boolean
         externalStateAccessEnabled:
-          description: Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+          description: Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
           nullable: true
           type: boolean
         useSmartSanitization:
@@ -4996,7 +4996,7 @@ components:
       description: Configuration specific to Terraform stacks.
       properties:
         externalStateAccessEnabled:
-          description: Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+          description: Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
           type: boolean
         kind:
           description: The concrete type, for union and interface responses.
@@ -5029,7 +5029,7 @@ components:
       description: Configuration specific to Terraform stacks.
       properties:
         externalStateAccessEnabled:
-          description: Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+          description: Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
           nullable: true
           type: boolean
         useSmartSanitization:
@@ -5239,7 +5239,7 @@ components:
         input:
           $ref: '#/components/schemas/StackInput'
         manageState:
-          description: Determines if Spacelift should manage state for this stack. Defaults to `true`.
+          description: Determines if infraweave should manage state for this stack. Defaults to `true`.
           type: boolean
           x-terraform:
             - spacelift_stack.manage_state
@@ -5629,7 +5629,7 @@ components:
         gitSparseCheckoutPaths:
           description: |-
             The list of paths that are used for sparse checkout, if any. If empty sparse checkout is not used - whole repository is checked out.
-            Note: this field is only used if git checkout is enabled. See https://docs.spacelift.io/concepts/stack/stack-settings#labels
+            Note: this field is only used if git checkout is enabled.
           items:
             type: string
           nullable: true
@@ -6406,8 +6406,8 @@ components:
           GitHub Enterprise - either self-hosted or as an extra organization on
           github.com.
         GITLAB: GitLab - either self-hosted or managed (gitlab.com).
-        ORIGIN: Origin - Cursor's git platform, integrated via a global Spacelift-owned app.
-        SHOWCASE: Spacelift-managed virtual VCS provider used for onboarding new users.
+        ORIGIN: Origin - Cursor's git platform, integrated through an app the installation configures.
+        SHOWCASE: Virtual VCS provider, managed by the installation, used for onboarding new users.
         INFRAWEAVE: infraweave-native VCS provider with files stored in the database.
       x-graphql-type: VCSProvider
     Version:
@@ -6699,9 +6699,9 @@ components:
         managedByK8sController:
           description: |-
             Indicates that this pool is managed by the Kubernetes WorkerPool controller. If a pool
-            is managed by the controller, any updates from other clients (e.g. the Spacelift UI) will
+            is managed by the controller, any updates from other clients (e.g. the console) will
             be blocked. Deletion of the pool by other clients is still allowed to allow a situation
-            where the Spacelift API and Kubernetes API become out of sync.
+            where the infraweave API and Kubernetes API become out of sync.
           type: boolean
         name:
           description: Mutable name of the WorkerPool, unique within the scope of a single account.
@@ -6718,7 +6718,7 @@ components:
           description: |-
             The effective Preparing-phase timeout in seconds: the pool's override, or the platform
             default when the pool has no override. When raising this, also raise
-            SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT on the pool's workers, otherwise the worker
+            the launcher's workspace initialization timeout on the pool's workers, otherwise the worker
             stops downloading source before this deadline is reached.
           format: int32
           nullable: true
@@ -7467,7 +7467,7 @@ paths:
       description: |-
         Create a new stack. The third argument (stackObjectID) is optional, and
         should only be used when creating a Stack with pre-existing state that is
-        handed over to Spacelift for further management.
+        handed over to infraweave for further management.
       operationId: stackCreate
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
