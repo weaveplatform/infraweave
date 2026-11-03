@@ -54,7 +54,7 @@ Flows' parts are capabilities of the catalogue that
 
 | Feature | Gates |
 |---|---|
-| `flows-engine` | Organizations, projects, flows, blocks, events, invocations, secrets, named expressions, core blocks and the Deploy triggers of [0015](0015-events-notifications-webhooks-audit.md) |
+| `flows-engine` | Projects, flows, blocks, events, invocations, secrets, named expressions, core blocks and the Deploy triggers of [0015](0015-events-notifications-webhooks-audit.md) |
 | `flows-apps` | App installations, custom apps, app versions and registry subscriptions |
 | `flows-agents` | Agent pools, their tokens and the agent gateway |
 | `flows-data-tables` | Data tables, their rows and the Data Table blocks |
@@ -81,7 +81,7 @@ stream (decision 0005).
 
 | Concept | infraweave contract |
 |---|---|
-| Organization | One per infraweave account, created with it. Flows and Deploy share the account's users, teams and service accounts (decision 0006); Flows roles live in `flows_memberships` |
+| Organization | Spacelift Flows' organization is the infraweave account: Flows belongs to the account, with its own projects, apps and agents, and has no tenant of its own. Flows and Deploy share the account's users, teams and service accounts (decision 0006); Flows roles live in `flows_memberships`. Flows' organization admin is the account admin, a holder of `space-admin` on the account's top space ([0007](0007-authorization-spaces-and-roles.md#spaces)). An infraweave organization ([0007](0007-authorization-spaces-and-roles.md#tenancy)) has no Flows role and sees no account's flows |
 | Project | As in Spacelift, including one personal sandbox per user, created on the user's first Flows request |
 | Flow | `flows` row with `active`, `event_limit` and the stored definition; the YAML of [section 13](../reference/23-flows.md#13-the-flow-definition-format), with CEL expressions ([0024](0024-expression-language.md)), is the import and export form, parsed strictly per decision 0022 |
 | Block | `flow_blocks`, unique by `(flow, name)`; renames follow `alternativeLookupStrategy` |
@@ -95,7 +95,8 @@ stream (decision 0005).
 | Timer | `flows_timers`: owner (installation or block), due time, payload, linked pending event or prompt |
 
 Event bodies up to 256 KiB are stored inline as JSONB. A larger body goes
-to object storage (decision 0005) under `flows/events/<flow>/<event>` and
+to decision 0005's `flows-events` store under
+`flows-events/<account>/<flow>/<event>` and
 the row keeps the key and a SHA-256. The 256 KiB threshold is
 infraweave's; Spacelift publishes no event size limit.
 
@@ -156,7 +157,7 @@ fan-out. There is no Temporal cluster and no separate engine.
 | Limit | Default | Behaviour |
 |---|---|---|
 | Events per flow per calendar month | 50,000, `flows.limits.monthly_events` | `flow_event_counters` row per `(flow, month)`, incremented in the emit transaction; at the limit the delivery fails with `flow monthly event limit exceeded` and is not retried |
-| Organization ceiling for a flow's monthly limit | 1,000,000, `flows.limits.monthly_ceiling` | Raised by the operator, not by support |
+| Account ceiling for a flow's monthly limit | 1,000,000, `flows.limits.monthly_ceiling` | Raised by the operator, not by support |
 | Events per flow per hour | 50,000, `flows.limits.hourly_events` | At the limit the emitting delivery is re-enqueued for the start of the next hour and logs `flow event rate limit exceeded`; debug events are refused |
 | App call duration | 60 s, `flows.limits.handler_timeout` | The call is cancelled through its gRPC deadline and the delivery fails with a timeout error |
 | App container memory | 512 MiB, `flows.limits.app_memory` | Enforced by the executor |
@@ -226,10 +227,11 @@ every release.
   versions with image references and digests. Subscriptions fetch it
   hourly through a periodic queue kind, and an agent refuses an image whose
   digest differs from the manifest's. `flows.registries.default` lists the
-  subscriptions a new organization gets: infraweave's first-party registry
+  subscriptions a new account gets: infraweave's first-party registry
   by default, an empty list for air-gapped installs, which mirror images
   into their own OCI registry.
-- **Custom apps.** Drafts, publish, project and organization scope as in
+- **Custom apps.** Drafts, publish, and project and account scope, the
+  scopes Spacelift calls project and organization, as in
   [section 6.3](../reference/23-flows.md#63-custom-apps), with an image
   reference in place of a bundle: `infraweavectl flows app version publish
   --image <reference>`.
@@ -240,6 +242,19 @@ every release.
   `flows_agent.endpoint`, `flows_agent.pool_id`, `flows_agent.pool_token`,
   `flows_agent.executor` and `flows_agent.pool_size` (default 3), dials the
   server and runs app containers.
+- **The default agent pool** (`flows.default_agent_pool`) is one pool the
+  operator runs for every organization's accounts, as decision
+  [0008](0008-run-execution-and-worker-protocol.md)'s public worker pool is
+  for runs. Account isolation holds on it in three ways:
+  - an app container serves one app installation, which belongs to one
+    account, so no container is shared between accounts;
+  - every `Host` call is authorized against the account of the task that
+    made it, so KV, secrets, timers and messages never cross accounts;
+  - the claim takes tasks round-robin across accounts, so one account's
+    backlog cannot delay another's.
+
+  An account that needs its own network reach or isolation runs a pool of
+  its own.
 - **Gateway in the `serve` process mode.** The agent connects to
   `wss://<host>/flows/agent/v1/connect` on any `serve` replica, with the pool
   ID and token in the `Authorization` header. Pool tokens are 64 random
@@ -322,9 +337,11 @@ and no `uiCode`.
 | Platform Flows MCP server | `/flows/mcp`, tools mirroring the Flows API operations plus `usage_instructions` |
 | Forms | `/flows/forms/<block>` for the Consumer role |
 
-`audience` (`world`, `organization`, `project`) is enforced before an event
+`audience` (`world`, `account`, `project`) is enforced before an event
 exists, as [section 5](../reference/23-flows.md#5-triggers-and-endpoints)
-describes. Both MCP surfaces use the MCP implementation and OAuth server
+describes for Spacelift's `world`, `organization` and `project`; `account`
+admits any member the account admits, and the importer maps
+`organization` to `account` (0001's rename table). Both MCP surfaces use the MCP implementation and OAuth server
 that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 
 ### API and clients
@@ -344,9 +361,13 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 - **Deploy-side operations.** The six operations of the reference `Flows`
   tag (`flowsInstances`, `flowsIntegration`, `flowsProjects` and the role
   binding operations) are served in the deploy API. `flowsInstances`
-  returns this installation; `flowsIntegration` returns the built-in link.
-- **Access control.** The four project roles and the organization admin of
-  [section 9.1](../reference/23-flows.md#91-roles) are enforced in the API
+  returns this installation; `flowsIntegration` returns the built-in link,
+  whose `accountID` and `accountName` name the caller's account where
+  Spacelift's `organizationID` and `organizationName` name the Flows
+  organization (0001's rename table).
+- **Access control.** The four project roles of
+  [section 9.1](../reference/23-flows.md#91-roles), and the account admin
+  in place of its organization admin, are enforced in the API
   handlers. Authorizations are tokens of decision 0006 narrowed by the
   capabilities, project access and MCP flow access of
   [section 9.3](../reference/23-flows.md#93-authorizations-and-capabilities);
@@ -355,9 +376,10 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   until capture C232 settles them.
 - **Audit.** Flows audit entries are audit events of
   [0015](0015-events-notifications-webhooks-audit.md) with a `flows.`
-  resource-type prefix; the per-organization OTLP Logs export of
-  [section 9.4](../reference/23-flows.md#94-audit-logs) is a sink of the
-  same event model.
+  resource-type prefix; the OTLP Logs export of
+  [section 9.4](../reference/23-flows.md#94-audit-logs), per Flows
+  organization on Spacelift, is per account here and a sink of the same
+  event model.
 
 ### Configuration
 
@@ -366,7 +388,7 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 | `flows.endpoints_domain` | empty | Wildcard domain for HTTP Endpoint subdomains |
 | `flows.limits.*` | as in the limits table | Event and app limits |
 | `flows.retention` | `1440h` | Retention after an invocation ends |
-| `flows.registries.default` | infraweave's first-party registry | Subscriptions of a new organization |
+| `flows.registries.default` | infraweave's first-party registry | Subscriptions of a new account |
 | `flows.default_agent_pool.id`, `.token` | generated at first start | The default pool |
 | `flows_agent.*` | see above | `infraweave flows-agent` settings |
 
@@ -433,9 +455,10 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   with no `ui.js`.
 - **Departure from Spacelift:** expressions are CEL evaluated on the server,
   not JavaScript on agents ([0024](0024-expression-language.md)).
-- **Departure from Spacelift:** Flows is one organization per infraweave
-  account with shared identity, rather than a separately linked Flows
-  organization with its own login; the Deploy link is implicit.
+- **Departure from Spacelift:** Flows belongs to the infraweave account and
+  shares its identity, rather than a separately linked Flows organization
+  with its own login; the Deploy link is implicit, the organization admin
+  is the account admin, and `audience: organization` is `account`.
 - **Departure from Spacelift:** HTTP Endpoint addresses fall back to paths
   when no wildcard domain is configured, and MCP surfaces are paths
   (`/flows/mcp`) rather than the `mcp.` and `oauth.` subdomains.
@@ -482,7 +505,7 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   retention deletion.
 - `flows_apps.feature` (`@postgres`, `@flows-agent`): a fixture registry
   served by a chi test server, digest refusal, a custom app published from
-  an image built from the Go SDK, lifecycle sync serialisation, KV locks,
+  an image built from the Go SDK, lifecycle sync serialization, KV locks,
   timers, block HTTP, widgets, a JavaScript bundle refused.
 - `flows_agents.feature` (`@postgres`, `@flows-agent`): two `serve`
   replicas, an agent killed mid-task and its work taken over, pool token

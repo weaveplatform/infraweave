@@ -213,9 +213,12 @@ internal/
 │   │   ├── seed.go                          the five seeded tiers; Enterprise holds every feature
 │   │   └── decide.go                        Gate(entitlement, feature, billing) → allow,
 │   │                                        feature-disabled or feature-not-in-tier; CheckLimit
-│   ├── identity/                            Principal, actor kinds, API key, session snapshot  (P3)
-│   ├── space/                               tree, root immutability, re-parent checks, reachability,
-│   │                                        inheritance toggle  (P4)
+│   ├── tenancy/                             root, organization, account, member: what holds what, and
+│   │                                        that nothing inherits from root or the organization  (P3)
+│   ├── identity/                            Principal (one organization, one account), actor kinds, API
+│   │                                        key, organization key, session snapshot  (P3)
+│   ├── space/                               tree under the account's immutable top space, re-parent
+│   │                                        checks, reachability, inheritance toggle  (P4)
 │   ├── rbac/                                the 150-value action catalogue, system roles, Decide(subject,
 │   │                                        action, space) as a pure function  (P4)
 │   ├── stack/                               settings, validation, StackState, lock rules (human, policy key,
@@ -275,7 +278,7 @@ internal/
 │   ├── blueprint/                           (P21)
 │   ├── resource/                            managed entity, drift flag, search filters  (P22)
 │   ├── intent/                              project, resource, operation, review  (P25)
-│   └── flows/                               organization (one per account), project, flow, block, event
+│   └── flows/                               the account's projects, flow, block, event
 │                                            lineage, invocation status, buffered effects, monthly and
 │                                            hourly limits, widget types, contract version choice  (Flows)
 │
@@ -285,11 +288,15 @@ internal/
 │   ├── job/                                 shared contract: job kinds, Enqueuer, Handler  (P7)
 │   ├── runstate/                            shared contract: Applier.Apply(run, event) in one tx  (P7)
 │   ├── system/                              version, debug info, readiness facts
-│   ├── account/                             account settings; the tier object of the account  (P3)
-│   ├── entitlement/                         per-account entitlement snapshot, rebuilt on infraweave_invalidate;
-│   │                                        Gate for the middleware; implements every consumer's limit port  (P3b)
-│   ├── operator/                            the operator API: tiers, account tiers, grants, the billing switch;
-│   │                                        bumps accounts.entitlement_version  (P3b)
+│   ├── account/                             account settings; the tier object of the account's organization  (P3)
+│   ├── organization/                        the Organization tag: accounts, members, account limits, usage
+│   │                                        across accounts; never an account's stacks, runs or state  (P3b)
+│   ├── entitlement/                         per-organization entitlement snapshot, rebuilt on infraweave_invalidate;
+│   │                                        Gate for the middleware; implements every consumer's limit port
+│   │                                        against the organization's pool and the account limit  (P3b)
+│   ├── operator/                            the operator API: organizations, tiers, organization tiers, grants,
+│   │                                        the billing switch; bumps organization_entitlements.entitlement_version  (P3b)
+│   ├── oauthserver/                         the built-in OAuth authorization server for /mcp and /flows/mcp  (P3b)
 │   ├── authenticate/                        API key, session, run token → Principal  (P3)
 │   ├── token/                               API key exchange, short-lived JWT  (P3)
 │   ├── user/ apikey/ session/               (P3)
@@ -865,13 +872,17 @@ internal/usecase/authorize/
   port.go            BindingReader, SpaceReader
   authorize.go       Require(ctx, principal, action, space) error; Reachable(ctx, principal) []space.ID
 internal/usecase/space/ role/ rolebinding/ user/ apikey/ session/
-internal/usecase/sso/ scim/                     (P23)
+internal/usecase/organization/                  (P3b) accounts, members, account limits, usage
+internal/usecase/sso/ scim/ linking/            (P23) the organization's identity providers
 internal/adapter/rest/middleware/authn.go       calls authenticate, puts the Principal in ctx
 internal/adapter/rest/controller/space/ identity/
 internal/adapter/jwt/                           signing keys, rotation, JWKS (decision 0006)
 ```
 
-Space reachability is the filter on almost every read
+A principal authenticates at its organization and acts in one account,
+whose `LOGIN` policies admitted it on entry, so every reachable space is
+under that account's top space. Space reachability is the filter on almost
+every read
 ([report 28 section 1.2](../reference/28-data-model.md#12-identity-and-tenancy)).
 Each interactor that lists or reads declares an `Authorizer` port and asks
 `Reachable` once per call, then passes the space set into its store port.
@@ -894,12 +905,13 @@ internal/entity/feature/
   decide.go          Gate: feature-disabled wins over feature-not-in-tier; CheckLimit → limit-reached
 internal/usecase/entitlement/
   port.go            TierStore, GrantStore, BillingReader, SnapshotCache, Invalidations
-  snapshot.go        For(account) → Entitlement; rebuilt when accounts.entitlement_version moves
+  snapshot.go        For(organization) → Entitlement; rebuilt when organization_entitlements.entitlement_version moves
   gate.go            Gate(ctx, principal, feature): the middleware's call
-  limits.go          SeatLimit, PrivateWorkerLimit, AIBudget: one method per consumer's port
+  limits.go          SeatLimit, PrivateWorkerLimit, AIBudget: one method per consumer's port, each
+                     counting across the organization's accounts, then against the account limit
 internal/usecase/operator/
   port.go input.go output.go
-  tiers.go accounts.go grants.go billing.go   each write bumps entitlement_version, notifies infraweave_invalidate
+  tiers.go organizations.go grants.go billing.go   each write bumps entitlement_version, notifies infraweave_invalidate
 internal/usecase/user/port.go         SeatLimit: CheckAdd(ctx, account) error
 internal/usecase/workerregistry/port.go   PrivateWorkerLimit: CheckRegister(ctx, account, pool) error
 internal/usecase/aiintegration/port.go    AIBudget: Spend(ctx, account, usd) error
@@ -907,7 +919,8 @@ internal/adapter/rest/middleware/features.go   chi: operation → x-infraweave-f
 internal/adapter/rest/controller/operator/     implements gen/operator; rejects any non-operator principal
 internal/adapter/rest/presenter/operator.go    tier object, grants, problems
 internal/adapter/jobrunner/                    asks entitlement before Handle; skipped jobs counted
-internal/adapter/postgres/tiers.go grants.go   tiers, account_tiers, account_grants, installation billing row
+internal/adapter/postgres/tiers.go grants.go   tiers, organization_tiers, organization_grants, account_limits,
+                                               installation billing row
 ```
 
 Decision 0021's model is three kinds of feature. A capability gates
@@ -925,11 +938,12 @@ best: tier plus grants, minus `features.disabled`, minus every feature whose
 requirements fall outside the set, is a pure function over data, with
 Enterprise holding every feature and no limit. `billing` belongs to the
 installation and is off by default; while it is off `Gate` allows every
-feature not in `features.disabled`, so every account behaves as Enterprise
+feature not in `features.disabled`, so every organization behaves as Enterprise
 and no limit is checked. The callers see `feature-disabled` (403, naming the
 feature), `feature-not-in-tier` (403, naming the tiers that include it,
-smallest first) or `limit-reached` (403, naming the limit and the
-account's value), through the presenters' problem mapping of decision 0022.
+smallest first) or `limit-reached` (403, naming the limit and the value
+of the organization's pool or of the account limit), through the
+presenters' problem mapping of decision 0022.
 
 The rings charge for the rest. Rule 2 forbids a sibling use case, so
 `usecase/user`, `usecase/workerregistry`, `usecase/aiintegration` and the
@@ -937,15 +951,17 @@ public pool's claim in `jobdispatch` (where `public-worker-slots` is a
 concurrency limit, so a run over it waits instead of failing) each declare
 their own limit port, and `app/usecases.go` fills every one with the same
 `entitlement` interactor. The operator API, `api/operator.openapi.yaml`, is
-outside the parity surface and answers only operator principals; each of
-its operations gets a controller method, input and output boundaries and
-presenter functions, and `infraweavectl operator` wraps them
-through `pkg/sdk`. A write bumps `accounts.entitlement_version` for the
-accounts it touches and notifies `infraweave_invalidate`, and each replica's
+outside the parity surface and answers only operator principals; it keeps
+the installation-level actions, among them creating an organization with
+its first account. Each of its operations gets a controller method, input
+and output boundaries and presenter functions, and `infraweavectl
+operator` wraps them through `pkg/sdk`. A write bumps
+`organization_entitlements.entitlement_version` for the organizations it touches and
+notifies `infraweave_invalidate`, and each replica's
 `SnapshotCache` rebuilds, so a change takes effect without a restart.
 
 A downgrade deletes nothing. `adapter/jobrunner` completes a job whose
-feature is outside the account's entitlement as skipped, with no retry, and
+feature is outside the entitlement of the account's organization as skipped, with no retry, and
 the schedule use cases fire nothing for such a feature, so gated
 background work pauses and resumes from the next occurrence on upgrade.
 Stored option values stay, read as their defaults while the option is
@@ -1016,7 +1032,7 @@ api/proto/flows/app/v1/                (Flows) app.proto: App (Describe, SyncApp
 pkg/flows/appv1/                       generated stubs; buf breaking against the last release blocks CI
 pkg/flows/appsdk/                      appsdk.Serve(app), Describe schemas from Go types; apptest/
 internal/entity/flows/
-  model.go           Organization (one per account), Project, Flow, Block, Installation (UUIDv7)
+  model.go           Project (belonging to an account), Flow, Block, Installation (UUIDv7)
   lineage.go         primary and secondary parents, invocation from lineage, echo, pending events
   invocation.go      in progress, failed in progress, processed, failed
   effects.go         buffered effects: events, pending events, timers, internal messages
@@ -1075,8 +1091,9 @@ the feature middleware gates the Flows API like any other, and
 `adapter/jobrunner` skips a Flows job whose feature is off.
 
 Flows has its own projects and identifiers
-([report 23](../reference/23-flows.md#2-resource-hierarchy)), with one
-organization per account and Deploy's users. In this option it is one
+([report 23](../reference/23-flows.md#2-resource-hierarchy)), belonging
+to the account in place of Spacelift Flows' organization and sharing its
+members. In this option it is one
 subject spread across all four rings, recognisable only by the `flows`
 prefix: `entity/flows`, eight `usecase/flow*` packages, the gateway,
 `controller/flows`, `postgres/flows_*.go` and the worker-side
@@ -1452,7 +1469,7 @@ whose failure paths need recorded fixtures.
 
 ### A drift event starts a flow
 
-1. `adapter/jobrunner` (scheduler process mode) fires the stack's drift detection schedule; `usecase/drift` asks its entitlement port whether `drift-detection` is in the account's entitlement (with billing off it is) and creates a proposed drift detection run through `runstate/create.go`.
+1. `adapter/jobrunner` (scheduler process mode) fires the stack's drift detection schedule; `usecase/drift` asks its entitlement port whether `drift-detection` is in the entitlement of the account's organization (with billing off it is) and creates a proposed drift detection run through `runstate/create.go`.
 2. The run is claimed, planned and reported as in the first walkthrough; `usecase/runreport/plan.go` parses the changes with `entity/iac/opentofu`: two resources drifted.
 3. `runreport` applies `PLANNING → FINISHED` through `runstate.Apply`, which appends `run_updated` and, because the run is a drift detection run with changes, `drift_detected` through `event.Appender`; both rows, their `events.fanout` jobs and the transition commit in one transaction (`adapter/postgres/outbox.go`).
 4. `adapter/outboxrelay` (scheduler) runs `events.fanout` for `drift_detected`. `app/events.go` lists `usecase/flowtrigger` among its consumers, so the fan-out enqueues one delivery for it, keyed by event and target.

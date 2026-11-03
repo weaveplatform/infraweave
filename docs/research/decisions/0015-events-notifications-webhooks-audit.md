@@ -117,10 +117,10 @@ placement.
   operations the block calls.
 - **Policy selection** follows report 19 section 3. A run uses its space
   and the spaces it inherits from. An internal error uses the component's
-  space, or the root, checking stack, worker pool, AWS integration and
-  policy in that order. A module version uses the module's space, and
-  worker usage uses the root space. The last two are inferences
-  (capture C171).
+  space, or the account's top space, checking stack, worker pool, AWS
+  integration and policy in that order. A module version uses the module's
+  space, and worker usage uses the account's top space, where Spacelift
+  uses its root space. The last two are inferences (capture C171).
 
 ### Event streams
 
@@ -313,9 +313,15 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
   acted, with username `infraweave`), `action`, `eventType`,
   `affectedResource` and `relatedResource` with typed metadata, `body`,
   `remoteIP`, `identityUlid`, `ownerLogin` and `createdAt`.
-- **Sanitising.** Every field that the spec marks `writeOnly` is replaced in
+- **Sanitizing.** Every field that the spec marks `writeOnly` is replaced in
   `body` and in webhook `data` by `{"SecretSHA": "<hex HMAC-SHA256>"}`,
   keyed by `secrets.DeriveKey("audit-secret-sha")` (decision 0013).
+- **The organization's trail.** Operations of the `Organization` and `SSO`
+  tags, break-glass sign-ins ([0006](0006-authentication-and-tokens.md)) and
+  the operator API's changes to an organization record entries with the
+  organization's ID and no account. Organization admins list them through
+  the `Organization` tag; no account's listing or audit webhook shows them,
+  because they are not that account's data.
 - **Retention.** `audit.retention`, default 30 days, Spacelift's value.
   `auditTrailRetentionDays` answers it, and a daily job deletes older rows.
 - **Audit webhook.** One per account. `auditTrailSetWebhook` on an enabled
@@ -360,7 +366,7 @@ background work pauses rather than failing (0021).
 
 Each event stream belongs to the capability of its polling equivalent, and
 the Flows triggers sink requires `flows-engine`, with nothing delivered to
-flows while the account lacks it ([0018](0018-flows-runtime.md)).
+flows while the account's organization lacks it ([0018](0018-flows-runtime.md)).
 
 ### Storage
 
@@ -374,9 +380,9 @@ Report 28's `webhooks` (kind `named`, `stack` or `audit`),
 | `events` | `(account, id)` | The outbox, and the replay source for streams |
 | `event_deliveries` | `(event, sink, target, rule_index)` | Fan-out idempotency and delivery state |
 | `webhook_failure_counts` | `webhook` | Consecutive failures for auto-disable |
-| `slack_app_config` | `account` | The Slack app credentials, sealed |
+| `slack_app_config` | `account` | The account's Slack workspace installation; the app's own credentials are configuration (`slack.*`, above) |
 | `slack_messages` | `(channel, run or thread key)` | `ts` and `last_state_version` |
-| `pull_request_comments` | `(integration, repository, pull request, deduplication key)` | Comment ID to edit |
+| `vcs_pr_comments` | `(integration, repository, pull request, deduplication key)` | Comment ID to edit; decision [0012](0012-vcs-integration-model.md) owns it |
 | `audit_ship_cursors` | `account` | The audit shipper's position |
 
 A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
@@ -433,7 +439,8 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
   A cursor over the table gives order and at-least-once delivery with one
   job per account.
 - **Audit recorded even when `audit-trail` is unavailable.** Recording
-  costs one insert, and an account that gains the feature later gets the history.
+  costs one insert, and an account whose organization gains the feature
+  later gets the history.
 - **Rejected: a message broker** (NATS, Kafka) for fan-out or streams. It
   adds a dependency that self-hosted Spacelift made optional in its v3
   reference architecture, where a built-in PostgreSQL queue replaces SQS
@@ -469,7 +476,9 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
 - **Stream resume is bounded** by `events.retention`; a client away longer
   refetches by polling.
 - **Worker usage samples.** The worker usage assessment reads the
-  per-minute worker samples that decision 0008 records.
+  per-minute `worker_pool_samples` that decision
+  [0008](0008-run-execution-and-worker-protocol.md#pool-samples) records,
+  through the workers domain's `api/` package, never the table.
 - **Captures may move choices.** C170 to C184 may change the choices marked
   as infraweave's above. Each change is an amendment to this record and a
   fixture under `test/acceptance/`.
@@ -519,7 +528,7 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
   past retention, a permission revoked mid-stream, the per-identity limit,
   and polling returning the same data.
 - `test/acceptance/features/events_audit.feature` (`@postgres`): entries
-  for mutations with sanitised secrets, search, retention, verification on
+  for mutations with sanitized secrets, search, retention, verification on
   `auditTrailSetWebhook`, and ordered shipping across a receiver that fails
   three times.
 - `test/acceptance/features/events_slack.feature` (`@postgres`) runs against a

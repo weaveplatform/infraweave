@@ -159,9 +159,11 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
 - **Limits applied in the claim.** Drift runs (tiers 6 and 7) are skipped when the
   pool's executing drift runs reach its drift detection run limit
   ([10 section 2.4](../reference/10-workers-and-execution.md#24-pool-settings-with-behaviour)).
-  On the public worker pool, an account's runs are skipped while it already
-  has as many runs executing as its `public-worker-slots` limit of
-  [0021](0021-capability-scope-and-supersession.md).
+  On the public worker pool, an account's runs are skipped while its
+  organization's accounts together have as many runs executing as the
+  organization's `public-worker-slots` limit, or the account alone has as
+  many as its account limit when one is set
+  ([0021](0021-capability-scope-and-supersession.md#limits)).
 - **Wake-ups.** A replica holding idle polls `LISTEN`s on `infraweave_runs`. On a
   notification for a pool it wakes one held poll for that pool, the one from the
   most recently registered worker, which approximates Spacelift's newest-first
@@ -251,6 +253,13 @@ provider); the runtime configuration and hooks; tool versions and the runner ima
 timeouts; environment variables and mounted files; the managed state backend's
 address and credentials ([0010](0010-state-backend.md)); and the in-run API token
 and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
+
+- **infraweave's own variables.** The variables infraweave sets in a run are
+  named `INFRAWEAVE_*`, and the Terraform metadata variables
+  `TF_VAR_infraweave_*`, where Spacelift's are `SPACELIFT_*` and
+  `TF_VAR_spacelift_*` (0001's rename table), with the same suffixes and
+  values. Configuration reads list them under the `ConfigElementCategory`
+  value `INFRAWEAVE_ENVIRONMENT`.
 
 - **Secrets are sealed to the pool.** The server opens the sealed values
   ([0013](0013-secrets-at-rest.md)) and seals the secret part of the
@@ -366,7 +375,7 @@ has failed":
   timeout (default 15 minutes) and drift detection run limit
   ([28 section 12.5](../reference/28-data-model.md#125-workers)).
 - **The public worker pool** is one pool the installation's operator runs for
-  every account, on the same protocol. Its launchers register with an
+  every organization's accounts, on the same protocol. Its launchers register with an
   installation-level pool token that the operator issues through the
   operator API ([0021](0021-capability-scope-and-supersession.md)). The restrictions Spacelift places on its public pool
   hold here too
@@ -378,13 +387,35 @@ has failed":
     because the shared Docker daemon would otherwise cache one account's
     private image for every other;
   - no scheduled or drift detection runs;
-  - an account's runs are skipped by the claim while the account already has
-    its `public-worker-slots` runs in flight.
+  - an account's runs are skipped by the claim while its organization has
+    its `public-worker-slots` runs in flight, or the account has its account
+    limit's.
 
-  The number of slots is a limit of the feature catalogue, so a tier or a
-  grant sets it per account ([0021](0021-capability-scope-and-supersession.md));
-  `PublicWorkerPool.parallelism` reports it. An installation without public
-  workers simply has none registered.
+  The number of slots is a limit of the feature catalogue, pooled across an
+  organization's accounts, so a tier or a grant sets it per organization and
+  an organization admin may give an account a lower account limit
+  ([0021](0021-capability-scope-and-supersession.md#limits));
+  `PublicWorkerPool.parallelism` reports the account's share: its account
+  limit when set, otherwise the organization's. An installation without
+  public workers simply has none registered.
+
+### Pool samples
+
+- **The job.** `worker.sample`, a periodic queue task of `scheduler`
+  ([0011](0011-persistent-work-queue.md)), runs every minute and writes one
+  row per pool to `worker_pool_samples(account_id, worker_pool_id,
+  sampled_at, busy_workers, registered_workers, queued_runs)`, primary key
+  `(account_id, worker_pool_id, sampled_at)`; `sampled_at` is the minute,
+  so a second run in the same minute is a no-op. The public pool has one
+  row per account that has runs on it, counting that account's busy
+  workers and queued runs, and its registered workers.
+- **Retention.** `worker.samples.retention`, default 35 days: a month of
+  daily assessments plus a margin. The same task deletes older rows.
+- **Readers.** Other domains read samples only through the workers
+  domain's `api/` package, `SamplesBetween(pool, from, to)`; the worker
+  usage assessment of [0015](0015-events-notifications-webhooks-audit.md)
+  and the usage read models are its readers. No other domain queries the
+  table.
 
 ### The launcher and the runner
 
@@ -581,7 +612,12 @@ offers this policy is available to it alone; 0009 lists built-ins.
   when an edge there is missing from the implementation.
 - `internal/run/claim_test.go` (PostgreSQL through testcontainers): seven-tier
   order with oldest first, one claim per run under 50 concurrent pollers, drift
-  limit, and the `public-worker-slots` limit per account.
+  limit, and the `public-worker-slots` limit pooled per organization with an
+  account limit below it.
+- `internal/workers` sample tests on a fake clock: one row per pool per
+  minute, a repeated minute writes nothing, rows older than
+  `worker.samples.retention` are deleted, and `SamplesBetween` returns the
+  window.
 - `internal/workerapi` tests: registration refused for a foreign chain, a reset
   serial, a replayed `jti` and a skewed `iat`; poll hold, wake-up and timeout;
   signals; session renewal; `409` on a stale report.

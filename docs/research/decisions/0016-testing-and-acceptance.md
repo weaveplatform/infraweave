@@ -312,6 +312,13 @@ coverage it would contribute is not waived.
   - **What it covers.** The whole contract, including the cases the
     emulators cannot decide: signed URL expiry and tampering on GCS, keyless
     signing through IAM `signBlob`, and user delegation SAS under Entra.
+  - **Two identities per cloud.** A writer identity with the permissions
+    [0020](0020-reference-deployments-and-packaging.md)'s least-privilege
+    table gives `serve` runs the `objectstore.Writer` cases, and a deleter
+    with `scheduler`'s runs the delete cases. A case that asserts the
+    writer's delete is refused by the cloud proves that `serve` needs no
+    delete permission ([0005](0005-persistence-postgresql.md#object-storage)),
+    including after a checksum mismatch.
   - **Failures.** A failing run opens an issue for that cloud, or comments on
     the open one, with the failing cases and the run's link. A passing run
     leaves an open issue for a person to close.
@@ -338,7 +345,7 @@ coverage it would contribute is not waived.
   state upload.
 - **Template databases.** A fresh database per scenario costs one
   `CREATE DATABASE … TEMPLATE`, far less than migrating each time, and
-  removes cross-scenario interference without serialising the suite.
+  removes cross-scenario interference without serializing the suite.
 - **`@op:` tags for states.** Report 26's states would otherwise be a
   claim; tying them to passing scenarios makes the state column a test
   result, and the three-scenario rule stops a happy-path test from

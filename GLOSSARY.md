@@ -7,15 +7,43 @@ infraweave is self-hosted infrastructure orchestration that offers Spacelift's c
 ### Tenancy
 
 **Installation**:
-One deployment of infraweave, run by an operator and hosting one or more accounts.
+One deployment of infraweave, run by an operator and hosting one or more organizations.
 _Avoid_: instance, cluster, environment
 
+**Root**:
+The installation's top node, which holds organizations and nothing else.
+_Avoid_: root space, global space
+
+**Organization**:
+A customer's agreement with an installation: one tier, pooled limits and one set of members, covering one or more accounts.
+_Avoid_: group, enterprise, tenant
+
 **Account**:
-A tenant of an installation, with its own spaces, users, tier and data.
-_Avoid_: organization, org, workspace
+A separate business entity within an organization, with its own spaces, stacks and data, which no other account can see.
+_Avoid_: tenant, workspace, sub-organization
+
+**Top space**:
+The space at the head of an account's tree, addressed by the account's slug.
+_Avoid_: root space, root
+
+**Account admin**:
+A member who administers an account, holding the space-admin role on its top space.
+_Avoid_: root admin, owner
+
+**Account limit**:
+A limit an organization admin sets for one account below the organization's pooled limit.
+_Avoid_: cap, quota, sub-limit
+
+**Break-glass admin**:
+An organization's emergency sign-in, whose credential only the operator sets, used when no identity provider works.
+_Avoid_: root user, superuser
+
+**Member**:
+A person in an organization, signed in through the organization's identity providers and holding roles per account.
+_Avoid_: account user, login
 
 **Operator**:
-The person or team that runs an installation and manages its accounts.
+The person or team that runs an installation and manages its organizations.
 _Avoid_: admin, superuser
 
 ### Scope
@@ -49,15 +77,15 @@ A named set of features and limits. Tiers are data, not an ordered ladder.
 _Avoid_: edition, plan, SKU
 
 **Grant**:
-A feature or limit given to one account on top of its tier.
+A feature or limit given to one organization on top of its tier.
 _Avoid_: add-on, override
 
 **Entitlement**:
-What an account may use: its tier plus its grants, minus the features an operator has switched off.
+What an organization may use: its tier plus its grants, minus the features an operator has switched off.
 _Avoid_: licence, access
 
 **Billing**:
-The feature that turns entitlement enforcement on. While it is off, every account behaves as Enterprise.
+The feature that turns entitlement enforcement on. While it is off, every organization behaves as Enterprise.
 _Avoid_: licensing, paywall
 
 ### Structure and processes
@@ -89,7 +117,7 @@ A logical executor in a worker pool that runs one run at a time.
 _Avoid_: agent, runner, launcher
 
 **Public worker pool**:
-The worker pool an operator runs for every account of an installation.
+The worker pool an operator runs for every organization of an installation.
 _Avoid_: shared pool, managed pool
 
 **Offline worker**:

@@ -11,7 +11,7 @@ own credentials, webhook authentication and API, behind one integration
 envelope with a default per provider and any number of space-level
 integrations ([11 sections 1 and 2](../reference/11-vcs-integrations.md#1-providers),
 [2.3](../reference/11-vcs-integrations.md#23-default-and-space-level-integrations)).
-Events are normalised into the push policy's input, fanned out to every stack
+Events are normalized into the push policy's input, fanned out to every stack
 on the repository, deduplicated and capped
 ([11 section 11](../reference/11-vcs-integrations.md#11-webhook-events-and-what-they-trigger)).
 Results go back as commit checks, pull request comments and deployments
@@ -54,7 +54,7 @@ not provider names.
 | `Deployments` | `Report(stack, run, state)` | GitHub, GitLab |
 | `Tester` | `Test()` returning `CONNECTION`, `PERMISSIONS`, `WEBHOOK`, `GITHUB_APP_EVENTS` checks | all but raw Git |
 
-- **Normalised events.** `Parse` turns a delivery into zero or more
+- **Normalized events.** `Parse` turns a delivery into zero or more
   `vcs.Event` values: `push`, `tag`, `pull_request` (with the `action` values
   of the push policy input), `comment`, `check_action` (GitHub's **Preview**
   and **Deploy**), `repository_renamed`. Each carries the repository
@@ -87,7 +87,7 @@ not provider names.
   is [0013](0013-secrets-at-rest.md)'s.
 - **One default per provider.** A partial unique index
   `(account_id, provider) where is_default` enforces it, and a `CHECK` ties a
-  default to the root space. `isDefault` and `name` are fixed after creation.
+  default to the account's top space ([0007](0007-authorization-spaces-and-roles.md#spaces)). `isDefault` and `name` are fixed after creation.
 - **Resolution at use time.** A stack or module with no
   `vcs_integration_id` uses its provider's current default whenever an event
   arrives or a run starts; the default is never copied onto the stack.
@@ -111,8 +111,9 @@ not provider names.
   ([11 section 4.2](../reference/11-vcs-integrations.md#42-operations)).
 - **Out of this record.** Which other providers are served is decision
   0021's. It builds `BLOB` and `ORIGIN` as schema-only interfaces (P3);
-  `SPACELIFT` repos are documented, so its scope rule serves them; it does
-  not name `SHOWCASE`. Each served provider implements `Source` and needs no
+  the `INFRAWEAVE` provider, whose files sit in the database and which
+  Spacelift calls `SPACELIFT` (0001's rename table), is documented, so its
+  scope rule serves it; it does not name `SHOWCASE`. Each served provider implements `Source` and needs no
   other change here.
 
 ### Webhook intake: stored before acknowledgement
@@ -293,7 +294,7 @@ the launcher's mapping of pool names to endpoints is 0008's.
   open across the fan-out
   ([27 section 4.3](../reference/27-reference-materials.md#43-borrow)).
 - **Ordering per repository.** The supersede rule and the stack's tracked
-  commit depend on push order; an ordering key gives that without serialising
+  commit depend on push order; an ordering key gives that without serializing
   unrelated repositories.
 - **A previous-secret window.** Regenerating a secret otherwise drops events
   until the user updates the provider side; accepting the previous secret for

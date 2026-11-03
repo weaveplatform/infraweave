@@ -64,8 +64,8 @@ unchanged and are repeated here only so the served API has one complete list.
 | `unauthenticated` | 401 | `unauthorized: authentication required` | No credential, or one that is malformed, expired, revoked or for another audience. Sent with `WWW-Authenticate: Bearer` |
 | `forbidden` | 403 | `unauthorized: permission denied` | The caller can read the resource but lacks the action it asked for |
 | `feature-disabled` | 403 | `feature disabled` | The operator switched off, with `features.disabled`, the feature that gates the operation or the value it sets (decision 0021); the body carries the feature as `feature` |
-| `feature-not-in-tier` | 403 | `feature not in tier` | Billing is on and the account's entitlement lacks the feature that gates the operation or the value it sets (decision 0021); the body carries `feature`, and `tiers`, the names of the tiers that include it |
-| `limit-reached` | 403 | `limit reached` | Billing is on and the request would take the account above one of its limits, such as seats or private workers (decision 0021); the body carries `limit` and the account's limit as `value` |
+| `feature-not-in-tier` | 403 | `feature not in tier` | Billing is on and the entitlement of the caller's organization lacks the feature that gates the operation or the value it sets (decision 0021); the body carries `feature`, and `tiers`, the names of the tiers that include it |
+| `limit-reached` | 403 | `limit reached` | Billing is on and the request would take the organization above a pooled limit, or the account above its account limit, such as seats or private workers (decision 0021); the body carries `limit`, `scope` (`organization` or `account`, whichever was reached) and that scope's limit as `value` |
 | `installation-unsupported` | 403 | `installation unsupported` | The operation needs a service that only Spacelift operates, such as its billing or usage reporting (decision 0021) |
 | `not-found` | 404 | `not found` | The route's resource, or one of its parents, does not exist or is not readable by the caller |
 | `method-not-allowed` | 405 | `method not allowed` | The path exists without this method; sent with `Allow` |
@@ -77,7 +77,7 @@ unchanged and are repeated here only so the served API has one complete list.
 | `precondition-failed` | 412 | `precondition failed` | `If-Match` names an entity tag that is no longer current |
 | `payload-too-large` | 413 | `payload too large` | The body exceeds `api.max_body_bytes` (default 1 MiB) |
 | `unsupported-media-type` | 415 | `unsupported media type` | A body that is not `application/json`, or a `PATCH` that is not `application/merge-patch+json` |
-| `validation-failed` | 422 | `validation failed` | The request parses against the schema, but a domain rule rejects it: a branch that does not exist, a cron expression outside the grammar below, a space the caller may not place the resource in, a cloud role whose trust test fails |
+| `validation-failed` | 422 | `validation failed` | The request parses against the schema, but a domain rule rejects it: a branch that does not exist, a cron expression outside the grammar below, a space the caller may not place the resource in, a cloud role whose trust test fails, a module share naming an account of another organization (decision 0014), an account limit above the organization's pool (decision 0021) |
 | `webhook-verification-failed` | 422 | `webhook verification failed` | Setting an enabled audit trail webhook whose verification delivery is not answered with a 2xx (decision 0015) |
 | `idempotency-key-reuse` | 422 | (0003) | 0003 |
 | `rate-limited` | 429 | (0003) | 0003 |

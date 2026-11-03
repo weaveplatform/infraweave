@@ -37,13 +37,36 @@ list the rows that can move.
   catalogue, `internal/features/catalogue.yaml`: a capability, an option or a
   limit. Five tiers (Free, Starter, Starter+, Business and Enterprise) are
   seeded from report 26, and the operator can add its own. Billing is off
-  by default, so every account behaves as Enterprise: `tier` answers the
+  by default, so every organization behaves as Enterprise: `tier` answers the
   Enterprise tier object, `tierFeatures` lists every feature not in
   `features.disabled`, and no limit applies. With billing on, a feature
-  outside the account's entitlement answers `403 feature-not-in-tier` and a
-  limit answers `403 limit-reached`
+  outside the organization's entitlement answers `403 feature-not-in-tier`,
+  and a limit, pooled across the organization's accounts, answers
+  `403 limit-reached`
   ([0021](../research/decisions/0021-capability-scope-and-supersession.md),
   [0022](../research/decisions/0022-api-errors-and-update-semantics.md), P3b).
+- **Root, organization, account, spaces.** `root` is the installation's
+  top node: only operators act on it, and it holds nothing but
+  organizations. An organization is a customer's agreement: its tier and
+  grants, limits pooled across its accounts, its members and its identity
+  providers. An account is a separate business entity and the data
+  boundary: its spaces, stacks, runs, state and secrets are invisible to
+  every other account, and its top space is addressed by its immutable
+  slug. Nothing inherits from root or from the organization. Members
+  authenticate at the organization and are authorized per account by the
+  account's `LOGIN` policies. Organization admins manage accounts, members
+  and limits through the served `Organization` tag, outside the parity
+  surface; the operator API keeps the installation-level actions
+  ([0006](../research/decisions/0006-authentication-and-tokens.md),
+  [0007](../research/decisions/0007-authorization-spaces-and-roles.md),
+  [0021](../research/decisions/0021-capability-scope-and-supersession.md),
+  P3, P3b, P4, P13b, P23).
+- **infraweave's own names.** No served operationId, schema, property, enum
+  value, header, environment variable or policy input key contains
+  "spacelift". Decision 0001's rename table maps each reference name that
+  does to its infraweave name, such as `spaceliftAwsAccountId` to
+  `installationAwsAccountId`, and "root admin" becomes "account admin";
+  `TestUnitServedNames` checks every served bundle against both from P1c.
 - **REST, not GraphQL.** The served API is REST over JSON described by
   OpenAPI 3 ([0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0003](../research/decisions/0003-api-conventions.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md)). The Spacelift reference
   `api/reference/spacelift/spacelift.openapi.yaml` is the parity oracle; the
@@ -90,7 +113,6 @@ and invents no answer.
 | Item | State | What the plan does meanwhile |
 |---|---|---|
 | Where the provider's checks run | Decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md) places the provider's source in `weaveplatform/terraform-provider-infraweave`; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines `provider-parity` and `TestAccProvider` against a live `infraweave all` and lists the job in this repository's CI | P24 builds the provider in its own repository over `pkg/sdk`, and keeps `api/reference/provider-parity.yaml` and the `test/terraform/` configurations in this repository, which builds the provider at a pinned commit |
-| The OAuth authorization server behind `/mcp` and `/flows/mcp` | Decisions [0019](../research/decisions/0019-ai-provider-boundary.md) and [0018](../research/decisions/0018-flows-runtime.md) place dynamic client registration and the authorization code flow on decision 0006's authorization server; decision [0006](../research/decisions/0006-authentication-and-tokens.md) defines token issuance but no authorization or registration endpoint | P25 serves the MCP transport, the protected-resource metadata and the `mcp:read` and `mcp:write` scopes, and accepts API tokens from `POST /auth/token`; the authorization endpoints land with the record that defines them |
 | Report 26 cells that decisions supersede | Report 26 section 7.8 keeps the MQTT worker transport in scope for self-hosted; decisions [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) (P6) and [0021](../research/decisions/0021-capability-scope-and-supersession.md) (S3) supersede it. Section 7.7's open question on the legacy AWS mutations and the provisional phase column of section 1.4 are in the same position | The plan follows the decisions: P8 serves HTTP long-poll only, the [supersession register](capability-roadmap.md#supersession-register) lists MQTT, and the [feature catalogue](capability-roadmap.md) is the phase assignment. P28 task 3 amends report 26 |
 
 ## Build status
@@ -109,7 +131,7 @@ and lint is clean.
 | P2b Object storage and secrets at rest | Not started | |
 | P2c Work queue, cron, outbox and the event model | Not started | |
 | P3 Identity and tokens | Not started | |
-| P3b Users, groups, account settings and the feature catalogue | Not started | |
+| P3b Organizations, members, account settings and the feature catalogue | Not started | |
 | P4 Spaces and authorization | Not started | |
 | P4b Roles and role bindings | Not started | |
 | P5 Stacks | Not started | **M2** |
@@ -139,7 +161,7 @@ and lint is clean.
 | P21 Blueprints, templates and external integrations | Not started | |
 | P22 Resources, search and console support | Not started | |
 | P22b Scans | Not started | **M7** |
-| P23 SSO, SCIM and MFA | Not started | |
+| P23 Organization identity providers, SCIM and MFA | Not started | |
 | P24 infraweave Terraform provider | Not started | |
 | P24b infraweavectl | Not started | **M8** |
 | P24c Console | Not started | **M9** |
@@ -153,13 +175,13 @@ and lint is clean.
 | Milestone | Reached after | Demonstrable outcome |
 |---|---|---|
 | M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog and every step drives it through `pkg/sdk`; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces the domain layout |
-| M2 Authorized API on PostgreSQL | P5 | An API key exchanges for a token; spaces and roles decide every route; a feature in `features.disabled` answers `403 feature-disabled`; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
+| M2 Authorized API on PostgreSQL | P5 | An operator creates an organization with its first account, and an organization admin adds a second account whose data the first cannot see; an API key exchanges for a token that works in its own account only; spaces and roles decide every route; a feature in `features.disabled` answers `403 feature-disabled`; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
 | M3 First run | P9 | `runs_terraform.feature` and `runs_tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into the object store, masks a secret in its log and reaches `FINISHED` |
 | M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against Gitea: a push opens a proposed run, a plan policy warns, the check and the pull request comment appear, and an approval policy holds a tracked run until a review |
 | M5 Deploy core | P14, P15, P16, P17b and P18b | Public worker pool and Kubernetes workers, cloud credentials through OIDC, schedules, drift detection, stack dependencies, the module and provider registries, notifications, webhooks, Slack, the event streams, the audit trail and the per-account metrics all pass their features |
 | M6 Flows | P18d | A flow's Deploy trigger block reacts to a real run and a Trigger Run block starts another; a Go app built on `pkg/flows/appsdk` runs on a Flows agent; every expression in the flow is CEL |
 | M7 Ecosystem | P19b, P21 and P22b | Every VCS provider, VCS agent pools, every vendor of report 20, blueprints and templates, the resources view, generic search, the console-support operations and scans pass their features |
-| M8 Identity and clients | P24b | SAML and OIDC SSO, SCIM and MFA work; infraweave's provider passes schema parity and apply, empty plan, import, empty plan and destroy for every resource that is not superseded, Flows resources included; `infraweavectl` covers report 06 section 8 and its `flows` group covers `flowctl` |
+| M8 Identity and clients | P24b | SAML and OIDC identity providers at the organization, SCIM, MFA and identity linking work, and each account's login policies decide who enters it; infraweave's provider passes schema parity and apply, empty plan, import, empty plan and destroy for every resource that is not superseded, Flows resources included; `infraweavectl` covers report 06 section 8 and its `flows` group covers `flowctl` |
 | M9 Console | P24c | The console, embedded in `infraweave`, passes every Playwright journey against a real `infraweave all` with no CSP, other-origin or accessibility violation |
 | M10 Intelligence | P25b | AI integrations, Infra Assistant, the hosted `/mcp` server and Intent work against recorded providers |
 | M11 Release | P27 | Signed binaries, images, the Helm charts, the Compose file and the Terraform modules install infraweave; an upgrade from the previous release runs both versions against one database |
@@ -176,7 +198,7 @@ flowchart LR
   P2 --> P2c[P2c Queue, outbox and events]
   P2c --> P2b[P2b Objects and secrets]
   P2b --> P3[P3 Identity]
-  P3 --> P3b[P3b Users and features]
+  P3 --> P3b[P3b Organizations and features]
   P3 --> P4[P4 Spaces and authz]
   P4 --> P5[P5 Stacks]
   P5 --> P4b[P4b Roles and bindings]
@@ -214,7 +236,7 @@ flowchart LR
   P20b --> P22[P22 Resources and search]
   P22 --> P22b[P22b Scans]
   P14 --> P22b
-  P13b --> P23[P23 SSO and SCIM]
+  P13b --> P23[P23 Identity providers and SCIM]
   P23 --> P24[P24 Provider]
   P21 --> P24
   P22b --> P24
@@ -229,6 +251,7 @@ flowchart LR
   P18d --> P24c
   P25b --> P24c
   P15 --> P25[P25 AI and MCP]
+  P3b --> P25
   P25 --> P25b[P25b Intent]
   P14 --> P25b
   P24c --> P27[P27 Packaging]
@@ -254,7 +277,8 @@ the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter.
   `blob.expire` on the queue and `secrets rotate` enqueues `secrets.reseal`.
   P2c also fixes the event envelope that P18 and the Flows engine share.
 - P3b runs beside P4. P4b follows P5, because stack role bindings bind a
-  stack.
+  stack. P3b's authorization server is ready long before `/flows/mcp`
+  (P18c, through P4b) and `/mcp` (P25) use it.
 - P6 and P7 run side by side once P5 lands; P8 needs both, because the run
   handover carries the resolved environment.
 - P15 (cloud and OIDC) starts once P9 lands, and Intelligence (P25 → P25b)
@@ -290,7 +314,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | The object store emulators, the `fips-only` job and the scheduled cloud job land in P2b | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) runs `objectstoretest` on RustFS, fake-gcs-server, Azurite and `fs` in every pull request and against the real services nightly, and runs the tests under `fips140=only`; each lands with the drivers and the crypto it checks ([0013](../research/decisions/0013-secrets-at-rest.md)) |
 | Process logging, request IDs and the admin listener's health endpoints move from P18 to P2 | Every process mode reports `/readyz` against PostgreSQL from its first connection ([0017](../research/decisions/0017-observability-and-health.md), [0004](../research/decisions/0004-repository-architecture.md)); P18b keeps metrics, the per-account series and run tracing |
 | P3 and P4 split into P3, P3b, P4 and P4b | Size: about 110 identity operations and 47 spaces and roles operations |
-| The feature catalogue, tiers, billing and the operator API land in P3b | Every operation of every served document carries `x-infraweave-feature` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)), so the gate exists before the first domain beyond identity, and `seats` counts the users and keys P3b creates |
+| The organization level, the feature catalogue, tiers, billing, the operator API and the OAuth authorization server land in P3b | Every operation of every served document carries `x-infraweave-feature` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)), so the gate exists before the first domain beyond identity; entitlement and pooled limits belong to the organization, and `seats` counts the members and keys P3b creates across its accounts. The authorization server ([0006](../research/decisions/0006-authentication-and-tokens.md)) needs only P3's sessions and P3b's redirect allowlist, and it stays off the critical path there |
 | Expressions land in P6 | Environment interpolation is the first surface of decision [0024](../research/decisions/0024-expression-language.md); `internal/platform/expr` and its endpoints exist before workflow files (P10), notification text (P18), templates (P21) and Flows (P18c) need them |
 | Private pools move from P14 to P8; the public worker pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public worker pool is an optional operator-run pool on the same protocol |
 | P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces |
@@ -472,12 +496,22 @@ passing success, denial and failure scenarios.
    computes report 26's state per tag and per Terraform row from
    `cover/accept/cucumber.json` and the `@op:<operationId>` tags; `--check`
    fails when report 26 claims more. `make verify-parity`. The P1 baseline
-   file becomes the computed `missing` list.
+   file becomes the computed `missing` list. A reference name that decision
+   0001's rename table renames is matched to its served name, so a renamed
+   operation counts as served with divergence, never as missing. The
+   operations of the `Organization` tag are infraweave-only, outside the
+   parity surface.
 4. `api/deploy_test.go`: `TestUnitFeaturePartitions` (every scenario tag
    maps to one CI partition), `TestUnitServedDeprecations`,
    `TestUnitSupersededEnums` and `TestUnitDeployProblemTypes`; the problem
    slug registry in `internal/platform/httpkit/problem` gains every slug of
-   decision 0022 (`TestUnitProblemRegistry`).
+   decision 0022 (`TestUnitProblemRegistry`). `TestUnitServedNames`, the
+   rename-table test, fails when an operationId, schema, property, enum
+   value, header, environment variable or policy input key of any served
+   bundle contains "spacelift" in any case, and when a row of decision
+   0001's rename table is served under its reference name rather than its
+   infraweave name. Each later bundle (worker, flows, registry, operator)
+   joins the test in the phase that adds it. Records DV-114.
 5. CI: split the acceptance job into `accept-core`, `accept-runs` and
    `accept-integrations`, add `parity` and a scheduled `nightly`, and list
    every required job, `generated` included, in the `Quality gate` job's
@@ -502,6 +536,8 @@ passing success, denial and failure scenarios.
   removed operation fails it.
 - No acceptance step calls `pkg/client` directly; `pkg/sdk` meets the
   per-package coverage bar.
+- `TestUnitServedNames` passes on `api/deploy.openapi.yaml`, and a fixture
+  bundle with a property named `spaceliftAwsAccountId` fails it.
 - `make gate` passes at 95% in total and 90% per package; CI fails a run in
   which any scenario was skipped.
 
@@ -517,13 +553,23 @@ needs from its first database connection.
 
 **Tasks**
 1. `internal/platform/sql`: `pgxpool` from `database.url`, the optional
-   `database.read_url`, statement and idle timeouts, RDS IAM auth through
-   `BeforeConnect`; `internal/platform/tx` with `InTx`, retries on `40001`
-   and `40P01`, and the lock order. `internal/platform/sql/notify`: one
-   `LISTEN` connection per replica with reconnect. Tests:
-   `internal/platform/sql/sqltest` gives each case a database from the
-   `iw_template` template; `TestAccTxRetry`, `TestAccNotifyReconnect`.
-2. `internal/platform/sql/migrate`: embedded streams of
+   `database.read_url`, statement and idle timeouts; `internal/platform/tx`
+   with `InTx`, retries on `40001` and `40P01`, and the lock order.
+   `internal/platform/sql/notify`: one `LISTEN` connection per replica with
+   reconnect. Tests: `internal/platform/sql/sqltest` gives each case a
+   database from the `iw_template` template; `TestAccTxRetry`,
+   `TestAccNotifyReconnect`.
+2. `database.iam_auth`
+   ([0005](../research/decisions/0005-persistence-postgresql.md)): `aws`
+   signs an RDS IAM token, `azure` takes an azidentity token for scope
+   `https://ossrdbms-aad.database.windows.net/.default`, and `gcp` takes an
+   Application Default Credentials token with the `sqlservice.login`
+   scope. Each fetches a token for every new connection in pgx's
+   `BeforeConnect` and uses it as the password; there is no Cloud SQL
+   connector, and a URL without TLS fails startup. Tests:
+   `TestUnitIAMAuth` with a fake credential source per provider, a token
+   refreshed between two connections, and the TLS refusal.
+3. `internal/platform/sql/migrate`: embedded streams of
    `NNNNN_snake_case.sql`, `schema_migrations` and `schema_state`, the
    advisory lock, `-- infraweave:no-transaction` and
    `-- infraweave:compatible-from`, refusal on checksum mismatch, a too-old
@@ -531,14 +577,14 @@ needs from its first database connection.
    `infraweave migrate status`; `database.migrate: auto | check`. Tests:
    `TestUnitMigrationNames`, `TestAccMigrateConcurrent` (two replicas apply
    once), `TestAccMigrateRefusals`.
-3. Move decision 0003's stores to PostgreSQL in
+4. Move decision 0003's stores to PostgreSQL in
    `internal/platform/httpkit/middleware`: `idempotency_keys` (body sealed
    from P2b; plaintext behind the store interface until then),
    `rate_limit_buckets` (`UNLOGGED`, one upsert per request) and
    `api_disabled_callers` with cache invalidation on `infraweave_invalidate`.
    Tests: `api_conventions.feature` against two `serve` replicas sharing a
    key and a bucket.
-4. `internal/platform/observe`: `log/slog` JSON with the standard fields,
+5. `internal/platform/observe`: `log/slog` JSON with the standard fields,
    `X-Request-Id` validation and echo, the redacting handler, the access log;
    the admin listener `server.admin_listen` (`:9090`) with `/livez`,
    `/readyz` and `/startupz`; graceful shutdown order. `infraweave scheduler`
@@ -550,7 +596,7 @@ needs from its first database connection.
 6. CI: `postgres-next` runs `storetest`, `queuetest` once P2c lands and
    `accept-core` on the next PostgreSQL major, its beta or release
    candidate, without blocking ([0016](../research/decisions/0016-testing-and-acceptance.md)).
-5. Problem bodies carry `instance` as `urn:infraweave:request:<id>`
+7. Problem bodies carry `instance` as `urn:infraweave:request:<id>`
    ([0022](../research/decisions/0022-api-errors-and-update-semantics.md)); `service-unavailable` answers when the database is
    unreachable.
 
@@ -671,14 +717,22 @@ Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [000
 **Depends on:** P2b, P2c.
 
 Every API request carries a principal: API keys exchange for tokens, sessions
-can be listed and revoked, and the break-glass admin can log in before any SSO
-exists. The `access` domain is created.
+can be listed and revoked, and each organization's break-glass admin, whose
+credential only the operator sets, can log in before any identity provider
+exists. The `access` domain is created with the tenancy model: root, the
+organizations it holds, their accounts and their members.
 
 **Tasks**
 1. `internal/access` skeleton (`api/`, `assembly/`, `internal/core`,
-   `internal/adapters/{http,pg}`) with its migration stream: `accounts`,
-   `users`, `api_keys`, `sessions`, `signing_keys`. `internal/kernel`
-   `account.go` and `principal.go`.
+   `internal/adapters/{http,pg}`) with its migration stream:
+   `organizations` (an immutable slug and a display name), `accounts` (its
+   organization, an immutable slug and a display name), `members` and
+   `member_identities` (one row per identity provider identity of a
+   member), `api_keys` (each belonging to one account), `sessions` and
+   `signing_keys`. `root` has no row: it is the installation's top node,
+   which only operator principals reach. `internal/kernel`
+   `organization.go`, `account.go` and `principal.go`, whose principal names
+   its organization, its account and, for a person, its member.
 2. `internal/access/internal/core/token`: JWT signing with go-jose, the
    `api-token` ES256 key, `next`, `active`, `retiring` and `retired`
    states and the daily `authn.keys.rotate` task; `local` and `kms`
@@ -690,17 +744,23 @@ exists. The `access` domain is created.
    with the allowlist. `pkg/sdk` gains the exchange and exchanges again
    before `validUntil`. Operations: `apiKeys`, `apiKeyCreate`, `apiKey`,
    `apiKeyUpdate`, `apiKeyDelete`, `apiKeyReset`,
-   `apiKeyEnableNonRootManagers`, `apiKeyUser`. `ApiKeyInput` has no
+   `apiKeyEnableNonAdminManagers` (the reference's
+   `apiKeyEnableNonRootManagers`, at `/account/api-key-non-admin-managers`),
+   `apiKeyUser`. An API key belongs to one account, and its token works
+   there only. `ApiKeyInput` has no
    `admin` field: a body that sets it answers `400 invalid-request`
    ([0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the key's `admin` reads whether it holds a
-   `space-admin` binding on `root`, which reads `false` until P4b serves
-   API key bindings. Feature: `auth_api_keys.feature` (`@postgres`,
+   `space-admin` binding on the account's top space, which reads `false`
+   until P4b serves API key bindings. Feature: `auth_api_keys.feature` (`@postgres`,
    `@oidc`). Records DV-013 and DV-014.
 4. `internal/access/internal/core/session` and the chi
    `authn.Middleware`: session rows, the `__Host-infraweave_session` cookie
    with the `Origin` rule, the 60-second cache cleared by
    `infraweave_invalidate`, forced revocation, `authn.sessions.expire`;
-   break-glass login at `/admin-login`; CLI loopback tokens. Operations:
+   break-glass login at `/admin-login`, an organization-admin session with no account and no seat that reaches only the `Organization` and `SSO` tags, its credential in `organization_break_glass` set through the operator API; CLI loopback tokens. A session or
+   token works in one account at a time: entering another account of the
+   member's organization issues a session bound to that account, which
+   P13b's login policies admit or refuse. Operations:
    `sessions`, `sessionDelete`, `sessionDeleteAll`, `logout`,
    `cliConfirmationToken`, `viewer`. Feature: `auth_sessions.feature`.
 5. Account reads: `id`, `name`, `type` and the vendor-bound
@@ -717,24 +777,33 @@ exists. The `access` domain is created.
   scenarios need P4's authorizer, so P4's exit holds them to decision 0016's
   evidence rule.
 - A revoked session stops working on a second replica within a second.
+- A key or session of one account reads nothing of another account, in the
+  same organization or in another.
 - Captures C22 and C119 replay through `TestAccCaptures` once recorded;
   until then the scenarios assert decision 0006's choices.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P3b: Users, groups, account settings and the feature catalogue
+## P3b: Organizations, members, account settings and the feature catalogue
 
-Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md).
+Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0019](../research/decisions/0019-ai-provider-boundary.md).
 
 **Depends on:** P3.
 
-Managed users, groups, personal keys and the account-wide settings that have
-no other owner, plus decision 0021's feature catalogue, seeded tiers,
-billing switch and operator API, and its answers for the commercial
-operations.
+The organization level and its served `Organization` tag; members,
+managed users, groups, personal keys and the account-wide settings that
+have no other owner; decision 0021's feature catalogue, with entitlement
+and pooled limits per organization, the seeded tiers, the billing switch,
+the operator API and the answers for the commercial operations; and
+decision 0006's OAuth authorization server, which `/flows/mcp` and `/mcp`
+use.
 
 **Tasks**
-1. Managed users and groups in `internal/access/internal/core/{user,group}`:
-   `managedUsers`, `managedUser`, `managedUserInviteV2`,
+1. Members, managed users and groups in
+   `internal/access/internal/core/{member,user,group}`. A managed user is a
+   member of the organization as one account sees it: inviting adds the
+   person to the organization if it is not yet a member and admits it to
+   the account, and a role in one account grants nothing in another.
+   Operations: `managedUsers`, `managedUser`, `managedUserInviteV2`,
    `managedUserUpdate`, `managedUserDelete`, `managedUserResendInvite`,
    `managedUserRequestInvite`, `managedUserRequestRoleChange`,
    `managedUserPersonalApiKeys`, `managedUserGroups`,
@@ -750,7 +819,8 @@ operations.
    `accountSetPersonalApiKeysEnabled`,
    `accountRequestPersonalApiKeysEnabling`, `apiKeysManageableByNonHumans`,
    `accountToggleAPIKeyManagementFromNonHumans`,
-   `apiKeysManagedByNonRootAdmins`, `securityEmail`,
+   `apiKeysManagedByNonAdmins` (the reference's
+   `apiKeysManagedByNonRootAdmins`), `securityEmail`,
    `accountUpdateSecurityEmail`, `oauthRedirectAllowedHosts`,
    `accountSetOAuthRedirectAllowlist`, `awarenessSourceSurvey`,
    `accountUpdateAwarenessSourceSurvey`, `markedForDeletion`,
@@ -763,24 +833,48 @@ operations.
    installed once; `x-infraweave-feature` on every operation of every
    served document and on each gated schema property. The chi middleware
    after authentication answers `403 feature-disabled` and, with billing
-   on, `403 feature-not-in-tier`; input validation checks options; the
-   `seats` limit answers `403 limit-reached` on a user or key beyond it.
-   Entitlement snapshots rebuild on `accounts.entitlement_version` through
-   `infraweave_invalidate`; the dequeue check completes a job of a feature
-   outside the entitlement as skipped, counted in
-   `infraweave.features.skipped`. Strict `features.disabled`. Tests:
-   `TestUnitFeatureCatalogue`, `TestUnitEntitlement`,
+   on, `403 feature-not-in-tier`; input validation checks options.
+   Entitlement belongs to the organization: its tier plus its grants,
+   which every account inherits, with snapshots rebuilt on
+   `organization_entitlements.entitlement_version` through `infraweave_invalidate`; the
+   dequeue check completes a job of a feature outside the entitlement as
+   skipped, counted in `infraweave.features.skipped`. Limits are pooled: a
+   limit counts its thing across every account of the organization, an
+   organization admin may set an account limit below the pool for any
+   account, and creating the thing beyond either answers
+   `403 limit-reached`, whose `scope` member names the organization or the
+   account. `seats` counts a member once however many accounts
+   admit it, and API keys as Spacelift counts them. Strict
+   `features.disabled`. Tests: `TestUnitFeatureCatalogue`,
+   `TestUnitEntitlement`, `TestUnitPooledLimits`,
    `TestUnitFeaturesConfig`. Records DV-018 and DV-101.
-5. The operator API: `api/src/operator/` bundled to
-   `api/operator.openapi.yaml`, outside the parity surface, for accounts,
-   tiers, the billing switch, account tiers, grants and the queue's dead
-   jobs; operator principals from `auth.operator.keys`, exchanged at
-   `POST /auth/token` for a token no other route accepts ([0006](../research/decisions/0006-authentication-and-tokens.md)).
+5. The `Organization` tag in `api/src/deploy/paths-organization.yaml`:
+   infraweave-only operations, outside the parity surface, gated by the
+   `organization` capability and reached by organization admins (members
+   that hold an organization role) and organization keys. They cover the
+   organization's display name (its slug is immutable), its accounts
+   (create with an immutable slug, list, remove), its members and their
+   organization roles, account limits, and usage of every pooled limit
+   across its accounts. No operation of the tag reads an account's stacks,
+   runs, state or secrets. Organization keys exchange at `POST /auth/token`
+   for a token that only the `Organization` tag accepts, and an account
+   credential answers `401` there. Features:
+   `organization_accounts.feature`, `organization_limits.feature`. Records
+   DV-109.
+6. The operator API: `api/src/operator/` bundled to
+   `api/operator.openapi.yaml`, outside the parity surface, for the
+   installation-level actions only: organizations, tiers, the billing
+   switch, organization tiers, grants and the queue's dead jobs. Creating
+   an organization creates its first account, whose slug may be the
+   organization's; the account starts unclaimed until an organization admin
+   claims it (`accounts.claimed_at`, a second claim answers `409`, decision
+   [0007](../research/decisions/0007-authorization-spaces-and-roles.md)). Operator principals from `auth.operator.keys` exchange
+   at `POST /auth/token` for a token no other route accepts ([0006](../research/decisions/0006-authentication-and-tokens.md)).
    `cmd/infraweavectl` starts over `pkg/sdk` with `profile`, `whoami`,
-   `version`, `api` and the `operator` group (`tier`, `account`, `grant`,
-   `billing`). Features: `platform_tiers.feature`,
+   `version`, `api` and the `operator` group (`tier`, `organization`,
+   `grant`, `billing`). Features: `platform_tiers.feature`,
    `queue_dead_letters.feature`.
-6. Billing reads per decision 0021's vendor-bound table: `tier` as a tier
+7. Billing reads per decision 0021's vendor-bound table: `tier` as a tier
    object, `tierFeatures` as the entitlement in infraweave feature names,
    `seats`, `billedExternally`, `billingSubscription`, `onTrialUntil`,
    `availableBillingAddons`, `availableSelfServicePlans`, and the five
@@ -788,22 +882,43 @@ operations.
    `evaluateFeatureFlags` answers an empty set. Features
    `platform_features.feature`, `platform_billing.feature`. Records DV-079
    and DV-080.
+8. The OAuth authorization server of decision 0006 in
+   `internal/access/internal/core/oauth`, for MCP clients of `/mcp` and
+   `/flows/mcp`: RFC 8414 metadata, RFC 7591 dynamic client registration,
+   and the authorization and token endpoints; PKCE with `S256` only; the
+   consent step as an API operation that the console's consent page calls
+   on the console session (the page lands in P24c); access tokens of about
+   an hour with rotating refresh tokens; the `mcp:read` and `mcp:write`
+   scopes, which never reach beyond the member's own permissions; redirect
+   URIs limited to loopback and the hosts of `oauthRedirectAllowedHosts`,
+   which account admins maintain. Tests: `TestUnitPKCE`,
+   `TestUnitRefreshRotation`, `TestUnitRedirectURIs`. Feature:
+   `auth_oauth_server.feature`. Records DV-113.
 
 **Exit criteria**
-- The operations of tasks 1 to 6 are served and pass their success and
+- The operations of tasks 1 to 8 are served and pass their success and
   failure scenarios. P4b's exit holds them to decision 0016's evidence rule
   once the authorizer and bindings exist: Managed Users less its role-binding
   reads (P4b) and group integrations (P18), Personal API Keys, Billing less
-  `usage` (P18b), and Feature Flags.
+  `usage` (P18b), Feature Flags and the `Organization` tag.
+- An operator creates an organization with its first account; an
+  organization admin creates a second account, sees the usage of both and
+  reads no stack, run, state or secret of either; a member of one account
+  sees nothing of the other.
 - With billing off, `tier` answers the Enterprise tier object and
   `tierFeatures` every feature; `ai-integrations` in `features.disabled`
   answers `403 feature-disabled` on a gated route only; an unknown name,
   `billing` or a Spacelift spelling such as `SCANS` fails startup.
-- With billing on, a seat beyond the `seats` limit answers
-  `403 limit-reached`, a tier change applies without a restart, and an
-  account credential on the operator API answers `401`. Each later phase
-  adds the `feature-not-in-tier` scenario of the capabilities it serves to
+- With billing on, a member admitted to two accounts takes one seat of the
+  organization's `seats`; a seat beyond the pool, or beyond an account
+  limit while the pool has room, answers `403 limit-reached`; a tier change
+  applies without a restart; and an account credential on the operator API
+  or the `Organization` tag answers `401`. Each later phase adds the
+  `feature-not-in-tier` scenario of the capabilities it serves to
   `platform_tiers.feature`.
+- An MCP client registers, completes the authorization code flow with PKCE
+  `S256` and refreshes once; `plain` PKCE, a reused refresh token and a
+  redirect URI outside loopback and the allowlist are refused.
 - Captures C118, C123, C124 and C125 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -817,13 +932,19 @@ Spaces and the evaluator decide every route from here on: deny by default,
 `404` for what the caller cannot read, `403` for what it can read but not do.
 
 **Tasks**
-1. `internal/access/internal/core/space`: `spaces`, the closure table, the
-   seeded `root` and `legacy` spaces, slug rules, moves refused when a stack
-   would lose a reachable entity. Operations: `spaces`, `space`,
+1. `internal/access/internal/core/space`: `spaces`, the closure table,
+   each account's top space, seeded with the account and addressed by its
+   immutable slug, and the `legacy` space beneath it; slug rules; moves
+   refused when a stack would lose a reachable entity. Nothing sits above an
+   account's top space, so no grant reaches from one account into another,
+   and no served space is named `root`. The account admin is `space-admin`
+   on the account's top space. Operations: `spaces`, `space`,
    `spaceCreate`, `spaceUpdate`, `spaceDelete`, `searchSpaces`,
-   `searchSpacesSuggestions`, `allowNonRootAdminSpaceCreation`,
-   `accountToggleAllowNonRootAdminSpaceCreation`. Feature:
-   `authz_spaces.feature`.
+   `searchSpacesSuggestions`, `allowNonAdminSpaceCreation` and
+   `accountToggleAllowNonAdminSpaceCreation` (the reference's
+   `allowNonRootAdminSpaceCreation` and
+   `accountToggleAllowNonRootAdminSpaceCreation`). Feature:
+   `authz_spaces.feature`. Records DV-111.
 2. The action catalogue: `specref` generates
    `internal/access/api/actions_gen.go` from the 150-value `Action` enum and
    `internal/access/api/actions.yaml` gives each its subject, fallback and
@@ -851,6 +972,8 @@ Spaces and the evaluator decide every route from here on: deny by default,
   `partial`.
 - A route without a route-table entry answers `403`; a hidden space and a
   missing one both answer `404 not found` (`api_errors.feature`).
+- A `space-admin` binding on one account's top space grants nothing in
+  another account of the same organization.
 - Captures C115, C126 and C127 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -874,7 +997,8 @@ caller can do something.
    `managedUserUserRoleBindings`, `managedUserGroupUserRoleBindings`,
    `stackRoleBindings`. Legacy `SpaceAccessRule` inputs stored as bindings
    with `origin = access_rule`. An API key's `admin` reads whether it holds
-   `space-admin` on `root` (DV-013). Feature: `authz_bindings.feature`.
+   `space-admin` on the account's top space (DV-013). Feature:
+   `authz_bindings.feature`.
 3. Grant views with the explaining evaluator: `usersWithAccessToSpace`,
    `userGroupsWithAccessToSpace`, `apiKeysWithAccessToSpace`,
    `apiKeySessionsWithAccessToSpace`, `userSessionsWithAccessToSpace`,
@@ -1046,8 +1170,9 @@ container runs a stub runner until P9.
    `worker_nonces`, `worker_pool_ca`: pool creation from a CSR for a P-256
    key signed by the installation pool CA, the pool token, reset by
    certificate serial; the `private-worker-pools` capability and the
-   `private-workers` limit, which a worker reconnecting under its
-   registration does not count against. Records DV-093.
+   `private-workers` limit, pooled across the organization's accounts,
+   which a worker reconnecting under its registration does not count
+   against. Records DV-093.
    Operations: `workerPools`, `workerPool`, `workerPoolCreate`,
    `workerPoolUpdate`, `workerPoolDelete`, `workerPoolReset`,
    `workerPoolCycle`, `workerDrainSet`, `searchWorkerPools`,
@@ -1079,6 +1204,14 @@ container runs a stub runner until P9.
    worker stays offline past `run.lost_after` (60 minutes) as a lost run
    with the note `worker lost`; drain, cycle and reset as decision 0008's
    table. Records DV-025 and DV-092.
+6. `worker.sample`, a periodic task in the `scheduler` process mode that
+   runs every minute and writes each pool's busy workers, registered
+   workers and queued runs to `worker_pool_samples`, kept for
+   `worker.samples.retention` (35 days). `workers/api` serves the samples,
+   which P18's `worker_usage` events and P18b's usage read
+   ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
+   [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)). Tests: `TestUnitWorkerPoolSample` in virtual time,
+   and a retention case.
 
 **Exit criteria**
 - `worker_protocol.feature` (`@postgres`, `@objectstore`): a launcher
@@ -1087,6 +1220,7 @@ container runs a stub runner until P9.
   `OFFLINE` and, in virtual time past `run.lost_after`, its run is lost
   with the note `worker lost`.
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
+- Two instances write one `worker_pool_samples` row per pool per minute.
 - Captures C58, C59, C60, C61, C62, C63 and C64 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1334,7 +1468,8 @@ state points, with receipts committed in the transition they justify.
    `stackPolicyAttachment`. `ACCESS` and the superseded aliases are absent
    from `PolicyType`. Records DV-028 to DV-031.
 3. `internal/policies/internal/{inputs,combine}`: per-type input structs
-   matching report 09 section 4, `GET /.well-known/policy-contract.json`,
+   matching report 09 section 4, with the reference's `spacelift.*` input
+   keys named `infraweave.*`, `GET /.well-known/policy-contract.json`,
    combination rules. Tests: `TestUnitPolicyContract`,
    `TestUnitCombination`. `POST /api/v1/policies/check` compiles a body
    with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
@@ -1364,11 +1499,15 @@ The policy types outside the run workflow, the `LOGIN_POLICIES` scheme, and
 the tooling around evaluation: samples, captures, simulation and templates.
 
 **Tasks**
-1. Login policies through `access/internal/core/login`: evaluation at
-   session creation and API key exchange, `session_grants`, `deny_message`
+1. Login policies through `access/internal/core/login`: authorization per
+   account, after the organization has authenticated the member. The
+   account's `LOGIN` policies, evaluated on its top space, admit or refuse
+   the member and compute its roles when it enters the account, at session
+   creation and API key exchange; `session_grants`, `deny_message`
    aggregation, revocation on change; `authorizationScheme` and
-   `accountUpdateAuthorizationScheme`. Feature: `policy_login.feature`,
-   `authz_login_policy.feature`.
+   `accountUpdateAuthorizationScheme`. The accounts that admit a member are
+   the entries of its account switcher, which is empty when none does.
+   Feature: `policy_login.feature`, `authz_login_policy.feature`.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
    `Deprecation` headers. Feature: `platform_deprecation.feature`.
 3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
@@ -1385,6 +1524,9 @@ the tooling around evaluation: samples, captures, simulation and templates.
 **Exit criteria**
 - The Policies tag (less its Intent attachments) meets decision 0016's
   evidence rule.
+- A member whom one account's login policy admits and another's refuses
+  enters only the first; a member no account admits gets a session that
+  lists no account.
 - Captures C47, C48, C52, C53 and C54 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1400,8 +1542,9 @@ protocol, and the worker-side initialization policy that signed runs rest on.
 **Tasks**
 1. Public worker pool in `internal/workers`, on when
    `publicWorkerPool.enabled` is set: an installation-level pool token from
-   the operator API, the per-account `public-worker-slots` limit applied in
-   the claim so a run beyond it waits, the image registry allowlist, no
+   the operator API, the `public-worker-slots` limit, pooled across the
+   organization's accounts and applied in the claim so a run beyond it
+   waits, the image registry allowlist, no
    priorities and no scheduled or drift runs. Records DV-078. Operations:
    `publicWorkerPool`, `workerUsage`, `defaultPublicWorkerPoolRunnerImage`,
    `outgoingIPAddresses`, `workerPoolSearchSchedulableRuns`,
@@ -1419,8 +1562,9 @@ protocol, and the worker-side initialization policy that signed runs rest on.
 
 **Exit criteria**
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
-- With billing on, an account at its `public-worker-slots` waits on the
-  public worker pool while another account's run proceeds.
+- With billing on, a run of an organization at its `public-worker-slots`
+  waits on the public worker pool, in whichever of its accounts it starts,
+  while another organization's run proceeds.
 - Captures C21, C66, C67, C68 and C69 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1451,7 +1595,8 @@ run and the discovery document cloud providers verify it against.
    `awsIntegrationAttachmentUpdate`, `awsIntegrationAttachedStack`,
    `awsIntegrationExternalIdForStack`, `awsIntegrationsEnabled`,
    `attachableAwsIntegrationsInSpace`, `stackAttachableAwsIntegrations`,
-   `spaceliftAwsAccountId`; the legacy
+   `installationAwsAccountId` (the reference's `spaceliftAwsAccountId`);
+   the legacy
    `stackIntegrationAwsCreate` and `stackIntegrationAwsDelete` served and
    deprecated. STS fake in `awsfake`.
 3. Azure and GCP: `azureIntegrations`, `azureIntegration`,
@@ -1549,6 +1694,12 @@ Terraform module registry protocol and `terraform login`.
    `modulePolicyAttachment`, `moduleAttachableAwsIntegrations`,
    `moduleAttachableAzureIntegrations`.
 2. Sharing: `moduleShare`, `sharedModulesV2`, reads through shared spaces.
+   A share is the one exception to account isolation, and only between
+   accounts of the same organization: a share naming an account of another
+   organization answers `422 validation-failed`. It exposes the module's
+   fields and version downloads only, needs `module-sharing` in both
+   accounts' entitlement, and its revocation hides the module while runs in
+   flight finish. Records DV-112.
 3. Protocol in `internal/registry/internal/adapters/protocol`:
    `/.well-known/terraform.json`, `/registry/modules/v1/...` versions and
    download with signed `X-Terraform-Get`, lenient version segments, the
@@ -1564,6 +1715,9 @@ Terraform module registry protocol and `terraform login`.
 **Exit criteria**
 - Modules meets decision 0016's evidence rule; `terraform init` and
   `tofu init` resolve a module through an API key token.
+- A module shared with another account of the organization resolves there,
+  a share to an account of another organization answers
+  `422 validation-failed`, and a revoked share stops new downloads.
 - Captures C129 to C134 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1616,7 +1770,8 @@ the Flows engine (P18c) adds its own consumer of the same fan-out.
 1. `internal/events` (hexagon): `events.fanout` and `events.deliver` with
    `event_deliveries` keyed by event, sink, target and rule; notification
    policy selection by space; the `run_updated`, `module_version`,
-   `internal_error` and `worker_usage` kinds. Tests:
+   `internal_error` and `worker_usage` kinds, the last computed from P8's
+   `worker_pool_samples` through `workers/api`. Tests:
    `TestUnitPolicySelection`, `TestUnitGroupingKey`,
    `TestUnitNotificationInputConformsToContract`.
 2. HTTP delivery: signatures, secret headers, rule headers, timeouts, no
@@ -1689,9 +1844,12 @@ own records, and the metrics and traces operators run infraweave with.
    `auditTrailRetentionDays`. Test: `TestUnitAuditActionsCoverMutations`.
    Feature: `events_audit.feature` (ordered shipping across a receiver that
    fails three times).
-2. Usage: `usage` and the usage CSV from a trailing 30-day window of run and
-   worker records; `runMinutesUsage`; the `worker_usage` event at 60% of
-   the configured limit. Records DV-059.
+2. Usage: `usage` and the usage CSV from a trailing 30-day window of run
+   records and P8's `worker_pool_samples`; `runMinutesUsage`; the
+   `worker_usage` event at 60% of the configured limit. The `Organization`
+   tag's usage gains the same figures per account, so organization admins
+   see run and worker usage across accounts without any account's data.
+   Records DV-059.
 3. Metrics in `internal/platform/observe`: the OpenTelemetry metric API,
    `/metrics` on the admin listener, infraweave's own instruments, and
    `/metrics/accounts` with the exporter's series under the `infraweave_`
@@ -1717,15 +1875,17 @@ Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0015](../resear
 
 **Depends on:** P18, P4b, P10.
 
-Flows, built on Deploy's events: organizations, projects, flows, blocks,
-events, invocations and timers on the work queue, with Deploy events
-reaching trigger blocks through the fan-out of P18 and every expression in
-CEL.
+Flows, built on Deploy's events and belonging to the account: projects,
+flows, blocks, events, invocations and timers on the work queue, with
+Deploy events reaching trigger blocks through the fan-out of P18 and every
+expression in CEL.
 
 **Tasks**
 1. `internal/flows` (hexagon) with the `flows` PostgreSQL schema and its
-   own migration stream, UUIDv7 identifiers, one organization per account
-   created with it, `flows_memberships`, a personal sandbox per user on
+   own migration stream, UUIDv7 identifiers; Flows belongs to the account,
+   which takes the place of Spacelift Flows' organization, so projects,
+   apps and agent pools are the account's; `flows_memberships`, a personal
+   sandbox per member on
    first request, sealed `flows_secrets`, named expressions, data tables
    and KV with locks; event bodies above 256 KiB in object storage under
    `flows/events/`. Records DV-065.
@@ -1734,8 +1894,9 @@ CEL.
    which `pkg/sdk` wraps; the Flows API operations from report 23 and
    `api/reference/flows-clients.yaml`, each carrying the feature
    (`flows-engine`, `flows-data-tables`, `flows-forms` or
-   `flows-mcp-tools`) that gates it; the four project roles and the
-   organization admin enforced in the handlers. Test:
+   `flows-mcp-tools`) that gates it; the four project roles, and the
+   account admin in place of Spacelift Flows' organization admin, enforced
+   in the handlers. Test:
    `TestUnitFlowsClientParity`. Records DV-069.
 3. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
    `flows.lifecycle` and `flows.invocation.status` jobs, effects committed
@@ -1755,7 +1916,8 @@ CEL.
 5. Core blocks in Go in the `scheduler` process mode, with Transform's
    steps form and no Script block; HTTP Endpoint blocks, forms at
    `/flows/forms/<block>`, and the flow and platform Flows MCP servers at
-   `/flows/mcp/<flow>` and `/flows/mcp` (DV-066). Deploy-side reads:
+   `/flows/mcp/<flow>` and `/flows/mcp` (DV-066), authorized by P3b's
+   OAuth authorization server. Deploy-side reads:
    `flowsIntegration`, `flowsProjects`, `flowsInstances`,
    `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
    `flowsProjectRoleBindingDelete`.
@@ -1771,7 +1933,7 @@ CEL.
 - `flows-engine` in `features.disabled` answers `403 feature-disabled` on
   every Flows route and pauses the flows' schedules and timers without
   deleting them.
-- Captures C228, C230, C238, C240 and C241 replay once recorded.
+- Captures C228, C230, C240 and C241 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P18d: Flows apps, agents and Deploy blocks
@@ -1866,7 +2028,7 @@ Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0021](.
 **Depends on:** P19.
 
 VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
-`BLOB`, `ORIGIN` and `SPACELIFT` source providers.
+`BLOB`, `ORIGIN` and `INFRAWEAVE` source providers.
 
 **Tasks**
 1. `internal/vcs/internal/adapters/agentgateway`: `vcs_agent_pools`,
@@ -1885,8 +2047,8 @@ VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
    `ORIGIN` provider from `vcs.origin`: `originIntegration`,
    `originIntegrationUpdate`, `originIntegrationDelete`,
    `originIntegrationInstallURL`.
-4. The Repos tag, the reference's `SPACELIFT` source provider, stored in
-   object storage:
+4. The Repos tag, the `INFRAWEAVE` source provider (the reference's
+   `SPACELIFT`), stored in object storage:
    `repos`, `repo`, `repoCreate`, `repoUpdate`, `repoDelete`, `repoCommit`,
    `repoCommitCreate`, `repoCommits`, `searchRepoCommits`,
    `searchRepoCommitsSuggestions`, `repoFileHistory`, `searchRepoFiles`,
@@ -2034,9 +2196,10 @@ capability gates.
    `stackSearchManagedEntitiesGroupByStacks`,
    `stackSearchManagedEntitiesGroupByTypes`, `runSearchEntityChanges`,
    `runSearchEntityChangesSuggestions`, `runResourceCreate`.
-2. `metrics` and `metricsRange` (Spaces tag) for the console's overview. Every Search
-   Suggestions operation lands with the search it completes, in that
-   search's phase.
+2. `metrics` and `metricsRange` (Spaces tag) for the console's overview,
+   answering `AccountMetrics` (the reference's `SpaceliftMetrics`). Every
+   Search Suggestions operation lands with the search it completes, in
+   that search's phase.
 3. Saved filters and UI state: `savedFilters`, `savedFilter`,
    `savedFilterCreate`, `savedFilterUpdate`, `savedFilterDelete`,
    `uiConfigGet`, `uiConfigStore`.
@@ -2078,41 +2241,60 @@ entities.
 - Captures C194 and C195 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P23: SSO, SCIM and MFA
+## P23: Organization identity providers, SCIM and MFA
 
 Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0013](../research/decisions/0013-secrets-at-rest.md).
 
 **Depends on:** P13b, P3b.
 
-Human login through an identity provider, provisioning through SCIM, and
-enforced multi-factor authentication with security keys.
+Authentication at the organization: its identity providers, provisioning
+through SCIM, enforced multi-factor authentication with security keys and
+the session lifetime, with explicit linking of one person's identities.
+Each account still authorizes for itself (P13b).
 
 **Tasks**
 1. `internal/access/internal/adapters/{oidc,saml}` and
    `internal/access/internal/core/sso`: OIDC SSO with PKCE, SP-initiated
-   SAML, the GitHub OAuth front end, `sso_settings` with sealed secrets.
-   Operations: `oidcSettings`, `oidcCreate`, `oidcUpdate`, `oidcDelete`,
-   `oidcSubjectTemplate`, `samlSettings`, `samlCreate`, `samlUpdate`,
-   `samlDelete`, `hasSSO`, `identityFederationUnlink`, `oauthRedirect`,
-   `oauthToken`, `oauthUser`. Feature: `auth_sso.feature` (`@oidc`, and a
-   SAML IdP served by the test).
-2. IdP groups at login map onto P3b's managed user groups, which
-   `infraweave_idp_group_mapping` manages.
-3. `internal/access/internal/core/scim`: SCIM v2 users and groups with
-   filters, `PATCH` and reconciliation; `scimSettings`,
+   SAML, the GitHub OAuth front end. Identity providers belong to the
+   organization, which may hold more than one, in `identity_providers`
+   with sealed secrets; the `Organization` tag manages every provider, and
+   the SSO tag's operations configure the organization's providers, so
+   they need an organization role. Operations: `oidcSettings`,
+   `oidcCreate`, `oidcUpdate`, `oidcDelete`, `oidcSubjectTemplate`,
+   `samlSettings`, `samlCreate`, `samlUpdate`, `samlDelete`, `hasSSO`,
+   `identityFederationUnlink`, `oauthRedirect`, `oauthToken`, `oauthUser`.
+   Feature: `auth_sso.feature` (`@oidc`, and a SAML IdP served by the
+   test). Records DV-110.
+2. IdP groups at login map onto each account's managed user groups (P3b),
+   which `infraweave_idp_group_mapping` manages, when the member enters
+   that account.
+3. Identity linking in the `Organization` tag: two identities from two
+   identity providers are two members, and two seats, until an
+   organization admin links them. Linking is explicit, needs one sign-in
+   through each provider, and merges them into one member ID; nothing is
+   linked by e-mail address. Feature:
+   `organization_identity_linking.feature`. Records DV-110.
+4. `internal/access/internal/core/scim`: SCIM v2 users and groups, which
+   provision the organization's members, with filters, `PATCH` and
+   reconciliation; `scimSettings`,
    `createOauthClientForSCIM`, `resetOauthClientForSCIM`,
    `deleteOauthClientForSCIM`; deactivation revokes sessions and personal
    keys. Feature: `auth_scim.feature`.
-4. `internal/access/internal/core/mfa`: WebAuthn registration and login,
+5. `internal/access/internal/core/mfa`: WebAuthn registration and login,
    `enforceMFA`, `accountToggleEnforcingMFA`, `securityKeys`,
-   `securityKeyDelete`, `userSecurityKeyDeleteAll`. Feature:
-   `auth_mfa.feature`.
+   `securityKeyDelete`, `userSecurityKeyDeleteAll`. MFA enforcement and the
+   session lifetime are the organization's and apply in every one of its
+   accounts. Feature: `auth_mfa.feature`.
 
 **Exit criteria**
 - SSO, and the Auth and Sessions and Security Keys operations above, meet
   decision 0016's evidence rule.
 - Provision, group assignment, login and deactivation change effective
-  access, and deactivation ends every session of the user.
+  access, and deactivation ends every session of the member in every
+  account.
+- One sign-in through an organization identity provider reaches every
+  account whose login policies admit the member, and none other; two
+  unlinked identities hold two seats, and linked ones hold one.
 - Captures C14, C118, C119, C120 and C121 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -2197,7 +2379,7 @@ browser login.
 
 ## P24c: Console
 
-Decisions: [0023](../research/decisions/0023-console.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0019](../research/decisions/0019-ai-provider-boundary.md), [0024](../research/decisions/0024-expression-language.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+Decisions: [0023](../research/decisions/0023-console.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0019](../research/decisions/0019-ai-provider-boundary.md), [0024](../research/decisions/0024-expression-language.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P24b, P18d, P25b.
 
@@ -2222,8 +2404,11 @@ of its own.
    console was not built. Tests: Go unit tests for each.
 3. Surfaces: every operation family the inventory lists, with controls
    shown, hidden or disabled from `allowedActions` alone and refusals shown
-   from their problem response; live run logs and run state over the
-   streams of P18, with polling when a stream closes; the Flows canvas and
+   from their problem response; the account switcher, which lists the
+   accounts that admit the member and shows the organization level only
+   once a second account exists or in organization settings; the OAuth
+   consent page of P3b's authorization server; live run logs and run state
+   over the streams of P18, with polling when a stream closes; the Flows canvas and
    app widgets; Rego, CEL and text template editors backed by the
    expression and policy check endpoints; the Infra Assistant panel with
    page context, navigation and confirmation of destructive calls; English
@@ -2237,7 +2422,8 @@ of its own.
 
 **Exit criteria**
 - Every area has a success, a `403` denial and a failure journey, including
-  login through the `@oidc` issuer, live run logs, a policy edited with
+  login through the `@oidc` issuer, a switch between two accounts, an MCP
+  client's consent, live run logs, a policy edited with
   server diagnostics, a flow edited on the canvas and an assistant
   confirmation.
 - No journey records a CSP violation, a request to another origin or an
@@ -2251,7 +2437,7 @@ of its own.
 
 Decisions: [0019](../research/decisions/0019-ai-provider-boundary.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
 
-**Depends on:** P15.
+**Depends on:** P15, P3b.
 
 Bring-your-own-model AI integrations, an optional installation default with a
 budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
@@ -2265,27 +2451,28 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    `TestUnitAIProviderConformance`, `TestUnitAIRedaction`,
    `TestUnitAIBudget`. The installation default reports
    `isInstallationProvided`, and its spend counts against the `ai-budget`
-   limit (USD per 30 days), answering `403 limit-reached` beyond it.
+   limit (USD per 30 days), pooled across the organization's accounts,
+   answering `403 limit-reached` beyond it.
    Feature: `ai_integrations.feature` (`@ai`). Records DV-071.
-2. Account controls: `spaceliftIntelligenceEnabled`,
-   `accountSetSpaceliftIntelligenceEnabled`,
-   `spaceliftIntelligenceTermsAccepted`,
-   `spaceliftIntelligenceTermsLatestVersion`, `infraAssistantEnabled`,
+2. Account controls: `aiEnabled`, `accountSetAiEnabled`,
+   `aiTermsAccepted` and `aiTermsLatestVersion` (the reference's
+   `spaceliftIntelligence*` names), `infraAssistantEnabled`,
    `accountSetInfraAssistantEnabled`, `infraAssistantBuildModeEnabled`,
    `accountSetInfraAssistantBuildModeEnabled`,
    `accountRequestInfraAssistantEnabling`.
 3. Infra Assistant over one tool layer, streamed over SSE, with
    confirmation of destructive calls; run summaries with masked logs.
    Feature: `ai_assistant.feature`. Records DV-072, DV-073.
-4. The hosted `/mcp` server with its protected-resource metadata,
-   `mcp:read` and `mcp:write`, and `tools` narrowing; the authorization
-   endpoints wait on the [open item](#open-items). Feature: `mcp_server.feature`
-   (`@oidc`). `infraweavectl mcp`, which proxies stdio to it, lands in P24b.
+4. The hosted `/mcp` server with its protected-resource metadata naming
+   P3b's OAuth authorization server, `mcp:read` and `mcp:write` narrowed by
+   the member's permissions, and `tools` narrowing. Feature:
+   `mcp_server.feature` (`@oidc`, an MCP client that registers and
+   authorizes through the code flow). `infraweavectl mcp`, which proxies stdio to it, lands in P24b.
 
 **Exit criteria**
 - AI Integrations and the AI settings of Account Settings meet decision
   0016's evidence rule.
-- Captures C212, C213, C215, C216, C217, C225 and C226 replay once recorded.
+- Captures C212, C213, C215, C216, C217 and C225 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P25b: Intent
@@ -2357,7 +2544,9 @@ rules that make infraweave installable and upgradable.
    and its sums and bundles, from the server image. Records DV-077.
 3. `deploy/helm/infraweave` and `deploy/helm/infraweave-workers`,
    `deploy/compose/compose.yaml`, `deploy/terraform/modules/<cloud>` for AWS,
-   GCP and Azure with examples, and `deploy/check.sh` in the gate.
+   GCP and Azure with examples, each setting `database.iam_auth` to its
+   cloud's value (`aws`, `gcp`, `azure`) over TLS, and `deploy/check.sh` in
+   the gate.
    Features: `deploy_compose.feature`, `deploy_helm.feature`
    (`@kubernetes`). Records DV-075.
 4. Upgrades and recovery: the `upgrade_floor` per stream, mixed-version

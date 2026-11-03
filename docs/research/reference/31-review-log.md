@@ -1,6 +1,6 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; the DES-07 cross-read of decisions 0001 to 0024 and the implementation documents, 2026-11-03; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; the DES-07 cross-read of decisions 0001 to 0024 and the implementation documents, 2026-11-03; the DES-09 pass over decisions 0001 to 0024, report 30 and the served deploy bundle, 2026-11-03; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
@@ -9,8 +9,8 @@ and the proposed decision records found and what each finding changed, so
 that a reader can tell which statements in reports 01 and 03 to 28, in
 decisions 0004 to 0022, in the architecture options and in the
 implementation documents are corrections rather than first drafts. It
-covers eleven passes, one per ticket from RES-02 to RES-08, ARC-01,
-IMP-01, DES-05 and DES-07, and keeps every
+covers twelve passes, one per ticket from RES-02 to RES-08, ARC-01,
+IMP-01, DES-05, DES-07 and DES-09, and keeps every
 finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
@@ -93,6 +93,12 @@ the implementation documents against the records, after the plan was
 reordered around them. A contradiction between records is *wrong* in the
 record that departs from the owning one, and is fixed there.
 
+DES-09 applied the maintainer's answers on tenancy and names to decisions
+0001 to 0024, then read them against each other for what the answers
+changed. A second reader, who made none of the changes, cross-read the
+records, and each contradiction it found is fixed in the record that does
+not own the fact or listed as left open. The counting rule is DES-07's.
+
 ## Totals
 
 | Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
@@ -108,7 +114,8 @@ record that departs from the owning one, and is fixed there.
 | IMP-01 | the [implementation documents](../../implementation/plan.md) and option 5 | about 400, plus every operationId, roadmap row and DV row by script | 28 | 3 | 9 | 0 | 2 | 42 |
 | DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script | 1 | 0 | 6 | 0 | 0 | 7 |
 | DES-07 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the [implementation documents](../../implementation/plan.md) | about 250, plus the phase graph, every roadmap row and every changed file's dashes by script | 34 | 0 | 17 | 0 | 4 | 55 |
-| **All** | 27 reports, 24 records, 5 options, 5 implementation documents | about 4,010 | **280** | **95** | **161** | **7** | **31** | **574** |
+| DES-09 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), [30](30-open-questions.md) and the served deploy bundle | about 300, plus every served name and every reference Spacelift and root identifier by script | 22 | 0 | 8 | 0 | 2 | 32 |
+| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,310 | **302** | **95** | **169** | **7** | **33** | **606** |
 
 The counts are of the findings tables' rows. Two reviews give summary
 counts that differ from their own rows. In RES-02, the 05 summary gives 15
@@ -1369,8 +1376,92 @@ file for em and en dashes. The copy check found no docs prose.
   the remaining cross-record questions (the authorization server, worker
   usage samples, database IAM authentication outside AWS, the owner of
   object deletion, registry sharing across accounts, the Flows
-  "organization" name) are left for the maintainer, and none changes the
-  order of the phases.
+  "organization" name) wait on the maintainer, and none changes the order
+  of the phases. DES-09 records their answers.
+
+## DES-09: tenancy, names and the cross-record questions
+
+### Claims checked
+
+About 300 claims by hand: decisions 0001 to 0024 read against the
+maintainer's answers to the DES-09 questions and against each other, for
+the tenancy levels (root, organization, account, space), the place of the
+tier, grants, limits, members, identity providers and keys, the account's
+top space, account admins, module shares and Flows' organization, and for
+infraweave names that said Spacelift or root. Every record that named an
+owner for one of the six cross-record questions DES-07 left open was read
+against the record that now decides it. A second reader, who had not made
+the changes, read the 24 records for contradictions in tenancy, shared
+names, Spacelift names and dashes. Scripts walked the served deploy bundle
+for every name a client reads or sends and the reference specification
+for every Spacelift and root identifier, which became the rows of 0001's
+rename table, and checked every changed file for em and en dashes and the
+spelling "organisation". `TestUnitServedNames` now holds the served bundle
+to the table. The copy check found no docs prose.
+
+### Findings by severity
+
+| Files | wrong | unsupported | missing | copied | style | Total |
+|---|---|---|---|---|---|---|
+| Decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), `api/deploy_test.go` and the served bundle | 22 | 0 | 7 | 0 | 2 | 31 |
+| [30](30-open-questions.md) | 0 | 0 | 1 | 0 | 0 | 1 |
+| **All** | **22** | **0** | **8** | **0** | **2** | **32** |
+
+### Findings
+
+| # | Finding | Change |
+|---|---|---|
+| 1 | *wrong*: the served bundle offered `VCSProvider.SPACELIFT` and `ConfigElementCategory.SPACELIFT_ENVIRONMENT`, 0012 named the `SPACELIFT` provider, and 0001's rule against Spacelift names had no list of renames and no test | `INFRAWEAVE` and `INFRAWEAVE_ENVIRONMENT`; 0001's rename table under its own heading; `TestUnitServedNames` reads it and fails a fixture serving `spaceliftAwsAccountId` |
+| 2 | *wrong*: 0009's input carried `spacelift.request.timestamp_ns`, and imported Spacelift policies, whose bodies say `package spacelift`, failed 0009's own package rule | The `infraweave` namespace; the importer rewrites the package, `input.spacelift` and `data.spacelift`, and the corpus test runs after the rewrite |
+| 3 | *wrong*: 0017 served `SpaceliftMetrics` and labelled series by account alone | `AccountMetrics`; `account` and `organization` labels; the pooled seat count read from the organization |
+| 4 | *wrong*: 0019 left the Intelligence toggles under their Spacelift names, trusted a built-in list of client hosts that 0006 does not, and listed the OAuth paths (C226) as unverified | `aiEnabled`, `aiTermsAccepted`, `aiTermsLatestVersion`, `accountSetAiEnabled`; loopback and `oauthRedirectAllowedHosts` only; C226 no longer a constraint |
+| 5 | *missing*: 0018 and 0019 relied on an authorization server whose domain and allowlist setting no record named | 0006's server in the `access` domain (0004), with the account setting `oauthRedirectAllowedHosts` |
+| 6 | *wrong*: 0006 let any member an account admits read the reference's SSO operations, which describe every account's sign-in | The organization admin role, reads included; 0007's subject row covers the `SSO` tag |
+| 7 | *missing*: 0006 had organization admins replace the break-glass credential and gave the break-glass login no defined reach | Operator-held per organization in `organization_break_glass`; an organization admin with no account role and no seat; set through the operator API |
+| 8 | *wrong*: 0007 had the operator name the organization's first member, which only an email match could resolve, and 0006 refuses email matching | No member is named; the break-glass admin configures the first provider, whose `adminLogin` is an organization admin, and the first account is claimed once (`accounts.claimed_at`) |
+| 9 | *missing*: organization-level changes had no audit trail: 0015's trail is per account | An organization trail listed through the `Organization` tag, shown to no account |
+| 10 | *wrong*: 0021 kept the tier, grants, limits and `entitlement_version` on the account | On the organization; limits pooled with `account_limits` below; an account limit above the pool answers 422; the organization API section and `organization` capability; `infraweavectl operator organization` |
+| 11 | *wrong*: 0022's `feature-not-in-tier` and `limit-reached` described the account's entitlement and limit | The organization's entitlement; `limit-reached` carries `scope`; `validation-failed` names cross-organization shares and account limits above the pool |
+| 12 | *wrong*: 0008, 0020 and 0021 ran the public pool for every account with `public-worker-slots` per account | For every organization, with the slots pooled and an optional account limit |
+| 13 | *wrong*: 0015 read per-minute worker samples that 0008 did not record | 0008's `worker.sample` task writing `worker_pool_samples`, kept by `worker.samples.retention`, read through the workers domain; 0011 lists the task |
+| 14 | *missing*: 0008 named neither infraweave's run variables nor their config element category | `INFRAWEAVE_*`, `TF_VAR_infraweave_*` and `INFRAWEAVE_ENVIRONMENT` |
+| 15 | *missing*: 0005's `database.iam_auth` knew only `aws`, though 0020's Azure and Google modules use Entra and IAM database authentication | `azure` and `gcp` in `BeforeConnect`, TLS required, no Cloud SQL connector |
+| 16 | *wrong*: 0005's `gcs` and `azureblob` drivers deleted the object on a checksum mismatch, while 0020 says `serve` does not delete | The object stays under its `pending` row for `blob.expire`; `serve` holds `objectstore.Writer`; 0016's cloud job proves the writer's delete is refused; 0020's least-privilege table |
+| 17 | *wrong*: 0014 shared modules with any account of the installation, let root space admins manage keys, used the account name as namespace and the account's tier | The same organization or 422; account admins; the account slug; the organization's tier; revocation and in-flight runs tested |
+| 18 | *wrong*: 0012 tied a default integration to the root space, and 0015 used the root space for internal errors and worker usage | The account's top space |
+| 19 | *wrong*: 0018 gave the Flows organization a ceiling, an `audience` value, an admin, an OTLP export and registry subscriptions of its own, and kept `organizationID` and `organizationName` | All the account's: `audience: account`, the account admin, `accountID` and `accountName` |
+| 20 | *wrong*: 0011 checked a job against the account's entitlement | The entitlement of the job's organization |
+| 21 | *missing*: 0023 had no account switcher, organization level or consent route, let `/oauth/` fall back to `index.html`, and left `/flows/forms/` under a prefix that never falls back | All added; `/consent/{request ID}`; `/oauth/` never falls back; `/flows/forms/` is the one console route under such a prefix |
+| 22 | *wrong*: 0004 put the organization's limits in `features`, which imports no domain, while 0007 put the tier in `access`'s `organizations` table and 0021 locked that table | `features` owns `organization_entitlements` and `account_limits` without foreign keys; 0005's lock order starts with the organization entitlement |
+| 23 | *wrong*: 0013's sealed registry named `sso_settings`, which 0006 does not have | `identity_providers.secret_sealed` |
+| 24 | *wrong*: 0015 named 0012's `vcs_pr_comments` `pull_request_comments`, and kept the Slack app's credentials per account although the app is the installation's | 0012's name; `slack_app_config` holds the account's workspace installation |
+| 25 | *missing*: 0018 stored large Flows bodies under `flows/events/`, a store 0005 does not define | 0005's `flows-events` store with the account segment |
+| 26 | *wrong*: 0007 called module shares the one exception to account isolation, while 0014 makes public modules and providers readable by anyone | Public visibility stated as revealing no account's own data |
+| 27 | *wrong*: 0019 accepted API tokens on `/mcp`, which 0006's audience rule refused | 0006 states the `/mcp` exception |
+| 28 | *wrong*: 0020 took a bootstrap credential of 0006 from a Secret; 0006 has none | The operator keys, `auth.operator.keys` |
+| 29 | *wrong*: 0021's billing text and tests, 0014's test and 0015's rationale put the tier on the account | The organization |
+| 30 | *style*: 0004 and 0005 said Flows maps its organization onto the account | A Flows organization is an infraweave account |
+| 31 | *style*: -ise spellings in 0004, 0006, 0010, 0012, 0013, 0015, 0016 and 0018, and "cap", which the glossary avoids, for account limits | Oxford -ize; account limit |
+| 32 | *missing*: report 30 still listed C119, C226 and C238 as blocking designs that 0006 and 0018 now decide | Their Blocks cells say what the capture is still for |
+
+### What survived
+
+- **The six DES-07 questions are answered:** the authorization server
+  (0006, in the `access` domain), worker usage samples (0008's
+  `worker.sample` and `worker_pool_samples`, read through the workers
+  domain), database IAM authentication outside AWS (0005's `azure` and
+  `gcp`), the owner of object deletion (`scheduler` alone, 0005 and 0020),
+  registry sharing across accounts (within one organization, 0007 and
+  0014), and the Flows "organization" name (the account, 0018 and 0001).
+- **Records:** the shared names not listed above agree across 0001 to 0024
+  after the fixes: problem slugs and their body members, job kinds and
+  periodic tasks, configuration keys, tables, feature names, routes and
+  path prefixes, and the domains of 0004.
+- **The served bundle:** after `SPACELIFT_ENVIRONMENT` and `SPACELIFT`
+  became `INFRAWEAVE_ENVIRONMENT` and `INFRAWEAVE`, no served name contains
+  spacelift or matches a reference name of the rename table.
+- **Settled after the pass:** the sampling task is `worker.sample` with `worker.samples.retention`, matching the singular prefix of `worker.offline_after` and `worker.reap` (`runs.` and `workers.` name tables, not keys); 0018 gives the default Flows agent pool the account isolation 0008 gives the public worker pool; the plan no longer counts C226 and C238 as blocking.
+- **Left open, as style rather than contradiction:** object keys written with and without the store prefix (0005 owns the form); deploy routes written with and without `/api/v1` (0003 owns it); and served descriptions copied from the reference that still say Spacelift, which the name test does not read and which each family's scaffold rewrites when the family is implemented.
 
 ## What survived across the set
 
@@ -1422,7 +1513,7 @@ file for em and en dashes. The copy check found no docs prose.
 ## Inferred and undocumented
 
 This log adds no claims about Spacelift. Its counts come from the findings
-tables of the eleven reviews; where a review's own summary differs from its
+tables of the twelve reviews; where a review's own summary differs from its
 rows, the rows are counted and the difference is stated under Totals.
 
 ## Versions at the research baseline
@@ -1448,4 +1539,5 @@ rows, the rows are counted and the difference is stated under Totals.
   reviews, decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08, and the [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md), as edited by ARC-01.
 - The [implementation plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [deviations register](../../implementation/deviations.md), [repository layout](../../implementation/repo-layout.md) and [definition of done](../../implementation/definition-of-done.md), as edited by IMP-01; GitHub issues #5, #8 to #15 and #21 to #31, read 2026-10-28.
 - <https://spacelift.io/pricing>, read 2026-10-28 as raw HTML for RES-07.
+- The DES-09 pass, 2026-11-03, of decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) against the maintainer's answers to the DES-09 questions, with `api/deploy.openapi.yaml` and the reference specification.
 - The open questions the reviews raised: [30](30-open-questions.md).

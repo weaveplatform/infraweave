@@ -131,7 +131,7 @@ infraweave/
 ├── api/                        unchanged layout; oapi-server-*.yaml outputs move to internal/platform/gen
 │   ├── src/deploy/             the served REST API fragments
 │   ├── src/worker/             (P8) the worker protocol fragments
-│   ├── src/operator/           (P3b) the operator API: tiers, account tiers, grants, billing, accounts
+│   ├── src/operator/           (P3b) the operator API: organizations, tiers, organization tiers, grants, billing
 │   ├── src/flows/              (Flows) the Flows REST API under /flows/v1/
 │   ├── proto/flows/app/v1/     (Flows) the `App` and `Host` gRPC services, package infraweave.flows.app.v1
 │   └── reference/spacelift/    unchanged
@@ -198,7 +198,7 @@ What changes at the root and why:
 | --- | --- | --- |
 | `platform`, `kernel`, `devtools`, `app` | partial: buildinfo, httpkit/problem, gen/deploy, devtools, the serve process mode | P1 to P2; seal and crypt P2; queue P7; expr and httpkit/sse P9; rego P13; observe P18 |
 | `features` | absent | P3b catalogue, tiers, grants, billing and the operator API |
-| `access` | absent | P3 identity and tokens, P4 spaces and RBAC, P23 SSO and SCIM |
+| `access` | absent | P3 identity, tokens and the tenancy model, P3b the `Organization` tag and the authorization server, P4 spaces and RBAC, P23 organization identity providers and SCIM |
 | `stacks` | routes only (69 Stacks operations answer 501) | P5; stack dependencies P16 |
 | `configuration` | absent | P6 |
 | `runs` | routes only (3 Runs operations answer 501) | P7 scheduler and queue gates, P9 first run, P10 completeness, P16 dependencies |
@@ -259,8 +259,10 @@ internal/
 │
 ├── kernel/                               value types shared by domain APIs; parsing only, no I/O
 │   ├── ids.go                            ULID, Slug, UUID (Flows)
-│   ├── account.go space.go               AccountID, SpaceID, the root space
-│   ├── principal.go                      Principal: user, API key, run, worker, stack, Flows project, operator
+│   ├── organization.go account.go        OrganizationID, AccountID; root is the installation's node, not a value
+│   ├── space.go                          SpaceID; the account's top space, addressed by the account's slug
+│   ├── principal.go                      Principal: member, API key, organization key, run, worker, stack,
+│   │                                     Flows project, operator; it names one organization and one account
 │   ├── feature.go                        Feature: catalogue names as a type (P3b)
 │   ├── actions.go                        AllowedActions: the list every returned resource carries
 │   ├── labels.go                         Labels, autoattach: matching
@@ -363,43 +365,51 @@ internal/
 │   │                                     mutual TLS and a NetworkPolicy, or a local process for development
 │   └── agenttest/                        fake server over the generated worker spec; fake Flows gateway
 │
-├── features/                             flat: the feature catalogue, tiers, account tiers, grants, billing (P3b)
-│   ├── api/                              Entitlement.For(account) → Has(feature), Limit(name); Limits.Check(ctx,
-│   │                                     account, limit, count); Gate(feature) for the queue and cron;
+├── features/                             flat: the feature catalogue, tiers, organization tiers, grants, pooled
+│   │                                     limits and account limits, billing (P3b)
+│   ├── api/                              Entitlement.For(organization) → Has(feature), Limit(name); Limits.Check(ctx,
+│   │                                     account, limit, count) against the pool and the account limit;
+│   │                                     Gate(feature) for the queue and cron;
 │   │                                     events: EntitlementChanged
 │   ├── assembly/                         Middleware() for app/router.go; operator API partial; Consumers()
 │   └── internal/
 │       ├── catalogue/                    catalogue.yaml embedded: capabilities, options, limits, requirements,
 │       │                                 seeded tiers; a test fails on an operation or gated field without one
 │       ├── features/                     entitlement: tier plus grants, minus features.disabled, minus unmet
-│       │                                 requirements; per-account snapshot rebuilt on infraweave_invalidate
+│       │                                 requirements; per-organization snapshot rebuilt on infraweave_invalidate
 │       ├── middleware/                   chi middleware after authentication: capability of the route, then
 │       │                                 feature-disabled or feature-not-in-tier
-│       ├── http/                         operator partial: tiers, account tiers, grants, billing
-│       └── pg/                           tiers, tier_features, tier_limits, account_grants, installation_billing
+│       ├── http/                         operator partial: tiers, organization tiers, grants, billing; the
+│       │                                 Organization tag's account limits and usage
+│       └── pg/                           tiers, tier_features, tier_limits, organization_grants, account_limits,
+│                                         installation_billing
 │
-├── access/                               accounts, users, groups, API keys, sessions, tokens, spaces, RBAC
+├── access/                               organizations, accounts, members, groups, API keys, sessions, tokens,
+│                                         the OAuth authorization server, spaces, RBAC
 │   ├── api/
 │   │   ├── authn.go                      Authenticator → kernel.Principal, operator principals included
 │   │   ├── authz.go                      Authorizer.For(ctx, Principal) → Decider: Can, ReachableSpaces, Allowed
 │   │   ├── spaces.go                     Spaces: Get, Ancestors, Subtree, Inherits
 │   │   ├── tokens.go                     Tokens: IssueRunToken, IssueWorkerToken, Introspect, JWKS
-│   │   ├── identity.go                   Users, Groups, APIKeys (reads)
+│   │   ├── identity.go                   Organizations, Accounts, Members, Groups, APIKeys (reads)
 │   │   └── events.go                     UserCreated, APIKeyRevoked, SpaceChanged, RoleBindingChanged
 │   ├── assembly/
 │   └── internal/
 │       ├── core/
-│       │   ├── account/ user/ group/ apikey/ session/ token/   (P3) seats checked through featuresapi.Limits
+│       │   ├── organization/ account/ member/ apikey/ session/ token/   (P3)
+│       │   ├── user/ group/ oauth/       (P3b) seats checked through featuresapi.Limits
 │       │   ├── space/ role/ binding/ authz/                     (P4) action catalogue, inheritance walks
-│       │   ├── login/                    login flow; calls policies/api for LOGIN policies (P13)
-│       │   ├── sso/ scim/ mfa/           (P23)
+│       │   ├── login/                    entering an account: its LOGIN policies through policies/api (P13b)
+│       │   ├── sso/ scim/ mfa/ linking/  the organization's identity providers (P23)
 │       │   └── port/
 │       └── adapters/
-│           ├── http/                     strict partial: users, API keys, spaces, roles, bindings; operator
-│           │                             partial: accounts; authn middleware; login.v1 for terraform login (P17)
-│           ├── pg/                       migrations: accounts (tier references features' tiers, RESTRICT),
-│           │                             spaces, roles, role_actions, users, api_keys, role_bindings, sessions,
-│           │                             sso_settings, scim_clients
+│           ├── http/                     strict partial: users, API keys, spaces, roles, bindings, the
+│           │                             Organization tag; operator partial: organizations; authn middleware;
+│           │                             OAuth metadata, registration, authorization and token; login.v1 (P17)
+│           ├── pg/                       migrations: organizations (tier references features' tiers, RESTRICT),
+│           │                             accounts, members, member_identities, spaces, roles, role_actions,
+│           │                             api_keys, organization_keys, role_bindings, sessions, oauth_clients,
+│           │                             identity_providers, scim_clients
 │           └── saml/ oidc/               (P23)
 │
 ├── stacks/                               flat: stacks, settings, hooks, labels, human lock, enable and disable
@@ -508,7 +518,7 @@ internal/
 │   └── internal/
 │       ├── core/{aiintegration,assistant,intent,tools,port}/
 │       └── adapters/{http,mcp,providers,pg}/
-└── flows/                                the Flows engine: organizations, projects, flows, events, apps (Flows)
+└── flows/                                the Flows engine: the account's projects, flows, events, apps (Flows)
     ├── api/ assembly/
     └── internal/
         ├── core/{org,project,flow,block,delivery,invocation,timer,app,agentpool,secret,named,datatable,
@@ -940,7 +950,8 @@ internal/registry/
     │   ├── testcase/     .infraweave/config.yml test cases → runsapi.Runs.Create(TESTING), depends_on order
     │   ├── provider/     drafts, publish, revoke, platforms with presigned uploads
     │   ├── gpg/          account-level keys, revocation, signature and checksum verification
-    │   └── sharing/      space inheritance, space availability, cross-account, public
+    │   └── sharing/      space inheritance, space availability, shares between accounts of one
+    │                     organization (422 validation-failed for another's), public
     └── adapters/
         ├── protocol/     hand-written: modules.v1 versions and download (204 + X-Terraform-Get),
         │                 providers.v1 versions and download; lenient version parsing
@@ -966,18 +977,25 @@ internal/access/
 ├── api/authz.go          type Decider interface { Can(Action, kernel.SpaceID) bool; Reachable(Action) []kernel.SpaceID }
 ├── assembly/assembly.go  New(...); Middleware() for app/router.go; Routes(); Cron() (session and key expiry)
 └── internal/core/
-    ├── space/            tree, immutable root, re-parenting with reachability, inheritance toggle
+    ├── space/            tree under the account's immutable top space, re-parenting with reachability,
+    │                     inheritance toggle
     ├── role/ binding/    150-value action catalogue, system roles, custom roles, five actor kinds
     ├── authz/            propagation down, Read up through inheritance, implicit stack read
     ├── token/            JWT signing keys, rotation, JWKS; run, worker and API tokens (decision 0006)
-    └── login/            sessions, API key exchange, LOGIN policies through policiesapi
+    ├── oauth/            the built-in authorization server for /mcp and /flows/mcp: metadata,
+    │                     registration, PKCE S256, consent, rotating refresh tokens
+    └── login/            sessions bound to one account, API key exchange, LOGIN policies through
+                          policiesapi on the account's top space
 ```
 
 How a request gets identity and permission:
 
 1. `app/router.go` installs `access/assembly.Middleware()` before every
    strict and hand-written route. It authenticates the bearer token or
-   session and puts a `kernel.Principal` in the context.
+   session and puts a `kernel.Principal` in the context. The principal
+   names one organization and one account: a member authenticates at the
+   organization, and the account's `LOGIN` policies admitted it when it
+   entered the account, so nothing a handler does reaches another account.
 2. A handler such as `stacks/internal/http/strict.go` reads the principal
    with `kernel.PrincipalFrom(ctx)` and calls its own service.
 3. The service asks `accessapi.Authorizer.For(ctx, principal)` once per
@@ -998,8 +1016,9 @@ How a request gets identity and permission:
 
 ```text
 internal/features/
-├── api/entitlement.go     Entitlement.For(ctx, account) → Snapshot{Has(feature), Limit(name)}; Billing()
-├── api/limits.go          Limits.Check(ctx, account, limit, count) → limit-reached problem or nil
+├── api/entitlement.go     Entitlement.For(ctx, organization) → Snapshot{Has(feature), Limit(name)}; Billing()
+├── api/limits.go          Limits.Check(ctx, account, limit, count): the organization's pool, then the
+│                          account limit → limit-reached problem or nil
 ├── api/gate.go            Gate(feature) for platform/queue's SkipGate and platform/cron
 ├── api/events.go          EntitlementChanged
 ├── assembly/              Middleware(); OperatorAPI (alias of the operator partial); Consumers()
@@ -1010,8 +1029,9 @@ internal/features/
     ├── features/          entitlement: tier plus grants, minus features.disabled and unmet requirements; billing off
     │                      means Enterprise minus features.disabled; seed once, then operator data
     ├── middleware/        after access's authn middleware: route → capability from gen/<spec>/features.gen.go
-    ├── http/              operator partial: tiers, account tiers, grants, billing
-    └── pg/                tiers, tier_features, tier_limits, account_grants, installation_billing
+    ├── http/              operator partial: tiers, organization tiers, grants, billing
+    └── pg/                tiers, tier_features, tier_limits, organization_grants, account_limits,
+                           installation_billing
 api/src/operator/          the operator API; only operator principals reach it (decision 0021)
 internal/kernel/feature.go Feature, a typed catalogue name, so an api/ signature can carry one
 ```
@@ -1030,18 +1050,25 @@ puts each check where decision 0021 asks for it:
 While `billing` is off, the snapshot is every feature but
 `features.disabled`, with no limits, so no check can refuse a caller for a
 tier. The operator API (`api/operator.openapi.yaml`, generated into
-`platform/gen/operator`) is served by two partials: `features` for tiers,
-grants and the billing switch, and `access` for accounts. A write bumps
-`accounts.entitlement_version` and sends `entitlement:<account>` on
-`infraweave_invalidate`, so every replica rebuilds its snapshot without a
-restart, as `access` does for authorization (decision 0007).
+`platform/gen/operator`) keeps the installation-level actions and is served
+by two partials: `features` for tiers, grants and the billing switch, and
+`access` for organizations, where creating one creates its first account.
+Organization admins create and remove accounts through the served
+`Organization` tag, which `access` serves, and set account limits through
+`features`' part of it. A write bumps `organization_entitlements.entitlement_version`
+and sends `entitlement:<organization>` on `infraweave_invalidate`, so every
+replica rebuilds its snapshot without a restart, as `access` does for
+authorization (decision 0007). A limit is pooled: `Limits.Check` counts the
+thing across the organization's accounts and then against the account's
+own limit, if an organization admin set one.
 
-The foreign keys follow the graph. `accounts.tier` in `access` references
-`features`' `tiers` with `ON DELETE RESTRICT`, because `access` imports
-`featuresapi`; deleting a tier an account holds is refused by PostgreSQL as
-well as by the handler's `409 invalid-state`. `account_grants` holds the
-account ID without a key, because `features` does not import `access`; the
-`features` consumer of `AccountDeleted` removes an account's grants. The
+The foreign keys follow the graph. `organizations.tier` in `access`
+references `features`' `tiers` with `ON DELETE RESTRICT`, because `access`
+imports `featuresapi`; deleting a tier an organization holds is refused by
+PostgreSQL as well as by the handler's `409 invalid-state`.
+`organization_grants` and `account_limits` hold their IDs without a key,
+because `features` does not import `access`; the `features` consumers of
+`OrganizationDeleted` and `AccountDeleted` remove them. The
 callers' problems are decision 0022's `feature-disabled`,
 `feature-not-in-tier` (with the tiers that include the feature) and
 `limit-reached` (with the limit and its value), written by
@@ -1118,7 +1145,7 @@ internal/flows/
 │                                retention), Surfaces() (input, static, output and Transform configuration)
 └── internal/
     ├── core/
-    │   ├── org/ project/        one organization per account, sharing Deploy's identity; projects, sandboxes
+    │   ├── project/             the account's projects, sharing Deploy's identity; sandboxes
     │   ├── flow/ block/         definition, links, YAML import and export with !expr, lifecycle, error handlers
     │   ├── delivery/            flows.deliver: evaluate the input, run the block, return buffered effects
     │   ├── invocation/          lineage, the four statuses (flows.invocation.status), re-emit, manual retry
@@ -1139,7 +1166,7 @@ internal/flows/
         ├── gateway/             /flows/agent/v1/connect: frames, claims of flows.agent_task for connected pools
         ├── registry/            hourly registry subscriptions and digests
         ├── mcp/ endpoint/       platform and flow MCP servers; HTTP Endpoint and form routes
-        └── pg/                  schema flows: flows_organizations, flows_projects, flows, flow_blocks,
+        └── pg/                  schema flows: flows_projects, flows, flow_blocks,
                                  flow_events, flow_invocations, flows_timers, flows_kv, app_installations,
                                  app_versions, agent_pools, flows_secrets, flows_named_expressions, data tables
 internal/agent/flowsagent/       conn, apps, host and executor, as in the tree above
@@ -1149,10 +1176,12 @@ Flows is a domain like the others, last in the declared graph: it imports
 `runsapi`, `stacksapi`, `templatesapi`, `accessapi` and `featuresapi`, and
 no Deploy domain imports `flows`. Its tables live in their own PostgreSQL
 schema, `flows`, with their own migration stream registered after every
-domain it imports, so `flows_organizations.account_id` can reference
-`access`' accounts with `ON DELETE RESTRICT`. Flows' organizations,
-projects and UUIDs remain its own; its users, teams and service accounts
-are the account's (decision 0018).
+domain it imports, so `flows_projects.account_id` can reference
+`access`' accounts with `ON DELETE RESTRICT`. Flows belongs to the
+account, which takes the place of Spacelift Flows' organization: its
+projects and UUIDs remain its own, its members, teams and service accounts
+are the account's, and Spacelift Flows' organization admin is the account
+admin (decision 0018).
 
 **The engine is queue work in `scheduler`.** Every Flows job runs on decision
 0011's queue under the logical queue `flows`, so a busy flow never delays
@@ -1673,8 +1702,9 @@ Coverage:
 
 1. `schedules/internal/schedules` holds the stack's drift detection entry
    in `platform/cron` (scheduler). The entry names the `drift-detection`
-   feature, so the features gate lets it fire only while the account's
-   entitlement holds it; with billing off it always does. The handler
+   feature, so the features gate lets it fire only while the entitlement
+   of the account's organization holds it; with billing off it always
+   does. The handler
    calls `runsapi.Runs.Create` for a proposed drift
    detection run.
 2. The run follows steps 7 to 10 of the first walkthrough on the stack's
@@ -1861,8 +1891,8 @@ Placement choices settled in this file:
   and streams run in dependency order; Flows gets its own schema as well as
   its own stream.
 - **`features` sits at the bottom of the graph**, so a limit check is a
-  synchronous call inside the creating transaction, and `accounts.tier` can
-  reference `tiers`.
+  synchronous call inside the creating transaction, and
+  `organizations.tier` can reference `tiers`.
 - **The event model belongs to the platform**, so Deploy and Flows share
   one envelope, emit path and kind registry, and a Flows trigger is a
   fan-out consumer rather than a bridge.

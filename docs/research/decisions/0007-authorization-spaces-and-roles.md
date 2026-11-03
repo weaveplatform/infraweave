@@ -18,9 +18,12 @@ Access policies, the older per-stack Rego rules, are disabled and superseded
 ([26 section 7.4](../reference/26-scope-and-tiers.md#74-access-policies-and-legacy-access-rules-replaced-by-spaces-and-rbac)).
 
 On Spacelift, keeping customers apart is the service operator's concern,
-outside the product's model. infraweave is self-hosted, and one deployment may serve several teams or customers that
-must not see one another's data, so tenancy is part of authorization rather
-than an accident of deployment.
+outside the product's model, and a customer's account is the top of
+everything. infraweave is self-hosted, one deployment may serve several
+customers that must not see one another's data, and one customer may run
+several business entities under one agreement, such as a UK arm and a US
+arm. Tenancy is therefore part of authorization rather than an accident of
+deployment.
 
 infraweave needs one evaluator that answers three questions the same way
 everywhere: may this principal perform this action on this subject; which
@@ -32,37 +35,122 @@ spaces may it act in, for list filtering; and why, for the grant views
 
 ### Tenancy
 
-- **An installation hosts many accounts.** Each account is a tenant with its
-  own spaces, users, groups, roles, bindings, API keys, tier
-  ([0021](0021-capability-scope-and-supersession.md)) and data. Every
-  account-scoped table carries `account_id`, and every query filters by the
-  principal's account.
-- **The principal fixes the account.** Every credential is issued for one
-  account (decision [0006](0006-authentication-and-tokens.md) issues them),
-  so a request never names the account it acts in. A person who belongs to
-  two accounts holds a separate session in each.
+infraweave's tenancy is root, organization, account and spaces, in the
+glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
+
+| Level | What it is | What it holds |
+|---|---|---|
+| Root | The installation's immutable top node. Only operators act on it | Organizations, and nothing else |
+| Organization | A customer's agreement with the installation | Its tier and grants ([0021](0021-capability-scope-and-supersession.md)), its pooled limits and account limits, its members and identity providers ([0006](0006-authentication-and-tokens.md)), its organization keys, and one or more accounts |
+| Account | A separate business entity within an organization, and the data boundary. Spacelift's account maps onto it | Its spaces, users, groups, roles, bindings, API keys, settings and data |
+| Space | A node of the account's tree, as on Spacelift | The account's entities |
+
+- **Tables.** `organizations(id, slug, name, created_at)`, whose tier and
+  entitlement version sit in the `features` domain's
+  `organization_entitlements` (0021), and
+  `accounts(organization_id, id, slug, name, authz_version, claimed_at,
+  created_at)`.
+  Slugs are immutable and names can be renamed. Account slugs are unique
+  across the installation, because the registry namespace
+  ([0014](0014-module-and-provider-registry.md)) and the federation audience
+  (0006) are installation-wide. Organization slugs are unique among
+  organizations, and an organization and its first account may share a
+  slug. Every account-scoped table carries `account_id`, and every query
+  filters by the principal's account; organization-scoped tables carry
+  `organization_id`.
+- **The principal fixes the account.** Every credential that reaches
+  account data is issued for one account (decision 0006 issues them), so a
+  request never names the account it acts in. A member works in one account
+  at a time and switches accounts by taking a new session (0006).
 - **Accounts never see each other.** An entity of another account answers
-  `404`, as one the caller cannot read does. No role, binding or admin flag
-  reaches across accounts.
-- **The operator runs the installation.** The operator creates, renames
-  and deletes accounts, gives each its tier and grants, and issues the
-  public worker pool's token through the operator API (0021), and sets
-  `features.disabled` in the installation's configuration. Creating an account seeds its `root` and `legacy`
-  spaces and its system roles, and names its first user, who holds
-  `space-admin` on `root`. An operator principal holds no role in any
-  account and reads no account's stacks, state or secrets; deleting an
-  account deletes its data.
+  `404`, as one the caller cannot read does, between accounts of one
+  organization as across organizations. No role, binding, admin flag or
+  organization role reaches across accounts.
+- **Public modules and providers** are not an exception: `modulePublish`
+  and a public provider make them readable anonymously, by anyone, as
+  decision 0014 says, which reveals nothing that belongs to one account
+  alone.
+- **The one exception: module shares.** A module may be shared with another
+  account of the same organization (decision 0014). The consumer reads only
+  the `SharedModule` fields and downloads the module's versions; nothing
+  else of the source account becomes visible. The organization's
+  entitlement must include `module-sharing`. Revoking the share hides the
+  module from the consumer at once, and a run already in flight finishes
+  with what it has downloaded. A share naming an account of another
+  organization answers `422`, problem `validation-failed`.
+- **Nothing inherits from root or from the organization.** No policy, role,
+  binding, context, integration or setting placed above an account applies
+  inside it. What an account takes from its organization is not account
+  data: the entitlement, the limits, the members and their authentication.
+  Organization-wide policies are a possible later catalogue feature, and
+  this record does not decide them.
+- **Organization admins.** An organization admin is a member holding the
+  organization role `organization-admin`, a row of
+  `organization_admins(organization_id, member_id, created_by,
+  created_at)`, or a sign-in that holds it without a row: an identity
+  provider's `adminLogin`, a GitHub organization admin and the break-glass
+  admin (0006). Organization admins create,
+  rename and delete accounts; manage members, identity linking, identity
+  providers, MFA and the session lifetime (0006); set account limits and
+  read usage across the organization's accounts (0021); and hold
+  organization keys. They see none of any account's stacks, runs, state or
+  secrets: the organization role grants nothing inside an account, and an
+  organization admin who works in an account is admitted to it like any
+  other member. The `Organization` tag's operations carry the pseudo-action
+  `ORGANIZATION_ADMIN` and the subject `organization` (below).
+- **The operator runs the installation.** The operator creates and deletes
+  organizations, gives each its tier and grants, and issues the public
+  worker pool's token, through the operator API (0021), and sets
+  `features.disabled` in the installation's configuration. An operator
+  principal holds no role in any organization or account and reads no
+  account's stacks, state or secrets.
+- **Creating an organization** creates its first account in the same
+  transaction, and the operator sets the break-glass credential it holds
+  (0006). The operator names no member, because a member exists only once
+  one of the organization's identity providers asserts it, and naming one
+  by email would be the email match 0006 refuses. The break-glass admin
+  configures the first identity provider, whose `adminLogin` then signs in
+  as an organization admin.
+- **Claiming an account.** The first account starts unclaimed: no principal
+  holds a binding in it. An organization admin claims it once, naming the
+  member that gets `space-admin` on its top space as an ordinary binding
+  that account admins can later remove. A claimed account stays claimed
+  (`accounts.claimed_at`), so removing every account admin later never
+  reopens it to the organization role; claiming it again answers `409`,
+  problem `invalid-state`.
+- **Creating an account** seeds its top space, its `legacy` space and its
+  system roles, and binds `space-admin` on the top space to the member the
+  creating organization admin names, so an account an organization admin
+  creates is claimed at creation. Deleting an account deletes its data;
+  deleting the last account of an organization answers `409`, problem
+  `invalid-state`, and deleting an organization deletes its accounts.
+- **Organization roles reach only the organization's own operations.** The
+  `Organization` tag and the reference's `SSO` tag need
+  `organization-admin`, reads included, because both describe what every
+  account of the organization shares. Spacelift's account admin managed
+  SSO for its account; an infraweave account admin without the
+  organization role gets `403`, problem `forbidden`.
+- **The console** shows the organization level only once the organization
+  has a second account, or in organization settings
+  ([0023](0023-console.md)); an organization with one account reads as a
+  single account.
 
 ### Spaces
 
 - **Table** `spaces(account_id, id, slug, name, description, labels text[],
   inherit_entities, parent_id, created_at)`, unique `(account_id, slug)`,
-  with `parent_id` null only for `root`.
-- **Seeded spaces.** Every account starts with `root` and `legacy` (slugs
-  without a suffix; `legacy` is a child of `root`). Neither can be deleted,
-  and `root` cannot be changed. `legacy` is an ordinary space: it carries no
-  special access semantics in infraweave, but exists because imported data
-  and OIDC subjects name it.
+  with `parent_id` null only for the account's top space.
+- **The top space.** Every account's tree has one top space, the space
+  Spacelift calls `root`. Its slug, and so its ID on the wire, is the
+  account's immutable slug, so no space ID says root, and one ID names the
+  same space in exports, OIDC subjects and imports. The importer maps a
+  Spacelift `root` to the account's slug. The top space cannot be deleted
+  or changed.
+- **Seeded spaces.** Every account starts with its top space and `legacy`, a
+  child of the top space whose slug has no suffix. `legacy` cannot be
+  deleted. It is an ordinary space: it carries no special access semantics
+  in infraweave, but exists because imported data and OIDC subjects name
+  it.
 - **Slugs.** A created space's slug is its name, lowercased and hyphenated,
   followed by `-` and its ULID, the shape report 12 records for space IDs in
   federation subjects. It never changes.
@@ -81,11 +169,19 @@ spaces may it act in, for list filtering; and why, for the grant views
   `errors` list each stack and the entity it would lose (worker pool, cloud
   integration, context, policy), when the inheritance rules below would no
   longer let the stack reach it.
-- **Who changes the tree.** Root admins anywhere. Non-root space admins only
-  when the account setting `allowNonRootAdminSpaceCreation` is on, and then
-  only below spaces they administer; the spaces they create always inherit.
-  With the setting off, a non-root admin edits the name, description and
-  labels of spaces they administer and nothing else.
+- **Account admins.** An account admin is a holder of `space-admin` on the
+  account's top space: Spacelift's root admin. A non-admin is any other
+  principal, including a space admin below the top space, which Spacelift
+  calls a non-root admin. The reference's names for both are renamed by
+  [0001](0001-rest-first-spacelift-surface.md#names)'s table, as in
+  `accountToggleAllowNonAdminSpaceCreation` and
+  `/account/api-key-non-admin-managers`.
+- **Who changes the tree.** Account admins anywhere. Space admins below the
+  top space only when the account setting that `allowNonAdminSpaceCreation`
+  reads is on, and then only below spaces they administer; the spaces they
+  create always inherit. With the setting off, such an admin edits the
+  name, description and labels of spaces they administer and nothing
+  else.
 
 ### Roles and the action catalogue
 
@@ -100,7 +196,7 @@ spaces may it act in, for list filtering; and why, for the grant views
   enum value.
 - **Tables** `roles(account_id, id, slug, name, description, is_system)` and
   `role_actions(role_id, action)`, unique `(account_id, slug)`.
-- **Custom roles.** Root admins create, update and delete them. Assigning a
+- **Custom roles.** Account admins create, update and delete them. Assigning a
   `disabled` or `deprecated` action answers `422`, problem
   `validation-failed`, naming the action. A role with bindings can be
   deleted only after its bindings are; the answer otherwise is `409`, problem
@@ -132,19 +228,23 @@ spaces may it act in, for list filtering; and why, for the grant views
   `space-writer` or `space-admin`. `accessRules` reads back the `access_rule`
   rows; the binding views list all rows.
 - **Stack bindings** need `STACK_MANAGE` on the stack's space and
-  `SPACE_ADMIN` on the target space; a binding on `root` needs the stack to
-  live in `root`; bindings stay where they are when the stack moves.
-- **Non-root admins** create and delete bindings only in spaces they
-  administer.
+  `SPACE_ADMIN` on the target space; a binding on the top space needs the
+  stack to live in the top space; bindings stay where they are when the
+  stack moves.
+- **Space admins below the top space** create and delete bindings only in
+  spaces they administer.
 
 ### Evaluation
 
 `authz.Authorize(ctx, principal, action, spaceID) Decision` decides one check:
 
-1. **Admin.** A principal whose session has `admin` (an SSO admin, the
-   break-glass admin, a GitHub organization admin, a login policy `admin`
-   result, or any holder of `space-admin` on `root`) is allowed every action,
-   less the in-run restriction below.
+1. **Admin.** A principal whose session has `admin` in this account (a
+   holder of `space-admin` on the account's top space, or a login policy
+   `admin` result of the account's policies) is allowed every action, less
+   the in-run restriction below. An identity provider's `adminLogin` and a
+   GitHub organization admin are organization admins (0006): each is an
+   account admin only where an account binds or admits it as one. The
+   break-glass admin is never admitted to an account.
 2. **Actors.** The principal's actor set is: a user and the groups named by
    its session teams; an API key and its `teams` as virtual groups (a
    personal key uses its owner's set); a run principal's stack.
@@ -162,7 +262,10 @@ spaces may it act in, for list filtering; and why, for the grant views
    Because legacy levels are bindings to the system roles, the legacy
    fallback needs no separate step.
 
-Under `LOGIN_POLICIES`, user, group and API key bindings are ignored. The
+Admission runs when a member enters an account (decision 0006): the
+organization has authenticated the member, and the account's scheme decides
+whether it may work there and with which grants. Under `LOGIN_POLICIES`,
+user, group and API key bindings are ignored. The
 session's grants are the policy's result, stored at login as
 `session_grants(session_id, space_id, role_id, origin)` with `origin`
 `ASSIGNED_ROLE` for the `roles` rule and `ACCESS_LEVEL` for the deprecated
@@ -205,9 +308,13 @@ inherited grant, the synthetic `space-reader` role.
 
 | Step | `MANAGED_USERS` | `LOGIN_POLICIES` |
 |---|---|---|
-| Who may log in | admins; any `ACTIVE` managed user, with empty grants if it holds no binding; any identity whose teams match a group with a binding | whoever the login policies admit |
+| Who may enter the account | account admins; any `ACTIVE` user of the account, with empty grants if it holds no binding; any member whose teams match a group with a binding | whoever the account's login policies admit |
 | Role source | bindings | the policy's `roles` rule, frozen in `session_grants` |
-| Evaluation | none at login | every `LOGIN` policy in `root` through [0009](0009-policy-engine-opa.md), input per report 14 section 5.2 |
+| Evaluation | none on entry | every `LOGIN` policy in the account's top space through [0009](0009-policy-engine-opa.md), input per report 14 section 5.2 |
+
+A member that no account admits keeps its organization session with no
+account. The account switcher lists only the accounts that admit the member,
+so that member sees an empty list.
 
 - Login policy rules are report 14's
   ([5.2](../reference/14-spaces-rbac-and-identity.md#52-login-policy-rules)):
@@ -218,20 +325,22 @@ inherited grant, the synthetic `space-reader` role.
 - `accountUpdateAuthorizationScheme` revokes every session but the caller's;
   changing any login policy revokes every session but the editor's.
 - API keys under `LOGIN_POLICIES` need a policy that admits them, except keys
-  with `space-admin` on `root`. Personal keys behave as ordinary keys there.
+  with `space-admin` on the account's top space. Personal keys behave as
+  ordinary keys there.
 
 ### Enforcement point
 
 - **In the spec.** Every operation in `api/deploy.openapi.yaml` carries
   `x-infraweave-action` (an `Action` value, or the pseudo-actions
-  `ROOT_ADMIN` and `AUTHENTICATED`) and `x-infraweave-subject`, which says
-  where the subject's space comes from:
+  `ACCOUNT_ADMIN`, `ORGANIZATION_ADMIN` and `AUTHENTICATED`) and
+  `x-infraweave-subject`, which says where the subject's space comes from:
 
   | `x-infraweave-subject` | Space used |
   |---|---|
   | `path:<param>:<entity>` | the space of the entity named by a path parameter, such as `path:stackId:stack` |
   | `body:<field>` | a space ID in the request body, for creates |
-  | `root` | `root`, for account-wide settings |
+  | `account` | the account's top space, for account-wide settings |
+  | `organization` | none: the caller's organization, for the operations of the `Organization` and `SSO` tags, which take `ORGANIZATION_ADMIN` |
   | `list` | none: the handler filters with `Reachable` |
 
 - **In the server.** The scaffolder generates a route table from these
@@ -287,6 +396,22 @@ inherited grant, the synthetic `space-reader` role.
   one process.
 - **Rejected: Cedar or OPA for RBAC.** Every policy would be a generated
   translation of a binding.
+- **The organization above the account.** One agreement covering several
+  business entities needs one place for its tier, limits, members and
+  sign-in, and a boundary between the entities' data. Placing the agreement
+  above the account keeps Spacelift's account as the data boundary, so every
+  reference name and behaviour that says account keeps its meaning.
+- **Nothing inherits downward.** An organization-level policy, context or
+  binding would let the agreement's holder change what runs inside an entity
+  whose data it cannot see, and would make an account's behaviour depend on
+  data outside its boundary.
+- **Module shares as the one exception.** Spacelift shares modules between
+  accounts, and a share exposes only the module's read model and versions;
+  confining it to one organization means data crosses only between entities
+  under one agreement.
+- **The top space named by the account.** A slug that says root would claim
+  the installation's node for every account, and an export or a federation
+  subject naming `root` could not say which account it came from.
 
 Departures from Spacelift, for the plan's deviations register:
 
@@ -295,20 +420,24 @@ Departures from Spacelift, for the plan's deviations register:
 | `legacy` has no special semantics | Access policies, its only special behaviour, are superseded |
 | infraweave defines its own system roles, with contents derived from the fallback column | Spacelift does not publish their contents ([14 section 3.2](../reference/14-spaces-rbac-and-identity.md#32-system-roles)); one rule keeps the roles and the legacy levels consistent |
 | The worker pool controller and drift detection system roles' slugs are `worker-pool-controller` and `drift-detection-manager` | Spacelift's slugs for both are unrecorded (report 14 section 3.2); these are infraweave's names |
-| One installation hosts many accounts, separated by `account_id` | Spacelift keeps customers apart on its own service; a self-hosted product needs the separation inside one deployment |
+| One installation hosts many organizations, each with one or more accounts separated by `account_id` | Spacelift keeps customers apart on its own service and has no level above the account; a self-hosted product needs the separation inside one deployment, and one agreement may cover several business entities |
+| The top space is addressed by the account's slug, not `root` | Root is the installation's node; an account's top space is the account's own |
+| Identity provider admins, GitHub organization admins and the break-glass admin are organization admins, not account admins | Authentication belongs to the organization and authorization to each account, so a sign-in alone grants nothing in an account |
+| The reference's SSO operations need the organization admin role, and an account admin alone cannot read them | The identity providers belong to the organization and serve every account in it |
+| An account created with its organization starts unclaimed until an organization admin names its first account admin | No member exists before an identity provider asserts one, and the operator never reaches account data |
 | Disabled actions cannot be assigned to roles | The schema marks them "do not use"; operations they would govern use their fallback |
 | An `ACTIVE` managed user with no binding logs in with empty grants | The 2026-04-14 changelog is the newer of two conflicting statements (report 14 section 4.2) |
 
 ## Constraints
 
-- **Tenancy is logical.** Accounts share one database and one set of
-  processes; separation rests on `account_id` filters and the per-account
-  snapshot. An operator who needs physical separation runs one installation
-  per tenant.
+- **Tenancy is logical.** Organizations and accounts share one database and
+  one set of processes; separation rests on `account_id` filters and the
+  per-account snapshot. An operator who needs physical separation runs one
+  installation per organization.
 - **Staleness bound.** A lost invalidation message leaves a replica at most 5
   seconds behind.
-- **Unverified facts** this record decides around: what non-root admins
-  may edit with the creation setting off, and the login conflict above
+- **Unverified facts** this record decides around: what space admins below
+  the top space may edit with the creation setting off, and the login conflict above
   (report 14, *(unverified)* markers). Each is a constant or a table row to
   change.
 - **Out of scope.** Flows-side permissions for `flows_project` bindings are
@@ -319,7 +448,7 @@ Departures from Spacelift, for the plan's deviations register:
 
 - `internal/authz` unit tests, table-driven from report 14's worked cases:
   an entity of another account answering as hidden;
-  propagation from `root`; inheritance read-up through a chain and stopping
+  propagation from the top space; inheritance read-up through a chain and stopping
   at the first space without `inherit_entities`; an inherited grant folded to
   `space-reader`; stack self-read; group and direct bindings combining;
   the in-run restriction; login policy snapshots frozen while IAM changes
@@ -335,9 +464,18 @@ Departures from Spacelift, for the plan's deviations register:
   moves, grant views), `authz_bindings.feature` (each actor kind, stack
   escalation rules), `authz_login_policy.feature` (rules, `deny_message`
   aggregation, session revocation on change), `authz_tenancy.feature` (two
-  accounts on one installation: each sees only its own spaces and stacks,
-  another account's stack answers `404`, and a new account starts with its
-  seeded spaces, system roles and first admin).
+  organizations, one with two accounts: each account sees only its own
+  spaces and stacks, and another account's stack answers `404` within the
+  organization and across it; a new account starts with its top space named
+  by its slug, `legacy`, its system roles and its first admin; the first
+  account of a new organization is claimed once and a second claim answers
+  `409`; an account admin without the organization role gets `403` on the
+  `SSO` tag; an
+  organization admin reads usage across accounts and gets `404` on their
+  stacks until an account admits it; a policy or context placed in one
+  account never reaches another; a member no account admits sees an empty
+  account switcher; a module share to an account of another organization
+  answers `422`).
 
 ## References
 
@@ -345,4 +483,4 @@ Departures from Spacelift, for the plan's deviations register:
 - [26 section 7.4](../reference/26-scope-and-tiers.md#74-access-policies-and-legacy-access-rules-replaced-by-spaces-and-rbac): what spaces and RBAC supersede.
 - [28 section 12.2](../reference/28-data-model.md#122-account-and-spaces): the account and space tables.
 - [27 section 12](../reference/27-reference-materials.md#12-cross-tool-comparison): no reference tool models space inheritance.
-- [GLOSSARY](../../../GLOSSARY.md): installation, account, operator, role.
+- [GLOSSARY](../../../GLOSSARY.md): installation, root, organization, account, member, operator, role.
