@@ -16,7 +16,7 @@ for why infraweave is REST-first.
 | Piece | What |
 |---|---|
 | `internal/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
-| `tools/specref` | `fetch` (network and terraform), `generate` and `check` (offline) |
+| `tools/specref` | `fetch` (network and terraform); `generate`, `check`, `scaffold`, `inventory` and `parity` (offline) |
 | `api/reference/spacelift/` | Pinned snapshots, `sources.lock.yaml`, the hand-curated `rest-mapping.yaml`, and the generated spec and `coverage.md` |
 | `docs/research/` | Research reports in `reference/` (landscape, mapping rules, provider), decision records in `decisions/`; see its [README](docs/research/README.md) |
 
@@ -40,6 +40,13 @@ infraweave's own API is authored as fragments in `api/src/deploy/`:
 `make bundle` (`tools/openapi-bundle` over `internal/openapibundle`) merges
 the fragments into `api/deploy.openapi.yaml`, served under `/api/v1`. The
 bundle is committed, and a unit test fails when it is stale.
+
+`make parity` compares the bundle with the reference by `operationId` and
+route. `api/parity-baseline.json` accepts the reference operations the bundle
+does not serve unchanged: the missing ones by tag, and each moved one with
+its reason. `TestUnitDeployParity` fails on a reference operation the
+baseline does not accept and on an entry the bundle no longer needs, so
+coverage of the reference only goes up.
 
 Bundling fails when any of these happens:
 
@@ -93,6 +100,8 @@ the build's version, commit and date.
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/deploy/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
+| `make parity` | Prints the deploy API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.json` |
+| `make parity-baseline` | Rewrites `api/parity-baseline.json` to accept the current parity report, keeping each recorded reason for a move; review the diff |
 | `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
 | `make generate` | Bundles, then generates each strict chi server (`internal/server/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |
 | `make verify-generate` | Fails if the committed bundles or generated code are stale |

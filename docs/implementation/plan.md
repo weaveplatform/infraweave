@@ -131,7 +131,7 @@ and lint is clean.
 | Phase | Status | Notes |
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
-| P1 Served API skeleton | In progress | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`. Open: [#11](https://github.com/weaveplatform/infraweave/issues/11) parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
+| P1 Served API skeleton | In progress | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report. Open: [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
 | P1b Domain layout and depguard | Not started | |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P2 PostgreSQL, migrations and operability | Not started | |
@@ -407,7 +407,7 @@ package paths are today's (`internal/server/...`); P1b moves them.
    `-race` test of concurrent reservations, limiter refill with an injected
    clock, cursor tamper cases, `served_api.feature` scenarios for `429`,
    replay and the disabled caller. Records DV-003 to DV-007.
-4. [#11](https://github.com/weaveplatform/infraweave/issues/11) `specref parity` in `internal/specref` with `make parity` and
+4. Done: [#11](https://github.com/weaveplatform/infraweave/issues/11) `specref parity` in `internal/specref` with `make parity` and
    `make parity-baseline`: present, missing, moved and infraweave-only
    operations by tag, against `api/parity-baseline.json`; the `api/` test
    fails on a regression and on an entry that is now present.

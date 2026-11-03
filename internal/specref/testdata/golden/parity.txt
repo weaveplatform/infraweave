@@ -1,0 +1,25 @@
+Parity with the reference: 7 reference operations, 3 present, 2 moved, 2 missing; 2 infraweave-only.
+
+Tag           Reference  Present  Moved  Missing  Infraweave-only
+Contexts              1        0      0        1                0
+Organization          0        0      0        0                1
+Stacks                5        3      2        0                0
+untagged              1        0      0        1                1
+Total                 7        3      2        2                2
+
+Contexts
+  missing  contexts  GET /contexts
+
+Organization
+  infraweave-only  organizations  GET /organizations
+
+Stacks
+  present  stack        GET /stacks/{id}
+  present  stackCreate  POST /stacks
+  present  stacks       GET /stacks
+  moved    stackDelete  DELETE /stacks/{id}, served as stackRemove DELETE /stacks/{stackId}
+  moved    stackLock    POST /stack/{id}/lock, served as stackLock POST /stacks/{stackId}/lock
+
+untagged
+  missing          sessionDeleteAll  DELETE /sessions
+  infraweave-only  livez             GET /livez

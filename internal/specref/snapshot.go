@@ -262,7 +262,7 @@ func dropInvalidExamples(built, loaded *openapi3.T) []string {
 func writeFiles(dir string, files map[string][]byte) error {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
-		return fmt.Errorf("open reference dir: %w", err)
+		return fmt.Errorf("open %s: %w", dir, err)
 	}
 	defer root.Close()
 	for _, name := range sortedKeys(files) {

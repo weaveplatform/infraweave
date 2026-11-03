@@ -136,6 +136,16 @@ verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
 	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
+PARITY := --dir $(REFERENCE_DIR) --served api/deploy.openapi.yaml --baseline api/parity-baseline.json
+
+## parity: print the deploy API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.json
+parity:
+	$(GO) run ./tools/specref parity $(PARITY)
+
+## parity-baseline: rewrite api/parity-baseline.json to accept the current parity report, keeping recorded reasons (review the diff)
+parity-baseline:
+	$(GO) run ./tools/specref parity $(PARITY) --write-baseline
+
 ## docs-check: links, report headers and decision statuses under docs/ (internal/docscheck)
 docs-check:
 	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/docscheck
@@ -143,4 +153,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint test accept verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference cover vuln build gate
+.PHONY: help init docs-check fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference parity parity-baseline cover vuln build gate
