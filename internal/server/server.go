@@ -13,14 +13,20 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/weaveplatform/infraweave/internal/server/idempotency"
+	"github.com/weaveplatform/infraweave/internal/server/ratelimit"
 )
 
-// Config holds the server settings. The keys are decision 0020's and 0017's:
-// server.listen, server.admin_listen and server.shutdown.timeout.
+// Config holds the server settings. The keys are decision 0020's and 0017's,
+// server.listen, server.admin_listen and server.shutdown.timeout, and
+// decision 0003's controls under server.rate_limit and server.idempotency.
 type Config struct {
-	Listen      string   `mapstructure:"listen"`
-	AdminListen string   `mapstructure:"admin_listen"`
-	Shutdown    Shutdown `mapstructure:"shutdown"`
+	Listen      string             `mapstructure:"listen"`
+	AdminListen string             `mapstructure:"admin_listen"`
+	Shutdown    Shutdown           `mapstructure:"shutdown"`
+	RateLimit   ratelimit.Config   `mapstructure:"rate_limit"`
+	Idempotency idempotency.Config `mapstructure:"idempotency"`
 }
 
 // Shutdown holds the graceful shutdown settings.
@@ -35,6 +41,8 @@ func Defaults() Config {
 		Listen:      ":8080",
 		AdminListen: ":9090",
 		Shutdown:    Shutdown{Timeout: 30 * time.Second},
+		RateLimit:   ratelimit.Defaults(),
+		Idempotency: idempotency.Defaults(),
 	}
 }
 
@@ -55,6 +63,12 @@ func (c Config) Validate() error {
 	if c.Shutdown.Timeout <= 0 {
 		errs = append(errs, fmt.Errorf("%w: server.shutdown.timeout must be positive, got %s",
 			errConfig, c.Shutdown.Timeout))
+	}
+	if err := c.RateLimit.Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("%w: server.rate_limit.%w", errConfig, err))
+	}
+	if err := c.Idempotency.Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("%w: server.idempotency.%w", errConfig, err))
 	}
 	return errors.Join(errs...)
 }
@@ -83,7 +97,7 @@ type Running struct {
 // Start listens on both addresses and serves until Shutdown. ctx bounds
 // only the binding of the listeners.
 func Start(ctx context.Context, c Config, log *slog.Logger) (*Running, error) {
-	return start(ctx, c, log, API(log), Admin(log))
+	return start(ctx, c, log, API(log, c), Admin(log))
 }
 
 func start(

@@ -3,11 +3,15 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/spf13/pflag"
+
+	"github.com/weaveplatform/infraweave/internal/server"
+	"github.com/weaveplatform/infraweave/internal/server/ratelimit"
 )
 
 // loadArgs parses args as the serve process mode does and decodes them.
@@ -35,9 +39,45 @@ func TestUnitLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Server.Listen != ":8080" || c.Server.AdminListen != ":9090" ||
-		c.Server.Shutdown.Timeout != 30*time.Second {
-		t.Errorf("defaults %+v", c.Server)
+	if !reflect.DeepEqual(c.Server, server.Defaults()) {
+		t.Errorf("defaults %+v, want %+v", c.Server, server.Defaults())
+	}
+}
+
+// TestUnitLoadKeysWithoutFlags checks that a key no flag binds is still set
+// by the file and, over it, by the environment.
+func TestUnitLoadKeysWithoutFlags(t *testing.T) {
+	file := writeFile(t, `
+server:
+  rate_limit:
+    standard:
+      rate: 0.5
+      burst: 7
+    expensive:
+      burst: 2
+    disabled_callers: ["192.0.2.1"]
+  idempotency:
+    ttl: 1h
+`)
+	t.Setenv("INFRAWEAVE_SERVER_RATE_LIMIT_EXPENSIVE_BURST", "3")
+	t.Setenv("INFRAWEAVE_SERVER_RATE_LIMIT_DISABLED_CALLERS", "192.0.2.1,198.51.100.7")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := server.Defaults()
+	want.RateLimit = ratelimit.Config{
+		Standard:        ratelimit.Limit{Rate: 0.5, Burst: 7},
+		Expensive:       ratelimit.Limit{Rate: want.RateLimit.Expensive.Rate, Burst: 3},
+		DisabledCallers: []string{"192.0.2.1", "198.51.100.7"},
+	}
+	want.Idempotency.TTL = time.Hour
+	if !reflect.DeepEqual(c.Server, want) {
+		t.Errorf("got %+v, want %+v", c.Server, want)
+	}
+	t.Setenv("INFRAWEAVE_SERVER_IDEMPOTENCY_TTL", "2h")
+	if c, err := loadArgs(t); err != nil || c.Server.Idempotency.TTL != 2*time.Hour {
+		t.Errorf("the environment alone: %+v %v", c, err)
 	}
 }
 
@@ -80,6 +120,24 @@ func TestUnitLoadRejects(t *testing.T) {
 			"server.admin_listen",
 		},
 		{"bad duration", "server:\n  shutdown:\n    timeout: soon\n", nil, "timeout"},
+		{
+			"unknown rate-limit key",
+			"server:\n  rate_limit:\n    standard:\n      per_minute: 5\n",
+			nil,
+			"per_minute",
+		},
+		{
+			"empty bucket",
+			"server:\n  rate_limit:\n    expensive:\n      burst: 0\n",
+			nil,
+			"server.rate_limit.expensive",
+		},
+		{
+			"no key lifetime",
+			"server:\n  idempotency:\n    ttl: 0s\n",
+			nil,
+			"server.idempotency.ttl",
+		},
 		{"not YAML", "server: [\n", nil, "read config"},
 	}
 	for _, tc := range cases {

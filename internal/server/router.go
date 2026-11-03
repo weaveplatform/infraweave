@@ -22,10 +22,11 @@ type deployAPI struct {
 	deploy.UnimplementedStrict
 }
 
-// API is the API listener's handler: the deploy API under BaseURL. It serves
-// no probe; those are the admin listener's alone.
-func API(log *slog.Logger) http.Handler {
-	r := newRouter(log)
+// API is the API listener's handler: the deploy API under BaseURL behind
+// c's rate limits and idempotency keys. It serves no probe; those are the
+// admin listener's alone, and are never rate-limited.
+func API(log *slog.Logger, c Config) http.Handler {
+	r := Guarded(log, c, deployOperations())
 	strict := deploy.NewStrictHandlerWithOptions(deployAPI{}, nil, deploy.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  problem.RequestError,
 		ResponseErrorHandlerFunc: problem.ResponseError,
@@ -50,10 +51,12 @@ func Admin(log *slog.Logger) http.Handler {
 	return r
 }
 
-// newRouter is a chi router whose own errors are problem details.
-func newRouter(log *slog.Logger) *chi.Mux {
+// newRouter is a chi router whose own errors are problem details. guards
+// run after the request ID and recovery, so a panic in one is answered too.
+func newRouter(log *slog.Logger, guards ...func(http.Handler) http.Handler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, recoverProblem(log))
+	r.Use(guards...)
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		problem.Write(w, problem.New(http.StatusNotFound, "No route serves "+req.URL.Path+"."))
 	})
@@ -89,6 +92,5 @@ func answerPanic(log *slog.Logger, w http.ResponseWriter, r *http.Request) {
 	}
 	log.ErrorContext(r.Context(), "handler panicked",
 		"panic", v, "request_id", middleware.GetReqID(r.Context()))
-	problem.Write(w, problem.New(http.StatusInternalServerError,
-		"The server failed to handle the request."))
+	problem.Internal(w)
 }

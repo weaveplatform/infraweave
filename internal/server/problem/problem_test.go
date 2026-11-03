@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -61,5 +63,50 @@ func TestUnitRequestError(t *testing.T) {
 	)
 	if p := decode(t, rec); rec.Code != http.StatusBadRequest || p.Detail != "can't decode body" {
 		t.Errorf("got %d %+v", rec.Code, p)
+	}
+}
+
+func TestUnitResponseErrorProblem(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := fmt.Errorf("list: %w", InvalidCursor.Error("The cursor belongs to another list."))
+	ResponseError(rec, httptest.NewRequest(http.MethodGet, "/", nil), err)
+	p := decode(t, rec)
+	if rec.Code != http.StatusBadRequest || p.Type != TypePrefix+"invalid-cursor" ||
+		p.Title != "Invalid cursor" || p.Detail != "The cursor belongs to another list." {
+		t.Errorf("got %d %+v", rec.Code, p)
+	}
+	if got := err.Error(); got != "list: Invalid cursor: The cursor belongs to another list." {
+		t.Errorf("Error() = %q", got)
+	}
+}
+
+// TestUnitTypesMatchRegister keeps the types the server writes in step with
+// the problem register, the list clients branch on.
+func TestUnitTypesMatchRegister(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "docs", "data", "problems.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reg struct {
+		Records []struct {
+			ID     string `json:"id"`
+			Status int    `json:"status"`
+			Title  string `json:"title"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal(b, &reg); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]Type{}
+	for _, r := range reg.Records {
+		want[r.ID] = Type{r.ID, r.Status, r.Title}
+	}
+	for _, typ := range []Type{
+		InvalidRequest, InvalidCursor, IdempotencyKeyInFlight, PayloadTooLarge,
+		IdempotencyKeyReuse, RateLimited, APIDisabled,
+	} {
+		if want[typ.Slug] != typ {
+			t.Errorf("%+v, register has %+v", typ, want[typ.Slug])
+		}
 	}
 }
