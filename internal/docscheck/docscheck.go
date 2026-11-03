@@ -25,7 +25,11 @@
 //     dependencies, tasks and exit criteria, and every phase the capability
 //     roadmap names is a phase of the plan;
 //   - GLOSSARY.md, infraweave's own language, defines each term once, with
-//     a definition and the words to avoid.
+//     a definition and the words to avoid;
+//   - every register under docs/data matches its schema in docs/data/schema,
+//     its record ids are unique, its links resolve, every id a document or
+//     register cites exists, and the files and phrases its records name
+//     agree with it (registers.go).
 package docscheck
 
 import (
@@ -102,6 +106,9 @@ func Check(repo fs.FS) ([]Finding, error) {
 	if err := c.mentions(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
+	if err := c.registers(); err != nil {
+		return nil, fmt.Errorf("docscheck: %w", err)
+	}
 	slices.SortFunc(c.found, func(a, b Finding) int {
 		return cmp.Or(cmp.Compare(a.Path, b.Path), cmp.Compare(a.Line, b.Line),
 			cmp.Compare(a.Message, b.Message))
@@ -112,6 +119,7 @@ func Check(repo fs.FS) ([]Finding, error) {
 type checker struct {
 	repo  fs.FS
 	docs  map[string]*doc
+	regs  []*register
 	found []Finding
 }
 

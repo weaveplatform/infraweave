@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Shared definitions of the docs/data registers",
+  "$defs": {
+    "markdown": {
+      "description": "Markdown text. Relative links start from docs/data.",
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "description": "A decision record number, such as 0022.",
+      "type": "string",
+      "pattern": "^[0-9]{4}$"
+    },
+    "path": {
+      "description": "A file path from the repository root.",
+      "type": "string",
+      "pattern": "^[^/.][^ ]*$"
+    },
+    "evidence": {
+      "description": "Phrases that must and must not appear in one file. Runs of whitespace compare as one space.",
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {"$ref": "#/$defs/path"},
+        "present": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "absent": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "anyOf": [{"required": ["present"]}, {"required": ["absent"]}]
+    }
+  }
+}

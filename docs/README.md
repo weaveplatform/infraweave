@@ -3,6 +3,7 @@
 | Path | What |
 |---|---|
 | [`../GLOSSARY.md`](../GLOSSARY.md) | infraweave's own language: the terms its docs and code use, and the words to avoid |
+| [`data/`](data/README.md) | Reference data: the registers that documents, tests and tools look up by ID, each validated by its JSON Schema |
 | [`research/README.md`](research/README.md) | The research set: purpose, baseline and the document map |
 | [`research/reference/`](research/README.md#document-map) | Reports 01 to 31: Spacelift's features, API, provider and clients, with citations; the data model, open questions and the review log |
 | [`research/decisions/`](research/decisions/README.md) | Decision records 0001 to 0024 and their index, with each record's status |

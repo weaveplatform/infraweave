@@ -1,0 +1,194 @@
+{
+  "$schema": "schema/problems.schema.json",
+  "records": [
+    {
+      "id": "invalid-request",
+      "status": 400,
+      "title": "invalid request",
+      "when": "The request does not match the operation's OpenAPI schema: malformed JSON, a wrong type, a missing required field, an unknown body field, a value outside an `enum`, `pattern`, `minLength` or `maxLength`",
+      "decision": "0022"
+    },
+    {
+      "id": "invalid-cursor",
+      "status": 400,
+      "title": "Invalid cursor",
+      "when": "The cursor doesn't decode or belongs to another list",
+      "decision": "0003"
+    },
+    {
+      "id": "unauthenticated",
+      "status": 401,
+      "title": "unauthorized: authentication required",
+      "when": "No credential, or one that is malformed, expired, revoked or for another audience. Sent with `WWW-Authenticate: Bearer`",
+      "decision": "0022"
+    },
+    {
+      "id": "forbidden",
+      "status": 403,
+      "title": "unauthorized: permission denied",
+      "when": "The caller can read the resource but lacks the action it asked for",
+      "decision": "0022"
+    },
+    {
+      "id": "feature-disabled",
+      "status": 403,
+      "title": "feature disabled",
+      "when": "The operator switched off, with `features.disabled`, the feature that gates the operation or the value it sets (decision 0021); the body carries the feature as `feature`",
+      "decision": "0022"
+    },
+    {
+      "id": "feature-not-in-tier",
+      "status": 403,
+      "title": "feature not in tier",
+      "when": "Billing is on and the entitlement of the caller's organization lacks the feature that gates the operation or the value it sets (decision 0021); the body carries `feature`, and `tiers`, the names of the tiers that include it",
+      "decision": "0022"
+    },
+    {
+      "id": "limit-reached",
+      "status": 403,
+      "title": "limit reached",
+      "when": "Billing is on and the request would take the organization above a pooled limit, or the account above its account limit, such as seats or private workers (decision 0021); the body carries `limit`, `scope` (`organization` or `account`, whichever was reached) and that scope's limit as `value`",
+      "decision": "0022"
+    },
+    {
+      "id": "installation-unsupported",
+      "status": 403,
+      "title": "installation unsupported",
+      "when": "The operation needs a service that only Spacelift operates, such as its billing or usage reporting (decision 0021)",
+      "decision": "0022"
+    },
+    {
+      "id": "not-found",
+      "status": 404,
+      "title": "not found",
+      "when": "The route's resource, or one of its parents, does not exist or is not readable by the caller",
+      "decision": "0022"
+    },
+    {
+      "id": "method-not-allowed",
+      "status": 405,
+      "title": "method not allowed",
+      "when": "The path exists without this method; sent with `Allow`",
+      "decision": "0022"
+    },
+    {
+      "id": "already-exists",
+      "status": 409,
+      "title": "already exists",
+      "when": "A create collides with a unique key, such as a slug in the account",
+      "decision": "0022"
+    },
+    {
+      "id": "invalid-state",
+      "status": 409,
+      "title": "invalid state",
+      "when": "An action that the resource's current state does not allow, such as confirming a run that is not `UNCONFIRMED`; the body carries `state`",
+      "decision": "0022"
+    },
+    {
+      "id": "resource-locked",
+      "status": 409,
+      "title": "resource locked",
+      "when": "The target is locked by someone else, such as a stack locked by another user or another push policy key; the body carries `lockedBy`",
+      "decision": "0022"
+    },
+    {
+      "id": "intent-project-locked",
+      "status": 409,
+      "title": "intent project locked",
+      "when": "Another session holds the Intent project's write lock (decision 0019)",
+      "decision": "0022"
+    },
+    {
+      "id": "idempotency-key-in-flight",
+      "status": 409,
+      "title": "Idempotency key in use",
+      "when": "The first request with this key hasn't finished",
+      "decision": "0003"
+    },
+    {
+      "id": "precondition-failed",
+      "status": 412,
+      "title": "precondition failed",
+      "when": "`If-Match` names an entity tag that is no longer current",
+      "decision": "0022"
+    },
+    {
+      "id": "payload-too-large",
+      "status": 413,
+      "title": "payload too large",
+      "when": "The body exceeds `api.max_body_bytes` (default 1 MiB)",
+      "decision": "0022"
+    },
+    {
+      "id": "unsupported-media-type",
+      "status": 415,
+      "title": "unsupported media type",
+      "when": "A body that is not `application/json`, or a `PATCH` that is not `application/merge-patch+json`",
+      "decision": "0022"
+    },
+    {
+      "id": "validation-failed",
+      "status": 422,
+      "title": "validation failed",
+      "when": "The request parses against the schema, but a domain rule rejects it: a branch that does not exist, a cron expression outside the grammar below, a space the caller may not place the resource in, a cloud role whose trust test fails, a module share naming an account of another organization (decision 0014), an account limit above the organization's pool (decision 0021)",
+      "decision": "0022"
+    },
+    {
+      "id": "webhook-verification-failed",
+      "status": 422,
+      "title": "webhook verification failed",
+      "when": "Setting an enabled audit trail webhook whose verification delivery is not answered with a 2xx (decision 0015)",
+      "decision": "0022"
+    },
+    {
+      "id": "idempotency-key-reuse",
+      "status": 422,
+      "title": "Idempotency key reused",
+      "when": "The key was used with a different request",
+      "decision": "0003"
+    },
+    {
+      "id": "rate-limited",
+      "status": 429,
+      "title": "Rate limit exceeded",
+      "when": "The caller's bucket for this cost class is empty",
+      "decision": "0003"
+    },
+    {
+      "id": "internal-error",
+      "status": 500,
+      "title": "internal error",
+      "when": "An unexpected failure. The body never carries the cause; `instance` identifies the request",
+      "decision": "0022"
+    },
+    {
+      "id": "not-implemented",
+      "status": 501,
+      "title": "not implemented",
+      "when": "A route that the spec serves but no handler implements yet",
+      "decision": "0022"
+    },
+    {
+      "id": "upstream-error",
+      "status": 502,
+      "title": "upstream error",
+      "when": "A synchronous call to a system infraweave depends on failed: a VCS host, a cloud API, a VCS agent pool with no connected agent",
+      "decision": "0022"
+    },
+    {
+      "id": "api-disabled",
+      "status": 503,
+      "title": "API disabled for this caller",
+      "when": "The operator has disabled the API for this caller",
+      "decision": "0003"
+    },
+    {
+      "id": "service-unavailable",
+      "status": 503,
+      "title": "service unavailable",
+      "when": "infraweave cannot serve the request now: the database is unreachable, the server is shutting down, the request deadline passed. Sent with `Retry-After`",
+      "decision": "0022"
+    }
+  ]
+}
