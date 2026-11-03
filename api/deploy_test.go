@@ -297,7 +297,10 @@ func renameTable(t *testing.T) []renamed {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, section, found := strings.Cut(string(text), "\n### Rename table\n")
+	// A Windows checkout gives the record CRLF line endings, which the
+	// heading and the row pattern's $ would otherwise never match.
+	doc := strings.ReplaceAll(string(text), "\r\n", "\n")
+	_, section, found := strings.Cut(doc, "\n### Rename table\n")
 	if !found {
 		t.Fatalf("%s has no ### Rename table heading", naming)
 	}
