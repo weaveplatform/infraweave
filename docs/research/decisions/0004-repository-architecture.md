@@ -1,6 +1,6 @@
 # 0004: Repository architecture and process topology
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -49,7 +49,9 @@ complete repository shapes against these domains and compare them.
 
 infraweave uses option 5 of the architecture options,
 [the modular monolith](../architecture-options/5-modular-monolith.md),
-with its dependency rules as written there. In summary:
+with its dependency rules as written there, except its "no cross-domain
+foreign keys" rule, which the dependency-direction rule below replaces. In
+summary:
 
 | Tree | Holds | May import |
 |---|---|---|
@@ -74,7 +76,28 @@ with its dependency rules as written there. In summary:
   owns every table a run transition writes, including the stack's run lock
   and run state, and commits a transition in one transaction
   ([run execution path](../architecture-options/5-modular-monolith.md#run-execution-path)).
-  No foreign key crosses a domain boundary.
+- **Foreign keys follow the code's dependency direction.** A domain's tables
+  may reference the tables of a domain whose `api/` package its code
+  imports, and no others. So `runs` may reference `stacks`, because `runs`
+  imports `stacks/api`, but `stacks` never references `runs`.
+  - **One declared graph.** Which domain may import which is written once,
+    as one depguard rule per domain in `.golangci.yml` that lists the other
+    domains' `api/` packages it may import. depguard enforces it on code,
+    and the schema check below reads the same rules for tables, so code and
+    schema cannot disagree.
+  - **The graph is acyclic.** Back edges (below) are bound in
+    `internal/app`, not imported, so they add no edge. A cycle in the
+    declared rules fails the schema check.
+  - **Migration streams run in dependency order.** The composition root
+    registers each domain's stream after the streams of every domain it
+    imports, so a referenced table always exists before the reference
+    ([0005](0005-persistence-postgresql.md#migrations)).
+  - **Cross-domain references never cascade.** A foreign key from one
+    domain's table to another's uses `ON DELETE RESTRICT`, so deleting a row
+    never removes or rewrites another domain's rows behind its code. The
+    referencing domain removes its own rows first, through its `api/` or in
+    response to the owning domain's event. Within a domain, `ON DELETE`
+    rules are chosen per key, as 0005 says.
 - **Cross-domain effects.** Queries, authorisation and policy decisions are
   synchronous calls on `api/` interfaces. Consequences are events appended
   to a transactional outbox in the producer's transaction. The `policies`
@@ -139,6 +162,7 @@ with these cobra subcommands:
 | `flows-agent` | The Flows agent for a Flows agent pool (decision 0018) | Flows agent |
 | `migrate up`, `migrate status` | Applies or reports the embedded migrations, then exits (decision 0005) | none |
 | `version` | Build information from `internal/platform/buildinfo` | none |
+| `auth hash-password` | Reads a password on standard input and prints the break-glass password hash of decision 0006, then exits | none |
 | `secrets generate-kek`, `secrets rewrap`, `secrets rotate` | Key operations of decision 0013 against the database, then exits | none |
 
 The process modes share one PostgreSQL database and are each stateless, so each
@@ -178,6 +202,15 @@ transaction for a run transition), while the compiler, not a growing lint
 file, carries most of the boundary. The
 [recommendation](../architecture-options/README.md#recommendation) lists
 what makes it hold.
+
+**Foreign keys along the dependency direction, not none at all.** With no
+cross-domain foreign keys, a run would hold a stack ID that nothing checks,
+and every orphan would be found by application code or not at all. A domain
+that imports another already depends on its contract, so a reference in
+the same direction adds no new coupling, and PostgreSQL then guarantees the
+reference. Keys against the import direction stay forbidden, because they
+would make the imported domain's schema depend on its caller's, and a
+cascade would let one domain change rows another owns.
 
 For topology, the [process topology](../architecture-options/README.md#process-topology)
 section weighs one binary against separate binaries and separate services.
@@ -230,6 +263,14 @@ change.
   PostgreSQL and object storage (decision 0016).
 - `make verify-generate` checks the generated servers at their
   `internal/platform/gen/<spec>` paths.
+- `TestAccSchemaDependencies` applies each domain's migration stream in
+  registration order to a fresh database and attributes the tables that
+  appear to that stream's domain. It reads the per-domain depguard rules
+  from `.golangci.yml` and fails when a foreign key in `pg_constraint` goes
+  from one domain to a domain that domain may not import, when a
+  cross-domain key cascades or sets null on delete, when the declared
+  graph has a cycle, or when a stream is registered before a stream it
+  depends on.
 - `make docs-check` checks that the five option files keep one heading
   sequence and that this record's links resolve.
 

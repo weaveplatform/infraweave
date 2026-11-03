@@ -1,6 +1,6 @@
 # 0020: Reference deployments and packaging
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -34,7 +34,10 @@ storage), 0008 (workers and runner images), 0012 (the VCS agent) and 0013
 ### Two binaries, one server binary with several process modes
 
 The repository builds two Go binaries with `CGO_ENABLED=0`. Their code
-layout is decision 0004's.
+layout is decision 0004's. Release builds of both set `GOFIPS140=certified`,
+so every released binary and image carries the CMVP-validated Go
+Cryptographic Module and runs in FIPS 140-3 mode by default
+([0013](0013-secrets-at-rest.md#fips-140-3)).
 
 - **`infraweave`** (`cmd/infraweave`) is every operator and worker
   process. Each process is a subcommand of it:
@@ -88,9 +91,8 @@ Listeners:
 |---|---|---|
 | Release archives | `infraweave` for `linux`, `darwin` and `windows` on `amd64` and `arm64` (the Makefile's `PLATFORMS`), `SHA256SUMS`, a Sigstore bundle per file | GitHub release assets |
 | Server image | `infraweave` on `gcr.io/distroless/static-debian12:nonroot`, user `65532`, read-only root file system, no shell; `ENTRYPOINT ["/infraweave"]` | `ghcr.io/weaveplatform/infraweave:<version>`, multi-arch |
-| FIPS image | The same, built with `GOFIPS140` set to the validated Go cryptographic module | `ghcr.io/weaveplatform/infraweave:<version>-fips` |
 | Runner images | Built from the repository's runner image definitions, whose contents (Terraform, OpenTofu and the other vendor tools of report 20) decision 0008 defines. The acceptance harness builds the same definitions locally as `infraweave-runner:acceptance` ([0016](0016-testing-and-acceptance.md)) | `ghcr.io/weaveplatform/infraweave-runner-<vendor>:<version>` |
-| Flows runtime image | The Node runtime that executes Flows app bundles ([0018](0018-flows-runtime.md)) | `ghcr.io/weaveplatform/infraweave-flows-runtime:<version>` |
+| First-party Flows apps | One OCI image per app version, a Go program on `pkg/flows/appsdk` that serves the `App` service ([0018](0018-flows-runtime.md)) | Multi-arch images under `ghcr.io/weaveplatform`, listed in infraweave's first-party app registry |
 | Helm chart | `infraweave` (`serve` and `scheduler`) and `infraweave-workers` (`infraweave launcher`) | `oci://ghcr.io/weaveplatform/charts/<chart>:<version>` |
 | Terraform modules | `deploy/terraform/modules/<cloud>` (see reference deployments) | Git source in this repository at the release tag |
 | Compose file | `deploy/compose/compose.yaml` | Release asset |
@@ -158,7 +160,7 @@ subcommands:
 | Reference | Compute | PostgreSQL | Object storage | Key root (decision 0013) | Identity for storage and keys |
 |---|---|---|---|---|---|
 | `deploy/compose` | one `infraweave all` plus one `infraweave launcher` on Docker | `postgres` container, volume | local disk volume (decision 0005) | local key file | none |
-| `deploy/helm` on any Kubernetes | chart Deployments | operator-supplied | S3-compatible or local persistent volume | local key in a Secret | none |
+| `deploy/helm` on any Kubernetes | chart Deployments | operator-supplied | any driver of decision 0005: S3-compatible, Cloud Storage, Blob Storage or a local persistent volume | local key in a Secret | none |
 | `deploy/terraform/modules/aws` | EKS, Auto Mode | RDS for PostgreSQL, Multi-AZ, IAM authentication | S3, one bucket with store prefixes | AWS KMS | EKS Pod Identity |
 | `deploy/terraform/modules/azure` | AKS | Azure Database for PostgreSQL Flexible Server, private access, Entra authentication | Blob Storage, one account | Azure Key Vault key | Microsoft Entra Workload ID |
 | `deploy/terraform/modules/google` | GKE Autopilot, private nodes | Cloud SQL for PostgreSQL, private IP, IAM authentication | Cloud Storage | Cloud KMS | GKE Workload Identity Federation |
@@ -194,7 +196,7 @@ because they scale on different signals:
 | `serve.replicas`, `scheduler.replicas` | `2`, `2` |
 | `serve.autoscaling` | CPU-based `HorizontalPodAutoscaler`, off |
 | `scheduler.autoscaling` | on `infraweave_queue_jobs` with `state="pending"` ([0017](0017-observability-and-health.md)), through KEDA when installed, off |
-| `sharedPool.enabled` | `false`: an operator-run pool that every space may use, standing in for Spacelift's public pool ([0021](0021-capability-scope-and-supersession.md)) |
+| `sharedPool.enabled` | `false`: the public worker pool, which the operator runs for every account ([0008](0008-run-execution-and-worker-protocol.md#pools), [0021](0021-capability-scope-and-supersession.md)) |
 | `podDisruptionBudget.maxUnavailable` | `1` per process mode |
 | `terminationGracePeriodSeconds` | `serve` 45, `scheduler` 120; both exceed 0017's ready delay, request drain and flush caps combined |
 | `migrations.mode` | `hook`: a `pre-install,pre-upgrade` Job runs `infraweave migrate up`, and the process modes run with `database.migrate: check`; `startup` leaves decision 0005's default, `database.migrate: auto` |
@@ -249,10 +251,13 @@ because they scale on different signals:
   folded its scheduler into the drain, and the `scheduler` process mode does the
   same; decision 0011's claims make cron safe on any number of
   `scheduler` replicas.
-- **Kubernetes on every cloud, not ECS.** Three Kubernetes modules share
-  one chart, so behaviour is defined once. An ECS module would be a second
-  compute model with its own task definitions, health checks and identity
-  wiring, tested separately.
+- **Kubernetes on every cloud, not ECS.** Three Kubernetes modules (EKS, AKS
+  and GKE) share one chart, so behaviour is defined once, and Docker Compose
+  covers the single host. An ECS module would be a second compute model with
+  its own task definitions, health checks and identity wiring, tested
+  separately.
+- **No separate FIPS image.** With FIPS 140-3 in every release build, one
+  image serves every operator, and no deployment has to choose a variant.
 - **Modules in this repository, not separate module repositories.**
   Spacelift's separate repositories carry their own majors, which then have
   to be matched to application versions. One tag for everything removes
@@ -272,7 +277,7 @@ because they scale on different signals:
 - **Departure from Spacelift:** no licence token. Spacelift's self-hosted
   limits (no public pool, no Azure or GCP integration;
   [26 section 2.3](../reference/26-scope-and-tiers.md#23-self-hosted)) are not inherited; the
-  shared pool is a chart option ([0021](0021-capability-scope-and-supersession.md)).
+  public worker pool is a chart option ([0021](0021-capability-scope-and-supersession.md)).
 - **Departure from Spacelift:** no MQTT broker listener, following 0021's
   supersession test; decision 0008 owns the transport.
 - **Departure from Spacelift:** no VCS gateway process or gRPC listener.
@@ -282,16 +287,15 @@ because they scale on different signals:
 
 - **PostgreSQL is the only database**, at the version floor decision 0005
   sets. The modules create no read replica, because no decision uses one.
-- **The S3-compatible store must support** what decision 0005 needs:
-  pre-signed URLs and multipart uploads. It needs neither bucket versioning
-  nor lifecycle expiry: decision 0005 writes every state version as its own
-  immutable object and expires objects itself. Spacelift asks for both for
-  its own install
+- **The S3-compatible store must support** what decision 0005's contract
+  needs: pre-signed URLs, multipart uploads and `x-amz-checksum-sha256`. It
+  needs neither bucket versioning nor lifecycle expiry: decision 0005 writes
+  every state version as its own immutable object and expires objects
+  itself. Spacelift asks for both for its own install
   ([24 section 3.2](../reference/24-self-hosted-reference.md#32-object-storage-buckets)),
   which is a departure. An operator may still add a lifecycle rule as a
-  backstop, set longer than the store's retention.
-  MinIO's upstream server is no longer developed, so the compose reference
-  uses local disk instead.
+  backstop, set longer than the store's retention. The compose reference
+  uses local disk, so a single host needs no object store at all.
 - **Real-cloud applies** of the modules run only in a protected GitHub
   environment with the maintainer's approval, through OIDC to lab
   accounts. They are not part of the pull-request gate.
@@ -325,7 +329,8 @@ because they scale on different signals:
   and one tracked run finishes on an `infraweave-workers` launcher.
 - **Release.** The release workflow verifies every signature and
   attestation it produced with `cosign verify` before it publishes the
-  release.
+  release, and checks that each built binary reports FIPS 140-3 mode and a
+  certified module version (decision 0013).
 
 ## References
 

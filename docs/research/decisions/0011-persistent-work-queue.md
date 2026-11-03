@@ -1,6 +1,6 @@
 # 0011: Persistent work queue and scheduler
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -91,6 +91,7 @@ backlog in one never starves another.
 | `vcs-inbox` | Stored VCS and integration webhooks ([0012](0012-vcs-integration-model.md)) | `webhooks` | 4 |
 | `deliveries` | Outbound HTTP deliveries (decision 0015) | part of `async-jobs` | 8 |
 | `scheduler` | Fired schedules and run timers | `cronjobs` | 2 |
+| `flows` | Flows event deliveries, app tasks, timers and retention ([0018](0018-flows-runtime.md)), kept apart so a busy flow never delays Deploy's fan-out | none: self-hosted Flows has no queue | 8 |
 | `maintenance` | Expiry, pruning, backfills and resealing | none | 1 |
 
 Spacelift's `dlq` and `dlq.fifo` become the `dead` state. Its `iot` queue
@@ -142,7 +143,9 @@ has no counterpart, because workers report over HTTP straight to the API
 - **Registration.** A kind is registered with
   `queue.Register(kind, handler, opts)`. The options give the queue, duplicate
   policy, `max_attempts` (default 5), timeout (default 5 minutes, at most 15
-  minutes, Spacelift's 900-second processing bound) and retry delay.
+  minutes, Spacelift's 900-second processing bound) and retry delay. Each kind
+  may override any default; a timeout above 15 minutes fails registration, so
+  the process does not start.
 - **Unregistered kinds.** A job of a kind no handler is registered for stays
   `pending`. This happens during a rolling upgrade, when an older replica sees
   a newer kind. Claims filter on the kinds the replica knows.

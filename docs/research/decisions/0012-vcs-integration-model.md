@@ -1,6 +1,6 @@
 # 0012: VCS integration model
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
