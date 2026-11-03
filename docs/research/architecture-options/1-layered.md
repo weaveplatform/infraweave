@@ -45,7 +45,7 @@ feedback; a VCS event needs stacks, policies and runs; a stack delete
 needs a destroy run. This layout therefore splits the middle into two
 tiers. Services never import each other, apart from `service/authz`, which
 every service asks for a decision, and `service/features`, which every
-service that creates a counted thing asks for the account's limit. Every operation that crosses domains
+service that creates a counted thing asks for the limit pooled across the account's organization. Every operation that crosses domains
 lives one tier up, in a **workflow** package (`workflow/runflow`,
 `workflow/stackflow`, `workflow/vcsevent` and later ones), which composes
 services inside one context-carried transaction. Workflows are kept in a
@@ -228,7 +228,8 @@ internal/
 │
 ├── model/                                 SHARED TYPES, every layer and the worker column
 │   ├── ids.go                             ULID-backed IDs: StackID, RunID, PoolID, ...; Slug
-│   ├── account.go space.go                Account, Space, RoleBinding, Action                (P3, P4)
+│   ├── organization.go account.go         Organization, Account, Member; root is the installation's node (P3)
+│   ├── space.go                           Space (an account's top space by its slug), RoleBinding, Action (P4)
 │   ├── feature.go                         Feature, Kind (capability, option, limit), Tier, Grant, Entitlement
 │   │                                      with Has and Limit                                 (P3b)
 │   ├── stack.go                           Stack, StackSettings, StackState, Lock              (P5)
@@ -251,8 +252,8 @@ internal/
 │   ├── template.go blueprint.go           (P21)
 │   ├── resource.go                        ManagedEntity, Scan (P22)
 │   ├── intent.go                          IntentProject, IntentOperation (P25)
-│   └── flows/                             Organization, Project, Flow, Block, Event, Invocation, Timer,
-│                                          AppVersion (UUIDs)                                 (Flows)
+│   └── flows/                             Project, Flow, Block, Event, Invocation, Timer, AppVersion
+│                                          (UUIDs), each belonging to an account             (Flows)
 │
 ├── support/                               PURE LIBRARIES, no layer, no I/O
 │   ├── buildinfo/                         version, commit, date from -ldflags   ← internal/buildinfo
@@ -287,9 +288,11 @@ internal/
 │   ├── idempotency/ ratelimit/            decision 0003 stores moved out of memory          (P2)
 │   ├── listen/                            one LISTEN connection per replica on infraweave_events,
 │   │                                      infraweave_logs and infraweave_invalidate         (P7)
-│   ├── account/ identity/ spaces/         accounts (tier, entitlement_version), users, groups, API keys,
-│   │                                      sessions; space tree, roles, role_bindings        (P3, P4)
-│   ├── features/                          tiers, tier_features, tier_limits, account_grants, billing (P3b)
+│   ├── account/ identity/ spaces/         organizations (tier, entitlement_version), accounts, members,
+│   │                                      groups, API keys, organization keys, sessions, OAuth clients;
+│   │                                      space tree, roles, role_bindings                  (P3, P3b, P4)
+│   ├── features/                          tiers, tier_features, tier_limits, organization_grants,
+│   │                                      account_limits, billing                            (P3b)
 │   ├── stacks/                            stacks, stack_hooks, locks, push-routing index    (P5)
 │   ├── config/                            config_elements, contexts, context_attachments   (P6)
 │   ├── runs/                              runs, run_state_transitions, run_reviews, receipts, dependencies;
@@ -342,12 +345,15 @@ internal/
 │   ├── authz/                             Decider: reachable spaces, actions, bindings; For(ctx, principal);
 │   │                                      Allowed(resource) for allowedActions                (P4)
 │   ├── features/                          catalogue.yaml (embedded), seeded tiers, grants, entitlement
-│   │                                      snapshot per account rebuilt on infraweave_invalidate, billing
-│   │                                      switch, Capability, Option, Limit checks           (P3b)
+│   │                                      snapshot per organization rebuilt on infraweave_invalidate,
+│   │                                      billing switch, Capability, Option, Limit checks against the
+│   │                                      organization's pool and any account limit          (P3b)
 │   ├── streams/                           per-replica stream hub: wake-ups from repository/listen, rows read
 │   │                                      back, per-message authorization, resume by event ID (P9)
-│   ├── identity/                          accounts, users, groups, API keys, token exchange, sessions (P3)
-│   │   ├── sso/ scim/                     (P23)
+│   ├── identity/                          organizations, accounts, members, groups, API keys, token
+│   │                                      exchange, sessions bound to one account (P3); the OAuth
+│   │                                      authorization server and the Organization tag  (P3b)
+│   │   ├── sso/ scim/                     the organization's identity providers, linking (P23)
 │   ├── spaces/                            space tree CRUD, re-parenting, inheritance switch  (P4)
 │   ├── stacks/                            stack CRUD rules, settings validation, locks, enable, reslug (P5)
 │   ├── config/                            contexts, config elements, attachments, auto-attach (P6)
@@ -373,10 +379,9 @@ internal/
 │   ├── templates/ blueprints/             (P21)
 │   ├── resources/ search/                 managed entities, scans, generic search          (P22)
 │   ├── intelligence/                      AI integrations, Infra Assistant, Intent projects (P25)
-│   └── flows/                             Flows: projects and UUIDs, one organization per account;
+│   └── flows/                             Flows: projects and UUIDs, belonging to the account;
 │       │                                  subpackages count as one domain                   (Flows)
-│       ├── org/ project/ flow/            organizations, projects, memberships, flow definitions, named
-│       │                                  expressions
+│       ├── project/ flow/                 projects, memberships, flow definitions, named expressions
 │       ├── engine/                        delivery, CEL evaluation, buffered effects, lineage, invocations,
 │       │                                  limits, echo, pending events, retry and re-emit
 │       ├── blocks/                        core blocks in Go; Transform with the steps form
@@ -417,6 +422,7 @@ internal/
 │   │   │   ├── stacks/                    69 Stacks operations; behaviour P5
 │   │   │   ├── runs/                      (P7, P10)
 │   │   │   ├── account/ users/ apikeys/ sessions/ (P3)
+│   │   │   ├── organization/ oauth/       the Organization tag; the OAuth authorization server (P3b)
 │   │   │   ├── spaces/ roles/             (P4)
 │   │   │   ├── contexts/                  (P6)
 │   │   │   ├── workerpools/               (P8, P14)
@@ -432,7 +438,7 @@ internal/
 │   │   │   ├── intelligence/              (P25)
 │   │   │   ├── expressions/               check, complete, evaluate; policies/check lives in policies/ (P9)
 │   │   │   └── flows/                     implements gen/flows, including its stream    (Flows)
-│   │   ├── operator/                      implements gen/operator: tiers, accounts, grants, billing;
+│   │   ├── operator/                      implements gen/operator: organizations, tiers, grants, billing;
 │   │   │                                  operator principals only                          (P3b)
 │   │   ├── console/                       serves web/console's embed.FS at /, index.html fallback, CSP nonce,
 │   │   │                                  cache headers, placeholder page                   (P24c)
@@ -859,7 +865,7 @@ internal/service/registry/
 ├── modules.go versions.go numbering, PENDING, ACTIVE, FAILED, yanked; metadata extraction
 ├── providers.go           drafts, publish, revoke, platforms, checksums
 ├── gpg.go                 account GPG keys and revocation
-├── sharing.go             space availability, cross-account sharing
+├── sharing.go             space availability, shares between accounts of one organization only
 └── download.go            signed URLs from infra/objectstore
 internal/workflow/vcsevent/modules.go    tag push to version and TESTING runs through runflow
 internal/transport/http/api/modules/, providers/   the REST resources
@@ -905,16 +911,20 @@ internal/model/feature.go                Feature, Kind, Tier, Grant; Entitlement
 internal/service/features/
 ├── catalogue.yaml         every capability, option and limit: kind, requirements, seeded tiers, parity mapping
 ├── catalogue.go           embeds and validates the catalogue; the operation and field index
-├── tiers.go grants.go     seeded Free, Starter, Starter+, Business, Enterprise; operator tiers; grants per account
-├── entitlement.go         tier plus grants, minus features.disabled, minus unmet requirements; snapshot per
-│                          account, rebuilt when infraweave_invalidate names it
+├── tiers.go grants.go     seeded Free, Starter, Starter+, Business, Enterprise; operator tiers; grants per
+│                          organization
+├── entitlement.go         the organization's tier plus grants, minus features.disabled, minus unmet
+│                          requirements; snapshot per organization, rebuilt when infraweave_invalidate names it
+├── limits.go              pooled limits: a count across the organization's accounts, then the account limit
+│                          an organization admin set, if any
 ├── check.go               Capability(ctx, p, op), Option(ctx, p, field, value), Limit(ctx, p, name, count);
 │                          no check at all while billing is off
 └── billing.go             the installation's billing switch
-internal/repository/features/            tiers, tier_features, tier_limits, account_grants, billing
-internal/repository/account/             accounts.tier and accounts.entitlement_version
+internal/repository/features/            tiers, tier_features, tier_limits, organization_grants, account_limits, billing
+internal/repository/account/             organizations.tier and organizations.entitlement_version
 internal/transport/http/features.go      the chi middleware after authn.go, before every handler
-internal/transport/http/operator/        the operator API; writes bump entitlement_version and notify
+internal/transport/http/operator/        the operator API: organizations, tiers, grants, billing; writes bump
+                                         entitlement_version and notify
 internal/transport/http/gen/operator/    generated from api/operator.openapi.yaml
 internal/app/schedule.go                 the queue's dequeue gate over service/features
 ```
@@ -931,16 +941,18 @@ in a different layer:
 | Gated background work | `infra/queue` at dequeue completes a job of a feature outside the entitlement as skipped; `transport/scheduler/cron.go` skips its schedules | `infra` sits below `service`, so `internal/app` hands the queue a gate closure built over `service/features` |
 
 While `billing` is off, the default, `check.go` returns before reading the
-snapshot and every account behaves as Enterprise; only `features.disabled`
+snapshot and every organization behaves as Enterprise; only `features.disabled`
 answers, as `403 feature-disabled`. With billing on, a missing feature
 answers `403 feature-not-in-tier` with the tiers that include it, smallest
 first, and a limit answers `403 limit-reached` with its name and value,
-mapped by `transport/http/problem`. Tiers, account tiers, grants and the
-billing switch are data written only through the operator API
+mapped by `transport/http/problem`. Tiers, organization tiers, grants and
+the billing switch are data written only through the operator API
 (`api/operator.openapi.yaml`, operator principals only, wrapped by
-`infraweavectl operator`); a write bumps `accounts.entitlement_version`
-and notifies `infraweave_invalidate`, so every replica rebuilds the snapshot
-without a restart. A downgrade deletes nothing: gated jobs are skipped,
+`infraweavectl operator`), which also creates organizations, each with its
+first account; organization admins add accounts and set account limits
+through the served `Organization` tag. A write bumps
+`organizations.entitlement_version` and notifies `infraweave_invalidate`,
+so every replica rebuilds the snapshot without a restart. A downgrade deletes nothing: gated jobs are skipped,
 schedules pause, stored option values read as their defaults, and things
 already over a limit keep running.
 
@@ -1010,7 +1022,7 @@ ends slow consumers.
 
 ```text
 internal/service/flows/
-├── org/ project/          organizations (one per account), projects, memberships, roles, named expressions
+├── project/               the account's projects, memberships, roles, named expressions
 ├── flow/                  flow definitions, blocks, links, strict YAML import and export with CEL
 ├── engine/
 │   ├── deliver.go         flows.deliver: evaluate the input's configuration, run the block, commit its
@@ -1068,8 +1080,9 @@ feature, through `features.disabled`. Its clients are `infraweavectl` and
 the provider, over `api/flows.openapi.yaml`.
 
 Flows has its own projects and UUID identities
-([report 23](../reference/23-flows.md#2-resource-hierarchy)), with one
-organization per account sharing Deploy's users, so it is the first domain
+([report 23](../reference/23-flows.md#2-resource-hierarchy)), belonging
+to the account in place of Spacelift Flows' organization and sharing its
+members, so it is the first domain
 big enough to need internal structure. The layered tree has only one level
 per domain, so `service/flows` gets subpackages that count as one domain for
 rule 3: `engine` may import `flow`, but nothing outside `service/flows` may.
@@ -1472,7 +1485,7 @@ Coverage implications:
 
 1. `internal/transport/scheduler/cron.go` (scheduler process mode): the ticker claims the
    stack's due drift detection entry; `infra/queue`'s dequeue gate finds `drift-detection` in
-   the account's entitlement (with billing off, every feature is), and the entry calls
+   the entitlement of the account's organization (with billing off, every feature is), and the entry calls
    `workflow/runflow.Create` for a proposed run marked as drift detection.
 2. `internal/workflow/runflow/`: gates, claim and handover as in the first walkthrough; the
    worker plans with `worker/iac/opentofu` and reports the plan, which has changes.
@@ -1482,7 +1495,7 @@ Coverage implications:
 4. `internal/transport/scheduler/consumers.go`: the `events.fanout` job computes the targets
    from the shared catalogue in `model/event`. Beside the notification policy and webhooks, it
    finds an enabled Deploy trigger block of kind `drift_detected` whose filter matches, in an
-   account whose entitlement holds `flows-engine`.
+   account whose organization's entitlement holds `flows-engine`.
 5. `internal/workflow/flowsdeploy/trigger.go`: in one transaction, inserts the root
    `flow_events` row through `repository/flows`, linked to the Deploy event, and one
    `flows.deliver` job per linked input; the event's `now` and seed are fixed and stored.

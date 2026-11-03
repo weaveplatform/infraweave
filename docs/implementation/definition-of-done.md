@@ -45,7 +45,8 @@ until then the row is a rule reviewers apply by hand.
 | Quality gate | The `Quality gate` job succeeds only when every job in its `needs` succeeded; every required job, including each new acceptance partition, joins its `needs` and, when it produces coverage, the `coverage` job's |
 | PR title | A Conventional Commits title, checked by `pr-title-validation.yml`, so release-please derives the version and changelog |
 | Dependencies | `dependency-review.yml` passes. Actions are pinned by commit SHA with the version in a comment; `go.mod` names the full patch Go release |
-| Spec first | A served operation lands as a fragment change (`make scaffold`, then `make generate`) before its handler; the operation keeps the reference's `operationId`, method and path unless a divergence is recorded |
+| Spec first | A served operation lands as a fragment change (`make scaffold`, then `make generate`) before its handler; the operation keeps the reference's `operationId`, method and path unless decision 0001's rename table renames it or a divergence is recorded |
+| Served names | From P1c: `TestUnitServedNames`, the rename-table test, fails when an operationId, schema, property, enum value, header, environment variable or policy input key of a served bundle contains "spacelift", or when a name of decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md)'s rename table is served under its reference spelling |
 | Divergences | Each difference from the reference is listed in the operation's `x-infraweave-divergence` and has a row in [deviations.md](deviations.md) |
 | Feature ownership | A new, moved or deferred feature keeps its kind, seeded tier and owning phase in [capability-roadmap.md](capability-roadmap.md), matching `internal/features/catalogue.yaml`; from P3b, `TestUnitFeatureCatalogue` fails on an operation or gated property with no feature. Only evidenced supersession under [0021](../research/decisions/0021-capability-scope-and-supersession.md) removes one |
 | Decisions | A behaviour change amends the decision record it rests on in place, and the research page it contradicts, in the same pull request; a new choice gets a new numbered decision |
@@ -86,6 +87,11 @@ Rules that apply to every change in every phase:
   forward only, `NNNNN_snake_case.sql`, gap-free per domain stream, expand
   before contract across releases, large backfills as queue jobs, never in a
   migration.
+- **Account isolation**: from P3, every operation that reads or writes an
+  account's data has a scenario in which a credential of another account
+  of the same organization finds nothing, and organization admins and
+  organization keys reach only the `Organization` tag
+  ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)).
 - **Errors** are RFC 9457 problems with the slugs of
   [0003](../research/decisions/0003-api-conventions.md) and
   [0022](../research/decisions/0022-api-errors-and-update-semantics.md).

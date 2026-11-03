@@ -25,11 +25,12 @@ at the end.
 - **Lowest seeded tier** is the smallest of the five seeded tiers (Free,
   Starter, Starter+, Business, Enterprise) that holds the feature, placed
   from report 26's plan column by decision 0021's rules. Free means every
-  seeded tier. Tiers apply only while billing is on; with billing off,
-  the default, every account behaves as Enterprise. An operator can
-  change every seeded tier except Enterprise, add tiers, grant a feature to
-  one account, and switch a feature off for the installation with
-  `features.disabled`.
+  seeded tier. A tier belongs to an organization, and every account of the
+  organization inherits it with the organization's grants. Tiers apply
+  only while billing is on; with billing off, the default, every
+  organization behaves as Enterprise. An operator can change every seeded
+  tier except Enterprise, add tiers, grant a feature to one organization,
+  and switch a feature off for the installation with `features.disabled`.
 - **Phase** is the owning phase: the phase that delivers the row's core and
   whose exit makes the row `implemented` under decision
   [0016](../research/decisions/0016-testing-and-acceptance.md)'s evidence rule.
@@ -79,7 +80,7 @@ capability of the search each completes.
 | `flows-agents` | Flows agent pools, their tokens and the agent gateway | Free | `flows-engine` | P18d |
 | `flows-apps` | App installations, custom apps, app versions and registry subscriptions | Free | `flows-engine` | P18d |
 | `flows-data-tables` | Data tables, their rows and the Data Table blocks | Free | `flows-engine` | P18c |
-| `flows-engine` | Organizations, projects, flows, blocks, events, invocations, secrets, named expressions, core blocks, the Deploy triggers and the Flows tag | Free | | P18c |
+| `flows-engine` | Projects, flows, blocks, events, invocations, secrets, named expressions, core blocks, the Deploy triggers and the Flows tag; Flows belongs to the account, which takes the place of Spacelift Flows' organization | Free | | P18c |
 | `flows-forms` | Forms, and the Form Opened and Show Form blocks | Free | `flows-engine` | P18c |
 | `flows-mcp-tools` | MCP Tool blocks and the flow and platform Flows MCP servers | Free | `flows-engine` | P18c |
 | `ignored-runs` | `stackSearchRunIgnoredTriggers` and the ignored-run warnings | Starter+ | | P12 |
@@ -87,12 +88,13 @@ capability of the search each completes.
 | `intent` | The Intent tag and the hosted `intent` tool | Free | | P25b |
 | `managed-users` | The Managed Users tag | Free | | P3b |
 | `mfa` | Enforced MFA and security keys | Enterprise | | P23 |
-| `module-sharing` | `moduleShare` and `sharedModulesV2` | Starter | `modules` | P17 |
+| `module-sharing` | `moduleShare` and `sharedModulesV2`, between accounts of one organization and in both accounts' entitlement | Starter | `modules` | P17 |
 | `modules` | The Modules tag less sharing, and the module registry protocol | Starter | | P17 |
 | `notifications` | The Notifications tag | Starter | | P18 |
 | `oidc-federation` | The OIDC token in every run, the subject template and the discovery documents | Starter | | P15 |
 | `oidc-sso` | OIDC single sign-on | Starter | | P23 |
 | `opentofu-migration` | The OpenTofu Migration tag, `openTofuMigrate`, `openTofuMigrationQueueClean` and `stackMigrateVendorAll` | Free | | P20b |
+| `organization` | The served `Organization` tag, outside the parity surface: the organization, its accounts, members, identity linking, account limits and usage across accounts; its identity provider operations carry `oidc-sso` or `saml-sso`, by provider kind | Free | | P3b |
 | `origin-integration` | The Origin Integration tag | Free | | P19b |
 | `personal-api-keys` | The Personal API Keys tag | Free | | P3b |
 | `plugins` | The Plugins tag | Free | | P20b |
@@ -148,14 +150,17 @@ entitlement answers `403 feature-not-in-tier`.
 ### Limits
 
 A limit is checked by the domain that creates the counted thing and answers
-`403 limit-reached` beyond it. An empty cell means no limit.
+`403 limit-reached` beyond it. Every limit is pooled: it counts its thing
+across all of an organization's accounts, and an organization admin may set
+an account limit below the pool for any account, which answers the same
+refusal while the pool still has room. An empty cell means no limit.
 
 | Feature | Unit | Free | Starter | Starter+ | Business | Enterprise | Phase |
 |---|---|---|---|---|---|---|---|
-| `seats` | users, and API keys as Spacelift counts them | 2 | 2 | | | | P3b |
+| `seats` | members, each counted once however many accounts admit it, and API keys as Spacelift counts them | 2 | 2 | | | | P3b |
 | `private-workers` | registered private workers | 0 | 0 | 2 | 3 | | P8 |
 | `public-worker-slots` | runs in flight on the public worker pool; a run beyond it waits | 1 | 1 | 2 | 2 | | P14 |
-| `ai-budget` | spend of the installation's default AI integration, in USD per 30 days | 10 | | | | | P25 |
+| `ai-budget` | spend of the installation's default AI integration across the organization's accounts, in USD per 30 days | 10 | | | | | P25 |
 
 ### The installation's switch
 
@@ -237,7 +242,7 @@ names each and the tier column names the tier of each finer one.
 | GPG Keys | 4 | [15](../research/reference/15-module-and-provider-registry.md) | `terraform-provider-registry` | Business | P17b |  |  |
 | Infrastructure | 3 | [24](../research/reference/24-self-hosted-reference.md) | `infrastructure` | Free | P27 | P2c (`messageQueueStats`), P13 (`policyRuntime`) | Installation internals for self-hosted operators |
 | Intent | 40 | [22](../research/reference/22-intelligence.md) | `intent` | Free | P25b |  |  |
-| Managed Users | 23 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `managed-users`; limit `seats` | Free; `seats` 2 on Free and Starter | P3b | P4b (role bindings), P18 (group integrations) | Group integrations give a Slack channel access rules (report 14 section 4.3) |
+| Managed Users | 23 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `managed-users`; limit `seats` | Free; `seats` 2 on Free and Starter | P3b | P4b (role bindings), P18 (group integrations) | A managed user is an organization member as one account sees it; group integrations give a Slack channel access rules (report 14 section 4.3) |
 | Modules | 34 | [15](../research/reference/15-module-and-provider-registry.md) | `modules`, `module-sharing` | Starter | P17 |  |  |
 | Notifications | 5 | [19](../research/reference/19-events-notifications-audit.md) | `notifications` | Starter | P18 |  |  |
 | OAuth | 1 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `slack` | Free | P18 |  | The Slack redirect belongs to report 19 |
@@ -246,11 +251,11 @@ names each and the tier column names the tier of each finer one.
 | Personal API Keys | 4 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `personal-api-keys` | Free | P3b |  |  |
 | Plugins | 9 | [25](../research/reference/25-other-integrations.md) | `plugins` | Free | P20b |  | Plugins run inside runs; placed with vendor tooling |
 | Policies | 21 | [09](../research/reference/09-policies.md) | `policies`; option `notification-policies` | Starter | P13 | P13b, P25b (Intent project attachments) |  |
-| Repos | 12 | [11](../research/reference/11-vcs-integrations.md) | `repos` | Free | P19b |  | Spacelift's hosted repositories, the reference's `SPACELIFT` source provider |
+| Repos | 12 | [11](../research/reference/11-vcs-integrations.md) | `repos` | Free | P19b |  | Hosted repositories, served as the `INFRAWEAVE` source provider (the reference's `SPACELIFT`) |
 | Resources | 4 | [21](../research/reference/21-resources-scans-search.md) | `resources` | Free | P22 |  |  |
 | Roles | 25 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `roles` | Free | P4b |  |  |
 | Runs | 35 | [08](../research/reference/08-run-lifecycle.md) | `runs`, `tasks`, `targeted-replan`, `ignored-runs` | Free; Starter for `tasks`; Starter+ for `ignored-runs`; Business for `targeted-replan` | P10 | P7, P9, P13, P16, P18b, P20b, P22 | 3 of 35 operations are 501 stubs at the baseline: `proposeWithOverrides`, `runTrigger`, `taskCreate` |
-| SSO | 11 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `oidc-sso`, `saml-sso`, `scim` | Starter for `oidc-sso`; Enterprise for `saml-sso` and `scim` | P23 |  |  |
+| SSO | 11 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `oidc-sso`, `saml-sso`, `scim` | Starter for `oidc-sso`; Enterprise for `saml-sso` and `scim` | P23 |  | Configures the organization's identity providers, which every account of it shares |
 | Saved Filters | 5 | [21](../research/reference/21-resources-scans-search.md) | `saved-filters` | Free | P22 |  |  |
 | Scans | 17 | [21](../research/reference/21-resources-scans-search.md) | `scans` | Free | P22b |  | No docs page |
 | Search Suggestions | 30 | [21](../research/reference/21-resources-scans-search.md) | the capability of the search each completes | that capability's | P22 | each suggestion operation lands with its search, from P5 |  |
@@ -269,6 +274,11 @@ names each and the tier column names the tier of each finer one.
 | Viewer | 1 | [14](../research/reference/14-spaces-rbac-and-identity.md) | `viewer` | Free | P3 |  |  |
 | Webhooks | 9 | [19](../research/reference/19-events-notifications-audit.md) | `webhooks` | Starter | P18 |  |  |
 | Worker Pools | 19 | [10](../research/reference/10-workers-and-execution.md) | `worker-pools`, `private-worker-pools`; limits `private-workers`, `public-worker-slots` | Free; Starter+ for `private-worker-pools` | P8 | P14, P25b | Private pools first; the public worker pool later, as an option |
+
+The served `Organization` tag has no reference counterpart, so it is not a
+row above: the `organization` capability gates it, P3b serves it, P18b adds
+run and worker usage per account, and P23 adds identity providers and
+identity linking.
 
 ## Untagged operations
 
@@ -358,7 +368,7 @@ Flows resources, named `infraweave_flows_<name>`, follow
 
 | Name | Owning report | Feature | Lowest seeded tier | API phase | Provider phase | State at baseline | Notes |
 |---|---|---|---|---|---|---|---|
-| `spacelift_account` | [04](../research/reference/04-platform-api-inventory.md) | `account-details` | Free | P3 | P24 | `missing` | Also reads `tier` (P3b) and `spaceliftAwsAccountId` (P15) |
+| `spacelift_account` | [04](../research/reference/04-platform-api-inventory.md) | `account-details` | Free | P3 | P24 | `missing` | Also reads `tier` (P3b) and `installationAwsAccountId` (P15), the reference's `spaceliftAwsAccountId` |
 | `spacelift_ai_integration` | [22](../research/reference/22-intelligence.md) | `ai-integrations` | Free | P25 | P24 | `missing` |  |
 | `spacelift_ai_integrations` | [22](../research/reference/22-intelligence.md) | `ai-integrations` | Free | P25 | P24 | `missing` |  |
 | `spacelift_aws_integration` | [12](../research/reference/12-cloud-integrations-and-oidc.md) | `cloud-integrations` | Free | P15 | P24 | `missing` |  |
@@ -447,7 +457,7 @@ infraweave's names only and rejects these spellings.
 | 13 | `MFA` | Enforced multi-factor authentication | `mfa` | P23 | Enforced MFA and security keys |
 | 14 | `MULTIPLE_VCS` | More than one integration per VCS provider from the name | `multiple-vcs-integrations` | P19 | More than one integration per provider and space-level integrations |
 | 15 | `NOTIFICATION_POLICIES` | Notification policies and the inbox | `notification-policies`, `notifications` | P18 | Notification policy routing and the inbox |
-| 16 | `PRIVATE_MODULE_SHARING` | Sharing private modules with other accounts from the name | `module-sharing` | P17 | `moduleShare`, `sharedModulesV2` |
+| 16 | `PRIVATE_MODULE_SHARING` | Sharing private modules with other accounts from the name | `module-sharing` | P17 | `moduleShare`, `sharedModulesV2`, between accounts of one organization |
 | 17 | `PRIVATE_VCS` | VCS agent pools for VCS systems the internet cannot reach | `vcs-agent-pools` | P19b | VCS agent pools |
 | 18 | `PRIVATE_WORKERS` | Private worker pools | `private-worker-pools`, `private-workers` | P8 | Private worker pools |
 | 19 | `RUN_STATE_CHANGE_WEBHOOKS` | Stack, module and named webhooks | `webhooks` | P18 | Per-stack, per-module and named webhooks |
@@ -489,12 +499,12 @@ outside decision 0021 and is not planned here.
 | `policySimulate` | Operation | S2 | `policySimulatev2` | P13b | Deprecated on 2026-07-16 (report 26 section 7.5) |
 | The versioned-blueprint family: `blueprintVersionedGroup*`, `blueprintVersion*`, `blueprintDeployment*`, `searchBlueprintDeployments`, `searchBlueprintVersionedGroups`, `searchBlueprintVersionedGroupsSuggestions`, `Stack.blueprintDeployment` | Operations and field | S2 | Templates, template versions and template deployments | P21 | Deprecated on 2026-07-16; three members removed on 2026-10-20 (report 26 section 7.2) |
 | `stackIntegrationGcpCreate`, `stackIntegrationGcpDelete`, `StackIntegrations.gcp` | Operations and field | S2 | The OIDC federation token | P15 | Deprecated on 2026-07-16 (report 26 section 7.6) |
-| `ApiKeyInput.admin` | Input field | S2, through the changelog | A `space-admin` role binding on `root` | P4b | Deprecated in the changelog on 2026-07-16 (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 8.1; decision 0021). Decision 0006 rejects the field, and the key's `admin` reads the binding ([DV-013](deviations.md#identity-and-access-decisions-0006-and-0007)) |
+| `ApiKeyInput.admin` | Input field | S2, through the changelog | A `space-admin` role binding on the account's top space | P4b | Deprecated in the changelog on 2026-07-16 (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 8.1; decision 0021). Decision 0006 rejects the field, and the key's `admin` reads the binding ([DV-013](deviations.md#identity-and-access-decisions-0006-and-0007)) |
 | `contextCreate`, `contextUpdate`, `managedUserGroupCreate`, `managedUserGroupUpdate`, `managedUserInvite` | Operations | S2 | Their `V2` forms | P6, P3b | Deprecated on 2026-07-16 (report 26 section 7.5) |
 | `sharedModules` | Operation | S2 | `sharedModulesV2` | P17 | Deprecated on 2026-08-21 (report 26 section 7.5) |
 | `revision`, `revisionCreate`, `searchRevisions`, `searchRevisionsSuggestions` | Operations | S2 | `repoCommit`, `repoCommitCreate`, `searchRepoCommits`, `searchRepoCommitsSuggestions` | P19b | Deprecated on 2026-10-20 (report 26 section 7.5) |
 | `runPrioritizeSet`, `Run.isPrioritized` | Operation and field | S2 | `runPrioritySet`, `Run.priorityPreset` | P7 | Deprecated on 2026-10-20 (report 26 section 7.5) |
-| `acceptedTermsAndConditionsAI`, `latestTermsAndConditionsVersionAI`, `bedrockInferenceProfiles` | Operations | S2 | `spaceliftIntelligenceTermsAccepted`, `spaceliftIntelligenceTermsLatestVersion`, `availableAIModels` | P25 | Deprecated on 2026-08-27 (report 26 section 7.5) |
+| `acceptedTermsAndConditionsAI`, `latestTermsAndConditionsVersionAI`, `bedrockInferenceProfiles` | Operations | S2 | `aiTermsAccepted`, `aiTermsLatestVersion` (the reference's `spaceliftIntelligenceTermsAccepted` and `spaceliftIntelligenceTermsLatestVersion`), `availableAIModels` | P25 | Deprecated on 2026-08-27 (report 26 section 7.5) |
 | The mutation form of `templateVersionParseTemplate`, and `blueprintVersionParseTemplate` | Operations | S2 | The `templateVersionParseTemplate` query | P21 | Deprecated on 2026-07-16 (report 26 section 7.1) |
 | `BillingTierFeature.AUDIT_WEBHOOKS` | Enum value | S2 | `AUDITING` | P18b | Deprecated on 2026-10-20 (report 26 section 7.5) |
 | The flat hook fields on `Stack` (`afterApply`, `beforeInit` and the rest) | Fields | S2 | `Stack.hooks` | P5 | Deprecated on 2026-07-16 (report 26 section 7.5) |

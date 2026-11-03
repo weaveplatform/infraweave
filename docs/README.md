@@ -8,7 +8,7 @@
 | [`research/decisions/`](research/decisions/README.md) | Decision records 0001 to 0024 and their index, with each record's status |
 | [`research/decisions/TEMPLATE.md`](research/decisions/TEMPLATE.md) | The template every decision record follows |
 | [`research/architecture-options/`](research/architecture-options/README.md) | Five repository architectures compared; decision 0004 adopts the modular monolith |
-| [`implementation/plan.md`](implementation/plan.md) | The implementation plan: build status, milestones, sequence and the phases P0 to P28, with Flows in P18c and P18d and the console in P24c |
+| [`implementation/plan.md`](implementation/plan.md) | The implementation plan: build status, milestones, sequence and the phases P0 to P28, with the organization level in P3 and P3b, Flows in P18c and P18d and the console in P24c |
 | [`implementation/capability-roadmap.md`](implementation/capability-roadmap.md) | The feature catalogue: every feature's kind, lowest seeded tier and owning phase, and the feature of every API tag, untagged operation, Terraform resource and data source, gated option and `BillingTierFeature` value; the supersession register |
 | [`implementation/definition-of-done.md`](implementation/definition-of-done.md) | What every pull request and every phase must show before they count as done |
 | [`implementation/deviations.md`](implementation/deviations.md) | The register of every place infraweave departs from Spacelift, `DV-001` onwards |
