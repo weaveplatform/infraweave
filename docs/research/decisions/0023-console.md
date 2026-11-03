@@ -88,7 +88,7 @@ be air-gapped.
 | Theme | Design tokens as CSS custom properties, with light and dark sets; the console follows the system preference until the user picks one |
 | Canvas | React Flow (`@xyflow/react`) for the Flows canvas, the stack dependency graph and the spaces tree |
 | Code editing | CodeMirror 6 for Rego, CEL expressions and text templates, YAML validated against JSON Schema, HCL, and side-by-side and unified diffs |
-| Editor intelligence | Autocomplete, type-checking, diagnostics, Rego parsing and workbench simulation come from Go API endpoints (decision 0024), shared with `infraweavectl` and the provider; the console holds no language implementation of its own |
+| Editor intelligence | Autocomplete, type-checking, diagnostics, Rego parsing and workbench simulation come from Go API endpoints ([0024](0024-expression-language.md)), shared with `infraweavectl` and the provider; the console holds no language implementation of its own |
 
 ### Serving
 
@@ -346,4 +346,4 @@ Go coverage. golangci-lint remains the only Go linter.
   [0016](0016-testing-and-acceptance.md),
   [0018](0018-flows-runtime.md),
   [0019](0019-ai-provider-boundary.md),
-  [0022](0022-api-errors-and-update-semantics.md); decision 0024.
+  [0022](0022-api-errors-and-update-semantics.md); [0024](0024-expression-language.md).
