@@ -169,6 +169,7 @@ key, such as an HMAC key.
   |---|---|---|
   | `objectstore-url` | Signed URLs of the `fs` object store driver | [0005](0005-persistence-postgresql.md) |
   | `state-upload-url` | Tokens of the state upload URLs | [0010](0010-state-backend.md) |
+  | `registry-file-url` | Tokens of the registry's `proxy` file URLs | [0014](0014-module-and-provider-registry.md) |
   | `audit-secret-sha` | The `SecretSHA` that stands in for write-only fields in audit entries and webhook payloads | decision 0015 |
 
   A rotation changes every derived key. So a `SecretSHA` computed before a
@@ -316,7 +317,7 @@ server never has unmasked output to leak.
 | Operation | Command | Effect |
 |---|---|---|
 | Rotate the KEK, or change provider | `infraweave secrets rewrap --to <provider settings>` | Unwraps each data key with the current KEK, wraps it with the new one and updates its row, one row per transaction. Values and objects are untouched. Replicas pick the change up through `infraweave_invalidate` |
-| Rotate the data key | `infraweave secrets rotate`, or the admin operation `POST /admin/secrets/rotate` | Inserts a new `active` key and marks the old one `retiring`. Then it enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)) |
+| Rotate the data key | `infraweave secrets rotate`, or `POST /secrets/rotate` on the operator API ([0021](0021-capability-scope-and-supersession.md)) | Inserts a new `active` key and marks the old one `retiring`. Then it enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)) |
 | Reseal | `secrets.reseal` job | Walks `secrets.Registry` with keyset pagination, 500 rows per transaction. It reseals each value whose key ID is not the active one, then marks the old key `retired` and deletes it once a final pass finds no reference |
 | Rotate a pool key | `workerPoolReset` ([0008](0008-run-execution-and-worker-protocol.md)) | New specs are sealed to the new key. Workspaces sealed to the old key can no longer be opened, so runs awaiting confirmation must be replanned |
 

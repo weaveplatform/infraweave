@@ -1,6 +1,6 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; the DES-07 cross-read of decisions 0001 to 0024 and the implementation documents, 2026-11-03; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
@@ -9,8 +9,8 @@ and the proposed decision records found and what each finding changed, so
 that a reader can tell which statements in reports 01 and 03 to 28, in
 decisions 0004 to 0022, in the architecture options and in the
 implementation documents are corrections rather than first drafts. It
-covers ten passes, one per ticket from RES-02 to RES-08, ARC-01, IMP-01
-and DES-05, and keeps every
+covers eleven passes, one per ticket from RES-02 to RES-08, ARC-01,
+IMP-01, DES-05 and DES-07, and keeps every
 finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
@@ -88,6 +88,11 @@ flows; a second script, written for this pass, re-derived each count and
 cited line before it entered the report, and where the survey's figures
 and the recount differed, the recount is what the report records.
 
+DES-07 read decisions 0001 to 0024, all Accepted, against each other and
+the implementation documents against the records, after the plan was
+reordered around them. A contradiction between records is *wrong* in the
+record that departs from the owning one, and is fixed there.
+
 ## Totals
 
 | Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
@@ -102,7 +107,8 @@ and the recount differed, the recount is what the report records.
 | ARC-01 | [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md) | about 450, plus every heading, depguard block, matrix cell and mapping row by script | 61 | 5 | 13 | 0 | 3 | 82 |
 | IMP-01 | the [implementation documents](../../implementation/plan.md) and option 5 | about 400, plus every operationId, roadmap row and DV row by script | 28 | 3 | 9 | 0 | 2 | 42 |
 | DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script | 1 | 0 | 6 | 0 | 0 | 7 |
-| **All** | 27 reports, 19 records, 5 options, 5 implementation documents | about 3,760 | **246** | **95** | **144** | **7** | **27** | **519** |
+| DES-07 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the [implementation documents](../../implementation/plan.md) | about 250, plus the phase graph, every roadmap row and every changed file's dashes by script | 34 | 0 | 17 | 0 | 4 | 55 |
+| **All** | 27 reports, 24 records, 5 options, 5 implementation documents | about 4,010 | **280** | **95** | **161** | **7** | **31** | **574** |
 
 The counts are of the findings tables' rows. Two reviews give summary
 counts that differ from their own rows. In RES-02, the 05 summary gives 15
@@ -383,7 +389,7 @@ fetched the policy contract (113,924 bytes). The copy check found three
   edge in and out, terminal states leading only to the end, and `UNKNOWN`
   and `PENDING` justified as unreachable; the inferred edges T14, T30 and
   T32 with their basis; the 2-day, 7-day and 30-day timers; the seven
-  priority tiers; the human and policy locks; the 11 hook lists and their
+  priority levels; the human and policy locks; the 11 hook lists and their
   order; the run actions' RBAC; `Run`'s 57 fields; the metadata header.
 - **09:** the 13 `PolicyType` values and aliases; the 2026-10-20
   deprecations and the `ACCESS` disable date; how rules combine per type;
@@ -852,7 +858,7 @@ record that tasks need a paid account.
 ### Claims checked
 
 About 765 claims by hand: 0005 to 0013 about 315 (every transition ID and
-driver of 0008 against report 08, the timers and priority tiers, report
+driver of 0008 against report 08, the timers and priority levels, report
 24's database and encryption facts, the OIDC claims and subject template,
 the policy types, timeouts and quotas, the state backend protocol against
 the Terraform and OpenTofu `http` clients, River's features, the VCS
@@ -1253,6 +1259,119 @@ carry no licence.
   and the app development guide; the definition reference's core block
   list.
 
+## DES-07: the plan against the accepted decisions
+
+### Claims checked
+
+About 250 claims by hand: every decision record from 0001 to 0024 read
+against the others for shared names (process modes and their owner,
+configuration keys, job kinds, channels, signing key purposes, problem
+slugs, feature names, test and feature names, CI jobs, package paths and
+API surfaces), and every phase, milestone, lane, layout row, gate row and
+deviation row of the implementation documents read against the records
+they cite. A sweep of decisions 0001 to 0024, the implementation documents
+and the architecture options looked for the words the
+[glossary](../../../GLOSSARY.md) lists to avoid, used for infraweave's own
+concepts, and for Spacelift's names on infraweave's own surfaces;
+Spacelift's names stay where the text describes Spacelift. Findings in the
+architecture options went to the #54 rewrite, which edits those files, and
+four of them came back as decision fixes (findings 26 to 29 and the
+priority wording of finding 30). Scripts rebuilt the phase graph from the
+**Depends on** lines (46 phases, acyclic, longest chain 24 edges), mapped
+every API tag, untagged operation, Terraform resource and data source and
+`BillingTierFeature` value of the
+[capability roadmap](../../implementation/capability-roadmap.md) to a
+feature of decision 0021 and its seeded tier, and checked every changed
+file for em and en dashes. The copy check found no docs prose.
+
+### Findings by severity
+
+| Files | wrong | unsupported | missing | copied | style | Total |
+|---|---|---|---|---|---|---|
+| Decisions [0003](../decisions/0003-api-conventions.md) to [0024](../decisions/0024-expression-language.md) | 19 | 0 | 9 | 0 | 3 | 31 |
+| [plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [repo-layout](../../implementation/repo-layout.md), [definition of done](../../implementation/definition-of-done.md), [deviations](../../implementation/deviations.md), [docs index](../../README.md) | 15 | 0 | 8 | 0 | 1 | 24 |
+| **All** | **34** | **0** | **17** | **0** | **4** | **55** |
+
+### Findings
+
+| # | Finding | Change |
+|---|---|---|
+| 1 | *wrong*: 0005, 0011, 0014 and 0017 attributed the process modes to 0020, and 0020 said it decided them; 0004 defines them | Each cites 0004; 0020 decides how they are deployed |
+| 2 | *missing*: 0020's subcommand table lacked `auth hash-password` (0006) and `secrets generate-kek`, `rewrap` and `rotate` (0013), and gave `internal/buildinfo`, which 0004 places at `internal/platform/buildinfo` | Rows added; path corrected |
+| 3 | *wrong*: 0020's example list named `shared-pool`; the glossary's term is the public worker pool | `public-worker-pool` |
+| 4 | *wrong*: 0020 said lost inbound VCS webhooks are re-synced by 0012's reconciliation; 0012 has none | They retry from the VCS side or are redelivered by hand |
+| 5 | *wrong*: 0006's signing key table held a `worker-pool-ca` purpose; 0008 and 0013 keep the pool CA in `worker_pool_ca` | Row removed |
+| 6 | *missing*: 0021 says decision 0006 issues operator credentials; 0006 had no operator principal | `operator` principal kind, keys in `auth.operator.keys`, exchanged at `POST /auth/token` for a token only the operator API accepts |
+| 7 | *wrong*: 0007 had the operator set `features.disabled` through the operator API, which 0021 keeps as configuration, and said 0021 "proposes" not serving a type | Configuration; "does not serve" |
+| 8 | *wrong*: 0008's "administration API", 0011's `/admin/queue/...` routes under the account administrator permission and its verification line, and 0013's `POST /admin/secrets/rotate`, against 0021's operator API | Operator API operations reachable only by operator principals; DV-039 follows |
+| 9 | *missing*: 0011 lacked the dequeue feature check of 0021 (outcome `skipped`, `infraweave.features.skipped`) and 0010's daily `state.retention` task | Both added |
+| 10 | *wrong*: 0021's S1 examples named the stack `administrative` flag and `WebhooksIntegration.secret`, which 0007, 0022 and 0015 serve | Moved to the served-and-ignored rows of 0021's P2 table and of the roadmap's deprecated-but-served table |
+| 11 | *missing*: 0015 sent the SHA-1 signature header unless `events.webhooks.fips` was set; 0013's `fips140=only` refuses SHA-1 | The header is also left out under `fips140=only` |
+| 12 | *wrong*: 0005 said Go's FIPS 140-3 mode refuses MD5 (only `fips140=only` does), left multi-account installations outside the record (0007 decides them), and 0004 and 0005 gave Flows a tenancy of its own (0018 maps its organization onto the account) | Corrected to each owning record |
+| 13 | *missing*: 0005's NOTIFY channel table lacked 0015's `infraweave_events` and `infraweave_logs` | Rows added |
+| 14 | *wrong*: 0010 ran its store contract on "both blob drivers"; 0005 has four. Its retention text narrated an old default | Every object store driver of 0005; present tense |
+| 15 | *wrong*: 0012 kept a `/spacelift` comment command and called `BLOB` and `ORIGIN` "capabilities", a feature kind in 0021 | `/infraweave`; interfaces |
+| 16 | *wrong*: 0024 tagged a scenario `@flows-runtime` (0016's tag is `@flows-agent`) and put all Flows evaluation in `scheduler`, though static configuration is checked in `serve` at save | Tag and sentence corrected |
+| 17 | *wrong*: 0023's list of paths that never fall back to `index.html` omitted `/flows/`, `/auth/`, `/worker/`, `/vcs-agent/`, `/webhooks/`, `/downloads/`, `/blobs/` and others | Only console routes fall back; every prefix another handler owns answers that handler's `404` |
+| 18 | *missing*: 0016's CI table lacked 0023's `console` and `console-e2e` jobs, and its steps used `pkg/client` where 0001 makes `pkg/sdk` the supported entry point | Jobs added and kept out of the merged Go coverage where 0023 says; steps use `pkg/sdk` |
+| 19 | *missing*: 0004's layout lacked `pkg/sdk`, `pkg/flows/appsdk` and `web/console/`, named "decisions 0005 to 0022", said coverage exclusions need their own decision (0016 owns them) and titled 0018 "Flows runtime" | Rows and references added |
+| 20 | *style*: 0003 narrated the time before authentication and persistence existed and used en dashes in ranges | Rewritten in the present tense against 0005 and 0006; "1 to 255", "1 to 100" |
+| 21 | *wrong*: 0014's discovery table listed `state.v2` and `tfe.v2*`, which 0010 does not serve; its object keys ignored 0005's `modules` store and key shape; "holds Read" used no 0007 action; its open captures started at C130 in one place and C129 in another; its proxy URL token was a JWS, unlike 0010's HMAC URL tokens | Discovery rows removed; 0005's store and keys; `SPACE_READ`; C129 to C138; HMAC-SHA256 token under `registry-file-url` |
+| 22 | *wrong*: 0014 gated the registry by `BillingTierFeature` names and its own problem types | 0021's `modules`, `module-sharing` and `terraform-provider-registry` with 0022's three slugs; 0014 Accepted |
+| 23 | *wrong*: 0017 served `/metrics/spacelift`, a Spacelift name on an infraweave surface; its queue metrics disagreed with 0011's labels; its shutdown order omitted 0015's stream `end`; it had "workers" run the launcher | `/metrics/accounts` with an `account` label (DV-061); 0011's metric set; the `end` step; worker hosts. 0017 Accepted |
+| 24 | *missing*: 0013's `DeriveKey` purposes lacked the `registry-file-url` key that 0014 uses | Row added |
+| 25 | *wrong*: 0006 kept a "no seat accounting" departure; 0021 counts API keys in the `seats` limit | Row removed |
+| 26 | *wrong*: 0004 let `internal/agent` import three `platform` packages; the runner also seals workspaces (0013) and renders workflow command templates (0024) | Five, adding `platform/seal` (formats, no keys) and `platform/expr` |
+| 27 | *missing*: 0004 placed neither the expression engine (0024) nor the features gate (0021) | `internal/platform/expr`; an `expressions` domain that collects surfaces through `Surfaces()`; the `features` domain at the bottom of the graph |
+| 28 | *wrong*: 0004's rationale counted 20 criteria with option 5 Good on 16; the comparison now rates 24, Good on 19, with depguard burden Fair | Counts and the Fair rating stated |
+| 29 | *wrong*: 0015 put the event kind registry in `internal/events`, a domain, though every emitting domain needs it | Envelope and registry in `platform/outbox`; `events` holds the sinks; Flows triggers are a fan-out consumer inside `flows` (0018 follows) |
+| 30 | *style*: "priority tiers" for run order clashed with the glossary's tier | "Priority levels" in 0004, the plan, the layout and this log |
+| 31 | *style*: 0009 called its sample bounds quotas, and 0020 called the runner a phase executor, both words the glossary avoids | Sample budgets; the runner |
+| 32 | *wrong*: the plan said decisions 0004 to 0022 were Proposed and carried an Open choice line per phase | All 24 Accepted; Open choice lines removed, capture-dependent choices pointed at the deviations a capture may change |
+| 33 | *wrong*: the plan and roadmap said infraweave has no editions and `tier` answers `V5_ENTERPRISE_PLUS` | Seeded tiers with billing off by default, so every account behaves as Enterprise; `tier` is a tier object |
+| 34 | *wrong*: Flows sat at P26 and P26b after every client phase, ran app blocks in a Node runtime image and tagged `@flows-runtime`, against 0018's Go engine on Deploy's events, OCI app images and `@flows-agent` | P18c and P18d directly after the events phases; the event envelope fixed in P2c; first-party app images in P27 |
+| 35 | *missing*: no phase built the console of 0023 | P24c after P24b |
+| 36 | *missing*: no phase built `pkg/sdk`, and the provider and CLI imported `pkg/client/deploy` | SDK in P1c with token exchange in P3; `infraweavectl` starts in P3b with the `operator` group; P24 and P24b build over `pkg/sdk`, Flows included |
+| 37 | *missing*: the `fips-only`, `postgres-next` and `objectstore-cloud` jobs and the RustFS, fake-gcs-server and Azurite emulators of 0016 had no phase | P2b and P2 |
+| 38 | *wrong*: the plan, layout and milestones used MinIO and PostgreSQL 15; 0016 and 0005 use RustFS and PostgreSQL 18 | Corrected |
+| 39 | *wrong*: P8 failed runs after three minutes unseen; 0008 marks the worker `OFFLINE` at 3 minutes and loses its run after `run.lost_after` (60 minutes) | P8 task and exit rewritten; DV-025, DV-092 |
+| 40 | *wrong*: P8 sealed the handover as a JWE; 0013 defines the P-256 pool envelope | Pool envelope; DV-093 |
+| 41 | *wrong*: P11 served a read-only `tfe` subset and `state.v2` in discovery, and the layout held a `tfe` package; 0010 serves no Terraform Cloud service | Removed |
+| 42 | *wrong*: P14 gave each account a public pool `parallelism` through the administration API | The `public-worker-slots` limit and the operator API; DV-078 |
+| 43 | *wrong*: P3b built `internal/platform/features` over `BillingTierFeature` names and no operator API | `internal/features` with the catalogue, seeded tiers, entitlement, billing switch and operator API |
+| 44 | *missing*: the expression surfaces of 0024 had no tasks, and P6 interpolated `${NAME}` | `internal/platform/expr` in P6 with `${{ env.NAME }}`; workflow files in P10, output references in P16, notification text in P18, templates in P21, Flows in P18c |
+| 45 | *wrong*: P18b served `/metrics/spacelift` with `TestUnitSpacelift*` tests | `/metrics/accounts` with 0017's test names |
+| 46 | *missing*: P18 lacked 0015's event streams and notification text templates | Tasks added; DV-095, DV-097 |
+| 47 | *wrong*: P2c served `/admin/queue/...` routes to root admins | The operator API serves them from P3b |
+| 48 | *style*: the plan named infraweave's provider data sources `spacelift_current_stack`, `spacelift_current_space` and `spacelift_idp_group_mapping`, called the Repos tag "Spacelift Repos", and used "public pool", "UI support" and "phase executor" | `infraweave_` names, the Repos tag, the glossary's terms |
+| 49 | *missing*: the open items still asked where the provider lives, which 0001 settles, and lacked the authorization server that 0019 and 0018 assume from 0006 | Replaced by where the provider's checks run, and the authorization server added |
+| 50 | *missing*: 0023's `allowedActions` on every resource had no task and no deviation row | P4 and P7 tasks; DV-108 |
+| 51 | *wrong*: the roadmap's Plan column used report 26's plans rather than the feature catalogue, kept P26 rows and a `parallelism` delivery, and listed two served fields as superseded | Feature and seeded-tier columns, a feature catalogue section with capabilities, options, limits and the billing switch; P18c; `public-worker-slots`; the register corrected |
+| 52 | *wrong*: the layout made `pkg/client/deploy` the clients' import, kept `flows-runtime`, `@flows-runtime`, MinIO, `platform/features`, `platform/events`, `tfe` and "no foreign key crosses a domain boundary" (0004 allows keys along the import direction) | Rewritten from 0001, 0004, 0016, 0018, 0021, 0023 and 0024, with `pkg/sdk`, `pkg/flows/appsdk`, `web/console/`, `api/proto/flows/app/v1/` and the operator API |
+| 53 | *missing*: the definition of done lacked the TypeScript gate, `fips-only`, `postgres-next`, `objectstore-cloud` and the app contract check, and reviewed "Proposed" decisions with each phase | Rows added; decisions change by amendment in place |
+| 54 | *wrong*: DV-008, DV-009, DV-018, DV-025, DV-036, DV-061, DV-071, DV-078, DV-079 and DV-085 disagreed with the accepted records, and their departures (60-minute lost run, `OFFLINE`, P-256 pool keys, `Content-MD5` under `fips140=only`, the tier object, names, streams, JavaScript-free Flows, the AI budget, first-party app images, CEL) had no rows | Rows corrected; DV-092 to DV-108 added, each linked to its record |
+| 55 | *wrong*: the docs index listed decisions 0001 to 0022 as Proposed and omitted the glossary | 0001 to 0024 Accepted; `GLOSSARY.md` listed |
+
+### What survived
+
+- **Phase graph:** after the change the 46 phases still form an acyclic
+  graph; the critical path keeps 24 edges, with P24c in place of P26b, and
+  the Flows chain (P12, P13, P18, P18c, P18d) ties with the vendor chain
+  into P24.
+- **Records:** the shared names not listed above agree across 0001 to 0024:
+  problem slugs, job kinds, configuration keys, sealed columns, feature
+  names and the CI partitions.
+- **Coverage of the reference:** every tag, untagged operation, Terraform
+  resource and data source and `BillingTierFeature` value has exactly one
+  roadmap row, now with a feature and a seeded tier, and every phase a row
+  names exists.
+- **Left open:** see the plan's [open items](../../implementation/plan.md#open-items);
+  the remaining cross-record questions (the authorization server, worker
+  usage samples, database IAM authentication outside AWS, the owner of
+  object deletion, registry sharing across accounts, the Flows
+  "organization" name) are left for the maintainer, and none changes the
+  order of the phases.
+
 ## What survived across the set
 
 - **Mechanical inventories hold.** Every operation, route, field, enum
@@ -1303,7 +1422,7 @@ carry no licence.
 ## Inferred and undocumented
 
 This log adds no claims about Spacelift. Its counts come from the findings
-tables of the ten reviews; where a review's own summary differs from its
+tables of the eleven reviews; where a review's own summary differs from its
 rows, the rows are counted and the difference is stated under Totals.
 
 ## Versions at the research baseline
@@ -1324,6 +1443,7 @@ rows, the rows are counted and the difference is stated under Totals.
 - The DES-05 correction pass, 2026-11-03, with the 46 Flows templates at
   `https://docs.spacelift.io/flows/templates/<name>.yaml` and the MIT
   `scenario.yaml` files listed in [23 section 3.7](23-flows.md#37-expressions-in-the-published-templates).
+- The DES-07 cross-read, 2026-11-03, of decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the implementation documents, with the [glossary](../../../GLOSSARY.md).
 - Reports [01](01-spacelift-landscape.md) and [03](03-deploy-core-api-inventory.md) to [28](28-data-model.md) in this directory, as edited by those
   reviews, decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08, and the [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md), as edited by ARC-01.
 - The [implementation plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [deviations register](../../implementation/deviations.md), [repository layout](../../implementation/repo-layout.md) and [definition of done](../../implementation/definition-of-done.md), as edited by IMP-01; GitHub issues #5, #8 to #15 and #21 to #31, read 2026-10-28.

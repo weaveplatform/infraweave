@@ -1,6 +1,6 @@
 # 0014: Module and provider registry protocol
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -25,20 +25,21 @@ and the GPG key rules
 and [10](../reference/15-module-and-provider-registry.md#10-the-provider-registry)).
 Report 28 proposes the tables
 ([28 section 12.7](../reference/28-data-model.md#127-modules-and-providers)).
-Several behaviours are still open captures: C130 to C138
+Several behaviours are still open captures: C129 to C138
 ([30](../reference/30-open-questions.md#module-and-provider-registry-report-15)).
 
 This record fixes what infraweave serves on the protocol side, how
 artefacts are stored, the version state machines, GPG handling and sharing.
-How a `TESTING` run executes belongs to decision 0008. How the state
-backend's `state.v2` and `tfe.v2*` services behave belongs to decision 0010.
+How a `TESTING` run executes belongs to decision 0008. The state backend is
+decision 0010's, and serves no Terraform Cloud service, so discovery lists
+none.
 
 ## Decision
 
 ### Routes and packages
 
 The protocol is served by the `serve` process mode
-([0020](0020-reference-deployments-and-packaging.md)) and routed with chi
+([0004](0004-repository-architecture.md)) and routed with chi
 in `internal/registry`. Decision 0004 owns package placement. The routes
 are described in their own OpenAPI document,
 `api/src/registry/` bundled to `api/registry.openapi.yaml`, so that the
@@ -76,7 +77,6 @@ download, answers 404 with `{"errors":[{"message":"not found"}]}`.
   | `login.v1` | `{"authz": "<base>/terraform-login", "client": "terraform-cli", "grant_types": ["authz_code"], "token": "<base>/terraform/token"}` |
   | `modules.v1` | `<base>/registry/modules/v1/` |
   | `providers.v1` | `<base>/registry/providers/v1/` |
-  | `state.v2`, `tfe.v2`, `tfe.v2.1`, `tfe.v2.2` | Added by decision 0010 |
 
 - **One host, not two.** Spacelift splits a static discovery host from the
   API host ([15 section 9.1](../reference/15-module-and-provider-registry.md#91-host-names)).
@@ -86,12 +86,12 @@ download, answers 404 with `{"errors":[{"message":"not found"}]}`.
 
 | Credential | Where it comes from | How the registry reads it |
 |---|---|---|
-| Session token | `terraform login <host>`; a registry session independent of the web session | `Authorization: Bearer`, verified as decision 0006 defines |
+| Session token | `terraform login <host>`; a registry session independent of the console's browser session | `Authorization: Bearer`, verified as decision 0006 defines |
 | API key | `credentials "<host>" { token = "<base64(api:<id>:<secret>)>" }`, unpadded, as Spacelift documents | Decoded, exchanged for a token as decision 0006 defines, and the result cached in memory until 30 seconds before it expires |
 | In-run token | Written into the run's `~/.terraformrc` by the runner (decision 0008) | `Authorization: Bearer`, as above |
 | None | Public modules and public providers | Anonymous read |
 
-- A module or provider is readable when the caller holds Read on its space,
+- A module or provider is readable when the caller holds `SPACE_READ` on its space,
   on a space that inherits from it, or on a space it is shared to
   (decision 0007).
 - **Modules.** An unauthenticated or unauthorized `versions` request
@@ -123,8 +123,8 @@ download, answers 404 with `{"errors":[{"message":"not found"}]}`.
   version's commit, with entries at the archive root and no wrapping
   directory. It is built once, when the version is created, from the
   commit tarball that decision 0012's provider abstraction fetches (through
-  a VCS agent when the repository is private). It is stored at
-  `modules/<account>/<module ulid>/<version ulid>.tar.gz`.
+  a VCS agent when the repository is private). It is stored in decision
+  0005's `modules` store, under `modules/<account>/<module ulid>/<ULID>`.
 - **`lastPulledAt`.** Updated on download, at most once a minute per
   version, so that a busy module does not write on every `terraform init`.
 
@@ -146,8 +146,8 @@ so every file URL the registry hands out is signed and short-lived.
 
 | `registry.download.mode` | URL | Used when |
 |---|---|---|
-| `presigned` (default) | A presigned `GET` on the object store (decision 0005) | The store is S3-compatible |
-| `proxy` | `<base>/registry/files/<token>`, where the token is a compact JWS (HS256) naming the object key and expiry, keyed by a key derived from decision 0013's master key | Local disk storage, or a store that workers cannot reach |
+| `presigned` (default) | A signed `GET` URL from the object store driver's `SignURL` (decision 0005); on `fs` it points at infraweave's own `/blobs/{token}` | Terraform clients can reach the store's endpoint |
+| `proxy` | `<base>/registry/files/<token>`, where the token names the object key and expiry and carries an HMAC-SHA256 under `secrets.DeriveKey("registry-file-url")` of decision 0013, as 0010's state upload tokens do | A store that Terraform clients cannot reach |
 
 `registry.download.url_ttl` sets the lifetime, default 10 minutes, close to
 the roughly ten minutes Spacelift's signed URLs live. An expired or forged
@@ -221,11 +221,13 @@ token answers 403. In `proxy` mode an unreachable store answers 503 with
 
 - **Create.** `signingKeyId` must name a registered, unrevoked key. The
   answer carries presigned `PUT` URLs and headers for `SHA256SUMS` and
-  `SHA256SUMS.sig` at `providers/<account>/<type>/<version ulid>/`.
-  On an S3-compatible store the headers include `x-amz-checksum-sha256`
-  with the declared `shaSumsFileSHA` or `signatureFileSHA`, converted from
+  `SHA256SUMS.sig` in decision 0005's `modules` store, under
+  `modules/<account>/<provider version ulid>/<ULID>`. Each
+  URL binds the declared `shaSumsFileSHA` or `signatureFileSHA` as decision
+  0005's signed URLs do: on `s3` as `x-amz-checksum-sha256`, converted from
   hex to the base64 form S3 expects, so the store refuses a body that does
-  not match.
+  not match; on the other drivers the upload's commit reads the object back
+  and compares it.
 - **Register platform.** Only `terraformProviderVersionRegisterPlatformV2`
   is served. The V1 form is superseded
   ([0021](0021-capability-scope-and-supersession.md)). It is idempotent per
@@ -281,17 +283,29 @@ token answers 403. In `proxy` mode an unreachable store answers 503 with
 A consumer of a shared module reads only the `SharedModule` fields and the
 source space's `id`, `name` and `parentSpace`, as Spacelift exposes them.
 
-### Feature gates and limits
+### Features
 
-| `BillingTierFeature` | Gates |
-|---|---|
-| `TERRAFORM_PROVIDER_VERSIONS` | The Terraform Providers and GPG Keys operations, and the provider protocol |
-| `PRIVATE_MODULE_SHARING` | `moduleShare` with a non-empty `accounts`, and `sharedModulesV2` entries from other accounts |
+The registry's operations belong to three capabilities of the feature
+catalogue ([0021](0021-capability-scope-and-supersession.md)), each placed
+in the seeded tiers that 0021 lists:
 
-A disabled feature answers 403 `feature-disabled` on the deploy API
-([0021](0021-capability-scope-and-supersession.md)). The provider protocol
-answers 403 with the `text/plain` body `feature disabled`, which Terraform
-prints in its error.
+| Feature | Kind | Gates | Lowest seeded tier |
+|---|---|---|---|
+| `modules` | capability | The Modules tag except sharing, and the module protocol | Starter |
+| `module-sharing` | capability | `moduleShare` and `sharedModulesV2`; requires `modules` | Starter |
+| `terraform-provider-registry` | capability | The Terraform Providers and GPG Keys tags, and the provider protocol | Business |
+
+The registry defines no limit. A caller whose entitlement lacks the
+capability gets the problem types of decision
+[0022](0022-api-errors-and-update-semantics.md) on the deploy API: 403
+`feature-disabled` when the operator has switched the feature off, and 403
+`feature-not-in-tier` when billing is on and the account's tier lacks it.
+The registry protocols are Terraform's, not infraweave's REST API, so they
+answer the same refusals with 403 and a `text/plain` body, `feature
+disabled` or `feature not in tier`, which Terraform prints in its error.
+While billing is off, only a switch-off refuses.
+
+### Settings
 
 | Setting | Default |
 |---|---|
@@ -310,7 +324,7 @@ The tables are report 28's `modules`, `module_versions`,
 `provider_versions`, `provider_version_platforms` and `gpg_keys`, plus
 `provider_version_docs (version, key)` holding each file's type and object
 key. Archives, checksum files, signatures and documentation files live in
-object storage under `modules/` and `providers/` (decision 0005), and the
+decision 0005's `modules` store, and the
 tables hold their keys and checksums. Spacelift's self-hosted "Modules"
 bucket keeps objects indefinitely. infraweave deletes a version's objects
 only when the version itself is deleted.
@@ -323,10 +337,10 @@ only when the version itself is deleted.
   do against Spacelift, and costs nothing.
 - **Presigned object-store URLs by default.** They move archive bytes off
   the `serve` process mode, as Spacelift's CloudFront URLs do. The `proxy` mode covers
-  local disk and networks where workers cannot reach the store.
-- **Checksums enforced by the store.** A checksum header in the presigned
-  `PUT` rejects a corrupt upload at the source, instead of a later
-  `terraform init` failing on a hash mismatch.
+  networks where Terraform clients cannot reach the store.
+- **Checksums checked at upload.** A checksum bound to the presigned `PUT`,
+  or checked when the upload commits, rejects a corrupt upload at the
+  source, instead of a later `terraform init` failing on a hash mismatch.
 - **Rejected: a separate registry service**, as Terrakube runs one
   ([27 section 4.1](../reference/27-reference-materials.md#41-architecture)). The
   registry shares the module's spaces, RBAC and runs, so splitting it out
@@ -352,7 +366,7 @@ only when the version itself is deleted.
 
 ## Constraints
 
-- Captures C130 to C138 may change the choices marked as infraweave's: the
+- Captures C129 to C138 may change the choices marked as infraweave's: the
   retest path, yanked downloads, draft revoke, documentation
   classification, the action gating verify and docs upload, and public
   provider access.
@@ -391,14 +405,19 @@ only when the version itself is deleted.
   signature, tampered sums, a missing platform, a revoked key) and
   `TestUnitGPGKeyRejectsPrivateKey`.
 - The Terraform provider parity oracle of
-  [0016](0016-testing-and-acceptance.md) exercises `spacelift_module`,
-  `spacelift_version` and `spacelift_terraform_provider` against
-  infraweave's own provider.
+  [0016](0016-testing-and-acceptance.md) exercises `infraweave_module`,
+  `infraweave_version` and `infraweave_terraform_provider`, held to
+  Spacelift's `spacelift_module`, `spacelift_version` and
+  `spacelift_terraform_provider` in `terraform-schema.json`.
+- `test/acceptance/features/platform_tiers.feature` (billing on): an
+  account on Starter+ gets `feature-not-in-tier` from
+  `terraformProviderCreate` and a `text/plain` 403 from the provider
+  protocol, naming Business and Enterprise.
 
 ## References
 
 - [15](../reference/15-module-and-provider-registry.md), especially [section 13](../reference/15-module-and-provider-registry.md#13-self-hosted-differences) and [section 5](../reference/15-module-and-provider-registry.md#5-test-cases-and-test-runs).
-- [26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature): the gating values.
+- [26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature): Spacelift's gating values, which [0021](0021-capability-scope-and-supersession.md) maps to the features above.
 - [28 section 12.7](../reference/28-data-model.md#127-modules-and-providers): tables.
 - [30](../reference/30-open-questions.md#module-and-provider-registry-report-15): captures C129 to C138.
 - HashiCorp's [service discovery](https://developer.hashicorp.com/terraform/internals/remote-service-discovery), [module](https://developer.hashicorp.com/terraform/internals/module-registry-protocol) and [provider](https://developer.hashicorp.com/terraform/internals/provider-registry-protocol) registry protocols.

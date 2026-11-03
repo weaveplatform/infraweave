@@ -368,7 +368,7 @@ has failed":
 - **The public worker pool** is one pool the installation's operator runs for
   every account, on the same protocol. Its launchers register with an
   installation-level pool token that the operator issues through the
-  administration API. The restrictions Spacelift places on its public pool
+  operator API ([0021](0021-capability-scope-and-supersession.md)). The restrictions Spacelift places on its public pool
   hold here too
   ([10 section 1.1](../reference/10-workers-and-execution.md#11-public-and-private-pools-compared)):
   - no run priorities: `runPrioritySet` on a run in the public pool answers

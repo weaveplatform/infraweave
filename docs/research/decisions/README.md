@@ -41,10 +41,10 @@ record is missing from this index or its status here differs from its own.
 | 0011 | [Persistent work queue and scheduler](0011-persistent-work-queue.md) | Accepted |
 | 0012 | [VCS integration model](0012-vcs-integration-model.md) | Accepted |
 | 0013 | [Secrets at rest, delivery to runs and log masking](0013-secrets-at-rest.md) | Accepted |
-| 0014 | [Module and provider registry protocol](0014-module-and-provider-registry.md) | Proposed |
+| 0014 | [Module and provider registry protocol](0014-module-and-provider-registry.md) | Accepted |
 | 0015 | [Events: one model for Deploy and Flows, streams, notifications, webhooks and audit](0015-events-notifications-webhooks-audit.md) | Accepted |
 | 0016 | [Testing and acceptance against real dependencies](0016-testing-and-acceptance.md) | Accepted |
-| 0017 | [Observability and health](0017-observability-and-health.md) | Proposed |
+| 0017 | [Observability and health](0017-observability-and-health.md) | Accepted |
 | 0018 | [Flows engine, apps and agents](0018-flows-runtime.md) | Accepted |
 | 0019 | [AI provider boundary](0019-ai-provider-boundary.md) | Accepted |
 | 0020 | [Reference deployments and packaging](0020-reference-deployments-and-packaging.md) | Accepted |

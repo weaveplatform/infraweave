@@ -51,8 +51,12 @@ Every outbound effect, every Flows trigger on Deploy and every stream
 starts as an **event**, written by the service that makes the change,
 never by an HTTP handler, so every entry point produces the same stream.
 Deploy and Flows share the envelope, the emit path and the kind registry
-in `internal/events`, which sits below every domain that emits; the audit
-trail lives in `internal/audit`. Decision 0004 owns their placement.
+in `internal/platform/outbox`, which sits below every domain that emits.
+The `events` domain holds only the sinks: the inbox, HTTP deliveries,
+Slack, Teams, pull request comments and the streams. Flows triggers are a
+fan-out consumer inside `flows`, so `events` never imports `flows`. The
+audit trail lives in `internal/audit`. Decision 0004 owns their
+placement.
 
 | Kind | Raised when | Subject | Notification policy |
 |---|---|---|---|
@@ -193,7 +197,7 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
 | Method | `POST`, or a policy rule's `method` |
 | Body | The event's default payload, or a rule's `payload`, with its strings rendered as text templates |
 | Headers, in order of precedence | signature and `X-Infraweave-*` headers; then secret headers; then rule `headers`; then `Content-Type: application/json` and `User-Agent: infraweave-webhooks/<version>` |
-| Signature | With a secret: `X-Signature-256: sha256=<hex HMAC-SHA256 of the exact body bytes>` and `X-Signature: sha1=<hex HMAC-SHA1>`. With `events.webhooks.fips: true`, only the SHA-256 header, as on FedRAMP. Without a secret, neither |
+| Signature | With a secret: `X-Signature-256: sha256=<hex HMAC-SHA256 of the exact body bytes>` and `X-Signature: sha1=<hex HMAC-SHA1>`. With `events.webhooks.fips: true`, or when the process runs with `GODEBUG=fips140=only`, which refuses SHA-1 ([0013](0013-secrets-at-rest.md#fips-140-3)), only the SHA-256 header, as on FedRAMP. Without a secret, neither |
 | Timeout | `events.webhooks.timeout`, default 10s, for connect plus response |
 | Redirects | Not followed; a 3xx is a failure |
 | Success | Any 2xx |

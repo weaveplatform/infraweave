@@ -84,7 +84,7 @@ these rules holds and no source of equal or higher rank
 
 | Rule | Condition | Examples at the baseline |
 |---|---|---|
-| S1 Retired | Spacelift removed or disabled it for every account, or the schema says it is no longer used | `ACCESS` policies (disabled 2026-05-30); the stack `administrative` flag; `RunState.PENDING`; `WebhooksIntegration.secret`; the `STACK_WEBHOOK_*` actions marked disabled |
+| S1 Retired | Spacelift removed or disabled it for every account, or the schema says it is no longer used | `ACCESS` policies (disabled 2026-05-30); `RunState.PENDING`; the `STACK_WEBHOOK_*` actions marked disabled |
 | S2 Schema-deprecated | The schema deprecates it and names a replacement that infraweave serves. For input fields, which the snapshot cannot mark (P15), a changelog deprecation counts | the 35 deprecated root fields of [26 section 7.1](../reference/26-scope-and-tiers.md#71-root-fields-outside-the-reference); the versioned-blueprint family; `ApiKeyInput.admin`; the flat hook fields |
 | S2a Shadowed twin | The schema holds a `V2` twin of the same operation, and the reference routes the twin in its place, so both cannot share one REST route | `bitbucketCloudIntegrationCreate`, `bitbucketCloudIntegrationUpdate`, `moduleUpdate`, `terraformProviderVersionRegisterPlatform` |
 | S3 Owner-deprecated | It has no schema element, and the source that owns it deprecates it and names a replacement: the docs for a protocol or path, a client's repository for that client | `/intent/mcp`; the MQTT worker transport; the `pulumi-spacelift` provider; the deprecated provider resources of [26 sections 7.6 and 7.7](../reference/26-scope-and-tiers.md#76-gcp-service-account-integration-replaced-by-oidc); the login policy `space_*` rules |
@@ -159,6 +159,8 @@ only; the owning decision records each behaviour infraweave chose.
 | The standalone `spacelift-intent` stdio server | S3 | Not mirrored: the repository is archived and points to the hosted tools. Local stdio clients use `infraweavectl mcp`, which forwards to `/mcp` (0019 answers P10) |
 | `ApiKeyInput.admin` | S2, through the changelog | Not accepted. Admin keys come from a root-space admin role binding (decision 0007) |
 | `RunState.PENDING` | S1 | Absent from the served enum |
+| The stack `administrative` flag | S1 for its behaviour; the field is live in the schema | Served, marked deprecated and ignored: `StackInput.administrative` is accepted and reads back `false` (decisions 0007 and 0022) |
+| `WebhooksIntegration.secret` | S1 for its value; the field is live in the schema | Served, marked deprecated, always an empty string ([0015](0015-events-notifications-webhooks-audit.md)) |
 | `TerraformWorkflowTool.OPEN_TOFU` | live in the schema | Served, marked deprecated for stacks only, since modules and Terragrunt still need it |
 | `INITIALIZATION` and `TASK` policy types | live in the schema | Served and marked deprecated. The aliases `TASK_RUN` (of `TASK`) and `TERRAFORM_PLAN` (of `PLAN`) are S2 and not served ([26 section 7.3](../reference/26-scope-and-tiers.md#73-policy-types)) |
 | MQTT worker transport | S3 | Not served, neither the SaaS IoT Core endpoint nor a self-hosted broker: long-poll is the replacement and the self-hosted v7.1.0 release deprecates the built-in broker too ([10 section 4.2](../reference/10-workers-and-execution.md#42-transports)). Decision 0008 owns the worker protocol and answers P6 |
@@ -452,7 +454,7 @@ option and never picks silently between conflicting inputs.
 infraweave is self-hosted, but it mirrors SaaS. It keeps the Azure
 integration, the public pool as an option, and hosted-style AI defaults
 where [0019](0019-ai-provider-boundary.md) allows them. FedRAMP shows the
-inverse constraint: no capability may depend on a shared pool
+inverse constraint: no capability may depend on the public worker pool
 ([26 section 2.4](../reference/26-scope-and-tiers.md#24-fedramp)). Every
 acceptance feature that runs work therefore runs it on a private pool.
 

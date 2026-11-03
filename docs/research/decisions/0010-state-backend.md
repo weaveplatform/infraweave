@@ -277,8 +277,8 @@ ordinary REST operations and answer the problem details of decision
   it to callers that may take the exclusive lock keeps it where an apply could already
   overwrite state, and the audit entry records who broke whose lock.
 - **90 days of non-current history.** Long enough to roll back past a quarter's changes,
-  short enough that the `states` store stops growing with every run; `0` keeps the old
-  forever-default available to those who need it.
+  short enough that the `states` store stops growing with every run; `0` keeps every
+  version for those who need it.
 - **Ignoring `Content-MD5` under `fips140=only`.** MD5 here is a transfer check, not a
   security function, but `fips140=only` exists to prove no unapproved algorithm runs.
   - **Rejected: `fips140.WithoutEnforcement` around the MD5.** It would put an exemption in
@@ -319,7 +319,7 @@ ordinary REST operations and answer the problem details of decision
   `GODEBUG=fips140=only` with the body's SHA-256 recorded; no `Content-MD5` on reads; the
   size limit; identical writes adding no version; client-encrypted bodies; token expiry for
   the upload and download URLs.
-- Store contract tests against PostgreSQL and both blob drivers (decision 0016): versions,
+- Store contract tests against PostgreSQL and every object store driver of decision 0005 (decision 0016): versions,
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.
 - Gherkin acceptance with real Terraform and OpenTofu in testcontainers:
   `state_backend.feature` (init, plan, apply through the backend; a second apply blocked by

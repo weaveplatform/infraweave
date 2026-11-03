@@ -108,7 +108,7 @@ fan-out. There is no Temporal cluster and no separate engine.
 
 - **One event model.** A Flows event and a Deploy event share 0015's
   envelope (`id`, `kind`, `account`, subject, `occurred_at`, `document`)
-  and its emit path. Deploy events reach flows natively: 0015's fan-out
+  and its emit path. Deploy events reach flows natively: the fan-out consumer inside `flows` ([0015](0015-events-notifications-webhooks-audit.md))
   treats every enabled Deploy trigger block whose filter matches as a
   target, and in the fan-out's transaction inserts the root `flow_events`
   row, linked to the Deploy event, and its deliveries. A Flows event also
@@ -477,23 +477,23 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 - `pkg/flows/appsdk` tests run a fixture app through `apptest`: `Describe`
   schemas from Go types, lifecycle, KV and widgets.
 - `test/acceptance/features/flows_engine.feature` (`@postgres`,
-  `@flows-runtime`): fan-out and merge, echo, pending events, Sleep across
+  `@flows-agent`): fan-out and merge, echo, pending events, Sleep across
   a server restart, manual retry and re-emit, monthly and hourly limits,
   retention deletion.
-- `flows_apps.feature` (`@postgres`, `@flows-runtime`): a fixture registry
+- `flows_apps.feature` (`@postgres`, `@flows-agent`): a fixture registry
   served by a chi test server, digest refusal, a custom app published from
   an image built from the Go SDK, lifecycle sync serialisation, KV locks,
   timers, block HTTP, widgets, a JavaScript bundle refused.
-- `flows_agents.feature` (`@postgres`, `@flows-runtime`): two `serve`
+- `flows_agents.feature` (`@postgres`, `@flows-agent`): two `serve`
   replicas, an agent killed mid-task and its work taken over, pool token
   rotation, an installation's container never reused for another.
-- `flows_clients.feature` (`@postgres`, `@terraform`, `@flows-runtime`):
+- `flows_clients.feature` (`@postgres`, `@terraform`, `@flows-agent`):
   `infraweavectl` publishes an app version and exports a flow;
   infraweave's provider applies, plans with no drift and imports a flow.
 - `TestUnitFlowsClientParity` fails when an RPC path in
   `api/reference/flows-clients.yaml` names no operation of
   `api/flows.openapi.yaml`.
-- `flows_deploy.feature` (`@postgres`, `@tofu`, `@flows-runtime`): a Deploy
+- `flows_deploy.feature` (`@postgres`, `@tofu`, `@flows-agent`): a Deploy
   trigger block reacts to a real run's state change and to a drift result,
   and Trigger Run starts one.
 

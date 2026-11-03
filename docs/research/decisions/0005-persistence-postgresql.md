@@ -93,6 +93,8 @@ Every stateful feature needs a store, and several records wait on this one:
   | `infraweave_runs` | worker pool ID | [0008](0008-run-execution-and-worker-protocol.md): wakes held worker polls |
   | `infraweave_vcs_agent` | VCS agent pool ID for a new request, or the request ID for its response | [0012](0012-vcs-integration-model.md): hands proxied agent requests and responses between replicas |
   | `infraweave_invalidate` | cache key | in-process caches (rules below) |
+  | `infraweave_events` | event ID | [0015](0015-events-notifications-webhooks-audit.md): wakes server-sent-event streams |
+  | `infraweave_logs` | run ID, state and state version | [0015](0015-events-notifications-webhooks-audit.md): wakes run log streams |
 
 ### Schema conventions
 
@@ -100,7 +102,7 @@ Every stateful feature needs a store, and several records wait on this one:
 |---|---|
 | Identifiers | ULIDs generated in Go (`github.com/oklog/ulid/v2`, monotonic within a millisecond), stored in `uuid` columns and rendered as 26-character ULID text on the wire. Runs, worker pools and stacks carry the ULIDs that report 28 records ([28 section 1.2](../reference/28-data-model.md#12-identity-and-tenancy)) |
 | Slugs | Slug-addressed entities (stacks, modules, spaces, contexts, policies, templates, blueprints) keep a ULID key and a `slug text` with `unique (account_id, slug)`. A reslug updates one column; foreign keys reference the ULID |
-| Tenancy | Every account-scoped table carries `account_id uuid not null`, and its primary or unique keys lead with it. Whether one installation hosts more than one account is outside this record |
+| Tenancy | Every account-scoped table carries `account_id uuid not null`, and its primary or unique keys lead with it. One installation hosts many accounts ([0007](0007-authorization-spaces-and-roles.md)) |
 | Spaces | Space-scoped tables carry `space_id uuid not null` with an index. The space tree and reachability are [0007](0007-authorization-spaces-and-roles.md)'s |
 | Time | `timestamptz` only. Conversion to the Unix seconds that Spacelift's fields use happens in handlers. The database clock (`now()`) is the clock for leases, expiries and timers |
 | Enumerations | `text` with a `CHECK` constraint, not PostgreSQL enum types, so adding a value is an ordinary migration |
@@ -113,8 +115,9 @@ Every stateful feature needs a store, and several records wait on this one:
 | Foreign keys | Every foreign key column is indexed |
 | Optimistic concurrency | Mutable aggregates with concurrent writers carry `version bigint`. A conditional `UPDATE ... WHERE version = $n` detects a lost update. Runs use `state_version` ([0008](0008-run-execution-and-worker-protocol.md)) |
 
-Flows has its own tenancy and identifiers
-([28 section 12.11](../reference/28-data-model.md#1211-flows)). Its tables live
+Flows maps its organization onto the account and keeps its own identifiers
+([28 section 12.11](../reference/28-data-model.md#1211-flows),
+[0018](0018-flows-runtime.md)). Its tables live
 in the same database, in the `flows` PostgreSQL schema that
 [0018](0018-flows-runtime.md) sets.
 
@@ -313,7 +316,7 @@ sees the same keys, buckets and switches.
 1. **Shared state only.** Replicas share nothing but PostgreSQL and object
    storage. Any `serve` replica serves any request, including the worker API and
    webhook intake, and any `scheduler` replica takes any job (process modes
-   are decision 0020's).
+   are decision 0004's).
 2. **Caches.** An in-process cache either lives at most 5 seconds or is
    cleared through `infraweave_invalidate`. Nothing that affects an
    authorization or idempotency decision is cached without invalidation.
@@ -417,7 +420,7 @@ sees the same keys, buckets and switches.
   S3 gateway; native drivers keep workload identity on every cloud. The
   shared contract suite keeps four drivers from drifting apart.
 - **SHA-256, not MD5, for object integrity.** SHA-256 is the digest
-  `blob_objects` already records, and Go's FIPS 140-3 mode refuses MD5
+  `blob_objects` already records, and Go's `fips140=only` mode refuses MD5
   ([0013](0013-secrets-at-rest.md#fips-140-3)).
 - **Rejected: SQS as an alternative queue.** Self-hosted Spacelift offers it
   beside its Postgres queue

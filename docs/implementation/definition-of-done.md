@@ -11,8 +11,9 @@ order: `docs-check`, `vet`, `lint`, `test`, `accept`, `verify-reference`,
 locally before review; CI runs the same targets as separate jobs, and the
 `Quality gate` job is the single required status check.
 
-Rows marked "From P1b", "From P1c", "From P24" or "From P24b" name the phase
-that adds the check; until then the row is a rule reviewers apply by hand.
+Rows marked "From P1b", "From P1c", "From P2", "From P2b", "From P18d",
+"From P24", "From P24b" or "From P24c" name the phase that adds the check;
+until then the row is a rule reviewers apply by hand.
 
 ## Every pull request
 
@@ -21,20 +22,23 @@ that adds the check; until then the row is a rule reviewers apply by hand.
 | Docs | `make docs-check` runs `TestUnitDocs` in the docs check package: every relative link under `docs/` resolves, every `reference/NN-*.md` report has `Checked against`, `Research baseline` and `## Sources`, every decision has a valid `Status:` line, and the plan's phases carry `Decisions:`, `**Depends on:**`, `**Tasks**` and `**Exit criteria**`. It also runs inside `make test` on all three operating systems |
 | Vet | `make vet`: `go vet ./...`, run by the `unit` job on each operating system |
 | Lint | `make lint`: golangci-lint with `.golangci.yml` over the whole tree (`--new=false`), zero issues; the `lint` job pins the linter version from `.github/golangci-lint-version`. `gosec` runs inside it |
-| Import boundaries | From P1b: depguard in `.golangci.yml` with the six rules in [repo-layout.md](repo-layout.md#depguard-rules); a forbidden import fails `make lint` |
+| Import boundaries | From P1b: depguard in `.golangci.yml` with the rules in [repo-layout.md](repo-layout.md#depguard-rules); a forbidden import fails `make lint` |
 | Determinism | From P1b: forbidigo rejects `time.Sleep` in `_test.go` files; waiting goes through `acceptance.eventually` or `testing/synctest` |
 | Unit | `make test`: unit tests with `-race -shuffle=on -count=1` on `ubuntu-latest`, `macos-latest` and `windows-latest`, coverage written to `cover/unit`. From P1c, it selects `-run '^TestUnit'` across every package |
 | Test names | From P1c: `TestUnitTestNames` fails on a top-level `Test` function that is neither `TestUnit…` nor `TestAcc…` |
 | Acceptance | `make accept`: the godog features in `test/acceptance/features` on `ubuntu-latest`, coverage written to `cover/accept`. From P1c, `TestAccFeatures` runs the built `cmd/infraweave` as a subprocess against containers started by testcontainers-go, with `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, split into the `accept-core`, `accept-runs` and `accept-integrations` jobs |
 | Feature partitions | From P1c: `TestUnitFeaturePartitions` fails when a scenario carries a tag no acceptance partition lists |
-| Contracts | A change to a storage or execution interface runs its contract suite: `sqltest`-backed store and domain tests, `queuetest`, `objectstoretest`, `iactest` or `agenttest`, each from the phase that creates its interface |
+| Contracts | A change to a storage or execution interface runs its contract suite: `sqltest`-backed store and domain tests, `queuetest`, `objectstoretest` (on RustFS, fake-gcs-server, Azurite and `fs`), `iactest` or `agenttest`, each from the phase that creates its interface |
+| FIPS 140-3 | From P2b: the `fips-only` job runs `make test` and every acceptance partition with the binary built with `GOFIPS140=certified` and every process run with `GODEBUG=fips140=only` ([0013](../research/decisions/0013-secrets-at-rest.md#fips-140-3)); a refused algorithm fails it like any other test. It is required and is not merged into coverage |
+| App contract | From P18d: `buf breaking` against the last release's `api/proto/flows/app/v1/` blocks any breaking change to the Flows app contract |
 | Reference drift | `make verify-reference` (CI job `reference`): the committed Spacelift reference, `coverage.md` and report 29 are exactly what the snapshots generate |
-| Generated drift | `make verify-generate` (CI job `generated`): bundling, oapi-codegen and stubgen produce no diff in `api/*.openapi.yaml`, the generated servers or `pkg/client` |
+| Generated drift | `make verify-generate` (CI job `generated`): bundling, oapi-codegen, stubgen and, from P24c, orval produce no diff in `api/*.openapi.yaml`, the generated servers, `pkg/client` or the console's generated client |
 | Parity | From P1c: `make verify-parity` (CI job `parity`) decides served, served with divergence, superseded or missing for every reference operation, and fails on an unrecorded divergence or a served superseded operation |
 | States | From P1c: `specref parity --states --check` fails when a state cell in [report 26](../research/reference/26-scope-and-tiers.md) claims more than the passing `@op:` scenarios show |
 | Captures | From P1c: `TestUnitCaptureRedaction` rejects credentials and non-`example.com` e-mail addresses in `test/fixtures/captures/`; `TestAccCaptures` replays every `expect.yaml` |
 | Provider parity | From P24: `specref provider-parity` maps every Spacelift resource, data source and attribute through `api/reference/provider-parity.yaml`, and `TestAccProvider` applies, plans empty, imports and destroys each `test/terraform/<resource>/` configuration |
 | CLI | From P24b: one `cli_<area>.feature` per capability row of [report 06](../research/reference/06-spacectl-and-clients.md), driving the built `infraweavectl` |
+| TypeScript | From P24c: the `console` job runs `npm ci`, `tsc --strict`, ESLint with typescript-eslint's `strict` configuration, Vitest at 95% in total and 90% per directory (the generated client excluded) and the production build in `web/console/`; the `console-e2e` job runs every Playwright journey against a real `infraweave all` built with `-cover`, and fails on a CSP violation, a request to another origin or an axe-core level AA violation ([0023](../research/decisions/0023-console.md)). golangci-lint stays the only Go linter |
 | Coverage | `make cover` (CI job `coverage`) merges every `cover/*` directory with `go tool covdata` and enforces `.testcoverage.yml`: at least 95% in total and 90% per package |
 | Vulnerabilities | `make vuln`: govulncheck at the version pinned in `go.mod`'s tool block reports nothing reachable |
 | Build | `make build` cross-compiles every `cmd/*` binary for linux, darwin and windows on amd64 and arm64 with CGO disabled and `-trimpath` |
@@ -43,8 +47,8 @@ that adds the check; until then the row is a rule reviewers apply by hand.
 | Dependencies | `dependency-review.yml` passes. Actions are pinned by commit SHA with the version in a comment; `go.mod` names the full patch Go release |
 | Spec first | A served operation lands as a fragment change (`make scaffold`, then `make generate`) before its handler; the operation keeps the reference's `operationId`, method and path unless a divergence is recorded |
 | Divergences | Each difference from the reference is listed in the operation's `x-infraweave-divergence` and has a row in [deviations.md](deviations.md) |
-| Capability ownership | A new, moved or deferred capability keeps an owning phase in [capability-roadmap.md](capability-roadmap.md); only evidenced supersession under [0021](../research/decisions/0021-capability-scope-and-supersession.md) removes one |
-| Docs | A behaviour change updates the decision record it rests on and the research page it contradicts in the same pull request; a new choice gets a new numbered decision, starting Proposed |
+| Feature ownership | A new, moved or deferred feature keeps its kind, seeded tier and owning phase in [capability-roadmap.md](capability-roadmap.md), matching `internal/features/catalogue.yaml`; from P3b, `TestUnitFeatureCatalogue` fails on an operation or gated property with no feature. Only evidenced supersession under [0021](../research/decisions/0021-capability-scope-and-supersession.md) removes one |
+| Decisions | A behaviour change amends the decision record it rests on in place, and the research page it contradicts, in the same pull request; a new choice gets a new numbered decision |
 
 ## Every phase
 
@@ -71,9 +75,8 @@ A phase is complete when:
    under `test/fixtures/captures/C<n>/` and replays; until then the scenario
    names the decision record it tests against, and the phase notes the open
    capture in its Build status row.
-8. Its decision records still describe the code. A Proposed decision the phase
-   implements is reviewed with the phase; a change of design amends the record
-   in place.
+8. Its decision records still describe the code; a change of design amends
+   the record in place.
 9. Build status in [plan.md](plan.md) matches the GitHub issues: the phase's
    epic and every child issue are closed.
 
@@ -109,7 +112,11 @@ Rules that apply to every change in every phase:
 - Exclusions are exactly `cmd/`, `tools/`, generated server code and
   `pkg/client/`; after [P1b](plan.md#p1b-domain-layout-and-depguard) the
   generated paths are `internal/platform/gen/` and `internal/agent/wire/`.
-  Adding an exclusion needs an amendment to decision 0016.
+  `pkg/sdk` and `pkg/flows/appsdk` are hand-written and covered. Adding an
+  exclusion needs an amendment to decision 0016.
+- The console's TypeScript coverage has its own thresholds (95% in total,
+  90% per directory) in the `console` job; its Playwright journeys run the
+  Go binary with `-cover` and add to the merged Go profile.
 - Unreachable defensive branches are removed, not excluded.
 - Code that needs PostgreSQL or object storage keeps its decisions in plain
   functions with unit tests; its queries are covered by `TestAcc` store,
@@ -125,8 +132,9 @@ Rules that apply to every change in every phase:
 
 Acceptance runs on `ubuntu-latest` only: the macOS runners have no Docker
 daemon and the Windows runners cannot run Linux containers. From
-[P1c](plan.md#p1c-test-harness-and-parity-tooling) the single `accept` job
-splits into the partitions of decision 0016:
+[P1c](plan.md#p1c-test-harness-sdk-and-parity-tooling) the single `accept` job
+splits into the partitions of decision 0016, and later phases add the jobs
+their rows name:
 
 | Job | Runs | Timeout |
 |---|---|---|
@@ -135,8 +143,12 @@ splits into the partitions of decision 0016:
 | `accept-integrations` | `@vcs`, `@ai` | 20 min |
 | `provider-parity` | `specref provider-parity` and `TestAccProvider` | 30 min |
 | `parity` | `make verify-parity` and the state check | 5 min |
-| `coverage` | `make cover` over every job above | 10 min |
-| `nightly` (scheduled, not required) | the full suite on the newest PostgreSQL major and the newest Terraform and OpenTofu releases | 60 min |
+| `fips-only` (from P2b) | `make test` and every acceptance partition under `GOFIPS140=certified` and `GODEBUG=fips140=only` | 45 min |
+| `console-e2e` (from P24c) | the Playwright journeys against a real `infraweave all` | 30 min |
+| `coverage` | `make cover` over every job above except `fips-only` | 10 min |
+| `postgres-next` (from P2, not required) | `storetest`, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate | 20 min |
+| `nightly` (scheduled, not required) | the full suite on the newest Terraform and OpenTofu releases | 60 min |
+| `objectstore-cloud` (from P2b, scheduled nightly, not required) | `objectstoretest` against Amazon S3, Google Cloud Storage and Azure Blob Storage through OIDC federation, in buckets with a one-day lifecycle rule; a failure opens or updates an issue | 20 min |
 
 - **Placement.** A scenario runs in the first of `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so it
@@ -163,5 +175,6 @@ splits into the partitions of decision 0016:
 - **Evidence.** A failing scenario writes the server and launcher logs and
   the database dump to `test/acceptance/out/<scenario>/`, uploaded as a CI
   artefact.
-- **Nightly.** A newer PostgreSQL, Terraform or OpenTofu release that breaks
-  a scenario opens an issue rather than blocking merges.
+- **Scheduled jobs.** A newer PostgreSQL, Terraform or OpenTofu release, or
+  a cloud object store, that breaks a scenario opens an issue rather than
+  blocking merges.

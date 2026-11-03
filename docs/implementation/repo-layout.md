@@ -12,8 +12,9 @@ worker-side process in `internal/agent`. Phase status lives in the
 holds the checks every pull request passes.
 
 Module: `github.com/weaveplatform/infraweave`. One Go module, two release
-binaries (`infraweave` and `infraweavectl`), and developer commands under
-`tools/`. Builds run with `GOWORK=off`, so a local `go.work` never hides a
+binaries (`infraweave` and `infraweavectl`), an optional slim
+`infraweave-agent` build for worker hosts, the console's TypeScript source
+under `web/console/`, and developer commands under `tools/`. Builds run with `GOWORK=off`, so a local `go.work` never hides a
 dependency missing from `go.mod`.
 
 Today's tree holds the served skeleton and the reference tooling in their
@@ -39,22 +40,27 @@ infraweave/
 │   │   ├── all.go                 app.All: serve and scheduler in one process
 │   │   ├── migrate.go             migrate up, migrate status: app.Migrate, then exit (P2)
 │   │   ├── secrets.go             secrets generate-kek, rewrap, rotate (P2b)
+│   │   ├── auth.go                auth hash-password for the break-glass login (P3)
 │   │   ├── version.go             platform/buildinfo
 │   │   ├── launcher.go            agent/launcher.Run; imports no internal/app (P8)
 │   │   ├── runner.go              hidden runner: agent/exec.Main inside the run container (P9)
 │   │   ├── vcsagent.go            vcs-agent: agent/vcsagent.Run (P19b)
-│   │   └── flowsagent.go          flows-agent: agent/flowsagent.Run (P26b)
-│   └── infraweavectl/             the CLI over pkg/client/deploy; a client, not a process mode (P24b)
+│   │   └── flowsagent.go          flows-agent: agent/flowsagent.Run (P18d)
+│   ├── infraweave-agent/          optional slim build of launcher, runner, vcs-agent and flows-agent; links only internal/agent
+│   └── infraweavectl/             the CLI over pkg/sdk; a client, not a process mode (P3b, P24b)
 ├── api/                           specifications; the source of truth for every served API
 │   ├── src/deploy/                editable fragments: info.yaml, components-common.yaml, paths-<family>.yaml
 │   ├── src/worker/                worker protocol fragments (P8)
-│   ├── src/flows/                 Flows API fragments (P26)
+│   ├── src/flows/                 Flows API fragments under /flows/v1/ (P18c)
+│   ├── src/operator/              operator API fragments: accounts, tiers, grants, billing, queue (P3b)
+│   ├── proto/flows/app/v1/        the versioned App and Host gRPC services of Flows apps (P18d)
 │   ├── deploy.openapi.yaml        bundled by make bundle; committed; drift-checked
 │   ├── oapi-server-<spec>.yaml    oapi-codegen server config; output internal/platform/gen/<spec>
 │   ├── oapi-client-<spec>.yaml    oapi-codegen client config; output pkg/client/<spec> or internal/agent/wire
 │   ├── doc.go deploy_test.go      embeds of the bundles and the spec checks
 │   └── reference/
 │       ├── spacelift/             the Spacelift specification reference and its snapshots; generated
+│       ├── flows-clients.yaml     each flowctl and Flows provider RPC path mapped to its REST operation (P18c)
 │       └── provider-parity.yaml   Terraform provider renames, type changes and omissions (P24)
 ├── internal/
 │   ├── app/                       composition root: serve, scheduler, all, migrate
@@ -62,6 +68,7 @@ infraweave/
 │   │   ├── platform.go            open PostgreSQL, migrate every stream, object stores, keyring, queue, outbox, cron
 │   │   ├── domains.go             construct domains in dependency order; late-bind the three back edges
 │   │   ├── router.go              chi router, middleware, strict servers composed by embedding
+│   │   ├── console.go             the embedded console at /, its fallback, cache headers and CSP (P24c)
 │   │   ├── discovery.go           /.well-known/terraform.json from domain contributions (P11, P17)
 │   │   └── modes.go               which domain parts (Routes, Consumers, Cron) each process mode starts
 │   ├── devtools/                  libraries behind tools/; never linked into cmd/
@@ -72,7 +79,7 @@ infraweave/
 │   ├── kernel/                    value types shared by domain APIs; parsing only, no I/O
 │   │   ├── ids.go                 ULID, Slug, UUID (Flows)
 │   │   ├── account.go space.go    AccountID, SpaceID, the root space
-│   │   ├── principal.go           user, API key, run, worker, stack, Flows project
+│   │   ├── principal.go           user, API key, run, operator, worker, stack, Flows project
 │   │   ├── labels.go              labels and autoattach: matching
 │   │   ├── run.go                 RunState (22 values), RunType, StackState, RunPriority wire names
 │   │   ├── vendor.go              VendorKind
@@ -89,17 +96,18 @@ infraweave/
 │   │   │   └── sqltest/           testcontainers PostgreSQL for store and domain tests
 │   │   ├── tx/                    Tx(ctx, fn), AfterCommit; the unit of work on the context (P2)
 │   │   ├── audit/                 Record(ctx, kernel.AuditEntry) in the caller's transaction
-│   │   ├── outbox/                Append(ctx, Event) in the caller's transaction (P2c)
-│   │   ├── events/                Subscribe(kind, consumer, Handler); one job per consumer (P2c)
+│   │   ├── outbox/                the event envelope and kind registry shared by Deploy and Flows; Append(ctx, Event)
+│   │   │                          in the caller's transaction; Subscribe(kind, consumer, Handler), one job per consumer (P2c)
 │   │   ├── queue/                 decision 0011's PostgreSQL job queue (P2c)
 │   │   │   └── queuetest/         contract suite, TestAcc
 │   │   ├── cron/                  five-field grammar; ticker claims due rows with SKIP LOCKED (P2c)
 │   │   ├── objectstore/           Put, Get, versions, presigned GET and PUT (P2b)
 │   │   │   ├── s3/ gcs/ azureblob/ fs/
-│   │   │   └── objectstoretest/   contract suite: TestAcc on MinIO, TestUnit on fs
-│   │   ├── crypt/                 decision 0013's envelope encryption, seal and open (P2b)
+│   │   │   └── objectstoretest/   contract suite: TestAcc on RustFS, fake-gcs-server and Azurite, TestUnit on fs
+│   │   ├── crypt/                 decision 0013's keyring, envelope encryption and DeriveKey (P2b)
 │   │   │   └── kek/               local, awskms, gcpkms, azurekv, vault
-│   │   ├── features/              decision 0021's BillingTierFeature switch middleware
+│   │   ├── seal/                  sealed column, object stream and pool envelope formats; holds no keys (P2b)
+│   │   ├── expr/                  decision 0024's CEL engine and text templates; server and runner (P6)
 │   │   ├── rego/                  embedded OPA v1: prepared queries, capabilities, timeouts (P13)
 │   │   ├── httpkit/
 │   │   │   ├── problem/           RFC 9457 problems, decision 0003 slugs                   ← internal/server/problem
@@ -110,7 +118,8 @@ infraweave/
 │   │   ├── gen/                   GENERATED strict servers, one package per spec
 │   │   │   ├── deploy/            server.gen.go, unimplemented.gen.go                      ← internal/server/gen/deploy
 │   │   │   ├── worker/            (P8)
-│   │   │   └── flows/             (P26)
+│   │   │   ├── flows/             (P18c)
+│   │   │   └── operator/          (P3b)
 │   │   ├── observe/               slog, OpenTelemetry, /metrics, readiness on its own port (P2, P18b)
 │   │   └── testkit/               fake clock, fake object store, HTTP recorder helpers
 │   ├── iac/                       pure IaC vendor knowledge shared by server and agent (P5, P9, P20, P20b)
@@ -130,12 +139,17 @@ infraweave/
 │   │   ├── mask/                  log masking of decision 0013 (P9)
 │   │   ├── tools/                 tool binary download, verification and caching (P9)
 │   │   ├── vcsagent/              long-polls /vcs-agent/v1 on serve (P19b)
-│   │   ├── flowsagent/            dials the Flows gateway on serve (P26b)
+│   │   ├── flowsagent/            dials the Flows gateway on serve; docker, kubernetes and process executors (P18d)
 │   │   └── agenttest/             fake server over the generated worker spec
 │   │
 │   │   Business domains. Hexagon domains split internal/core from internal/adapters;
 │   │   flat domains hold one logic package, an http package and a pg package.
 │   │
+│   ├── features/                  flat, at the bottom of the domain graph: catalogue, tiers, grants, entitlement,
+│   │   │                          the feature middleware and the operator API (P3b)
+│   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.yaml
+│   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
+│   │   └── api/ assembly/ internal/{expressions,http}/
 │   ├── access/                    hexagon: accounts, users, groups, API keys, sessions, tokens, spaces, RBAC (P3 to P4b, P13b, P23)
 │   │   ├── api/                   Authenticator, Authorizer, Spaces, Tokens, identity reads, events
 │   │   ├── assembly/              New(Deps); Routes; Consumers; Cron; Close; DeployAPI alias
@@ -160,7 +174,7 @@ infraweave/
 │   ├── vendors/                   flat: tool version catalogue (P5, P20)
 │   │   └── api/ assembly/ internal/{vendors,http,pg}/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
-│   │   └── api/ assembly/ internal/{state,backend,tfe,http,pg}/
+│   │   └── api/ assembly/ internal/{state,backend,http,pg}/
 │   ├── vcs/                       hexagon: integrations, webhooks, routing, feedback (P12, P19, P19b)
 │   │   └── api/ assembly/ internal/{core/{integration,intake,normalize,route,feedback,pullrequest,port},
 │   │                              adapters/{http,github,gitlab,bitbucketcloud,bitbucketdc,azuredevops,rawgit,agentgateway,pg}}/
@@ -172,21 +186,26 @@ infraweave/
 │   │   └── api/ assembly/ internal/{schedules,http,pg}/
 │   ├── registry/                  hexagon: modules, versions, test cases, providers, GPG keys (P17, P17b)
 │   │   └── api/ assembly/ internal/{core/{module,version,testcase,provider,gpg,sharing,port},adapters/{http,protocol,pg}}/
-│   ├── events/                    hexagon: inbox, named and stack webhooks, audit trail, Slack, Teams (P18, P18b)
-│   │   └── api/ assembly/ internal/{core/{catalogue,inbox,webhook,delivery,audit,metrics,port},adapters/{http,slack,pg}}/
+│   ├── events/                    hexagon: the sinks: inbox, named and stack webhooks, streams, audit trail, Slack, Teams (P18, P18b)
+│   │   └── api/ assembly/ internal/{core/{inbox,webhook,delivery,stream,audit,metrics,port},adapters/{http,slack,pg}}/
 │   ├── templates/                 flat: blueprints, templates, versions, deployments (P21)
 │   │   └── api/ assembly/ internal/{templates,render,http,pg}/
 │   ├── resources/                 flat: managed entities, scans, generic search (P22, P22b)
 │   │   └── api/ assembly/ internal/{resources,search,scans,http,pg}/
 │   ├── intelligence/              hexagon: AI integrations, Infra Assistant, Intent, MCP (P25, P25b)
 │   │   └── api/ assembly/ internal/{core/{aiintegration,assistant,intent,tools,port},adapters/{http,mcp,providers,pg}}/
-│   └── flows/                     hexagon: Flows with its own tenancy and PostgreSQL schema (P26, P26b)
-│       └── api/ assembly/ internal/{core/{org,project,flow,block,invocation,event,app,agentpool,secret,datatable,port},
+│   └── flows/                     hexagon: Flows on the account's identity, in its own PostgreSQL schema; its Deploy
+│       │                          triggers are a fan-out consumer here, so events never imports flows (P18c, P18d)
+│       └── api/ assembly/ internal/{core/{org,project,flow,block,invocation,event,trigger,app,agentpool,secret,datatable,port},
 │                                  adapters/{http,gateway,mcp,pg}}/
 ├── pkg/
-│   └── client/
-│       ├── deploy/                GENERATED deploy client; infraweavectl and the Terraform provider import it
-│       └── flows/                 GENERATED Flows client (P26)
+│   ├── client/
+│   │   ├── deploy/                GENERATED deploy client, wrapped by pkg/sdk
+│   │   ├── flows/                 GENERATED Flows client (P18c)
+│   │   └── operator/              GENERATED operator API client (P3b)
+│   ├── sdk/                       decision 0001's SDK over pkg/client/<spec>: token exchange, idempotency keys,
+│   │                              retries, iterators, typed problem errors; every Go client uses it (P1c)
+│   └── flows/appsdk/              the Go SDK for Flows apps, with apptest (P18d)
 ├── test/
 │   ├── acceptance/                godog features, steps and the harness; ubuntu only
 │   │   ├── features/              <area>_<topic>.feature, tagged with dependencies and @op:<operationId>
@@ -195,13 +214,15 @@ infraweave/
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
 │   │   └── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
 │   └── terraform/<resource>/      provider acceptance configurations, translated from Spacelift's (P24)
+├── web/console/                   the console: React and TypeScript, built by Vite, embedded by internal/app (P24c)
+│   └── src/api/                   GENERATED orval client and hooks; committed; drift-checked
 ├── tools/                         thin mains over internal/devtools; excluded from coverage
 │   ├── specref/                   fetch, generate, check, scaffold, inventory, parity, provider-parity
 │   ├── openapi-bundle/
 │   └── stubgen/
 ├── deploy/                        decision 0020's packaging and reference deployments (P27)
 │   ├── images/                    image definitions: runner-terraform and runner-opentofu (P9), the other
-│   │                              runners (P20, P20b), flows-runtime (P26b), the server and FIPS images (P27)
+│   │                              runners (P20, P20b), the server and FIPS images (P27)
 │   ├── compose/compose.yaml       one infraweave all and one infraweave launcher on Docker
 │   ├── helm/infraweave/           chart for serve and scheduler, one Deployment per process mode
 │   ├── helm/infraweave-workers/   chart for infraweave launcher
@@ -215,13 +236,18 @@ infraweave/
 └── go.mod                         one module, full patch Go version
 ```
 
-No decision yet places the Terraform provider's source, here or in a
-repository of its own (the plan's
-[open items](plan.md#open-items)). Either way it imports
-`pkg/client/deploy`, and this repository holds its parity oracle
+The Terraform and OpenTofu provider's source lives in its own repository,
+`weaveplatform/terraform-provider-infraweave`, and imports `pkg/sdk` at a
+pinned version of this module
+([0001](../research/decisions/0001-rest-first-spacelift-surface.md)). This
+repository holds its parity oracle
 (`api/reference/spacelift/terraform-schema.json`), its mapping file
 (`api/reference/provider-parity.yaml`) and its acceptance configurations
-under `test/terraform/`.
+under `test/terraform/`; where the provider's checks run is one of the
+plan's [open items](plan.md#open-items). First-party Flows apps are OCI
+images of their own, one per app version, built on `pkg/flows/appsdk` and
+listed in infraweave's first-party app registry
+([0020](../research/decisions/0020-reference-deployments-and-packaging.md)).
 
 ## Where today's packages go
 
@@ -232,7 +258,7 @@ with no behaviour change.
 
 | Today | Target | What else changes |
 |---|---|---|
-| `cmd/` (`README.md` only) | `cmd/infraweave`, then `cmd/infraweavectl` (P24b) | one file per process mode |
+| `cmd/` (`README.md` only) | `cmd/infraweave`, then `cmd/infraweavectl` (P3b) | one file per process mode |
 | `api`, `api/src/deploy`, `api/reference/spacelift` | unchanged | `api/src/deploy` grows one `paths-<family>.yaml` per family |
 | `api/oapi-server-deploy.yaml` | unchanged | `output: internal/platform/gen/deploy/server.gen.go` |
 | `internal/buildinfo` | `internal/platform/buildinfo` | `LDFLAGS` paths in `Makefile` |
@@ -246,12 +272,12 @@ with no behaviour change.
 | `tools/openapi-bundle`, `tools/specref`, `tools/stubgen` | unchanged | library import paths |
 | `test/acceptance` | unchanged | runs the built binary as a subprocess from P1c |
 | `Makefile` | unchanged path | `generate` and `verify-generate` paths, `LDFLAGS`, `docs-check` path |
-| `.golangci.yml` | unchanged path | depguard enabled with the six rules |
+| `.golangci.yml` | unchanged path | depguard enabled with option 5's rules |
 | `.testcoverage.yml` | unchanged path | `^internal/platform/gen/` and `^internal/agent/wire/` replace `^internal/server/gen/` |
 
 ### Package names in the decision records
 
-Decisions 0005 to 0022 name packages by responsibility. Decision 0004 places
+Decisions 0005 to 0024 name packages by responsibility. Decision 0004 places
 them; read a record's package name through this table.
 
 | Named in a record | Place in this layout |
@@ -268,10 +294,11 @@ them; read a record's package name through this table.
 | `internal/authn`, `internal/authz` | `internal/access` |
 | `internal/authz/actions.yaml`, `internal/authz/actions_gen.go` | `internal/access/api`, because callers name an action when they call the authorizer |
 | `internal/statebackend`, `internal/registry` | `internal/state`, `internal/registry` |
-| `internal/events`, `internal/audit` | `internal/events`; the outbox in `internal/platform/outbox`, the audit write in `internal/platform/audit` |
+| `internal/events`, `internal/audit` | `internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox`, the audit write in `internal/platform/audit` |
+| `internal/expr` | `internal/platform/expr`; the editor endpoints in `internal/expressions` |
 | `internal/flows`, `internal/flows/agent` | `internal/flows`, `internal/agent/flowsagent` |
 | `internal/ai`, `internal/ai/tools`, `internal/intent` | `internal/intelligence` |
-| `internal/features` | `internal/platform/features`: an operator switch with no business rule |
+| `internal/features` | `internal/features`: the domain at the bottom of the domain graph that holds the catalogue, tiers, grants and entitlement |
 | `internal/problem`, `internal/buildinfo`, `internal/telemetry`, `internal/clock` | `internal/platform/httpkit/problem`, `internal/platform/buildinfo`, `internal/platform/observe`, `internal/platform/testkit` |
 
 A package no row names joins `internal/platform` when it holds no business
@@ -285,18 +312,19 @@ rule, and the domain that owns its rule otherwise.
 | What other domains call | `internal/<domain>/api/` | Interfaces, input and output types and events only; imports `internal/kernel`, `internal/platform/outbox` and the standard library |
 | Domain assembly | `internal/<domain>/assembly/` | `New(Deps)`, `Routes`, `Consumers`, `Cron`, `Close`, and a `DeployAPI` alias of the domain's strict partial; only `internal/app` and `cmd/` import it |
 | Domain logic | `internal/<domain>/internal/core/...` (hexagon) or `internal/<domain>/internal/<domain>/` (flat) | Core never imports adapters |
-| Rules with no I/O | a package of their own inside the owning domain | The run transition table, priority tiers, policy combination and version numbering are tested as tables |
+| Rules with no I/O | a package of their own inside the owning domain | The run transition table, priority levels, policy combination and version numbering are tested as tables |
 | HTTP handlers | `internal/<domain>/internal/.../http` | A strict-server partial for the domain's operations; hand-written chi routes for protocols that are not the REST API |
-| SQL | `internal/<domain>/internal/.../pg` | The domain's store and its `migrations/` stream; no foreign key crosses a domain boundary |
+| SQL | `internal/<domain>/internal/.../pg` | The domain's store and its `migrations/` stream; a foreign key across domains follows the import direction, with `ON DELETE RESTRICT` ([0004](../research/decisions/0004-repository-architecture.md)) |
 | Provider shapes | one package per provider inside the owning domain | Each VCS provider's webhook and API shapes stay in `vcs/internal/adapters/<provider>` behind one normalised event |
-| Infrastructure | `internal/platform/...` | Anything with no business rule: SQL, unit of work, outbox, queue, cron, object storage, encryption, HTTP kit, OPA runtime, generated servers, observability |
+| Infrastructure | `internal/platform/...` | Anything with no business rule: SQL, unit of work, outbox and event envelope, queue, cron, object storage, encryption and sealed formats, the expression engine, HTTP kit, OPA runtime, generated servers, observability |
 | Value types across domain APIs | `internal/kernel/...` | Parsing only, no I/O |
 | IaC vendor knowledge | `internal/iac/<vendor>` | Pure; the server validates and parses with it, the agent runs commands with it |
-| Code that runs on a customer host | `internal/agent/...` | Never a domain, SQL, the queue, object storage credentials or encryption |
+| Code that runs on a customer host | `internal/agent/...` | Never a domain, SQL, the queue, object storage credentials or the keyring |
 | Wiring and process modes | `internal/app/...` | The only place that sees every domain; back edges are bound after construction |
-| Entry points | `cmd/infraweave`, `cmd/infraweavectl` | Thin cobra shims; logic belongs in `internal/` |
+| Entry points | `cmd/infraweave`, `cmd/infraweave-agent`, `cmd/infraweavectl` | Thin cobra shims; logic belongs in `internal/` or, for the CLI, `pkg/sdk` |
 | Developer commands | `tools/<name>` over `internal/devtools/<name>` | `internal/devtools` is imported only by `tools/` and its own tests |
-| Public Go API | `pkg/client/<spec>` | Generated clients only; nothing under `pkg/` imports `internal/` |
+| Public Go API | `pkg/client/<spec>`, `pkg/sdk`, `pkg/flows/appsdk` | Generated clients, the SDK over them, and the Flows app SDK; nothing under `pkg/` imports `internal/` |
+| The console | `web/console/` | TypeScript only; it calls the served REST API through its generated client and nothing else |
 
 Further rules:
 
@@ -312,8 +340,9 @@ Further rules:
   `vendor` as vendored code, so IaC vendor code lives under `internal/iac` and
   `internal/agent/vendors`, and the catalogue domain is `internal/vendors`.
 - **Hand-written protocols.** VCS webhooks, the Terraform `http` state backend,
-  `tfe`, service discovery, `modules.v1`, `providers.v1` and `login.v1` are chi
-  routes the owning domain contributes through `Routes`.
+  service discovery, `modules.v1`, `providers.v1`, `login.v1`, the Flows
+  agent gateway and the MCP surfaces are chi routes the owning domain
+  contributes through `Routes`.
 - **One operation, one owner.** `internal/app/router.go` composes the strict
   server by embedding each domain's partial at depth one and
   `UnimplementedStrict` at depth two, so an operation two domains implement
@@ -364,6 +393,8 @@ option 5's
 | Captures | `TestAccCaptures`, `TestUnitCaptureRedaction` | `test/fixtures/captures/C<n>/` | ubuntu; redaction everywhere |
 | Provider | `TestAccProvider` | `test/terraform/<resource>/` | ubuntu |
 | CLI | `TestAccFeatures` | `test/acceptance/features/cli_<area>.feature`, one per row of report 06 section 8 | ubuntu |
+| Console unit | Vitest | beside the code in `web/console/` | ubuntu |
+| Console journeys | Playwright | `web/console/e2e/`, against a real `infraweave all` | ubuntu |
 
 - **Kind by name.** The kind belongs to the test function, not the package. A
   top-level `Test` function that is neither `TestUnit…` nor `TestAcc…` fails
@@ -372,7 +403,7 @@ option 5's
   domain or concern (`runs_terraform.feature`, `events_webhooks.feature`,
   `authz_spaces.feature`). A scenario carries dependency tags (`@postgres`,
   `@objectstore`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@ai`,
-  `@kubernetes`, `@flows-runtime`) and one `@op:<operationId>` tag per
+  `@kubernetes`, `@flows-agent`) and one `@op:<operationId>` tag per
   operation it exercises.
 - **Capture fixtures** hold `meta.yaml`, `request.graphql`, `response.json` and
   `expect.yaml` per capture
@@ -387,15 +418,18 @@ The compiler's `internal` rule keeps every `internal/<domain>/internal/...`
 package private to its domain. golangci-lint's depguard enforces the rest, with
 these rules from option 5's
 [tests and enforcement](../research/architecture-options/5-modular-monolith.md#tests-and-enforcement)
-section, where `$m` is `github.com/weaveplatform/infraweave`.
+section, where `$m` is `github.com/weaveplatform/infraweave`. The table
+lists the cross-cutting rules; the per-domain rules of decision 0004, one
+per domain listing the other domains' `api/` packages it may import, make
+up the rest.
 
 | Rule | Files | Mode | Entries |
 |---|---|---|---|
 | `api-packages` (rule 3) | `**/internal/*/api/**` | strict allow | `$gostd`, `$m/internal/kernel`, `$m/internal/platform/outbox` |
-| `constructors` (rule 4) | everything except `**/internal/app/**` and `**/cmd/**` | deny | `$m/internal/<domain>/assembly` for each of the 17 domains |
+| `constructors` (rule 4) | everything except `**/internal/app/**` and `**/cmd/**` | deny | `$m/internal/<domain>/assembly` for each of the 19 domains |
 | `core-not-adapters` (rule 5) | `**/internal/*/internal/core/**` | deny | `$m/internal/<domain>/internal/adapters` for each of the 8 hexagon domains |
-| `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 17 domain roots, `$m/internal/agent`, `$m/internal/app` |
-| `agent-isolation` (rule 7) | `**/internal/agent/**` | deny | `$m/internal/platform/{sql,tx,outbox,audit,queue,objectstore,crypt}`, `github.com/jackc/pgx`, the 17 domain roots, `$m/internal/app` |
+| `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 19 domain roots, `$m/internal/agent`, `$m/internal/app` |
+| `agent-isolation` (rule 7) | `**/internal/agent/**` | deny | `$m/internal/platform/{sql,tx,outbox,audit,queue,objectstore,crypt}`, `github.com/jackc/pgx`, the 19 domain roots, `$m/internal/app` |
 | `devtools` (rule 8) | everything except `**/tools/**` and `**/internal/devtools/**` | deny | `$m/internal/devtools` |
 
 Rule 2 (a domain reaches another only through its `api/`) needs no entry: the
@@ -403,11 +437,13 @@ compiler stops imports of another domain's `internal/`, and `constructors`
 stops imports of its `assembly/`. A new domain adds one entry to `constructors`,
 `shared-below-domains` and `agent-isolation`, and one to `core-not-adapters` if
 it is a hexagon. `internal/agent` may import only `internal/kernel`,
-`internal/iac`, `internal/platform/buildinfo`, `internal/platform/rego` and
-`internal/platform/httpkit/client` from outside its own tree. The 17 domains
-are `access`, `stacks`, `configuration`, `vendors`, `workers`, `policies`,
-`runs`, `state`, `vcs`, `cloud`, `schedules`, `registry`, `events`,
-`templates`, `resources`, `intelligence` and `flows`; the 8 hexagons are
+`internal/iac` and five `platform` packages from outside its own tree:
+`buildinfo`, `rego`, `httpkit/client`, `seal` (the runner seals
+workspaces) and `expr` (the runner renders workflow command templates).
+The 19 domains are `features`, `expressions`, `access`, `stacks`,
+`configuration`, `vendors`, `workers`, `policies`, `runs`, `state`, `vcs`,
+`cloud`, `schedules`, `registry`, `events`, `templates`, `resources`,
+`intelligence` and `flows`; the 8 hexagons are
 `runs`, `vcs`, `workers`, `access`, `registry`, `events`, `intelligence` and
 `flows`.
 
@@ -422,6 +458,8 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | `internal/platform/gen/<spec>/server.gen.go` | the bundle, `api/oapi-server-<spec>.yaml` | `make generate` | `make verify-generate` |
 | `internal/platform/gen/<spec>/unimplemented.gen.go` | the generated server | `make generate` (stubgen) | `make verify-generate` |
 | `pkg/client/<spec>`, `internal/agent/wire` | the bundle, `api/oapi-client-<spec>.yaml` | `make generate` | `make verify-generate` |
+| `web/console/src/api/` | the served bundles, through orval | `make generate` (needs the pinned Node.js) | `make verify-generate` |
+| The `App` and `Host` stubs | `api/proto/flows/app/v1/` | `make generate` | `make verify-generate`; `buf breaking` against the last release |
 | `api/reference/spacelift/spacelift.openapi.yaml`, `coverage.md` | the snapshots and `rest-mapping.yaml` | `make reference` | `make verify-reference` |
 | `api/reference/spacelift/` snapshots and `sources.lock.yaml` | upstream at the pinned versions | `make reference-fetch` (network) | `openapi-spec-update.yml` |
 | [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |

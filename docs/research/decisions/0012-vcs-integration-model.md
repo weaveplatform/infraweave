@@ -110,7 +110,7 @@ not provider names.
   GitHub Enterprise Server, including the manifest flow
   ([11 section 4.2](../reference/11-vcs-integrations.md#42-operations)).
 - **Out of this record.** Which other providers are served is decision
-  0021's. It builds `BLOB` and `ORIGIN` as schema-only capabilities (P3);
+  0021's. It builds `BLOB` and `ORIGIN` as schema-only interfaces (P3);
   `SPACELIFT` repos are documented, so its scope rule serves them; it does
   not name `SHOWCASE`. Each served provider implements `Source` and needs no
   other change here.
@@ -174,7 +174,7 @@ well inside GitHub's 10-second delivery timeout.
   creates runs ([0008](0008-run-execution-and-worker-protocol.md)) in the
   transaction that completes the job. Run deduplication on stack, commit SHA
   and run type is a unique index on `runs`, so a retried job cannot create a
-  second run. A `/spacelift` comment that proposes bypasses it.
+  second run. A `/infraweave` comment that proposes bypasses it.
 - **Budgets.** Every child job carries the delivery's deadline, received time
   plus 10 minutes; a job that starts after it completes with outcome `expired`
   and acts on nothing. The `vcsEventTriggeredRunsLimit` cap is a counter on the
