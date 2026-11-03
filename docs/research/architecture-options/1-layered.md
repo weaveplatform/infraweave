@@ -55,7 +55,7 @@ everything and reaches nothing above it.
 
 The launcher, runner, VCS agent and Flows agent process modes sit beside
 the layers, not in them. `internal/worker/...` is a separate column
-(launcher, phase executor, vendor command sets, container executors, the
+(launcher, runner, vendor command sets, container executors, the
 Flows agent and its app containers) that talks to the server only through
 a generated worker-protocol client or the agent gateways, so a private
 worker on a customer host links no repository, infrastructure or service

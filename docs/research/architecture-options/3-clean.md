@@ -344,7 +344,7 @@ internal/
 │   ├── flowsagenttask/                      flows.agent_task claims per pool for a connected agent  (Flows)
 │   └── agent/                               WORKER SIDE (rule 6)
 │       ├── launcher/                        register, poll, open the sealed spec, start container, relay signals  (P8)
-│       ├── executor/                        the phase loop inside the run container; renders workflow templates  (P8, P9)
+│       ├── runner/                          the phase loop inside the run container; renders workflow templates  (P8, P9)
 │       ├── initpolicy/                      worker-side initialization policy  (P14)
 │       ├── toolchain/                       resolve vendor binary versions  (P9)
 │       ├── vcsagent/                        infraweave vcs-agent: long-polls serve, calls the private VCS  (P19)
@@ -720,12 +720,12 @@ internal/adapter/workerapi/
 internal/usecase/agent/launcher/      WORKER SIDE
   port.go            Server (the worker API), Containers (Run, Stop, Kill), InitPolicy, Clock
   launcher.go        register, loop: poll, evaluate init policy, start container, relay signals
-internal/usecase/agent/executor/
+internal/usecase/agent/runner/
   port.go            Server, Workspace, Toolchain, Shell
-  executor.go        phases: prepare, before_init, init, after_init, plan, ..., after_run
-internal/adapter/agent/workerclient/  implements launcher.Server and executor.Server over gen/
+  runner.go          phases: prepare, before_init, init, after_init, plan, ..., after_run
+internal/adapter/agent/workerclient/  implements launcher.Server and runner.Server over gen/
 internal/adapter/agent/container/docker/ kubernetes/   implement launcher.Containers
-internal/app/workerapp/      launcher and runner (executor) composition
+internal/app/workerapp/      launcher and runner composition
 ```
 
 The worker side's graph is entities plus `usecase/agent`, `adapter/agent`,
@@ -1108,7 +1108,7 @@ callers of entity/expr:
   usecase/templatedeployment   blueprint and template bodies (serve, or scheduler for a queued change)
   usecase/runtrigger           output references and environment interpolation at handover (serve)
   usecase/webhookdeliver, notification   notification text in the delivery job (scheduler)
-  usecase/agent/executor       .infraweave/workflow.yml command templates in the runner, shell-quoted
+  usecase/agent/runner         .infraweave/workflow.yml command templates in the runner, shell-quoted
 ```
 
 Decision 0024's language is ring 1's natural content, and this is where
@@ -1429,7 +1429,7 @@ whose failure paths need recorded fixtures.
 9. `entity/vcs/dedupe.go` gives the key (stack, SHA, `PROPOSED`); `runstate/create.go` inserts the run `QUEUED`, cancels superseded proposed runs on the branch through `Apply`, appends `RunStateChanged` and enqueues `run.schedule`, in one transaction.
 10. `usecase/scheduler/schedule.go` (the `run.schedule` job) finds no gate closed for a proposed run and moves it to `READY` through `runstate`, which issues `NOTIFY infraweave_runs` for the pool.
 11. `adapter/workerapi/controller.go` (serve process mode) wakes the worker's held poll; `usecase/jobdispatch/poll.go` claims the pool's runs in `entity/run/priority.go` order (tier 3, normal proposed), moves this one to `PREPARING` and returns the assignment with its run token.
-12. On the worker, `usecase/agent/launcher` starts the runner container; `infraweave runner` runs `usecase/agent/executor`, which takes the plan commands from `entity/iac/terraform`, uploads the plan JSON to a pre-signed URL and calls `ReportPlan`.
+12. On the worker, `usecase/agent/launcher` starts the runner container; `infraweave runner` runs `usecase/agent/runner`, which takes the plan commands from `entity/iac/terraform`, uploads the plan JSON to a pre-signed URL and calls `ReportPlan`.
 13. `usecase/runreport/plan.go` reads the plan through its `PlanObjects` port (`adapter/objectstore`), parses changes with `entity/iac/terraform`, and calls its `PlanPolicy` port (`policyeval/plan.go`): no deny, no warn.
 14. `runreport` applies `PLANNING → FINISHED` through `runstate`; the outbox gets `RunStateChanged`.
 15. `adapter/outboxrelay` delivers it to `usecase/vcsfeedback/checks.go` (commit check through `adapter/vcs/github/checks.go`) and to `usecase/notification/route.go`, which evaluates notification policies; a `pull_request` rule calls `PullRequestCommenter`, implemented by `adapter/vcs/github/comments.go`, with the rule's deduplication key.
@@ -1442,8 +1442,8 @@ whose failure paths need recorded fixtures.
 4. `usecase/scheduler` finds the stack lock free and moves the run to `READY`; the private pool's claim order puts it in tier 2.
 5. A launcher on the customer's host, started as `infraweave launcher` with the pool's certificate, holds a poll on `adapter/workerapi`; `workerapi/auth.go` checks the session token against `usecase/workerregistry`, and `jobdispatch` claims the run to `PREPARING`.
 6. `usecase/agent/launcher` evaluates the worker-side initialization policy (`usecase/agent/initpolicy` over `adapter/opa`) and starts the container through `adapter/agent/container/docker`.
-7. `usecase/agent/executor` restores the source archive (`adapter/agent/workspace`), downloads the vendor binary (`adapter/agent/toolchain`), plans, and reports. Terraform reads state through `adapter/protocol/statehttp` with the run token; `entity/state/access.go` allows read and lock in `PLANNING`.
-8. `runreport/plan.go` evaluates plan policies; a `warn` sends the run to `UNCONFIRMED`. The executor uploads the workspace to the workspaces bucket and exits.
+7. `usecase/agent/runner` restores the source archive (`adapter/agent/workspace`), downloads the vendor binary (`adapter/agent/toolchain`), plans, and reports. Terraform reads state through `adapter/protocol/statehttp` with the run token; `entity/state/access.go` allows read and lock in `PLANNING`.
+8. `runreport/plan.go` evaluates plan policies; a `warn` sends the run to `UNCONFIRMED`. The runner uploads the workspace to the workspaces bucket and exits.
 9. The follow-up job evaluates approval policies for `UNCONFIRMED`: one approval required.
 10. A reviewer calls `POST /api/v1/stacks/{stackId}/runs/{runId}/reviews` (route per the deploy spec); `controller/run` calls `usecase/runreview`, which re-evaluates approval through its `ApprovalPolicy` port: approved.
 11. The stack writer calls the confirm operation; `usecase/runaction/confirm.go` checks `entity/run/guards.go` (`canConfirm`) and applies `UNCONFIRMED → CONFIRMED`, which is claimable.
@@ -1478,7 +1478,7 @@ whose failure paths need recorded fixtures.
 11. `test/acceptance/features/vendor_pulumi.feature` and its steps.
 
 What else changes: no use case. `stack.Validate`, `runreport`, `policyeval`
-and the executor read the vendor through `entity/iac`, and the stack input
+and the runner read the vendor through `entity/iac`, and the stack input
 boundary's option check reads the catalogue. About 10 new files and 4
 edited, two of them in rings other than ring 1.
 

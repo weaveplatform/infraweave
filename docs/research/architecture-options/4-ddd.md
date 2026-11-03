@@ -85,7 +85,7 @@ Dependency rules:
 9. `internal/tooling/...` is imported only by `tools/...`; `pkg/...` never imports
    `internal/...` or `cmd/...`.
 
-Rule 7 is what keeps the worker side honest: the launcher and the in-container executor
+Rule 7 is what keeps the worker side honest: the launcher and the in-container runner
 run on customer hosts with outbound HTTPS only ([report
 10](../reference/10-workers-and-execution.md#42-transports)), so their package graph
 holds no SQL driver, no object-storage credential and no other context's model.
@@ -465,7 +465,7 @@ internal/
 │       ├── docker/                          Docker socket runtime (P8)
 │       ├── kubernetes/                      pod per run (P14)
 │       ├── initpolicy/                      worker-side initialization policy with OPA v1 (P14)
-│       ├── executor/                        infraweave runner: phases and hooks inside the container; renders
+│       ├── runner/                          infraweave runner: phases and hooks inside the container; renders
 │       │                                    .infraweave/workflow.yml with kernel/expr, every value shell-quoted (P9)
 │       ├── masking/                         secret masking in log streams
 │       └── workspace/                       workspace archive, sealed with kernel/sealfmt, upload and restore
@@ -881,8 +881,8 @@ internal/execution/
     ├── launcher/launcher.go         register, poll loop, one container per job, spot notice handling
     ├── launcher/mount.go            mounts os.Executable() into the runner image as the root process
     ├── docker/ kubernetes/          container runtimes
-    ├── executor/phases.go           infraweave runner: before and after hooks, vendor commands
-    ├── executor/report.go           state changes over pkg/client/worker
+    ├── runner/phases.go             infraweave runner: before and after hooks, vendor commands
+    ├── runner/report.go             state changes over pkg/client/worker
     └── workspace/                   archive, encrypt and upload at UNCONFIRMED; restore at PREPARING_APPLY
 pkg/client/worker/                   generated client (P8)
 api/src/worker/                      paths-workers.yaml: register, poll, deregister, spec, reports, uploads
@@ -1320,7 +1320,7 @@ in the context that owns each surface, in that surface's code path:
 | Blueprint and template bodies | `templates/application` | `serve` for a synchronous create, `scheduler` for a queued deployment change |
 | Output references, environment interpolation | `execution/application/payload` at handover, with typed contexts from `stackconfig/api` | `serve` |
 | Notification text | `notifications/application/deliver` | `scheduler` |
-| Workflow command templates | `execution/agent/executor` (rule 7 allows the kernel) | the runner |
+| Workflow command templates | `execution/agent/runner` (rule 7 allows the kernel) | the runner |
 
 Typed contexts come from each owner's published language: block schemas from Flows'
 core blocks and app manifests, template inputs from templates, the event kind schemas
@@ -1446,7 +1446,7 @@ Process modes start different interfaces of the same contexts:
 | `scheduler` | `shared/eventbus` dispatch, every context's `interfaces/consumers`, the `flows` logical queue among the others, cron entries (timers, schedules, drift, retention), process managers |
 | `all` | both, in one process, for single-node installs and acceptance tests |
 | `launcher` | `execution/agent/launcher` only; `internal/app` is not called |
-| `runner` (hidden) | `execution/agent/executor` inside the run container |
+| `runner` (hidden) | `execution/agent/runner` inside the run container |
 | `vcs-agent` | `sourcecontrol/agent` only, long-polling `serve` (decision 0012) |
 | `flows-agent` | `flows/agent` only, dialling the gateway in `serve` and running app containers (decision 0018) |
 | `migrate up`, `migrate status` | `shared/sql/migrate`, then exit (decision 0005) |
@@ -1625,9 +1625,9 @@ Launcher, runner and serve process modes:
 15. `internal/execution/application/poll/poll.go`: `orchestration/api.Dispatcher.Claim` moves the run to `PREPARING` (see [Run execution path](#run-execution-path)).
 16. `internal/execution/application/payload/assemble.go`: run spec, `identity/api.RunTokens.Issue` for state and API access, the source archive URL from `sourcecontrol/api.Archives`, presigned log URLs.
 17. `internal/execution/agent/launcher/mount.go` and `agent/docker/`: starts the runner container with the binary mounted as root process.
-18. `internal/execution/agent/executor/phases.go`: `infraweave runner` runs `before_init`, `vendors/api.For(terraform)` init and plan commands, and reports each phase through `executor/report.go`.
+18. `internal/execution/agent/runner/phases.go`: `infraweave runner` runs `before_init`, `vendors/api.For(terraform)` init and plan commands, and reports each phase through `runner/report.go`.
 19. `internal/execution/interfaces/workerproto/report.go` to `orchestration/api.Runs.Advance`: `INITIALIZING`, then `PLANNING`.
-20. The executor uploads the plan JSON with a presigned URL and reports `PlanReady` with the vendor's `ChangeSet`.
+20. The runner uploads the plan JSON with a presigned URL and reports `PlanReady` with the vendor's `ChangeSet`.
 21. `internal/orchestration/application/plan/recorded.go`: builds a `governance/api.PlanInput` with the vendor block from `vendors/api` and calls `Evaluator.Plan`. The plan policy passes with no warning.
 22. `internal/orchestration/domain/queue/queue.go`: `PLANNING` to `FINISHED` (T17) with the receipt IDs; `RunStateChanged` and `RunFinished` to the outbox.
 
@@ -1646,15 +1646,15 @@ Scheduler process mode, consequences:
 4. `internal/orchestration/domain/queue/queue.go`: `Enqueue` creates the `TRACKED` run; no other blocking run holds the stack, so the run takes the lock and moves to `READY`.
 5. `internal/execution/agent/launcher` on the customer's host polls with the private pool's credentials; `Dispatcher.Claim` gives `PREPARING`.
 6. `internal/execution/infrastructure/seal/seal.go`: the spec's secret part is sealed to the pool's public key in the `kernel/sealfmt` pool envelope before it leaves the server; `agent/launcher` opens it with the pool's private key.
-7. The executor plans; `orchestration/application/plan/recorded.go` evaluates plan policies, which warn, so `PLANNING` goes to `UNCONFIRMED` (T20).
-8. `internal/execution/agent/workspace/`: the executor archives, encrypts and uploads the workspace with a presigned URL and leaves the run; the container exits.
+7. The runner plans; `orchestration/application/plan/recorded.go` evaluates plan policies, which warn, so `PLANNING` goes to `UNCONFIRMED` (T20).
+8. `internal/execution/agent/workspace/`: the runner archives, encrypts and uploads the workspace with a presigned URL and leaves the run; the container exits.
 9. On entering `UNCONFIRMED`, `orchestration/application/plan/recorded.go` calls `Evaluator.Approval` again; the attached approval policy needs two reviews, so `canConfirm` is false.
 10. `POST /stacks/{id}/runs/{run}/reviews` twice reaches `orchestration/application/actions/review.go`: each review is saved on the run inside `StackQueue`, then `Evaluator.Approval` is re-evaluated with the reviews; after the second it approves.
 11. `POST .../confirm` reaches `actions/confirm.go`: `UNCONFIRMED` to `CONFIRMED` (T26).
 12. The private launcher's next poll: `Dispatcher.Claim` takes the confirmed run to `PREPARING_APPLY` (T33); the payload holds a presigned workspace download.
-13. `internal/execution/agent/workspace/` restores the workspace; the executor applies; the run moves to `APPLYING` (T35).
+13. `internal/execution/agent/workspace/` restores the workspace; the runner applies; the run moves to `APPLYING` (T35).
 14. Terraform writes state to `state/interfaces/httpbackend/routes.go` with the run's credentials. `state/application/write.go` asks `orchestration/api.RunAuthority.MayWrite`, writes the version as a new sealed object through `state/infrastructure/objects`, then records the `StateVersion`.
-15. The executor reports success: `APPLYING` to `FINISHED` (T37). In the same transaction `StackQueue` releases the lock and moves the next queued blocking run to `READY`.
+15. The runner reports success: `APPLYING` to `FINISHED` (T37). In the same transaction `StackQueue` releases the lock and moves the next queued blocking run to `READY`.
 16. Consequences, each in its own transaction: stackconfig's `StackState` projection, the GitHub deployment marked active, notifications, audit, `orchestration/application/triggerpolicy` for trigger policies and dependent stacks (P16), inventory's managed entities (P22), and Flows trigger blocks on `run_updated` (Flows).
 
 ### A drift event starts a flow
@@ -1666,7 +1666,7 @@ Scheduler process mode, Deploy side:
 
 Launcher and runner, then serve:
 
-3. A private launcher's long-poll claims the run through `Dispatcher.Claim`; `agent/executor` plans and reports a plan with changes through `workerproto/report.go`.
+3. A private launcher's long-poll claims the run through `Dispatcher.Claim`; `agent/runner` plans and reports a plan with changes through `workerproto/report.go`.
 4. `internal/orchestration/application/plan/recorded.go`: plan policies pass; `StackQueue` moves the run to `FINISHED` and, in the same transaction, `shared/outbox.Append` writes `run_updated` and `drift_detected` in the `kernel/event` envelope, enqueues the `events.fanout` job and issues `NOTIFY infraweave_events`.
 
 Scheduler process mode, fan-out:
@@ -1707,7 +1707,7 @@ Deploy and Flows read the same event: the trigger block's output is the `drift_d
 11. `test/acceptance/features/vendor_pulumi.feature` and its steps, with a Pulumi runner image in testcontainers.
 
 What else changes: nothing in orchestration, execution's server side or the agent's
-executor, which drive any vendor through `vendors/api`. About 6 new files and 5 edited,
+runner, which drive any vendor through `vendors/api`. About 6 new files and 5 edited,
 in four contexts plus the kernel; the kernel edit is the cost of a shared vendor
 vocabulary.
 

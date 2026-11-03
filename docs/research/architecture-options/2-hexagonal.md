@@ -49,7 +49,7 @@ other VCS providers, AWS, Azure and GCP, KMS, SMTP and Slack.
 The worker side is a second hexagon, `internal/worker/`, because it runs on
 customer hosts with outbound HTTPS only
 ([report 10](../reference/10-workers-and-execution.md#42-transports)). Its
-core holds the launcher loop, the phase executor and the per-vendor command
+core holds the launcher loop, the runner's phase loop and the per-vendor command
 sets; its ports name the control plane, the container runtime, workspace
 transfer and tool binaries; its adapters speak the worker protocol, Docker
 and Kubernetes. The Flows agent lives in the same hexagon, beside the
@@ -420,7 +420,7 @@ internal/
   worker/                                  (P8) the worker side's hexagon; links nothing above
     core/
       launcher/                            register, poll, accept job, start container, relay signals
-      executor/                            phases and hooks inside the run container (runner)
+      runner/                              phases and hooks inside the run container (runner)
       vcsagent/                            (P19) vcs-agent: long-polls the gateway, checks each request
                                            against its provider allowlist, forwards it (decision 0012)
       flowsagent/                          (Flows) flows-agent: WebSocket to the gateway, frames, app
@@ -486,19 +486,19 @@ pkg/
 | --- | --- | --- | --- | --- |
 | Stacks | `core/stack` | `http/deploy/stacks` | `postgres/stacks` | none |
 | Contexts and configuration | `core/config` | `http/deploy/config` | `postgres/config`, `kms` | mounted files, env |
-| Runs | `core/run` | `http/deploy/runs`, `workerapi`, `scheduler` | `postgres/runs`, `queue`, `objectstore` | `executor` |
+| Runs | `core/run` | `http/deploy/runs`, `workerapi`, `scheduler` | `postgres/runs`, `queue`, `objectstore` | `runner` |
 | Workers | `core/worker` | `http/deploy/workers`, `workerapi` | `postgres/workers` | `launcher`, `docker`, `kubernetes` |
 | Vendors | `core/iac/<name>` | none | none | `core/iac/<name>` |
-| State | `core/state` | `statebackend`, `http/deploy/state` | `postgres/state`, `objectstore` | backend config written by `executor` |
+| State | `core/state` | `statebackend`, `http/deploy/state` | `postgres/state`, `objectstore` | backend config written by `runner` |
 | VCS | `core/vcs` | `webhook`, `http/deploy/vcs`, `gateway` | `vcs/<provider>`, `postgres/vcs` | source fetch with the run's credential; `core/vcsagent` |
 | Policies | `core/policy` | `http/deploy/policies` | `opa`, `postgres/policies`, `objectstore` | `initpolicy`, `rego` |
 | Cloud integrations | `core/cloud` | `http/deploy/cloud` | `cloud/<provider>`, `keys` | credentials in the job |
 | Schedules, drift, dependencies | `core/schedule` | `http/deploy/schedules`, `scheduler` | `postgres/schedules` | none |
-| Registry | `core/registry` | `registryproto`, `http/deploy/registry` | `postgres/registry`, `objectstore` | `.terraformrc` written by `executor` |
+| Registry | `core/registry` | `registryproto`, `http/deploy/registry` | `postgres/registry`, `objectstore` | `.terraformrc` written by `runner` |
 | Events | `core/event` | `http/deploy/events`, `outbox`, `http/sse` | `delivery`, `slack`, `postgres/events`, `postgres/notify` | none |
 | Accounts, spaces, SSO | `core/account`, `core/space` | `http/middleware`, `http/deploy/identity`, `http/deploy/spaces` | `postgres/accounts`, `postgres/spaces`, `keys`, `idp/*` | none |
 | Features and tiers | `core/feature` | `http/middleware/features.go`, `operator`, `scheduler` | `postgres/features`, `postgres/notify` | none |
-| Expressions | `core/expression`, `shared/expr` | `http/deploy/expressions`, `flowsapi` | none | `shared/expr` in `executor` |
+| Expressions | `core/expression`, `shared/expr` | `http/deploy/expressions`, `flowsapi` | none | `shared/expr` in `runner` |
 | Templates | `core/template` | `http/deploy/templates` | `postgres/templates` | none |
 | Resources and search | `core/resource` | `http/deploy/resources` | `postgres/resources` | none |
 | Intelligence | `core/intel` | `http/deploy/intel`, `mcp` | `ai/<provider>`, `postgres/intel` | none |
@@ -766,7 +766,7 @@ internal/worker/
       launcher.go                             Run(ctx): register, then loop Poll → Accept → Start
       job.go                                  Job: run ID, phase plan, image, env, mounts, URLs, token
       signals.go                              stop and kill relayed to the container
-    executor/
+    runner/
       exec.go                                 entry for `infraweave runner` inside the container
       phases.go                               INITIALIZING, PLANNING, APPLYING, PERFORMING, DESTROYING
       hooks.go                                before and after hooks in one shell session per phase
@@ -801,7 +801,7 @@ spec and calls `driven.Sealer.SealToPool`, which `adapter/driven/sealer`
 implements over `internal/shared/seal`. On the host,
 `worker/core/launcher/spec.go` opens it with the pool's private key through
 the same `shared/seal` package and rejects a spec issued for another run or
-state version, and `executor` seals a workspace in the object segment format
+state version, and `runner` seals a workspace in the object segment format
 before uploading it. Both formats use only FIPS 140-3 approved constructions
 (AES-256-GCM through `cipher.NewGCMWithRandomNonce`, ECDH P-256,
 HKDF-SHA256) and begin with a version byte. Sealing code is the one place
@@ -1182,7 +1182,7 @@ internal/adapter/driving/http/deploy/policies/check.go   /api/v1/policies/check:
 | Blueprint and template bodies | `core/template` | `serve` for a synchronous create, `scheduler` for a queued deployment change |
 | Output references, environment interpolation | `core/run` handover | `serve`, at handover |
 | Notification text | `core/event` delivery | `scheduler` |
-| `.infraweave/workflow.yml` command templates | `worker/core/executor` | the runner, at initialization, shell-quoted |
+| `.infraweave/workflow.yml` command templates | `worker/core/runner` | the runner, at initialization, shell-quoted |
 
 The language is one pure library, so every surface evaluates the same
 functions under the same limits (`expressions.cost_limit`,
@@ -1467,8 +1467,8 @@ Coverage implications:
 8. `process.go`: calls `driving.Runs.Trigger` with type `PROPOSED`; `internal/core/run/trigger.go` inserts the run in `QUEUED` (T1), appends `RunStateChanged` to the outbox and enqueues `run.schedule`, all in one unit of work.
 9. Scheduler process mode: `run.schedule` runs `core/run/gates.go`; a proposed run takes no stack lock, so it moves to `READY` (T2).
 10. Serve process mode, `internal/adapter/driving/http/workerapi/poll.go`: a public-pool worker's held long-poll wakes and calls `driving.RunProgress.Claim`; `postgres/runs/claim.go` picks the run by tier and age; `core/run/progress.go` moves it to `PREPARING` (T7) and returns the job.
-11. Launcher process mode, `internal/worker/core/launcher/launcher.go`: starts the runner container through `worker/adapter/docker`; inside it, `worker/core/executor/phases.go` runs `INITIALIZING` and `PLANNING` with `worker/core/iac/opentofu`, reporting each transition through `worker/adapter/controlplane` (T10, T12).
-12. `executor/phases.go`: uploads the plan JSON through a presigned URL and reports the plan; `workerapi/server.go` calls `driving.RunProgress.Report`.
+11. Launcher process mode, `internal/worker/core/launcher/launcher.go`: starts the runner container through `worker/adapter/docker`; inside it, `worker/core/runner/phases.go` runs `INITIALIZING` and `PLANNING` with `worker/core/iac/opentofu`, reporting each transition through `worker/adapter/controlplane` (T10, T12).
+12. `runner/phases.go`: uploads the plan JSON through a presigned URL and reports the plan; `workerapi/server.go` calls `driving.RunProgress.Report`.
 13. `internal/core/run/progress.go`: asks `driving.Vendors.PlanInput` (`internal/core/iac/opentofu`) for the plan policy input, then `driving.PolicyDecisions.Plan`; `core/policy/decide.go` evaluates the plan policies, combines warnings and stores receipts.
 14. `core/run/progress.go`: no warning and a proposed run, so `PLANNING` to `FINISHED` (T17) in one unit of work with the receipts and the `RunStateChanged` outbox event.
 15. Scheduler process mode, `internal/adapter/driving/outbox/fanout.go`: hands the event to subscribers; `internal/core/vcs/feedback.go` sets the commit check, and `internal/core/event/route.go` asks `driving.PolicyDecisions.Notification` for routes.
@@ -1479,20 +1479,20 @@ Coverage implications:
 1. A push to the tracked branch follows steps 1 to 7 above with the push decision `track`; `core/run/trigger.go` creates a `TRACKED` run on a stack whose worker pool is private.
 2. `core/run/gates.go`: the stack has an approval policy; `driving.PolicyDecisions.Approval` evaluates it on entering `QUEUED` and approves, and the stack lock is free, so `READY` (T2).
 3. Serve process mode, `workerapi/poll.go`: the private pool's worker, authenticated by its pool credentials (`workerapi/auth.go`), claims the run; `READY` to `PREPARING` (T7).
-4. Launcher process mode on the customer's host: `worker/core/launcher` starts the container; `executor` plans with the OpenTofu command set; the state backend configuration it writes points at `adapter/driving/http/statebackend`, which accepts the run-scoped token because `core/state/access.go` sees a run in `PLANNING`.
+4. Launcher process mode on the customer's host: `worker/core/launcher` starts the container; `runner` plans with the OpenTofu command set; the state backend configuration it writes points at `adapter/driving/http/statebackend`, which accepts the run-scoped token because `core/state/access.go` sees a run in `PLANNING`.
 5. `core/run/progress.go`: the plan has changes and autodeploy is off, so `PLANNING` to `UNCONFIRMED` (T20); the worker uploads the encrypted workspace to the workspace bucket and leaves the run.
 6. `driving.PolicyDecisions.Approval` runs again on `UNCONFIRMED`; it requires two approvals, so `Run.canConfirm` is false.
 7. Two reviewers call `POST /runs/.../review`; `adapter/driving/http/deploy/runs` calls `driving.Runs.Review`; `core/run/actions.go` stores each review and re-evaluates approval; the second approves.
 8. A writer calls confirm; `core/run/actions.go` checks `canConfirm` and moves `UNCONFIRMED` to `CONFIRMED` (T26) with an outbox event.
-9. The private worker's next poll claims the confirmed run; `CONFIRMED` to `PREPARING_APPLY` (T33); the launcher starts a fresh container and the executor restores the workspace through a presigned URL.
-10. `executor/phases.go`: apply; the state backend accepts writes because the run is in `APPLYING`; `PREPARING_APPLY` to `APPLYING` to `FINISHED` (T35, T37).
+9. The private worker's next poll claims the confirmed run; `CONFIRMED` to `PREPARING_APPLY` (T33); the launcher starts a fresh container and the runner restores the workspace through a presigned URL.
+10. `runner/phases.go`: apply; the state backend accepts writes because the run is in `APPLYING`; `PREPARING_APPLY` to `APPLYING` to `FINISHED` (T35, T37).
 11. `core/run/service.go`: the terminal transition of a blocking run enqueues `run.schedule` for the stack, so the next queued tracked run can become `READY`; the event fan-out delivers `RunStateChanged` to `core/vcs/feedback.go` (GitHub deployment marked active) and `core/event` (webhooks, and the audit webhook when it includes runs).
 
 ### A drift event starts a flow
 
 1. Scheduler process mode, `internal/adapter/driving/scheduler/cron.go`: the ticker claims a due drift detection schedule and calls `driving.Drift.Run`; `internal/core/schedule` checks `drift-detection` through `driving.Entitlements` (billing is off, so every feature is in) and calls `driving.Runs.Trigger` for a proposed drift detection run.
 2. `core/run/trigger.go` and `gates.go`: `QUEUED`, then `READY` on the stack's private pool; the pool's worker claims it in `workerapi/poll.go` and `launcher` opens the sealed spec with `shared/seal`.
-3. `worker/core/executor/phases.go`: plans with the OpenTofu command set and reports changes; `core/run/progress.go` finishes the run and, in the same unit of work, appends `run_updated` and `drift_detected` through `driven.Outbox` (`postgres/outbox`), which enqueues one `events.fanout` job per event.
+3. `worker/core/runner/phases.go`: plans with the OpenTofu command set and reports changes; `core/run/progress.go` finishes the run and, in the same unit of work, appends `run_updated` and `drift_detected` through `driven.Outbox` (`postgres/outbox`), which enqueues one `events.fanout` job per event.
 4. Scheduler process mode, `adapter/driving/outbox/fanout.go`: hands `drift_detected` to every `driving.Subscriber`; `core/event` finds no notification route, and `core/flows/blocks/deploy.go` finds an enabled Deploy trigger block of kind `drift_detected` whose filter matches the stack's labels.
 5. `blocks/deploy.go`: `flows-engine` is in the entitlement, so in the fan-out's unit of work it inserts the root `flow_events` row, linked to the Deploy event by ID, and one `flows.deliver` job per linked input, keyed `(event, block, input)`; the event's `now` and seed are fixed and stored with it.
 6. Scheduler process mode, `flows` queue: `core/flows/engine/deliver.go` evaluates the next block's input configuration with `shared/expr`, for example the text template `Drift on ${{ outputs.driftTrigger.stack.name }}`, typed against the `drift_detected` schema, under the stored `now` and seed.
