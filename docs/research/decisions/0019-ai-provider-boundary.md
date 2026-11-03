@@ -1,6 +1,6 @@
 # 0019: AI provider boundary
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -54,20 +54,26 @@ archived, its replacement is named by its own README, the hosted `intent`
 tool covers its use case with policies, locks and audit added, and no
 stored data needs migrating, since its state is a local SQLite file.
 
-### P11: BYOM plus an optional installation default with a budget
+### P11: BYOM plus an optional installation default
 
 - Customers create their own integrations (BYOM) for any of the four
   providers, with no infraweave-imposed limit.
 - The operator may configure one installation-provided default
   integration under `ai.default_integration`. It appears in the API with
-  `isSpaceliftProvided: true`, `space: null`, read-only except for
-  `aiIntegrationToggle`, exactly as Spacelift's provided integration does.
-- The default carries an optional token budget per rolling window
-  (`ai.default_integration.budget.tokens`, `.window`, default `720h`);
-  `0` means unlimited. `tokenUsage` reports the window. A request that
-  would start once the budget is spent answers `429`, problem
-  `ai-budget-exhausted`, with `Retry-After` until `tokensResetAt`;
-  decision 0022 lists it.
+  `isInstallationProvided: true`, `space: null`, read-only except for
+  `aiIntegrationToggle`, as Spacelift's provided integration does.
+- Spend on the default integration counts against the account's
+  `ai-budget` limit of decision
+  [0021](0021-capability-scope-and-supersession.md), in US dollars per
+  30-day period that starts with the account's first metered turn. Spend
+  is the turn's input and output tokens priced by the operator's
+  per-model rates in `ai.default_integration.models[].price`.
+  `tokenUsage` reports the period's spend and `tokensResetAt` its end. A
+  turn that would start once the budget is spent answers `403`
+  `limit-reached` with `limit: ai-budget` and the account's value, like
+  every other limit. While `billing` is off no limit applies, so the
+  default integration is unmetered. BYOM integrations are never metered:
+  the customer pays its own provider.
 - With no default configured, nothing is installation-provided: the list
   holds only BYOM integrations, and an operation that addresses the
   provided integration answers `403` `installation-unsupported`.
@@ -137,13 +143,16 @@ provider mid-way ([22 section 4.2](../reference/22-intelligence.md#42-conversati
   served with Spacelift's behaviour: Intelligence, Infra Assistant and
   Build mode default off, enabling requires the terms, and a non-admin can
   request enabling.
-- `features.disabled` containing `SPACELIFT_INTELLIGENCE` makes every AI
-  integration, Intent, conversation and assistant operation, and the whole
-  `/mcp` endpoint, answer `403` `feature-disabled`.
-- `ACCOUNT_AI_CONTROL` gates the four toggle mutations; when disabled they
-  answer `403` `feature-disabled` and the toggles keep the values in
-  `ai.account_defaults`. What Spacelift gates with it is unknown (capture
-  C215); this is infraweave's reading.
+- The features are decision 0021's. `ai-integrations` gates every AI
+  integration, conversation and assistant operation and the whole `/mcp`
+  endpoint; `intent` gates the Intent operations and the `intent` tool.
+  Each answers `403` `feature-disabled` when switched off and `403`
+  `feature-not-in-tier` when billing is on and the account's entitlement
+  lacks it.
+- `ai-account-controls` (Spacelift's `ACCOUNT_AI_CONTROL`) gates the four
+  toggle mutations. Without it they answer one of those problems and the
+  toggles keep the values in `ai.account_defaults`. What Spacelift gates
+  with it is unknown (capture C215); this is infraweave's reading.
 
 ### One tool layer
 
@@ -161,12 +170,32 @@ API (decision 0007).
 | `mutate` | MCP (`mcp:write`) | Call any non-`GET` operation by `operationId` with a body |
 | `provider` | MCP, assistant | Provider, resource and data source schemas from the OpenTofu registry, cached |
 | `intent` | MCP (`mcp:write`), Build mode | `create`, `update`, `delete`, `refresh`, `import`, `resume`, `read`, `status` and module deployment |
-| `navigate`, `page_context` | assistant | UI navigation and the current page's data, supplied by the browser |
+| `navigate`, `page_context` | assistant | Console navigation and the current page's context, supplied by the console (see [Console boundary](#console-boundary)) |
 | `search_docs` | assistant | Search infraweave's documentation, indexed into the binary at build time |
 
 Destructive tool calls from the assistant (any `delete`, eject, or a
-`mutate` on a `DELETE` operation) return a confirmation request to the UI;
-the model cannot confirm for the user.
+`mutate` on a `DELETE` operation) return a confirmation request to the
+console; the model cannot confirm for the user.
+
+### Console boundary
+
+Infra Assistant runs beside the console ([0023](0023-console.md)) and
+reaches infraweave through the same API as the user:
+
+- **What the assistant sees of the page.** The console supplies the current
+  route and the IDs of the resources on screen, and `page_context` returns
+  exactly that. The data behind those IDs reaches the model only through
+  `query`, so the model never sees what the user could not read through the
+  API.
+- **How it acts.** Every tool call is a REST API operation, run under the
+  identity of the user in the conversation, with that user's grants
+  (decision 0007). The assistant has no privileged path, no service
+  identity and no console-only endpoint. `navigate` asks the console to
+  change its route and performs no operation.
+- **Destructive actions confirm in the console.** A destructive tool call
+  streams `confirmation_required`, naming the operation and the resources,
+  and does not run. The console shows it to the user, and only the user's
+  confirmation there, sent with the user's session, lets the call run.
 
 ### Infra Assistant and run summaries
 
@@ -224,7 +253,7 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   their teardown guard, `intentResourceStateEject`, generated HCL with
   references, `stackCreateFromIntent` (a Repo commit of `main.tofu`, an
   OpenTofu stack, copied configuration and optional state import, then
-  `READ_ONLY`), and `spacelift/module` deployments from the registry of
+  `READ_ONLY`), and `infraweave/module` deployments from the registry of
   [0014](0014-module-and-provider-registry.md), all as report 22 records.
 - **Access control.** The 28 `INTENT_` and 4 `AI_INTEGRATION_` actions are
   part of decision 0007's catalogue
@@ -249,9 +278,9 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 | Key | Default | Meaning |
 |---|---|---|
 | `ai.default_integration.provider`, `.credentials_ref`, `.base_url`, `.models` | unset | The installation-provided integration |
-| `ai.default_integration.budget.tokens`, `.window` | `0`, `720h` | Its budget; `0` is unlimited |
+| `ai.default_integration.models[].price.input`, `.output` | `0`, `0` | US dollars per million tokens, used to meter the `ai-budget` limit |
 | `ai.terms.version`, `ai.terms.content_file` | `1`, built-in notice | Terms shown before enabling |
-| `ai.account_defaults.*` | all off | Toggle values when `ACCOUNT_AI_CONTROL` is disabled |
+| `ai.account_defaults.*` | all off | Toggle values when the account lacks `ai-account-controls` |
 | `ai.conversations.retention` | `0` | Idle conversation deletion |
 | `ai.summaries.log_bytes` | `65536` | Log tail per phase in summaries |
 | `intent.lock_timeout`, `intent.import_timeout` | `5m`, `5m` | Intent timings |
@@ -264,12 +293,17 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   ([22 section 8.5](../reference/22-intelligence.md#85-hosted-and-open-source-compared)).
   The stdio proxy keeps local-only MCP clients working without that cost.
 - **P11, option (b) with the default off.** It reproduces SaaS behaviour,
-  including `isSpaceliftProvided` and `tokenUsage`, without a vendor
-  service: the operator supplies the model and decides the budget.
-  BYOM-only would leave those fields permanently empty and give an
-  operator no way to offer one shared model with a spending cap. Off by
+  including the provided integration and `tokenUsage`, without a vendor
+  service: the operator supplies the model and prices it, and the tier
+  sets the budget. BYOM-only would leave those fields permanently empty
+  and give an operator no way to offer one shared model with a spending
+  cap. Off by
   default matches self-hosted Spacelift and sends nothing anywhere until
   someone configures it.
+- **The budget as a tier limit.** Spacelift budgets the provided model by
+  tier, so the budget is a limit like seats or private workers: one
+  problem type, one grant mechanism, and no second, installation-wide
+  budget to reconcile with the tiers.
 - **One proxy for every call.** Keys stay server-side, the enabled flag and
   budget are enforced in one place, and redaction cannot be bypassed by a
   surface that forgot it.
@@ -285,9 +319,8 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   infraweave's OpenAPI operations rather than GraphQL, because infraweave
   serves no GraphQL (decision 0001).
 - **Departure from Spacelift:** the provided integration is the operator's,
-  not Spacelift's; `isSpaceliftProvided` means "provided by the
-  installation", and its budget applies to every account rather than to a
-  Free tier.
+  not Spacelift's, so its flag is `isInstallationProvided`, and the
+  operator prices its models.
 - **Departure from Spacelift:** the chat transport is an infraweave-defined
   SSE endpoint, since Spacelift's is unpublished.
 - **Departure from Spacelift:** the terms are the operator's, and
@@ -300,7 +333,7 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 
 - **Unverified contracts.** The hosted tools' input schemas (C225), the
   OAuth paths (C226), Build mode's access to general mutations (C212), the
-  operation transitions (C220, C221) and `ACCOUNT_AI_CONTROL` (C215) are
+  operation transitions (C220, C221) and `ai-account-controls` (C215) are
   infraweave's own until captured
   ([30, Intelligence](../reference/30-open-questions.md#intelligence-report-22)).
 - **Intent's release status** is unclear (C214); infraweave ships Intent
@@ -316,7 +349,8 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   test server that models its API, covering streaming, tool calls, usage,
   `429` retries and errors.
 - `TestUnitAIRedaction`, `TestUnitAIBudget`: masked secrets never reach the
-  test server; budget windows, `ai-budget-exhausted` and `Retry-After`.
+  test server; spend metering per period and `limit-reached` with billing
+  on, no metering with billing off.
 - `test/acceptance/features/ai_integrations.feature` (`@postgres`, `@ai`):
   create and validate each provider type, sealed keys, the installation
   default, toggles, terms gating, `feature-disabled` and

@@ -17,7 +17,12 @@ These apply to every weaveplatform repository created from this template.
   [chi](https://github.com/go-chi/chi).
 - **CI.** OS matrices use the `-latest` runner labels. Actions are pinned by commit
   SHA with the version in a comment; Dependabot keeps them current.
-- **Linting.** golangci-lint with `.golangci.yml` is the only linter, and it blocks.
+- **Linting.** golangci-lint with `.golangci.yml` is the only Go linter, and it blocks.
+- **TypeScript.** The console in `web/console/` passes `tsc --strict`, ESLint
+  with typescript-eslint's strict configuration, Vitest at ≥95% coverage in
+  total and ≥90% per directory, and Playwright journeys against a real
+  `infraweave all` with dependencies from testcontainers. Each blocks merges.
+  Node.js is pinned to the current LTS; npm with a committed lockfile.
 - **Go version.** `go.mod` names the full patch release (`go 1.27.3`);
   `deps-refresh.yml` moves it to the latest stable release.
 - **Builds** run with `GOWORK=off` so a local `go.work` never hides a missing
