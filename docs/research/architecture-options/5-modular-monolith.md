@@ -1503,8 +1503,14 @@ drift.
 | Console | `web/console/`: `tsc --strict`, ESLint with typescript-eslint's strict configuration, Vitest at 95% in total and 90% per directory, Playwright journeys against a real `infraweave all` |
 
 Enforcement is golangci-lint's depguard, the repository's only Go linter,
-plus the compiler's `internal` rule. depguard lists match package path
-prefixes, so `$m` below stands for `github.com/weaveplatform/infraweave`.
+plus the compiler's `internal` rule. `$m` below stands for
+`github.com/weaveplatform/infraweave`. depguard v2 matches each entry as a
+plain string prefix of the import path, so a bare `$m/internal/stacks/api`
+would also admit a sibling such as `$m/internal/stacks/apiutil`. Every
+allow entry therefore ends in `$`, which matches that package exactly, or
+in `/`, which matches the packages below it; a tree whose root is also a
+package, such as `kernel`, takes both. A bare deny entry over-matches,
+which only refuses more, so deny entries stay bare.
 
 ```yaml
 linters:
@@ -1518,22 +1524,24 @@ linters:
           deny:
             - pkg: $m/internal
           allow:
-            - $m/internal/platform
-            - $m/internal/kernel
-            - $m/internal/iac
-            - $m/internal/runs
-            - $m/internal/features/api
-            - $m/internal/access/api
-            - $m/internal/stacks/api
-            - $m/internal/configuration/api
-            - $m/internal/workers/api
-            - $m/internal/policies/api
-            - $m/internal/state/api
+            - $m/internal/platform/
+            - $m/internal/kernel$
+            - $m/internal/kernel/
+            - $m/internal/iac$
+            - $m/internal/iac/
+            - $m/internal/runs/
+            - $m/internal/features/api$
+            - $m/internal/access/api$
+            - $m/internal/stacks/api$
+            - $m/internal/configuration/api$
+            - $m/internal/workers/api$
+            - $m/internal/policies/api$
+            - $m/internal/state/api$
         # ... 19 graph rules, one per domain; TestAccSchemaDependencies reads the same rules
         api-packages:                       # rule 3
           list-mode: strict
           files: ["**/internal/*/api/**"]
-          allow: [$gostd, $m/internal/kernel, $m/internal/platform/outbox]
+          allow: [$gostd, $m/internal/kernel$, $m/internal/kernel/, $m/internal/platform/outbox$]
         constructors:                       # rule 4: one entry per domain
           files: ["$all", "!**/internal/app/**", "!**/cmd/**"]
           deny:
@@ -1581,7 +1589,8 @@ The graph rules carry rule 2. The compiler already stops imports of
 `internal/<other>/internal/...`, and each graph rule allows only the `api/`
 packages its domain declares, so the rule is both the import check and the
 input of the schema check: code and schema read one list and cannot
-disagree. In total there are 26 rules and about 230 entries; a new domain
+disagree. In total there are 26 rules and about 270 entries, the `$` and
+`/` pairs included; a new domain
 adds its graph rule (about 8 entries), one entry to `constructors`, one to
 `shared-below-domains`, one to `agent-isolation` and, if it is a hexagon,
 one to `core-not-adapters`. A domain whose tables land without a graph rule
@@ -1855,7 +1864,7 @@ Estimates, from the domains of report 26 and the trees above.
 | Go packages | 16 (13 today plus `cmd/infraweave`, `internal/app`, `app/config`) | about 325 |
 | Top-level directories under `internal/` | 4 (`app`, `kernel`, `platform`, `devtools`) | 25 (6 shared plus 19 domains) |
 | Dependency rules | 9 (1 compiler, 8 depguard-checked) | same |
-| depguard rules and entries | 7 rules, about 20 entries | 26 rules (7 fixed, 19 graph), about 230 entries |
+| depguard rules and entries | 7 rules, about 20 entries | 26 rules (7 fixed, 19 graph), about 270 entries |
 | Files touched to add a vendor | n/a | about 12 new, 5 edited (the catalogue gains the vendor's option) |
 | Files touched to add a domain | n/a | about 20 new, 6 edited |
 | Packages a stack update crosses | 4 (`platform/httpkit/middleware`, `stacks/internal/http`, `stacks/internal/stacks`, `stacks/internal/pg`) | 7 (adds the `access` and `features` middleware and `accessapi`) |

@@ -1101,6 +1101,16 @@ and registry modules.
 - **Numbers:** 72 stubs, about 24,000 generated lines, 725 reference
   operations, 22 run states and 43 transitions, and option 5's 6 depguard
   rules with about 75 entries.
+- **depguard behaviour, rechecked before P1b:** under golangci-lint 2.15.0,
+  which `.github/golangci-lint-version` pins and which embeds depguard
+  v2.2.1, a scratch module shaped like option 5 confirms that `lax` mode
+  lets a longer `allow` entry beat a shorter `deny`, that `strict` with
+  `$gostd` refuses everything else, and that `!` globs exclude files. It
+  also shows that entries are plain string prefixes: `allow:
+  $m/internal/stacks/api` admits `$m/internal/stacks/apix`, a trailing `$`
+  matches one package exactly and a trailing `/` only the packages below.
+  Option 5, the repo layout, decision 0004 and P1b's fixtures now write
+  allow entries with `$` or `/`.
 
 ## IMP-01: implementation plan and supporting documents
 
