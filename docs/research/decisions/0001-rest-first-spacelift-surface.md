@@ -30,6 +30,20 @@ any feature work begins.
   [02](../reference/02-graphql-to-rest-mapping.md). infraweave's own spec is
   scaffolded from it family by family and may diverge from it, with each
   divergence recorded.
+- **Divergence is recorded in the parity baseline.** `specref parity`
+  (`make parity`) matches the served document's operations with the
+  reference's by `operationId` and route, ignoring path parameter names, and
+  files each reference operation under its tag as present, moved (its
+  `operationId` at another route, or its route under an `operationId` the
+  reference lacks) or missing; a served operation that matches none is
+  infraweave-only. `api/parity-baseline.json` lists the missing operations
+  by tag and each moved one with the reason for the move, so a deliberate
+  divergence, such as a renamed route, is a moved entry whose reason says
+  why. Decision [0003](0003-api-conventions.md)'s conventions change
+  shapes, not identities, so they are not divergence. The baseline only
+  shrinks: `TestUnitDeployParity` fails on an operation the baseline does
+  not accept, on a move without a reason, and on an entry the comparison no
+  longer needs, which `make parity-baseline` removes.
 - **Every client is built on the same API.** The SDK, the CLI, the provider
   and the console call the served REST API and nothing else; no client has a
   private route.
@@ -263,6 +277,13 @@ Implemented:
   `spaceliftAwsAccountId` and a description that names Spacelift proves
   that both checks reach what they claim to read, and its `x-terraform`
   value proves that the mapping extensions pass.
+- `TestUnitDeployParity` (`api/parity_test.go`) fails when a reference
+  operation is neither served unchanged nor accepted by
+  `api/parity-baseline.json`, and when a baseline entry is no longer needed.
+  `TestUnitDeployParityChecks` proves it against the committed documents:
+  removing a served path names its operations, serving a listed operation is
+  an improvement until the baseline is rewritten, and a moved path passes
+  once its reason is recorded.
 
 Planned:
 

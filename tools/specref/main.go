@@ -1,9 +1,11 @@
 // Command specref maintains the Spacelift API reference in
 // api/reference/spacelift: fetch refreshes the pinned upstream snapshots,
 // generate derives the OpenAPI spec and coverage report from them, check
-// fails when the committed output is stale, and inventory writes or checks
-// the GraphQL inventory register and report 29, which summarises it. Logic
-// lives in internal/specref.
+// fails when the committed output is stale, scaffold copies a reference tag
+// into a served-API fragment, inventory writes or checks the GraphQL
+// inventory register and report 29, which summarizes it, and parity reports
+// the served API's operations against the reference and rewrites the parity
+// baseline. Logic lives in internal/specref.
 package main
 
 import (
@@ -51,8 +53,11 @@ type config struct {
 	Tag             string `mapstructure:"tag"`
 	Out             string `mapstructure:"out"`
 	Register        string `mapstructure:"register"`
+	Served          string `mapstructure:"served"`
+	Baseline        string `mapstructure:"baseline"`
 	Force           bool   `mapstructure:"force"`
 	Check           bool   `mapstructure:"check"`
+	WriteBaseline   bool   `mapstructure:"write-baseline"`
 }
 
 func main() {
@@ -227,7 +232,73 @@ func newRoot() *cobra.Command {
 		"register to write",
 	)
 	inf.Bool("check", false, "fail if the report or register is stale instead of writing them")
-	root.AddCommand(fetch, generate, check, scaffold, inventory)
+	parity := &cobra.Command{
+		Use:   "parity",
+		Short: "Report the served API's operations against the reference, by tag",
+		Long: "Matches the served document's operations with the reference's by operationId\n" +
+			"and route, and prints each reference operation as present, moved or missing and\n" +
+			"each served operation the reference lacks as infraweave-only, then how the\n" +
+			"report differs from the baseline. --write-baseline rewrites the baseline to\n" +
+			"accept the report, keeping the reason recorded for each unchanged move.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := decode(v)
+			if err != nil {
+				return err
+			}
+			files := specref.ParityFiles{
+				Reference: filepath.Join(c.Dir, specref.FileSpec),
+				Served:    c.Served,
+				Baseline:  c.Baseline,
+			}
+			if c.WriteBaseline {
+				b, err := specref.WriteParityBaseline(files)
+				if err != nil {
+					return err
+				}
+				missing := 0
+				for _, ids := range b.Missing {
+					missing += len(ids)
+				}
+				cmd.Printf("%s: %d missing, %d moved\n", c.Baseline, missing, len(b.Moved))
+				for _, m := range b.Moved {
+					if m.Reason == "" {
+						cmd.Printf(
+							"%s needs a reason: it is served as %s (%s)\n",
+							m.OperationID,
+							m.ServedOperationID,
+							m.ServedRoute,
+						)
+					}
+				}
+				return nil
+			}
+			res, err := specref.ParityCheck(files)
+			if err != nil {
+				return err
+			}
+			cmd.Print(res.Report.Text())
+			cmd.Printf("\nAgainst %s:\n%s", c.Baseline, res.Diff.Text())
+			return nil
+		},
+	}
+	pyf := parity.Flags()
+	pyf.String(
+		"served",
+		filepath.Join("api", "deploy.openapi.yaml"),
+		"served API document to compare",
+	)
+	pyf.String(
+		"baseline",
+		filepath.Join("api", "parity-baseline.json"),
+		"accepted missing and moved operations",
+	)
+	pyf.Bool(
+		"write-baseline",
+		false,
+		"rewrite the baseline to accept the report instead of printing it",
+	)
+	root.AddCommand(fetch, generate, check, scaffold, inventory, parity)
 	return root
 }
 
