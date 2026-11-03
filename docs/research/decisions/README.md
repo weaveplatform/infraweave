@@ -42,11 +42,12 @@ record is missing from this index or its status here differs from its own.
 | 0012 | [VCS integration model](0012-vcs-integration-model.md) | Proposed |
 | 0013 | [Secrets at rest, delivery to runs and log masking](0013-secrets-at-rest.md) | Proposed |
 | 0014 | [Module and provider registry protocol](0014-module-and-provider-registry.md) | Proposed |
-| 0015 | [Events: notifications, webhooks and audit](0015-events-notifications-webhooks-audit.md) | Proposed |
+| 0015 | [Events: one model for Deploy and Flows, streams, notifications, webhooks and audit](0015-events-notifications-webhooks-audit.md) | Accepted |
 | 0016 | [Testing and acceptance against real dependencies](0016-testing-and-acceptance.md) | Proposed |
 | 0017 | [Observability and health](0017-observability-and-health.md) | Proposed |
-| 0018 | [Flows runtime](0018-flows-runtime.md) | Proposed |
+| 0018 | [Flows engine, apps and agents](0018-flows-runtime.md) | Accepted |
 | 0019 | [AI provider boundary](0019-ai-provider-boundary.md) | Proposed |
 | 0020 | [Reference deployments and packaging](0020-reference-deployments-and-packaging.md) | Proposed |
 | 0021 | [Capability scope, features and tiers](0021-capability-scope-and-supersession.md) | Accepted |
 | 0022 | [Served API errors, update semantics and input strictness](0022-api-errors-and-update-semantics.md) | Proposed |
+| 0024 | [Expression language](0024-expression-language.md) | Accepted |

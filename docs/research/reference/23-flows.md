@@ -1,6 +1,6 @@
 # 23: Spacelift Flows
 
-Checked against: docs.spacelift.io `flows/` pages read 2026-10-28 (identical copies under `self-hosted/latest/flows/`); introspection `b3255fe38f5e`; `@slflows/sdk` 0.14.0 from npm; flowctl `3e7d42dabb01`; terraform-provider-flows v0.7.0 (`9d1a7ad4d937`); spacelift-helm-charts `4e02e1d22e73`; terraform-aws-eks-spacelift-flows-selfhosted `b7d32fa51c7e`; terraform-aws-spacelift-flows-agentpool-ec2 v1.3.0 (`6bb853a4d0a1`); the `flows-app-*` repositories at the commits in [section 6.5](#65-app-repositories); live OAuth metadata from `useflows.eu` read 2026-10-28.
+Checked against: docs.spacelift.io `flows/` pages read 2026-10-28 (identical copies under `self-hosted/latest/flows/`); introspection `b3255fe38f5e`; `@slflows/sdk` 0.14.0 from npm; flowctl `3e7d42dabb01`; terraform-provider-flows v0.7.0 (`9d1a7ad4d937`); spacelift-helm-charts `4e02e1d22e73`; terraform-aws-eks-spacelift-flows-selfhosted `b7d32fa51c7e`; terraform-aws-spacelift-flows-agentpool-ec2 v1.3.0 (`6bb853a4d0a1`); the `flows-app-*` repositories at the commits in [section 6.5](#65-app-repositories); live OAuth metadata from `useflows.eu` read 2026-10-28; the 46 flow templates served as `https://docs.spacelift.io/flows/templates/<name>.yaml` and their index `templates.json`, read 2026-11-03; the `scenario.yaml` files of six MIT `flows-app-*` repositories at the commits in [section 3.7](#37-expressions-in-the-published-templates).
 
 Research baseline: **2026-10-28**.
 
@@ -102,9 +102,13 @@ contradicts, and the source wins [D] [limits].
 - One output can feed many inputs (fan-out) and many outputs can feed one
   input (merge) [D] [blockmgmt].
 - **Static configuration** belongs to the block, is evaluated once when the
-  flow is saved, and may reference other blocks' signals; **dynamic
-  configuration** belongs to an input socket, is evaluated per event and reads
-  upstream data through `outputs` [D] [blockmgmt]; [D] [tfprov-d].
+  flow is saved, and may reference other blocks' signals, through `signals.`
+  or the `ref()` helper; **dynamic configuration** belongs to an input
+  socket, is evaluated per event and reads upstream data through `outputs`
+  [D] [blockmgmt]; [D] [tfprov-d].
+- Static configuration also reads project secrets: the Deploy Template
+  block's `templateId` is `secrets.*` in four templates [D] [tpl-backstage];
+  [D] [tpl-vending]; [D] [tpl-jira-tpl]; [D] [tpl-snow-tpl].
 - An output can carry an **output customization** expression and a list of
   **sensitive paths** [D] [defref]; [D] [sensitive].
 - A block can name a Handle Error block as its **error handler** (`errorHandler`) [D] [err-block]; [D] [defref].
@@ -129,7 +133,7 @@ The `coreBlock` values are the enum in the flow definition reference
 | `schedule` | Emits on a cron or interval with a timezone | Trigger, no input | Static `definition` (`type` `cron` with `expression` and `location`, or `frequency` with `interval` and `unit` `seconds`, `minutes` or `hours`) | [D] [time-blocks]; [D] [defref] |
 | `sleep` | Delays each event | Input `default` | Input `sleep`, seconds, may be an expression | [D] [time-blocks]; [D] [defref] |
 | `condition` | Routes on a boolean expression | Two outputs, true and false; the true output is named `then` | Input `condition` | [D] [bl-blocks]; [D] [tfprov-d] |
-| `transform` | Builds a new event from an expression | Input `default` | Expression on the input | [D] [bl-blocks]; [D] [defref] |
+| `transform` | Builds a new event from an expression | Input `default` | The docs put the expression on the input; in all 19 Transform blocks of the published templates the input configuration is `{}` and the logic is the output's `outputCustomization` (section 3.7) | [D] [bl-blocks]; [D] [defref]; [D] [templates-json] |
 | `collect` | Batches events by count, delay, group key or condition | Emits one event with `items` | Input `group`, `count`, `emit` (sees `outputs`, `items`, `group`), `item`, `delay` | [D] [coll-blocks]; [D] [defref] |
 | `explode` | Emits one event per list item | | Input `items`, `emittedLimit` | [D] [coll-blocks]; [D] [defref] |
 | `memorySet` | Writes a key in a named collection, with optional TTL | | Input `collection` (static), `key`, `value` (sees `stored`), `ttl` | [D] [mem-blocks]; [D] [defref] |
@@ -152,14 +156,17 @@ behaviour [I] from the page index [D] [llms-flows].
 
 | Element | Meaning | Source |
 |---|---|---|
-| Language | JavaScript expressions; anonymous functions are allowed for multi-step logic | [D] [io]; [D] [bl-blocks] |
+| Language | The docs say JavaScript, with anonymous functions for multi-step logic. The evaluator also accepts TypeScript syntax: non-null assertions on output fields and type assertions to `string` and `any` appear in the published templates, and types are inferred rather than declared (section 3.7) | [D] [io]; [D] [bl-blocks]; [D] [tpl-mongodb] L67; [D] [tpl-forms-s3] L128; [D] [tpl-teams-bot] L139 |
+| Where it runs | On agents, in Node.js runtimes | [D] [agents]; [S] [skill-flows-dev] L15 |
 | `!expr` | YAML tag marking a value as an expression; untagged values are literals | [D] [tfprov-d]; [D] [defref] |
 | `outputs.<block>.<field>` | Data accumulated from upstream blocks on the event's lineage | [D] [io] |
 | `signals.<block>.<signal>` | Static outputs of lifecycle blocks in `READY`; creates a configuration dependency without a link | [D] [signals] |
 | `secrets.<KEY>` | Project secret, injected at runtime | [D] [secrets] |
 | `stored` | Previous value of the key, in Memory Set only | [D] [mem-blocks] |
 | `items`, `group` | Collected items and group key, in Collect's `emit` only | [D] [coll-blocks] |
-| `config`, `event` | Block configuration and the current event, per the definition reference | [D] [defref] |
+| `raw` | The block's own output, inside its output customization; undocumented | [D] [tpl-rundeck] L143; [D] [tpl-unconfirmed] L31 |
+| `ref("signal.<block>.<signal>")` | Helper that reads a signal, an alternative to `signals.`; named on the block management page but not in the variable reference | [D] [blockmgmt]; [S] the scenarios of section 3.7 |
+| `config`, `event` | Block configuration and the current event, per the definition reference; used by none of the 1,021 expressions in section 3.7 | [D] [defref]; [D] [templates-json] |
 
 Each block adds its output under its camelCase name, so a downstream event
 carries every upstream output on its primary lineage [D] [io]. Secondary
@@ -214,6 +221,88 @@ platform executes, is the more complete source [I] from comparing the two.
   [D] [sensitive]; [S] [sdk] L846.
 - App and block signals carry `sensitive` and a `sensitivity` of
   `hide_by_default`, `never_show` or `not_sensitive` [S] [sdk] L863-L868.
+
+### 3.7 Expressions in the published templates
+
+The template gallery lists 46 flow templates in `templates.json`, and each
+is served as a full flow definition at
+`https://docs.spacelift.io/flows/templates/<name>.yaml` [D] [templates-json],
+read 2026-11-03. Six MIT `flows-app-*` repositories carry a `scenario.yaml`,
+a test flow for the app. Counted by script over both:
+
+| Corpus | `!expr` values | `ref(` calls | Source |
+|---|---|---|---|
+| 46 templates | 784 | 0 | [D] [templates-json] |
+| flows-app-anthropic `scenario.yaml` | 13 | 15 | [S] [scn-anthropic] |
+| flows-app-github `scenario.yaml` | 152 | 94 | [S] [scn-github] |
+| flows-app-pagerduty `scenario.yaml` | 9 | 6 | [S] [scn-pagerduty] |
+| flows-app-postgresql `scenario.yaml` | 9 | 0 | [S] [scn-postgresql] |
+| flows-app-slack `scenario.yaml` | 48 | 8 | [S] [scn-slack] |
+| flows-app-ssh `scenario.yaml` | 6 | 5 | [S] [scn-ssh] |
+| **All** | **1,021** | **128** | |
+
+Every `ref(` call reads a signal (`ref("signal.…")`).
+
+**Where expressions sit** in the templates: input configuration 732, block
+static configuration 31, output customization 21. `!expr` can tag any node
+of a tree, such as one entry of a Show Form's form definition, and 150 of
+the 784 are constants wrapped in the tag [I] from the definition paths.
+App installation configuration values are also expression source: the
+provider's example sets a JSON string as a configuration value, and the SDK
+describes static values as parsed from their expressions [S] [prov-ai-example]
+L11; [S] [sdk] L961-L967.
+
+**What they do**, each template expression counted once by its strongest
+feature [I] from a classification script:
+
+| Class | Expressions | Share |
+|---|---|---|
+| Field or signal reference | 293 | 37% |
+| Literal constant | 150 | 19% |
+| Multi-step function | 91 | 12% |
+| Object or array construction | 78 | 10% |
+| String building | 73 | 9% |
+| Conditional or comparison | 68 | 9% |
+| Default or fallback | 13 | 2% |
+| JSON serialisation | 10 | 1% |
+| Arithmetic | 6 | 1% |
+| Top-level map or filter | 2 | under 1% |
+| Other | 1 | under 1% |
+
+The class counts sum to 785, one more than the corpus, so one expression is
+counted in two classes; at least 692 expressions (88%) fall outside the
+multi-step function and other classes. Multi-step functions build Slack
+`text` and `blocks` (36), Transform outputs (12), Condition values (7) and
+Kubernetes resource bodies (6); 27 of the 46 templates contain at least one.
+
+**Language features in use:**
+
+- Statements inside functions: 70 immediately invoked function expressions
+  and 21 arrow functions, with `const`, `let`, `if`, `for`, `try` and
+  `throw`.
+- Asynchronous code: the certificate expiry template's Transform is an
+  `async` function that imports `node:crypto` dynamically to parse an X.509
+  certificate [D] [tpl-cert] L61.
+- Node.js and browser globals: `Date` (17), `Math` (12, including
+  `Math.random`), `JSON` (28), `crypto.randomUUID` [D] [tpl-parallel] L17,
+  `atob` and `btoa`, `encodeURIComponent`, regular expression literals (18)
+  and `console.log`. With `Date`, `Math.random` and `crypto.randomUUID`,
+  expressions are not deterministic [I] from those globals.
+- TypeScript syntax: more than 30 non-null assertions and four type
+  assertions, two to `string` and two to `any` [D] [tpl-mongodb] L67;
+  [D] [tpl-forms-s3] L128; [D] [tpl-teams-bot] L139. One template wraps
+  `outputs` in `Object()` to read it untyped, nine times
+  [D] [tpl-secret-rot] L129.
+- An error guard: a value, or an immediately invoked function that throws,
+  used eight times on fields of blocks with an `errorHandler`
+  [D] [tpl-cert] L323.
+- Size: median 41 characters; 90th percentile 405 characters or 10 lines;
+  largest 2,167 characters or 64 lines [I] from the script.
+
+**Who writes them.** Flow authors, in the canvas editor, which shows
+upstream schemas and completes names [D] [blockmgmt]. App code never sees an
+expression: a handler receives its input configuration already evaluated,
+and no `outputs` [S] [sdk] L1116-L1121.
 
 ## 4. Events, invocations and limits
 
@@ -995,7 +1084,7 @@ reference page: 61 objects and 125 properties [D] [defref].
 | `DataTable*Config` | `table`, plus `limit` for queries | |
 | Input configs | `condition`; `sleep`; `url`, `method`, `body`, `headers`, `agentPool`; `statusCode`, `body`, `headers`; `items`, `emittedLimit`; `group`, `count`, `emit`, `item`, `delay`; `key`, `collection`, `value`, `ttl`; `collection`, `limit`, `startingKey`; `responseBody`; `groupKey`, `itemKey`; `row`, `ttl`, `rowID`, `rowIDs`, `filter`, `queryOrders`, `continuationToken`, `assignees` | per block, section 3.3 |
 | `GroupBlockIOLinks` | `name`, `links`, `outputCustomization`, `sensitivePaths` | |
-| `Expression` | a literal, or `!expr` JavaScript with `outputs`, `config` and `event` in scope | |
+| `Expression` | a literal, or `!expr` JavaScript (TypeScript syntax accepted, section 3.4) with `outputs`, `config` and `event` in scope | |
 
 ## 14. Self-hosted Flows
 
@@ -1330,9 +1419,10 @@ shown in any source. The same Deploy actions also exist as the MIT
 - Every core block in section 3.3, including the undocumented Data Table,
   Form, Group and Concurrency Group blocks, needs an owner and a behaviour
   source.
-- Expressions are JavaScript; the plan must account for a sandboxed
-  JavaScript runtime with `outputs`, `signals`, `secrets`, `stored`, `items`
-  and `group` in scope.
+- Expressions are JavaScript with TypeScript syntax, run on agents and not
+  deterministic; matching their reach needs an expression facility with
+  `outputs`, `signals`, `secrets`, `stored`, `items`, `group` and `raw` in
+  scope, and section 3.7 shows what flow authors use it for.
 - App compatibility means implementing the `@slflows/sdk/v1` surface in
   section 7 (services, handler inputs, lifecycle callbacks, the seven
   lifecycle states and the `drifted` value of `blocks.list`) and accepting `app.js` and `ui.js` bundles and the
@@ -1394,6 +1484,7 @@ shown in any source. The same Deploy actions also exist as the MIT
 | terraform-aws-eks-spacelift-flows-selfhosted | `b7d32fa51c7e` (after v1.1.0) | none |
 | terraform-aws-spacelift-flows-agentpool-ec2 | v1.3.0, `6bb853a4d0a1` | none |
 | `flows-app-*` and registry repositories | section 6.5 | MIT except `flows-app-utilities` (none) |
+| Flow templates (46) and `templates.json` | read 2026-11-03 | none stated |
 | Flows backend image in the guide | `1.1.0` | |
 
 ## Sources
@@ -1453,6 +1544,22 @@ Docs pages, read 2026-10-28:
 - [deploy-setup]: <https://docs.spacelift.io/flows/spacelift-deploy-integration/setup>
 - [deploy-blocks]: <https://docs.spacelift.io/flows/spacelift-deploy-integration/spacelift-blocks>
 - [templates-batch]: <https://docs.spacelift.io/flows/templates/spacelift-staged-batch-rollout>
+
+Template definitions, read 2026-11-03:
+
+- [templates-json]: <https://docs.spacelift.io/flows/templates.json>
+- [tpl-mongodb]: <https://docs.spacelift.io/flows/templates/mongodb-form.yaml>
+- [tpl-forms-s3]: <https://docs.spacelift.io/flows/templates/self-service-forms-s3.yaml>
+- [tpl-teams-bot]: <https://docs.spacelift.io/flows/templates/simple-teams-bot.yaml>
+- [tpl-rundeck]: <https://docs.spacelift.io/flows/templates/rundeck-jobs.yaml>
+- [tpl-unconfirmed]: <https://docs.spacelift.io/flows/templates/spacelift-unconfirmed-runs-slack.yaml>
+- [tpl-cert]: <https://docs.spacelift.io/flows/templates/certificate-expiry-monitoring.yaml>
+- [tpl-secret-rot]: <https://docs.spacelift.io/flows/templates/secret-rotation-orchestrator.yaml>
+- [tpl-parallel]: <https://docs.spacelift.io/flows/templates/parallel-fetching.yaml>
+- [tpl-backstage]: <https://docs.spacelift.io/flows/templates/self-service-backstage-spacelift-template.yaml>
+- [tpl-vending]: <https://docs.spacelift.io/flows/templates/self-service-environment-vending.yaml>
+- [tpl-jira-tpl]: <https://docs.spacelift.io/flows/templates/self-service-jira-spacelift-template.yaml>
+- [tpl-snow-tpl]: <https://docs.spacelift.io/flows/templates/self-service-servicenow-spacelift-template.yaml>
 
 Packages and source:
 
@@ -1524,6 +1631,14 @@ Packages and source:
 - [utils-blocks]: <https://github.com/spacelift-flows-apps/flows-app-utilities/tree/fdbc652b98b6/blocks>
 - [core-reg-readme]: <https://github.com/spacelift-flows-apps/flows-core-registry/blob/bcd2033a5c2f/README.md>
 - [tpl-core-ci]: <https://github.com/spacelift-flows-apps/flows-app-template-core/tree/5d55723b17cc/.github/workflows>
+- [skill-flows-dev]: <https://github.com/spacelift-flows-apps/agent-skills/blob/b2a2bf4964cb/plugins/flows-app-dev/skills/flows-app-dev/SKILL.md#L15>
+- [prov-ai-example]: <https://github.com/spacelift-io/terraform-provider-flows/blob/9d1a7ad4d937/examples/resources/flows_app_installation/resource.tf#L11>
+- [scn-anthropic]: <https://github.com/spacelift-flows-apps/flows-app-anthropic/blob/4d114adabe3e/scenario.yaml>
+- [scn-github]: <https://github.com/spacelift-flows-apps/flows-app-github/blob/b07de4efed93/scenario.yaml>
+- [scn-pagerduty]: <https://github.com/spacelift-flows-apps/flows-app-pagerduty/blob/982a22a093d7/scenario.yaml>
+- [scn-postgresql]: <https://github.com/spacelift-flows-apps/flows-app-postgresql/blob/4f7f7bcd9e25/scenario.yaml>
+- [scn-slack]: <https://github.com/spacelift-flows-apps/flows-app-slack/blob/293265d0a2e5/scenario.yaml>
+- [scn-ssh]: <https://github.com/spacelift-flows-apps/flows-app-ssh/blob/90bea698c88a/scenario.yaml>
 
 Live captures, read 2026-10-28: the OAuth metadata URLs in section 9.3 and
 10.4, the Core registry manifest in section 6.2, an unauthenticated
@@ -1652,3 +1767,24 @@ and `spacelift-flows-apps`.
 [utils-blocks]: https://github.com/spacelift-flows-apps/flows-app-utilities/tree/fdbc652b98b6/blocks
 [core-reg-readme]: https://github.com/spacelift-flows-apps/flows-core-registry/blob/bcd2033a5c2f/README.md
 [tpl-core-ci]: https://github.com/spacelift-flows-apps/flows-app-template-core/tree/5d55723b17cc/.github/workflows
+[templates-json]: https://docs.spacelift.io/flows/templates.json
+[tpl-mongodb]: https://docs.spacelift.io/flows/templates/mongodb-form.yaml
+[tpl-forms-s3]: https://docs.spacelift.io/flows/templates/self-service-forms-s3.yaml
+[tpl-teams-bot]: https://docs.spacelift.io/flows/templates/simple-teams-bot.yaml
+[tpl-rundeck]: https://docs.spacelift.io/flows/templates/rundeck-jobs.yaml
+[tpl-unconfirmed]: https://docs.spacelift.io/flows/templates/spacelift-unconfirmed-runs-slack.yaml
+[tpl-cert]: https://docs.spacelift.io/flows/templates/certificate-expiry-monitoring.yaml
+[tpl-secret-rot]: https://docs.spacelift.io/flows/templates/secret-rotation-orchestrator.yaml
+[tpl-parallel]: https://docs.spacelift.io/flows/templates/parallel-fetching.yaml
+[tpl-backstage]: https://docs.spacelift.io/flows/templates/self-service-backstage-spacelift-template.yaml
+[tpl-vending]: https://docs.spacelift.io/flows/templates/self-service-environment-vending.yaml
+[tpl-jira-tpl]: https://docs.spacelift.io/flows/templates/self-service-jira-spacelift-template.yaml
+[tpl-snow-tpl]: https://docs.spacelift.io/flows/templates/self-service-servicenow-spacelift-template.yaml
+[skill-flows-dev]: https://github.com/spacelift-flows-apps/agent-skills/blob/b2a2bf4964cb/plugins/flows-app-dev/skills/flows-app-dev/SKILL.md#L15
+[prov-ai-example]: https://github.com/spacelift-io/terraform-provider-flows/blob/9d1a7ad4d937/examples/resources/flows_app_installation/resource.tf#L11
+[scn-anthropic]: https://github.com/spacelift-flows-apps/flows-app-anthropic/blob/4d114adabe3e/scenario.yaml
+[scn-github]: https://github.com/spacelift-flows-apps/flows-app-github/blob/b07de4efed93/scenario.yaml
+[scn-pagerduty]: https://github.com/spacelift-flows-apps/flows-app-pagerduty/blob/982a22a093d7/scenario.yaml
+[scn-postgresql]: https://github.com/spacelift-flows-apps/flows-app-postgresql/blob/4f7f7bcd9e25/scenario.yaml
+[scn-slack]: https://github.com/spacelift-flows-apps/flows-app-slack/blob/293265d0a2e5/scenario.yaml
+[scn-ssh]: https://github.com/spacelift-flows-apps/flows-app-ssh/blob/90bea698c88a/scenario.yaml

@@ -1,6 +1,6 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
@@ -9,8 +9,8 @@ and the proposed decision records found and what each finding changed, so
 that a reader can tell which statements in reports 01 and 03 to 28, in
 decisions 0004 to 0022, in the architecture options and in the
 implementation documents are corrections rather than first drafts. It
-covers nine passes, one per ticket from RES-02 to RES-08, ARC-01 and
-IMP-01, and keeps every
+covers ten passes, one per ticket from RES-02 to RES-08, ARC-01, IMP-01
+and DES-05, and keeps every
 finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
@@ -82,6 +82,12 @@ and tables to the phase that builds them, and build status against the
 GitHub issues. A task that uses something no phase it depends on builds
 counts as *wrong*.
 
+DES-05 corrects report 23's account of Flows expressions, on which decision
+[0024](../decisions/0024-expression-language.md) relies. Its source is a survey of every published Flows template and of the MIT apps' test
+flows; a second script, written for this pass, re-derived each count and
+cited line before it entered the report, and where the survey's figures
+and the recount differed, the recount is what the report records.
+
 ## Totals
 
 | Pass | Reports | Claims checked by hand | wrong | unsupported | missing | copied | style | Findings |
@@ -95,7 +101,8 @@ counts as *wrong*.
 | RES-08 | decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md) | about 765, plus every link, slug and shared name by script | 34 | 9 | 12 | 0 | 3 | 58 |
 | ARC-01 | [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md) | about 450, plus every heading, depguard block, matrix cell and mapping row by script | 61 | 5 | 13 | 0 | 3 | 82 |
 | IMP-01 | the [implementation documents](../../implementation/plan.md) and option 5 | about 400, plus every operationId, roadmap row and DV row by script | 28 | 3 | 9 | 0 | 2 | 42 |
-| **All** | 27 reports, 19 records, 5 options, 5 implementation documents | about 3,720 | **245** | **95** | **138** | **7** | **27** | **512** |
+| DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script | 1 | 0 | 6 | 0 | 0 | 7 |
+| **All** | 27 reports, 19 records, 5 options, 5 implementation documents | about 3,760 | **246** | **95** | **144** | **7** | **27** | **519** |
 
 The counts are of the findings tables' rows. Two reviews give summary
 counts that differ from their own rows. In RES-02, the 05 summary gives 15
@@ -1191,6 +1198,61 @@ decisions 0004 to 0022. The copy check found no docs prose.
   the record it cites, and every departure in decisions 0004 to 0022 has a
   row.
 
+## DES-05: Flows expressions in report 23
+
+### Claims checked
+
+About 40 claims by hand: every statement of report 23 sections 3.2 to 3.4
+and section 13 about expressions, their variables and where they run,
+against the 46 flow templates listed in `templates.json`, the
+`scenario.yaml` files of flows-app-anthropic, flows-app-github,
+flows-app-pagerduty, flows-app-postgresql, flows-app-slack and
+flows-app-ssh at the commits of report 23 section 6.5, the block
+management and private agents pages, the `agent-skills` app development
+guide and the SDK typings. Scripts counted every `!expr` value (784 in the
+templates, 237 in the scenarios), every `ref(` call (128, all in the
+scenarios), the 19 Transform blocks and their configuration, the
+templates whose static configuration reads `secrets`, and the TypeScript
+assertions. The recount differs from the survey in four places, and the
+report records the recount: 128 `ref(` calls, not 111; two `as string`
+and two `as any` assertions, not five `as string`; the `Object(outputs)`
+line of the secret rotation template is L129, not L128, which is a
+comment; and three templates are served under longer names
+(`certificate-expiry-monitoring`, `secret-rotation-orchestrator`,
+`spacelift-unconfirmed-runs-slack`). The usage classes and language
+feature counts are the survey's; their class counts sum to 785, which the
+report states. Template text is restated, never quoted, since the docs
+carry no licence.
+
+### Findings by severity
+
+| Report | wrong | unsupported | missing | copied | style | Total |
+|---|---|---|---|---|---|---|
+| [23](23-flows.md) | 1 | 0 | 6 | 0 | 0 | 7 |
+| **All** | **1** | **0** | **6** | **0** | **0** | **7** |
+
+### Findings
+
+| # | Finding | Change |
+|---|---|---|
+| 1 | *missing*: section 3.4 gave the language as JavaScript, as the docs do; the evaluator also accepts TypeScript non-null and type assertions, and types are inferred | Language row rewritten citing the mongodb-form (L67), self-service-forms-s3 (L128) and simple-teams-bot (L139) templates; a row says expressions run on agents in Node.js; section 13's `Expression` row points at 3.4 |
+| 2 | *wrong*: section 3.3 put Transform's expression on the input; in all 19 Transform blocks of the templates the input configuration is `{}` and the logic is the output's `outputCustomization` | Transform row corrected, citing the template index |
+| 3 | *missing*: the undocumented `raw` variable, the block's own output inside its output customization | Row added to 3.4, citing rundeck-jobs (L143) and spacelift-unconfirmed-runs-slack (L31) |
+| 4 | *missing*: the `ref("signal.…")` helper, named on the block management page and used 128 times in the MIT scenarios but never in the templates | Row added to 3.4; the static configuration bullet in 3.2 names it |
+| 5 | *missing*: `config` and `event`, listed by the definition reference, appear in none of the 1,021 expressions | Noted on their 3.4 row |
+| 6 | *missing*: static configuration also reads `secrets`: the Deploy Template block's `templateId` in four templates | Bullet added to 3.2, citing the four templates |
+| 7 | *missing*: no record of what flow authors write: 784 expressions in 46 templates and 237 in six MIT scenarios, where they sit, their usage classes, the language features and globals in use, the error guard idiom, sizes and who writes them | New section 3.7; the header, Sources and versions table name the templates (by URL, read 2026-11-03) and the scenario files (by commit); the closing bullet points at 3.7 |
+
+### What survived
+
+- **23:** the rest of sections 3.2 to 3.4: `!expr` as the marker, untagged
+  values as literals, `outputs`, `signals`, `secrets`, `stored`, `items`
+  and `group` with their scopes, camelCase block keys and secondary
+  parents carrying no data; the docs' statement that agents run
+  expressions in Node.js runtimes, confirmed by the private agents page
+  and the app development guide; the definition reference's core block
+  list.
+
 ## What survived across the set
 
 - **Mechanical inventories hold.** Every operation, route, field, enum
@@ -1205,8 +1267,8 @@ decisions 0004 to 0022. The copy check found no docs prose.
   run with the docs mirror; the remaining hits are identifier lists,
   commands and one example value. Quotations from MIT sources without a
   `NOTICE` entry were removed (P13).
-- **Most corrections are precision, not direction.** Of the 330 findings
-  on the reports, 122 are *wrong*; most of those are line anchors, types, counts, defaults
+- **Most corrections are precision, not direction.** Of the 337 findings
+  on the reports, 123 are *wrong*; most of those are line anchors, types, counts, defaults
   and edge states. The design-relevant ones are the vcs-agent's allowlist
   (11), the AWS session name (12), the approval `reject` outcome (08), the
   `ro_` and `wo_` stage rule (10 against 13), the OIDC SSO tier (03 and 04),
@@ -1241,7 +1303,7 @@ decisions 0004 to 0022. The copy check found no docs prose.
 ## Inferred and undocumented
 
 This log adds no claims about Spacelift. Its counts come from the findings
-tables of the nine reviews; where a review's own summary differs from its
+tables of the ten reviews; where a review's own summary differs from its
 rows, the rows are counted and the difference is stated under Totals.
 
 ## Versions at the research baseline
@@ -1259,6 +1321,9 @@ rows, the rows are counted and the difference is stated under Totals.
 - The fact-check reviews of RES-02, RES-03, RES-04, RES-05, RES-06,
   RES-07, RES-08, ARC-01 and IMP-01, and the drafters' notes for RES-02 to RES-07, written
   2026-10-28.
+- The DES-05 correction pass, 2026-11-03, with the 46 Flows templates at
+  `https://docs.spacelift.io/flows/templates/<name>.yaml` and the MIT
+  `scenario.yaml` files listed in [23 section 3.7](23-flows.md#37-expressions-in-the-published-templates).
 - Reports [01](01-spacelift-landscape.md) and [03](03-deploy-core-api-inventory.md) to [28](28-data-model.md) in this directory, as edited by those
   reviews, decisions [0005](../decisions/0005-persistence-postgresql.md) to [0022](../decisions/0022-api-errors-and-update-semantics.md), as edited by RES-08, and the [architecture options](../architecture-options/README.md) and decision [0004](../decisions/0004-repository-architecture.md), as edited by ARC-01.
 - The [implementation plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [deviations register](../../implementation/deviations.md), [repository layout](../../implementation/repo-layout.md) and [definition of done](../../implementation/definition-of-done.md), as edited by IMP-01; GitHub issues #5, #8 to #15 and #21 to #31, read 2026-10-28.
