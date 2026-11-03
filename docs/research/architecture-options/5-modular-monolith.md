@@ -508,7 +508,7 @@ internal/
 │   │                                     no api/ package, because no domain calls it
 │   └── internal/
 │       ├── expressions/                  look up a surface by name, authorize through it, run platform/expr/editor
-│       └── http/                         strict partial for /api/v1/expressions/check, complete and evaluate
+│       └── http/                         strict partial for /expressions/check, complete and evaluate
 ├── templates/                            blueprints, templates, versions, deployments (P21)
 │   └── api/ assembly/ internal/{templates,http,pg}/   bodies rendered through platform/expr
 ├── resources/                            managed entities, scans, generic search (P22)
@@ -560,7 +560,7 @@ internal/stacks/
 internal/configuration/internal/configuration/   attach, detach, auto-attach on label change (P6)
 ```
 
-A `PATCH /api/v1/stacks/{id}` passes through `platform/httpkit/middleware`
+A `PATCH /stacks/{id}` passes through `platform/httpkit/middleware`
 (idempotency key, rate limit), the access domain's authn middleware, then
 `stacks/internal/http/strict.go`, which converts the generated request type
 and calls the service. The service checks `stack:update` (the action name is
@@ -1256,7 +1256,7 @@ internal/platform/expr/
 │                      encoding; random.* drawn from the seed; fail(message)
 ├── editor/            Check, Complete, Evaluate over an Env: diagnostics with ranges, static cost estimate
 └── surface.go         Surface{Name, Env(ctx, principal, ref)} and the registry internal/app fills
-internal/expressions/  /api/v1/expressions/check, complete and evaluate over that registry
+internal/expressions/  /expressions/check, complete and evaluate over that registry
 ```
 
 The language is platform because it carries no business rule and both
@@ -1282,7 +1282,7 @@ run's variables). `internal/app` collects them and hands them to the
 `expressions` domain, so the editor endpoints reach every surface without
 importing a domain, and a surface's `Env` authorizes the caller as a read
 of its context. `flows` serves the same operations under `/flows/v1/`
-through the same `editor` package, and `POST /api/v1/policies/check`
+through the same `editor` package, and `POST /policies/check`
 belongs to `policies`, because Rego is not an expression. Saving a flow, a
 template version, a policy's notification text or a variable type-checks
 through the owner's surface and refuses an error with `422
@@ -1313,7 +1313,7 @@ web/console/                   (P24c)
 ├── src/api/                   orval client and TanStack Query hooks, generated and committed
 ├── src/streams/               stream subscriptions that update the Query cache; polling while closed
 ├── src/components/            Radix primitives with Tailwind 4, owned in the repository; light and dark tokens
-├── src/canvas/ src/editor/    React Flow; CodeMirror 6 with diagnostics from /api/v1/expressions/*
+├── src/canvas/ src/editor/    React Flow; CodeMirror 6 with diagnostics from /expressions/*
 ├── src/messages/              the English message catalogue
 └── vite.config.ts             build output written to internal/platform/httpkit/console/dist
 internal/platform/httpkit/console/

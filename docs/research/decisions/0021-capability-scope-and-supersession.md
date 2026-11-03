@@ -342,7 +342,7 @@ before switching billing on.
 
 Organizations, tiers, the billing switch, organization tiers and grants
 are data, managed only through the operator API: its own OpenAPI document,
-`api/operator.openapi.yaml`, outside the parity surface because Spacelift has
+`api/operator.openapi.yaml`, served under `/operator/v1`, outside the parity surface because Spacelift has
 no counterpart, and reachable only by operator principals (decision 0006
 issues their credentials; any other credential answers `401
 unauthenticated`). `infraweavectl operator` wraps it with `organization`,

@@ -130,9 +130,9 @@ no capability needs a stream.
 
 | Stream | Path | Message types | Same data by polling |
 |---|---|---|---|
-| Run logs | `GET /api/v1/runs/{runId}/logs/stream` | `log` (lines for one state and state version, with the continuation token), `state` (the run entered a state), `end` | `runLogs` with `state`, `stateVersion` and `token` |
-| Run state | `GET /api/v1/runs/{runId}/stream` and `GET /api/v1/stacks/{stackId}/runs/stream` | `run_updated`, `drift_detected`, `policy_evaluated` | The run, its history and the stack's runs |
-| Worker pool queue | `GET /api/v1/worker-pools/{workerPoolId}/stream` and `GET /api/v1/public-worker-pool/stream` | `run_updated` for runs scheduled on the pool, `worker_updated` | The pool's schedulable-run and worker searches |
+| Run logs | `GET /runs/{runId}/logs/stream` | `log` (lines for one state and state version, with the continuation token), `state` (the run entered a state), `end` | `runLogs` with `state`, `stateVersion` and `token` |
+| Run state | `GET /runs/{runId}/stream` and `GET /stacks/{stackId}/runs/stream` | `run_updated`, `drift_detected`, `policy_evaluated` | The run, its history and the stack's runs |
+| Worker pool queue | `GET /worker-pools/{workerPoolId}/stream` and `GET /public-worker-pool/stream` | `run_updated` for runs scheduled on the pool, `worker_updated` | The pool's schedulable-run and worker searches |
 | Flows events | `GET /flows/v1/flows/{flowId}/events/stream` | `flows.event`, `invocation_updated`, `counters` | The flow's event and invocation lists |
 
 - **Format.** `Content-Type: text/event-stream`, `Cache-Control: no-store`
@@ -229,10 +229,10 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
 - **Delivery records.** Every attempt is a `WebhookDelivery`: `status` (`0`
   on a transport failure), `timestamp`, and details with request and
   response headers and bodies, plus `responseError`. Secret header values
-  are stored as `[redacted]`. Bodies up to 64 KiB each live in object
-  storage under `deliveries/<account>/<webhook>/<delivery>/`, and the rows
-  in `webhook_deliveries`. Both are kept `events.deliveries.retention`,
-  default 7 days. `deliveries(token)` pages with 0003's cursors.
+  are stored as `[redacted]`. Bodies up to 64 KiB each live in decision
+  0005's `deliveries` store under `<account>/<webhook>/<delivery>/request`
+  and `.../response`, and the rows in `webhook_deliveries`. Both are kept
+  `events.deliveries.retention`, default 7 days. `deliveries(token)` pages with 0003's cursors.
 - **Secrets.** A webhook's `secret` and every secret header value are
   sealed (decision 0013) and write-only. The deprecated `secret` output
   field answers an empty string. An update with a new `secret` rotates it in

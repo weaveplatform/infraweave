@@ -93,7 +93,7 @@ Facts every option shares, so that the comparison is about structure alone:
   organizations, and one chi middleware (decision 0021);
 - CEL expressions and `${{ }}` text templates in one package, evaluated by
   the server process modes and, for workflow command templates, by the
-  runner, with editor endpoints under `/api/v1/expressions/` (decision
+  runner, with editor endpoints under `/expressions/` (decision
   0024);
 - the console in `web/console/`, React 19 and TypeScript built with Vite,
   embedded through `embed.FS` and served by `serve`, reaching infraweave

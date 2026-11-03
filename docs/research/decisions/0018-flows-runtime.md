@@ -96,7 +96,7 @@ stream (decision 0005).
 
 Event bodies up to 256 KiB are stored inline as JSONB. A larger body goes
 to decision 0005's `flows-events` store under
-`flows-events/<account>/<flow>/<event>` and
+`<account>/<flow>/<event>` and
 the row keeps the key and a SHA-256. The 256 KiB threshold is
 infraweave's; Spacelift publishes no event size limit.
 

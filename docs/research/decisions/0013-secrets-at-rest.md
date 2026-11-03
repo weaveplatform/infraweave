@@ -317,7 +317,7 @@ server never has unmasked output to leak.
 | Operation | Command | Effect |
 |---|---|---|
 | Rotate the KEK, or change provider | `infraweave secrets rewrap --to <provider settings>` | Unwraps each data key with the current KEK, wraps it with the new one and updates its row, one row per transaction. Values and objects are untouched. Replicas pick the change up through `infraweave_invalidate` |
-| Rotate the data key | `infraweave secrets rotate`, or `POST /secrets/rotate` on the operator API ([0021](0021-capability-scope-and-supersession.md)) | Inserts a new `active` key and marks the old one `retiring`. Then it enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)) |
+| Rotate the data key | `infraweave secrets rotate`, or `POST /operator/v1/secrets/rotate` on the operator API ([0021](0021-capability-scope-and-supersession.md)) | Inserts a new `active` key and marks the old one `retiring`. Then it enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)) |
 | Reseal | `secrets.reseal` job | Walks `secrets.Registry` with keyset pagination, 500 rows per transaction. It reseals each value whose key ID is not the active one, then marks the old key `retired` and deletes it once a final pass finds no reference |
 | Rotate a pool key | `workerPoolReset` ([0008](0008-run-execution-and-worker-protocol.md)) | New specs are sealed to the new key. Workspaces sealed to the old key can no longer be opened, so runs awaiting confirmation must be replanned |
 

@@ -128,7 +128,7 @@ download, answers 404 with `{"errors":[{"message":"not found"}]}`.
   directory. It is built once, when the version is created, from the
   commit tarball that decision 0012's provider abstraction fetches (through
   a VCS agent when the repository is private). It is stored in decision
-  0005's `modules` store, under `modules/<account>/<module ulid>/<ULID>`.
+  0005's `modules` store, under `<account>/<module ulid>/<ULID>`.
 - **`lastPulledAt`.** Updated on download, at most once a minute per
   version, so that a busy module does not write on every `terraform init`.
 
@@ -226,7 +226,7 @@ token answers 403. In `proxy` mode an unreachable store answers 503 with
 - **Create.** `signingKeyId` must name a registered, unrevoked key. The
   answer carries presigned `PUT` URLs and headers for `SHA256SUMS` and
   `SHA256SUMS.sig` in decision 0005's `modules` store, under
-  `modules/<account>/<provider version ulid>/<ULID>`. Each
+  `<account>/<provider version ulid>/<ULID>`. Each
   URL binds the declared `shaSumsFileSHA` or `signatureFileSHA` as decision
   0005's signed URLs do: on `s3` as `x-amz-checksum-sha256`, converted from
   hex to the base64 form S3 expects, so the store refuses a body that does

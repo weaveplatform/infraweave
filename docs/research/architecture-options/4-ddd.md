@@ -592,7 +592,7 @@ internal/
 │   ├── api/                                 ExpressionSurfaces: the contract each surface owner implements
 │   ├── application/editor/                  check, complete, evaluate over kernel/expr with the typed context
 │   │                                        the owning context returns; masked secrets; same cost limits
-│   └── interfaces/rest/                     strict slice: /api/v1/expressions/check, complete, evaluate
+│   └── interfaces/rest/                     strict slice: /expressions/check, complete, evaluate
 └── flows/                                   CONTEXT: projects, flows, the engine, apps and agents (Flows)
     ├── api/                                 Projects for Deploy role bindings; ExpressionSurfaces for flows
     ├── domain/
@@ -1347,7 +1347,7 @@ internal/<owner>/api/surfaces.go        flows (inputs, static config, output cus
                                         named expressions), templates (bodies), notifications (message
                                         text), stackconfig (environment interpolation, output references),
                                         vendors (workflow command templates)
-internal/governance/interfaces/rest/    POST /api/v1/policies/check: Rego diagnostics, beside simulation
+internal/governance/interfaces/rest/    POST /policies/check: Rego diagnostics, beside simulation
 ```
 
 The language belongs to no context, so it is a shared kernel package. Evaluation happens
@@ -1370,7 +1370,7 @@ derived from one is masked; agents never see an expression. Every evaluation run
 cel-go's cost limit and a timeout, and `now` and the seed are fixed and stored with the
 event or change record, so retries and replays evaluate the same values.
 
-The editor endpoints (`/api/v1/expressions/check`, `complete`, `evaluate`) span every
+The editor endpoints (`/expressions/check`, `complete`, `evaluate`) span every
 surface, and one REST operation has one owning slice, so they sit in `expressions`, a
 generic subdomain with no tables like `vendors`. It is a conformist customer of each
 surface owner's `ExpressionSurfaces`, which resolves a reference (a flow block and input,

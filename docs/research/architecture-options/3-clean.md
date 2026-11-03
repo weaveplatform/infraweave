@@ -370,7 +370,7 @@ internal/
 │   │   ├── controller/                      one package per use-case family group
 │   │   │   ├── system/                      health and version
 │   │   │   ├── stack/ context/ run/ worker/ policy/ vcs/ state/ space/ identity/ (P3 to P13)
-│   │   │   ├── expressions/                 /api/v1/expressions/check, complete, evaluate  (P9)
+│   │   │   ├── expressions/                 /expressions/check, complete, evaluate  (P9)
 │   │   │   ├── cloud/ schedule/ registry/ events/ template/ resource/ ai/ (P15 to P25)
 │   │   │   ├── operator/                    implements gen/operator; operator principals only  (P3b)
 │   │   │   └── flows/                       implements gen/flows  (Flows)
@@ -1116,8 +1116,8 @@ internal/entity/template/              template and blueprint input definitions
 internal/usecase/expression/
   port.go            SurfaceContext{Resolve(ctx, principal, ref) (expr.Context, error)}: one per surface
   check.go complete.go evaluate.go   evaluate replaces secrets with masked placeholders
-internal/usecase/policysimulate/check.go   POST /api/v1/policies/check: Rego parse with decision 0009's preamble
-internal/adapter/rest/controller/expressions/  /api/v1/expressions/check, complete, evaluate; /flows/v1/ twins
+internal/usecase/policysimulate/check.go   POST /policies/check: Rego parse with decision 0009's preamble
+internal/adapter/rest/controller/expressions/  /expressions/check, complete, evaluate; /flows/v1/ twins
 internal/adapter/postgres/surfaces.go  SurfaceContext gateways: a flow block and input, a template, a stack
 callers of entity/expr:
   usecase/flowengine           Flows input configuration, output customization, Transform (scheduler)
@@ -1462,7 +1462,7 @@ whose failure paths need recorded fixtures.
 7. `usecase/agent/runner` restores the source archive (`adapter/agent/workspace`), downloads the vendor binary (`adapter/agent/toolchain`), plans, and reports. Terraform reads state through `adapter/protocol/statehttp` with the run token; `entity/state/access.go` allows read and lock in `PLANNING`.
 8. `runreport/plan.go` evaluates plan policies; a `warn` sends the run to `UNCONFIRMED`. The runner uploads the workspace to the workspaces bucket and exits.
 9. The follow-up job evaluates approval policies for `UNCONFIRMED`: one approval required.
-10. A reviewer calls `POST /api/v1/stacks/{stackId}/runs/{runId}/reviews` (route per the deploy spec); `controller/run` calls `usecase/runreview`, which re-evaluates approval through its `ApprovalPolicy` port: approved.
+10. A reviewer calls `POST /stacks/{stackId}/runs/{runId}/reviews` (route per the deploy spec); `controller/run` calls `usecase/runreview`, which re-evaluates approval through its `ApprovalPolicy` port: approved.
 11. The stack writer calls the confirm operation; `usecase/runaction/confirm.go` checks `entity/run/guards.go` (`canConfirm`) and applies `UNCONFIRMED → CONFIRMED`, which is claimable.
 12. A poll of the same pool claims the run (`jobdispatch`, `CONFIRMED → PREPARING_APPLY`); the launcher restores the workspace and the runner applies. `statehttp` accepts the write because `entity/state/access.go` allows it in `APPLYING`; `usecase/statebackend/put.go` writes the object and the version row.
 13. `runreport/apply.go` applies `APPLYING → FINISHED`; `entity/stack/lock.go` releases the lock in the same transaction; consumers run trigger policies, notifications and the GitHub deployment update.
