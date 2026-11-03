@@ -74,8 +74,8 @@ Bundling fails when any of these happens:
 | `make verify-generate` | Fails if the committed bundles or generated code are stale |
 | `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
 | `make reference` | Regenerates the spec and `coverage.md` from the snapshots |
-| `make reference-inventory` | Regenerates report 29, the data model inventory (`docs/research/reference/29-data-model-inventory.md`), from the introspection snapshot |
-| `make verify-reference` | Fails if the committed reference or report 29 is not exactly what the snapshots generate |
+| `make reference-inventory` | Regenerates the GraphQL inventory register (`docs/data/graphql-inventory.json`) and report 29, which summarises it (`docs/research/reference/29-data-model-inventory.md`), from the introspection snapshot |
+| `make verify-reference` | Fails if the committed reference, report 29 or the GraphQL inventory register is not exactly what the snapshots generate |
 | `make cover` | Merges every `cover/*` directory and enforces `.testcoverage.yml` (≥95% total, ≥90% per package) |
 | `make lint` / `make fmt` | golangci-lint with `.golangci.yml` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |

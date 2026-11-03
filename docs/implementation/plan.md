@@ -346,13 +346,16 @@ every field ([#5](https://github.com/weaveplatform/infraweave/issues/5)).
    `internal/specref/testdata/golden/`.
 2. `make reference-fetch`, `make reference` and `make verify-reference`, and
    the weekly `openapi-spec-update.yml` refresh.
-3. `specref inventory`, which generates report [29](../research/reference/29-data-model-inventory.md), and its drift check
-   in `make verify-reference`.
+3. `specref inventory`, which generates the register
+   [`graphql-inventory.json`](../data/graphql-inventory.json) and report
+   [29](../research/reference/29-data-model-inventory.md) that summarises it,
+   and their drift check in `make verify-reference`.
 
 **Exit criteria**
 - 725 reference operations in 53 tags plus 8 untagged, 622 routed root fields
   and 43 excluded, every exclusion with its reason in `coverage.md`.
-- `make verify-reference` fails on any drift of the reference or of report 29.
+- `make verify-reference` fails on any drift of the reference, of report 29
+  or of the GraphQL inventory register.
 - `make gate` passes at 95% in total and 90% per package.
 
 **Outcome: done.** The research and decision layer built on it is reports 01

@@ -468,7 +468,7 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | The `App` and `Host` stubs | `api/proto/flows/app/v1/` | `make generate` | `make verify-generate`; `buf breaking` against the last release |
 | `api/reference/spacelift/spacelift.openapi.yaml`, `coverage.md` | the snapshots and `rest-mapping.yaml` | `make reference` | `make verify-reference` |
 | `api/reference/spacelift/` snapshots and `sources.lock.yaml` | upstream at the pinned versions | `make reference-fetch` (network) | `openapi-spec-update.yml` |
-| [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |
+| [`docs/data/graphql-inventory.json`](../data/graphql-inventory.json), [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |
 | `internal/access/api/actions_gen.go` | the `Action` enum of the introspection snapshot | `specref` | `make verify-reference` ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
 | `api/reference/provider-parity.yaml` | hand-maintained mapping (P24) | none | `specref provider-parity` |
 
