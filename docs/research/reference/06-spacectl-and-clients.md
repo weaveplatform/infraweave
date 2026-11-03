@@ -869,7 +869,7 @@ has to provide. These are requirements on coverage, not design choices.
 | backstage-plugins | `27d06658468a`; latest release 0.3.3 (2026-08-31) | MIT |
 | setup-spacectl | `a359d07b6b87`; latest release v2.5.0 | MIT |
 | spacelift-helm-charts | `4e02e1d22e73` | MIT |
-| spacelift-operator | `341692ad7d56`, archived 2025-06-11 | MIT |
+| spacelift-operator | `341692ad7d56` (last commit 2025-06-11); archived | MIT |
 | Introspection schema | `b3255fe38f5e` | |
 
 ## Sources
