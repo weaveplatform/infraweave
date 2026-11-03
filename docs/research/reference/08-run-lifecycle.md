@@ -108,8 +108,8 @@ no run is ongoing [G].
 
 ### State diagram
 
-Each edge carries its ID from the transition table below, and the marker of
-its strongest evidence. Terminal states lead to the end marker.
+Each edge carries its ID in the [transition table](#transition-table) and
+the marker of its strongest evidence. Terminal states lead to the end marker.
 
 ```mermaid
 stateDiagram-v2
@@ -177,51 +177,25 @@ follow `DISCARDED`, `FAILED`, `STOPPED` or `FINISHED`
 
 ### Transition table
 
-| ID | From | To | Run types | Cause | Evidence |
-|---|---|---|---|---|---|
-| T1 | (new) | `QUEUED` | All | A run is created by any route in section 1. A queued run waits for the stack lock, approval, upstream stacks or external dependencies | [D] [run](https://docs.spacelift.io/concepts/run#queued); [G] `runTrigger`, `taskCreate`, `runPromote` |
-| T2 | `QUEUED` | `READY` | All | Nothing blocks the run any more: no blocking run holds the stack lock, approval policies approved, upstream dependency runs finished, every external dependency is `FINISHED` or `SKIPPED` | [D] [run](https://docs.spacelift.io/concepts/run#queued), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy) |
-| T3 | `QUEUED` | `DISCARDED` | All | A user discards the queued run | [D] [run](https://docs.spacelift.io/concepts/run#queued) |
-| T4 | `QUEUED` | `CANCELED` | All | `runCancel` on a run that has not started [G]; a newer run's push policy `cancel` rule (same run type only, best effort) [D] [push policy](https://docs.spacelift.io/concepts/policy/push-policy#canceling-in-progress-runs); cancellation of a run pending approval [D]; proposed and test runs still queued or ready after two days [D] [RN 2026-09-01]; any run still waiting after 30 days [D] [RN 2026-09-17]; downstream runs when a dependency chain breaks [D] [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies#dependencies-overview) | [G] [D] [RN] |
-| T5 | `QUEUED` | `FAILED` | All | An approval policy `reject` rule fires: the rules section says the run fails at once [D], while the review walkthrough on the same page describes **Reject** as canceling the run [D], so `CANCELED` is possible and the target is *(unverified)*; an external dependency is marked `FAILED` [D] | [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies) |
-| T6 | `QUEUED` | `SKIPPED` | `TRACKED` | A dependent stack's run whose referenced upstream outputs did not change, unless `Trigger always` is set; also the documented example of runs after a failed upstream run | [D] [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies) |
-| T7 | `READY` | `PREPARING` | All | A worker in the stack's pool becomes available | [D] [run](https://docs.spacelift.io/concepts/run#ready) |
-| T8 | `READY` | `DISCARDED` | All | A user discards the ready run, including the bulk **Discard** on a worker pool queue | [D] [run](https://docs.spacelift.io/concepts/run#ready), [bulk actions](https://docs.spacelift.io/product/bulk-actions) |
-| T9 | `READY` | `CANCELED` | All | No worker picks the run up: two days for proposed and test runs, seven days for tracked runs, tasks and destroy runs; a push policy `cancel`; the 30-day rule | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01] |
-| T10 | `PREPARING` | `INITIALIZING` | All | The worker pulls the runner image and starts the container | [D] [run](https://docs.spacelift.io/concepts/run#preparing) |
-| T11 | `PREPARING` | `FAILED` | All | The handover between the server and the worker fails | [D] [run](https://docs.spacelift.io/concepts/run#preparing) |
-| T12 | `INITIALIZING` | `PLANNING` | `PROPOSED`, `TRACKED`, `TESTING` | Initialization succeeds; the next state depends on the run type | [D] [run](https://docs.spacelift.io/concepts/run#initializing), [proposed](https://docs.spacelift.io/concepts/run/proposed#planning) |
-| T13 | `INITIALIZING` | `PERFORMING` | `TASK` | Initialization succeeds. With `skipInitialization` the vendor initialization does not run; whether the run then still passes through `INITIALIZING` or goes from `PREPARING` straight to `PERFORMING` is *(unverified)* | [D] [task](https://docs.spacelift.io/concepts/run/task#skipping-initialization); [G] `taskCreate` |
-| T14 | `INITIALIZING` | `DESTROYING` | `DESTROY` | Initialization succeeds and the destroy command runs | [I] from the `DESTROYING` description [G], the `destroy` workflow command used when a stack is deleted [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool), and the `before_destroy` hook being used during stack destruction [D] [stack settings](https://docs.spacelift.io/concepts/stack/stack-settings#customizing-workflow). Whether a destroy run plans and waits for confirmation first is *(unverified)* |
-| T15 | `INITIALIZING` | `FAILED` | All | A before-init hook or vendor initialization fails | [D] [run](https://docs.spacelift.io/concepts/run#initializing) |
-| T16 | `INITIALIZING` | `STOPPED` | All that reach `INITIALIZING`; a task cannot be stopped once it is `PERFORMING` [D] | A user sends a stop signal (`runStop`), which the worker may honour | [D] [run](https://docs.spacelift.io/concepts/run#stopped); [G] `runStop` |
-| T17 | `PLANNING` | `FINISHED` | `PROPOSED`; `TRACKED` | A proposed run plans successfully with no approval policy hold; a tracked run's plan has no changes to resources or outputs (a no-op), unless force apply is set | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria), [tracked](https://docs.spacelift.io/concepts/run/tracked#handling-no-op-changes); [G] `ForceApplyMode` |
-| T18 | `PLANNING` | `FAILED` | `PROPOSED`, `TRACKED`, `TESTING` | Invalid code, provider API errors, a plan policy `deny`, or a worker crash | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria) |
-| T19 | `PLANNING` | `STOPPED` | `PROPOSED`, `TRACKED` | A user stops the run; Spacelift stops a proposed run when a newer commit is pushed to its branch | [D] [run](https://docs.spacelift.io/concepts/run#stopped), [GitHub](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations) |
-| T20 | `PLANNING` | `UNCONFIRMED` | `TRACKED` | The plan has changes and either autodeploy is off, a plan policy warns, or the stack is locked (locking disables autodeploy). The worker encrypts the workspace, uploads it to object storage and leaves the run | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [creating a stack](https://docs.spacelift.io/concepts/stack/creating-a-stack#lock-a-stack-in-spacelift) |
-| T21 | `PLANNING` | `APPLYING` | `TRACKED`, `TESTING` | Autodeploy is on and no plan policy warns; a module test case always proceeds as if autodeployed. No second handover happens | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#approval-flow), [test case](https://docs.spacelift.io/concepts/run/test-case) |
-| T22 | `PLANNING` | `PENDING_REVIEW` | `PROPOSED` | A plan policy returns a warning and approval policies are attached | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review) |
-| T23 | `PENDING_REVIEW` | `FINISHED` | `PROPOSED` | Every attached approval policy approves | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review) |
-| T24 | `PENDING_REVIEW` | `FAILED` | `PROPOSED` | An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5) | [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules) |
-| T25 | `PENDING_REVIEW` | `CANCELED` | `PROPOSED` | 30 days after creation | [D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review), [run](https://docs.spacelift.io/concepts/run#automatic-termination) |
-| T26 | `UNCONFIRMED` | `CONFIRMED` | `TRACKED` | A user confirms (`runConfirm`), only after approval policies approve | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#review-a-run); [G] `runConfirm` |
-| T27 | `UNCONFIRMED` | `DISCARDED` | `TRACKED` | A user discards (`runDiscard`, `runDiscardAll`); seven days without change; the 30-day rule | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard` |
-| T28 | `UNCONFIRMED` | `REPLAN_REQUESTED` | `TRACKED` | A user picks resources from the plan and requests a targeted replan (`runTargetedReplan(targets)`) | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#targeted-replan); [G] `runTargetedReplan`, `REPLAN_REQUESTED` |
-| T29 | `UNCONFIRMED` | `FAILED` | `TRACKED` | An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5) | [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules) |
-| T30 | `REPLAN_REQUESTED` | `PREPARING_REPLAN` | `TRACKED` | The scheduler picks the run up and a worker restores the saved workspace | [G] state descriptions; order [I] from them |
-| T31 | `REPLAN_REQUESTED` | `FAILED` | `TRACKED` | Seven days without change: the saved workspace is kept for seven days only | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01] |
-| T32 | `PREPARING_REPLAN` | `PLANNING` | `TRACKED` | The replan executes `plan` with the selected targets | [I] from the `.Targets` plan template parameter, which the workflow tool fills "during targeted replans" [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool#how-does-it-work), and from `RunStateTransition.stateVersion`, which lets a state recur in one run [G] |
-| T33 | `CONFIRMED` | `PREPARING_APPLY` | `TRACKED` | A worker picks the confirmed run up; a second handover starts | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying); [G] |
-| T34 | `CONFIRMED` | `FAILED` | `TRACKED` | Seven days without change, or the 30-day rule | [D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01] |
-| T35 | `PREPARING_APPLY` | `APPLYING` | `TRACKED` | The handover succeeds | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying) |
-| T36 | `PREPARING_APPLY` | `FAILED` | `TRACKED` | The handover fails, for example the worker disappears | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying) |
-| T37 | `APPLYING` | `FINISHED` | `TRACKED` | The apply succeeds, or `SPACELIFT_SKIP_APPLYING=true` skips it | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#success-criteria) |
-| T38 | `APPLYING` | `FAILED` | `TRACKED` | The apply fails | [D] [tracked](https://docs.spacelift.io/concepts/run/tracked#success-criteria) |
-| T39 | `APPLYING` | `DESTROYING` | `TESTING` | Always, whether the apply succeeded or failed | [D] [test case](https://docs.spacelift.io/concepts/run/test-case) |
-| T40 | `DESTROYING` | `FINISHED` | `TESTING`, `DESTROY` | The destroy succeeds and, for a test case, every earlier phase succeeded | [D] [test case](https://docs.spacelift.io/concepts/run/test-case#success-criteria) |
-| T41 | `DESTROYING` | `FAILED` | `TESTING`, `DESTROY` | The destroy fails, or a test case's apply had failed | [D] [test case](https://docs.spacelift.io/concepts/run/test-case#success-criteria) |
-| T42 | `PERFORMING` | `FINISHED` | `TASK` | The command exits 0 | [D] [task](https://docs.spacelift.io/concepts/run/task#performing-a-task) |
-| T43 | `PERFORMING` | `FAILED` | `TASK` | The command exits non-zero | [D] [task](https://docs.spacelift.io/concepts/run/task#performing-a-task) |
+The transitions are records of the run-transitions register,
+[`docs/data/run-transitions.json`](../../data/run-transitions.json). Each
+record names the state the run leaves (none for T1, which creates the run),
+the state it enters, the run types that take the edge, the cause, and the
+evidence with the markers above. T1 to T43 are the 43 edges the sources
+describe for Spacelift, and this report is their source. T44, the failed
+handover in `PREPARING_REPLAN`, is the edge no source describes (see the
+implied transitions below); decision
+[0008](../decisions/0008-run-execution-and-worker-protocol.md#the-state-machine-is-the-authority)
+adds it as the analogue of T11 and T36, and its record names 0008 as its
+source. The state diagram above draws T1 to T43 only.
+
+Three edges rest on inference rather than a statement: T14, T30 and T32,
+each with its basis in its record. T5, T24 and T29 give an approval policy
+`reject` as `FAILED`, while the approval page's walkthrough describes
+**Reject** as canceling the run, so their target is *(unverified)*. T13
+leaves open whether a task with `skipInitialization` still passes through
+`INITIALIZING`, and T14 whether a destroy run plans and waits for
+confirmation first.
 
 Transitions the sources imply but do not pin to a target state:
 
@@ -232,7 +206,7 @@ Transitions the sources imply but do not pin to a target state:
 | The launcher kills a job that produced no logs for `SPACELIFT_LAUNCHER_LOGS_TIMEOUT` (default 7 minutes) or ran past `SPACELIFT_LAUNCHER_RUN_TIMEOUT` (default 70 minutes) ([worker pools](https://docs.spacelift.io/concepts/worker-pools)) [D] | `FAILED` | *(unverified)* |
 | A worker abandons a run mid-plan; the 30-day rule then fails it ([run](https://docs.spacelift.io/concepts/run#automatic-termination)) [D] | `FAILED` | Documented for the 30-day sweep only |
 | A drift detection run on a pool whose drift runs are disabled is created failed, with an explanatory note ([drift detection](https://docs.spacelift.io/concepts/stack/drift-detection#drift-detection-run-limits)) [D] | `FAILED`, possibly without passing `QUEUED` | Whether it is created directly in `FAILED` is *(unverified)* |
-| The handover in `PREPARING_REPLAN` fails, as T11 and T36 do for the other preparing states | `FAILED` | *(unverified)*; no source describes it |
+| The handover in `PREPARING_REPLAN` fails, as T11 and T36 do for the other preparing states | `FAILED` | *(unverified)*; no source describes it. Decision 0008 takes it as T44 |
 | A run in a broken dependency chain | `CANCELED` (prose) or `SKIPPED` (worked example) | The [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies) page states both [D]; `Run.triggeredRuns` excludes runs "in the Skipped state" [G], so `SKIPPED` is real; which one a failed upstream produces is *(unverified)* |
 
 ### Per-type paths
@@ -578,7 +552,8 @@ and `finished` [G].
 
 - A run state machine with all 22 `RunState` values on the wire, of which 20
   are reachable, and the 43 transitions above, including the replan loop and
-  the second handover after confirmation.
+  the second handover after confirmation, plus an edge for a failed handover
+  in `PREPARING_REPLAN`, which decision 0008 adds as T44.
 - Run types `PROPOSED`, `TRACKED`, `TASK`, `TESTING` and `DESTROY` with
   their distinct paths, and a decision on `PARSE`, which no source documents.
 - A per-stack exclusive lock for blocking runs, a human lock that excludes

@@ -12,7 +12,8 @@ Every phase is also subject to the [definition of done](definition-of-done.md).
 The target package tree is in [repo-layout.md](repo-layout.md), every
 feature's kind, seeded tier and owning phase is in the
 [feature catalogue](capability-roadmap.md), and every deliberate difference
-from Spacelift is in the [deviations register](deviations.md). Research
+from Spacelift is in the [deviations register](../data/deviations.json),
+which [deviations.md](deviations.md) explains. Research
 baseline: **2026-10-28**. Implementation status is reviewed against `main`
 and the GitHub issues on the same date.
 
@@ -21,7 +22,7 @@ decision marks a behaviour as infraweave's choice until a capture of report
 [30](../research/reference/30-open-questions.md) settles it, the phase builds
 the choice and its scenarios assert it; P28 replays the captures, and the
 [deviations a capture may change](deviations.md#deviations-a-capture-may-change)
-list the rows that can move.
+are the records that can move.
 
 ## Scope direction
 
@@ -73,7 +74,7 @@ list the rows that can move.
   served documents are `api/deploy.openapi.yaml`, `api/flows.openapi.yaml`
   and the operator API's `api/operator.openapi.yaml`. Each difference is
   recorded in `x-infraweave-divergence` and in the
-  [deviations register](deviations.md).
+  [deviations register](../data/deviations.json).
 - **infraweave's own clients.** `pkg/sdk` wraps the generated
   `pkg/client/<spec>` packages and is the only way infraweave's Go clients
   call the API ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)). It lands in P1c, where every acceptance step
@@ -1135,10 +1136,12 @@ queued; nothing executes them until P8.
    `stack_outputs`. `internal/kernel/run.go` holds the 22 `RunState`
    values (`PENDING` absent, `UNKNOWN` never assigned), `RunType`,
    `StackState` and `RunPriority`.
-2. `internal/runs/internal/core/machine`: report 08's transitions T1 to T43
-   plus T44 as data, with guards. Tests: `TestUnitTransitionTable` over
-   every edge and every illegal pair; `TestUnitReport08Edges` parses report
-   08's table and fails on a missing edge.
+2. `internal/runs/internal/core/machine`: the edges of the
+   [run-transitions register](../data/run-transitions.json), report 08's
+   T1 to T43 and decision 0008's T44, as data, with guards. Tests:
+   `TestUnitTransitionTable` over every edge and every illegal pair;
+   `TestUnitTransitionRegister` reads the register and fails on an edge the
+   machine is missing or has beyond it.
 3. `internal/runs/internal/core/lifecycle`: `Transition` with
    `state_version` fencing, the stack state update, `outbox.Append` of
    `run_updated`, terminal lock release and the `run.schedule` follow-up;
@@ -1859,7 +1862,7 @@ own records, and the metrics and traces operators run infraweave with.
 3. Metrics in `internal/platform/observe`: the OpenTelemetry metric API,
    `/metrics` on the admin listener, infraweave's own instruments, and
    `/metrics/accounts` with the exporter's series under the `infraweave_`
-   prefix and an `account` label.
+   prefix and with `account` and `organization` labels.
    Tests: `TestUnitAccountCollectors`, `TestUnitAccountMetricNames`.
    Feature: `observability_metrics.feature`. Records DV-060, DV-061.
 4. Traces: OTLP export, sampling, spans for HTTP, pgx, object storage,

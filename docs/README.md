@@ -12,7 +12,7 @@
 | [`implementation/plan.md`](implementation/plan.md) | The implementation plan: build status, milestones, sequence and the phases P0 to P28, with the organization level in P3 and P3b, Flows in P18c and P18d and the console in P24c |
 | [`implementation/capability-roadmap.md`](implementation/capability-roadmap.md) | The feature catalogue: every feature's kind, lowest seeded tier and owning phase, and the feature of every API tag, untagged operation, Terraform resource and data source, gated option and `BillingTierFeature` value; the supersession register |
 | [`implementation/definition-of-done.md`](implementation/definition-of-done.md) | What every pull request and every phase must show before they count as done |
-| [`implementation/deviations.md`](implementation/deviations.md) | The register of every place infraweave departs from Spacelift, `DV-001` onwards |
+| [`implementation/deviations.md`](implementation/deviations.md) | What counts as a departure from Spacelift and how to record one; the records, `DV-001` onwards, are in [`data/deviations.json`](data/deviations.json) |
 | [`implementation/repo-layout.md`](implementation/repo-layout.md) | The repository tree the plan builds, with the phase that creates each part |
 
 ## Status
