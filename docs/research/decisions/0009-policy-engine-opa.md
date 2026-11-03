@@ -182,7 +182,7 @@ Who calls the engine, when, and what the result does to the run of decision
 
 | Type | Caller | When | Effect |
 |---|---|---|---|
-| `LOGIN` | `internal/authn` (decision [0006](0006-authentication-and-tokens.md)) | Session creation and API key exchange, under the `LOGIN_POLICIES` scheme of decision [0007](0007-authorization-spaces-and-roles.md) | Allow, admin, roles per space, teams, or denial with messages |
+| `LOGIN` | `internal/access` (decision [0006](0006-authentication-and-tokens.md)) | Entry into an account (a sign-in, an account switch) and API key exchange, under the `LOGIN_POLICIES` scheme of decision [0007](0007-authorization-spaces-and-roles.md), with every `LOGIN` policy of the account's top space | Allow, admin, roles per space, teams, or denial with messages |
 | `GIT_PUSH` | the `vcs.process_delivery` job (decision [0012](0012-vcs-integration-model.md)) | Per affected stack or module, before any run exists | Creates the run in `QUEUED` (T1), cancels runs, sets lock, priority, external dependencies, module version, commit status |
 | `APPROVAL` | `internal/run` | On entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW`, and on each `runReview` | `QUEUED` to `READY` waits for approve (T2); reject gives T5, T24 or T29; approve in `PENDING_REVIEW` gives T23 |
 | `PLAN` | `internal/run` | When the worker reports a finished plan, and on each targeted replan | Picks the next state: `FAILED` (T18), `UNCONFIRMED` (T20), `APPLYING` (T21), `PENDING_REVIEW` (T22) or `FINISHED` (T17) |
@@ -203,7 +203,7 @@ Who calls the engine, when, and what the result does to the run of decision
   [0011](0011-persistent-work-queue.md)), so a crash between the end of a run and the
   trigger evaluation loses nothing.
 - **Inputs are snapshots.** The input is built from the committed state at evaluation time;
-  `request.timestamp_ns` and `spacelift.request.timestamp_ns` come from the server clock at
+  `request.timestamp_ns` and `infraweave.request.timestamp_ns` come from the server clock at
   that moment, which is the only clock a policy sees.
 
 ### The worker-side initialization policy
@@ -257,6 +257,13 @@ Who calls the engine, when, and what the result does to the run of decision
 - Each type's input is a Go struct in `internal/policy/input` whose JSON names follow the
   per-type contract of [09 section 4](../reference/09-policies.md#4-input-documents),
   including absent versus `null` where the report records a difference.
+- **The `infraweave` namespace.** Where Spacelift's contract nests fields under a
+  `spacelift` key, infraweave's input nests the same fields under `infraweave`, as
+  0001's rename table maps `spacelift.*` to `infraweave.*`; every other field keeps its
+  contract name. A policy that reads `input.spacelift` finds nothing, so the Spacelift
+  importer rewrites `package spacelift` to `package infraweave`, and `input.spacelift`
+  and `data.spacelift` to `input.infraweave` and `data.infraweave`, in each imported body
+  and test, and reports every rewrite.
 - infraweave publishes the JSON Schema it generates from those structs at
   `GET /.well-known/policy-contract.json`, in the shape of Spacelift's contract.
 - Plan input string values are sanitized on the worker before upload, per the stack's
@@ -293,6 +300,8 @@ Who calls the engine, when, and what the result does to the run of decision
   - `sanitized` uses infraweave's own truncation of SHA-256, since Spacelift's is
     unverified ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
   - Under `GODEBUG=fips140=only`, the MD5 and SHA-1 built-ins are unavailable.
+  - Input fields under Spacelift's `spacelift` key sit under `infraweave`, because no
+    infraweave name says Spacelift (0001); the importer rewrites imported bodies.
 
 ## Constraints
 
@@ -321,7 +330,9 @@ Who calls the engine, when, and what the result does to the run of decision
   the error table above; flag reset ordering and multiple owners; sample budgets.
 - A corpus test runs the 67 templates and 61 tests of the MIT example library
   ([09 section 10](../reference/09-policies.md#10-the-example-library-at-6ff5edb08bc8)) through
-  `internal/policy` and expects every library test to pass.
+  `internal/policy` and expects every library test to pass, after the importer's rewrite of
+  the package, `input.spacelift` and `data.spacelift` in templates and tests alike, so the
+  corpus also tests the rewrite.
 - A contract test compares the generated `policy-contract.json` with the field lists of
   [09 section 4](../reference/09-policies.md#4-input-documents).
 - Gherkin acceptance (decision 0016): `policy_plan.feature` (deny fails, warn holds an

@@ -186,7 +186,7 @@ the owning record beside it.
 | `webhooks` | `secret_sealed` | endpoint | decision 0015 |
 | `webhook_secret_headers` | `value_sealed` | header name | decision 0015 |
 | `slack_integrations` | `tokens_sealed` | team | decision 0015 |
-| `sso_settings` | `client_secret_sealed`, `sp_private_key_sealed` | the rest of the settings | [0006](0006-authentication-and-tokens.md) |
+| `identity_providers` | `secret_sealed` (an OIDC client secret, a SAML SP private key or a GitHub OAuth secret) | kind, name and the rest of the settings | [0006](0006-authentication-and-tokens.md) |
 | `signing_keys` | `private_key_sealed` | public key, `kid`, state | [0006](0006-authentication-and-tokens.md) |
 | `ai_integrations` | `credentials_sealed` | provider, base URL, models | decision 0019 |
 | `flows_secrets` | `value_sealed` | name | decision 0018 |
@@ -408,7 +408,7 @@ nothing about them is secret:
   data keys and revealed values live in process memory until collected. A
   process memory dump exposes them, and the threat model accepts that.
 - **Masking is best effort.** Encoded, split or transformed secrets are not
-  recognised. Masking is a safety net, not a control.
+  recognized. Masking is a safety net, not a control.
 - **Pool resets.** A pool reset invalidates every workspace waiting for
   confirmation in that pool.
 - **Primitives.** Every primitive comes from Go's standard `crypto` packages

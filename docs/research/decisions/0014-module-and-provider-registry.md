@@ -66,8 +66,12 @@ download, answers 404 with `{"errors":[{"message":"not found"}]}`.
 - **Host.** The registry host is the installation's own host name, taken
   from `server.public_url`. A module address is
   `<host>/<account>/<name>/<provider>` and a provider address is
-  `<host>/<account>/<type>`. The namespace is the account name, as on
-  Spacelift ([15 section 2.1](../reference/15-module-and-provider-registry.md#21-naming-and-addressing)).
+  `<host>/<account>/<type>`. The namespace is the account's slug, as
+  Spacelift's is its account name
+  ([15 section 2.1](../reference/15-module-and-provider-registry.md#21-naming-and-addressing)),
+  which is why account slugs are unique across the installation
+  ([0007](0007-authorization-spaces-and-roles.md#tenancy)) and never
+  change.
 - **Discovery document.** Served before authentication, with
   `Content-Type: application/json` and `Cache-Control: no-cache, no-store`.
   Every value is absolute and built from `server.public_url`:
@@ -268,7 +272,7 @@ token answers 403. In `proxy` mode an unreachable store answers 503 with
 - **Revoke.** Revoking blocks new versions signed with the key. Published
   versions keep serving it in `signing_keys`. `gpgKeyUpdate` changes only
   the description.
-- **Who.** Only root space admins manage keys (decision 0007), and keys
+- **Who.** Only account admins manage keys (decision 0007), and keys
   belong to the account, not a space.
 
 ### Sharing
@@ -277,7 +281,7 @@ token answers 403. In `proxy` mode an unreachable store answers 503 with
 |---|---|
 | Space inheritance | Stacks in the module's space and in inheriting child spaces may consume it |
 | Space shares | `moduleShare` replaces the full set of `spaces` and `accounts` in one transaction. Admin on the module's space and Write or `SPACE_SHARE_MODULE` on each target space are required |
-| Account shares | The `accounts` entries name accounts of the same installation; an unknown name answers 422 `validation-failed` |
+| Account shares | The `accounts` entries name accounts of the same organization, the one exception to account isolation ([0007](0007-authorization-spaces-and-roles.md#tenancy)). An unknown name, or an account of another organization, answers 422 `validation-failed` naming the entry, with no hint of whether that account exists. Revoking a share hides the module from the consumer at once; a run already in flight finishes with what it has downloaded |
 | Public | `modulePublish` is irreversible; the module is then readable anonymously. `terraformProviderSetVisibility` toggles a provider either way |
 
 A consumer of a shared module reads only the `SharedModule` fields and the
@@ -299,7 +303,7 @@ The registry defines no limit. A caller whose entitlement lacks the
 capability gets the problem types of decision
 [0022](0022-api-errors-and-update-semantics.md) on the deploy API: 403
 `feature-disabled` when the operator has switched the feature off, and 403
-`feature-not-in-tier` when billing is on and the account's tier lacks it.
+`feature-not-in-tier` when billing is on and the organization's tier lacks it.
 The registry protocols are Terraform's, not infraweave's REST API, so they
 answer the same refusals with 403 and a `text/plain` body, `feature
 disabled` or `feature not in tier`, which Terraform prints in its error.
@@ -393,6 +397,10 @@ only when the version itself is deleted.
   repository with two test cases, one negative, reaches `ACTIVE`. A real
   `terraform init` and `tofu init` then resolve it through the API key
   token form. Yanking hides the version, and a shared space gains access.
+  A share to another account of the organization lets that account's run
+  download the module, revoking it hides the module while an in-flight run
+  finishes, and a share naming an account of another organization answers
+  422.
 - `test/acceptance/features/registry_providers.feature` (`@postgres`,
   `@objectstore`, `@terraform`): a GoReleaser-shaped fixture signed with a
   key generated in the test is published through the create, register,
@@ -410,7 +418,7 @@ only when the version itself is deleted.
   Spacelift's `spacelift_module`, `spacelift_version` and
   `spacelift_terraform_provider` in `terraform-schema.json`.
 - `test/acceptance/features/platform_tiers.feature` (billing on): an
-  account on Starter+ gets `feature-not-in-tier` from
+  account whose organization is on Starter+ gets `feature-not-in-tier` from
   `terraformProviderCreate` and a `text/plain` 403 from the provider
   protocol, naming Business and Enterprise.
 

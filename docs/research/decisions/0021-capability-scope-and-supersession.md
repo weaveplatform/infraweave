@@ -25,8 +25,9 @@ Four product questions depend on the rule:
 The maintainer's requirement for P5 is that every feature carries a tier
 from the start, that billing is itself a feature, and that an installation
 behaves as Enterprise until an operator turns billing on. One installation
-hosts many accounts ([0007](0007-authorization-spaces-and-roles.md)), so a
-tier is something each account has.
+hosts many organizations, each one agreement covering one or more accounts
+([0007](0007-authorization-spaces-and-roles.md#tenancy)), so a tier is
+something each organization has and its accounts share.
 
 Five facts shape the answers:
 
@@ -157,7 +158,7 @@ only; the owning decision records each behaviour infraweave chose.
 | Per-stack Slack subscription | in scope | Served; what it sends is unverified (report 19) |
 | `/intent/mcp` | S3 | Not served; `/mcp` is ([0019](0019-ai-provider-boundary.md)) |
 | The standalone `spacelift-intent` stdio server | S3 | Not mirrored: the repository is archived and points to the hosted tools. Local stdio clients use `infraweavectl mcp`, which forwards to `/mcp` (0019 answers P10) |
-| `ApiKeyInput.admin` | S2, through the changelog | Not accepted. Admin keys come from a root-space admin role binding (decision 0007) |
+| `ApiKeyInput.admin` | S2, through the changelog | Not accepted. Admin keys come from a `space-admin` binding on the account's top space (decision 0007) |
 | `RunState.PENDING` | S1 | Absent from the served enum |
 | The stack `administrative` flag | S1 for its behaviour; the field is live in the schema | Served, marked deprecated and ignored: `StackInput.administrative` is accepted and reads back `false` (decisions 0007 and 0022) |
 | `WebhooksIntegration.secret` | S1 for its value; the field is live in the schema | Served, marked deprecated, always an empty string ([0015](0015-events-notifications-webhooks-audit.md)) |
@@ -212,10 +213,10 @@ kinds:
   renaming one is a breaking change.
 - **Requirements.** An entry may require other features, such as
   `drift-detection` requiring `private-worker-pools`. A feature whose
-  requirement is not in an account's entitlement is not in it either.
+  requirement is not in an organization's entitlement is not in it either.
 - **Splitting.** When a release moves operations out of a capability into a
   new, finer one, every tier that held the original capability gains the new
-  one, so no account loses an operation it had.
+  one, so no organization loses an operation it had.
 
 ### Tiers
 
@@ -238,7 +239,7 @@ rules:
 
 Enterprise holds every feature and no limit, including features a release
 adds later, and the operator cannot edit or delete it, because it is what
-every account has while billing is off. Enterprise+ is not seeded: it differs from Enterprise only in
+every organization has while billing is off. Enterprise+ is not seeded: it differs from Enterprise only in
 how Spacelift installs and supports it (self-hosted, FedRAMP, air-gapped,
 escalation), none of which is a feature of infraweave.
 
@@ -252,13 +253,14 @@ The features not in every seeded tier:
 | Enterprise | Capabilities `audit-trail`, `saml-sso`, `scim`, `mfa`, `vcs-agent-pools`, `servicenow`; options `oidc-api-keys` (API key type `OIDC`), `multiple-vcs-integrations` |
 
 Every other feature, including all of Flows, the console, every IaC vendor,
-`scans`, `ai-integrations` and `intent`, is in every seeded tier.
+`scans`, `ai-integrations`, `intent` and `organization` (the `Organization`
+tag, below), is in every seeded tier.
 
 Seeded limits, where no value means no limit:
 
 | Limit | Unit | Free | Starter | Starter+ | Business | Enterprise |
 |---|---|---|---|---|---|---|
-| `seats` | users, and API keys as [14 section 4.4](../reference/14-spaces-rbac-and-identity.md#44-api-keys) counts them | 2 | 2 | | | |
+| `seats` | members, each once however many accounts admit it, and API keys as [14 section 4.4](../reference/14-spaces-rbac-and-identity.md#44-api-keys) counts them | 2 | 2 | | | |
 | `private-workers` | registered private workers | 0 | 0 | 2 | 3 | |
 | `public-worker-slots` | runs in flight on the public worker pool | 1 | 1 | 2 | 2 | |
 | `ai-budget` | the period budget of decision 0019's default AI integration | USD 10 per 30 days | | | | |
@@ -272,16 +274,19 @@ operator's data, and the operator can add tiers of its own. A release adds
 a new feature to a seeded tier its catalogue entry names only while that
 tier still matches its seed.
 
-### Accounts, grants and entitlement
+### Organizations, grants and entitlement
 
-- **One tier per account.** Every account (decision 0007) holds exactly one
-  tier. A new account gets the installation's default tier, Enterprise
-  unless the operator changes it.
-- **Grants.** The operator can grant an account a feature its tier lacks,
-  or set one of its limits to a value above or below the tier's. Grants
-  belong to the account and survive a change of tier.
+- **One tier per organization.** Every organization (decision 0007) holds
+  exactly one tier, and every account of it has the organization's
+  entitlement. A new organization gets the installation's default tier,
+  Enterprise unless the operator changes it.
+- **Grants.** The operator can grant an organization a feature its tier
+  lacks, or set one of its limits to a value above or below the tier's.
+  Grants belong to the organization, apply to all its accounts, and survive
+  a change of tier. Nothing in the entitlement is set per account except
+  the account limits below.
 - **Switch-offs.** `features.disabled` stays operator configuration. It
-  removes a feature from every account of the installation:
+  removes a feature from every organization of the installation:
 
   ```yaml
   features:
@@ -291,30 +296,94 @@ tier still matches its seed.
   Strict decoding rejects an unknown name, `billing`, and Spacelift's
   spellings such as `SCANS`, so a typo cannot silently leave a feature on.
   Changes take effect at restart, like any other configuration.
-- **Entitlement** is the account's tier, plus its grants, minus the
+- **Entitlement** is the organization's tier, plus its grants, minus the
   switched-off features, minus every feature whose requirements are not in
   that set. Limit values come from a grant if one exists, else the tier.
+
+### Limits
+
+- **Pooled per organization.** `seats`, `private-workers`,
+  `public-worker-slots` and `ai-budget` are counted across all of an
+  organization's accounts against the organization's value: one member
+  admitted by two accounts holds one seat (0006), and two accounts with one
+  private worker each hold two of the pool's private workers.
+- **Account limits below the pool.** An organization admin may give an
+  account a limit below the pool, through the organization API, in
+  `account_limits(account_id, limit_name, value, updated_at)`. A thing that
+  would take the account above its limit, or the organization above its
+  pool, is refused, whichever is reached first. The sum of account limits
+  may exceed the pool, so an account limit is a ceiling, not a
+  reservation.
+- **Above the pool is refused.** Setting an account limit above the
+  organization's value answers `422`, problem `validation-failed`, naming
+  the limit, so an account limit never promises more than the agreement
+  holds. A pool lowered later below an account limit leaves the limit
+  stored; the pool still applies.
+- **Counts are live.** Each check counts at the moment of the write in the
+  creating transaction, so two accounts racing for the last seat cannot
+  both take it: the count locks the organization's entitlement row
+  (`SELECT ... FOR UPDATE` on `organization_entitlements`) before counting.
+- **Tables.** The `features` domain owns
+  `organization_entitlements(organization_id, tier, entitlement_version)`,
+  the organization's grants and `account_limits`. They carry the
+  organization's and account's IDs without a foreign key, because
+  `features` sits below `access`, which owns the organizations and accounts
+  (0004); `access` creates and deletes the rows through `features`' `api/`
+  in the transaction that creates or deletes the organization or account.
 
 ### Billing
 
 `billing` is the feature that turns entitlement enforcement on. It belongs
 to the installation, not to a tier, and it is off by default. While it is
-off, no entitlement check runs and every account behaves as Enterprise:
-every feature not in `features.disabled`, and no limits. Tiers, account
-tiers and grants can still be edited, so an operator can prepare them
+off, no entitlement check runs and every organization, and so every
+account, behaves as Enterprise: every feature not in `features.disabled`,
+and no limits. Tiers, organization tiers and grants can still be edited, so an operator can prepare them
 before switching billing on.
 
-Tiers, the billing switch, account tiers and grants are data, managed only
-through the operator API: its own OpenAPI document,
+Organizations, tiers, the billing switch, organization tiers and grants
+are data, managed only through the operator API: its own OpenAPI document,
 `api/operator.openapi.yaml`, outside the parity surface because Spacelift has
 no counterpart, and reachable only by operator principals (decision 0006
 issues their credentials; any other credential answers `401
-unauthenticated`). `infraweavectl operator` wraps it with `tier`, `account`,
-`grant` and `billing` commands. A change takes effect without a restart:
-each write bumps `accounts.entitlement_version` for the accounts it touches
-and notifies `infraweave_invalidate`, and replicas rebuild their per-account
-entitlement snapshot as they do for authorization (decision 0007). Deleting
-a tier that an account holds answers `409 invalid-state`.
+unauthenticated`). `infraweavectl operator` wraps it with `organization`,
+`tier`, `grant` and `billing` commands:
+
+- **`organization create`** takes the organization's slug and name and its
+  first account's slug and name, and creates both in one transaction, with
+  the default tier and the break-glass credential (0006, 0007).
+  **`organization delete`** deletes the organization and all its accounts.
+  **`organization break-glass set`** replaces the break-glass credential.
+- **`tier`** and **`grant`** edit tiers and an organization's tier and
+  grants; **`billing`** sets the switch.
+
+A change takes effect without a restart: each write bumps
+`organization_entitlements.entitlement_version` for the organization it touches and
+notifies `infraweave_invalidate`, and replicas rebuild their per-organization
+entitlement snapshot, which every account of the organization reads, as
+they do for authorization (decision 0007). Deleting a tier that an
+organization holds answers `409 invalid-state`.
+
+### The organization API
+
+The `Organization` tag of the served deploy API is the organization admins'
+API ([0007](0007-authorization-spaces-and-roles.md#tenancy)), outside the
+parity surface because Spacelift has no level above the account. Its
+operations take `ORGANIZATION_ADMIN` with the subject `organization`, accept
+the organization principals of decision 0006, and belong to the
+`organization` capability:
+
+| Resource | Operations |
+|---|---|
+| The organization | Read; rename; MFA enforcement and the session lifetime (0006) |
+| Accounts | List, create (naming the first account admin), claim an unclaimed account, rename, delete |
+| Members | List, deactivate, open a link between two members (0006), grant and revoke `organization-admin` |
+| Identity providers | List every provider and its kind; create, update and delete them; choose the default per kind |
+| Organization keys | List, create, disable, delete |
+| Limits and usage | Read the pooled limits and their use; set and clear account limits; usage across the organization's accounts, with no stacks, runs, state or secrets |
+| Audit | The organization's audit trail ([0015](0015-events-notifications-webhooks-audit.md#audit-trail)) |
+
+An account route never accepts an organization token, and an organization
+route never reveals an account's data.
 
 ### What callers see
 
@@ -326,8 +395,8 @@ checks limits.
 | Slug (decision [0022](0022-api-errors-and-update-semantics.md)) | When | Body members |
 |---|---|---|
 | `feature-disabled` (403) | The feature is in `features.disabled` | `feature` |
-| `feature-not-in-tier` (403) | Billing is on and the account's entitlement lacks the feature | `feature`; `tiers`, the names of the tiers that include it, smallest first (fewest features, then name) |
-| `limit-reached` (403) | Billing is on and creating the thing would take the account above a limit | `limit`; `value`, the account's limit |
+| `feature-not-in-tier` (403) | Billing is on and the organization's entitlement lacks the feature | `feature`; `tiers`, the names of the tiers that include it, smallest first (fewest features, then name) |
+| `limit-reached` (403) | Billing is on and creating the thing would take the account above its account limit or the organization above its pool | `limit`; `scope`, `organization` or `account`, whichever was reached; `value`, that scope's limit |
 
 - `feature-disabled` wins over `feature-not-in-tier`: the operator's
   switch-off is the cause a caller can do nothing about.
@@ -350,7 +419,7 @@ A change of tier, a removed grant or a new switch-off deletes nothing.
   entitlement does not fire, and a queued job of such a feature is completed
   as skipped at dequeue (decision 0011), logged and counted in
   `infraweave.features.skipped`, with no retry.
-- **Stored option values stay.** While the account lacks the option,
+- **Stored option values stay.** While the organization lacks the option,
   infraweave behaves as if the field held its default.
 - **Over a limit, nothing stops and nothing is added.** Existing users,
   keys and workers keep working; creating another answers `limit-reached`
@@ -359,13 +428,13 @@ A change of tier, a removed grant or a new switch-off deletes nothing.
   missed firings are not caught up, so an upgrade cannot start a burst of
   runs.
 
-A Business account with five schedules and four private workers moves to
-Starter+:
+A Business organization with five schedules and four private workers, all
+in one account, moves to Starter+:
 
 | Item | On Starter+ | Back on Business |
 |---|---|---|
 | The five schedules | Kept; none fires. Reading or changing them answers `feature-not-in-tier` with `feature: scheduling` and `tiers: [Business, Enterprise]` | Fire again from their next occurrence |
-| The four private workers | All four stay registered and take runs. A fifth registration answers `limit-reached` with `limit: private-workers`, `value: 2`, and so does a new one after two leave, since two is not below two | The limit is 3, so a new registration succeeds once fewer than three are registered |
+| The four private workers | All four stay registered and take runs. A fifth registration answers `limit-reached` with `limit: private-workers`, `scope: organization`, `value: 2`, and so does a new one after two leave, since two is not below two | The limit is 3, so a new registration succeeds once fewer than three are registered |
 
 ### Vendor-bound operations
 
@@ -378,19 +447,19 @@ with an honest local meaning, and otherwise refuses with
 | Operation or service | infraweave's answer |
 |---|---|
 | `tier` | A tier object in place of the `BillingTier` enum: `name`, `features` (sorted names) and `limits` (a map from limit name to value; an absent limit has no limit). With billing off, the Enterprise tier |
-| `tierFeatures` | The account's entitlement, as infraweave feature names |
-| `seats` | The `seats` limit of the entitlement, or no limit, with the count in use |
+| `tierFeatures` | The organization's entitlement, as infraweave feature names |
+| `seats` | The organization's pooled `seats` limit, or no limit, with the organization's count in use; the account's limit when one is set, with the account's count |
 | `usage` and the usage CSV export | Computed from infraweave's own run and worker records over a trailing 30-day window, which is the period `usage` covers on Spacelift; there is no billing period ([19 section 11](../reference/19-events-notifications-audit.md#11-usage-data-and-usage-export)) |
 | `billingSubscription`, `onTrialUntil` | `null` |
 | `billedExternally` | `true`: no Stripe subscription exists |
 | `availableBillingAddons`, `availableSelfServicePlans` | Empty lists |
-| `billingSubscriptionCreate`, `billingSubscriptionUpdateV2`, `billingSubscriptionDelete`, `billingSubscriptionUpdateInfo`, `billingSubscriptionUpdateTier` | `installation-unsupported`. An account's tier changes through the operator API |
+| `billingSubscriptionCreate`, `billingSubscriptionUpdateV2`, `billingSubscriptionDelete`, `billingSubscriptionUpdateInfo`, `billingSubscriptionUpdateTier` | `installation-unsupported`. An organization's tier changes through the operator API |
 | `debugInfo` | infraweave's commit and version; an empty licence |
 | Usage reporting to Spacelift | `installation-unsupported`: there is no recipient ([0015](0015-events-notifications-webhooks-audit.md)) |
 | The Spacelift-provided AI integration | Decided in [0019](0019-ai-provider-boundary.md) |
 | The GitHub Marketplace app | An operator-registered GitHub App, as self-hosted Spacelift requires (decision 0012) |
 | The Azure integration's managed Entra applications | Created through an operator-registered Entra application in `cloud.azure`, which needs permission to create applications in its tenant. Without one, `azureIntegrationCreate` answers `installation-unsupported` |
-| The public worker pool | An optional pool the operator runs for every account of the installation ([0020](0020-reference-deployments-and-packaging.md)) |
+| The public worker pool | An optional pool the operator runs for every organization of the installation, with `public-worker-slots` pooled per organization ([0008](0008-run-execution-and-worker-protocol.md#pools), [0020](0020-reference-deployments-and-packaging.md)) |
 
 ### Mapping from `BillingTierFeature`
 
@@ -485,7 +554,7 @@ acceptance feature that runs work therefore runs it on a private pool.
   Per-feature switches keep that policy switch, and give clients and tests
   one real refusal path.
 - **Billing off by default.** Most installations serve one company, with
-  no commercial relationship between operator and accounts. With billing off
+  no commercial relationship between operator and organizations. With billing off
   they run no entitlement checks and see every feature, which is what the
   maintainer asked for, while the gates exist and are tested for those who
   turn billing on.
@@ -504,7 +573,18 @@ acceptance feature that runs work therefore runs it on a private pool.
   mistake. Pausing work and refusing growth keeps data and running
   infrastructure intact, and an upgrade needs no restore.
 - **403 for both new slugs.** Neither is transient: retrying does not help
-  until an operator changes the account, which 429 or 409 would not convey.
+  until an operator changes the organization, which 429 or 409 would not
+  convey.
+- **The tier on the organization, the pool across its accounts.** The tier
+  is the agreement, and one agreement covers several business entities, so
+  entitlement belongs where the agreement is. Pooling the limits charges
+  the agreement once for a member who works in two entities, and account
+  limits let the organization divide its pool without the operator.
+- **An organization API in the served API, an operator API apart.** What
+  an organization admin manages is the customer's own data and belongs on
+  the customer's surface, under a capability of its own; what the operator
+  manages spans customers and stays in a document no customer credential
+  reaches.
 - **Refusal over simulation.** A fake billing or Entra success looks like
   progress in a test and fails in production. `installation-unsupported`
   is explicit and testable.
@@ -516,9 +596,12 @@ acceptance feature that runs work therefore runs it on a private pool.
   `BillingTier` value, and `tierFeatures` returns infraweave feature names.
   The enum names Spacelift's plan generations and cannot express a tier an
   operator defines.
-- **Departure from Spacelift:** billing is off by default, so every account
-  behaves as Enterprise; tiers and grants are managed through an operator
+- **Departure from Spacelift:** billing is off by default, so every
+  organization behaves as Enterprise; tiers and grants are managed through an operator
   API that has no Spacelift counterpart.
+- **Departure from Spacelift:** the tier, grants and limits belong to the
+  organization, above the account, and the `Organization` tag has no
+  Spacelift counterpart.
 - **Departure from Spacelift:** the billing mutations refuse; reads answer
   with local meaning.
 - **Departure from Spacelift:** the Azure integration, Origin and global
@@ -570,7 +653,14 @@ acceptance feature that runs work therefore runs it on a private pool.
   - the seeded Enterprise tier lacks a feature or holds a limit.
 - **`TestUnitEntitlement`** (`internal/features`), table-driven: tier plus
   grants minus switch-offs, requirements, limit grants above and below the
-  tier, and billing off.
+  tier, and billing off; every account of an organization reads the same
+  entitlement.
+- **`TestAccPooledLimits`** (`internal/features`, PostgreSQL): two accounts
+  of one organization share the `seats` and `private-workers` pools, a
+  member admitted by both holds one seat, an account limit refuses before
+  the pool does with `scope: account`, an account limit above the pool
+  answers `422`, and two concurrent creates for the last seat let one
+  through.
 - **`TestUnitFeaturesConfig`** (`internal/features`) covers strict decoding
   of `features.disabled`, and the rejection of an unknown name, of
   `billing`, and of `SCANS`.
@@ -583,12 +673,16 @@ acceptance feature that runs work therefore runs it on a private pool.
   - a disabled `flows-engine` answers `feature-disabled` on Flows routes;
   - a skipped background job.
 - **`test/acceptance/features/platform_tiers.feature`**, billing on:
-  - an account on Starter+ creating a schedule answers
+  - an account whose organization is on Starter+ creating a schedule answers
     `feature-not-in-tier` naming Business and Enterprise;
   - a seat beyond the limit answers `limit-reached`;
   - the Business to Starter+ downgrade above, then the upgrade back;
-  - a tier change applies to a running server without a restart;
-  - an account credential on the operator API answers 401.
+  - a tier change applies to a running server without a restart, in every
+    account of the organization;
+  - an account credential on the operator API answers 401;
+  - `organization create` creates the organization with its first account,
+    unclaimed, and the default tier; an organization token reaches the
+    `Organization` tag and no account route.
 - **`test/acceptance/features/platform_billing.feature`**: every Billing
   operation answers as the vendor-bound table says, and each mutation
   answers 403 `installation-unsupported`.
@@ -619,7 +713,8 @@ acceptance feature that runs work therefore runs it on a private pool.
 - [14: API key fields](../reference/14-spaces-rbac-and-identity.md#81-types-and-fields).
 - [22: the MCP endpoint](../reference/22-intelligence.md#71-endpoint-and-transport).
 - [GLOSSARY](../../../GLOSSARY.md): feature, capability, option, limit,
-  tier, grant, entitlement, billing, installation, account, operator.
+  tier, grant, entitlement, billing, installation, root, organization,
+  account, member, operator.
 - Decisions 0001, 0002 and 0003; decisions 0004, 0006, 0007, 0008, 0011,
   0012, 0013, 0019 and 0022, written alongside this one.
 - [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745) (`Deprecation`),

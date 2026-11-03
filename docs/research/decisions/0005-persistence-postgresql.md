@@ -79,9 +79,13 @@ Every stateful feature needs a store, and several records wait on this one:
   | `database.max_conns` | 20 | Pool size per replica |
   | `database.statement_timeout` | 30s | Set on each connection |
   | `database.idle_in_transaction_timeout` | 60s | `idle_in_transaction_session_timeout` on each connection |
-  | `database.iam_auth` | `none` | `aws` signs a fresh RDS IAM token for each new connection in pgx's `BeforeConnect` hook, as self-hosted Spacelift does ([24 section 3.1](../reference/24-self-hosted-reference.md#31-postgresql)) |
+  | `database.iam_auth` | `none` | `aws`, `azure` or `gcp`: pgx's `BeforeConnect` hook fetches a fresh token for each new connection and uses it as the password. `aws` signs an RDS IAM token, as self-hosted Spacelift does ([24 section 3.1](../reference/24-self-hosted-reference.md#31-postgresql)); `azure` takes an Entra token for Azure Database for PostgreSQL from `azidentity`'s default chain; `gcp` takes a Cloud SQL IAM database authentication token from Application Default Credentials. Every value but `none` requires `sslmode` `require`, `verify-ca` or `verify-full` in `database.url`, and fails the start otherwise, because the token is a bearer credential |
   | `database.migrate` | `auto` | `auto` applies pending migrations at start; `check` refuses to start while any are pending |
 
+- **No Cloud SQL connector.** `gcp` connects to the instance's address over
+  TLS like any PostgreSQL server; the Cloud SQL Go connector would add a
+  second connection path and a dependency that the token alone makes
+  unnecessary.
 - **One listening connection.** Each replica holds one dedicated connection
   outside the pool for `LISTEN`. It reconnects with backoff. After a reconnect,
   every waiter re-checks its condition, because notifications sent while the
@@ -115,7 +119,8 @@ Every stateful feature needs a store, and several records wait on this one:
 | Foreign keys | Every foreign key column is indexed |
 | Optimistic concurrency | Mutable aggregates with concurrent writers carry `version bigint`. A conditional `UPDATE ... WHERE version = $n` detects a lost update. Runs use `state_version` ([0008](0008-run-execution-and-worker-protocol.md)) |
 
-Flows maps its organization onto the account and keeps its own identifiers
+A Flows organization, the top of Spacelift Flows' hierarchy, is an infraweave
+account, and Flows keeps its own identifiers
 ([28 section 12.11](../reference/28-data-model.md#1211-flows),
 [0018](0018-flows-runtime.md)). Its tables live
 in the same database, in the `flows` PostgreSQL schema that
@@ -185,8 +190,9 @@ in the same database, in the `flows` PostgreSQL schema that
   with 10 to 100 ms of jittered delay. So `fn` must have no effect outside the
   database. External effects are enqueued as jobs inside the transaction
   ([0011](0011-persistent-work-queue.md)) and happen after commit.
-- **Row locks** use `SELECT ... FOR UPDATE`, taken in a fixed order: account,
-  space, stack, run, worker. Code that needs two rows of one table locks them in
+- **Row locks** use `SELECT ... FOR UPDATE`, taken in a fixed order:
+  organization entitlement ([0021](0021-capability-scope-and-supersession.md#limits)),
+  account, space, stack, run, worker. Code that needs two rows of one table locks them in
   ID order.
 - **Long waits.** No request holds a transaction or a pooled connection while it
   waits for something outside the database. A held worker poll is the
@@ -239,10 +245,17 @@ sees the same keys, buckets and switches.
   |---|---|
   | Put, get, head, delete | Round-trips bytes and size; `Get` and `Head` of a missing key return `objectstore.ErrNotFound`; deleting a missing key succeeds |
   | Multipart | An object above `objectstore.part_size` (default 16 MiB) is written in parts: an S3 multipart upload, a GCS resumable upload in chunks, Azure staged blocks committed by a block list, or a temporary file on `fs`. A failed upload leaves no readable object, and the driver aborts what it started |
-  | Checksums | Every write carries the SHA-256 that `blob_objects` records. `s3` sends it as `x-amz-checksum-sha256`, which the store verifies. `gcs` and `azureblob` have no SHA-256 the service verifies, so the driver hashes the stream as it uploads and, on a mismatch, deletes the object and fails; the service's own CRC32C (GCS) or CRC64 (Azure) still guards each transfer. No driver computes or sends MD5, because `GODEBUG=fips140=only` refuses it ([0013](0013-secrets-at-rest.md#fips-140-3)) |
+  | Checksums | Every write carries the SHA-256 that `blob_objects` records. `s3` sends it as `x-amz-checksum-sha256`, which the store verifies. `gcs` and `azureblob` have no SHA-256 the service verifies, so the driver hashes the stream as it uploads and, on a mismatch, fails the write and leaves the object under its `pending` row for `blob.expire` to delete; the service's own CRC32C (GCS) or CRC64 (Azure) still guards each transfer. No driver computes or sends MD5, because `GODEBUG=fips140=only` refuses it ([0013](0013-secrets-at-rest.md#fips-140-3)) |
   | Signed URLs | `GET` and `PUT` URLs that expire after their TTL and bind the method, key and declared size; a `PUT` URL on `s3` also binds the checksum |
   | Lifecycle | Expiry is infraweave's own (below): a `live` object past `expires_at` and a `pending` object older than 24 hours are deleted by `blob.expire`. Nothing relies on a bucket lifecycle rule or on bucket versioning |
 
+- **`serve` never deletes.** `serve` holds the store as
+  `objectstore.Writer`, the interface without `Delete`, and only
+  `scheduler` holds the full `Store`, for `blob.delete` and `blob.expire`.
+  So the identity `serve` runs as needs no delete permission on any bucket
+  ([0020](0020-reference-deployments-and-packaging.md)), and a compromised
+  API process cannot erase state versions or audit bodies. A write that
+  fails after its object exists leaves the object to `blob.expire`.
 - **Logical stores.** Each store is a key prefix in one bucket by default. Any
   store can be given its own bucket (`objectstore.buckets.<store>`), so its
   replication or encryption can differ.
@@ -259,6 +272,7 @@ sees the same keys, buckets and switches.
   | `deliveries` | Outbound webhook request and response bodies | Event delivery | 1 day | decision 0015 |
   | `inbox` | Inbound webhook bodies above the inline limit, and queue payloads above 64 KiB | VCS intake, queue | 2 days | [0012](0012-vcs-integration-model.md), [0011](0011-persistent-work-queue.md) |
   | `run-observability` | Worker traces and metrics artifacts | Runner | 60 days | [0008](0008-run-execution-and-worker-protocol.md) |
+  | `flows-events` | Flows event bodies above the inline limit | Flows engine | `flows.retention` | [0018](0018-flows-runtime.md) |
 
   The defaults follow the retention that self-hosted Spacelift's docs suggest
   for the matching buckets; `run-artifacts` has no matching bucket, and its 30
@@ -298,7 +312,8 @@ sees the same keys, buckets and switches.
   - **Uploads.** A `PUT` URL signs the expected `Content-Length` and, on
     `s3`, `x-amz-checksum-sha256`. Committing an upload checks the size with
     `Head`. On `s3` the store has already checked the SHA-256; on `gcs` and
-    `azureblob` the commit reads the object back once and compares it; on `fs`
+    `azureblob` the commit reads the object back once and compares it, and a
+    mismatch fails the commit and leaves the row `pending`; on `fs`
     infraweave's own `PUT` handler hashes while it writes.
   - **Who uses them.** Browsers, runners and launchers reach object storage
     only through these URLs. So the object store's endpoint must be reachable
@@ -488,7 +503,15 @@ sees the same keys, buckets and switches.
   - A floor test starts infraweave against PostgreSQL one major below the
     floor and asserts that it refuses to start.
   - Tests of `blob_objects` cover orphan cleanup of `pending` rows and
-    deletion after commit.
+    deletion after commit; a `gcs` or `azureblob` checksum mismatch leaves
+    the object under a `pending` row and deletes nothing.
+  - A unit test asserts that `serve`'s composition receives an
+    `objectstore.Writer` and that no `serve` dependency holds a `Store`.
+- **IAM database authentication.** Unit tests with a fake token source
+  assert that each `database.iam_auth` value sets a new token as the
+  password of every new connection and that a weak `sslmode` fails the
+  start; the reference deployments' smoke tests connect with each
+  ([0016](0016-testing-and-acceptance.md)).
 - **0003 across replicas.** Gherkin acceptance features run two server
   instances on one database:
   - `api_idempotency_replicas.feature`: a replay through the other instance, and

@@ -173,8 +173,10 @@ and `infraweave.audit.*` instruments,
   under infraweave's names: the `spacelift_` prefix becomes `infraweave_`,
   as decision [0001](0001-rest-first-spacelift-surface.md) renames provider
   resources, and types, labels and units stay as promex has them. Every
-  series also carries an `account` label, because one installation hosts
-  many accounts ([0007](0007-authorization-spaces-and-roles.md)). A separate
+  series also carries an `account` label, the account's slug, and an
+  `organization` label, its organization's slug, because one installation
+  hosts many organizations and accounts
+  ([0007](0007-authorization-spaces-and-roles.md#tenancy)). A separate
   path keeps installation-wide series off the per-process `/metrics`, so the
   operator scrapes them through one Service target instead of once per
   replica.
@@ -186,8 +188,8 @@ and `infraweave.audit.*` instruments,
 |---|---|
 | `publicworkerpool` | the public worker pool of decision 0008 when one is configured; otherwise zeros, as Spacelift's self-hosted exporter reports |
 | `workerpools` | worker pools and their registered workers: pending runs, busy workers, workers, drained workers |
-| `usage` | the `usage` read: the trailing 30-day window as start and end, run minutes on private and public worker pools times 60, and seats in use ([19 section 11](../reference/19-events-notifications-audit.md#11-usage-data-and-usage-export)) |
-| `aggregates` | the `metrics` read: stacks by state, resources by drift, average stack size, and average and median run duration in nanoseconds, the unit Spacelift uses despite the name |
+| `usage` | the `usage` read: the trailing 30-day window as start and end, run minutes on private and public worker pools times 60, and seats in use by the account's users and keys ([19 section 11](../reference/19-events-notifications-audit.md#11-usage-data-and-usage-export)); the organization's pooled seat count is the `Organization` tag's usage read ([0021](0021-capability-scope-and-supersession.md#limits)), because a member admitted by two accounts holds one seat |
+| `aggregates` | the `metrics` read, whose schema Spacelift calls `SpaceliftMetrics` and infraweave serves as `AccountMetrics` (0001's rename table): stacks by state, resources by drift, average stack size, and average and median run duration in nanoseconds, the unit Spacelift uses despite the name |
 
 - **Configuration**, mirroring promex's flags:
   `telemetry.account_metrics.enabled` (default `true`),
@@ -297,7 +299,7 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
   through their OTLP-capable agents.
 - **Departure from Spacelift:** the exporter's series are served by
   infraweave itself at `/metrics/accounts`, under the `infraweave_` prefix
-  and with an `account` label, not by a separate exporter process that
+  and with `account` and `organization` labels, not by a separate exporter process that
   queries the API with an API key.
 - **Departure from Spacelift:** probes are `/livez`, `/readyz` and
   `/startupz` on `:9090`, not `/readiness` and `/startup` on `:8080`; port
@@ -332,7 +334,7 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
   series.
 - `TestUnitAccountMetricNames`: the names, types and label sets served
   equal those in promex's collectors at the commit report 19 cites, with
-  the prefix renamed and the `account` label added; the promex names are
+  the prefix renamed and the `account` and `organization` labels added; the promex names are
   held as a fixture extracted under its MIT licence.
 - `test/acceptance/features/observability_health.feature` (`@postgres`
   `@objectstore`): startup ordering; `/readyz` failing when PostgreSQL

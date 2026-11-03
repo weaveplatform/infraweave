@@ -62,16 +62,18 @@ stored data needs migrating, since its state is a local SQLite file.
   integration under `ai.default_integration`. It appears in the API with
   `isInstallationProvided: true`, `space: null`, read-only except for
   `aiIntegrationToggle`, as Spacelift's provided integration does.
-- Spend on the default integration counts against the account's
-  `ai-budget` limit of decision
-  [0021](0021-capability-scope-and-supersession.md), in US dollars per
-  30-day period that starts with the account's first metered turn. Spend
-  is the turn's input and output tokens priced by the operator's
-  per-model rates in `ai.default_integration.models[].price`.
-  `tokenUsage` reports the period's spend and `tokensResetAt` its end. A
-  turn that would start once the budget is spent answers `403`
-  `limit-reached` with `limit: ai-budget` and the account's value, like
-  every other limit. While `billing` is off no limit applies, so the
+- Spend on the default integration counts against the `ai-budget` limit
+  of decision [0021](0021-capability-scope-and-supersession.md#limits),
+  pooled across the organization's accounts, in US dollars per 30-day
+  period that starts with the organization's first metered turn; an
+  organization admin may give an account a lower account limit. Spend is
+  the turn's input and output tokens priced by the operator's per-model
+  rates in `ai.default_integration.models[].price`. `tokenUsage` reports
+  the account's spend in the period, and `tokensResetAt` the period's end.
+  A turn that would start once the organization's pool or the account's
+  limit is spent answers `403` `limit-reached` with `limit: ai-budget`,
+  the `scope` that ran out (`organization` or `account`) and that scope's
+  value, like every other limit. While `billing` is off no limit applies, so the
   default integration is unmetered. BYOM integrations are never metered:
   the customer pays its own provider.
 - With no default configured, nothing is installation-provided: the list
@@ -142,13 +144,16 @@ provider mid-way ([22 section 4.2](../reference/22-intelligence.md#42-conversati
   [22 section 2.1](../reference/22-intelligence.md#21-settings) are
   served with Spacelift's behaviour: Intelligence, Infra Assistant and
   Build mode default off, enabling requires the terms, and a non-admin can
-  request enabling.
+  request enabling. Their names are 0001's renames: `aiEnabled`,
+  `aiTermsAccepted`, `aiTermsLatestVersion` and `accountSetAiEnabled`,
+  with the paths `/ai-enabled`, `/ai-terms-accepted`,
+  `/ai-terms-latest-version` and `/account/set-ai-enabled`.
 - The features are decision 0021's. `ai-integrations` gates every AI
   integration, conversation and assistant operation and the whole `/mcp`
   endpoint; `intent` gates the Intent operations and the `intent` tool.
   Each answers `403` `feature-disabled` when switched off and `403`
-  `feature-not-in-tier` when billing is on and the account's entitlement
-  lacks it.
+  `feature-not-in-tier` when billing is on and the organization's
+  entitlement lacks it.
 - `ai-account-controls` (Spacelift's `ACCOUNT_AI_CONTROL`) gates the four
   toggle mutations. Without it they answer one of those problems and the
   toggles keep the values in `ai.account_defaults`. What Spacelift gates
@@ -267,7 +272,7 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 | Tools | `discover`, `query`, `provider`, `mutate`, `intent` from the shared tool layer |
 | OAuth | Protected-resource metadata at `/.well-known/oauth-protected-resource/mcp`; authorization code with PKCE and dynamic client registration on decision 0006's authorization server |
 | Scopes | `mcp:read` (`discover`, `query`, `provider`) and `mcp:write` (adds `mutate`, `intent`; implies `mcp:read`), as [22 section 7.3](../reference/22-intelligence.md#73-authentication) records |
-| Redirect hosts | Loopback, a built-in list of known client hosts, and the account's OAuth redirect allowlist (bare host or one leading `*.`; `https` only) |
+| Redirect hosts | Loopback and the account's `oauthRedirectAllowedHosts` (bare host or one leading `*.`; `https` only), as decision 0006 defines; no built-in list of client hosts, so a hosted client works once an account admin adds its host |
 | Bearer tokens | An API token of decision 0006 is accepted unnarrowed, as Spacelift accepts `spacectl` tokens |
 | `tools` parameter | Narrowing only: intersected with scope, unknown names ignored, `discover` always kept, `intent` brings `provider` ([22 section 7.4](../reference/22-intelligence.md#74-the-tools-query-parameter)) |
 | `/intent/mcp` | Not served: merged into `/mcp` and announced for removal, so superseded (0021) |
@@ -280,7 +285,7 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 | `ai.default_integration.provider`, `.credentials_ref`, `.base_url`, `.models` | unset | The installation-provided integration |
 | `ai.default_integration.models[].price.input`, `.output` | `0`, `0` | US dollars per million tokens, used to meter the `ai-budget` limit |
 | `ai.terms.version`, `ai.terms.content_file` | `1`, built-in notice | Terms shown before enabling |
-| `ai.account_defaults.*` | all off | Toggle values when the account lacks `ai-account-controls` |
+| `ai.account_defaults.*` | all off | Toggle values when the organization's entitlement lacks `ai-account-controls` |
 | `ai.conversations.retention` | `0` | Idle conversation deletion |
 | `ai.summaries.log_bytes` | `65536` | Log tail per phase in summaries |
 | `intent.lock_timeout`, `intent.import_timeout` | `5m`, `5m` | Intent timings |
@@ -303,7 +308,9 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 - **The budget as a tier limit.** Spacelift budgets the provided model by
   tier, so the budget is a limit like seats or private workers: one
   problem type, one grant mechanism, and no second, installation-wide
-  budget to reconcile with the tiers.
+  budget to reconcile with the tiers. It is pooled per organization
+  because the tier is the organization's agreement, and the account limit
+  lets the organization keep one entity from spending the others' share.
 - **One proxy for every call.** Keys stay server-side, the enabled flag and
   budget are enforced in one place, and redaction cannot be bypassed by a
   surface that forgot it.
@@ -328,11 +335,19 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 - **Departure from Spacelift:** Intent verifies provider checksums and
   signatures, which `spacelift-intent` does not; what hosted Intent does is
   unknown.
+- **Departure from Spacelift:** OAuth redirects are limited to loopback and
+  `oauthRedirectAllowedHosts`, with no built-in list of known client hosts,
+  because which hosted clients to trust is the account's decision (0006).
+- **Departure from Spacelift:** the AI budget is pooled per organization,
+  with optional account limits, since Spacelift has no level above the
+  account.
+- **Departure from Spacelift:** the toggles and terms are named `ai*`, as
+  no infraweave name says Spacelift (0001).
 
 ## Constraints
 
-- **Unverified contracts.** The hosted tools' input schemas (C225), the
-  OAuth paths (C226), Build mode's access to general mutations (C212), the
+- **Unverified contracts.** The hosted tools' input schemas (C225), Build
+  mode's access to general mutations (C212), the
   operation transitions (C220, C221) and `ai-account-controls` (C215) are
   infraweave's own until captured
   ([30, Intelligence](../reference/30-open-questions.md#intelligence-report-22)).
@@ -349,8 +364,10 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   test server that models its API, covering streaming, tool calls, usage,
   `429` retries and errors.
 - `TestUnitAIRedaction`, `TestUnitAIBudget`: masked secrets never reach the
-  test server; spend metering per period and `limit-reached` with billing
-  on, no metering with billing off.
+  test server; spend metering per period, pooled across two accounts of
+  one organization, `limit-reached` with `scope: organization` when the
+  pool is spent and `scope: account` when an account limit is, with
+  billing on; no metering with billing off.
 - `test/acceptance/features/ai_integrations.feature` (`@postgres`, `@ai`):
   create and validate each provider type, sealed keys, the installation
   default, toggles, terms gating, `feature-disabled` and

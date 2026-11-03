@@ -33,6 +33,99 @@ any feature work begins.
 - **Every client is built on the same API.** The SDK, the CLI, the provider
   and the console call the served REST API and nothing else; no client has a
   private route.
+- **Surfaces outside the parity surface.** The deploy document also serves
+  the `Organization` tag, the organization admins' API for accounts,
+  members, identity providers, account limits and usage
+  ([0021](0021-capability-scope-and-supersession.md)), which has no
+  Spacelift counterpart. The operator API is a document of its own (0021).
+
+### Names
+
+- **No infraweave name says Spacelift.** No operationId, path, tag, schema,
+  property, enum value, header, parameter, environment variable,
+  configuration key, file name, metric, policy input key or command that
+  infraweave serves or reads contains "spacelift" in any case. Spacelift's
+  names appear only in the reference under `api/reference/spacelift/`, in
+  the `x-` extensions that map a served name back to it (`x-graphql`,
+  `x-terraform`), in mapping tables such as the one below, and in text that
+  describes Spacelift.
+- **No name says root but the installation's.** Root is the installation's
+  top node ([GLOSSARY](../../../GLOSSARY.md)). An account's top space is
+  addressed by the account's slug, and Spacelift's root admin is the account
+  admin ([0007](0007-authorization-spaces-and-roles.md)).
+- **Reference names keep their meaning.** Spacelift's account is
+  infraweave's account, so reference names that say account
+  (`accountUpdateAuthorizationScheme`, `/account/...`) are served as they
+  are. A served name that says organization means the glossary's
+  organization, so a reference name that uses the word for an account is
+  renamed.
+- **Descriptions are prose.** A served description says infraweave where it
+  describes infraweave's behaviour. The name tests do not read descriptions;
+  review does.
+
+### Rename table
+
+This table is the one list of reference names that infraweave serves or
+reads under another name; records that rename a name cite it rather than
+repeat it. A row whose two cells are each one code span names an
+identifier, and `TestUnitServedNames` reads those rows: `Schema.name` limits
+a row to that schema's property or enum value, and `*` stands for any run of
+characters. A row in words names a concept rather than an identifier. The
+records that own the renamed behaviour are 0006 (the AWS account ID, the
+session channel, the token file), 0007 (admins and the top space), 0008
+(run variables and the config element category), 0009 (the policy input),
+0010 and 0012 (environment variables, the `INFRAWEAVE` provider, the
+comment command), 0017 (metrics), 0018 (Flows), 0019 (AI), 0022 and 0024
+(repository files).
+
+| Reference name | infraweave name |
+|---|---|
+| `spaceliftIntelligenceEnabled` | `aiEnabled` |
+| `/spacelift-intelligence-enabled` | `/ai-enabled` |
+| `spaceliftIntelligenceTermsAccepted` | `aiTermsAccepted` |
+| `/spacelift-intelligence-terms-accepted` | `/ai-terms-accepted` |
+| `spaceliftIntelligenceTermsLatestVersion` | `aiTermsLatestVersion` |
+| `/spacelift-intelligence-terms-latest-version` | `/ai-terms-latest-version` |
+| `accountSetSpaceliftIntelligenceEnabled` | `accountSetAiEnabled` |
+| `/account/set-spacelift-intelligence-enabled` | `/account/set-ai-enabled` |
+| `AccountSetSpaceliftIntelligenceEnabledRequest` | `AccountSetAiEnabledRequest` |
+| `AIIntegration.isSpaceliftProvided` | `isInstallationProvided` |
+| `spaceliftAwsAccountId` | `installationAwsAccountId` |
+| `/spacelift-aws-account-id` | `/installation-aws-account-id` |
+| `SpaceliftMetrics` | `AccountMetrics` |
+| `VCSProvider.SPACELIFT` | `INFRAWEAVE` |
+| `ConfigElementCategory.SPACELIFT_ENVIRONMENT` | `INFRAWEAVE_ENVIRONMENT` |
+| `SessionChannel.SPACECTL` | `INFRAWEAVECTL` |
+| `apiKeyEnableNonRootManagers` | `apiKeyEnableNonAdminManagers` |
+| `/account/api-key-non-root-managers` | `/account/api-key-non-admin-managers` |
+| `ApiKeyEnableNonRootManagersRequest` | `ApiKeyEnableNonAdminManagersRequest` |
+| `apiKeysManagedByNonRootAdmins` | `apiKeysManagedByNonAdmins` |
+| `/api-keys-managed-by-non-root-admins` | `/api-keys-managed-by-non-admins` |
+| `accountToggleAllowNonRootAdminSpaceCreation` | `accountToggleAllowNonAdminSpaceCreation` |
+| `/account/toggle-allow-non-root-admin-space-creation` | `/account/toggle-allow-non-admin-space-creation` |
+| `allowNonRootAdminSpaceCreation` | `allowNonAdminSpaceCreation` |
+| `/allow-non-root-admin-space-creation` | `/allow-non-admin-space-creation` |
+| `FlowsIntegration.organizationID` | `accountID` |
+| `FlowsIntegration.organizationName` | `accountName` |
+| `SPACELIFT_*` | `INFRAWEAVE_*` |
+| `TF_VAR_spacelift_*` | `TF_VAR_infraweave_*` |
+| `spacelift.*` | `infraweave.*` |
+| `spacelift_*` | `infraweave_*` |
+| `spacelift-promex` | `/metrics/accounts` |
+| `.spacelift/config.yml` | `.infraweave/config.yml` |
+| `.spacelift/workflow.yml` | `.infraweave/workflow.yml` |
+| `/mnt/workspace/spacelift.oidc` | `/mnt/workspace/infraweave.oidc` |
+| `/spacelift` | `/infraweave` |
+| `spacectl` | `infraweavectl` |
+| Root admin: `space-admin` on `root` | Account admin: `space-admin` on the account's top space |
+| Non-root admin | Non-admin: a space admin below the account's top space |
+| The `root` space | The account's top space, whose ID is the account's slug |
+| Flows organization and its organization admin | The account and its account admin |
+| Flows HTTP Endpoint `audience` value `organization` | `account` |
+
+`BillingTierFeature` is not served, so its values are mapped to feature
+names rather than renamed; decision 0021's mapping table covers
+`SPACELIFT_INTELLIGENCE` with the rest.
 
 ### SDK: `pkg/sdk`
 
@@ -67,9 +160,9 @@ clients it wraps.
     becomes a typed error keyed by its slug
     ([0022](0022-api-errors-and-update-semantics.md)), so a caller tests for
     `not-found` or `invalid-state` with `errors.As`, never by matching text.
-- **Names.** SDK services follow the reference spec's tags, and types and
-  fields follow the names Spacelift's provider uses, so the SDK, the CLI and
-  the provider read alike.
+- **Names.** SDK services follow the served spec's tags, and types and
+  fields follow the names Spacelift's provider uses after the rename table
+  above, so the SDK, the CLI and the provider read alike.
 - **Go only.** Other languages can be generated later from the same served
   bundle; the console's TypeScript client is generated that way.
 - **Boundary.** `pkg/sdk` imports nothing under `internal/`, as for
@@ -87,9 +180,10 @@ clients it wraps.
   and `api`, with the subcommands and capabilities that
   [06 section 8](../reference/06-spacectl-and-clients.md#8-what-an-infraweave-cli-must-cover)
   lists. Flows commands, mirroring `flowctl`'s, sit under one `flows` group.
-  Commands for surfaces Spacelift's CLI lacks, such as the operator's account
-  and tier management ([0021](0021-capability-scope-and-supersession.md)),
-  sit in groups of their own. `infraweavectl api` sends any REST request and
+  Commands for surfaces Spacelift's CLI lacks, such as the operator's
+  organization and tier management and the organization admins' account
+  management ([0021](0021-capability-scope-and-supersession.md)), sit in
+  groups of their own. `infraweavectl api` sends any REST request and
   prints the served OpenAPI document.
 - **MCP.** `infraweavectl mcp` proxies stdio to the hosted `/mcp` surface
   with the CLI's credentials and adds no tools of its own
@@ -110,7 +204,8 @@ clients it wraps.
   plugin framework and serves protocol 6.
 - **Names.** Resources, data sources and attributes mirror Spacelift's
   provider with an `infraweave_` prefix in place of `spacelift_`
-  (`spacelift_stack` becomes `infraweave_stack`), and import IDs keep the
+  (`spacelift_stack` becomes `infraweave_stack`), with the rest of the
+  rename table applied to attribute names, and import IDs keep the
   shapes [05](../reference/05-terraform-provider.md#what-this-means-for-infraweave)
   records. Provider settings mirror Spacelift's (`api_key_endpoint`,
   `api_key_id`, `api_key_secret`, `api_token`) with `INFRAWEAVE_` environment
@@ -155,6 +250,17 @@ Decision 0023 records its design.
   parity check compares like with like. The names are infraweave's own
   through the prefix, so no Spacelift name or alias appears in infraweave's
   surfaces.
+- **No Spacelift name on a served surface.** A served name is infraweave's
+  contract with its own clients. A name that says Spacelift would present
+  infraweave's behaviour as Spacelift's, and since no Spacelift client works
+  against infraweave, keeping it buys no compatibility. Renaming only where
+  a name says Spacelift, says root for an account's top space, or says
+  organization for an account keeps every other reference name, so
+  migration stays a rename of a few names from one table.
+- **One table, checked against the bundle.** A rename recorded only in the
+  record that makes it is easy to miss when a family is scaffolded; one
+  table that a test reads catches a scaffolded name the moment it is
+  bundled.
 - **One provider, not two.** Spacelift ships Flows as a separate product with
   its own login and its own provider. infraweave's Flows shares the account,
   identity and API with Deploy (0018), so a second provider would only
@@ -189,6 +295,13 @@ Implemented:
   core collections, ids moved from inputs into paths, and auth.
 - `make verify-generate` fails when `pkg/client` differs from what the
   served bundle generates.
+- `TestUnitServedNames` (`api/deploy_test.go`) fails when any path, tag,
+  operationId, schema, property, enum value, parameter or header name of the
+  served deploy bundle contains "spacelift" in any case, or matches a
+  reference name in the rename table above, or when a row's infraweave name
+  says spacelift. A fixture that serves the property
+  `spaceliftAwsAccountId` proves that both checks reach the names they
+  claim to read.
 
 Planned:
 

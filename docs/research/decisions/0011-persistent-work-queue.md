@@ -164,11 +164,11 @@ has no counterpart, because workers report over HTTP straight to the API
   ([0021](0021-capability-scope-and-supersession.md)), outside the Spacelift
   surface, list, retry and discard them: `GET /queue/jobs`,
   `POST /queue/jobs/{id}/retry` and `DELETE /queue/jobs/{id}`. A retry
-  resets `attempt` to zero. Jobs span every account, so only operator
+  resets `attempt` to zero. Jobs span every organization, so only operator
   principals reach them ([0007](0007-authorization-spaces-and-roles.md)).
 - **Feature check.** Before a handler runs, the claim checks the job kind's
-  feature against the account's entitlement
-  ([0021](0021-capability-scope-and-supersession.md)). A job of a feature
+  feature against the entitlement of the job's account, which is its
+  organization's ([0021](0021-capability-scope-and-supersession.md)). A job of a feature
   outside it completes as `succeeded` with outcome `skipped`, is logged and
   counted in `infraweave.features.skipped`, and is not retried.
 - **Pruning.** Succeeded and cancelled jobs are deleted after one hour
@@ -270,6 +270,7 @@ once by three rules.
   | `authn.keys.rotate` | 1 day | [0006](0006-authentication-and-tokens.md) |
   | `run.timers` | 1 minute | [0008](0008-run-execution-and-worker-protocol.md) |
   | `worker.reap` | 30 seconds | [0008](0008-run-execution-and-worker-protocol.md) |
+  | `workers.sample` | 1 minute | [0008](0008-run-execution-and-worker-protocol.md) |
   | `state.retention` | 1 day | [0010](0010-state-backend.md) |
   | `vcs.deliveries.prune` | 1 hour | [0012](0012-vcs-integration-model.md) |
   | `secrets.rotate` | 1 day | [0013](0013-secrets-at-rest.md) |

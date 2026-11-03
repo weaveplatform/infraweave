@@ -31,7 +31,7 @@ domains decide the shape of the repository:
 - **Workers run on customer hosts with outbound HTTPS only**
   ([report 10](../reference/10-workers-and-execution.md#42-transports)), so
   worker-side code must not depend on server-side persistence.
-- **Flows maps its organization onto the account** and keeps its own
+- **A Flows organization is an infraweave account**, and Flows keeps its own
   projects and UUIDv7 identifiers, and Intelligence reads across every domain
   ([report 23](../reference/23-flows.md#2-resource-hierarchy),
   [report 28](../reference/28-data-model.md#what-this-means-for-infraweave)).
@@ -101,7 +101,7 @@ summary:
     referencing domain removes its own rows first, through its `api/` or in
     response to the owning domain's event. Within a domain, `ON DELETE`
     rules are chosen per key, as 0005 says.
-- **Cross-domain effects.** Queries, authorisation and policy decisions are
+- **Cross-domain effects.** Queries, authorization and policy decisions are
   synchronous calls on `api/` interfaces. Consequences are events appended
   to a transactional outbox in the producer's transaction. The `policies`
   domain owns the input contracts and returns decisions as data; it
@@ -111,7 +111,7 @@ summary:
   I/O, such as the run transition table, priority levels, policy combination
   and version numbering, sit in packages of their own and are tested as
   tables. Each VCS provider's webhook and API shapes stay in a package of
-  its own inside `vcs`, behind one normalised event.
+  its own inside `vcs`, behind one normalized event.
 - **Generated code.** Each spec's strict server is generated into
   `internal/platform/gen/<spec>`; `internal/app` composes the per-domain
   partial implementations by embedding, with `UnimplementedStrict` one
@@ -126,7 +126,15 @@ summary:
   [0021](0021-capability-scope-and-supersession.md)'s feature catalogue,
   entitlement and operator API form the `features` domain,
   `internal/features`, at the bottom of the domain graph: every domain may
-  import its `api/`, and it imports no domain. Decision
+  import its `api/`, and it imports no domain. It also holds each
+  organization's tier, grants, pooled limits and account limits, because
+  the entitlement is computed from them; its tables carry organization and
+  account IDs without foreign keys, since `access` sits above it. The tenancy of decision
+  [0007](0007-authorization-spaces-and-roles.md) (organizations, accounts,
+  members, identity providers, sessions, keys, the break-glass credential
+  and the OAuth authorization server of
+  [0006](0006-authentication-and-tokens.md)) forms the `access` domain,
+  `internal/access`, with authorization. Decision
   [0024](0024-expression-language.md)'s expression engine is
   `internal/platform/expr`, with no business rule, which the server and the
   runner both use. Its editor endpoints sit in an `expressions` domain,

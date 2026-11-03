@@ -150,8 +150,8 @@ carries the same binary.
   `additionalProperties: false` at every level, so `helm install` rejects a
   misspelt value.
 - **Secrets.** The database URL, object-store credentials (when workload
-  identity is not used), the local key of decision 0013, and the bootstrap
-  credential of decision 0006 come from `secrets.existingSecret` or from
+  identity is not used), the local key of decision 0013, and the operator
+  keys of decision 0006 (`auth.operator.keys`) come from `secrets.existingSecret` or from
   the cloud's secret store through the CSI driver. The chart never writes a
   secret value into a `ConfigMap`.
 
@@ -182,8 +182,24 @@ Rules every cloud module follows:
 - **Images.** It pins the chart and images to the module's own release.
 - **No static credentials.** Workloads use the cloud's workload identity,
   one identity per process mode, with least privilege: `scheduler` deletes expired
-  objects and `serve` does not. Object storage is private, and browsers and
-  workers reach it through pre-signed URLs only.
+  objects and `serve` does not, because `serve` holds no delete
+  ([0005](0005-persistence-postgresql.md#object-storage)). Object storage is
+  private, and browsers and workers reach it through pre-signed URLs only.
+  The database is reached with `database.iam_auth` set to the module's
+  cloud, so no database password exists either.
+- **Least privilege per process mode.** Each identity is granted exactly:
+
+  | Grant | `serve` | `scheduler` |
+  |---|---|---|
+  | AWS S3 | `s3:GetObject`, `s3:PutObject`, `s3:AbortMultipartUpload` on the bucket's objects | the same plus `s3:DeleteObject` |
+  | Google Cloud Storage | a custom role with `storage.objects.get` and `storage.objects.create`, and `iam.serviceAccounts.signBlob` on its own service account for signed URLs | the same plus `storage.objects.delete` |
+  | Azure Blob Storage | a custom role with the blob `read`, `write` and `add/action` data actions, and `generateUserDelegationKey/action` for SAS | the same plus the blob `delete` data action |
+  | Database | `rds-db:connect` for its database user (AWS); an Entra principal mapped to its PostgreSQL role (Azure); `roles/cloudsql.instanceUser` (Google) | the same |
+  | Key root | the KMS key's encrypt and decrypt, and sign when the signing backend is `kms` ([0006](0006-authentication-and-tokens.md#signing-keys)) | the same |
+
+  Google Cloud Storage needs `storage.objects.delete` to overwrite an
+  object, and `serve` never overwrites one (0005's keys are written once),
+  so create alone suffices.
 - **Outputs.** It outputs the server URL and the worker registration
   endpoint.
 - **Examples.** Each module has one example root per scenario under
@@ -199,7 +215,7 @@ because they scale on different signals:
 | `serve.replicas`, `scheduler.replicas` | `2`, `2` |
 | `serve.autoscaling` | CPU-based `HorizontalPodAutoscaler`, off |
 | `scheduler.autoscaling` | on `infraweave_queue_jobs` with `state="pending"` ([0017](0017-observability-and-health.md)), through KEDA when installed, off |
-| `publicWorkerPool.enabled` | `false`: the public worker pool, which the operator runs for every account ([0008](0008-run-execution-and-worker-protocol.md#pools), [0021](0021-capability-scope-and-supersession.md)) |
+| `publicWorkerPool.enabled` | `false`: the public worker pool, which the operator runs for every organization's accounts ([0008](0008-run-execution-and-worker-protocol.md#pools), [0021](0021-capability-scope-and-supersession.md)) |
 | `podDisruptionBudget.maxUnavailable` | `1` per process mode |
 | `terminationGracePeriodSeconds` | `serve` 45, `scheduler` 120; both exceed 0017's ready delay, request drain and flush caps combined |
 | `migrations.mode` | `hook`: a `pre-install,pre-upgrade` Job runs `infraweave migrate up`, and the process modes run with `database.migrate: check`; `startup` leaves decision 0005's default, `database.migrate: auto` |

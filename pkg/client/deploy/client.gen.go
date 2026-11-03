@@ -577,13 +577,13 @@ func (e CloudFormationResourceKind) Valid() bool {
 
 // Defines values for ConfigElementCategory.
 const (
-	SPACELIFTENVIRONMENT ConfigElementCategory = "SPACELIFT_ENVIRONMENT"
+	INFRAWEAVEENVIRONMENT ConfigElementCategory = "INFRAWEAVE_ENVIRONMENT"
 )
 
 // Valid indicates whether the value is a known member of the ConfigElementCategory enum.
 func (e ConfigElementCategory) Valid() bool {
 	switch e {
-	case SPACELIFTENVIRONMENT:
+	case INFRAWEAVEENVIRONMENT:
 		return true
 	default:
 		return false
@@ -1719,9 +1719,9 @@ const (
 	GITHUB              VCSProvider = "GITHUB"
 	GITHUBENTERPRISE    VCSProvider = "GITHUB_ENTERPRISE"
 	GITLAB              VCSProvider = "GITLAB"
+	INFRAWEAVE          VCSProvider = "INFRAWEAVE"
 	ORIGIN              VCSProvider = "ORIGIN"
 	SHOWCASE            VCSProvider = "SHOWCASE"
-	SPACELIFT           VCSProvider = "SPACELIFT"
 )
 
 // Valid indicates whether the value is a known member of the VCSProvider enum.
@@ -1743,11 +1743,11 @@ func (e VCSProvider) Valid() bool {
 		return true
 	case GITLAB:
 		return true
+	case INFRAWEAVE:
+		return true
 	case ORIGIN:
 		return true
 	case SHOWCASE:
-		return true
-	case SPACELIFT:
 		return true
 	default:
 		return false

@@ -271,7 +271,7 @@ ordinary REST operations and answer the problem details of decision
   `terraform state pull`.
 - **Rejected: locks in the object store.** Conditional writes differ across S3-compatible
   stores and do not exist on local disk; PostgreSQL row locks are already the
-  serialisation point for runs.
+  serialization point for runs.
 - **Force-unlock on an empty body.** Refusing it would leave `terraform force-unlock`
   always failing, so the usual Terraform answer to a stuck lock would not work. Limiting
   it to callers that may take the exclusive lock keeps it where an apply could already

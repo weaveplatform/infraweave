@@ -816,10 +816,10 @@ components:
       x-graphql-type: ConfigElement
     ConfigElementCategory:
       enum:
-        - SPACELIFT_ENVIRONMENT
+        - INFRAWEAVE_ENVIRONMENT
       type: string
       x-enum-descriptions:
-        SPACELIFT_ENVIRONMENT: Element is managed by Spacelift (API tokens, OIDC tokens, TF_VAR_spacelift_* metadata).
+        INFRAWEAVE_ENVIRONMENT: Element is managed by infraweave (API tokens, OIDC tokens, TF_VAR_infraweave_* metadata).
       x-graphql-type: ConfigElementCategory
     ConfigElementWithSource:
       properties:
@@ -6391,7 +6391,7 @@ components:
         - SHOWCASE
         - AZURE_DEVOPS
         - GIT
-        - SPACELIFT
+        - INFRAWEAVE
         - BLOB
         - ORIGIN
       type: string
@@ -6408,7 +6408,7 @@ components:
         GITLAB: GitLab - either self-hosted or managed (gitlab.com).
         ORIGIN: Origin - Cursor's git platform, integrated via a global Spacelift-owned app.
         SHOWCASE: Spacelift-managed virtual VCS provider used for onboarding new users.
-        SPACELIFT: Spacelift-native VCS provider with files stored in database.
+        INFRAWEAVE: infraweave-native VCS provider with files stored in the database.
       x-graphql-type: VCSProvider
     Version:
       description: Version represents a single version of the Module.

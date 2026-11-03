@@ -97,10 +97,12 @@ be air-gapped.
   Node.js process runs in production.
 - A `GET` for a path with no file returns `index.html`, so deep links work.
   Only console routes fall back: a path under a prefix that another handler
-  owns (`/api/`, `/flows/`, `/mcp`, `/.well-known/`, `/auth/`,
+  owns (`/api/`, `/flows/`, `/mcp`, `/.well-known/`, `/auth/`, `/oauth/`,
   `/admin-login`, `/worker/`, `/vcs-agent/`, `/webhooks/`, `/downloads/`,
   `/blobs/`, `/state/`, `/registry/` and the other protocol endpoints)
-  answers that handler's `404`, never `index.html`.
+  answers that handler's `404`, never `index.html`. The one console route
+  under such a prefix is `/flows/forms/`, decision 0018's Forms page, which
+  falls back like any console route.
 - Hashed asset files are served with a one-year immutable cache;
   `index.html` is served with `no-cache`, so a new release reaches every
   browser on its next navigation.
@@ -124,6 +126,19 @@ be air-gapped.
 - The console never decides a permission or a state transition. The server
   enforces every action, and a refused action is shown from its problem
   response ([0022](0022-api-errors-and-update-semantics.md)).
+- **One account at a time.** The console works in the session's account
+  (0006). Its account switcher lists `GET /auth/accounts` and switches
+  through `POST /auth/session/account`; a member that no account admits
+  sees the switcher empty and nothing else but its profile.
+- **The organization level** appears only when the organization has a
+  second account, or under organization settings, which organization admins
+  and the break-glass admin reach; an organization with one account reads
+  as a single account ([0007](0007-authorization-spaces-and-roles.md#tenancy)).
+  Organization settings use the `Organization` and `SSO` tags only.
+- **OAuth consent.** `/consent/{request ID}` is the console route of
+  0006's consent page: it shows the client, its redirect host, the scopes
+  and the account switcher, and approves or denies through
+  `POST /auth/oauth/requests/{id}/approve` or `/deny`.
 
 ### Delivery constraints on the page
 
@@ -284,7 +299,8 @@ Go coverage. golangci-lint remains the only Go linter.
 - Every journey fails on a CSP violation report, on a request to any other
   origin, and on an axe-core accessibility violation at level AA.
 - Go unit tests cover the `index.html` fallback, the paths that never fall
-  back, the cache headers, the CSP header and the placeholder page.
+  back (`/oauth/` among them), the cache headers, the CSP header and the
+  placeholder page.
 
 ## References
 
