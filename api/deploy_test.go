@@ -5,11 +5,13 @@ import (
 	"context"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"gopkg.in/yaml.v3"
 
 	"github.com/weaveplatform/infraweave/api"
 	"github.com/weaveplatform/infraweave/internal/openapibundle"
@@ -231,7 +233,7 @@ func (w *nameWalker) requestBody(where string, ref *openapi3.RequestBodyRef) {
 // operationIds, schema and property names, string enum values, parameter
 // names and header names. Descriptions, examples and x- extensions are left
 // out, because they hold prose and the mapping back to the reference, not
-// names a client uses.
+// names a client uses; spaceliftViolations reads the prose.
 func servedNames(doc *openapi3.T) []servedName {
 	w := &nameWalker{}
 	for _, tag := range doc.Tags {
@@ -325,13 +327,60 @@ func renameTable(t *testing.T) []renamed {
 	return rows
 }
 
-func spaceliftViolations(names []servedName) []string {
+// referenceExtensions map a served element back to the reference's
+// GraphQL, Bruno and provider sources, so their values are the reference's
+// own names by design. Every other extension, x-enum-descriptions among
+// them, is served text and is checked.
+var referenceExtensions = map[string]bool{
+	"x-bruno":           true,
+	"x-graphql":         true,
+	"x-graphql-arg":     true,
+	"x-graphql-args-of": true,
+	"x-graphql-in-path": true,
+	"x-graphql-kind":    true,
+	"x-graphql-omitted": true,
+	"x-graphql-type":    true,
+	"x-terraform":       true,
+}
+
+// spaceliftViolations lists every key and string of the document that says
+// spacelift in any case, outside referenceExtensions, each as its dotted
+// location: the location alone for a key, the location and value for a
+// string. Reading the YAML rather than the parsed document reaches
+// descriptions, summaries and examples that servedNames leaves out.
+func spaceliftViolations(t *testing.T, document []byte) []string {
+	t.Helper()
+	var root yaml.Node
+	if err := yaml.Unmarshal(document, &root); err != nil {
+		t.Fatal(err)
+	}
 	var found []string
-	for _, n := range names {
-		if strings.Contains(strings.ToLower(n.name), "spacelift") {
-			found = append(found, n.where+": "+n.name+" contains spacelift")
+	var walk func(where string, n *yaml.Node)
+	walk = func(where string, n *yaml.Node) {
+		switch n.Kind {
+		case yaml.DocumentNode, yaml.SequenceNode:
+			for _, c := range n.Content {
+				walk(where, c)
+			}
+		case yaml.MappingNode:
+			for i := 0; i+1 < len(n.Content); i += 2 {
+				key := n.Content[i].Value
+				if referenceExtensions[key] {
+					continue
+				}
+				at := strings.TrimPrefix(where+"."+key, ".")
+				if strings.Contains(strings.ToLower(key), "spacelift") {
+					found = append(found, at)
+				}
+				walk(at, n.Content[i+1])
+			}
+		case yaml.ScalarNode:
+			if strings.Contains(strings.ToLower(n.Value), "spacelift") {
+				found = append(found, where+": "+n.Value)
+			}
 		}
 	}
+	walk("", &root)
 	return found
 }
 
@@ -348,9 +397,11 @@ func renameViolations(names []servedName, rows []renamed) []string {
 	return found
 }
 
-// servedNamesFixture serves one reference name, so the test proves that a
-// scaffold copied from the reference fails both checks rather than passing
-// because the walker never reached its names.
+// servedNamesFixture serves one reference name and one reference
+// description, so the test proves that a scaffold copied from the reference
+// fails both checks rather than passing because a walker never reached its
+// names or its prose. The x-terraform value is the reference's own name and
+// must pass.
 const servedNamesFixture = `openapi: 3.0.3
 info: {title: fixture, version: "1"}
 paths: {}
@@ -358,18 +409,22 @@ components:
   schemas:
     Installation:
       type: object
+      description: Spacelift's installation
       properties:
-        spaceliftAwsAccountId: {type: string}
+        spaceliftAwsAccountId:
+          type: string
+          x-terraform: [spacelift_aws_integration.external_id]
 `
 
-// TestUnitServedNames fails when the deploy API serves a name that says
+// TestUnitServedNames fails when the deploy API serves text that says
 // spacelift in any case, or a reference name that decision 0001's rename
 // table replaces. Families are scaffolded from Spacelift's spec, so each
-// arrives carrying Spacelift's names; a scaffold that keeps one would make
-// infraweave's clients, SDK and provider depend on a vendor's name. The
-// spacelift check catches a rename the table lacks; the table check catches
-// reference names that never said spacelift, such as the non-root admin
-// settings. Descriptions are prose and are left to review.
+// arrives carrying Spacelift's names and descriptions; a scaffold that keeps
+// one would make infraweave's clients, SDK and provider depend on a vendor's
+// name, and its generated docs describe infraweave as Spacelift. The
+// spacelift check catches a rename the table lacks and a description left
+// unrewritten; the table check catches reference names that never said
+// spacelift, such as the non-root admin settings.
 func TestUnitServedNames(t *testing.T) {
 	rows := renameTable(t)
 	for _, r := range rows {
@@ -382,7 +437,7 @@ func TestUnitServedNames(t *testing.T) {
 		if len(names) == 0 {
 			t.Fatal("the deploy API serves no names")
 		}
-		for _, v := range append(spaceliftViolations(names), renameViolations(names, rows)...) {
+		for _, v := range append(spaceliftViolations(t, api.Deploy), renameViolations(names, rows)...) {
 			t.Error(v)
 		}
 	})
@@ -392,8 +447,12 @@ func TestUnitServedNames(t *testing.T) {
 			t.Fatal(err)
 		}
 		names := servedNames(doc)
-		if len(spaceliftViolations(names)) != 1 {
-			t.Errorf("spacelift check found %q, want spaceliftAwsAccountId", spaceliftViolations(names))
+		want := []string{
+			"components.schemas.Installation.description: Spacelift's installation",
+			"components.schemas.Installation.properties.spaceliftAwsAccountId",
+		}
+		if got := spaceliftViolations(t, []byte(servedNamesFixture)); !slices.Equal(got, want) {
+			t.Errorf("spacelift check found %q, want %q", got, want)
 		}
 		if len(renameViolations(names, rows)) != 1 {
 			t.Errorf("rename check found %q, want spaceliftAwsAccountId", renameViolations(names, rows))

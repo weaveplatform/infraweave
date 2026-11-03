@@ -47,7 +47,7 @@ any feature work begins.
   infraweave serves or reads contains "spacelift" in any case. Spacelift's
   names appear only in the reference under `api/reference/spacelift/`, in
   the `x-` extensions that map a served name back to it (`x-graphql`,
-  `x-terraform`), in mapping tables such as the one below, and in text that
+  `x-bruno`, `x-terraform`), in mapping tables such as the one below, and in text that
   describes Spacelift.
 - **No name says root but the installation's.** Root is the installation's
   top node ([GLOSSARY](../../../GLOSSARY.md)). An account's top space is
@@ -59,9 +59,13 @@ any feature work begins.
   are. A served name that says organization means the glossary's
   organization, so a reference name that uses the word for an account is
   renamed.
-- **Descriptions are prose.** A served description says infraweave where it
-  describes infraweave's behaviour. The name tests do not read descriptions;
-  review does.
+- **No served text says Spacelift.** A served description, summary or
+  example says infraweave where it describes infraweave's behaviour and links
+  no Spacelift page. A family scaffolded from the reference arrives with
+  Spacelift's descriptions, and its pull request rewrites them, because the
+  served document is what infraweave's SDK, provider and console docs are
+  generated from. `TestUnitServedNames` reads every served string outside
+  the mapping extensions.
 
 ### Rename table
 
@@ -295,13 +299,15 @@ Implemented:
   core collections, ids moved from inputs into paths, and auth.
 - `make verify-generate` fails when `pkg/client` differs from what the
   served bundle generates.
-- `TestUnitServedNames` (`api/deploy_test.go`) fails when any path, tag,
-  operationId, schema, property, enum value, parameter or header name of the
-  served deploy bundle contains "spacelift" in any case, or matches a
-  reference name in the rename table above, or when a row's infraweave name
-  says spacelift. A fixture that serves the property
-  `spaceliftAwsAccountId` proves that both checks reach the names they
-  claim to read.
+- `TestUnitServedNames` (`api/deploy_test.go`) fails when any key or string
+  of the served deploy bundle outside the mapping extensions, descriptions
+  and enum descriptions included, contains "spacelift" in any case; when a
+  path, tag, operationId, schema, property, enum value, parameter or header
+  name matches a reference name in the rename table above; or when a row's
+  infraweave name says spacelift. A fixture that serves the property
+  `spaceliftAwsAccountId` and a description that names Spacelift proves
+  that both checks reach what they claim to read, and its `x-terraform`
+  value proves that the mapping extensions pass.
 
 Planned:
 

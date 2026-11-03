@@ -1811,7 +1811,7 @@ func (e WorkerStatus) Valid() bool {
 	}
 }
 
-// Action Action represents an action in Spacelift that can be performed by a user.
+// Action Action represents an action that a user can perform.
 type Action string
 
 // AnsibleEntity Possible Ansible entity types.
@@ -1858,7 +1858,7 @@ type AwsIntegration struct {
 	// HasAttachedStacks Indicates whether any stacks are attached to this policy, either directly or via auto-attachment.
 	HasAttachedStacks bool `json:"hasAttachedStacks"`
 
-	// Id The unique ID for managing the integration within Spacelift.
+	// Id The unique ID for managing the integration.
 	Id string `json:"id"`
 
 	// Kind The concrete type, for union and interface responses.
@@ -1973,7 +1973,7 @@ type AzureIntegration struct {
 	// HasAttachedStacks Indicates whether any stacks are attached to this policy, either directly or via auto-attachment.
 	HasAttachedStacks bool `json:"hasAttachedStacks"`
 
-	// Id The unique ID for managing the integration within Spacelift.
+	// Id The unique ID for managing the integration.
 	Id string `json:"id"`
 
 	// Labels User-defined labels set on the integration.
@@ -2743,7 +2743,7 @@ type ManagedEntity struct {
 	// Drifted Unix timestamp of when drift was detected on this entity, if ever.
 	Drifted *int32 `json:"drifted,omitempty"`
 
-	// Id ID of the ManagedEntity in Spacelift.
+	// Id ID of the ManagedEntity.
 	Id string `json:"id"`
 
 	// Name ManagedEntity Name.
@@ -2892,12 +2892,12 @@ type OpenTofuFeatureCheck struct {
 
 // OpenTofuRuntimeConfig defines model for OpenTofuRuntimeConfig.
 type OpenTofuRuntimeConfig struct {
-	// Concise When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+	// Concise When enabled, infraweave passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
 	// Requires OpenTofu 1.7+ at runtime; the flag is silently omitted on older versions.
 	// If you're running OpenTofu 1.10+, concise flag will be also used in apply.
 	Concise bool `json:"concise"`
 
-	// EnableCPUProfiling When enabled, Spacelift captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
+	// EnableCPUProfiling When enabled, infraweave captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
 	// Requires OpenTofu 1.11+ at runtime; silently omitted on older versions.
 	EnableCPUProfiling bool `json:"enableCPUProfiling"`
 
@@ -2953,7 +2953,7 @@ type PluginRef struct {
 }
 
 // Policy Policy is a rule or collection of rules that allow injecting custom logic into
-// Spacelift's decision points.
+// infraweave's decision points.
 type Policy struct {
 	// AttachedIntentProjects List of intent projects attached to this Policy
 	AttachedIntentProjects []PolicyIntentProjectAttachment `json:"attachedIntentProjects"`
@@ -3008,7 +3008,7 @@ type Policy struct {
 	// SpaceDetails A reference to a Space; fetch it with GET /spaces/{spaceId}.
 	SpaceDetails SpaceRef `json:"spaceDetails"`
 
-	// Type PolicyType represents a type of Spacelift policy.
+	// Type PolicyType represents a type of policy.
 	Type PolicyType `json:"type"`
 
 	// UpdatedAt Unix timestamp of the last policy update.
@@ -3093,7 +3093,7 @@ type PolicyStackAttachment struct {
 	StackSpaceDetails SpaceRef `json:"stackSpaceDetails"`
 }
 
-// PolicyType PolicyType represents a type of Spacelift policy.
+// PolicyType PolicyType represents a type of policy.
 type PolicyType string
 
 // Problem An RFC 9457 problem detail. Every error response uses the status code and this body.
@@ -3120,7 +3120,7 @@ type ProposeWithOverridesRequest struct {
 	EnvironmentVarsOverrides *[]EnvironmentVariable `json:"environmentVarsOverrides,omitempty"`
 }
 
-// PullRequest PullRequest is Spacelift's representation of Pull Request on GitHub.
+// PullRequest PullRequest is infraweave's representation of a pull request on GitHub.
 type PullRequest struct {
 	// AuthorLogin GitHub username of the PullRequest creator.
 	AuthorLogin string `json:"authorLogin"`
@@ -3225,7 +3225,7 @@ type RoleRef struct {
 	Id string `json:"id"`
 }
 
-// Run Run represents the main concept in Spacelift.
+// Run Run represents one execution of a stack.
 type Run struct {
 	// Branch Name of the branch for which this Run has been created.
 	Branch string `json:"branch"`
@@ -3499,7 +3499,7 @@ type RunPolicyReceipt struct {
 	// PolicySlug Slug of the policy that affected the Run.
 	PolicySlug *string `json:"policySlug,omitempty"`
 
-	// PolicyType PolicyType represents a type of Spacelift policy.
+	// PolicyType PolicyType represents a type of policy.
 	PolicyType PolicyType `json:"policyType"`
 
 	// SampleExpired Indicates whether sample has expired.
@@ -3518,7 +3518,7 @@ type RunRef struct {
 }
 
 // RunResourceState RunResourceState represents a state of the Run.
-// It's for Terraform-Provider, to allow spacelift run to read the state of another run.
+// It lets the Terraform provider, inside a run, read the state of another run.
 type RunResourceState struct {
 	// Finished Convenience helper, allowing a quick check on whether the Run has finished.
 	Finished bool `json:"finished"`
@@ -4139,7 +4139,7 @@ type SpaceRef struct {
 	Id string `json:"id"`
 }
 
-// Stack Stack represents a single Spacelift project.
+// Stack Stack represents a single infrastructure project.
 type Stack struct {
 	// AdditionalProjectGlobs List of globs that when changed trigger a run.
 	// It similar to projectRoot but instead of being a concrete path it is a
@@ -4286,7 +4286,7 @@ type Stack struct {
 	EntityCount int32 `json:"entityCount"`
 
 	// GitSparseCheckoutPaths The list of paths that are used for sparse checkout, if any. If empty sparse checkout is not used - whole repository is checked out.
-	// Note: this field is only used if git checkout is enabled. See https://docs.spacelift.io/concepts/stack/stack-settings#labels
+	// Note: this field is only used if git checkout is enabled.
 	GitSparseCheckoutPaths *[]string `json:"gitSparseCheckoutPaths,omitempty"`
 
 	// GithubActionDeploy Indicates whether the GitHub Checks "Deploy" action is enabled.
@@ -4337,10 +4337,10 @@ type Stack struct {
 	// LockedBy Username of the person who locked the Stack for their exclusive use.
 	LockedBy *string `json:"lockedBy,omitempty"`
 
-	// ManagesStateFile Is Spacelift responsible for managing the Terraform state file.
+	// ManagesStateFile Is infraweave responsible for managing the Terraform state file.
 	ManagesStateFile bool `json:"managesStateFile"`
 
-	// ModuleVersionsUsed Versions of modules hosted on Spacelift the latest run on this Stack uses.
+	// ModuleVersionsUsed Versions of modules hosted in infraweave's module registry that the latest run on this Stack uses.
 	ModuleVersionsUsed []Version `json:"moduleVersionsUsed"`
 
 	// Name Fancy, mutable name of the Stack to show in the UI.
@@ -4463,7 +4463,7 @@ type StackAwsIntegrationAttachment struct {
 	DurationSeconds int32 `json:"durationSeconds"`
 
 	// ExternalId AWS external ID. This will contain your custom external ID when using role-assumption on the
-	// worker, and otherwise will contain an external ID generated by Spacelift.
+	// worker, and otherwise will contain an external ID generated by infraweave.
 	ExternalId string `json:"externalId"`
 
 	// GenerateCredentialsInWorker AWS credentials will be generated in the private worker.
@@ -4640,7 +4640,7 @@ type StackConfigVendorKubernetesInput struct {
 
 // StackConfigVendorOpenTofu Configuration specific to OpenTofu stacks.
 type StackConfigVendorOpenTofu struct {
-	// Concise When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+	// Concise When enabled, infraweave passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
 	// Requires OpenTofu 1.7+. A stack on an older version cannot enable it.
 	// If you're running OpenTofu 1.10+, concise flag will be also used in apply.
 	Concise bool `json:"concise"`
@@ -4650,11 +4650,11 @@ type StackConfigVendorOpenTofu struct {
 	// is not a range, or is not set, this field will be null.
 	EffectiveVersion *string `json:"effectiveVersion,omitempty"`
 
-	// EnableCPUProfiling When enabled, Spacelift captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
+	// EnableCPUProfiling When enabled, infraweave captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
 	// Requires OpenTofu 1.11+ at runtime; silently omitted on older versions.
 	EnableCPUProfiling bool `json:"enableCPUProfiling"`
 
-	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
 	ExternalStateAccessEnabled bool `json:"externalStateAccessEnabled"`
 
 	// Kind The concrete type, for union and interface responses.
@@ -4680,18 +4680,18 @@ type StackConfigVendorOpenTofuKind string
 
 // StackConfigVendorOpenTofuInput Configuration specific to OpenTofu stacks.
 type StackConfigVendorOpenTofuInput struct {
-	// Concise When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+	// Concise When enabled, infraweave passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
 	// Requires OpenTofu 1.7+. A stack on an older version cannot enable it.
 	// If you're running OpenTofu 1.10+, concise flag will be also used in apply.
 	// When unset on create, defaults to true on OpenTofu 1.7+ and to false on older versions.
 	Concise *bool `json:"concise,omitempty"`
 
-	// EnableCPUProfiling When enabled, Spacelift captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
+	// EnableCPUProfiling When enabled, infraweave captures CPU profiles from the OpenTofu init, plan, apply, destroy and show commands.
 	// Requires OpenTofu 1.11+ at runtime; silently omitted on older versions.
 	// When unset on create, defaults to true on OpenTofu 1.11+ and to false on older versions.
 	EnableCPUProfiling *bool `json:"enableCPUProfiling,omitempty"`
 
-	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
 	ExternalStateAccessEnabled *bool `json:"externalStateAccessEnabled,omitempty"`
 
 	// UseSmartSanitization If Smart sanitization should be used for sanitizing plans and resources.
@@ -4732,7 +4732,7 @@ type StackConfigVendorPulumiInput struct {
 
 // StackConfigVendorTerraform Configuration specific to Terraform stacks.
 type StackConfigVendorTerraform struct {
-	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
 	ExternalStateAccessEnabled bool `json:"externalStateAccessEnabled"`
 
 	// Kind The concrete type, for union and interface responses.
@@ -4755,7 +4755,7 @@ type StackConfigVendorTerraformKind string
 
 // StackConfigVendorTerraformInput Configuration specific to Terraform stacks.
 type StackConfigVendorTerraformInput struct {
-	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of Spacelift.
+	// ExternalStateAccessEnabled Indicates whether you can access the Stack state file from other stacks or outside of infraweave.
 	ExternalStateAccessEnabled *bool `json:"externalStateAccessEnabled,omitempty"`
 
 	// UseSmartSanitization If Smart sanitization should be used for sanitizing terraform plans and resources.
@@ -4908,7 +4908,7 @@ type StackCreateRequest struct {
 	// Input Arguments used to create and update an individual Stack.
 	Input StackInput `json:"input"`
 
-	// ManageState Determines if Spacelift should manage state for this stack. Defaults to `true`.
+	// ManageState Determines if infraweave should manage state for this stack. Defaults to `true`.
 	ManageState bool `json:"manageState"`
 
 	// Slug Allows setting the custom ID (slug) for the stack
@@ -5116,7 +5116,7 @@ type StackInput struct {
 	EnableWellKnownSecretMasking *bool `json:"enableWellKnownSecretMasking,omitempty"`
 
 	// GitSparseCheckoutPaths The list of paths that are used for sparse checkout, if any. If empty sparse checkout is not used - whole repository is checked out.
-	// Note: this field is only used if git checkout is enabled. See https://docs.spacelift.io/concepts/stack/stack-settings#labels
+	// Note: this field is only used if git checkout is enabled.
 	GitSparseCheckoutPaths *[]string `json:"gitSparseCheckoutPaths,omitempty"`
 
 	// GithubActionDeploy When set to true, the "Deploy" action will be enabled on GitHub Checks Run (default: true).
@@ -5333,7 +5333,7 @@ type StackPolicyAttachment struct {
 	// PolicyName Name of the attached Policy.
 	PolicyName string `json:"policyName"`
 
-	// PolicyType PolicyType represents a type of Spacelift policy.
+	// PolicyType PolicyType represents a type of policy.
 	PolicyType PolicyType `json:"policyType"`
 }
 
@@ -5736,9 +5736,9 @@ type WorkerPool struct {
 	Labels []string `json:"labels"`
 
 	// ManagedByK8sController Indicates that this pool is managed by the Kubernetes WorkerPool controller. If a pool
-	// is managed by the controller, any updates from other clients (e.g. the Spacelift UI) will
+	// is managed by the controller, any updates from other clients (e.g. the console) will
 	// be blocked. Deletion of the pool by other clients is still allowed to allow a situation
-	// where the Spacelift API and Kubernetes API become out of sync.
+	// where the infraweave API and Kubernetes API become out of sync.
 	ManagedByK8sController bool `json:"managedByK8sController"`
 
 	// Name Mutable name of the WorkerPool, unique within the scope of a single account.
@@ -5752,7 +5752,7 @@ type WorkerPool struct {
 
 	// PreparingTimeoutSeconds The effective Preparing-phase timeout in seconds: the pool's override, or the platform
 	// default when the pool has no override. When raising this, also raise
-	// SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT on the pool's workers, otherwise the worker
+	// the launcher's workspace initialization timeout on the pool's workers, otherwise the worker
 	// stops downloading source before this deadline is reached.
 	PreparingTimeoutSeconds *int32 `json:"preparingTimeoutSeconds,omitempty"`
 
@@ -7567,7 +7567,7 @@ type ClientInterface interface {
 	//
 	// Create a new stack. The third argument (stackObjectID) is optional, and
 	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to Spacelift for further management.
+	// handed over to infraweave for further management.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -7578,7 +7578,7 @@ type ClientInterface interface {
 	//
 	// Create a new stack. The third argument (stackObjectID) is optional, and
 	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to Spacelift for further management.
+	// handed over to infraweave for further management.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -8602,7 +8602,7 @@ func (c *Client) Stacks(ctx context.Context, params *StacksParams, reqEditors ..
 //
 // Create a new stack. The third argument (stackObjectID) is optional, and
 // should only be used when creating a Stack with pre-existing state that is
-// handed over to Spacelift for further management.
+// handed over to infraweave for further management.
 //
 // Takes any type of body and a specified content type.
 //
@@ -8623,7 +8623,7 @@ func (c *Client) StackCreateWithBody(ctx context.Context, params *StackCreatePar
 //
 // Create a new stack. The third argument (stackObjectID) is optional, and
 // should only be used when creating a Stack with pre-existing state that is
-// handed over to Spacelift for further management.
+// handed over to infraweave for further management.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -14450,7 +14450,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create a new stack. The third argument (stackObjectID) is optional, and
 	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to Spacelift for further management.
+	// handed over to infraweave for further management.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14461,7 +14461,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create a new stack. The third argument (stackObjectID) is optional, and
 	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to Spacelift for further management.
+	// handed over to infraweave for further management.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -22710,7 +22710,7 @@ func (c *ClientWithResponses) StacksWithResponse(ctx context.Context, params *St
 //
 // Create a new stack. The third argument (stackObjectID) is optional, and
 // should only be used when creating a Stack with pre-existing state that is
-// handed over to Spacelift for further management.
+// handed over to infraweave for further management.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -22727,7 +22727,7 @@ func (c *ClientWithResponses) StackCreateWithBodyWithResponse(ctx context.Contex
 //
 // Create a new stack. The third argument (stackObjectID) is optional, and
 // should only be used when creating a Stack with pre-existing state that is
-// handed over to Spacelift for further management.
+// handed over to infraweave for further management.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
