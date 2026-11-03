@@ -129,7 +129,7 @@ _Avoid_: UI, dashboard, frontend, web app
 ### Languages
 
 **Expression**:
-A typed formula a user writes to read and shape data, evaluated by infraweave itself and never on a worker or agent.
+A typed formula a user writes to read and shape data, evaluated by infraweave's own code rather than by code the user supplies.
 _Avoid_: script, code, JavaScript
 
 **Text template**:
