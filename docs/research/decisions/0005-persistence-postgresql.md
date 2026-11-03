@@ -1,6 +1,6 @@
 # 0005: Persistence: PostgreSQL, embedded migrations and object storage
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -35,16 +35,32 @@ Every stateful feature needs a store, and several records wait on this one:
 
 - **PostgreSQL is the only database.** No SQLite, MySQL or in-memory store ships
   as a production backend.
-- **Version floor: PostgreSQL 15.** The floor is the oldest major release the
-  PostgreSQL community still supports. PostgreSQL 14 reaches end of life on
-  2026-11-12, two weeks after the research baseline
-  ([versioning policy](https://www.postgresql.org/support/versioning/)). The floor
-  moves up when a major release reaches end of life, and the release notes say so.
-- **Tested versions.** CI runs the store suites on the floor and on the newest
-  released major.
+- **Version floor: the newest major that all three managed services offer
+  generally available.** The services are Amazon RDS for PostgreSQL, Azure
+  Database for PostgreSQL flexible server and Cloud SQL for PostgreSQL. The
+  floor is PostgreSQL 18:
+
+  | Service | PostgreSQL 18 | PostgreSQL 19 |
+  |---|---|---|
+  | Amazon RDS | generally available since 2025-11-14 ([announcement](https://aws.amazon.com/about-aws/whats-new/2025/11/amazon-rds-postgresql-major-version-18)) | preview environment only ([release notes](https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-versions.html)) |
+  | Azure flexible server | generally available since November 2025 ([announcement](https://techcommunity.microsoft.com/blog/adforpostgresql/-/4469802), [supported versions](https://learn.microsoft.com/en-us/azure/postgresql/configure-maintain/concepts-supported-versions)) | not offered |
+  | Cloud SQL | generally available since 2025-11-20 ([release notes](https://docs.cloud.google.com/sql/docs/postgres/release-notes)) | not offered |
+
+  The PostgreSQL project plans 19's general availability for 2026-11-19
+  ([19 RC 1 announcement](https://www.postgresql.org/about/news/postgresql-19-rc-1-released-3409/)).
+- **When the floor rises.** The first infraweave release after all three
+  services offer the next major generally available raises the floor to it,
+  and its release notes say so. A database below the floor makes every process
+  mode that opens it refuse to start, with a message naming the floor; the
+  check reads `server_version_num` when the connection pool opens.
+- **Tested versions.** CI gates on the floor. The next major, as a beta or
+  release candidate until it is generally available, runs the same suites in a
+  job that reports but does not block
+  ([0016](0016-testing-and-acceptance.md#ci)).
 - **No extensions.** The schema uses only core features, so it runs on any
-  managed PostgreSQL service without asking for an extension allowlist. Features
-  infraweave relies on from 15: `UNIQUE NULLS NOT DISTINCT` and `MERGE`.
+  managed PostgreSQL service without asking for an extension allowlist. Among
+  the core features below the floor, the schema relies on `UNIQUE NULLS NOT
+  DISTINCT` and `MERGE`.
 
 ### Driver and access
 
@@ -92,7 +108,7 @@ Every stateful feature needs a store, and several records wait on this one:
 | Labels | `text[]` with a GIN index, matched with `@>` and `&&` for auto-attachment and filters ([28 section 12.1](../reference/28-data-model.md#121-shapes-that-recur)) |
 | Polymorphic owners | One nullable foreign-key column per owner kind (`stack_id`, `module_id`, `context_id`, ...) with a `CHECK` that exactly one is set. Report 28's `owner_kind` and `owner_id` sketch would lose real foreign keys and cascades |
 | Attachments | Their own ULID, a unique `(left, right)` constraint and `is_autoattached`, as report 28 derives |
-| Soft delete | `deleted_at timestamptz` only where the schema exposes `deleted` (stacks, worker pools, template versions). Everything else is deleted, with `ON DELETE` rules chosen per foreign key |
+| Soft delete | `deleted_at timestamptz` only where the schema exposes `deleted` (stacks, worker pools, template versions). Everything else is deleted, with `ON DELETE` rules chosen per foreign key inside a domain; a key that crosses domains follows [0004](0004-repository-architecture.md)'s dependency direction and never cascades |
 | Secrets | `bytea` columns named `<name>_sealed`, written and read only through [0013](0013-secrets-at-rest.md) |
 | Foreign keys | Every foreign key column is indexed |
 | Optimistic concurrency | Mutable aggregates with concurrent writers carry `version bigint`. A conditional `UPDATE ... WHERE version = $n` detects a lost update. Runs use `state_version` ([0008](0008-run-execution-and-worker-protocol.md)) |
@@ -105,11 +121,13 @@ in the same database, in the `flows` PostgreSQL schema that
 ### Migrations
 
 - **Embedded streams.** Migrations are SQL files embedded with `embed.FS`, in
-  one or more named streams. Decision 0004 places the streams: its
-  recommended layout gives each domain one. Within a stream, files are named
+  one or more named streams. Decision 0004 places the streams: each domain
+  has one. Within a stream, files are named
   `NNNNN_snake_case.sql` (five digits, gap-free). The composition root
-  registers the streams in a fixed order, and the runner applies them in that
-  order, so a stream may refer to tables of the streams registered before it.
+  registers the streams in the domains' dependency order, and the runner
+  applies them in that order, so a stream may refer to tables of the streams
+  registered before it, along the foreign-key rule of
+  [0004](0004-repository-architecture.md).
   The runner is infraweave's own, in `internal/store/migrations`, about two
   hundred lines.
 - **Forward only.** There are no down migrations. A bad migration is corrected
@@ -197,11 +215,12 @@ sees the same keys, buckets and switches.
 - **Interface.** `internal/objectstore` defines `objectstore.Store` with `Put`, `Get`, `Head`,
   `Delete` and `SignURL(method, key, ttl, constraints)`. The driver is
   `objectstore.driver`, and each driver's settings sit under
-  `objectstore.<driver>`.
+  `objectstore.<driver>`. Each driver uses its provider's own Go SDK, and
+  none goes through another provider's compatibility API.
 
   | Driver | Backs | Notes |
   |---|---|---|
-  | `s3` | AWS S3 and S3-compatible stores (MinIO, Ceph RGW, Cloudflare R2) | `github.com/aws/aws-sdk-go-v2/service/s3` with its upload manager for multipart. Settings: `bucket`, `endpoint`, `region` (default `us-east-1`), `path_style`, credentials from the SDK's default chain (including workload identity) or static keys, and server-side encryption (`none`, `s3` or `kms` with a key ID) |
+  | `s3` | AWS S3 and S3-compatible stores (RustFS, Ceph RGW, Cloudflare R2) | `github.com/aws/aws-sdk-go-v2/service/s3` with its upload manager for multipart. Settings: `bucket`, `endpoint`, `region` (default `us-east-1`), `path_style`, credentials from the SDK's default chain (including workload identity) or static keys, and server-side encryption (`none`, `s3` or `kms` with a key ID) |
   | `gcs` | Google Cloud Storage | `cloud.google.com/go/storage`. Settings: `bucket`. Credentials from Application Default Credentials; V4 signed URLs are signed through the IAM `signBlob` call when the identity holds no private key, so workload identity needs no static key |
   | `azureblob` | Azure Blob Storage | `github.com/Azure/azure-sdk-for-go/sdk/storage/azblob`. Settings: `account_url`, `container`. Credentials from `azidentity`'s default chain; signed URLs are user delegation SAS, so Entra workload identity needs no account key |
   | `fs` | A local directory or a shared POSIX volume | Writes go to a temporary file, are synced and are renamed into place. Signed URLs point at infraweave's own `GET` and `PUT /blobs/{token}`. The token carries method, key, expiry and size limit, and is signed with HMAC-SHA256 under `secrets.DeriveKey("objectstore-url")` of [0013](0013-secrets-at-rest.md). More than one replica needs a volume shared by all of them |
@@ -209,6 +228,17 @@ sees the same keys, buckets and switches.
   The `gcs` and `azureblob` drivers exist because the reference deployments
   (decision 0020) authenticate with workload identity, and Google Cloud
   Storage's S3 interoperability API needs static HMAC keys.
+
+- **One contract.** Every driver passes the same contract suite
+  ([Verification](#verification)), which defines what a driver must do:
+
+  | Area | What every driver does |
+  |---|---|
+  | Put, get, head, delete | Round-trips bytes and size; `Get` and `Head` of a missing key return `objectstore.ErrNotFound`; deleting a missing key succeeds |
+  | Multipart | An object above `objectstore.part_size` (default 16 MiB) is written in parts: an S3 multipart upload, a GCS resumable upload in chunks, Azure staged blocks committed by a block list, or a temporary file on `fs`. A failed upload leaves no readable object, and the driver aborts what it started |
+  | Checksums | Every write carries the SHA-256 that `blob_objects` records. `s3` sends it as `x-amz-checksum-sha256`, which the store verifies. `gcs` and `azureblob` have no SHA-256 the service verifies, so the driver hashes the stream as it uploads and, on a mismatch, deletes the object and fails; the service's own CRC32C (GCS) or CRC64 (Azure) still guards each transfer. No driver computes or sends MD5, because `GODEBUG=fips140=only` refuses it ([0013](0013-secrets-at-rest.md#fips-140-3)) |
+  | Signed URLs | `GET` and `PUT` URLs that expire after their TTL and bind the method, key and declared size; a `PUT` URL on `s3` also binds the checksum |
+  | Lifecycle | Expiry is infraweave's own (below): a `live` object past `expires_at` and a `pending` object older than 24 hours are deleted by `blob.expire`. Nothing relies on a bucket lifecycle rule or on bucket versioning |
 
 - **Logical stores.** Each store is a key prefix in one bucket by default. Any
   store can be given its own bucket (`objectstore.buckets.<store>`), so its
@@ -237,6 +267,9 @@ sees the same keys, buckets and switches.
   written once and never overwritten, so the store needs neither versioning nor
   read-after-overwrite consistency. A new version of anything, such as a state
   file, is a new object.
+- **No bucket versioning.** infraweave neither needs nor uses it. An operator
+  who turns it on for their own reasons also owns a lifecycle rule that expires
+  non-current versions, because infraweave's deletes then leave them behind.
 - **Rows and objects stay consistent through `blob_objects`.**
   - **The table.** `blob_objects(store, key, size, sha256, state, content_key_sealed, expires_at, created_at)`
     has primary key `(store, key)`. `state` is `pending`, `live` or
@@ -259,9 +292,11 @@ sees the same keys, buckets and switches.
     backstop when it is set longer than the store's retention.
 - **Pre-signed URLs.**
   - **Lifetime.** 15 minutes by default (`objectstore.signed_url_ttl`).
-  - **Uploads.** A `PUT` URL signs the expected `Content-Length` and, where
-    the driver supports it, `x-amz-checksum-sha256`. Committing an upload
-    checks size and checksum with `Head`.
+  - **Uploads.** A `PUT` URL signs the expected `Content-Length` and, on
+    `s3`, `x-amz-checksum-sha256`. Committing an upload checks the size with
+    `Head`. On `s3` the store has already checked the SHA-256; on `gcs` and
+    `azureblob` the commit reads the object back once and compares it; on `fs`
+    infraweave's own `PUT` handler hashes while it writes.
   - **Who uses them.** Browsers, runners and launchers reach object storage
     only through these URLs. So the object store's endpoint must be reachable
     from them, as in self-hosted Spacelift.
@@ -308,10 +343,20 @@ sees the same keys, buckets and switches.
   - **Rejected: MySQL and CockroachDB.** Neither offers the same mix of
     `SKIP LOCKED`, `LISTEN` and transactional DDL. CockroachDB also changes
     retry and isolation behaviour throughout the code.
-- **Floor at 15, not 14.** This is a small departure from self-hosted
-  Spacelift's 14 to 18. 14 leaves community support within days of the
-  baseline, and 15 brings `UNIQUE NULLS NOT DISTINCT` (used for partial
-  defaults such as the single default VCS integration) and `MERGE`.
+- **The floor is the newest major the managed services all offer.** The
+  maintainer's rule is that the minimum is the latest version available.
+  Tying "available" to the three managed services keeps every reference
+  deployment of decision 0020 able to create a database at the floor, and a
+  floor that rises one release after the slowest service keeps the gate on
+  one major while the next one is already exercised.
+  - **Rejected: the oldest community-supported major** (15 today). It
+    widens the tested range to four majors and keeps the oldest one gating
+    every change.
+  - **Rejected: the newest community release.** RDS offers PostgreSQL 19
+    only in preview, so the AWS reference deployment could not be created
+    at that floor.
+  - **Departure from Spacelift**, whose self-hosted install accepts 14 to 18
+    ([24 section 3.1](../reference/24-self-hosted-reference.md#31-postgresql)).
 - **No extensions.** `ltree`, `pgcrypto` or `pg_partman` would simplify a few
   tables. But each is a request to the operator's database team, and some
   managed services restrict them. The space tree uses a closure table
@@ -366,6 +411,14 @@ sees the same keys, buckets and switches.
     database facts, which the API can list and test.
   - The `fs` driver and minimal S3-compatible stores need no lifecycle or
     versioning support.
+- **Four drivers on native SDKs, one contract.** The maintainer's rule is
+  that infraweave is not locked to an Amazon S3 backend. A single S3 driver
+  would push Google Cloud and Azure installations onto static HMAC keys or an
+  S3 gateway; native drivers keep workload identity on every cloud. The
+  shared contract suite keeps four drivers from drifting apart.
+- **SHA-256, not MD5, for object integrity.** SHA-256 is the digest
+  `blob_objects` already records, and Go's FIPS 140-3 mode refuses MD5
+  ([0013](0013-secrets-at-rest.md#fips-140-3)).
 - **Rejected: SQS as an alternative queue.** Self-hosted Spacelift offers it
   beside its Postgres queue
   ([24 section 3.3](../reference/24-self-hosted-reference.md#33-message-queues)).
@@ -387,6 +440,12 @@ sees the same keys, buckets and switches.
   ([24 section 11](../reference/24-self-hosted-reference.md#11-disaster-recovery)).
 - **`fs` driver.** It is for development, tests and single-node installs.
   Several replicas need a shared POSIX volume.
+- **The floor moves.** An installation on a managed service upgrades its
+  PostgreSQL major before it installs the release that raises the floor. A
+  self-managed PostgreSQL below the floor cannot run infraweave.
+- **Read-back on `gcs` and `azureblob`.** Committing a pre-signed upload
+  reads the object once more, which costs a second transfer of each upload on
+  those two drivers.
 - **Importing from Spacelift.** Data imported from Spacelift keeps its ULIDs.
   Slugs keep their uniqueness rule.
 
@@ -396,7 +455,8 @@ sees the same keys, buckets and switches.
   - `internal/store/storetest` holds one suite per store family.
   - They run against PostgreSQL in testcontainers-go
     (`github.com/testcontainers/testcontainers-go/modules/postgres`), on the
-    floor and on the newest major.
+    floor as a blocking job and on the next major as a non-blocking one
+    ([0016](0016-testing-and-acceptance.md#ci)).
   - They cover transactions, retries on injected `40001`, lock ordering under
     concurrent writers, and keyset pagination.
 - **Migration runner.** `internal/store/migrations` tests:
@@ -417,10 +477,13 @@ sees the same keys, buckets and switches.
   - every `_sealed` column is `bytea`;
   - every account-scoped table has `account_id`.
 - **Object storage.**
-  - `internal/objectstore/objectstoretest` runs the same contract against the
-    `s3` driver (MinIO in testcontainers, `TestAcc`) and the `fs` driver
-    (`TestUnit`): put, get, head, delete,
-    signed `GET` and `PUT` with size and checksum constraints, and expiry.
+  - `internal/objectstore/objectstoretest` runs the contract above against
+    every driver: `s3` on RustFS, `gcs` on fake-gcs-server and `azureblob` on
+    Azurite, each in testcontainers (`TestAcc`), and `fs` (`TestUnit`). The
+    emulators' gaps, and the nightly run against real AWS, Google Cloud and
+    Azure buckets that covers them, are [0016](0016-testing-and-acceptance.md#contract-suites)'s.
+  - A floor test starts infraweave against PostgreSQL one major below the
+    floor and asserts that it refuses to start.
   - Tests of `blob_objects` cover orphan cleanup of `pending` rows and
     deletion after commit.
 - **0003 across replicas.** Gherkin acceptance features run two server
@@ -441,4 +504,7 @@ sees the same keys, buckets and switches.
 - [0003](0003-api-conventions.md): the idempotency and rate-limit contracts these
   tables serve.
 - <https://www.postgresql.org/support/versioning/>: PostgreSQL support windows.
+- Managed PostgreSQL 18 availability: [Amazon RDS](https://aws.amazon.com/about-aws/whats-new/2025/11/amazon-rds-postgresql-major-version-18),
+  [Azure flexible server](https://learn.microsoft.com/en-us/azure/postgresql/configure-maintain/concepts-supported-versions),
+  [Cloud SQL](https://docs.cloud.google.com/sql/docs/postgres/release-notes).
 - <https://github.com/jackc/pgx>: the driver.

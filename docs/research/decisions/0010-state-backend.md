@@ -1,6 +1,6 @@
 # 0010: Terraform and OpenTofu state backend
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -17,8 +17,8 @@ so infraweave defines them.
 State files hold secrets in plaintext: provider credentials, generated passwords, private
 keys. Self-hosted Spacelift relies on bucket versioning and server-side encryption for
 history and confidentiality ([24 section 3.2](../reference/24-self-hosted-reference.md#32-object-storage-buckets)).
-infraweave runs on S3-compatible stores and on local disk (decision
-[0005](0005-persistence-postgresql.md)), where neither can be assumed.
+infraweave runs on any of decision [0005](0005-persistence-postgresql.md)'s object store
+drivers, including local disk, where neither can be assumed.
 
 ## Decision
 
@@ -103,11 +103,17 @@ session token, in-run API token).
   to the user.
 - **Releasing.** `UNLOCK` deletes the row whose `lock_id` matches the body's `ID`; a
   mismatch answers `423` with the holder's `LockInfo`. A client sends back the `LockInfo`
-  of the lock it took. `tofu force-unlock <id>` sends a `LockInfo` carrying the given ID and
-  so succeeds for a caller who may lock. `terraform force-unlock` sends an empty body,
-  because Terraform's `http` client ignores the ID argument and sends only the lock it
-  took itself, so under this rule it always answers `423`; a stuck lock is then released
-  through `tofuWorkspaceUnlock` or by ending its run.
+  of the lock it took. `tofu force-unlock <id>` sends a `LockInfo` carrying the given ID.
+- **Force-unlock.** `terraform force-unlock` sends an `UNLOCK` with an empty body,
+  because Terraform's `http` client ignores the ID argument and sends only the lock its own
+  process took, which a new process does not have. An `UNLOCK` with an empty body is a
+  force-unlock: it releases every lock held on the workspace, and only a caller that the
+  table above lets take the exclusive lock may send it, so in practice a task running
+  `terraform force-unlock`. Any other caller gets `403`. A user releases a stuck lock
+  through `tofuWorkspaceUnlock` instead.
+- **Audit.** Releasing a lock that another run holds, by an empty body or by
+  `tofu force-unlock <id>`, records an audit entry (decision 0015) naming the caller, the
+  workspace and each released `LockInfo`.
 - **Writes under a lock.** `POST` carries the lock ID in the `ID` query parameter, as
   Terraform sends it. A `POST` whose ID does not name an exclusive lock held by the same run
   answers `423`.
@@ -125,7 +131,7 @@ session token, in-run API token).
   entity, with `isLocked` and `lockedBy` derived from `state_locks`.
 - **Table `managed_state_versions`** (report [28 section 12.3](../reference/28-data-model.md#123-stacks-and-runs)):
   `id` (ULID), `account_id`, `stack_id`, `workspace`, `object_key`, `size`, `sha256`,
-  `md5`, `serial`, `lineage`, `client_encrypted`, `run_id` (null for imports), `rollback`,
+  `serial`, `lineage`, `client_encrypted`, `run_id` (null for imports), `rollback`,
   `rollback_username`, `rolled_back_from`, `imported`, `imported_username`,
   `imported_at`, `created_at` (answered as `lastModified`). Index
   `(stack_id, workspace, created_at)` serves `searchManagedStateVersions`.
@@ -141,9 +147,16 @@ session token, in-run API token).
 ### Writing a version
 
 1. A `blob_objects` row for the new object is inserted as `pending` (decision
-   [0005](0005-persistence-postgresql.md)). `POST` then streams the body through an MD5 and SHA-256 hasher, a size limit
-   (`state.max_size`, default 512 MiB, `413` beyond) and the sealer into the object store.
-2. A `Content-MD5` header that disagrees with the body answers `400`.
+   [0005](0005-persistence-postgresql.md)). `POST` then streams the body through a SHA-256
+   hasher, a size limit (`state.max_size`, default 512 MiB, `413` beyond) and the sealer
+   into the object store.
+2. **`Content-MD5`.** Terraform's and OpenTofu's `http` clients send a `Content-MD5`
+   header on every write. Normally the body also streams through an MD5 hasher, and a
+   header that disagrees with the body answers `400`. When the process runs with
+   `GODEBUG=fips140=only`, Go refuses MD5 (`crypto/md5.Sum` panics and a hash's `Write`
+   returns an error; see [0013](0013-secrets-at-rest.md#fips-140-3)), so the header is
+   accepted and ignored. TLS protects the body in transit and the recorded SHA-256 protects
+   it at rest.
 3. The body must be JSON. A body with `version`, `serial` and `lineage` is a plain state and
    those are recorded. A body without `serial` and `lineage`, as OpenTofu's client-side
    encryption produces, is stored as `client_encrypted` and never parsed again
@@ -164,8 +177,9 @@ The server does not compare lineage or serial: Terraform enforces both on the cl
 ### Reading
 
 `GET` opens the current version's object, unseals while streaming, and answers `200` with
-`Content-Type: application/json` and `Content-MD5`. A workspace with no version answers
-`204`, which Terraform reads as no state.
+`Content-Type: application/json` and no `Content-MD5`, in every mode: the header is
+optional, and the client computes the MD5 itself when it is absent. A workspace with no
+version answers `204`, which Terraform reads as no state.
 
 ### Upload, import and download URLs
 
@@ -203,8 +217,10 @@ The server does not compare lineage or serial: Terraform enforces both on the cl
   and the target's `run_id` ([16 section 6](../reference/16-state-management.md#6-state-history-and-rollback)).
   `Stack.isStateRollback` is true while the current version has `rollback` set; the next
   write clears it.
-- **Retention.** Non-current versions are kept until `state.noncurrent_retention` passes
-  (default `0`, meaning forever). The current version and versions referenced by a
+- **Retention.** Non-current versions are deleted once `state.noncurrent_retention` has
+  passed since they stopped being current (default 90 days; `0` keeps them forever). The
+  `state.retention` periodic task (daily, decision [0011](0011-persistent-work-queue.md))
+  deletes their rows and objects. The current version and versions referenced by a
   non-terminal run are never deleted. Rolling back to a deleted version answers `404`,
   problem `not-found`.
 - **Stack deletion** with resources kept deletes the stack's version rows and objects only
@@ -218,9 +234,9 @@ The backend paths answer what Terraform's `http` client expects, not problem det
 |---|---|---|
 | `200` | success | state, or empty |
 | `204` | `GET` with no state | empty |
-| `400` | bad `Content-MD5`, body not JSON, `LockInfo` not JSON | plain text |
+| `400` | bad `Content-MD5` (not under `fips140=only`), body not JSON, `LockInfo` not JSON | plain text |
 | `401` | missing or invalid credentials, with `WWW-Authenticate: Basic realm="infraweave-state"` | plain text |
-| `403` | valid credentials without the right in the table above | plain text |
+| `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` from a caller that may not force-unlock | plain text |
 | `404` | unknown stack or workspace, or the stack does not manage state | plain text |
 | `405` | any other method | plain text |
 | `413` | body over `state.max_size` | plain text |
@@ -256,12 +272,29 @@ ordinary REST operations and answer the problem details of decision
 - **Rejected: locks in the object store.** Conditional writes differ across S3-compatible
   stores and do not exist on local disk; PostgreSQL row locks are already the
   serialisation point for runs.
+- **Force-unlock on an empty body.** Refusing it would leave `terraform force-unlock`
+  always failing, so the usual Terraform answer to a stuck lock would not work. Limiting
+  it to callers that may take the exclusive lock keeps it where an apply could already
+  overwrite state, and the audit entry records who broke whose lock.
+- **90 days of non-current history.** Long enough to roll back past a quarter's changes,
+  short enough that the `states` store stops growing with every run; `0` keeps the old
+  forever-default available to those who need it.
+- **Ignoring `Content-MD5` under `fips140=only`.** MD5 here is a transfer check, not a
+  security function, but `fips140=only` exists to prove no unapproved algorithm runs.
+  - **Rejected: `fips140.WithoutEnforcement` around the MD5.** It would put an exemption in
+    the code path the FIPS-only CI job is there to check, and an operator who chose
+    `only` would still run MD5.
+  - **Rejected: answering `400` to every write under `only`.** Terraform always sends the
+    header, so no run could write state.
 - **Departures from Spacelift**, for the deviations register:
   - External access uses the `http` backend, not the `remote` backend.
   - Upload and download URLs point at infraweave, not at the object store.
   - Planning takes a shared lock; Spacelift's lock kind is undocumented.
   - A run's locks are released when it ends, so a stopped run leaves no stuck lock.
-  - Non-current versions are kept forever by default, where SaaS keeps 30 days.
+  - Non-current versions are kept 90 days by default, where SaaS keeps 30 days.
+  - `terraform force-unlock` works, as an audited force-unlock.
+  - Under `GODEBUG=fips140=only`, `Content-MD5` is accepted and not checked, and reads
+    never send it.
   - History does not rely on bucket versioning.
 
 ## Constraints
@@ -274,20 +307,29 @@ ordinary REST operations and answer the problem details of decision
   what counts as a pending run for import and rollback.
 - **The KEK of decision [0013](0013-secrets-at-rest.md) is required to read any state.** A
   database and bucket backup without it restores no state.
+- **A force-unlock breaks a running run's lock.** That run's own `UNLOCK` then answers
+  `423`, and a write it attempts answers `423`, as Terraform's own force-unlock warns.
 
 ## Verification
 
 - `internal/statebackend` unit tests: the authorization table per run state; every lock
-  row of the conflict table; lock release on terminal transitions; `Content-MD5`
-  mismatch; the size limit; identical writes adding no version; client-encrypted bodies;
-  token expiry for the upload and download URLs.
+  row of the conflict table; lock release on terminal transitions; empty-body `UNLOCK`
+  allowed for an exclusive-lock caller with an audit entry and refused with `403` for any
+  other; `Content-MD5` mismatch answering `400`, and the same request accepted under
+  `GODEBUG=fips140=only` with the body's SHA-256 recorded; no `Content-MD5` on reads; the
+  size limit; identical writes adding no version; client-encrypted bodies; token expiry for
+  the upload and download URLs.
 - Store contract tests against PostgreSQL and both blob drivers (decision 0016): versions,
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.
 - Gherkin acceptance with real Terraform and OpenTofu in testcontainers:
   `state_backend.feature` (init, plan, apply through the backend; a second apply blocked by
   `423` until the first ends), `state_external_access.feature` (`terraform_remote_state`
   with and without the permissions and the stack switch), `state_import.feature`,
-  `state_rollback.feature`, and `state_terragrunt_units.feature` with workspace unlock.
+  `state_rollback.feature`, `state_terragrunt_units.feature` with workspace unlock, and
+  `state_force_unlock.feature` (`terraform force-unlock` from a task releases a lock left
+  by a killed run).
+- A retention test on a fake clock: a non-current version is deleted after 90 days, the
+  current version and a version a pending run references are kept.
 - A sealing test writes a state with a known secret output and asserts the bytes in the
   object store do not contain it.
 
@@ -297,6 +339,7 @@ ordinary REST operations and answer the problem details of decision
 - [24 section 3.2: object storage buckets](../reference/24-self-hosted-reference.md#32-object-storage-buckets).
 - [27 section 5: Digger (OpenTaco)](../reference/27-reference-materials.md#5-digger-opentaco).
 - [14 section 3.3: the action catalogue](../reference/14-spaces-rbac-and-identity.md#33-the-action-catalogue).
+- [Go FIPS 140-3 mode](https://go.dev/doc/security/fips140): `GODEBUG=fips140=only`.
 - Terraform `http` backend: <https://developer.hashicorp.com/terraform/language/backend/http>;
   the client at `hashicorp/terraform` `b32cc59736f3` and `opentofu/opentofu` `f0af18832521`,
   `internal/backend/remote-state/http/client.go` (lock, unlock and `ID` query behaviour).

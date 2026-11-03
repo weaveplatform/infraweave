@@ -1,6 +1,6 @@
 # 0006: Authentication and tokens
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -42,8 +42,9 @@ defines that principal.
 
 Every token infraweave issues is a JWT signed by an installation key (see
 [Signing keys](#signing-keys)). One library, `github.com/go-jose/go-jose/v4`,
-signs and verifies all of them, the same library
-[0013](0013-secrets-at-rest.md) uses for JWE.
+signs and verifies all of them with ES256, RS256 or PS256, which Go's FIPS
+140-3 module approves ([0013](0013-secrets-at-rest.md#fips-140-3)). go-jose
+is used for signatures only; nothing infraweave seals uses JWE.
 
 | Kind | Obtained by | Lifetime | `aud` | `sub` | Session row |
 |---|---|---|---|---|---|
@@ -56,8 +57,10 @@ signs and verifies all of them, the same library
 | Worker session token | launcher registration ([0008](0008-run-execution-and-worker-protocol.md)) | 1 hour, renewed in poll responses | `infraweave-worker` | worker ULID | no |
 | Run token | handover of a run to a worker ([0008](0008-run-execution-and-worker-protocol.md)) | until the run ends, plus 1 hour | `infraweave-runner` | run ULID | no |
 
-Lifetimes are configuration (`auth.tokens.<kind>.ttl`), with the values above as
-defaults. Every API-facing JWT carries:
+The lifetimes above are defaults. Each is configuration
+(`auth.tokens.<kind>.ttl`; the browser session's two limits are
+`auth.session.idle_timeout` and `auth.session.max_age`); a value that is not
+positive fails the start. Every API-facing JWT carries:
 
 | Claim | Value |
 |---|---|
@@ -161,13 +164,26 @@ admits or refuses it and computes its grants. The front ends are:
 | OIDC SSO (authorization code with PKCE) | `github.com/coreos/go-oidc/v3`, `golang.org/x/oauth2` |
 | SAML 2.0 SSO (SP-initiated; IdP-initiated requests get `303` to the SP flow) | `github.com/crewjam/saml` |
 | GitHub OAuth app, the managed-provider analog | `golang.org/x/oauth2` |
-| Break-glass admin: `auth.admin.username` and `auth.admin.password_hash` (argon2id) at `/admin-login`; empty disables it | `golang.org/x/crypto/argon2` |
+| Break-glass admin: `auth.admin.username` and `auth.admin.password_hash` (PBKDF2-HMAC-SHA256, below) at `/admin-login`; empty disables it | `crypto/pbkdf2` |
 | FIDO2 security keys for MFA | `github.com/go-webauthn/webauthn` |
 
 The SCIM server, the SAML claim mapping and the WebAuthn ceremonies are outside
 this record; each produces or narrows the identity above. Before any SSO is
 configured the account's identity provider is `EMPTY`, as self-hosted Spacelift
 reports, and only the break-glass login works.
+
+**The break-glass password hash.**
+
+- **Algorithm.** PBKDF2 with HMAC-SHA256 from Go's standard `crypto/pbkdf2`,
+  600,000 iterations, a 16-byte random salt and a 32-byte output.
+- **Format.** `$pbkdf2-sha256$i=<iterations>$<salt>$<hash>`, salt and hash in
+  unpadded standard base64. Verification compares in constant time.
+- **Producing it.** `infraweave auth hash-password` reads the password on
+  standard input and prints the hash, so the password never appears in a
+  process list or shell history.
+- **Iterations.** A hash below 600,000 iterations fails the start, naming the
+  setting. A hash with more is accepted, so an operator can raise the cost
+  without a release.
 
 ### The principal
 
@@ -324,9 +340,26 @@ Strict YAML under `auth`: `api_issuer`, `run_api_token.issuer`,
   fast for tokens infraweave alone verifies. RS256 is the algorithm every
   relying party in report 12 accepts; Spacelift's own may be PS512 (capture
   C91), which is selectable if needed.
-- **SHA-256 for key secrets, argon2id for the break-glass password.** A
+- **SHA-256 for key secrets, PBKDF2 for the break-glass password.** A
   32-byte random secret cannot be brute-forced, so a slow hash adds cost
-  without security. A human password can, so it gets argon2id.
+  without security. A human password can, so it gets a password hash.
+  - **PBKDF2-HMAC-SHA256** is the password hash that FIPS 140-3 approves
+    (NIST [SP 800-132](https://csrc.nist.gov/pubs/sp/800/132/final)), and
+    Go's `crypto/pbkdf2` runs under `GODEBUG=fips140=only` with a SHA-2 hash,
+    a salt of at least 128 bits and a key of at least 112 bits
+    ([0013](0013-secrets-at-rest.md#fips-140-3)).
+  - **600,000 iterations** is OWASP's figure for PBKDF2-HMAC-SHA256 where
+    FIPS 140 compliance is required
+    ([Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#pbkdf2)).
+    NIST [SP 800-63B-4 section 3.1.1.2](https://pages.nist.gov/800-63-4/sp800-63b.html)
+    sets no count; it asks for a cost "as high as practical" and a salt of
+    at least 32 bits, which the 16-byte salt exceeds. The login is used only
+    when SSO is down, so a slow verification costs nothing that matters.
+  - **Rejected: argon2id.** It is memory-hard and the stronger choice
+    against GPU cracking, but it is not a FIPS-approved algorithm, so it
+    could not run in the FIPS 140-3 mode infraweave supports from the start.
+  - **Rejected: bcrypt.** Also not FIPS-approved, and it truncates passwords
+    at 72 bytes.
 - **Rejected: an external authorization server** (Dex, Keycloak). It adds a
   stateful dependency beside PostgreSQL for flows a library covers.
 - **Rejected: HMAC-signed tokens.** They cannot be published for relying
@@ -373,6 +406,12 @@ Departures from Spacelift, for the plan's deviations register:
   external ID and session name formats.
 - Key rotation tests with a fake clock: `next` published 48 hours before use,
   `retiring` kept until the last token expires.
+- Break-glass password tests: a known password verifies against a hash made
+  by `infraweave auth hash-password`; a wrong one fails; a hash below 600,000
+  iterations, with an unknown prefix or with a short salt fails the start;
+  all of it also under `GODEBUG=fips140=only`.
+- Configuration tests: each `auth.tokens.<kind>.ttl` overrides its default,
+  and a value that is not positive fails the start.
 - Gherkin acceptance against PostgreSQL in testcontainers:
   `test/acceptance/features/auth_api_keys.feature` (create, exchange, reset,
   disable, expiry), `auth_sessions.feature` (list, delete, forced

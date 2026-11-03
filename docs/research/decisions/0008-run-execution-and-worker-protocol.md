@@ -1,6 +1,6 @@
 # 0008: Run execution and the worker protocol
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -159,8 +159,9 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
 - **Limits applied in the claim.** Drift runs (tiers 6 and 7) are skipped when the
   pool's executing drift runs reach its drift detection run limit
   ([10 section 2.4](../reference/10-workers-and-execution.md#24-pool-settings-with-behaviour)).
-  On the public pool, an account's runs are skipped while it already has
-  `parallelism` runs executing.
+  On the public worker pool, an account's runs are skipped while it already
+  has as many runs executing as its `public-worker-slots` limit of
+  [0021](0021-capability-scope-and-supersession.md).
 - **Wake-ups.** A replica holding idle polls `LISTEN`s on `infraweave_runs`. On a
   notification for a pool it wakes one held poll for that pool, the one from the
   most recently registered worker, which approximates Spacelift's newest-first
@@ -181,8 +182,11 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
     The server signs it with the pool CA, one ECDSA P-256 key per installation
     kept in `worker_pool_ca` and sealed by [0013](0013-secrets-at-rest.md),
     and returns the pool token: base64 JSON
-    `{version, endpoint, pool, certificate}`. RSA keys of 2048 bits or more and EC
-    P-256 keys are accepted. The private key never leaves the customer.
+    `{version, endpoint, pool, certificate}`. The pool key must be an EC P-256
+    key, because it both signs registrations and opens the sealed specification
+    through ECDH ([0013](0013-secrets-at-rest.md#delivery-to-runs)); a CSR with
+    any other key answers `422`, problem `validation-failed`, naming P-256. The
+    private key never leaves the customer.
   - **Reset.** `workerPoolReset` signs a new certificate and records its serial on
     the pool. Registrations and sessions bound to an older serial are refused at
     their next call, so old workers stop within one poll.
@@ -192,6 +196,10 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
     to the pool CA, the current serial, `iat` within five minutes, and that `jti`
     is unseen (table `worker_nonces`, kept 10 minutes). It answers with the worker
     ID and a worker session token (`aud` `infraweave-worker`, one hour).
+  - **Resuming.** A registration that names an existing worker ID of the same
+    pool resumes that worker instead of creating one, while the worker row
+    still exists. A launcher that was offline and whose session token expired
+    meanwhile resumes this way and keeps its run.
   - **Run token.** Issued at claim (`aud` `infraweave-runner`), scoped to one run,
     accepted only while the run is in a worker state and its `state_version`
     matches the run's current execution, and valid at most until the run ends
@@ -246,16 +254,15 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
 - **Secrets are sealed to the pool.** The server opens the sealed values
   ([0013](0013-secrets-at-rest.md)) and seals the secret part of the
-  specification to the pool's public key as a JWE through
-  `github.com/go-jose/go-jose/v4`: `RSA-OAEP-256` with `A256GCM` for an RSA pool
-  key, `ECDH-ES+A256KW` with `A256GCM` for a P-256 pool key. Only a holder of the
-  pool private key can read it.
+  specification to the pool's P-256 public key in 0013's pool envelope (ECDH
+  P-256, HKDF-SHA256, AES-256-GCM). Only a holder of the pool private key can
+  read it.
 - **The run's artifact key.** The sealed part also carries a fresh 256-bit
   artifact key generated for the run. The server keeps it as
   `runs.artifact_key_sealed`, sealed by the keyring
   ([0013](0013-secrets-at-rest.md)), so it can open what the runner seals with
   it.
-- **The launcher decrypts.** The launcher opens the JWE and hands values to the
+- **The launcher decrypts.** The launcher opens the envelope and hands values to the
   container as environment and files. The pool private key never enters the run
   container or the server.
 - **Workspaces are end to end.** When a tracked run with changes finishes
@@ -311,13 +318,34 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   encrypted workspace, which the server cannot read. Observability artifacts go to
   `run-observability` by pre-signed `PUT`.
 
-### Liveness and lost workers
+### Liveness: offline workers and lost runs
 
-- A worker unseen for `worker.lost_after` (default 3 minutes, three default
-  polls) is lost. The periodic task `worker.reap` (every 30 seconds) deletes lost
-  worker rows and, in the same transaction, fails each run they held that is in
-  `PREPARING`, `PREPARING_APPLY`, `PREPARING_REPLAN`, `INITIALIZING`, `PLANNING`,
-  `APPLYING`, `PERFORMING` or `DESTROYING`, with note `worker lost`.
+Two settings separate "this worker should get no new work" from "this run
+has failed":
+
+| Setting | Default | After a worker's last poll | Effect |
+|---|---|---|---|
+| `worker.offline_after` | 3 minutes, three default polls | the worker is an offline worker | It is listed as `OFFLINE` and claims no run. A run it holds keeps its state and its stack lock |
+| `run.lost_after` | 60 minutes | the worker's run is a lost run | The run fails with note `worker lost`, and the worker row is deleted |
+
+- **The task.** The periodic task `worker.reap` (every 30 seconds) marks
+  workers unseen for `worker.offline_after` as offline. For workers unseen
+  for `run.lost_after`, it deletes the worker row and, in the same
+  transaction, fails each run the worker held that is in `PREPARING`,
+  `PREPARING_APPLY`, `PREPARING_REPLAN`, `INITIALIZING`, `PLANNING`,
+  `APPLYING`, `PERFORMING` or `DESTROYING`. An idle offline worker's row is
+  deleted at the same point.
+- **A worker that returns in time.** A poll from an offline worker, or a
+  registration that resumes it (above), clears the offline mark, and its run
+  continues where it was: the runner's reports, uploads and the state backend
+  keep working, because the run token outlives the run by an hour and is
+  checked against the run's state, not the worker's.
+- **A worker that returns late.** Its run has already failed. Its next poll
+  answers `401`, the launcher kills the container, and it registers again as a
+  new worker.
+- `run.lost_after` must be greater than `worker.offline_after`; any other
+  pair fails the start. Both are server settings, so one installation applies
+  one tolerance to every pool.
 - A launcher that loses its container (crash, out of memory, timeout, kill)
   reports through its next poll (`busy: false` with the run ID, exit code and
   reason), and the server fails the run if no runner report ended it.
@@ -326,7 +354,7 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
 | Action | Behaviour |
 |---|---|
-| Status | `DRAINED` when drained, else `BUSY` when busy, else `IDLE`; `busy` and `drained` stay separate fields ([10 section 3.1](../reference/10-workers-and-execution.md#31-worker)) |
+| Status | `OFFLINE` when offline, else `DRAINED` when drained, else `BUSY` when busy, else `IDLE`; `busy` and `drained` stay separate fields ([10 section 3.1](../reference/10-workers-and-execution.md#31-worker)). `OFFLINE` is a fourth `WorkerStatus` value that Spacelift's schema does not have, recorded as a divergence (decision 0016) |
 | Drain, undrain | `workerDrainSet` sets the flag and returns the worker with `busy`. A drained worker gets no assignment and finishes its current run |
 | Cycle | `workerPoolCycle` sends `cycle` to every worker of the pool on its next poll. An idle launcher exits at once; a busy one exits after its run ends |
 | Reset | A new certificate serial; old workers are refused at their next call and exit |
@@ -337,13 +365,25 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **Private pools** are `worker_pools` rows in a space, with the preparing
   timeout (default 15 minutes) and drift detection run limit
   ([28 section 12.5](../reference/28-data-model.md#125-workers)).
-- **The public pool** is a pool the installation's operator runs for every
-  account, on the same protocol. Its launchers register with an installation-level
-  pool token that the operator issues through the administration API.
-  `PublicWorkerPool.parallelism` caps each account's executing runs on
-  it. The restrictions Spacelift places on its public pool hold here too: no run
-  priorities, runner images only from the configured registry allowlist (default:
-  Spacelift's list), no scheduled or drift runs. An installation without public
+- **The public worker pool** is one pool the installation's operator runs for
+  every account, on the same protocol. Its launchers register with an
+  installation-level pool token that the operator issues through the
+  administration API. The restrictions Spacelift places on its public pool
+  hold here too
+  ([10 section 1.1](../reference/10-workers-and-execution.md#11-public-and-private-pools-compared)):
+  - no run priorities: `runPrioritySet` on a run in the public pool answers
+    `422`, problem `validation-failed`;
+  - runner images only from the configured registry allowlist
+    (`worker.public_pool.allowed_registries`, default Spacelift's list),
+    because the shared Docker daemon would otherwise cache one account's
+    private image for every other;
+  - no scheduled or drift detection runs;
+  - an account's runs are skipped by the claim while the account already has
+    its `public-worker-slots` runs in flight.
+
+  The number of slots is a limit of the feature catalogue, so a tier or a
+  grant sets it per account ([0021](0021-capability-scope-and-supersession.md));
+  `PublicWorkerPool.parallelism` reports it. An installation without public
   workers simply has none registered.
 
 ### The launcher and the runner
@@ -401,7 +441,8 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 | Run timeout | 70 minutes | launcher, from container start | `FAILED`, note `run timeout` |
 | No-log timeout | 7 minutes | launcher, from the last line on the container's output | `FAILED`, note `no log output` |
 | Preparing timeout | 15 minutes, per pool | server: no `started` report in time | `FAILED` (T11, T36, T44) |
-| Lost worker | 3 minutes | `worker.reap` | `FAILED`, note `worker lost` |
+| Offline worker | 3 minutes (`worker.offline_after`) | `worker.reap` | no new work; the run continues |
+| Lost run | 60 minutes (`run.lost_after`) | `worker.reap` | `FAILED`, note `worker lost` |
 | Not picked up: 2 days (proposed, test) or 7 days (tracked, task, destroy) | as Spacelift | `run.timers` | `CANCELED` |
 | `UNCONFIRMED` 7 days unchanged | as Spacelift | `run.timers` | `DISCARDED` |
 | `CONFIRMED` or `REPLAN_REQUESTED` 7 days unchanged | as Spacelift | `run.timers` | `FAILED` |
@@ -409,7 +450,8 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
 The timer rules and their notification rules are report 08's
 ([08 timers](../reference/08-run-lifecycle.md#timers)). `run.timers` reads
-`runs (state, state_changed_at)` and skips runs held by a live worker. The day
+`runs (state, state_changed_at)` and skips runs held by a worker that still
+has a row, offline or not. The day
 counts are configuration with Spacelift's values as defaults.
 
 ### Stop and kill
@@ -436,7 +478,8 @@ offers this policy is available to it alone; 0009 lists built-ins.
 
 ### Configuration
 
-- **Server:** `worker.poll_timeout_max` (120s), `worker.lost_after` (3m),
+- **Server:** `worker.poll_timeout_max` (120s), `worker.offline_after` (3m),
+  `run.lost_after` (60m),
   `run.preparing_timeout_default` (15m), `run.timers.*`,
   `worker.public_pool.allowed_registries`.
 - **Launcher:** `launcher.token`, `launcher.private_key`, `launcher.poll_timeout`
@@ -485,10 +528,22 @@ offers this policy is available to it alone; 0009 lists built-ins.
 - **The launcher holds the key.** Opening secrets in the launcher keeps the pool
   private key out of both the run container and the server, and keeps workspaces
   unreadable by the server.
-- **Departure: lost workers fail their runs.** Spacelift's 30-day rule leaves a
+- **Departure: lost runs fail after an hour.** Spacelift's 30-day rule leaves a
   run alone while a worker executes it. With a poll every minute, infraweave
-  knows when a worker is gone and fails its run after three minutes instead of
-  leaving the stack locked.
+  knows within three minutes that a worker has stopped polling, and stops
+  sending it work. Failing the run at that point would kill applies through
+  a network blip or a launcher restart, and a half-applied run is worse than a
+  late one; leaving it for 30 days keeps the stack locked for a month. An
+  hour covers restarts and short outages, and `run.lost_after` lets an
+  operator choose another tolerance.
+- **Departure: P-256 pool keys only.** Spacelift's documented setup generates
+  an RSA 4096 key ([10 section 2.3](../reference/10-workers-and-execution.md#23-credentials)).
+  The pool envelope of 0013 is an ECDH construction, chosen so that it runs
+  under Go's FIPS 140-3 mode, and one key per pool keeps registration and
+  sealing on the same key.
+- **Departure: an `OFFLINE` worker status.** Spacelift's worker list has no
+  such state; an operator needs to see a worker that holds a run but has
+  stopped polling, since that run is waiting on it.
 - **Departure: infraweave's own default runner images**, so an installation does
   not depend on another vendor's registry; the shared contract keeps Spacelift's
   images usable.
@@ -511,6 +566,12 @@ offers this policy is available to it alone; 0009 lists built-ins.
 - **Report 08's unverified targets** are resolved above as infraweave choices
   marked [I]; a capture that shows Spacelift does otherwise amends this record.
 - **Registration needs clocks within five minutes** of the server.
+- **A run held by an offline worker holds its stack lock** until the worker
+  returns or `run.lost_after` passes. Stop and kill reach the run only
+  through the worker's next poll, so until then the stack's users see the
+  worker as `OFFLINE` and wait.
+- **Existing RSA pool keys** cannot be brought over; a pool moving from
+  Spacelift creates a new P-256 CSR.
 
 ## Verification
 
@@ -520,14 +581,18 @@ offers this policy is available to it alone; 0009 lists built-ins.
   when an edge there is missing from the implementation.
 - `internal/run/claim_test.go` (PostgreSQL through testcontainers): seven-tier
   order with oldest first, one claim per run under 50 concurrent pollers, drift
-  limit and public-pool parallelism.
+  limit, and the `public-worker-slots` limit per account.
 - `internal/workerapi` tests: registration refused for a foreign chain, a reset
   serial, a replayed `jti` and a skewed `iat`; poll hold, wake-up and timeout;
   signals; session renewal; `409` on a stale report.
-- Gherkin acceptance with PostgreSQL, MinIO and Docker:
+- `internal/workers` reap tests on a fake clock: offline at 3 minutes with the
+  run untouched; a poll at 59 minutes clears the mark and the run finishes;
+  `FAILED` with `worker lost` at 60 minutes; a late poll answers `401`; a
+  resumed registration after the session token expired keeps the run.
+- Gherkin acceptance with PostgreSQL, RustFS and Docker:
   `test/acceptance/features/worker_protocol.feature`,
   `runs_lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
-  targeted replan, stop, kill, lost worker, timers on a fake clock),
+  targeted replan, stop, kill, offline worker, lost run, timers on a fake clock),
   `runs_runner_image.feature` (a Spacelift public runner image runs unchanged) and
   `runs_signed.feature`.
 - `api/worker.openapi.yaml` validates as OpenAPI 3, and a test checks that the

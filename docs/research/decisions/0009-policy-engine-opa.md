@@ -1,6 +1,6 @@
 # 0009: Policy engine: embedded OPA, Rego v0 and v1
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -110,6 +110,14 @@ one is a compile error at save:
 - **`print`** is enabled through `rego.EnablePrintStatements` and a `rego.PrintHook` that
   collects output into the evaluation record, at most 64 KiB per evaluation. Print output
   never reaches the server log.
+- **FIPS 140-3 enforcement.** When the process runs with
+  `GODEBUG=fips140=only` ([0013](0013-secrets-at-rest.md#fips-140-3)), the
+  capability set also removes `crypto.md5`, `crypto.sha1`, `crypto.hmac.md5`
+  and `crypto.hmac.sha1`, so a policy that uses them fails at save with `422`
+  rather than at evaluation. Go refuses MD5 and SHA-1 in that mode, and its
+  `crypto/md5.Sum` panics rather than returning an error. A policy saved
+  before the mode was switched on fails to compile when it is next
+  evaluated, and takes the outcome on error below.
 - **Built-in errors** use OPA's default (an erroring built-in makes its expression
   undefined), not `StrictBuiltinErrors`, so policies written for Spacelift behave the same.
 
@@ -284,6 +292,7 @@ Who calls the engine, when, and what the result does to the run of decision
   - `ACCESS` policies are never evaluated (decision 0021 holds their scope).
   - `sanitized` uses infraweave's own truncation of SHA-256, since Spacelift's is
     unverified ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
+  - Under `GODEBUG=fips140=only`, the MD5 and SHA-1 built-ins are unavailable.
 
 ## Constraints
 
@@ -305,7 +314,8 @@ Who calls the engine, when, and what the result does to the run of decision
 ## Verification
 
 - `internal/policy` unit tests: compilation of every type's preamble under both engines;
-  each removed built-in rejected at save; `sanitized` and `print`; the cache key; timeouts
+  each removed built-in rejected at save, and the MD5 and SHA-1 built-ins rejected when
+  enforcement is on; `sanitized` and `print`; the cache key; timeouts
   through a policy that loops; every combination rule of
   [09 section 3](../reference/09-policies.md#3-rules-outcomes-and-combination-per-type);
   the error table above; flag reset ordering and multiple owners; sample quotas.

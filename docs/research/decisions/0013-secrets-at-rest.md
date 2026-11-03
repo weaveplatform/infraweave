@@ -1,6 +1,6 @@
 # 0013: Secrets at rest, delivery to runs and log masking
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -37,7 +37,56 @@ in object storage ([0005](0005-persistence-postgresql.md)), where bucket
 encryption alone protects nothing from someone holding the bucket's
 credentials.
 
+The maintainer's rule is that FIPS 140-3 is part of infraweave from the
+start, not a later addition. Every construction below therefore has to run
+in Go's FIPS 140-3 mode, including its strictest setting.
+
 ## Decision
+
+### FIPS 140-3
+
+- **Release builds use the validated module.** Every release binary and image
+  (decision [0020](0020-reference-deployments-and-packaging.md)) is built with
+  `GOFIPS140=certified`. In Go 1.27 that alias selects the newest Go
+  Cryptographic Module version holding a CMVP certificate, which is v1.0.0:
+  [CMVP certificate #5247](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5247),
+  FIPS 140-3 level 1, active, sunset 2031-04-26. v1.26.0 is pending review in
+  the Modules In Process list, and the alias moves to it once it is
+  certified ([Go FIPS 140-3](https://go.dev/doc/security/fips140)).
+- **Modes.** A binary built this way runs in FIPS 140-3 mode by default:
+  integrity and known-answer self-tests, an SP 800-90A DRBG behind
+  `crypto/rand`, and TLS that negotiates only approved parameters. An
+  operator may set `GODEBUG=fips140=on` explicitly or `GODEBUG=fips140=only`,
+  under which a non-approved algorithm returns an error or panics. The
+  setting is read once at start.
+- **Approved constructions only.** Everything infraweave seals, derives,
+  signs or hashes uses an algorithm on certificate #5247: AES-GCM with random
+  nonces through `cipher.NewGCMWithRandomNonce`, HKDF-SHA256, ECDH on P-256
+  (KAS-ECC-SSC), ECDSA P-256 and RSA signatures, SHA-2, HMAC-SHA256 and
+  PBKDF2 ([0006](0006-authentication-and-tokens.md)). The KMS providers below
+  run inside their own services.
+- **Versioned formats.** Every sealed format starts with a version byte, so a
+  later construction is a new version beside the old one, not a rewrite.
+- **What `fips140=only` refuses.** Go 1.27.3 run with `GODEBUG=fips140=only`
+  refuses these primitives, each confirmed by running it:
+
+  | Call | Result under `fips140=only` |
+  |---|---|
+  | `crypto/md5.Sum` | panics: `crypto/md5: use of MD5 is not allowed in FIPS 140-only mode` |
+  | `md5.New().Write` | returns the same message as an error |
+  | `cipher.NewGCM` | returns an error: `use of GCM with arbitrary IVs is not allowed in FIPS 140-only mode, use NewGCMWithRandomNonce` |
+  | `crypto/hpke` with DHKEM(P-256), HKDF-SHA256, AES-256-GCM, built with `GOFIPS140=certified` | returns the `cipher.NewGCM` error, because module v1.0.0's HPKE builds on it |
+  | `cipher.NewGCMWithRandomNonce`, ECDH P-256 with HKDF-SHA256, PBKDF2-HMAC-SHA256 | succeed |
+
+  The MD5 result has two consequences. Decision
+  [0010](0010-state-backend.md) accepts and ignores Terraform's
+  `Content-MD5` header under `fips140=only` and relies on the SHA-256 it
+  records, and decision 0005's object store drivers never use MD5. 0010
+  lists the first among its departures from Spacelift.
+- **CI.** A blocking job runs the test suite with the binary built with
+  `GOFIPS140=certified` and run with `GODEBUG=fips140=only`
+  ([0016](0016-testing-and-acceptance.md#ci)), so a dependency that reaches
+  for a refused algorithm fails a pull request rather than an operator.
 
 ### Keys
 
@@ -66,7 +115,7 @@ The provider is set by `secrets.kek.provider`.
 
 | Provider | Settings | Wrap operation | Library |
 |---|---|---|---|
-| `local` | `secrets.kek.local.key_file`, or the environment variable `INFRAWEAVE_SECRETS_KEK` (base64 of 32 bytes) | AES-256-GCM, with associated data `infraweave/data-key/<id>` | standard library |
+| `local` | `secrets.kek.local.key_file`, or the environment variable `INFRAWEAVE_SECRETS_KEK` (base64 of 32 bytes) | AES-256-GCM with a random nonce (`cipher.NewGCMWithRandomNonce`), with associated data `infraweave/data-key/<id>` | standard library |
 | `awskms` | `key_id` (ARN or alias), `region` | KMS `Encrypt` and `Decrypt`, with encryption context `{"infraweave":"data-key","id":"<id>"}` | `github.com/aws/aws-sdk-go-v2/service/kms` |
 | `gcpkms` | `key_name` (CryptoKey resource name) | Cloud KMS `Encrypt` and `Decrypt`, with `additional_authenticated_data` | `cloud.google.com/go/kms` |
 | `azurekv` | `vault_url`, `key_name`, `key_version` | Key Vault `wrapKey` and `unwrapKey` with `RSA-OAEP-256` | `github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys` |
@@ -87,6 +136,12 @@ The provider is set by `secrets.kek.provider`.
   0x01 | key id (uint32, big-endian) | nonce (12 random bytes) | AES-256-GCM ciphertext and tag
   ```
 
+  The nonce, ciphertext and tag are exactly what
+  `cipher.NewGCMWithRandomNonce`'s `Seal` returns, so the format needs no
+  caller-chosen nonce. A data key must seal fewer than 2^32 values, the
+  limit that function's documentation sets for random nonces; under the
+  yearly rotation below that would take a sustained rate above 130 seals a
+  second ([Rotation and migration](#rotation-and-migration)).
 - **Associated data.** The associated data is
   `<table>.<column>:<primary key>`, where a composite key joins its parts with
   `/`. A sealed value copied into another row or column fails to open, so
@@ -159,16 +214,21 @@ the owning record beside it.
 - **The content key.** Each object has its own 256-bit content key. That key
   is sealed into `blob_objects.content_key_sealed`, with associated data
   `blob_objects:<store>/<key>`.
-- **Object format.** The object is a stream of segments:
-  - a header: the magic bytes `IWSB`, version `0x01`, and a 7-byte random
-    nonce prefix;
-  - segments of 64 KiB of plaintext, each encrypted with AES-256-GCM;
-  - each segment's nonce: the prefix, a 4-byte big-endian segment counter, and
-    one byte that is `1` on the last segment and `0` otherwise.
+- **Object format.** The object is a header followed by segments:
+  - **Header.** The magic bytes `IWSB` and the version byte `0x01`.
+  - **Segments.** Each holds 64 KiB of plaintext, the last one possibly
+    less, sealed with AES-256-GCM through `cipher.NewGCMWithRandomNonce`:
+    a 12-byte random nonce, the ciphertext and a 16-byte tag.
+  - **Associated data.** Each segment authenticates
+    `IWSB | 0x01 | segment index (uint64, big-endian) | last flag`, where the
+    flag is `1` on the last segment and `0` otherwise.
 
-  The counter and the last-segment flag make reordering and truncation fail
-  to authenticate. Objects stream in both directions, so a 500 MB state file
-  never sits in memory.
+  The index and the flag in the associated data make reordering, truncation
+  and appending fail to authenticate, without deriving any nonce from them.
+  A content key seals one object, so the 2^32-segment limit of random
+  nonces caps an object at 256 TiB, far above any store's size limit; the
+  writer refuses to go past it. Objects stream in both directions, so a
+  500 MB state file never sits in memory.
 - **Rotation touches only the database.** Because the content key sits in
   the database, rotating data keys reseals one column and never rewrites
   objects.
@@ -190,21 +250,31 @@ the owning record beside it.
   builds a run's spec. That covers environment variables, mounted files,
   integration credentials and output references for a dependent stack.
 - **Sealing to the pool key.** The spec's secret part is sealed to the worker
-  pool's public key as a JWE, using `github.com/go-jose/go-jose/v4`:
+  pool's P-256 public key ([0008](0008-run-execution-and-worker-protocol.md))
+  in infraweave's own pool envelope:
 
-  | Pool key | Key management | Content encryption |
-  |---|---|---|
-  | RSA, 2048 bits or more (Spacelift's documented setup uses 4096) | `RSA-OAEP-256` | `A256GCM` |
-  | EC P-256 | `ECDH-ES+A256KW` | `A256GCM` |
+  ```text
+  0x01 | ephemeral P-256 public key (65 bytes, uncompressed) | nonce (12 random bytes) | AES-256-GCM ciphertext and tag
+  ```
 
-  The protected header carries the run ID and the state version it was issued
-  for. The runner rejects a spec issued for another run.
+  - **Key agreement.** The sender generates an ephemeral P-256 key with
+    `crypto/ecdh` and computes the shared secret with the pool's public key.
+  - **Key derivation.** The AES-256 key is HKDF-SHA256 of the shared secret,
+    with an empty salt and info
+    `infraweave/pool-envelope/v1 | ephemeral public key | pool public key`,
+    so the key is bound to both keys and to the format version.
+  - **Encryption.** AES-256-GCM through `cipher.NewGCMWithRandomNonce`.
+  - **Associated data.** The version byte, the run ID and the state version
+    the spec was issued for. The launcher rejects a spec issued for another
+    run or another execution of it.
 - **Who can read a spec.** Only a holder of the pool's private key, which the
   customer keeps ([0008](0008-run-execution-and-worker-protocol.md)), can read
   the spec. A replica, a proxy or a log that sees the spec sees ciphertext.
 - **Workspaces.** Workspaces that wait for confirmation or a replan are
-  encrypted by the worker to the pool key, so infraweave itself cannot open
-  them. This is Spacelift's end-to-end property.
+  encrypted by the worker in the object format above, under a fresh content
+  key that travels sealed to the pool key in the pool envelope, so
+  infraweave itself cannot open them. This is Spacelift's end-to-end
+  property.
 - **What no API call returns.** No API operation returns a write-only value,
   whatever the caller's role. That includes the in-run API token of
   [0006](0006-authentication-and-tokens.md), as in
@@ -296,10 +366,31 @@ nothing about them is secret:
 - **Rejected: column encryption in PostgreSQL** (`pgcrypto`). The key would
   travel to the database server in queries and logs, and it needs an
   extension that [0005](0005-persistence-postgresql.md) does not require.
-- **Rejected: a JWT library's own encryption for columns.** JWE is used for the
-  one case it fits, sealing to a public key that infraweave doesn't hold the
-  private half of. For local sealing, a fixed binary format is smaller and
-  needs no parser.
+- **FIPS 140-3 from the start.** Retrofitting it would change every sealed
+  format after data exists in it; choosing approved constructions first costs
+  nothing now. `GOFIPS140=certified` pins the module NIST validated rather
+  than the one in the toolchain, which is what a FIPS 140-3 claim rests on.
+- **Random nonces with the index in the associated data.** Go's module
+  approves AES-GCM only when it chooses the nonce itself, so a nonce built
+  from a prefix and a segment counter is refused under `fips140=only`. Moving
+  the counter and the last-segment flag into the associated data keeps the
+  same protection against reordering and truncation.
+- **An own pool envelope.**
+  - **Rejected: go-jose's JWE.** Its AES-GCM content encryption calls
+    `cipher.NewGCM` with its own nonce, which `fips140=only` refuses, and
+    its key agreement and key wrapping run outside Go's module.
+  - **Rejected: `crypto/hpke`.** RFC 9180 HPKE with DHKEM(P-256),
+    HKDF-SHA256 and AES-256-GCM is the standard form of the same
+    construction, but in module v1.0.0 it builds on `cipher.NewGCM` and fails
+    under `fips140=only` (table above). It becomes the natural successor
+    format, as a new version byte, once the certified module runs it.
+  - The envelope uses only primitives the module approves, and is small
+    enough to specify in full above.
+- **JWT signing stays on go-jose.** ES256, RS256 and PS256 signatures run on
+  the module's approved ECDSA and RSA through the standard library, so
+  [0006](0006-authentication-and-tokens.md)'s tokens need no change.
+- **Rejected: a JWT library's own encryption for columns.** For local
+  sealing, a fixed binary format is smaller and needs no parser.
 - **Rejected: delivering secrets to runs in plain text over TLS.** It would
   leave every replica, ingress log and debugging proxy able to read them, and
   would lose Spacelift's guarantee that only the pool can read run state.
@@ -319,14 +410,22 @@ nothing about them is secret:
   recognised. Masking is a safety net, not a control.
 - **Pool resets.** A pool reset invalidates every workspace waiting for
   confirmation in that pool.
-- **Primitives.** Every primitive comes from Go's standard `crypto` packages:
-  AES-GCM, HKDF-SHA256, RSA-OAEP and ECDH P-256. Go's FIPS 140-3 module runs
-  this design with `GODEBUG=fips140=on`, but records AES-GCM with
-  caller-chosen nonces as not approved, and `fips140=only` refuses it
-  (`crypto/cipher.NewGCM`). The column format's random nonce matches
-  `cipher.NewGCMWithRandomNonce`, which is approved; the segment counter nonces
-  and go-jose's JWE content encryption are not, so a FIPS-only build needs a
-  different object format and JWE path.
+- **Primitives.** Every primitive comes from Go's standard `crypto` packages
+  and runs under `GODEBUG=fips140=only`.
+- **`fips140=only` is Go's testing mode.** Go's documentation describes it as
+  a best-effort mode for testing, assessment and debugging, not intended for
+  production, with possible false positives and negatives
+  ([Go FIPS 140-3](https://go.dev/doc/security/fips140)). infraweave runs
+  under it and tests under it, but the FIPS 140-3 claim rests on the default
+  mode of a `GOFIPS140=certified` build.
+- **The module version.** The certificate covers module v1.0.0 as frozen from
+  Go 1.24. Newer algorithms in later Go releases, such as v1.26.0's HPKE, are
+  out of reach of certified builds until a later module is certified.
+- **P-256 pool keys only.** The envelope needs an ECDH key, so a pool key on
+  RSA is refused ([0008](0008-run-execution-and-worker-protocol.md)).
+- **MD5 is unavailable under `fips140=only`.** A client feature that depends
+  on it, such as Terraform's `Content-MD5`, is accepted without a check in
+  that mode ([0010](0010-state-backend.md)).
 
 ## Verification
 
@@ -335,8 +434,13 @@ nothing about them is secret:
   - failure on a wrong key, a changed associated data value, a truncated value
     or an unknown version byte;
   - streaming objects: round trips at 0 bytes, exactly 64 KiB, 64 KiB plus one,
-    and 1 GiB, plus a dropped last segment, swapped segments and a flipped
-    flag;
+    and 1 GiB, plus a dropped last segment, swapped segments, an appended
+    segment and a flipped flag;
+  - the pool envelope: a round trip, a spec opened with another pool key, and
+    a spec presented for another run or state version, all failing except
+    the first;
+  - a known-answer vector per format, so a format change shows as a test
+    change;
   - `secrets.Value`, which renders `[redacted]` through `fmt`, `slog` and
     `encoding/json`.
 - **KEK providers.**
@@ -355,6 +459,13 @@ nothing about them is secret:
      reader;
   4. confirms the old key is deleted;
   5. runs `rewrap` from `local` to the Vault provider.
+- **FIPS 140-3.** The `fips-only` CI job of
+  [0016](0016-testing-and-acceptance.md#ci) runs the unit and acceptance
+  suites with `GOFIPS140=certified` and `GODEBUG=fips140=only`.
+- **Release check.** `infraweave version` reports whether FIPS 140-3 mode is
+  on and the module version (`crypto/fips140.Enabled()` and `Version()`), and
+  the release workflow refuses to publish a binary that does not report
+  `v1.0.0` or a later certified version.
 - **Delivery and masking.**
   - `secrets_run_delivery.feature` runs a real OpenTofu task that prints a secret
     variable, an `::add-mask` word and a well-known token. It asserts the log
@@ -371,6 +482,15 @@ nothing about them is secret:
   Spacelift's KMS and RSA modes.
 - [10 section 2.3](../reference/10-workers-and-execution.md#23-credentials): pool
   key pairs.
-- [RFC 7516](https://www.rfc-editor.org/rfc/rfc7516) (JWE) and
-  [RFC 7518](https://www.rfc-editor.org/rfc/rfc7518) (JWA): the run spec envelope.
-- [RFC 5869](https://www.rfc-editor.org/rfc/rfc5869): HKDF.
+- [Go FIPS 140-3](https://go.dev/doc/security/fips140): `GOFIPS140`,
+  `GODEBUG=fips140` and the module versions.
+- [CMVP certificate #5247](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5247):
+  the Go Cryptographic Module's approved algorithms.
+- [`cipher.NewGCMWithRandomNonce`](https://pkg.go.dev/crypto/cipher#NewGCMWithRandomNonce):
+  the random-nonce AES-GCM and its 2^32-message limit.
+- [NIST SP 800-38D](https://csrc.nist.gov/pubs/sp/800/38/d/final) (GCM),
+  [SP 800-56A Rev. 3](https://csrc.nist.gov/pubs/sp/800/56/a/r3/final) (ECDH),
+  [SP 800-56C Rev. 2](https://csrc.nist.gov/pubs/sp/800/56/c/r2/final) and
+  [RFC 5869](https://www.rfc-editor.org/rfc/rfc5869) (HKDF).
+- [RFC 9180](https://www.rfc-editor.org/rfc/rfc9180): HPKE, the rejected
+  standard envelope.

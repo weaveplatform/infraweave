@@ -1,6 +1,6 @@
 # 0022: Served API errors, update semantics and input strictness
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -271,10 +271,14 @@ every request against the bundled spec before the handler (giving
     unknown body field answers `400` with reason `unknown-field` and its
     pointer; a confirm on a finished run answers `409 invalid-state`.
   - `api_updates.feature`: `PUT` without an optional field resets it; `PATCH` keeps
-    it; a secret survives both when absent; a stale `If-Match` answers `412`;
+    it; `PATCH` with a field set to `null` resets it to its default; `PUT` with
+    `null` sets a nullable field whose default is not null to null; a secret
+    survives both when absent; a stale `If-Match` answers `412`;
     `PUT` on a configuration element answers `201` then `200`.
   - `api_strictness.feature`: each rejected cron form and timezone in the table
-    answers `422` with the field's pointer; a run whose
+    answers `422` with the field's pointer; with `ZONEINFO` pointing at an empty
+    directory, an IANA name such as `Europe/London` still resolves, from the
+    embedded `time/tzdata`; a run whose
     `.infraweave/config.yml` has an unknown key logs a warning and finishes, and
     fails under `unknown_keys: reject`.
 - `internal/cron` table tests (0011) cover the grammar; this record's features

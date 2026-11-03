@@ -1,6 +1,6 @@
 # 0016: Testing and acceptance against real dependencies
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -71,13 +71,31 @@ pass:
 
 | Suite | Implementations it runs against | Kind |
 |---|---|---|
-| `internal/store/storetest` | PostgreSQL at the version floor decision 0005 sets, and at the newest major | `TestAcc` |
-| `internal/objectstore/objectstoretest` | MinIO (S3-compatible) and the local-disk backend | `TestAcc` for MinIO, `TestUnit` for local disk |
+| `internal/store/storetest` | PostgreSQL at the version floor decision 0005 sets (blocking), and at the next major (reported, not blocking) | `TestAcc` |
+| `internal/objectstore/objectstoretest` | Every object store driver of decision 0005: `s3` on RustFS, `gcs` on fake-gcs-server, `azureblob` on Azurite, and `fs` on local disk; all blocking | `TestAcc` for the three emulators, `TestUnit` for local disk |
 | `internal/queue/queuetest` | the work queue of decision 0011 on PostgreSQL | `TestAcc` |
 
 Each PostgreSQL case gets its own database, created with
 `CREATE DATABASE … TEMPLATE iw_template` from a template the suite migrates
 once per container, so cases run in parallel without sharing rows.
+
+**The object store contract against emulators.** The suite covers decision
+0005's contract: put, get, head, delete, multipart, checksums, signed URLs
+and lifecycle. The emulators cover most of it; what one cannot show runs
+against the real service in the nightly cloud job (below). Capabilities are
+as each project documents them at RustFS 1.0.4, fake-gcs-server 1.56.1 and
+Azurite 3.37.0:
+
+| Emulator (licence) | Driver | What it supports that the contract needs | Gaps |
+|---|---|---|---|
+| [RustFS](https://github.com/rustfs/rustfs) (Apache-2.0; 1.0.0 released 2026-09-16) | `s3` | Object put, get, head and delete; multipart create, upload, complete and abort; presigned `GET` and `PUT`; SHA-256 checksum validation on `PutObject` and on multipart uploads; each checked by its s3-tests lane ([S3 compatibility matrix](https://github.com/rustfs/rustfs/blob/main/docs/architecture/s3-compatibility-matrix.md)) | Checksums on POST-form uploads do not yet pass, which infraweave does not use. AWS KMS server-side encryption and EKS Pod Identity credentials exist only on AWS |
+| [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) (BSD-2-Clause) | `gcs` | Media, multipart and resumable uploads, compose, delete, and verification of a declared MD5 or CRC32C (`fakestorage/upload.go`) | It accepts signed URLs without validating their signature or expiry ([README](https://github.com/fsouza/fake-gcs-server#using-with-signed-urls)), so the expired and altered URL cases run only against GCS. It has no IAM `signBlob`, so in CI the driver signs with a test service-account key, and the keyless path runs only against GCS |
+| [Azurite](https://github.com/Azure/Azurite) (MIT) | `azureblob` | Block blobs with Put Block and Put Block List, account and service SAS, CRC-64 transactional checksums, and OAuth bearer tokens over HTTPS (`--oauth basic`) ([support matrix](https://github.com/Azure/Azurite#support-matrix)) | User delegation SAS, which the driver signs, is implemented in Azurite's source (`ServiceHandler.getUserDelegationKey`, `BlobSASAuthenticator`) but absent from its support matrix, and issue [#2420](https://github.com/Azure/Azurite/issues/2420) reports the key call failing. At `basic`, Azurite checks a token's issuer, audience and expiry but not its signature. The delegation-SAS cases run against Azurite in CI and against Azure nightly |
+| local disk | `fs` | Everything; it is infraweave's own | none |
+
+A case the emulator cannot decide is skipped on that emulator by name, with
+the reason, and `TestUnitObjectstoreGaps` fails when a skipped case has no
+counterpart in the nightly cloud job.
 
 ### Acceptance harness
 
@@ -102,14 +120,14 @@ once per container, so cases run in parallel without sharing rows.
 |---|---|---|
 | (none) | nothing; the scenario reads committed files or runs the binary in a mode that needs no database, such as config validation | spec, config and CLI parsing scenarios |
 | `@postgres` | `postgres` container, testcontainers-go `postgres` module | every scenario that stores anything |
-| `@objectstore` | MinIO container | state, logs, uploads, module and provider archives |
+| `@objectstore` | RustFS container, used through the `s3` driver | state, logs, uploads, module and provider archives |
 | `@terraform` | a pinned Terraform release, fetched once and checked against its SHA-256 | a real run (below) |
 | `@tofu` | a pinned OpenTofu release, checked the same way | a real run (below) |
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
 | `@vcs` | Gitea container, with a repository seeded per scenario | real webhooks, commit statuses, pull request comments (decision 0012) |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
-| `@flows-runtime` | the Flows runtime image built from the repository's definition, and an `infraweave flows-agent` subprocess | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
+| `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
 
 - **A real run.** `@terraform` and `@tofu` scenarios exercise the full
   path: the server, a private worker pool, `infraweave launcher` as a host
@@ -121,7 +139,7 @@ once per container, so cases run in parallel without sharing rows.
   use `terraform_data` and other built-ins, so no provider is downloaded;
   a scenario that needs a provider uses a filesystem mirror of pinned
   provider archives checked by SHA-256. State goes through infraweave's
-  HTTP state backend (decision 0010) into MinIO. The scenario asserts the
+  HTTP state backend (decision 0010) into RustFS. The scenario asserts the
   run's state transitions against report 08's state machine, the stored
   state version, the masked log, and the events emitted
   ([0015](0015-events-notifications-webhooks-audit.md)).
@@ -162,6 +180,8 @@ A scenario names the operations it exercises with tags
 with the last acceptance result (godog's JSON report in
 `cover/accept/cucumber.json`) and computes report 26's state per tag and
 per Terraform row:
+
+The three-scenario evidence rule decides `implemented`:
 
 | State | Computed when |
 |---|---|
@@ -264,12 +284,33 @@ coverage it would contribute is not waived.
 |---|---|---|---|---|
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
 | `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc` | 20 min | yes |
-| `accept-runs` | `ubuntu-latest` | `@terraform`, `@tofu`, `@kubernetes`, `@flows-runtime` | 30 min | yes |
+| `accept-runs` | `ubuntu-latest` | `@terraform`, `@tofu`, `@kubernetes`, `@flows-agent` | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |
-| `coverage` | `ubuntu-latest` | `make cover` over every job above | 10 min | yes |
-| `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest PostgreSQL major and the newest Terraform and OpenTofu releases | 60 min | no |
+| `fips-only` | `ubuntu-latest` | `make test` and every acceptance partition, with the binary under test built with `GOFIPS140=certified` and every process run with `GODEBUG=fips140=only` ([0013](0013-secrets-at-rest.md#fips-140-3)) | 45 min | yes |
+| `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` | 10 min | yes |
+| `postgres-next` | `ubuntu-latest` | `storetest`, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)) | 20 min | no |
+| `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
+| `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
+
+- **`fips-only` and coverage.** It runs the same tests as the jobs above
+  under a stricter runtime, so its coverage adds nothing and is not merged.
+- **The cloud object store job.**
+  - **Credentials.** GitHub's OIDC token is federated to an AWS IAM role, a
+    Google Cloud workload identity pool and a Microsoft Entra federated
+    credential, each scoped to this repository's scheduled workflow on
+    `main`. No access key, service-account key or storage key is stored.
+  - **Buckets.** One test bucket per cloud, used only by this job, with a
+    lifecycle rule that deletes every object one day after it is written.
+    Each run writes under its own prefix and deletes it at the end; the rule
+    clears what a failed run leaves.
+  - **What it covers.** The whole contract, including the cases the
+    emulators cannot decide: signed URL expiry and tampering on GCS, keyless
+    signing through IAM `signBlob`, and user delegation SAS under Entra.
+  - **Failures.** A failing run opens an issue for that cloud, or comments on
+    the open one, with the failing cases and the run's link. A passing run
+    leaves an open issue for a person to close.
 
 - A scenario's partition is the first of `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
@@ -301,12 +342,28 @@ coverage it would contribute is not waived.
 - **Rejected: sqlmock or an in-memory store for acceptance.** They accept
   SQL PostgreSQL rejects and miss locking behaviour the queue and state
   locks depend on.
-- **Rejected: LocalStack for object storage.** MinIO is the S3-compatible
-  store Spacelift's on-prem guide uses in its examples, and it is smaller.
-  The same guide warns that upstream development of the open-source MinIO
-  server has stopped
-  ([24 section 6](../reference/24-self-hosted-reference.md#6-the-four-reference-deployments-compared)),
-  so the digest pin can stop moving.
+- **Every driver in the blocking gate.** The maintainer's rule is that
+  infraweave is not locked to Amazon S3, so the `gcs` and `azureblob`
+  drivers carry the same weight as `s3`. Emulators keep every pull request
+  hermetic and fast; the nightly cloud job checks what an emulator cannot,
+  and stays out of the gate because real-cloud flakiness and credentials
+  should not block merges.
+- **RustFS for S3.** It is Apache-2.0, released 1.0.0 on 2026-09-16, and
+  runs the S3 compatibility tests for the features the contract needs.
+  - **Rejected: MinIO.** Its community edition stopped publishing images in
+    October 2025, entered maintenance mode in December 2025, and its
+    repository now states that it is no longer maintained
+    ([minio/minio](https://github.com/minio/minio)), so a pin could never
+    move to a fixed release.
+  - **Rejected: LocalStack.** It emulates many AWS services, which the suite
+    does not need, at a larger image size.
+- **fake-gcs-server and Azurite** are the maintained open-source emulators
+  for their services, and both speak the APIs the native SDKs call, so the
+  drivers run unchanged against them.
+- **OIDC federation for the cloud job.** Stored cloud keys in repository
+  secrets would be long-lived credentials with write access to real
+  buckets; federated tokens last minutes and only the scheduled workflow can
+  obtain them.
 - **Rejected: running acceptance against Spacelift itself.** It needs an
   authorized account for every CI run and would test Spacelift, not
   infraweave. Captures, taken once with permission and replayed, carry the
@@ -341,9 +398,15 @@ coverage it would contribute is not waived.
 - The Spacelift provider's acceptance configurations are translated, not
   copied verbatim, where they reference Spacelift-only resources; the
   translation is recorded in `provider-parity.yaml`.
-- The `nightly` job is informational: a newer PostgreSQL, Terraform or
-  OpenTofu release that breaks a scenario opens an issue rather than
-  blocking merges.
+- The `nightly`, `postgres-next` and `objectstore-cloud` jobs are
+  informational: a newer Terraform, OpenTofu or PostgreSQL release, or a
+  real cloud, that breaks a case opens an issue rather than blocking merges.
+- The cloud job needs one lab account or project per cloud, its OIDC trust
+  and its bucket, which the maintainer provisions; until they exist the job
+  reports itself as not configured rather than passing.
+- Under `GODEBUG=fips140=only`, a test helper or library that reaches for a
+  refused algorithm fails the `fips-only` job like product code does; the
+  fix is an approved algorithm, not an exemption.
 
 ## Verification
 
@@ -358,7 +421,10 @@ coverage it would contribute is not waived.
 - `make verify-parity` and the state check run in the `parity` job; the
   existing `spec_reference.feature` and `deploy_spec.feature` keep running
   in `accept-core`.
-- The `Quality gate` job lists every required job above in its `needs`.
+- The `Quality gate` job lists every required job above in its `needs`, and
+  none of the informational ones.
+- `TestUnitObjectstoreGaps` ties each emulator skip to a case of the cloud
+  job.
 
 ## References
 
@@ -369,4 +435,8 @@ coverage it would contribute is not waived.
 - [30](../reference/30-open-questions.md#captures-needed): captures.
 - <https://github.com/cucumber/godog>
 - <https://github.com/testcontainers/testcontainers-go>
+- Emulators: [RustFS](https://github.com/rustfs/rustfs),
+  [fake-gcs-server](https://github.com/fsouza/fake-gcs-server),
+  [Azurite](https://github.com/Azure/Azurite).
+- GitHub OIDC: <https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect>
 - <https://pkg.go.dev/testing/synctest>
