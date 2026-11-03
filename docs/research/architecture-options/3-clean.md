@@ -24,7 +24,7 @@ The tree is organised by ring first and by subject second. Ring 1,
 `internal/entity`, holds infraweave's enterprise rules as pure Go with no
 I/O: the run state machine with its 22 `RunState` values and the
 transition table of [report 08](../reference/08-run-lifecycle.md#3-transitions),
-the seven priority tiers, policy combination semantics per type, space
+the seven priority levels, policy combination semantics per type, space
 reachability and inheritance, module and provider version numbering, the
 per-vendor command sets and change models, the Flows invocation status
 rules, the entitlement rule of decision 0021 (tier plus grants, minus
@@ -1296,7 +1296,7 @@ read from `api/oapi-server-<spec>.yaml`.
 
 | Kind | Location |
 | --- | --- |
-| Entity tables | beside the code: transition table, priority tiers, combination rules, rbac decisions, version numbering, entitlement, the expression library and shell quoting |
+| Entity tables | beside the code: transition table, priority levels, combination rules, rbac decisions, version numbering, entitlement, the expression library and shell quoting |
 | Use-case tests | beside the code, with tiny fakes of the package's own ports |
 | Store contract | `adapter/postgres/storetest`, against PostgreSQL by testcontainers (decision 0016) |
 | Object storage contract | `adapter/objectstore/objectstoretest`, one suite for every driver: RustFS (`s3`), fake-gcs-server (`gcs`), Azurite (`azureblob`) and local disk (`fs`), blocking |

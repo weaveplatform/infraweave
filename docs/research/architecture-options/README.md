@@ -162,7 +162,7 @@ root.
 ### Option 3: Clean
 
 [3-clean.md](3-clean.md) arranges rings: `internal/entity` (pure rules:
-the run state machine, priority tiers, policy combination, space
+the run state machine, priority levels, policy combination, space
 reachability, version numbering, vendor change models),
 `internal/usecase/<family>` (interactors with boundaries and consumer-side
 ports), `internal/adapter` (controllers, presenters, gateways) and
@@ -516,7 +516,7 @@ Three refinements from the other options carry over, because they fit
 inside option 5 without changing its rules:
 
 - **Pure rules as pure packages (from option 3).** The run state machine
-  and its transition table, the seven priority tiers, policy combination
+  and its transition table, the seven priority levels, policy combination
   per type, space reachability and version numbering live in packages with
   no I/O inside their domains (`runs/internal/core/lifecycle` and its
   peers) and are tested as tables. The expression language and the sealed

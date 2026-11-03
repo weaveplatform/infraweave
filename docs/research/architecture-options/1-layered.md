@@ -352,7 +352,7 @@ internal/
 │   ├── stacks/                            stack CRUD rules, settings validation, locks, enable, reslug (P5)
 │   ├── config/                            contexts, config elements, attachments, auto-attach (P6)
 │   ├── runs/                              the run state machine table T1 to T44, action guards, timers,
-│   │                                      priority tiers, dedupe keys                       (P7, P9, P10)
+│   │                                      priority levels, dedupe keys                      (P7, P9, P10)
 │   ├── workers/                           pools, registration, credentials, drain, assignment (P8, P14)
 │   ├── iac/                               server side of each IaC vendor
 │   │   ├── iac.go                         Vendor interface: Validate, PlanInput, Changes, Versions
