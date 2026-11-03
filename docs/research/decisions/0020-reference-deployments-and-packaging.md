@@ -52,7 +52,7 @@ layout is decision 0004's.
 | `infraweave version` | build information from `internal/buildinfo` | none | none |
 
 - **`infraweavectl`** (`cmd/infraweavectl`) is the client CLI over
-  `pkg/client/deploy`: the commands that replace spacectl, including
+  `pkg/sdk`: the commands that replace spacectl, including
   `infraweavectl mcp` ([0019](0019-ai-provider-boundary.md)). Its design is
   outside this record.
 
