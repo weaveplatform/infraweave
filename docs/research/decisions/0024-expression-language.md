@@ -137,7 +137,7 @@ The language stays CEL; multi-step logic is built from five parts.
   | Randomness | infraweave's `random.uuid()`, `random.int(min, max)` and `random.string(length)`, drawn from the evaluation's seed |
   | Errors | infraweave's `fail(message)` |
 
-  Functions marked infraweave's are written in Go in `internal/expr` and
+  Functions marked infraweave's are written in Go in `internal/platform/expr` and
   listed, with their signatures, by the completion endpoint. The library
   is versioned with the release; a function is never removed or changed
   in meaning within a major version.
@@ -196,7 +196,8 @@ There is no Script block and no second user-facing language.
 
 - **Where.** Expressions evaluate in infraweave's server process modes, in
   the code path of the surface (table above). Flows expressions evaluate in
-  `scheduler`, where their queue jobs run. Workers, launchers and Flows
+  `scheduler`, where their queue jobs run, except static configuration,
+  which `serve` checks at save. Workers, launchers and Flows
   agents never see an expression: an agent receives a block's evaluated
   configuration. The one exception is the workflow command template, which
   the runner renders (below).
@@ -222,7 +223,7 @@ There is no Script block and no second user-facing language.
   schemas of [0015](0015-events-notifications-webhooks-audit.md) for
   Deploy event triggers. `inputs` comes from a blueprint's or template's
   input definitions; `event` from the event kind.
-- **JSON Schema to CEL.** A type provider in `internal/expr` maps an object
+- **JSON Schema to CEL.** A type provider in `internal/platform/expr` maps an object
   schema with properties to a CEL object type with those fields, arrays to
   lists, and a schema without properties, or with
   `additionalProperties`, to a map of `dyn`. A misspelt field of a known
@@ -261,7 +262,7 @@ Check during plan for flows, blueprints and templates.
   `planFileName`, `lock`, `refresh`, `targets` (a list) and
   `workspaceName`. No other variable, no secret and no `now` or randomness
   is in scope, so rendering needs nothing the worker does not already hold.
-- **Rendered by the runner** at initialization with the same `internal/expr`
+- **Rendered by the runner** at initialization with the same `internal/platform/expr`
   package and library. Every key is parsed and type-checked before the
   first command runs; a missing key, a syntax error or a type error fails
   the run at initialization, as Spacelift's validation does.
@@ -365,8 +366,9 @@ Check during plan for flows, blueprints and templates.
 - **Schema quality bounds checking.** A block output declared without
   properties is `dyn`, and expressions over it are checked only at run
   time.
-- Code placement (`internal/expr`) is indicative; decision 0004 owns the
-  layout.
+- Code placement is decision 0004's: the engine is
+  `internal/platform/expr` and the editor endpoints are the `expressions`
+  domain.
 
 ## Verification
 
@@ -386,7 +388,7 @@ Check during plan for flows, blueprints and templates.
   quotes, spaces, `$()` and newlines, and runs the result through `sh -n`
   and `sh -c 'printf %s\n "$@"'` to prove each value stays one word.
 - `test/acceptance/features/expressions_flows.feature` (`@postgres`,
-  `@flows-runtime`): a Transform in the steps form, a named expression, a
+  `@flows-agent`): a Transform in the steps form, a named expression, a
   `fail` routed to a Handle Error block, a retry reproducing `now` and
   `random.uuid()`.
 - `test/acceptance/features/expressions_editor.feature` (`@postgres`):

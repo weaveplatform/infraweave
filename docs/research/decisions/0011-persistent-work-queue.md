@@ -80,7 +80,7 @@ The migration sets aggressive autovacuum storage parameters on `jobs`
 update-heavy table.
 
 **Logical queues.** Queue workers and the scheduler ticker run in replicas
-with the `scheduler` process mode (decision 0020). Each queue has its own worker count per
+with the `scheduler` process mode (decision 0004). Each queue has its own worker count per
 replica, so a
 backlog in one never starves another.
 
@@ -160,12 +160,17 @@ has no counterpart, because workers report over HTTP straight to the API
 - **Retry delay.** Exponential backoff with full jitter: a random delay in
   [1 s, min(15 min, 1 s * 2^(attempt-1))].
 - **Dead letters.** Dead jobs are kept 30 days (`queue.dead_retention`) with
-  their last error. Three infraweave-specific admin operations, outside the
-  Spacelift surface and recorded as divergences, list, retry and discard them:
-  `GET /admin/queue/jobs`, `POST /admin/queue/jobs/{id}/retry` and
-  `DELETE /admin/queue/jobs/{id}`. A retry resets `attempt` to zero. They need
-  the account administrator permission of
-  [0007](0007-authorization-spaces-and-roles.md).
+  their last error. Three operations of the operator API
+  ([0021](0021-capability-scope-and-supersession.md)), outside the Spacelift
+  surface, list, retry and discard them: `GET /queue/jobs`,
+  `POST /queue/jobs/{id}/retry` and `DELETE /queue/jobs/{id}`. A retry
+  resets `attempt` to zero. Jobs span every account, so only operator
+  principals reach them ([0007](0007-authorization-spaces-and-roles.md)).
+- **Feature check.** Before a handler runs, the claim checks the job kind's
+  feature against the account's entitlement
+  ([0021](0021-capability-scope-and-supersession.md)). A job of a feature
+  outside it completes as `succeeded` with outcome `skipped`, is logged and
+  counted in `infraweave.features.skipped`, and is not retried.
 - **Pruning.** Succeeded and cancelled jobs are deleted after one hour
   (`queue.completed_retention`) by the `queue.prune` periodic task.
 
@@ -265,6 +270,7 @@ once by three rules.
   | `authn.keys.rotate` | 1 day | [0006](0006-authentication-and-tokens.md) |
   | `run.timers` | 1 minute | [0008](0008-run-execution-and-worker-protocol.md) |
   | `worker.reap` | 30 seconds | [0008](0008-run-execution-and-worker-protocol.md) |
+  | `state.retention` | 1 day | [0010](0010-state-backend.md) |
   | `vcs.deliveries.prune` | 1 hour | [0012](0012-vcs-integration-model.md) |
   | `secrets.rotate` | 1 day | [0013](0013-secrets-at-rest.md) |
 
@@ -290,8 +296,8 @@ work at once.
 - **Metrics.** Instrument names follow decision 0017. The queue reports:
   - jobs by queue, kind and state;
   - the age of the oldest pending job per queue;
-  - attempts by kind and outcome (`succeeded`, `retried`, `dead`, `snoozed`,
-    `lease_lost`);
+  - attempts by kind and outcome (`succeeded`, `skipped`, `retried`, `dead`,
+    `snoozed`, `lease_lost`);
   - claim latency.
 
   Kinds are code constants, so labels stay bounded.
@@ -389,7 +395,7 @@ work at once.
   - `scheduler_missed_firings.feature`: downtime coalesces missed fire times;
   - `queue_periodic_tasks.feature`: tasks never overlap.
 - **Dead letters.** `queue_dead_letters.feature` lists, retries and discards a dead
-  job through the admin routes.
+  job through the operator API.
 
 ## References
 

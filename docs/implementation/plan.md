@@ -10,52 +10,77 @@ criteria* that must hold before a phase counts as done.
 
 Every phase is also subject to the [definition of done](definition-of-done.md).
 The target package tree is in [repo-layout.md](repo-layout.md), every
-capability's owning phase is in the [capability roadmap](capability-roadmap.md),
-and every deliberate difference from Spacelift is in the
-[deviations register](deviations.md). Research baseline: **2026-10-28**.
-Implementation status is reviewed against `main` and the GitHub issues on the
-same date.
+feature's kind, seeded tier and owning phase is in the
+[feature catalogue](capability-roadmap.md), and every deliberate difference
+from Spacelift is in the [deviations register](deviations.md). Research
+baseline: **2026-10-28**. Implementation status is reviewed against `main`
+and the GitHub issues on the same date.
 
-Decisions 0001 to 0003 are Accepted. Decisions 0004 to 0022 are Proposed, and
-this plan treats them as the design. A phase that rests on a choice the
-maintainer has not yet confirmed says so in an **Open choice** line; accepting
-a different answer changes that phase's tasks, not the order.
+Decisions 0001 to 0024 are Accepted, and this plan builds them. Where a
+decision marks a behaviour as infraweave's choice until a capture of report
+[30](../research/reference/30-open-questions.md) settles it, the phase builds
+the choice and its scenarios assert it; P28 replays the captures, and the
+[deviations a capture may change](deviations.md#deviations-a-capture-may-change)
+list the rows that can move.
 
 ## Scope direction
 
 - **Everything Spacelift offers is in scope**: Deploy at every tier,
-  Intelligence (AI integrations, Infra Assistant, Intent and MCP) and Flows.
-  The scope rule and the supersession test are decision
+  Intelligence (AI integrations, Infra Assistant, Intent and MCP), Flows and
+  the console. The scope rule and the supersession test are decision
   [0021](../research/decisions/0021-capability-scope-and-supersession.md)'s. An interface is left out only when it passes that test,
   with its replacement, evidence, coverage of the original use and the path
   for stored data recorded in report 26 section 7; the
   [supersession register](capability-roadmap.md#supersession-register) lists
   every such interface.
-- **No editions.** infraweave has no commercial tiers. `tier` answers
-  `V5_ENTERPRISE_PLUS`, `tierFeatures` lists every value that is neither
-  superseded nor in `features.disabled`, and an operator turns a feature off
-  with `features.disabled` ([0021](../research/decisions/0021-capability-scope-and-supersession.md), P3b).
+- **Seeded tiers, billing off by default.** Every feature is an entry of one
+  catalogue, `internal/features/catalogue.yaml`: a capability, an option or a
+  limit. Five tiers (Free, Starter, Starter+, Business and Enterprise) are
+  seeded from report 26, and the operator can add its own. Billing is off
+  by default, so every account behaves as Enterprise: `tier` answers the
+  Enterprise tier object, `tierFeatures` lists every feature not in
+  `features.disabled`, and no limit applies. With billing on, a feature
+  outside the account's entitlement answers `403 feature-not-in-tier` and a
+  limit answers `403 limit-reached`
+  ([0021](../research/decisions/0021-capability-scope-and-supersession.md),
+  [0022](../research/decisions/0022-api-errors-and-update-semantics.md), P3b).
 - **REST, not GraphQL.** The served API is REST over JSON described by
   OpenAPI 3 ([0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0003](../research/decisions/0003-api-conventions.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md)). The Spacelift reference
   `api/reference/spacelift/spacelift.openapi.yaml` is the parity oracle; the
-  served document is `api/deploy.openapi.yaml`. Each difference is recorded in
-  `x-infraweave-divergence` and in the [deviations register](deviations.md).
-- **infraweave's own clients.** infraweave replaces Spacelift's Terraform
-  provider and spacectl with its own provider (P24) and `infraweavectl`
-  (P24b), each held to a parity oracle ([0016](../research/decisions/0016-testing-and-acceptance.md)).
+  served documents are `api/deploy.openapi.yaml`, `api/flows.openapi.yaml`
+  and the operator API's `api/operator.openapi.yaml`. Each difference is
+  recorded in `x-infraweave-divergence` and in the
+  [deviations register](deviations.md).
+- **infraweave's own clients.** `pkg/sdk` wraps the generated
+  `pkg/client/<spec>` packages and is the only way infraweave's Go clients
+  call the API ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)). It lands in P1c, where every acceptance step
+  drives the API through it, and gains the token exchange in P3.
+  `infraweavectl` starts in P3b with its `operator` group and covers
+  report 06 section 8 and Flows in P24b; infraweave's provider is P24 and the
+  console ([0023](../research/decisions/0023-console.md)) is P24c. Each is held to a parity oracle
+  ([0016](../research/decisions/0016-testing-and-acceptance.md)).
+- **One event model.** Deploy and Flows share decision
+  [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)'s event envelope and emit path from the queue phase on: P2c's
+  outbox writes the `events` rows that P18 fans out and that the Flows
+  engine consumes ([0018](../research/decisions/0018-flows-runtime.md)). Flows therefore follows the events phase
+  directly, as P18c and P18d.
+- **One expression language.** Every expression a user writes is CEL
+  ([0024](../research/decisions/0024-expression-language.md)). `internal/platform/expr` and the expression endpoints land in
+  P6 with environment interpolation, the first surface that uses them; each
+  later surface adds its context in its own phase.
+- **FIPS from the start.** The `fips-only` CI job runs `make test` and
+  every acceptance partition under `GOFIPS140=certified` and
+  `GODEBUG=fips140=only` from P2b, where the keyring and the object store drivers land
+  ([0013](../research/decisions/0013-secrets-at-rest.md), [0016](../research/decisions/0016-testing-and-acceptance.md)).
 - **Self-hosted, with SaaS behaviour.** infraweave is installed by its
   operator but mirrors SaaS: it keeps the Azure integration, an optional
-  public pool and an optional installation AI default, and no capability
-  depends on a shared pool ([0021](../research/decisions/0021-capability-scope-and-supersession.md)).
+  public worker pool and an optional installation AI default, and no
+  capability depends on the public worker pool ([0021](../research/decisions/0021-capability-scope-and-supersession.md)).
 - **Evidence over claims.** A capability is `implemented` only when decision
   [0016](../research/decisions/0016-testing-and-acceptance.md)'s evidence rule holds: every operation is served, answers
   something other than 501, and is named by passing `@op:` scenarios for a
   success, a denial and a failure. Report 26's state column follows the
   tests through `specref parity --states --check`, never the other way round.
-- **The web console is open.** No decision covers a browser console.
-  Operations that serve Spacelift's web UI (saved filters, search
-  suggestions, forms, UI state, user guides) are built as API operations in
-  P22, whatever the answer; see [Open items](#open-items).
 
 ## Open items
 
@@ -64,9 +89,9 @@ and invents no answer.
 
 | Item | State | What the plan does meanwhile |
 |---|---|---|
-| A web console | No decision record covers a browser console, its stack or its repository | P22 serves the UI-support operations as API operations; no phase builds a console |
-| Where the Terraform provider lives | No decision places the provider's source: this repository, or a repository of its own | P24's tasks import `pkg/client/deploy` and hold the parity oracle, the mapping file and the acceptance configurations in this repository either way |
-| Report 26 cells that decisions supersede | Report 26 section 7.8 keeps the MQTT worker transport in scope for self-hosted; decisions [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) (P6) and [0021](../research/decisions/0021-capability-scope-and-supersession.md) (S3) supersede it. Section 7.7's open question on the legacy AWS mutations and the provisional phase column of section 1.4 are in the same position | The plan follows the decisions: P8 serves HTTP long-poll only, the [supersession register](capability-roadmap.md#supersession-register) lists MQTT, and the [capability roadmap](capability-roadmap.md) is the phase assignment. Report 26 is amended when decision 0021 is accepted (P28 task 3) |
+| Where the provider's checks run | Decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md) places the provider's source in `weaveplatform/terraform-provider-infraweave`; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines `provider-parity` and `TestAccProvider` against a live `infraweave all` and lists the job in this repository's CI | P24 builds the provider in its own repository over `pkg/sdk`, and keeps `api/reference/provider-parity.yaml` and the `test/terraform/` configurations in this repository, which builds the provider at a pinned commit |
+| The OAuth authorization server behind `/mcp` and `/flows/mcp` | Decisions [0019](../research/decisions/0019-ai-provider-boundary.md) and [0018](../research/decisions/0018-flows-runtime.md) place dynamic client registration and the authorization code flow on decision 0006's authorization server; decision [0006](../research/decisions/0006-authentication-and-tokens.md) defines token issuance but no authorization or registration endpoint | P25 serves the MCP transport, the protected-resource metadata and the `mcp:read` and `mcp:write` scopes, and accepts API tokens from `POST /auth/token`; the authorization endpoints land with the record that defines them |
+| Report 26 cells that decisions supersede | Report 26 section 7.8 keeps the MQTT worker transport in scope for self-hosted; decisions [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) (P6) and [0021](../research/decisions/0021-capability-scope-and-supersession.md) (S3) supersede it. Section 7.7's open question on the legacy AWS mutations and the provisional phase column of section 1.4 are in the same position | The plan follows the decisions: P8 serves HTTP long-poll only, the [supersession register](capability-roadmap.md#supersession-register) lists MQTT, and the [feature catalogue](capability-roadmap.md) is the phase assignment. P28 task 3 amends report 26 |
 
 ## Build status
 
@@ -79,16 +104,16 @@ and lint is clean.
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | In progress | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs. Open: [#11](https://github.com/weaveplatform/infraweave/issues/11) parity report, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
 | P1b Domain layout and depguard | Not started | |
-| P1c Test harness and parity tooling | Not started | **M1** |
+| P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P2 PostgreSQL, migrations and operability | Not started | |
 | P2b Object storage and secrets at rest | Not started | |
-| P2c Work queue, cron and outbox | Not started | |
+| P2c Work queue, cron, outbox and the event model | Not started | |
 | P3 Identity and tokens | Not started | |
-| P3b Users, groups and account settings | Not started | |
+| P3b Users, groups, account settings and the feature catalogue | Not started | |
 | P4 Spaces and authorization | Not started | |
 | P4b Roles and role bindings | Not started | |
 | P5 Stacks | Not started | **M2** |
-| P6 Contexts and configuration | Not started | |
+| P6 Contexts, configuration and expressions | Not started | |
 | P7 Run state machine and scheduling | Not started | |
 | P8 Worker protocol, private pools and the Docker launcher | Not started | |
 | P8b Managed state backend | Not started | |
@@ -98,44 +123,47 @@ and lint is clean.
 | P12 VCS integrations: GitHub | Not started | |
 | P13 Policy engine and workflow policies | Not started | **M4** |
 | P13b Login, task and initialization policies, sampling and simulation | Not started | |
-| P14 Public pool, Kubernetes workers and signed runs | Not started | |
+| P14 Public worker pool, Kubernetes workers and signed runs | Not started | |
 | P15 Cloud integrations and OIDC federation | Not started | |
 | P16 Scheduling, drift detection and stack dependencies | Not started | |
 | P17 Module registry | Not started | |
 | P17b Provider registry and GPG keys | Not started | |
-| P18 Notifications, webhooks and Slack | Not started | |
+| P18 Notifications, webhooks, Slack and event streams | Not started | |
 | P18b Audit trail and observability | Not started | **M5** |
+| P18c Flows engine and API | Not started | |
+| P18d Flows apps, agents and Deploy blocks | Not started | **M6** |
 | P19 VCS providers: GitLab, Bitbucket and Azure DevOps | Not started | |
 | P19b VCS agent pools and other source providers | Not started | |
 | P20 Other vendors | Not started | |
 | P20b Ansible, OpenTofu migration and plugins | Not started | |
 | P21 Blueprints, templates and external integrations | Not started | |
-| P22 Resources, search and UI support | Not started | |
-| P22b Scans | Not started | **M6** |
+| P22 Resources, search and console support | Not started | |
+| P22b Scans | Not started | **M7** |
 | P23 SSO, SCIM and MFA | Not started | |
 | P24 infraweave Terraform provider | Not started | |
-| P24b infraweavectl | Not started | **M7** |
+| P24b infraweavectl | Not started | **M8** |
+| P24c Console | Not started | **M9** |
 | P25 AI integrations, Infra Assistant and MCP | Not started | |
-| P25b Intent | Not started | |
-| P26 Flows engine and API | Not started | |
-| P26b Flows apps, agents and clients | Not started | **M8** |
-| P27 Reference deployments and packaging | Not started | **M9** |
-| P28 Capture replay and qualification | Not started | **M10** |
+| P25b Intent | Not started | **M10** |
+| P27 Reference deployments and packaging | Not started | **M11** |
+| P28 Capture replay and qualification | Not started | **M12** |
 
 ## Milestones
 
 | Milestone | Reached after | Demonstrable outcome |
 |---|---|---|
-| M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces the domain layout |
-| M2 Authorized API on PostgreSQL | P5 | An API key exchanges for a token; spaces and roles decide every route; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
-| M3 First run | P9 | `runs_terraform.feature` and `runs_tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into MinIO, masks a secret in its log and reaches `FINISHED` |
+| M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog and every step drives it through `pkg/sdk`; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces the domain layout |
+| M2 Authorized API on PostgreSQL | P5 | An API key exchanges for a token; spaces and roles decide every route; a feature in `features.disabled` answers `403 feature-disabled`; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
+| M3 First run | P9 | `runs_terraform.feature` and `runs_tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into the object store, masks a secret in its log and reaches `FINISHED` |
 | M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against Gitea: a push opens a proposed run, a plan policy warns, the check and the pull request comment appear, and an approval policy holds a tracked run until a review |
-| M5 Deploy core | P14, P15, P16, P17b and P18b | Public pool and Kubernetes workers, cloud credentials through OIDC, schedules, drift detection, stack dependencies, the module and provider registries, notifications, webhooks, Slack, the audit trail and the Spacelift exporter metrics all pass their features |
-| M6 Ecosystem | P19b, P21 and P22b | Every VCS provider, VCS agent pools, every vendor of report 20, blueprints and templates, the resources view, generic search, the UI-support operations and scans pass their features |
-| M7 Identity and clients | P24b | SAML and OIDC SSO, SCIM and MFA work; infraweave's provider passes schema parity and apply, empty plan, import, empty plan and destroy for every resource that is not superseded; `infraweavectl` covers report 06 section 8 |
-| M8 Intelligence and Flows | P25b and P26b | AI integrations, Infra Assistant, the hosted `/mcp` server and Intent work against recorded providers; a flow reacts to a real run and starts another |
-| M9 Release | P27 | Signed binaries, images, the Helm charts, the Compose file and the Terraform modules install infraweave; an upgrade from the previous release runs both versions against one database |
-| M10 Qualified | P28 | Every capture of report 30 is replayed or recorded as unobtainable; report 26 has no row in `missing` or `partial` |
+| M5 Deploy core | P14, P15, P16, P17b and P18b | Public worker pool and Kubernetes workers, cloud credentials through OIDC, schedules, drift detection, stack dependencies, the module and provider registries, notifications, webhooks, Slack, the event streams, the audit trail and the per-account metrics all pass their features |
+| M6 Flows | P18d | A flow's Deploy trigger block reacts to a real run and a Trigger Run block starts another; a Go app built on `pkg/flows/appsdk` runs on a Flows agent; every expression in the flow is CEL |
+| M7 Ecosystem | P19b, P21 and P22b | Every VCS provider, VCS agent pools, every vendor of report 20, blueprints and templates, the resources view, generic search, the console-support operations and scans pass their features |
+| M8 Identity and clients | P24b | SAML and OIDC SSO, SCIM and MFA work; infraweave's provider passes schema parity and apply, empty plan, import, empty plan and destroy for every resource that is not superseded, Flows resources included; `infraweavectl` covers report 06 section 8 and its `flows` group covers `flowctl` |
+| M9 Console | P24c | The console, embedded in `infraweave`, passes every Playwright journey against a real `infraweave all` with no CSP, other-origin or accessibility violation |
+| M10 Intelligence | P25b | AI integrations, Infra Assistant, the hosted `/mcp` server and Intent work against recorded providers |
+| M11 Release | P27 | Signed binaries, images, the Helm charts, the Compose file and the Terraform modules install infraweave; an upgrade from the previous release runs both versions against one database |
+| M12 Qualified | P28 | Every capture of report 30 is replayed or recorded as unobtainable; report 26 has no row in `missing` or `partial` |
 
 ## Sequence
 
@@ -143,17 +171,17 @@ and lint is clean.
 flowchart LR
   P0[P0 Reference] --> P1[P1 Served skeleton]
   P1 --> P1b[P1b Domain layout]
-  P1b --> P1c[P1c Test harness]
+  P1b --> P1c[P1c Harness and SDK]
   P1c --> P2[P2 PostgreSQL]
-  P2 --> P2c[P2c Queue and outbox]
+  P2 --> P2c[P2c Queue, outbox and events]
   P2c --> P2b[P2b Objects and secrets]
   P2b --> P3[P3 Identity]
-  P3 --> P3b[P3b Users and settings]
+  P3 --> P3b[P3b Users and features]
   P3 --> P4[P4 Spaces and authz]
   P4 --> P5[P5 Stacks]
   P5 --> P4b[P4b Roles and bindings]
   P3b --> P4b
-  P5 --> P6[P6 Configuration]
+  P5 --> P6[P6 Configuration and expressions]
   P5 --> P7[P7 Run machine]
   P7 --> P8[P8 Workers]
   P6 --> P8
@@ -172,8 +200,12 @@ flowchart LR
   P13 --> P17[P17 Module registry]
   P15 --> P17
   P17 --> P17b[P17b Provider registry]
-  P13 --> P18[P18 Notifications, webhooks and Slack]
+  P13 --> P18[P18 Events, webhooks and streams]
   P18 --> P18b[P18b Audit and observability]
+  P18 --> P18c[P18c Flows engine]
+  P4b --> P18c
+  P18c --> P18d[P18d Flows apps and agents]
+  P21 --> P18d
   P12 --> P19[P19 Other VCS providers]
   P19 --> P19b[P19b VCS agents and sources]
   P11 --> P20[P20 Vendors]
@@ -188,18 +220,18 @@ flowchart LR
   P22b --> P24
   P19b --> P24
   P18b --> P24
+  P18d --> P24
   P17b --> P24
   P15 --> P24
   P25 --> P24
   P24 --> P24b[P24b infraweavectl]
+  P24b --> P24c[P24c Console]
+  P18d --> P24c
+  P25b --> P24c
   P15 --> P25[P25 AI and MCP]
   P25 --> P25b[P25b Intent]
   P14 --> P25b
-  P10 --> P26[P26 Flows engine]
-  P4b --> P26
-  P26 --> P26b[P26b Flows apps and clients]
-  P24b --> P26b
-  P26b --> P27[P27 Packaging]
+  P24c --> P27[P27 Packaging]
   P25b --> P27
   P27 --> P28[P28 Qualification]
 ```
@@ -209,15 +241,18 @@ list. Numbering does not serialize independent work: a phase starts as soon as
 the phases it depends on are done.
 
 **Critical path:** P0 → P1 → P1b → P1c → P2 → P2c → P2b → P3 → P4 → P5 → P7 →
-P8 → P8b → P9 → P10 → P11 → P20 → P20b → P22 → P22b → P24 → P24b → P26b →
+P8 → P8b → P9 → P10 → P11 → P20 → P20b → P22 → P22b → P24 → P24b → P24c →
 P27 → P28, the longest chain of **Depends on** edges (24 edges). P6 ties with
-P7 between P5 and P8. From P10 to P24, the policy and identity chain
+P7 between P5 and P8. From P10 to P24, the Flows chain
+(P12 → P13 → P18 → P18c → P18d) ties with the vendor chain, so a slip in
+either moves the release. The policy and identity chain
 (P12 → P13 → P13b → P23), the registry chain (P12 → P13 → P17 → P17b) and
-the events chain (P12 → P13 → P18 → P18b) are each one phase shorter.
+the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter.
 
 **Parallel lanes:**
 - P2c comes before P2b, because object storage registers `blob.delete` and
   `blob.expire` on the queue and `secrets rotate` enqueues `secrets.reseal`.
+  P2c also fixes the event envelope that P18 and the Flows engine share.
 - P3b runs beside P4. P4b follows P5, because stack role bindings bind a
   stack.
 - P6 and P7 run side by side once P5 lands; P8 needs both, because the run
@@ -229,12 +264,15 @@ the events chain (P12 → P13 → P18 → P18b) are each one phase shorter.
   - VCS and policy: P12 → P13, then P19 → P19b, P13b → P23, P14,
     P17 → P17b (with P15) and P18 → P18b, each from P13 or P12 as its
     **Depends on** line says;
-  - scheduling and templates: P16 → P21, where P21 also needs P12;
-  - Flows: P26, once P4b has landed too.
+  - events and Flows: P18 → P18c → P18d, once P4b has landed for Flows
+    roles and P21 for the Deploy Template and Deploy Blueprint blocks;
+  - scheduling and templates: P16 → P21, where P21 also needs P12.
 - Events (P18 → P18b) start once P13 lands, because notification policies
   route every event.
 - P24 waits for every phase whose operations a provider resource calls; P24b
-  follows it so the CLI and provider share fixtures.
+  follows it so the CLI and provider share fixtures, and the console (P24c)
+  follows P24b because its journeys cover every surface, Flows and Intent
+  included.
 
 **Adjustments to report 26's provisional spine.** Report
 [26 section 1.4](../research/reference/26-scope-and-tiers.md#14-provisional-phase-spine)
@@ -246,17 +284,23 @@ assigns a domain to another phase, this plan's assignment holds.
 | Change | Why |
 |---|---|
 | P1b and P1c inserted after P1 | Decision [0004](../research/decisions/0004-repository-architecture.md) moves today's packages into the domain layout and enables depguard; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines the harness, the test-name split and the parity outcomes. Doing both before persistence lands every later phase in its final package and inside a working test loop, as `CLAUDE.md`'s correctness-loop rule requires |
+| `pkg/sdk` lands in P1c | Decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md) makes the SDK the base of every Go client, and decision [0016](../research/decisions/0016-testing-and-acceptance.md)'s steps drive the API through it, so every scenario from the first one also tests the SDK |
 | P2 split into P2, P2c and P2b | P3 seals signing keys and idempotency bodies ([0006](../research/decisions/0006-authentication-and-tokens.md), [0005](../research/decisions/0005-persistence-postgresql.md)), so object storage and the keyring ([0013](../research/decisions/0013-secrets-at-rest.md)) come first, and they run their jobs on the queue |
-| The work queue, cron and outbox move from P7 to P2c | `blob.expire` and `blob.delete` ([0005](../research/decisions/0005-persistence-postgresql.md)), `authn.keys.rotate` and `authn.sessions.expire` ([0006](../research/decisions/0006-authentication-and-tokens.md)) and `idempotency.purge` are queue jobs and periodic tasks ([0011](../research/decisions/0011-persistent-work-queue.md)), needed long before runs. P7 keeps the run state machine and `run.schedule` |
-| Process logging, request IDs and the admin listener's health endpoints move from P18 to P2 | Every process mode reports `/readyz` against PostgreSQL from its first connection ([0017](../research/decisions/0017-observability-and-health.md), [0020](../research/decisions/0020-reference-deployments-and-packaging.md)); P18b keeps metrics, the Spacelift exporter series and run tracing |
+| The work queue, cron, outbox and event envelope move from P7 to P2c | `blob.expire` and `blob.delete` ([0005](../research/decisions/0005-persistence-postgresql.md)), `authn.keys.rotate` and `authn.sessions.expire` ([0006](../research/decisions/0006-authentication-and-tokens.md)) and `idempotency.purge` are queue jobs and periodic tasks ([0011](../research/decisions/0011-persistent-work-queue.md)), needed long before runs. The one event model of [0015](../research/decisions/0015-events-notifications-webhooks-audit.md) and [0018](../research/decisions/0018-flows-runtime.md) is fixed with the outbox, so Deploy and Flows emit the same envelope. P7 keeps the run state machine and `run.schedule` |
+| The object store emulators, the `fips-only` job and the scheduled cloud job land in P2b | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) runs `objectstoretest` on RustFS, fake-gcs-server, Azurite and `fs` in every pull request and against the real services nightly, and runs the tests under `fips140=only`; each lands with the drivers and the crypto it checks ([0013](../research/decisions/0013-secrets-at-rest.md)) |
+| Process logging, request IDs and the admin listener's health endpoints move from P18 to P2 | Every process mode reports `/readyz` against PostgreSQL from its first connection ([0017](../research/decisions/0017-observability-and-health.md), [0004](../research/decisions/0004-repository-architecture.md)); P18b keeps metrics, the per-account series and run tracing |
 | P3 and P4 split into P3, P3b, P4 and P4b | Size: about 110 identity operations and 47 spaces and roles operations |
-| Private pools move from P14 to P8; the public pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public pool is an optional operator-run pool on the same protocol |
+| The feature catalogue, tiers, billing and the operator API land in P3b | Every operation of every served document carries `x-infraweave-feature` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)), so the gate exists before the first domain beyond identity, and `seats` counts the users and keys P3b creates |
+| Expressions land in P6 | Environment interpolation is the first surface of decision [0024](../research/decisions/0024-expression-language.md); `internal/platform/expr` and its endpoints exist before workflow files (P10), notification text (P18), templates (P21) and Flows (P18c) need them |
+| Private pools move from P14 to P8; the public worker pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public worker pool is an optional operator-run pool on the same protocol |
 | P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces |
 | The raw Git `Source` moves from P19 to P9 | The first tracked run needs a source with no webhook; decision [0016](../research/decisions/0016-testing-and-acceptance.md) serves it from Gitea |
 | Login policies and the `LOGIN_POLICIES` scheme move from P4 to P13b | They evaluate through decision [0009](../research/decisions/0009-policy-engine-opa.md)'s engine ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
-| P13, P17, P18, P19, P20, P22, P24, P25 and P26 each split in two | Size: each half is a few pull requests |
+| Flows moves from the end of the spine to P18c and P18d | Flows is built on Deploy's events from the start ([0018](../research/decisions/0018-flows-runtime.md)): the engine needs the fan-out of P18 and the queue of P2c, nothing later, and its clients join `infraweavectl` and the provider in P24 and P24b |
+| P24c added for the console | Decision [0023](../research/decisions/0023-console.md) builds a console over the public API only, so it follows the last client phase and covers every surface |
+| P13, P17, P19, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
 | P28 added | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) replays captures as fixtures, and report [30](../research/reference/30-open-questions.md) lists 269 of them; qualification closes the loop once an authorized account is available |
-| Report 26's provisional Terraform phases remapped | `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. The [capability roadmap](capability-roadmap.md) is the assignment |
+| Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. The [feature catalogue](capability-roadmap.md) is the assignment |
 
 ## P0: Specification reference
 
@@ -288,7 +332,7 @@ every field ([#5](https://github.com/weaveplatform/infraweave/issues/5)).
 - `make gate` passes at 95% in total and 90% per package.
 
 **Outcome: done.** The research and decision layer built on it is reports 01
-to 31 and decisions 0001 to 0022.
+to 31 and decisions 0001 to 0024.
 
 ## P1: Served API skeleton
 
@@ -352,9 +396,6 @@ Today's packages move into option 5's tree before any domain exists, so no
 later phase pays for a move, and depguard starts enforcing the boundaries
 with a clean run over the whole tree.
 
-Open choice: decision [0004](../research/decisions/0004-repository-architecture.md) (option 5, the modular monolith, with one
-binary in process modes) is Proposed; every later package path assumes it.
-
 **Tasks**
 1. Move per option 5's [package mapping](../research/architecture-options/5-modular-monolith.md#package-mapping):
    `internal/buildinfo` to `internal/platform/buildinfo`,
@@ -375,10 +416,12 @@ binary in process modes) is Proposed; every later package path assumes it.
    `internal/app/{config,modes.go,platform.go,domains.go}` and one cobra file
    per process mode in `cmd/infraweave` (`serve`, `version`; the others land with
    their phases).
-4. `.golangci.yml`: enable depguard with option 5's six rules
+4. `.golangci.yml`: enable depguard with option 5's rules
    ([tests and enforcement](../research/architecture-options/5-modular-monolith.md#tests-and-enforcement)): `api-packages`,
    `constructors`, `core-not-adapters`, `shared-below-domains`,
-   `agent-isolation`, `devtools`. Add forbidigo for `time.Sleep` in
+   `agent-isolation`, `devtools`, one rule per domain listing the other
+   domains' `api/` packages it may import, and the `pkg/` rule of decision 0004 that
+   nothing under `pkg/` imports `internal/`. Add forbidigo for `time.Sleep` in
    `_test.go` files ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 5. `internal/app/depguard_test.go` (`TestUnitDepguardFixtures`): a fixture
    domain that imports another domain's `internal/` and `assembly/` packages,
@@ -394,18 +437,16 @@ binary in process modes) is Proposed; every later package path assumes it.
   `make lint`.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P1c: Test harness and parity tooling
+## P1c: Test harness, SDK and parity tooling
 
-Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md).
+Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md).
 
 **Depends on:** P1b.
 
-The acceptance harness and the parity outcomes of decision 0016 exist before
-the first domain, so every later operation is proved by the same rule: served,
-not `501`, and named by passing success, denial and failure scenarios.
-
-Open choice: decision [0016](../research/decisions/0016-testing-and-acceptance.md) is Proposed, including the CI partitions
-and the three-scenario rule.
+The acceptance harness, the SDK it drives the API through and the parity
+outcomes of decision 0016 exist before the first domain, so every later
+operation is proved by the same rule: served, not `501`, and named by
+passing success, denial and failure scenarios.
 
 **Tasks**
 1. Test names: rename every top-level test to `TestUnit...` or `TestAcc...`;
@@ -417,8 +458,9 @@ and the three-scenario rule.
    `features/<area>_<topic>.feature`; the harness builds `cmd/infraweave`
    once with `-cover -covermode=atomic`, runs `infraweave all` (serve plus
    scheduler) as a subprocess per scenario on a free port with `GOCOVERDIR`
-   set to `cover/accept`, starts `@postgres`, `@objectstore` and `@oidc`
-   dependencies lazily through testcontainers-go, and writes logs to
+   set to `cover/accept`, starts `@postgres` (PostgreSQL 18),
+   `@objectstore` (RustFS) and `@oidc` dependencies lazily through
+   testcontainers-go, and writes logs to
    `test/acceptance/out/<scenario>/` on failure. `test/acceptance/images.go`
    pins every image by digest. `acceptance.eventually` is the only wait.
    Feature: `acceptance_harness.feature` (skip without Docker, failure with
@@ -442,6 +484,14 @@ and the three-scenario rule.
    `needs`.
 6. `test/fixtures/captures/` layout with `TestUnitCaptureRedaction` and an
    empty `TestAccCaptures` replayer, ready for P28.
+7. `pkg/sdk` over `pkg/client/deploy` ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)): one client for every
+   served document, `Idempotency-Key` on every `POST` and `PATCH` reused
+   across its retries, retries on `429` and on `503` with `Retry-After`,
+   iterators that follow `nextCursor`, and a typed error per problem slug of
+   decision 0022. A ready token is used as is; the API key exchange lands in
+   P3. Every acceptance step calls the API through it. Tests: unit tests
+   against a chi test server, and a test that fails when the SDK's slugs
+   differ from the problem registry.
 
 **Exit criteria**
 - `served_api.feature`, `spec_reference.feature` and `deploy_spec.feature`
@@ -450,6 +500,8 @@ and the three-scenario rule.
 - `make verify-parity` reports the 72 scaffolded operations served and every
   other reference operation superseded or missing, and a deliberately
   removed operation fails it.
+- No acceptance step calls `pkg/client` directly; `pkg/sdk` meets the
+  per-package coverage bar.
 - `make gate` passes at 95% in total and 90% per package; CI fails a run in
   which any scenario was skipped.
 
@@ -462,9 +514,6 @@ Decisions: [0005](../research/decisions/0005-persistence-postgresql.md), [0017](
 PostgreSQL becomes the only store, with the migration runner every domain
 uses, and the binary gains the process modes, logs and health endpoints an operator
 needs from its first database connection.
-
-Open choice: decision [0005](../research/decisions/0005-persistence-postgresql.md)'s floor of PostgreSQL 15 and its forward-only
-migrations are Proposed.
 
 **Tasks**
 1. `internal/platform/sql`: `pgxpool` from `database.url`, the optional
@@ -498,12 +547,16 @@ migrations are Proposed.
    `TestUnitServerListeners`, `observability_health.feature` (readiness
    fails while PostgreSQL is stopped and recovers). Records DV-009 and
    DV-062.
+6. CI: `postgres-next` runs `storetest`, `queuetest` once P2c lands and
+   `accept-core` on the next PostgreSQL major, its beta or release
+   candidate, without blocking ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 5. Problem bodies carry `instance` as `urn:infraweave:request:<id>`
    ([0022](../research/decisions/0022-api-errors-and-update-semantics.md)); `service-unavailable` answers when the database is
    unreachable.
 
 **Exit criteria**
-- Store suites run on PostgreSQL 15 and the newest major in `accept-core`.
+- Store suites run on PostgreSQL 18, the floor, in `accept-core`, and
+  `postgres-next` reports them on the next major.
 - A second `serve` replica shares idempotency and rate-limit state; a
   replay through either replica returns the stored response.
 - `infraweave all` refuses to start on a database migrated by a newer
@@ -512,16 +565,15 @@ migrations are Proposed.
 
 ## P2b: Object storage and secrets at rest
 
-Decisions: [0005](../research/decisions/0005-persistence-postgresql.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0011](../research/decisions/0011-persistent-work-queue.md).
+Decisions: [0005](../research/decisions/0005-persistence-postgresql.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P2, P2c.
 
 Object storage and envelope encryption are platform services every later
 domain writes through: state, logs, artifacts, archives and every sealed
-column.
-
-Open choice: decision [0013](../research/decisions/0013-secrets-at-rest.md)'s KEK providers and its reversible
-`rewrap` are Proposed.
+column. The FIPS 140-3 job and the object store emulators join CI with
+them, so no later phase can add an algorithm or a driver call that the
+checks have not seen.
 
 **Tasks**
 1. `internal/platform/objectstore`: the `Store` port (`Put`, `Get`, `Head`,
@@ -529,9 +581,10 @@ Open choice: decision [0013](../research/decisions/0013-secrets-at-rest.md)'s KE
    the logical stores and prefixes of decision 0005, `GET` and `PUT
    /blobs/{token}` for `fs`. `blob_objects` with `pending`, `live` and
    `deleting`, the `blob.delete` job and the `blob.expire` periodic task on
-   P2c's queue and ticker. Tests: `internal/platform/objectstore/objectstoretest`,
-   `TestAccObjectStoreMinIO` and `TestUnitObjectStoreFS`. Records DV-010
-   and DV-011.
+   P2c's queue and ticker. Tests:
+   `internal/platform/objectstore/objectstoretest`, run as `TestAcc` suites
+   for `s3` on RustFS, `gcs` on fake-gcs-server and `azureblob` on Azurite,
+   and as a `TestUnit` suite for `fs`. Records DV-010 and DV-011.
 2. `internal/platform/crypt`: the keyring in `encryption_keys` with
    `active`, `retiring` and `retired` keys; `Seal`, `Open` and
    `DeriveKey`; `secrets.Value` that renders `[redacted]`; the sealed
@@ -546,15 +599,24 @@ Open choice: decision [0013](../research/decisions/0013-secrets-at-rest.md)'s KE
    queue; the idempotency store seals `body_sealed`. Feature:
    `secrets_key_rotation.feature` (rotate with two replicas, rewrap from
    `local` to Vault). Records DV-048 to DV-050.
+5. CI ([0016](../research/decisions/0016-testing-and-acceptance.md)): the required `fips-only` job runs `make test` and every
+   acceptance partition with the binary built with `GOFIPS140=certified`
+   and every process run with `GODEBUG=fips140=only`, outside the merged
+   coverage; the scheduled `objectstore-cloud` job runs `objectstoretest`
+   against Amazon S3, Google Cloud Storage and Azure Blob Storage through
+   OIDC federation, in buckets with a one-day lifecycle rule, and opens or
+   updates an issue when it fails.
 
 **Exit criteria**
-- `objectstoretest` passes on MinIO and `fs`; a pending object older than 24
-  hours disappears with its row.
+- `objectstoretest` passes on RustFS, fake-gcs-server, Azurite and `fs`; a
+  pending object older than 24 hours disappears with its row.
+- `fips-only` passes and is in the `needs` of the `Quality gate` job; a test
+  that calls MD5 or SHA-1 outside an allowed path fails it.
 - A sealed value copied to another row fails to open; a rotation leaves every
   value readable and deletes the old key.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P2c: Work queue, cron and outbox
+## P2c: Work queue, cron, outbox and the event model
 
 Decisions: [0011](../research/decisions/0011-persistent-work-queue.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0005](../research/decisions/0005-persistence-postgresql.md).
 
@@ -562,10 +624,9 @@ Decisions: [0011](../research/decisions/0011-persistent-work-queue.md), [0015](.
 
 Background work, periodic tasks and the transactional outbox run on
 PostgreSQL in the `scheduler` process mode, so that storage, identity and every later
-domain can enqueue work in the transaction that asks for it.
-
-Open choice: decision [0011](../research/decisions/0011-persistent-work-queue.md) rules out a separate workflow engine; a
-different answer would move run orchestration and reopen decision 0004.
+domain can enqueue work in the transaction that asks for it. The event
+envelope that Deploy and Flows share is fixed here, with the outbox that
+writes it.
 
 **Tasks**
 1. `internal/platform/queue`: the `jobs` table and indexes, `EnqueueTx` and
@@ -580,23 +641,25 @@ different answer would move run orchestration and reopen decision 0004.
    `FOR UPDATE SKIP LOCKED`. Tests: table tests across daylight-saving
    changes in `Europe/London`, `America/New_York` and
    `Australia/Lord_Howe`; `FuzzParse`.
-3. `internal/platform/outbox` and `internal/platform/events`:
+3. `internal/platform/outbox`: decision 0015's envelope (`id`, `kind`, `account`, subject, `occurred_at`,
+   `document`) and the kind registry, each kind with a JSON Schema
+   (`TestUnitEventSchemas`), which Flows events use unchanged from P18c;
    `outbox.Append` writes an `events` row and an `events.fanout` job in the
-   caller's transaction; `Subscribe(kind, consumer, handler)`;
+   caller's transaction and notifies `infraweave_events`;
+   `Subscribe(kind, consumer, handler)`;
    `internal/platform/audit` records `audit_trail_entries` in the caller's
    transaction (the audit API lands in P18b).
 4. Periodic tasks: `queue.prune` and `idempotency.purge`. The
-   `scheduler` process mode starts queue workers and the ticker. Admin routes
-   `GET /admin/queue/jobs`, `POST /admin/queue/jobs/{id}/retry`,
-   `DELETE /admin/queue/jobs/{id}` (root admins from P4). Records DV-037 to
-   DV-040.
+   `scheduler` process mode starts queue workers and the ticker. The
+   queue's list, retry and discard of dead jobs, which the operator API
+   serves from P3b. Records DV-037 to DV-040.
 5. `messageQueueStats` (Infrastructure tag) reads the queue's depth by
    logical queue.
 
 **Exit criteria**
 - `queue_periodic_tasks.feature`: two `infraweave all` instances never run
-  one task twice; `queue_dead_letters.feature` lists, retries and discards
-  a dead job.
+  one task twice; a job that exhausts its attempts is `dead` with its last
+  error.
 - An enqueue rolled back with its transaction leaves no job, and a killed
   handler's job is retried by the other instance within one lease.
 - `make gate` passes at 95% in total and 90% per package.
@@ -611,9 +674,6 @@ Every API request carries a principal: API keys exchange for tokens, sessions
 can be listed and revoked, and the break-glass admin can log in before any SSO
 exists. The `access` domain is created.
 
-Open choice: decision [0006](../research/decisions/0006-authentication-and-tokens.md) reproduces Spacelift's token formats
-(report 30 P7) and the session lifetimes it states are infraweave's.
-
 **Tasks**
 1. `internal/access` skeleton (`api/`, `assembly/`, `internal/core`,
    `internal/adapters/{http,pg}`) with its migration stream: `accounts`,
@@ -627,7 +687,8 @@ Open choice: decision [0006](../research/decisions/0006-authentication-and-token
 3. `internal/access/internal/core/apikey`: `iwk_` secrets hashed with
    SHA-256, `POST /auth/token` exchange (`apiKeyUser`), reset, disable,
    delete, `last_used_at`; OIDC API keys verified against the issuer's JWKS
-   with the allowlist. Operations: `apiKeys`, `apiKeyCreate`, `apiKey`,
+   with the allowlist. `pkg/sdk` gains the exchange and exchanges again
+   before `validUntil`. Operations: `apiKeys`, `apiKeyCreate`, `apiKey`,
    `apiKeyUpdate`, `apiKeyDelete`, `apiKeyReset`,
    `apiKeyEnableNonRootManagers`, `apiKeyUser`. `ApiKeyInput` has no
    `admin` field: a body that sets it answers `400 invalid-request`
@@ -660,18 +721,16 @@ Open choice: decision [0006](../research/decisions/0006-authentication-and-token
   until then the scenarios assert decision 0006's choices.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P3b: Users, groups and account settings
+## P3b: Users, groups, account settings and the feature catalogue
 
-Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md).
+Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md).
 
 **Depends on:** P3.
 
 Managed users, groups, personal keys and the account-wide settings that have
-no other owner, plus decision 0021's answers for the commercial operations and
-the feature switch.
-
-Open choice: decision [0021](../research/decisions/0021-capability-scope-and-supersession.md)'s answers to report 30 P5 (no editions,
-`features.disabled`) are Proposed.
+no other owner, plus decision 0021's feature catalogue, seeded tiers,
+billing switch and operator API, and its answers for the commercial
+operations.
 
 **Tasks**
 1. Managed users and groups in `internal/access/internal/core/{user,group}`:
@@ -698,26 +757,53 @@ Open choice: decision [0021](../research/decisions/0021-capability-scope-and-sup
    `accountToggleDeletionMark`, `accountCanBeDeleted`,
    `accountCanBeDeletedAt`, `accountConfirmDelete`. Feature:
    `account_settings.feature`.
-4. `internal/platform/features`: strict `features.disabled`, the
-   `x-infraweave-feature` annotation on every gated operation, the chi
-   middleware answering `feature-disabled`, and the dequeue filter. Billing
-   and feature reads per decision 0021's vendor-bound table: `tier`,
-   `tierFeatures`, `seats`, `billedExternally`, `billingSubscription`,
-   `onTrialUntil`, `availableBillingAddons`, `availableSelfServicePlans`,
-   and the five subscription mutations answering
-   `installation-unsupported`; `evaluateFeatureFlags` answers an empty set.
-   Tests: `TestUnitFeaturesConfig`, `TestUnitFeatureAnnotations`; features
+4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.yaml` with every capability,
+   option and limit, its requirements, the `BillingTierFeature` values it
+   covers and its seeded tiers; the five seeded tiers and their limits,
+   installed once; `x-infraweave-feature` on every operation of every
+   served document and on each gated schema property. The chi middleware
+   after authentication answers `403 feature-disabled` and, with billing
+   on, `403 feature-not-in-tier`; input validation checks options; the
+   `seats` limit answers `403 limit-reached` on a user or key beyond it.
+   Entitlement snapshots rebuild on `accounts.entitlement_version` through
+   `infraweave_invalidate`; the dequeue check completes a job of a feature
+   outside the entitlement as skipped, counted in
+   `infraweave.features.skipped`. Strict `features.disabled`. Tests:
+   `TestUnitFeatureCatalogue`, `TestUnitEntitlement`,
+   `TestUnitFeaturesConfig`. Records DV-018 and DV-101.
+5. The operator API: `api/src/operator/` bundled to
+   `api/operator.openapi.yaml`, outside the parity surface, for accounts,
+   tiers, the billing switch, account tiers, grants and the queue's dead
+   jobs; operator principals from `auth.operator.keys`, exchanged at
+   `POST /auth/token` for a token no other route accepts ([0006](../research/decisions/0006-authentication-and-tokens.md)).
+   `cmd/infraweavectl` starts over `pkg/sdk` with `profile`, `whoami`,
+   `version`, `api` and the `operator` group (`tier`, `account`, `grant`,
+   `billing`). Features: `platform_tiers.feature`,
+   `queue_dead_letters.feature`.
+6. Billing reads per decision 0021's vendor-bound table: `tier` as a tier
+   object, `tierFeatures` as the entitlement in infraweave feature names,
+   `seats`, `billedExternally`, `billingSubscription`, `onTrialUntil`,
+   `availableBillingAddons`, `availableSelfServicePlans`, and the five
+   subscription mutations answering `installation-unsupported`;
+   `evaluateFeatureFlags` answers an empty set. Features
    `platform_features.feature`, `platform_billing.feature`. Records DV-079
    and DV-080.
 
 **Exit criteria**
-- The operations of tasks 1 to 4 are served and pass their success and
+- The operations of tasks 1 to 6 are served and pass their success and
   failure scenarios. P4b's exit holds them to decision 0016's evidence rule
   once the authorizer and bindings exist: Managed Users less its role-binding
   reads (P4b) and group integrations (P18), Personal API Keys, Billing less
   `usage` (P18b), and Feature Flags.
-- Disabling `SPACELIFT_INTELLIGENCE` answers `403 feature-disabled` on a
-  gated route only; `ACCESS_POLICIES` in `features.disabled` fails startup.
+- With billing off, `tier` answers the Enterprise tier object and
+  `tierFeatures` every feature; `ai-integrations` in `features.disabled`
+  answers `403 feature-disabled` on a gated route only; an unknown name,
+  `billing` or a Spacelift spelling such as `SCANS` fails startup.
+- With billing on, a seat beyond the `seats` limit answers
+  `403 limit-reached`, a tier change applies without a restart, and an
+  account credential on the operator API answers `401`. Each later phase
+  adds the `feature-not-in-tier` scenario of the capabilities it serves to
+  `platform_tiers.feature`.
 - Captures C118, C123, C124 and C125 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -729,9 +815,6 @@ Decisions: [0007](../research/decisions/0007-authorization-spaces-and-roles.md),
 
 Spaces and the evaluator decide every route from here on: deny by default,
 `404` for what the caller cannot read, `403` for what it can read but not do.
-
-Open choice: decision [0007](../research/decisions/0007-authorization-spaces-and-roles.md) is Proposed, including the system role
-definitions taken from the fallback column (capture C116).
 
 **Tasks**
 1. `internal/access/internal/core/space`: `spaces`, the closure table, the
@@ -755,6 +838,8 @@ definitions taken from the fallback column (capture C116).
    every operation of `api/deploy.openapi.yaml`, the scaffolder writing them
    from the catalogue, the generated route table and `authz.Require`
    middleware. `api/deploy_test.go` fails on an operation without both.
+   Every resource the API returns carries `allowedActions`, computed by the
+   evaluator that enforces them ([0023](../research/decisions/0023-console.md)). Records DV-108.
 5. Every list and search filters with `Reachable` as
    `space_id = ANY($n)`; `role_actions` data source support through
    `GET` of the catalogue.
@@ -813,9 +898,6 @@ Decisions: [0022](../research/decisions/0022-api-errors-and-update-semantics.md)
 Stacks are created, configured, locked and searched on PostgreSQL, with the
 update semantics, input strictness and search every later family reuses.
 
-Open choice: decision [0022](../research/decisions/0022-api-errors-and-update-semantics.md)'s `PUT` plus `PATCH` and its strictness rules
-(report 30 P8 and P9) are Proposed.
-
 **Tasks**
 1. `internal/stacks` (flat domain) with its migration stream (`stacks`,
    `stack_hooks`, labels); `api/` with `Stacks.Get`, `ByRepository`,
@@ -825,7 +907,8 @@ Open choice: decision [0022](../research/decisions/0022-api-errors-and-update-se
    Feature: `stacks_crud.feature`.
 2. `internal/iac` with `terraform` and `opentofu` settings validation
    (`iac.ValidateSettings`), so vendor configuration is checked at write
-   time; `iactest` contract suite.
+   time; `iactest` contract suite. Each vendor is an option on
+   `StackVendor` (`vendor-terraform`, `vendor-opentofu`).
 3. Update semantics in `internal/platform/httpkit/strict`: `PATCH` with
    `application/merge-patch+json` through the `PUT` path, `ETag` from the
    `version` column, `If-Match` with `412`; every input schema
@@ -852,15 +935,15 @@ Open choice: decision [0022](../research/decisions/0022-api-errors-and-update-se
 - Captures C24, C25 and C26 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P6: Contexts and configuration
+## P6: Contexts, configuration and expressions
 
-Decisions: [0013](../research/decisions/0013-secrets-at-rest.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md).
+Decisions: [0013](../research/decisions/0013-secrets-at-rest.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0024](../research/decisions/0024-expression-language.md).
 
 **Depends on:** P5, P2b.
 
 Environment variables, mounted files and hooks on stacks and contexts, with
 auto-attachment by label and one resolver that hands a run its ordered
-environment.
+environment, and the expression engine every later surface uses.
 
 **Tasks**
 1. `internal/configuration` (flat domain): `config_elements` with
@@ -880,9 +963,23 @@ environment.
 3. Auto-attachment: `autoattach:<label>` matching with `text[]` and GIN
    indexes, reaching child spaces by decision 0007's inheritance.
 4. `configuration/api.Environment.Resolve(target)`: the ordered elements and
-   hooks report 13 defines, with `${NAME}` interpolation, for the run
-   handover in P8. Tests: `TestUnitEnvironmentPrecedence` from report 13's
-   tables.
+   hooks report 13 defines, with `${{ env.NAME }}` text templates rendered
+   in `serve` at the run handover in P8 and `${NAME}` left to the shell.
+   Tests: `TestUnitEnvironmentPrecedence` from report 13's tables. Records
+   DV-105.
+5. `internal/platform/expr` ([0024](../research/decisions/0024-expression-language.md)): CEL through cel-go and text templates, one
+   environment per surface, type-checking against the surface's context,
+   the cost limit and timeout, `now` and the random seed fixed per
+   evaluation, results masked by decision 0013's masker. The
+   `expressions` domain, `internal/expressions`, serves `POST
+   /api/v1/expressions/check`, `/complete` and `/evaluate` over the
+   surfaces each domain's assembly lists through `Surfaces()`. Tests:
+   `TestUnitExprLibrary`, `TestUnitExprTemplates`,
+   `TestUnitExprDeterminism`, `TestUnitExprCostLimit`,
+   `TestUnitExprTimeout`, `TestUnitExprSchemaTypes`. Features:
+   `expressions_editor.feature` against a stack, which later phases extend,
+   and the interpolation scenario of `expressions_deploy.feature`. Records
+   DV-103.
 
 **Exit criteria**
 - Contexts and the stack configuration operations meet decision 0016's
@@ -919,11 +1016,12 @@ queued; nothing executes them until P8.
 4. `internal/runs/internal/core/queuegate` and `schedule`: `run.schedule`
    with unique key `stack:<id>`, the stack lock for blocking runs, the
    disabled-stack and dependency gates (approval and dependencies are
-   no-ops until P13 and P16), the seven priority tiers.
+   no-ops until P13 and P16), the seven priority levels.
 5. Read and queue operations: `run`, `runStack`, `searchRuns`,
    `searchRunsSuggestions`, `runCancel`, `runPrioritySet`, and the stack
    run lists left empty by P5. Feature: `runs_queue.feature` (a blocking
-   run takes the lock, a second waits, cancel releases it).
+   run takes the lock, a second waits, cancel releases it). A run's
+   `allowedActions` include only the transitions its state allows.
 
 **Exit criteria**
 - `runs_queue.feature` passes on two `infraweave all` instances; one
@@ -941,15 +1039,15 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 
 Private worker pools, the `/worker/v1` protocol and `infraweave launcher`, which
 claims a run, prepares it and starts a container from the same binary. The
-container runs a stub executor until P9.
-
-Open choice: decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) serves HTTP long-poll only, with no MQTT
-transport (report 30 P6).
+container runs a stub runner until P9.
 
 **Tasks**
 1. `internal/workers` (hexagon) with `worker_pools`, `workers`,
-   `worker_nonces`, `worker_pool_ca`: pool creation from a CSR signed by the
-   installation pool CA, the pool token, reset by certificate serial.
+   `worker_nonces`, `worker_pool_ca`: pool creation from a CSR for a P-256
+   key signed by the installation pool CA, the pool token, reset by
+   certificate serial; the `private-worker-pools` capability and the
+   `private-workers` limit, which a worker reconnecting under its
+   registration does not count against. Records DV-093.
    Operations: `workerPools`, `workerPool`, `workerPoolCreate`,
    `workerPoolUpdate`, `workerPoolDelete`, `workerPoolReset`,
    `workerPoolCycle`, `workerDrainSet`, `searchWorkerPools`,
@@ -967,21 +1065,27 @@ transport (report 30 P6).
    replayed `jti`, skewed `iat`), `TestAccRunClaim` (50 concurrent pollers,
    one claim per run). Records DV-008, DV-024, DV-027.
 3. `internal/runs/internal/core/handover`: the run specification with the
-   environment resolved by P6's `configuration/api.Environment`, the run token, the in-run API token, and the
-   secret part sealed to the pool key as a JWE; the per-run artifact key.
+   environment resolved by P6's `configuration/api.Environment`, the run
+   token, the in-run API token, and the secret part sealed to the pool key
+   with decision 0013's pool envelope (ECDH P-256, HKDF-SHA256,
+   AES-256-GCM); the per-run artifact key.
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
    cycle), `executor/docker` (the launcher's own binary bind-mounted
    read-only as the container's root process, UID 1983) and `agenttest`.
    `infraweave launcher` and the hidden `infraweave runner` in
    `cmd/infraweave`.
-5. Liveness: `worker.reap` fails runs held by a worker unseen for three
-   minutes; drain, cycle and reset as decision 0008's table.
+5. Liveness: a worker unseen for `worker.offline_after` (3 minutes) is
+   `OFFLINE` and receives no new work; `worker.reap` fails a run whose
+   worker stays offline past `run.lost_after` (60 minutes) as a lost run
+   with the note `worker lost`; drain, cycle and reset as decision 0008's
+   table. Records DV-025 and DV-092.
 
 **Exit criteria**
 - `worker_protocol.feature` (`@postgres`, `@objectstore`): a launcher
   registers, claims a run, receives a sealed specification, starts a
-  container that reports and exits, and a killed launcher's run fails as
-  `worker lost`.
+  container that reports and exits; a killed launcher's worker turns
+  `OFFLINE` and, in virtual time past `run.lost_after`, its run is lost
+  with the note `worker lost`.
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
 - Captures C58, C59, C60, C61, C62, C63 and C64 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
@@ -1005,7 +1109,9 @@ workspace.
    `runs/api.StateAccess`; shared and exclusive locks with `423` and the
    holder's `LockInfo`; plain-text errors. Tests:
    `TestUnitStateAccessTable`, `TestUnitLockConflicts`.
-3. Writing a version: `pending` blob row, MD5 and SHA-256, the size limit,
+3. Writing a version: `pending` blob row, SHA-256 of the body and the
+   `Content-MD5` check, which `fips140=only` accepts without checking
+   (DV-094), the size limit,
    sealing into `states`, client-encrypted bodies, no new version for an
    identical body, `state.indexed` enqueued. Reading streams and unseals.
 4. The runner's `infraweave_backend.tf` with `TF_HTTP_USERNAME` and
@@ -1033,7 +1139,7 @@ masked and stored, plan recorded, confirmation honoured and state written
 through the backend.
 
 **Tasks**
-1. `internal/agent/exec`: the phase executor of `runner`, with
+1. `internal/agent/exec`: the phases of `runner`, with
    `before_*` and `after_*` hooks in one shell session, reports per phase,
    `pause` and `exit` answers. `internal/agent/vendors/{terraform,opentofu}`
    and `internal/iac/{terraform,opentofu}` with plan JSON parsing into
@@ -1060,8 +1166,9 @@ through the backend.
 6. Runner images: `deploy/images/runner-terraform` and
    `deploy/images/runner-opentofu` definitions meeting decision 0008's
    contract; the harness builds `infraweave-runner:acceptance`. In-run
-   `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so
-   `spacelift_current_stack` and `spacelift_current_space` have their data.
+   `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so the provider's
+   `infraweave_current_stack` and `infraweave_current_space` have their
+   data.
 
 **Exit criteria**
 - `runs_terraform.feature` and `runs_tofu.feature` (`@postgres`,
@@ -1097,8 +1204,13 @@ that depend on them.
 4. Outputs and diagnostics: `stack_outputs` sealed per output with
    `sensitive`; `runWorkerMetrics`, `runCpuProfileDownloadURL` from
    `run-observability`.
-5. Feature: `runs_lifecycle.feature` (proposed, tracked with confirm,
-   autodeploy, task, targeted replan, stop, kill, lost worker, timers in
+5. Workflow files: `.infraweave/workflow.yml` command templates rendered
+   by the runner at initialization through `internal/platform/expr`, with every
+   interpolated value shell-quoted. Tests: `TestUnitWorkflowQuoting`, and
+   the hostile workspace scenario of `expressions_deploy.feature`. Records
+   DV-104.
+6. Feature: `runs_lifecycle.feature` (proposed, tracked with confirm,
+   autodeploy, task, targeted replan, stop, kill, lost run, timers in
    virtual time).
 
 **Exit criteria**
@@ -1128,13 +1240,13 @@ read-only access, signed URLs, Terragrunt workspaces and retention.
    (`stackManagedStateRollback`) as a new version; `isStateRollback`;
    `stackSearchManagedStateVersions`.
 3. External access with `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD`;
-   `terraform_remote_state` through the `http` backend; the read-only
-   `tfe` subset and `state.v2` in service discovery
-   (`internal/app/discovery.go`).
+   `terraform_remote_state` through the `http` backend with a token. No
+   Terraform Cloud service is served or listed in discovery ([0010](../research/decisions/0010-state-backend.md)).
 4. Tofu Workspaces: `searchTofuWorkspaces`,
    `searchTofuWorkspacesSuggestions`, `tofuWorkspaceUnlock`,
    `tofuWorkspaceUnlockAll`; retention with `state.noncurrent_retention`
-   and `state.purge` on stack deletion. Records DV-036.
+   (90 days by default) applied by the daily `state.retention` task, and
+   `state.purge` on stack deletion. Records DV-036.
 
 **Exit criteria**
 - `state_external_access.feature`, `state_import.feature`,
@@ -1154,9 +1266,6 @@ Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0011](.
 GitHub and GitHub Enterprise integrations: webhooks stored before they are
 acknowledged, default push behaviour creating tracked and proposed runs,
 checks, pull request comments and deployments.
-
-Open choice: decision [0012](../research/decisions/0012-vcs-integration-model.md)'s operator-registered GitHub App, which
-replaces Spacelift's Marketplace app, is Proposed.
 
 **Tasks**
 1. `internal/vcs` (hexagon): `vcs_integrations` with sealed credentials and
@@ -1209,9 +1318,6 @@ Decisions: [0009](../research/decisions/0009-policy-engine-opa.md), [0008](../re
 Embedded OPA evaluates plan, approval, push and trigger policies at the run's
 state points, with receipts committed in the transition they justify.
 
-Open choice: decision [0009](../research/decisions/0009-policy-engine-opa.md) pins Spacelift's policy contract as a fixture
-or fetches it (report 30 P14).
-
 **Tasks**
 1. `internal/platform/rego`: OPA v1 as a library, `REGO_V0` and `REGO_V1`,
    the capability set with removed built-ins, the compilation cache,
@@ -1230,7 +1336,8 @@ or fetches it (report 30 P14).
 3. `internal/policies/internal/{inputs,combine}`: per-type input structs
    matching report 09 section 4, `GET /.well-known/policy-contract.json`,
    combination rules. Tests: `TestUnitPolicyContract`,
-   `TestUnitCombination`.
+   `TestUnitCombination`. `POST /api/v1/policies/check` compiles a body
+   with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
 4. Evaluation points in `runs/internal/core/gates`: approval on `QUEUED`,
    `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
    `PLANNING` and each targeted replan; push in `vcs.evaluate_event`;
@@ -1264,7 +1371,7 @@ the tooling around evaluation: samples, captures, simulation and templates.
    `authz_login_policy.feature`.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
    `Deprecation` headers. Feature: `platform_deprecation.feature`.
-3. Sampling and captures: `policy_evaluations`, hourly quotas in
+3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
    `policy_sample_quota`, sealed samples in `policy-inputs`;
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
    `policySearchEvaluationRecordSuggestions`, `policyInputCaptures`,
@@ -1281,19 +1388,21 @@ the tooling around evaluation: samples, captures, simulation and templates.
 - Captures C47, C48, C52, C53 and C54 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P14: Public pool, Kubernetes workers and signed runs
+## P14: Public worker pool, Kubernetes workers and signed runs
 
 Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P13.
 
-The optional operator-run public pool, Kubernetes workers on the same
+The optional operator-run public worker pool, Kubernetes workers on the same
 protocol, and the worker-side initialization policy that signed runs rest on.
 
 **Tasks**
-1. Public pool in `internal/workers`: an installation-level pool token from
-   the administration API, per-account `parallelism`, the image registry
-   allowlist, no priorities and no scheduled or drift runs. Operations:
+1. Public worker pool in `internal/workers`, on when
+   `publicWorkerPool.enabled` is set: an installation-level pool token from
+   the operator API, the per-account `public-worker-slots` limit applied in
+   the claim so a run beyond it waits, the image registry allowlist, no
+   priorities and no scheduled or drift runs. Records DV-078. Operations:
    `publicWorkerPool`, `workerUsage`, `defaultPublicWorkerPoolRunnerImage`,
    `outgoingIPAddresses`, `workerPoolSearchSchedulableRuns`,
    `workerPoolSearchSchedulableRunsSuggestions`, `workerPoolSearchUsers`,
@@ -1310,8 +1419,8 @@ protocol, and the worker-side initialization policy that signed runs rest on.
 
 **Exit criteria**
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
-- A public-pool account over its `parallelism` waits while another
-  account's run proceeds.
+- With billing on, an account at its `public-worker-slots` waits on the
+  public worker pool while another account's run proceeds.
 - Captures C21, C66, C67, C68 and C69 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1323,10 +1432,6 @@ Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [001
 
 AWS, Azure and GCP credentials for runs, the OIDC federation token in every
 run and the discovery document cloud providers verify it against.
-
-Open choice: decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) creates the Azure integration's Entra
-applications through an operator-registered application, or answers
-`installation-unsupported` without one.
 
 **Tasks**
 1. Federation: the `federation` signing key, `GET
@@ -1355,7 +1460,9 @@ applications through an operator-registered application, or answers
    `azureIntegrationAttach`, `azureIntegrationDetach`,
    `azureIntegrationAttachmentUpdate`, `azureIntegrationAttachedStack`,
    `azureIntegrationsEnabled`, `attachableAzureIntegrationsInSpace`,
-   `stackAttachableAzureIntegrations` (the module reads land in P17);
+   `stackAttachableAzureIntegrations` (the module reads land in P17), with
+   the Entra applications created through the operator-registered
+   application in `cloud.azure`, or `installation-unsupported` without one;
    GCP through the OIDC token only. `integrationsCount`.
 4. Feature: `cloud_integrations.feature` (`@postgres`, `@tofu`, `@oidc`) with
    read and write attachments and the external ID suffix per run type.
@@ -1399,7 +1506,10 @@ with output references and external dependencies.
    `stackDependenciesAddReference`, `stackDependenciesAddReferences`,
    `stackDependenciesUpdateReference`, `stackDependenciesUpdateReferences`,
    `stackDependenciesDeleteReference`,
-   `stackDependenciesDeleteReferences`.
+   `stackDependenciesDeleteReferences`. An output reference may carry an
+   expression over `value` and `outputs`, evaluated in `serve` at the
+   downstream run's handover; its scenario joins
+   `expressions_deploy.feature`. Records DV-107.
 4. `internal/runs/internal/core/dependencies`: dependent runs, skipping on
    unchanged outputs, `SKIPPED` on upstream failure; external dependencies
    with `runExternalDependencyMarkAsCompleted`.
@@ -1491,14 +1601,16 @@ verified with registered GPG keys.
 - Captures C135 to C138 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P18: Notifications, webhooks and Slack
+## P18: Notifications, webhooks, Slack and event streams
 
 Decisions: [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0011](../research/decisions/0011-persistent-work-queue.md).
 
 **Depends on:** P13.
 
 The fan-out of every event to the inbox, notification policy routes,
-webhooks, Slack and pull request comments.
+webhooks, Slack and pull request comments, and the server-sent-event
+streams that observers read. `internal/events` holds only these sinks;
+the Flows engine (P18c) adds its own consumer of the same fan-out.
 
 **Tasks**
 1. `internal/events` (hexagon): `events.fanout` and `events.deliver` with
@@ -1521,7 +1633,9 @@ webhooks, Slack and pull request comments.
    `webhooksIntegrationCreate`, `webhooksIntegrationUpdate`,
    `webhooksIntegrationDelete`. Tests: `TestUnitSignature`,
    `TestUnitHeaderPrecedence`, `TestUnitRetrySchedule`,
-   `TestUnitAutoDisable`. Records DV-056 to DV-058.
+   `TestUnitAutoDisable`. The SHA-1 header is left out with
+   `events.webhooks.fips: true` and under `fips140=only`. Records DV-056
+   to DV-058.
 3. Inbox: `searchNotifications`, `searchNotificationsSuggestions`,
    `notificationCount`, `dismissNotifications`,
    `dismissNotificationGroup`, `dismissAllNotifications`.
@@ -1534,8 +1648,18 @@ webhooks, Slack and pull request comments.
    `managedUserGroupIntegrationUpdate`,
    `managedUserGroupIntegrationDelete`. Pull request comments from
    notification policy `pull_request` rules through P12's `Comments`.
-5. Features: `events_webhooks.feature`, `events_notifications.feature`,
-   `events_slack.feature`.
+5. Notification text: every string a notification policy returns, and
+   every default message, is a text template over `event` and
+   `logs(phase)` ([0024](../research/decisions/0024-expression-language.md)), rendered in the delivery job. Tests:
+   `TestUnitMessageTemplates`. The option `notification-policies` gates
+   policy `type: NOTIFICATION`. Records DV-097.
+6. Streams ([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)): run logs, run state and worker pool queue
+   streams with `Last-Event-ID` resume, `reset` past retention, the
+   per-identity limit and `end` on shutdown, woken by `infraweave_events`
+   and `infraweave_logs`; polling stays. Records DV-095.
+7. Features: `events_webhooks.feature`, `events_notifications.feature`,
+   `events_slack.feature`, `events_streams.feature`, and the notification
+   scenario of `expressions_deploy.feature`.
 
 **Exit criteria**
 - Notifications, Webhooks, Slack, OAuth and the group integrations of
@@ -1570,8 +1694,9 @@ own records, and the metrics and traces operators run infraweave with.
    the configured limit. Records DV-059.
 3. Metrics in `internal/platform/observe`: the OpenTelemetry metric API,
    `/metrics` on the admin listener, infraweave's own instruments, and
-   `/metrics/spacelift` with the Spacelift exporter's names and labels.
-   Tests: `TestUnitSpaceliftCollectors`, `TestUnitSpaceliftMetricNames`.
+   `/metrics/accounts` with the exporter's series under the `infraweave_`
+   prefix and an `account` label.
+   Tests: `TestUnitAccountCollectors`, `TestUnitAccountMetricNames`.
    Feature: `observability_metrics.feature`. Records DV-060, DV-061.
 4. Traces: OTLP export, sampling, spans for HTTP, pgx, object storage,
    jobs and policy evaluations; trace context carried into runs and the
@@ -1584,6 +1709,114 @@ own records, and the metrics and traces operators run infraweave with.
 - One trace ID spans a run's API request, its job, the launcher's phases and
   the runner's environment.
 - Captures C180 to C184 replay once recorded.
+- `make gate` passes at 95% in total and 90% per package.
+
+## P18c: Flows engine and API
+
+Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0024](../research/decisions/0024-expression-language.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
+
+**Depends on:** P18, P4b, P10.
+
+Flows, built on Deploy's events: organizations, projects, flows, blocks,
+events, invocations and timers on the work queue, with Deploy events
+reaching trigger blocks through the fan-out of P18 and every expression in
+CEL.
+
+**Tasks**
+1. `internal/flows` (hexagon) with the `flows` PostgreSQL schema and its
+   own migration stream, UUIDv7 identifiers, one organization per account
+   created with it, `flows_memberships`, a personal sandbox per user on
+   first request, sealed `flows_secrets`, named expressions, data tables
+   and KV with locks; event bodies above 256 KiB in object storage under
+   `flows/events/`. Records DV-065.
+2. `api/src/flows/` bundled to `api/flows.openapi.yaml` under `/flows/v1/`,
+   generated into `internal/platform/gen/flows` and `pkg/client/flows`,
+   which `pkg/sdk` wraps; the Flows API operations from report 23 and
+   `api/reference/flows-clients.yaml`, each carrying the feature
+   (`flows-engine`, `flows-data-tables`, `flows-forms` or
+   `flows-mcp-tools`) that gates it; the four project roles and the
+   organization admin enforced in the handlers. Test:
+   `TestUnitFlowsClientParity`. Records DV-069.
+3. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
+   `flows.lifecycle` and `flows.invocation.status` jobs, effects committed
+   with the delivery, schedules through the cron ticker, limits and
+   retention. Tests: `TestUnitFlowsDelivery`,
+   `TestUnitFlowsInvocationStatus`, `TestUnitFlowsLimits`,
+   `TestUnitFlowsDefinitionParse`.
+4. One event model: a fan-out consumer inside `internal/flows` treats
+   every enabled Deploy trigger block whose filter matches as a target and
+   inserts the root `flow_events` row in the fan-out's transaction, so
+   `events` never imports `flows`; `flows.event` feeds the
+   `GET /flows/v1/flows/{flowId}/events/stream` stream and the audit trail
+   under the `flows.` prefix. Input and static configuration, output
+   customization and Transform are CEL, checked at save with the
+   expression endpoints of P6. Feature: `expressions_flows.feature`.
+   Records DV-096 and DV-103.
+5. Core blocks in Go in the `scheduler` process mode, with Transform's
+   steps form and no Script block; HTTP Endpoint blocks, forms at
+   `/flows/forms/<block>`, and the flow and platform Flows MCP servers at
+   `/flows/mcp/<flow>` and `/flows/mcp` (DV-066). Deploy-side reads:
+   `flowsIntegration`, `flowsProjects`, `flowsInstances`,
+   `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
+   `flowsProjectRoleBindingDelete`.
+6. Feature: `flows_engine.feature` (`@postgres`, `@flows-agent`: fan-out
+   and merge, echo, pending events, Sleep across a restart, manual retry
+   and re-emit, limits, retention).
+
+**Exit criteria**
+- The Flows tag meets decision 0016's evidence rule, and every operation of
+  `api/flows.openapi.yaml` the engine serves passes its scenarios.
+- A Deploy `run_updated` event and the Flows event it starts share one
+  envelope, and the flow's event stream shows it.
+- `flows-engine` in `features.disabled` answers `403 feature-disabled` on
+  every Flows route and pauses the flows' schedules and timers without
+  deleting them.
+- Captures C228, C230, C238, C240 and C241 replay once recorded.
+- `make gate` passes at 95% in total and 90% per package.
+
+## P18d: Flows apps, agents and Deploy blocks
+
+Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0020](../research/decisions/0020-reference-deployments-and-packaging.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0013](../research/decisions/0013-secrets-at-rest.md).
+
+**Depends on:** P18c, P21.
+
+App blocks run in containers on Flows agents, apps are OCI images built on
+the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
+
+**Tasks**
+1. The `App` and `Host` gRPC services in `api/proto/flows/app/v1/`, with
+   `buf breaking` against the last release in CI
+   (`TestUnitAppContractCompatible`); `pkg/flows/appsdk` with
+   `appsdk.Serve`, schemas from Go types, KV, locks, timers, messages and
+   widgets, and `appsdk/apptest`.
+2. The agent gateway in `internal/flows/internal/adapters/gateway`:
+   WebSocket at `wss://<host>/flows/agent/v1/connect` on every `serve`
+   replica, `flows.agent_task` jobs partitioned by pool and claimed up to
+   each agent's capacity; agent pools with SHA-256 hashed tokens, rotation
+   and the default pool. `internal/agent/flowsagent` and
+   `infraweave flows-agent` with the `docker` (gVisor when configured),
+   `kubernetes` and `process` executors and their isolation rules. Feature:
+   `flows_agents.feature` (two `serve` replicas, an agent killed mid-task,
+   token rotation, a container never reused for another installation).
+3. Apps: an app version is an OCI image plus a manifest captured at
+   publish; registries fetched hourly, with the digest checked by the agent;
+   custom apps from image references, and a JavaScript bundle refused with
+   `422 validation-failed`; declarative widgets validated against their
+   type's schema. The `flows-apps` and `flows-agents` features gate them.
+   Feature: `flows_apps.feature`, with a fixture app built from the SDK and
+   a registry served by a chi test server. Records DV-098 and DV-099.
+4. Deploy blocks: trigger blocks on decision 0015's kinds, Trigger Run,
+   Trigger Task, Confirm Run, Review Run, Deploy Template, Deploy Blueprint
+   and the API Request kind that calls a REST operation by `operationId`,
+   each acting with the Deploy role bindings of its Flows project. Feature:
+   `flows_deploy.feature` (`@tofu`). Records DV-067 and DV-068.
+
+**Exit criteria**
+- A Run Events block reacts to a real run's state change and to a drift
+  result, and a Trigger Run block starts another run.
+- A fixture app built on `pkg/flows/appsdk` passes `apptest` and runs on a
+  Flows agent under the `docker` and `kubernetes` executors.
+- Captures C229, C231 to C237, C239 and C242 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P19: VCS providers: GitLab, Bitbucket and Azure DevOps
@@ -1635,9 +1868,6 @@ Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0021](.
 VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
 `BLOB`, `ORIGIN` and `SPACELIFT` source providers.
 
-Open choice: decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) builds the schema-only `BLOB` and `ORIGIN`
-providers to the schema's shape (report 30 P3).
-
 **Tasks**
 1. `internal/vcs/internal/adapters/agentgateway`: `vcs_agent_pools`,
    connections and the `UNLOGGED` `vcs_agent_requests`, the long-poll
@@ -1655,7 +1885,8 @@ providers to the schema's shape (report 30 P3).
    `ORIGIN` provider from `vcs.origin`: `originIntegration`,
    `originIntegrationUpdate`, `originIntegrationDelete`,
    `originIntegrationInstallURL`.
-4. Spacelift Repos (`SPACELIFT` provider) stored in object storage:
+4. The Repos tag, the reference's `SPACELIFT` source provider, stored in
+   object storage:
    `repos`, `repo`, `repoCreate`, `repoUpdate`, `repoDelete`, `repoCommit`,
    `repoCommitCreate`, `repoCommits`, `searchRepoCommits`,
    `searchRepoCommitsSuggestions`, `repoFileHistory`, `searchRepoFiles`,
@@ -1689,7 +1920,9 @@ agent command set behind the same contract.
    `vendors_cloudformation.feature`, `vendors_kubernetes.feature`
    (`@kubernetes`).
 4. Every vendor passes `iactest`; runner images for each in
-   `deploy/images/`; plan sanitization per vendor.
+   `deploy/images/`; plan sanitization per vendor. Each vendor is an option
+   on `StackVendor`: `vendor-terragrunt`, `vendor-pulumi`,
+   `vendor-cloudformation` and `vendor-kubernetes`.
 
 **Exit criteria**
 - Terragrunt, Pulumi, CloudFormation and Kubernetes each run a tracked run
@@ -1707,7 +1940,8 @@ Ansible with its inventory views, the OpenTofu migration tooling, and plugins
 that run inside runs.
 
 **Tasks**
-1. `internal/iac/ansible` and its agent command set; inventory records.
+1. `internal/iac/ansible` and its agent command set, the option
+   `vendor-ansible`; inventory records.
    Operations: `ansibleHosts`, `ansibleHost`,
    `ansibleHostSearchAnsibleTaskExecutions`,
    `ansibleHostSearchAnsibleTaskExecutionsSuggestions`,
@@ -1734,7 +1968,7 @@ that run inside runs.
 
 ## P21: Blueprints, templates and external integrations
 
-Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0024](../research/decisions/0024-expression-language.md).
 
 **Depends on:** P16, P12.
 
@@ -1742,8 +1976,9 @@ Single-body blueprints, templates with versions and deployments, and the
 ServiceNow and Backstage integrations that attach to them.
 
 **Tasks**
-1. `internal/templates` (flat domain) with a CEL renderer in
-   `internal/templates/internal/render`. Blueprints: `blueprint`,
+1. `internal/templates` (flat domain), whose bodies are text templates of
+   `internal/platform/expr` ([0024](../research/decisions/0024-expression-language.md)), with time and randomness fixed per rendered
+   change and stored with it (DV-106). Blueprints: `blueprint`,
    `blueprintCreate`, `blueprintUpdate`, `blueprintDelete`, `blueprintClone`,
    `blueprintCreateStack`, `blueprintParseTemplate`, `blueprintSchema`,
    `templateSchema`, `blueprintWithGroupCreate`,
@@ -1776,14 +2011,15 @@ ServiceNow and Backstage integrations that attach to them.
 - Captures C139 to C150, C152, C257 and C258 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P22: Resources, search and UI support
+## P22: Resources, search and console support
 
 Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0010](../research/decisions/0010-state-backend.md).
 
 **Depends on:** P20b, P11.
 
 The resources view built from state and plans, the remaining searches and
-suggestions, and the operations Spacelift's web UI uses.
+suggestions, and the operations the console uses, which the `console`
+capability gates.
 
 **Tasks**
 1. `internal/resources` (flat domain): managed entities indexed from
@@ -1798,7 +2034,7 @@ suggestions, and the operations Spacelift's web UI uses.
    `stackSearchManagedEntitiesGroupByStacks`,
    `stackSearchManagedEntitiesGroupByTypes`, `runSearchEntityChanges`,
    `runSearchEntityChangesSuggestions`, `runResourceCreate`.
-2. `metrics` and `metricsRange` (Spaces tag) for dashboards. Every Search
+2. `metrics` and `metricsRange` (Spaces tag) for the console's overview. Every Search
    Suggestions operation lands with the search it completes, in that
    search's phase.
 3. Saved filters and UI state: `savedFilters`, `savedFilter`,
@@ -1808,7 +2044,7 @@ suggestions, and the operations Spacelift's web UI uses.
    `isGenericFormCompleted`, and the 20 User Guide operations from a guide
    catalogue the operator can extend.
 5. Features: `resources_view.feature`, `search_generic.feature`,
-   `ui_support.feature`.
+   `console_support.feature`.
 
 **Exit criteria**
 - Resources, Saved Filters, UI State, Forms and User Guide meet decision
@@ -1825,9 +2061,6 @@ Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.m
 Scans built to the schema's shape: scan configurations and scan runs on
 discovery-type workers, recording discovered resources against managed
 entities.
-
-Open choice: decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) builds scans from the schema alone (report 30
-P3, capture C11).
 
 **Tasks**
 1. `internal/resources/internal/scans`: scan configurations and runs with
@@ -1864,7 +2097,7 @@ enforced multi-factor authentication with security keys.
    `oauthToken`, `oauthUser`. Feature: `auth_sso.feature` (`@oidc`, and a
    SAML IdP served by the test).
 2. IdP groups at login map onto P3b's managed user groups, which
-   `spacelift_idp_group_mapping` manages.
+   `infraweave_idp_group_mapping` manages.
 3. `internal/access/internal/core/scim`: SCIM v2 users and groups with
    filters, `PATCH` and reconciliation; `scimSettings`,
    `createOauthClientForSCIM`, `resetOauthClientForSCIM`,
@@ -1885,23 +2118,24 @@ enforced multi-factor authentication with security keys.
 
 ## P24: infraweave Terraform provider
 
-Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
+Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0018](../research/decisions/0018-flows-runtime.md).
 
-**Depends on:** P3 to P23 and P25, for the operations each resource calls.
+**Depends on:** P3 to P23, Flows (P18c and P18d) included, and P25, for the
+operations each resource calls.
 
-infraweave's own Terraform provider replaces Spacelift's, held to
-`terraform-schema.json` by schema parity and to Spacelift's own acceptance
-configurations by behaviour.
-
-Open item: no decision places the provider's source
-([Open items](#open-items)); `pkg/client/deploy` is the client it imports
-wherever it lives.
+infraweave's own Terraform and OpenTofu provider, covering Deploy and
+Flows, held to `terraform-schema.json` by schema parity and to Spacelift's
+own acceptance configurations by behaviour. Its source lives in
+`weaveplatform/terraform-provider-infraweave` ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)); where its
+checks run is an [open item](#open-items).
 
 **Tasks**
-1. The provider over `pkg/client/deploy` with the Terraform plugin
-   framework: every resource and data source the
-   [capability roadmap](capability-roadmap.md) lists as not superseded,
-   with import IDs from report 05. Records DV-002.
+1. The provider over `pkg/sdk`, imported at a pinned version of this
+   module, with the Terraform plugin framework and protocol 6: every
+   resource and data source the [feature catalogue](capability-roadmap.md)
+   lists as not superseded, named with the `infraweave_` prefix, with
+   import IDs from report 05, and the Flows resources as
+   `infraweave_flows_<name>`. Records DV-002.
 2. `specref provider-parity`: compare `terraform providers schema -json`
    with `api/reference/spacelift/terraform-schema.json`;
    `api/reference/provider-parity.yaml` records each rename, type change and
@@ -1914,6 +2148,9 @@ wherever it lives.
    resource calls.
 4. A scenario for each behaviour of report 05 section 6 worth copying
    (eventual consistency, trust relationship retries, write-only values).
+5. The provider's half of `flows_clients.feature`: apply, an empty plan
+   and import of a flow, held to the `terraform-provider-flows` operations
+   that `api/reference/flows-clients.yaml` maps.
 
 **Exit criteria**
 - Schema parity passes with every difference recorded.
@@ -1924,23 +2161,28 @@ wherever it lives.
 
 ## P24b: infraweavectl
 
-Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0004](../research/decisions/0004-repository-architecture.md), [0006](../research/decisions/0006-authentication-and-tokens.md).
+Decisions: [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0004](../research/decisions/0004-repository-architecture.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0018](../research/decisions/0018-flows-runtime.md).
 
 **Depends on:** P24, P25.
 
-`infraweavectl` replaces spacectl: the commands of report 06 section 8 over
-`pkg/client/deploy`, with strict profiles and browser login.
+`infraweavectl`, infraweave's own CLI, completes over `pkg/sdk`: the
+commands of report 06 section 8, the `flows` group, strict profiles and
+browser login.
 
 **Tasks**
-1. `cmd/infraweavectl` with cobra and viper over `pkg/client/deploy`;
-   profiles in `$XDG_CONFIG_HOME/infraweave/config.yaml`, refusing two
-   credential methods without `INFRAWEAVE_API_PREFERRED_METHOD`. Records
-   DV-083.
+1. `cmd/infraweavectl`, started in P3b, with cobra and viper over
+   `pkg/sdk`; profiles in `$XDG_CONFIG_HOME/infraweave/config.yaml`,
+   refusing two credential methods without
+   `INFRAWEAVE_API_PREFERRED_METHOD`. Records DV-083.
 2. Login: API key, token and the loopback browser flow with
    `cliConfirmationToken`; the `INFRAWEAVECTL` session channel.
-3. Commands per report 06 section 8 row: stacks, runs (with log tailing
-   and local preview), modules, providers, worker pools, blueprints and
-   templates, policies, profiles, version.
+3. The command tree of decision 0001: `stack`, `module`, `policy`,
+   `provider`, `workerpool`, `blueprint`, `template`, `audit-trail`,
+   `run-external-dependency`, `ai`, `profile`, `registry`, `whoami`,
+   `version` and `api`, with the subcommands report 06 section 8 lists;
+   run log tailing over the run log stream. The `flows` group mirrors
+   `flowctl`, publishing an app version from an image reference and
+   exporting a flow; its half of `flows_clients.feature`.
 4. `infraweavectl mcp`: stdio proxied to `/mcp` with the CLI's credentials
    and no tools of its own ([0019](../research/decisions/0019-ai-provider-boundary.md)); its scenario joins
    `mcp_server.feature`.
@@ -1953,6 +2195,58 @@ Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](
 - Captures C22 and C23 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
+## P24c: Console
+
+Decisions: [0023](../research/decisions/0023-console.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0019](../research/decisions/0019-ai-provider-boundary.md), [0024](../research/decisions/0024-expression-language.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+
+**Depends on:** P24b, P18d, P25b.
+
+infraweave's console: a React client of the public REST API, embedded in
+the `infraweave` binary, that covers every surface and calls no operation
+of its own.
+
+**Tasks**
+1. `web/console/`: React 19 and TypeScript in strict mode built with Vite,
+   TanStack Router and TanStack Query, Radix primitives styled with
+   Tailwind 4 and owned in the repository, React Flow and CodeMirror 6.
+   Node.js pinned to an exact LTS release, npm with a committed lockfile
+   and `npm ci`, Dependabot for `npm`, and the pin in `deps-refresh.yml`.
+   orval generates the TypeScript client and hooks from the served bundles;
+   they are committed, regenerated by `make generate` and checked by
+   `make verify-generate`.
+2. Serving in `internal/app`: the build embedded through `embed.FS` with a
+   committed marker file, answered at `/`; `index.html` for console routes
+   only, never under a prefix another handler owns; immutable caching for
+   hashed assets and `no-cache` for `index.html`; the Content Security
+   Policy with a per-response style nonce; the placeholder page when the
+   console was not built. Tests: Go unit tests for each.
+3. Surfaces: every operation family the inventory lists, with controls
+   shown, hidden or disabled from `allowedActions` alone and refusals shown
+   from their problem response; live run logs and run state over the
+   streams of P18, with polling when a stream closes; the Flows canvas and
+   app widgets; Rego, CEL and text template editors backed by the
+   expression and policy check endpoints; the Infra Assistant panel with
+   page context, navigation and confirmation of destructive calls; English
+   messages from a catalogue; WCAG 2.2 level AA. Records DV-108.
+4. Quality gate: the blocking `console` job (`tsc --strict`, ESLint with
+   typescript-eslint's `strict` configuration, Vitest at 95% in total and
+   90% per directory, the production build) and the blocking
+   `console-e2e` job, whose Playwright journeys start their dependencies
+   with testcontainers and run `infraweave all` with the console embedded
+   and built with `-cover`; both in the `needs` of the `Quality gate` job.
+
+**Exit criteria**
+- Every area has a success, a `403` denial and a failure journey, including
+  login through the `@oidc` issuer, live run logs, a policy edited with
+  server diagnostics, a flow edited on the canvas and an assistant
+  confirmation.
+- No journey records a CSP violation, a request to another origin or an
+  axe-core level AA violation.
+- `make verify-generate` fails when the committed console client differs
+  from what orval generates.
+- `make gate` passes at 95% in total and 90% per package, and the console's
+  own thresholds hold.
+
 ## P25: AI integrations, Infra Assistant and MCP
 
 Decisions: [0019](../research/decisions/0019-ai-provider-boundary.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
@@ -1962,9 +2256,6 @@ Decisions: [0019](../research/decisions/0019-ai-provider-boundary.md), [0013](..
 Bring-your-own-model AI integrations, an optional installation default with a
 budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
 
-Open choice: decision [0019](../research/decisions/0019-ai-provider-boundary.md)'s answers to report 30 P10 (hosted `/mcp`
-only) and P11 (BYOM plus an optional default) are Proposed.
-
 **Tasks**
 1. `internal/intelligence` (hexagon) with the `Provider` interface and the
    Anthropic, OpenAI, Google and Bedrock adapters, each with a chi fake.
@@ -1972,8 +2263,10 @@ only) and P11 (BYOM plus an optional default) are Proposed.
    `aiIntegrationUpdate`, `aiIntegrationDelete`, `aiIntegrationToggle`,
    `availableAIProviders`, `availableAIModels`. Tests:
    `TestUnitAIProviderConformance`, `TestUnitAIRedaction`,
-   `TestUnitAIBudget`. Feature: `ai_integrations.feature` (`@ai`). Records
-   DV-071.
+   `TestUnitAIBudget`. The installation default reports
+   `isInstallationProvided`, and its spend counts against the `ai-budget`
+   limit (USD per 30 days), answering `403 limit-reached` beyond it.
+   Feature: `ai_integrations.feature` (`@ai`). Records DV-071.
 2. Account controls: `spaceliftIntelligenceEnabled`,
    `accountSetSpaceliftIntelligenceEnabled`,
    `spaceliftIntelligenceTermsAccepted`,
@@ -1984,8 +2277,9 @@ only) and P11 (BYOM plus an optional default) are Proposed.
 3. Infra Assistant over one tool layer, streamed over SSE, with
    confirmation of destructive calls; run summaries with masked logs.
    Feature: `ai_assistant.feature`. Records DV-072, DV-073.
-4. The hosted `/mcp` server with dynamic client registration, `mcp:read`
-   and `mcp:write`, and `tools` narrowing. Feature: `mcp_server.feature`
+4. The hosted `/mcp` server with its protected-resource metadata,
+   `mcp:read` and `mcp:write`, and `tools` narrowing; the authorization
+   endpoints wait on the [open item](#open-items). Feature: `mcp_server.feature`
    (`@oidc`). `infraweavectl mcp`, which proxies stdio to it, lands in P24b.
 
 **Exit criteria**
@@ -2042,99 +2336,30 @@ policies, locks, review and export to a stack.
 - Captures C214 and C218 to C224 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P26: Flows engine and API
-
-Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md).
-
-**Depends on:** P10, P4b.
-
-Flows with its own tenancy in the `flows` schema, executed on the work queue:
-organizations, projects, flows, blocks, events, invocations and timers.
-
-Open choice: decision [0018](../research/decisions/0018-flows-runtime.md) runs Flows on decision 0011's queue with no
-Temporal cluster, and serves REST under `/flows/v1/` (DV-069).
-
-**Tasks**
-1. `internal/flows` (hexagon) with the `flows` PostgreSQL schema and its
-   own migration stream, UUIDv7 identifiers, one organization per account,
-   personal sandboxes, sealed `flows_secrets`, data tables and KV with
-   locks. Records DV-065.
-2. `api/src/flows/` bundled to `api/flows.openapi.yaml`, generated into
-   `internal/platform/gen/flows` and `pkg/client/flows`; the Flows API
-   operations from report 23 and `api/reference/flows-clients.yaml`. Test:
-   `TestUnitFlowsClientParity`.
-3. The engine: `flows.deliver`, `flows.timer`, `flows.lifecycle` and
-   `flows.invocation.status` jobs, effects committed with the delivery,
-   schedules through the cron ticker, limits and retention. Tests:
-   `TestUnitFlowsDelivery`, `TestUnitFlowsInvocationStatus`,
-   `TestUnitFlowsLimits`, `TestUnitFlowsDefinitionParse`.
-4. Core blocks in Go in the `scheduler` process mode; Deploy-side reads:
-   `flowsIntegration`, `flowsProjects`, `flowsInstances`,
-   `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
-   `flowsProjectRoleBindingDelete`; `flows.enabled: false`.
-5. Feature: `flows_engine.feature` (`@flows-runtime`: fan-out and merge,
-   echo, pending events, Sleep across a restart, retry and re-emit,
-   limits).
-
-**Exit criteria**
-- The Flows tag meets decision 0016's evidence rule, and every operation of
-  `api/flows.openapi.yaml` the engine serves passes its scenarios.
-- Captures C228, C230, C238, C240 and C241 replay once recorded.
-- `make gate` passes at 95% in total and 90% per package.
-
-## P26b: Flows apps, agents and clients
-
-Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0020](../research/decisions/0020-reference-deployments-and-packaging.md).
-
-**Depends on:** P26, P24, P24b.
-
-App blocks run on Flows agents in the Node runtime, apps come from
-registries, and infraweave's clients manage flows.
-
-**Tasks**
-1. `internal/flows/internal/adapters/gateway` (WebSocket on `serve`) and
-   `internal/agent/flowsagent` with `infraweave flows-agent`; agent pools
-   with hashed tokens and rotation. Feature: `flows_agents.feature` (two
-   `serve` replicas, an agent killed mid-task).
-2. The Flows runtime image definition in `deploy/images/flows-runtime`;
-   app registries, checksums, custom apps from bundles, the app SDK
-   contract. Feature: `flows_apps.feature`.
-3. Deploy blocks (Run Events, Trigger Run and the others of report 23).
-   Feature: `flows_deploy.feature` (`@tofu`). Records DV-067, DV-068.
-4. Clients: `infraweavectl` flow commands from `flowctl`-format bundles and
-   provider resources for flows. Feature: `flows_clients.feature`; the
-   Flows MCP server at `/flows/mcp` (DV-066).
-
-**Exit criteria**
-- A Run Events block reacts to a real run and a Trigger Run block starts
-  another.
-- Captures C229, C231 to C237, C239 and C242 replay once recorded.
-- `make gate` passes at 95% in total and 90% per package.
-
 ## P27: Reference deployments and packaging
 
 Decisions: [0020](../research/decisions/0020-reference-deployments-and-packaging.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0017](../research/decisions/0017-observability-and-health.md), [0004](../research/decisions/0004-repository-architecture.md).
 
-**Depends on:** P24b, P25b, P26b, P18b.
+**Depends on:** P24c, P25b, P18b.
 
 The release artefacts, the reference deployments and the upgrade and recovery
 rules that make infraweave installable and upgradable.
 
-Open choice: decision [0020](../research/decisions/0020-reference-deployments-and-packaging.md) offers Helm, Compose and Terraform modules
-and no ECS or CloudFormation deployment (DV-075).
-
 **Tasks**
 1. Release: archives for every platform with `SHA256SUMS`, the distroless
-   server image, the FIPS image, runner images and the Flows runtime image,
-   all signed with Sigstore and carrying SLSA provenance and an SPDX SBOM;
-   the release workflow verifies each before it publishes. Records DV-076.
+   server image with the console embedded (the build fails when the
+   embedded directory has no `index.html`), the FIPS image, runner images,
+   and one image per first-party Flows app version listed in infraweave's
+   first-party app registry, all signed with Sigstore and carrying SLSA
+   provenance and an SPDX SBOM; the release workflow verifies each before
+   it publishes. Records DV-076 and DV-100.
 2. Launcher distribution: `GET /downloads/launcher/<version>/linux-<arch>`
    and its sums and bundles, from the server image. Records DV-077.
 3. `deploy/helm/infraweave` and `deploy/helm/infraweave-workers`,
    `deploy/compose/compose.yaml`, `deploy/terraform/modules/<cloud>` for AWS,
    GCP and Azure with examples, and `deploy/check.sh` in the gate.
    Features: `deploy_compose.feature`, `deploy_helm.feature`
-   (`@kubernetes`).
+   (`@kubernetes`). Records DV-075.
 4. Upgrades and recovery: the `upgrade_floor` per stream, mixed-version
    operation, backup and restore guidance. Feature:
    `deploy_upgrade.feature`. `debugInfo`, `installationId` (Debug and
@@ -2165,11 +2390,11 @@ qualified against the tests.
 2. `TestAccCaptures` replays every `expect.yaml`; a failing expectation is a
    parity bug, fixed in the owning domain with its deviation row if
    infraweave keeps its choice.
-3. Resolve report 30's product decisions still open and move each Proposed
-   decision to Accepted or Superseded; amend the report 26 cells decision
-   0021's constraints name (section 7.8's MQTT transport, section 7.7's
-   legacy AWS mutations) and its phase column to the
-   [capability roadmap](capability-roadmap.md).
+3. Amend in place each decision whose behaviour a capture changes, with
+   its deviation row; amend the report 26 cells decision 0021's
+   constraints name (section 7.8's MQTT transport, section 7.7's legacy AWS
+   mutations) and its phase column to the
+   [feature catalogue](capability-roadmap.md).
 4. Run the `nightly` suite on the newest PostgreSQL, Terraform and OpenTofu
    releases and close what it finds.
 

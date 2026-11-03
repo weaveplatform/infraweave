@@ -101,7 +101,9 @@ counterpart in the nightly cloud job.
 
 - **Runner.** `TestAccFeatures` runs godog over
   `test/acceptance/features/<area>_<topic>.feature` with `Strict: true`.
-  Steps that drive the API use the generated client in `pkg/client`.
+  Steps that drive the API use the SDK, `pkg/sdk`
+  ([0001](0001-rest-first-spacelift-surface.md)), so every scenario also
+  exercises it.
 - **The binary under test.** The harness builds `cmd/infraweave` once with
   `-cover -covermode=atomic` and runs it as a subprocess with `GOCOVERDIR`
   set to `cover/accept`, so `infraweave serve`, `scheduler`, `launcher` and `runner` all
@@ -201,8 +203,8 @@ cannot claim more than the tests show. The scope behind the states is
 
 ### The Terraform provider parity oracle
 
-Two checks, both against infraweave's own provider (decision 0004 owns
-where it lives):
+Two checks, both against infraweave's own provider, whose source lives in
+its own repository (decision [0001](0001-rest-first-spacelift-surface.md)):
 
 1. **Schema parity.** `specref provider-parity` compares infraweave's
    `terraform providers schema -json` output with
@@ -289,7 +291,9 @@ coverage it would contribute is not waived.
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |
 | `fips-only` | `ubuntu-latest` | `make test` and every acceptance partition, with the binary under test built with `GOFIPS140=certified` and every process run with `GODEBUG=fips140=only` ([0013](0013-secrets-at-rest.md#fips-140-3)) | 45 min | yes |
-| `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` | 10 min | yes |
+| `console` | `ubuntu-latest` | `npm ci`, `tsc --strict`, ESLint, Vitest with its coverage thresholds and the production build in `web/console/` ([0023](0023-console.md)) | 15 min | yes |
+| `console-e2e` | `ubuntu-latest` | the Playwright journeys against a real `infraweave all` built with `-cover` ([0023](0023-console.md)) | 30 min | yes |
+| `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds | 10 min | yes |
 | `postgres-next` | `ubuntu-latest` | `storetest`, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)) | 20 min | no |
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |

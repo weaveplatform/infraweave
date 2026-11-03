@@ -96,8 +96,11 @@ be air-gapped.
   through `embed.FS`, and the `serve` process mode answers them at `/`. No
   Node.js process runs in production.
 - A `GET` for a path with no file returns `index.html`, so deep links work.
-  Paths owned by other handlers never fall back: `/api/`, `/mcp`,
-  `/.well-known/` and the protocol endpoints of decisions 0010 and 0014.
+  Only console routes fall back: a path under a prefix that another handler
+  owns (`/api/`, `/flows/`, `/mcp`, `/.well-known/`, `/auth/`,
+  `/admin-login`, `/worker/`, `/vcs-agent/`, `/webhooks/`, `/downloads/`,
+  `/blobs/`, `/state/`, `/registry/` and the other protocol endpoints)
+  answers that handler's `404`, never `index.html`.
 - Hashed asset files are served with a one-year immutable cache;
   `index.html` is served with `no-cache`, so a new release reaches every
   browser on its next navigation.

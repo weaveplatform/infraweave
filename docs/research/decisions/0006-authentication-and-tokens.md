@@ -191,13 +191,21 @@ reports, and only the break-glass login works.
 
 | Field | Meaning |
 |---|---|
-| `Kind` | `user`, `api_key`, `run`, `anonymous` |
+| `Kind` | `user`, `api_key`, `run`, `operator`, `anonymous` |
 | `ActorID` | user ULID, API key ULID or run ULID |
 | `SessionID` | the session ULID |
 | `Login`, `Teams`, `Admin` | from the session |
 | `Channel` | the session channel |
 | `RunID`, `StackID` | set for `run` |
 
+- **Operator principals.** The operator API of
+  [0021](0021-capability-scope-and-supersession.md) accepts only `operator`
+  principals. An operator key is an ID and the SHA-256 of its secret in the
+  installation's configuration, `auth.operator.keys`, so it exists before
+  any account does; it is exchanged at `POST /auth/token` for an API token
+  whose audience is the operator API, and every other route treats that
+  token as no credential. An operator principal holds no role in any
+  account ([0007](0007-authorization-spaces-and-roles.md)).
 - The caller key for decision 0003's idempotency keys and rate-limit buckets
   is `<kind>:<actor ID>`, so all sessions of one API key share one budget.
 - A request with no credential on a route that needs one answers `401`,
@@ -286,7 +294,6 @@ customer role:
   |---|---|---|
   | `api-token` (API, CLI, Terraform CLI, in-run, worker and run tokens) | ES256 (P-256) | no |
   | `federation` | RS256 (RSA 3072) by default; PS256 and ES256 selectable | yes, `/.well-known/jwks` |
-  | `worker-pool-ca` (0008's pool certificates) | ECDSA P-256 | no |
 
 - **Rotation.** States are `next`, `active`, `retiring` and `retired`. A
   daily periodic task, `authn.keys.rotate`, creates a `next` key 7 days before the
@@ -377,7 +384,6 @@ Departures from Spacelift, for the plan's deviations register:
 | Signing keys rotate automatically every 90 days | Self-hosted Spacelift documents no rotation of its JWT signing key, while its AWS module rotates only the master and in-app encryption keys yearly ([24 section 3.5](../reference/24-self-hosted-reference.md#35-encryption-and-kms)); rotation limits key exposure |
 | The federation token file is refreshed during long runs | Spacelift does not document reissue (report 12 section 6.1); a run past one hour otherwise loses cloud access |
 | Session lifetimes are stated defaults | Spacelift's browser session lifetime is undocumented |
-| No seat accounting for API keys | Tier and seat gates are decision 0021's |
 
 ## Constraints
 

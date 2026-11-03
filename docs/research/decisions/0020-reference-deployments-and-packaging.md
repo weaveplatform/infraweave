@@ -23,9 +23,10 @@ and upgraded is part of the product. Self-hosted Spacelift sets the bar
   out one by one
   ([24 section 9](../reference/24-self-hosted-reference.md#9-upgrades-the-v2-to-v3-kit-and-what-changed)).
 
-This record decides packaging and deployment: the artefacts, the process
-modes they run, the reference deployments, and the upgrade rules. Decision
-0004 owns the code structure. Decisions 0005 (persistence and object
+This record decides packaging and deployment: the artefacts, how the
+process modes of decision 0004 are deployed, the reference deployments, and
+the upgrade rules. Decision 0004 owns the code structure and the process
+modes. Decisions 0005 (persistence and object
 storage), 0008 (workers and runner images), 0012 (the VCS agent) and 0013
 (keys) own the behaviour that the artefacts carry.
 
@@ -48,11 +49,13 @@ Cryptographic Module and runs in FIPS 140-3 mode by default
 | `infraweave scheduler` | the scheduler process mode (table below) | stateless | admin only |
 | `infraweave all` | `serve` and `scheduler` in one process, for single-node installs | stateless | API and admin |
 | `infraweave launcher` | the launcher: registration, work delivery and run containers (decision 0008) | none | admin only |
-| `infraweave runner` | hidden; the phase executor inside the run container (decision 0008) | none | none |
+| `infraweave runner` | hidden; the runner, which executes a run's phases inside the run container (decision 0008) | none | none |
 | `infraweave vcs-agent` | the VCS agent (decision 0012) | none | admin only |
 | `infraweave flows-agent` | Flows app execution ([0018](0018-flows-runtime.md)) | none | admin only |
 | `infraweave migrate up`, `infraweave migrate status` | the schema migrations of decision 0005, then exit | none | none |
-| `infraweave version` | build information from `internal/buildinfo` | none | none |
+| `infraweave version` | build information from `internal/platform/buildinfo` | none | none |
+| `infraweave auth hash-password` | the break-glass password hash of decision 0006, then exit | none | none |
+| `infraweave secrets generate-kek`, `rewrap`, `rotate` | the key operations of decision 0013, then exit | none | none |
 
 - **`infraweavectl`** (`cmd/infraweavectl`) is the client CLI over
   `pkg/sdk`: the commands that replace spacectl, including
@@ -65,7 +68,7 @@ Server process modes:
 
 | Process mode | Does | Scales on |
 |---|---|---|
-| `serve` | The REST API, web UI assets, inbound VCS webhooks, the registry protocol ([0014](0014-module-and-provider-registry.md)), the state backend (decision 0010), `/mcp` ([0019](0019-ai-provider-boundary.md)), the worker long-poll endpoints (decision 0008), the VCS agent endpoints ([0012](0012-vcs-integration-model.md)), the Flows endpoints and agent gateway ([0018](0018-flows-runtime.md)), and the launcher downloads below | request rate and CPU |
+| `serve` | The REST API, the console's assets ([0023](0023-console.md)), inbound VCS webhooks, the registry protocol ([0014](0014-module-and-provider-registry.md)), the state backend (decision 0010), `/mcp` ([0019](0019-ai-provider-boundary.md)), the worker long-poll endpoints (decision 0008), the VCS agent endpoints ([0012](0012-vcs-integration-model.md)), the Flows endpoints and agent gateway ([0018](0018-flows-runtime.md)), and the launcher downloads below | request rate and CPU |
 | `scheduler` | The consumers of the persistent work queue (decision 0011), including the outbox, the scheduler ticker and cron, event delivery ([0015](0015-events-notifications-webhooks-audit.md)) and notification policies | queue depth |
 
 - **Single node.** `infraweave all` is a complete installation in one
@@ -83,7 +86,7 @@ Listeners:
 | Setting | Default | Serves | Exposure |
 |---|---|---|---|
 | `server.listen` | `:8080` | `serve` traffic | behind the ingress or load balancer; TLS ends there or at `server.tls` |
-| `server.admin_listen` | `:9090` | `/livez`, `/readyz`, `/startupz`, `/metrics`, `/metrics/spacelift` ([0017](0017-observability-and-health.md)) | cluster-internal only; the chart's `NetworkPolicy` admits only the namespaces in `metrics.allowedNamespaces` |
+| `server.admin_listen` | `:9090` | `/livez`, `/readyz`, `/startupz`, `/metrics`, `/metrics/accounts` ([0017](0017-observability-and-health.md)) | cluster-internal only; the chart's `NetworkPolicy` admits only the namespaces in `metrics.allowedNamespaces` |
 
 ### Artefacts
 
@@ -185,7 +188,7 @@ Rules every cloud module follows:
   endpoint.
 - **Examples.** Each module has one example root per scenario under
   `deploy/terraform/examples/<cloud>/<scenario>`: `minimal`,
-  `vcs-agent`, `shared-pool`. The example is the documentation the
+  `vcs-agent`, `public-worker-pool`. The example is the documentation the
   consumer copies.
 
 The chart deploys `serve` and `scheduler` as separate Deployments by default,
@@ -196,7 +199,7 @@ because they scale on different signals:
 | `serve.replicas`, `scheduler.replicas` | `2`, `2` |
 | `serve.autoscaling` | CPU-based `HorizontalPodAutoscaler`, off |
 | `scheduler.autoscaling` | on `infraweave_queue_jobs` with `state="pending"` ([0017](0017-observability-and-health.md)), through KEDA when installed, off |
-| `sharedPool.enabled` | `false`: the public worker pool, which the operator runs for every account ([0008](0008-run-execution-and-worker-protocol.md#pools), [0021](0021-capability-scope-and-supersession.md)) |
+| `publicWorkerPool.enabled` | `false`: the public worker pool, which the operator runs for every account ([0008](0008-run-execution-and-worker-protocol.md#pools), [0021](0021-capability-scope-and-supersession.md)) |
 | `podDisruptionBudget.maxUnavailable` | `1` per process mode |
 | `terminationGracePeriodSeconds` | `serve` 45, `scheduler` 120; both exceed 0017's ready delay, request drain and flush caps combined |
 | `migrations.mode` | `hook`: a `pre-install,pre-upgrade` Job runs `infraweave migrate up`, and the process modes run with `database.migrate: check`; `startup` leaves decision 0005's default, `database.migrate: auto` |
@@ -223,8 +226,8 @@ because they scale on different signals:
   schema needs a database restore, and that release's notes say so.
 - **Database majors.** PostgreSQL major upgrades are the operator's.
   infraweave tolerates the downtime: the queue is in the database, and
-  inbound VCS webhooks retry from the VCS side or are re-synced by decision
-  0012's reconciliation.
+  inbound VCS webhooks retry from the VCS side or are redelivered by hand
+  (decision 0012).
 - **Moving from Spacelift.** This is a data import (decision 0001), not an
   upgrade path, and it is outside this record.
 

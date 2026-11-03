@@ -235,9 +235,9 @@ Who calls the engine, when, and what the result does to the run of decision
   a ULID, so every policy can reset.
 - **Sampling.** When `sample` is true (login by default), the engine stores a record of
   input, body, engine type, result, outcome, error and print output.
-  - Hourly quotas per account: 200 for `NOTIFICATION`, 200 for `GIT_PUSH`, 500 for all
+  - Hourly sample budgets per account: 200 for `NOTIFICATION`, 200 for `GIT_PUSH`, 500 for all
     other types together, counted in `policy_sample_quota (account_id, hour, bucket)` with
-    an atomic upsert. Over quota, the evaluation is recorded but not sampled.
+    an atomic upsert. Over budget, the evaluation is recorded but not sampled.
   - The record is JSON, sealed with the streaming blob sealing of decision
     [0013](0013-secrets-at-rest.md) into the `policy-inputs` store (decision
     [0005](0005-persistence-postgresql.md)) under the key
@@ -282,7 +282,7 @@ Who calls the engine, when, and what the result does to the run of decision
 - **Rejected: OPA bundles and the `sdk` package.** Policies are rows; bundle polling would
   add a second source of truth and a delay between save and enforcement.
 - **Rejected: OPA decision logs.** Receipts and samples are the product's audit surface and
-  must be sealed and quota-limited; decision logs upload unsealed batches.
+  must be sealed and bounded per hour; decision logs upload unsealed batches.
 - **Departures from Spacelift**, for the deviations register:
   - `REGO_V1` is the default engine when a create omits it; Spacelift's provider defaults to
     `REGO_V0` and the API's own default is unverified.
@@ -318,7 +318,7 @@ Who calls the engine, when, and what the result does to the run of decision
   enforcement is on; `sanitized` and `print`; the cache key; timeouts
   through a policy that loops; every combination rule of
   [09 section 3](../reference/09-policies.md#3-rules-outcomes-and-combination-per-type);
-  the error table above; flag reset ordering and multiple owners; sample quotas.
+  the error table above; flag reset ordering and multiple owners; sample budgets.
 - A corpus test runs the 67 templates and 61 tests of the MIT example library
   ([09 section 10](../reference/09-policies.md#10-the-example-library-at-6ff5edb08bc8)) through
   `internal/policy` and expects every library test to pass.

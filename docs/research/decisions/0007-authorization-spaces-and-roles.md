@@ -45,9 +45,9 @@ spaces may it act in, for list filtering; and why, for the grant views
   `404`, as one the caller cannot read does. No role, binding or admin flag
   reaches across accounts.
 - **The operator runs the installation.** The operator creates, renames
-  and deletes accounts, gives each its tier and grants, sets
-  `features.disabled` and runs the public worker pool, all through the
-  operator API (0021). Creating an account seeds its `root` and `legacy`
+  and deletes accounts, gives each its tier and grants, and issues the
+  public worker pool's token through the operator API (0021), and sets
+  `features.disabled` in the installation's configuration. Creating an account seeds its `root` and `legacy`
   spaces and its system roles, and names its first user, who holds
   `space-admin` on `root`. An operator principal holds no role in any
   account and reads no account's stacks, state or secrets; deleting an
@@ -251,8 +251,8 @@ inherited grant, the synthetic `space-reader` role.
 ### Superseded interfaces
 
 - **Access policies** are never evaluated. Whether the API stores or refuses
-  `ACCESS` policies is decision 0021's (P2), which proposes not serving the
-  type; either way they grant nothing,
+  `ACCESS` policies is decision 0021's (P2), which does not serve the
+  type; they grant nothing,
   and `User.cannotEvaluateAccessPolicies` is always `true`.
 - **The stack `administrative` flag** is accepted and reads back `false`. An
   importer turns a `true` flag into a `space-admin` binding on the stack's own

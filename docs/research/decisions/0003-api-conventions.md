@@ -27,10 +27,10 @@ change to retrofit once clients exist:
 - **Header.** `POST` and `PATCH` operations accept an optional
   `Idempotency-Key` request header
   ([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).
-  The key is an opaque string of 1–255 characters; clients typically send a
+  The key is an opaque string of 1 to 255 characters; clients typically send a
   UUID.
-- **Scope and lifetime.** Keys are scoped to the caller: the authenticated
-  principal once authentication exists, the client address until then. A key
+- **Scope and lifetime.** Keys are scoped to the caller, the authenticated
+  principal that decision [0006](0006-authentication-and-tokens.md) defines. A key
   is kept for 24 hours by default; the lifetime is configurable.
 - **Fingerprint.** A request is identified by its method, its path with the
   query string, and a SHA-256 of its body.
@@ -79,13 +79,13 @@ change to retrofit once clients exist:
   `Retry-After` in seconds until one token is available.
 - **Operator switch.** The operator can disable the API for a given caller.
   That caller gets `503`, problem `api-disabled`, with `Retry-After`. Other
-  callers are unaffected. Until authentication exists the switch is keyed by
-  client address.
+  callers are unaffected. The switch is keyed by the caller of decision
+  0006.
 
 ### Cursor pagination
 
 - **Parameters.** Every list operation (a `GET` returning a collection) takes:
-  - `limit`: page size, default 20, maximum 100. A value outside 1–100 is
+  - `limit`: page size, default 20, maximum 100. A value outside 1 to 100 is
     clamped, not rejected.
   - `cursor`: an opaque string from a previous page. Absent means the first
     page.
@@ -173,12 +173,13 @@ The scaffolder adds them to each operation and records each addition in
   arrays, and the extra headers and responses are additions. All are
   recorded per operation in `x-infraweave-divergence`. Parity is matched by
   `operationId` and route, so these don't count as missing operations.
-- **Single replica for now.** Keys and buckets live in memory behind
-  interfaces until a persistence decision exists. Two replicas would each
-  enforce their own budget and keep their own keys.
-- **Caller identity is coarse.** Until authentication exists, the caller is
-  the client address. Callers behind one NAT share a budget, and the operator
-  switch can only target an address.
+- **Shared stores.** Keys, buckets and the operator switch live behind
+  interfaces, and decision [0005](0005-persistence-postgresql.md#the-stores-of-0003)
+  stores them in PostgreSQL, so every replica enforces one budget and sees
+  one set of keys.
+- **The caller is a principal.** The caller is `<kind>:<actor ID>` from
+  decision 0006, so all sessions of one API key share one budget, and the
+  operator switch targets a principal, not an address.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 # 0017: Observability and health
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -29,14 +29,14 @@ That exporter cannot talk to infraweave, which serves no GraphQL (decision
 built on its metric names exist.
 
 infraweave's server binary runs as `infraweave serve`, `infraweave
-scheduler`, or both in `infraweave all`, and workers run `infraweave launcher`
-([0020](0020-reference-deployments-and-packaging.md)). Each process mode depends on
+scheduler`, or both in `infraweave all`, and worker hosts run `infraweave
+launcher` ([0004](0004-repository-architecture.md)). Each process mode depends on
 different things, so one probe cannot serve all of them.
 
 ## Decision
 
-Telemetry lives in `internal/telemetry` (indicative; decision 0004 owns
-placement). It never fails a request, a job or a run.
+Telemetry lives in `internal/platform/observe` (decision 0004). It never
+fails a request, a job or a run.
 
 ### Logging
 
@@ -52,7 +52,7 @@ placement). It never fails a request, a job or a run.
 | `time`, `level`, `msg` | slog's own, RFC 3339 with nanoseconds, UTC |
 | `service` | `infraweave` |
 | `mode` | the process mode: `serve`, `scheduler`, `launcher`, `vcs-agent` or `flows-agent`; `serve,scheduler` for `infraweave all` |
-| `version` | the build version from `internal/buildinfo` |
+| `version` | the build version from `internal/platform/buildinfo` |
 | `request_id` | on lines inside an HTTP request |
 | `trace_id`, `span_id` | when a span is active |
 | `principal` | the authenticated principal's ID, never a name or e-mail |
@@ -142,10 +142,11 @@ placement). It never fails a request, a job or a run.
 | `infraweave.runs.transitions` | counter | `run_type`, `from`, `to` |
 | `infraweave.runs.duration` | histogram, seconds | `run_type`, `final_state` |
 | `infraweave.runs.pending` | gauge | `worker_pool_id` |
-| `infraweave.workers.connected` | gauge | `worker_pool_id`, `status` (`idle`, `busy`, `drained`) |
-| `infraweave.queue.jobs` | gauge | `kind`, `state` |
-| `infraweave.queue.oldest_pending` | gauge, seconds | `kind` |
-| `infraweave.queue.runs` | counter | `kind`, `outcome` |
+| `infraweave.workers.connected` | gauge | `worker_pool_id`, `status` (`idle`, `busy`, `drained`, `offline`, the worker statuses of [0008](0008-run-execution-and-worker-protocol.md)) |
+| `infraweave.queue.jobs` | gauge | `queue`, `kind`, `state` |
+| `infraweave.queue.oldest_pending` | gauge, seconds | `queue` |
+| `infraweave.queue.attempts` | counter | `kind`, `outcome` |
+| `infraweave.queue.claim_latency` | histogram, seconds | `queue` |
 | `infraweave.policy.evaluations` | counter | `type`, `outcome` |
 | `infraweave.policy.duration` | histogram, seconds | `type` |
 | `infraweave.state.locks` | gauge | none |
@@ -164,38 +165,42 @@ and `infraweave.audit.*` instruments,
   the operator bounds (worker pools). Stack, run, user and request IDs are
   never metric attributes; they belong on spans and log lines.
 
-### Spacelift's exporter metrics, built in
+### Account metrics
 
-- **Endpoint.** `GET /metrics/spacelift` on the admin listener of the `serve`
-  process mode serves every metric `spacelift-promex` publishes, with the same
-  names, types, labels and units, listed in
-  [19 section 10](../reference/19-events-notifications-audit.md#10-the-prometheus-exporter).
-  A separate path keeps account-wide series off the per-process
-  `/metrics`, so the operator scrapes them through one Service target
-  instead of once per replica.
+- **Endpoint.** `GET /metrics/accounts` on the admin listener of the `serve`
+  process mode serves every series `spacelift-promex` publishes
+  ([19 section 10](../reference/19-events-notifications-audit.md#10-the-prometheus-exporter)),
+  under infraweave's names: the `spacelift_` prefix becomes `infraweave_`,
+  as decision [0001](0001-rest-first-spacelift-surface.md) renames provider
+  resources, and types, labels and units stay as promex has them. Every
+  series also carries an `account` label, because one installation hosts
+  many accounts ([0007](0007-authorization-spaces-and-roles.md)). A separate
+  path keeps installation-wide series off the per-process `/metrics`, so the
+  operator scrapes them through one Service target instead of once per
+  replica.
 - **Sources.** Each collector is computed at scrape time from infraweave's
   own tables, by the same queries that answer the REST equivalents of the
   GraphQL fields promex reads:
 
 | Collector | infraweave source |
 |---|---|
-| `publicworkerpool` | the shared pool of decision 0008 when one is configured; otherwise zeros, as Spacelift's self-hosted exporter reports |
+| `publicworkerpool` | the public worker pool of decision 0008 when one is configured; otherwise zeros, as Spacelift's self-hosted exporter reports |
 | `workerpools` | worker pools and their registered workers: pending runs, busy workers, workers, drained workers |
-| `usage` | the `usage` read: the trailing 30-day window as start and end, run minutes on private and shared pools times 60, and seats in use ([19 section 11](../reference/19-events-notifications-audit.md#11-usage-data-and-usage-export)) |
+| `usage` | the `usage` read: the trailing 30-day window as start and end, run minutes on private and public worker pools times 60, and seats in use ([19 section 11](../reference/19-events-notifications-audit.md#11-usage-data-and-usage-export)) |
 | `aggregates` | the `metrics` read: stacks by state, resources by drift, average stack size, and average and median run duration in nanoseconds, the unit Spacelift uses despite the name |
 
 - **Configuration**, mirroring promex's flags:
-  `telemetry.platform_metrics.enabled` (default `true`),
+  `telemetry.account_metrics.enabled` (default `true`),
   `.collectors` (default all four), `.scrape_timeout` (default `5s`, one
   deadline for the whole scrape) and `.partial_scrapes` (default `false`).
   Collectors run concurrently.
 - **Failure semantics** are promex's: in strict mode any failed collector
   answers HTTP 500 naming it; with `partial_scrapes` the healthy
   collectors' series and every health series are served with 200, and 500
-  only when none succeeds. `spacelift_scrape_collector_success`,
-  `_supported`, `_duration_seconds`, `spacelift_scrape_duration_seconds`
-  and `spacelift_build_info` (carrying infraweave's version) are computed
-  the same way. A collector disabled by configuration is absent, not
+  only when none succeeds. `infraweave_scrape_collector_success`,
+  `_supported`, `_duration_seconds`, `infraweave_scrape_duration_seconds`
+  and `infraweave_build_info` (carrying infraweave's version) are computed
+  as promex computes their counterparts. A collector disabled by configuration is absent, not
   unsupported.
 
 ### Health
@@ -217,6 +222,8 @@ Checks per process mode:
 | `serve` | config decoded; schema at the version this binary expects (decision 0005); signing keys loaded (decision 0006); object storage bucket reachable | PostgreSQL answers `SELECT 1` through the pool |
 | `scheduler` | as `serve` for schema; every queue kind has a registered handler | PostgreSQL answers; the lease loop has completed a poll within twice its interval |
 | `launcher` | registered with the server with a valid pool token; the container runtime (Docker or Kubernetes) answers | the server answered a poll within three poll intervals; the runtime answers |
+| `vcs-agent` | connected to the server with a valid VCS agent pool token (decision 0012) | the server answered a poll within three poll intervals |
+| `flows-agent` | connected to the agent gateway with a valid Flows agent pool token; the container runtime answers ([0018](0018-flows-runtime.md)) | the gateway socket is open; the runtime answers |
 
 - Each check runs with a 2-second timeout, and results are cached for one
   second so that frequent probing does not load the database.
@@ -240,8 +247,10 @@ On `SIGTERM` or `SIGINT` a server process:
    `server.shutdown.timeout` (default `30s`). Worker long-polls answer
    "no work" at once, so launchers reconnect to another replica
    (decision 0008);
-4. the `scheduler` process mode stops leasing jobs and hands back the leases it holds
-   without counting an attempt (decision 0011);
+4. the `serve` process mode sends `end` with reason `shutdown` to every open
+   server-sent-event stream ([0015](0015-events-notifications-webhooks-audit.md)),
+   and the `scheduler` process mode stops leasing jobs and hands back the
+   leases it holds without counting an attempt (decision 0011);
 5. flushes traces and metrics, with a 5-second cap;
 6. exits 0. A second signal exits at once with status 1.
 
@@ -256,7 +265,7 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
 | OTLP misconfigured at start | the process starts with the exporter disabled and logs an error; telemetry never blocks startup |
 | A log write fails | ignored; the process does not stop for stdout |
 | `/metrics` scrape during load | served from in-memory instruments; never touches the database |
-| `/metrics/spacelift` collector fails | promex's semantics, above |
+| `/metrics/accounts` collector fails | promex's semantics, above |
 | A readiness check times out | counts as failed for that probe |
 
 ## Rationale
@@ -270,9 +279,11 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
   whose `LogValue` hides it cannot be printed by accident.
 - **Links for untrusted parents.** Honouring any client's `traceparent`
   would let a caller force sampling of every request and pollute traces.
-- **Built-in Spacelift metrics** keep existing dashboards and alerts
-  working without a second process, and computing them from the same reads
-  as the REST API keeps the numbers consistent with what users see.
+- **Account metrics built in.** Mirroring promex's series under a renamed
+  prefix lets an operator port a Spacelift dashboard or alert by renaming
+  the prefix, without running a second process, and computing them from
+  the same reads as the REST API keeps the numbers consistent with what
+  users see.
 - **Readiness checks only what every request needs.** PostgreSQL backs
   every API operation; object storage backs some. Failing readiness on a
   partial dependency removes capacity that could still serve.
@@ -284,9 +295,10 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
 - **Departure from Spacelift:** no `Datadog` or `AWS` observability
   vendor; OTLP is the only export, and Datadog and X-Ray are reached
   through their OTLP-capable agents.
-- **Departure from Spacelift:** Spacelift's exporter metrics are served by
-  infraweave itself at `/metrics/spacelift`, not by a separate exporter
-  process that queries the API with an API key.
+- **Departure from Spacelift:** the exporter's series are served by
+  infraweave itself at `/metrics/accounts`, under the `infraweave_` prefix
+  and with an `account` label, not by a separate exporter process that
+  queries the API with an API key.
 - **Departure from Spacelift:** probes are `/livez`, `/readyz` and
   `/startupz` on `:9090`, not `/readiness` and `/startup` on `:8080`; port
   `8080` is infraweave's API listener.
@@ -300,7 +312,8 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
 
 - The `usage` collector's window is a trailing 30 days because infraweave
   has no billing period ([0021](0021-capability-scope-and-supersession.md));
-  `spacelift_current_billing_period_*` keep their names for compatibility.
+  `infraweave_current_billing_period_*` keep promex's names after the
+  prefix, so ported dashboards still find them.
 - Trace continuity inside the runner depends on the IaC tool honouring
   `TRACEPARENT`; infraweave makes no claim beyond the launcher's spans.
 - The admin listener has no authentication; deployments restrict it with
@@ -314,18 +327,19 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
   sealed value logged under an innocuous key.
 - `TestUnitRequestID`: accepted, rejected and generated IDs, echoed in the
   header and present on log lines.
-- `TestUnitSpaceliftCollectors`: each collector against fixed store
+- `TestUnitAccountCollectors`: each collector against fixed store
   contents, strict and partial failure modes, timeout, and the health
   series.
-- `TestUnitSpaceliftMetricNames`: the names, types and label sets served
-  equal those in promex's collectors at the commit report 19 cites, held as
-  a fixture extracted under its MIT licence.
+- `TestUnitAccountMetricNames`: the names, types and label sets served
+  equal those in promex's collectors at the commit report 19 cites, with
+  the prefix renamed and the `account` label added; the promex names are
+  held as a fixture extracted under its MIT licence.
 - `test/acceptance/features/observability_health.feature` (`@postgres`
   `@objectstore`): startup ordering; `/readyz` failing when PostgreSQL
   stops and recovering when it returns while `/livez` stays 200; the
   shutdown sequence with a request in flight.
 - `test/acceptance/features/observability_metrics.feature` (`@postgres`):
-  scrapes `/metrics` and `/metrics/spacelift` after creating pools, stacks
+  scrapes `/metrics` and `/metrics/accounts` after creating pools, stacks
   and runs and checks the values.
 - `test/acceptance/features/observability_tracing.feature` (`@postgres`
   `@objectstore` `@terraform`): an in-process OTLP receiver (a chi server

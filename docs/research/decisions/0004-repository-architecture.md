@@ -31,8 +31,8 @@ domains decide the shape of the repository:
 - **Workers run on customer hosts with outbound HTTPS only**
   ([report 10](../reference/10-workers-and-execution.md#42-transports)), so
   worker-side code must not depend on server-side persistence.
-- **Flows has its own tenancy** (organizations, projects, UUIDs) and
-  Intelligence reads across every domain
+- **Flows maps its organization onto the account** and keeps its own
+  projects and UUIDv7 identifiers, and Intelligence reads across every domain
   ([report 23](../reference/23-flows.md#2-resource-hierarchy),
   [report 28](../reference/28-data-model.md#what-this-means-for-infraweave)).
 
@@ -57,13 +57,16 @@ summary:
 |---|---|---|
 | `internal/<domain>/` | One business domain: a published `api/` package, an `assembly/` constructor package, a private `internal/` tree, and its own migration stream | `internal/platform`, `internal/kernel`, `internal/iac`, its own tree, other domains' `api/` packages, third-party libraries |
 | `internal/<domain>/api/` | Interfaces, input and output types and events other domains use | `internal/kernel`, `internal/platform/outbox`, the standard library |
-| `internal/platform/` | Infrastructure with no business rules: SQL and the unit of work, the outbox, decision 0011's job queue and cron ticker, object storage, envelope encryption, the HTTP kit with problem details, the generated servers, the embedded OPA runtime, build information | no domain, no `internal/agent`, no `internal/app` |
+| `internal/platform/` | Infrastructure with no business rules: SQL and the unit of work, the outbox, decision 0011's job queue and cron ticker, object storage, envelope encryption, the HTTP kit with problem details, the generated servers, the embedded OPA runtime, the sealed formats (`platform/seal`), the expression engine (`platform/expr`), build information | no domain, no `internal/agent`, no `internal/app` |
 | `internal/kernel/` | Value types shared by domain APIs: IDs, spaces, principals, the run state vocabulary | the same as `platform` |
 | `internal/iac/` | Pure IaC vendor knowledge used by both the server and the worker | the same as `platform` |
-| `internal/agent/` | Everything that runs on a customer host: the launcher, the runner, vendor command sets, container runtimes, log masking, the internal worker-protocol client, the VCS agent and the Flows agent | `internal/kernel`, `internal/iac`, three named `platform` packages, its own tree; never a domain, never SQL, the queue, object storage credentials or encryption |
+| `internal/agent/` | Everything that runs on a customer host: the launcher, the runner, vendor command sets, container runtimes, log masking, the internal worker-protocol client, the VCS agent and the Flows agent | `internal/kernel`, `internal/iac`, five named `platform` packages, among them `platform/seal`, because the runner seals workspaces ([0013](0013-secrets-at-rest.md)), and `platform/expr`, because it renders workflow command templates ([0024](0024-expression-language.md)); its own tree; never a domain, never SQL, the queue, object storage credentials or the keyring, which stays in `platform/crypt` |
 | `internal/app/` | The composition root and the process modes | everything |
 | `internal/devtools/` | Libraries behind `tools/` (`specref`, `openapibundle`, `stubgen`) and the docs check (`docscheck`, run by `make docs-check`) | imported only by `tools/` and their own tests |
-| `pkg/client/` | Generated public clients | nothing under `internal/` |
+| `pkg/client/` | Generated public clients, one per served OpenAPI document | nothing under `internal/` |
+| `pkg/sdk/` | The SDK of [0001](0001-rest-first-spacelift-surface.md): the hand-written layer over `pkg/client/<spec>` that every Go client uses | `pkg/client/`, the standard library and third-party libraries; nothing under `internal/` |
+| `pkg/flows/appsdk/` | The Go SDK for Flows apps ([0018](0018-flows-runtime.md)) | the generated `App` stubs; nothing under `internal/` |
+| `web/console/` | The console's TypeScript source ([0023](0023-console.md)); its build output is embedded by `internal/app` | not Go; it reaches infraweave only through the REST API |
 
 - **Boundaries.** A domain reaches another domain only through its `api/`
   package. The Go compiler enforces the private part through the nested
@@ -105,7 +108,7 @@ summary:
   imports none of its callers.
 - **Inside a domain.** Large domains split `internal/core/` from
   `internal/adapters/`, and core never imports adapters. Rules with no
-  I/O, such as the run transition table, priority tiers, policy combination
+  I/O, such as the run transition table, priority levels, policy combination
   and version numbering, sit in packages of their own and are tested as
   tables. Each VCS provider's webhook and API shapes stay in a package of
   its own inside `vcs`, behind one normalised event.
@@ -119,7 +122,17 @@ summary:
 - **No package path element is named `vendor`**, because the go tool
   treats such a directory as vendored code; IaC vendor code lives under
   `internal/iac`.
-- **Package names in other records.** Decisions 0005 to 0022 name packages
+- **Domains other records name.** Decision
+  [0021](0021-capability-scope-and-supersession.md)'s feature catalogue,
+  entitlement and operator API form the `features` domain,
+  `internal/features`, at the bottom of the domain graph: every domain may
+  import its `api/`, and it imports no domain. Decision
+  [0024](0024-expression-language.md)'s expression engine is
+  `internal/platform/expr`, with no business rule, which the server and the
+  runner both use. Its editor endpoints sit in an `expressions` domain,
+  `internal/expressions`, which collects each domain's surfaces through an
+  assembly `Surfaces()` method and so imports no domain.
+- **Package names in other records.** Decisions 0005 to 0024 name packages
   by responsibility (`internal/store`, `internal/run` and so on). Their
   places in this layout are:
 
@@ -134,7 +147,9 @@ summary:
   | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs` adapters; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
   | `internal/authn`, `internal/authz` | `internal/access` |
   | `internal/statebackend`, `internal/registry` | `internal/state`, `internal/registry` |
-  | `internal/events`, `internal/audit` | `internal/events`, with the outbox in `internal/platform/outbox` |
+  | `internal/events`, `internal/audit` | `internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox` |
+  | `internal/expr` | `internal/platform/expr`; the editor endpoints in `internal/expressions` |
+  | `internal/features` | `internal/features` |
   | `internal/flows`, `internal/flows/agent` | `internal/flows`, `internal/agent/flowsagent` |
   | `internal/ai`, `internal/intent` | `internal/intelligence` |
   | `internal/problem`, `internal/buildinfo`, `internal/telemetry`, `internal/clock` | `internal/platform/httpkit/problem`, `internal/platform/buildinfo`, `internal/platform/observe`, `internal/platform/testkit` |
@@ -177,8 +192,10 @@ both binaries is decision 0020's.
 ## Rationale
 
 The [comparison matrix](../architecture-options/README.md#comparison-matrix)
-rates all five options on 20 criteria. Option 5 rates Good on 16 and Poor on
-none, and leads the roadmap table outright.
+rates all five options on 24 criteria. Option 5 rates Good on 19 and Poor on
+none, and leads the roadmap table outright. Its depguard burden rates Fair,
+about 26 rules and 230 entries, because the nested `internal/` directories
+leave the compiler to enforce most of each boundary.
 
 - **Option 1, layered**, keeps runs acyclic only by adding a `workflow`
   tier with a hand-kept order, spreads each domain over six trees, and
@@ -242,7 +259,8 @@ change.
   only `internal/agent`.
 - **Thin packages and the 90% floor.** `api/` and `assembly/` packages hold
   little logic; keeping validation and constructors there gives each a
-  test surface. Changing coverage exclusions needs its own decision.
+  test surface. Coverage exclusions are decision
+  [0016](0016-testing-and-acceptance.md#coverage)'s.
 - **depguard reports only new issues** against the merge base in this
   repository's configuration, so the rules are introduced with a clean run
   over the whole tree.
@@ -296,5 +314,5 @@ change.
   report 10, [the launcher and the worker protocol](../reference/10-workers-and-execution.md#4-the-launcher-and-the-worker-protocol).
 - Related decisions: 0005 persistence, 0008 run execution and the worker
   protocol, 0009 policy engine, 0011 persistent work queue, 0015 events,
-  0016 testing and acceptance, 0018 Flows runtime, 0020 reference
+  0016 testing and acceptance, 0018 Flows engine, apps and agents, 0020 reference
   deployments and packaging.
