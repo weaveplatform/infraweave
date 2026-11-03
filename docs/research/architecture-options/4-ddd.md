@@ -36,8 +36,8 @@ outbox; everything another context must do as a result happens later, in that co
 own transaction, when the event bus delivers the event. The aggregate that matters most
 is `orchestration/domain/queue.StackQueue`: the stack's non-terminal runs, its blocker,
 its human lock and its policy lock key. Because the stack lock and the run state machine
-are one aggregate, every run transition of [report
-08](../reference/08-run-lifecycle.md#3-transitions) commits in one transaction with the
+are one aggregate, every run transition, report 08's 43 and decision 0008's T44 in the
+[run-transitions register](../../data/run-transitions.json), commits in one transaction with the
 lock it depends on, and nothing else is in that transaction.
 
 Contexts reach each other in two ways only: a synchronous call to another context's
@@ -431,8 +431,9 @@ internal/
 │   ├── domain/
 │   │   ├── queue/                           StackQueue aggregate: non-terminal runs, blocker, human lock,
 │   │   │                                    policy lock key; every transition goes through it
-│   │   ├── run/                             Run entity, RunState machine (22 states, 43 transitions),
-│   │   │                                    RunType, Priority and tier, guards (canConfirm, canPromote)
+│   │   ├── run/                             Run entity, RunState machine (22 states; report 08's 43
+│   │   │                                    transitions and decision 0008's T44), RunType, Priority
+│   │   │                                    and tier, guards (canConfirm, canPromote)
 │   │   ├── review/                          RunReview value object, newest-per-reviewer rule
 │   │   ├── timer/                           the 2, 7 and 30 day rules as a domain service
 │   │   ├── schedule/                        ScheduledJob aggregate: run, task, delete (P16)
@@ -740,7 +741,8 @@ internal/orchestration/
 │   └── repository.go        Load(ctx, stack) with SELECT ... FOR UPDATE on stack_queues; Save
 ├── domain/run/
 │   ├── state.go             the 22 RunState values, terminal and passive flags
-│   ├── machine.go           allowed transitions T1 to T43 as a table, per run type
+│   ├── machine.go           allowed transitions T1 to T44 as a table, per run type: report 08's 43
+│   │                        and decision 0008's T44, from docs/data/run-transitions.json
 │   ├── priority.go          presets and the seven pool tiers of report 08
 │   └── run.go               Run entity: type, state, state version, commit, priority, workflow ID
 ├── domain/timer/rules.go    2, 7 and 30 day rules

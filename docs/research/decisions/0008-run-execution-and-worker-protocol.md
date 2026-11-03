@@ -37,12 +37,14 @@ facts shape the design.
 
 ### The state machine is the authority
 
-- **One transition table.** `internal/run` holds report 08's transition table as
-  data: each edge T1 to T43 with its source state, target state, run types and the
-  driver allowed to take it
-  ([08 transition table](../reference/08-run-lifecycle.md#transition-table)). A
-  pair not in the table is refused. `UNKNOWN` is served in the enum and never
-  assigned; `PENDING` is absent from the served enum (decision 0021).
+- **One transition table.** `internal/run` holds the edges of the
+  [run-transitions register](../../data/run-transitions.json) as data: report
+  08's T1 to T43
+  ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
+  and T44 below, each with the register's source state, target state and run
+  types, and the driver allowed to take it. A pair not in the table is
+  refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
+  absent from the served enum (decision 0021).
 - **One entry point.** Every state change goes through
   `run.Transition(ctx, tx, req)` with the run ID, the expected `state_version`, the
   target state, the driver, the actor and a note. In the caller's transaction it:

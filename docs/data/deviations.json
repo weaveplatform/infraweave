@@ -1,0 +1,1164 @@
+{
+  "$schema": "schema/deviations.schema.json",
+  "records": [
+    {
+      "id": "DV-001",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "One GraphQL endpoint with 285 queries and 380 mutations ([report 02](../research/reference/02-graphql-to-rest-mapping.md))",
+      "infraweave": "REST over JSON described by OpenAPI 3 (`api/deploy.openapi.yaml`); no GraphQL endpoint and no GraphQL facade. The reference spec projects every root field to a route, and the served spec is scaffolded from it family by family",
+      "why": "Standard HTTP status codes, caching, per-route authorization and rate limits; the chi and oapi-codegen toolchain; Spacelift's clients use fixed selections, so GraphQL's client-shaped queries buy nothing",
+      "impact": "spacectl, `terraform-provider-spacelift`, the Bruno collection and direct GraphQL callers cannot talk to infraweave; a port changes transport, paths and bodies. Migration from Spacelift is a data import",
+      "source": "[0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision)"
+    },
+    {
+      "id": "DV-002",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "spacectl and `terraform-provider-spacelift` are the clients",
+      "infraweave": "infraweave's own clients: the provider (`weaveplatform/terraform-provider-infraweave`) and `infraweavectl`, both built on the SDK, `pkg/sdk`, and checked against Spacelift's provider schema and spacectl's command list ([0016](../research/decisions/0016-testing-and-acceptance.md#the-terraform-provider-parity-oracle))",
+      "why": "Follows from DV-001; a client that speaks GraphQL cannot reach a REST server",
+      "impact": "Terraform configurations change provider source and any renamed attributes recorded in `api/reference/provider-parity.yaml`; scripts move from `spacectl` to `infraweavectl`",
+      "source": "[0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision)"
+    },
+    {
+      "id": "DV-003",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "No retry-safety mechanism for mutations; a create that times out cannot be retried without risking a duplicate",
+      "infraweave": "`POST` and `PATCH` accept an optional `Idempotency-Key` header (1 to 255 characters), scoped to the caller and kept 24 hours by default. A finished request with the same fingerprint replays with `Idempotency-Replayed: true`; a different fingerprint answers `422` `idempotency-key-reuse`; one in flight answers `409` `idempotency-key-in-flight`",
+      "why": "Terraform providers and CI scripts retry on network errors; only the client knows whether two requests are one intent",
+      "impact": "None for a client that sends no key; a retrying client opts in by sending one",
+      "source": "[0003 Constraints](../research/decisions/0003-api-conventions.md#constraints)"
+    },
+    {
+      "id": "DV-004",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "No published load contract per caller",
+      "infraweave": "One token bucket per caller per cost class, `standard` or `expensive`, named per operation in `x-infraweave-cost`. Every response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`; an empty bucket answers `429` `rate-limited` with `Retry-After`",
+      "why": "Searches, batches and run triggers cost far more than reads; a visible budget lets clients slow down before they are throttled",
+      "impact": "Clients honour `429` and `Retry-After`; fan-out callers see the smaller `expensive` budget",
+      "source": "[0003 Constraints](../research/decisions/0003-api-conventions.md#constraints)"
+    },
+    {
+      "id": "DV-005",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "No per-caller API switch for the operator",
+      "infraweave": "The operator can disable the API for one caller, who receives `503` `api-disabled` with `Retry-After`; other callers are unaffected",
+      "why": "Shedding one misbehaving caller without shedding everyone",
+      "impact": "None unless the operator disables the caller",
+      "source": "[0003 Constraints](../research/decisions/0003-api-conventions.md#constraints)"
+    },
+    {
+      "id": "DV-006",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "95 list fields return bare arrays, such as `GET /stacks` in the reference",
+      "infraweave": "Every list `GET` takes `limit` (default 20, maximum 100, clamped) and an opaque `cursor`, and returns a `<Type>Page` with `items` and `nextCursor`, present only when another page exists; no total count. Cursors are keyset positions that never expire; a bad one answers `400` `invalid-cursor`. `POST .../search` keeps relay-style `first`, `after` and `pageInfo`",
+      "why": "Unbounded lists load everything at once; offset paging is O(n) and unstable under writes",
+      "impact": "A port pages until `nextCursor` is absent instead of reading one array",
+      "source": "[0003 Constraints](../research/decisions/0003-api-conventions.md#constraints)"
+    },
+    {
+      "id": "DV-007",
+      "group": "API surface: decisions 0001 and 0003",
+      "spacelift": "Error identity is message text in GraphQL `errors`",
+      "infraweave": "Each problem `type` is a URN, `urn:infraweave:problem:<slug>`, from one registry of slugs (0003's five, extended by DV-084)",
+      "why": "RFC 9457 lets clients match on `type` without dereferencing it, and infraweave has no documentation host to resolve a URL to",
+      "impact": "Clients branch on the `type` slug; see DV-084 for the text kept for ported clients",
+      "source": "[0003 Decision](../research/decisions/0003-api-conventions.md#decision)"
+    },
+    {
+      "id": "DV-008",
+      "group": "Architecture and persistence: decisions 0004 and 0005",
+      "spacelift": "Ships the launcher as a separate binary and image that embeds the worker binary ([report 10](../research/reference/10-workers-and-execution.md))",
+      "infraweave": "The launcher is the `launcher` process mode of the one `infraweave` binary, and the phase executor inside the run container is the hidden `runner` subcommand of the same static binary, which the launcher mounts",
+      "why": "Launcher, runner and server share a version by construction; the launcher's package graph stays free of server code, so `cmd/infraweave-agent`, a build for worker hosts that links only `internal/agent`, is a one-file change when image size or a review requires it",
+      "impact": "Worker hosts run `infraweave launcher` in place of Spacelift's launcher image; custom runner images need no embedded worker binary",
+      "source": "[0004 Rationale](../research/decisions/0004-repository-architecture.md#rationale), [0004 Constraints](../research/decisions/0004-repository-architecture.md#constraints)"
+    },
+    {
+      "id": "DV-009",
+      "group": "Architecture and persistence: decisions 0004 and 0005",
+      "spacelift": "Self-hosted supports PostgreSQL 14 to 18 ([report 24](../research/reference/24-self-hosted-reference.md))",
+      "infraweave": "The floor is the newest major that Amazon RDS, Azure Database for PostgreSQL Flexible Server and Cloud SQL all offer, PostgreSQL 18 at the baseline; it rises in the first release after all three offer the next major",
+      "why": "Every reference deployment can create a database at the floor, and CI gates on one major while the next runs beside it",
+      "impact": "An operator on PostgreSQL 14 to 17 upgrades before installing",
+      "source": "[0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale)"
+    },
+    {
+      "id": "DV-010",
+      "group": "Architecture and persistence: decisions 0004 and 0005",
+      "spacelift": "Self-hosted provisions one bucket per purpose",
+      "infraweave": "One bucket with a prefix per store by default; a per-store override keeps separate buckets where policy requires them",
+      "why": "Eleven buckets are eleven pieces of infrastructure to provision before a first run",
+      "impact": "Operators may provision one bucket; existing per-purpose buckets map through the override",
+      "source": "[0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale)"
+    },
+    {
+      "id": "DV-011",
+      "group": "Architecture and persistence: decisions 0004 and 0005",
+      "spacelift": "Relies on bucket lifecycle rules for expiry and asks for bucket versioning on the states bucket",
+      "infraweave": "infraweave writes every object under an immutable key, records it in `blob_objects`, and expires and versions objects itself; state history needs no bucket versioning. A lifecycle rule is at most an operator backstop set longer than the store's retention",
+      "why": "Retention and state history become database facts the API can list and test; the local-disk driver and minimal S3-compatible stores need neither feature",
+      "impact": "Operators drop versioning and lifecycle requirements from the bucket; tooling that read old state versions from bucket versions reads them through the API",
+      "source": "[0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale), [0010 Rationale](../research/decisions/0010-state-backend.md#rationale), [0020 Constraints](../research/decisions/0020-reference-deployments-and-packaging.md#constraints)"
+    },
+    {
+      "id": "DV-012",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "The in-run API token's issuer is Spacelift's",
+      "infraweave": "`iss` defaults to the public URL and is configurable; the other claim formats match Spacelift's by default, with configurable templates",
+      "why": "The in-run token's issuer is infraweave's public URL like every other infraweave token, and an operator can change it",
+      "impact": "None for the provider, which reads `sub`; code that checks `iss` sees the installation's URL",
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)",
+      "pending": {
+        "captures": [
+          "C17",
+          "C81",
+          "C83",
+          "C91"
+        ],
+        "settles": "The in-run token `sub`, external ID suffixes, `RoleSessionName` and the federation algorithm"
+      }
+    },
+    {
+      "id": "DV-013",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "`ApiKeyInput.admin`, a required `Boolean!`, makes an admin key; the changelog deprecates it and the schema does not ([report 14](../research/reference/14-spaces-rbac-and-identity.md#81-types-and-fields))",
+      "infraweave": "The field is not accepted: a body that sets it answers `400` `invalid-request` like any unknown field. A key becomes an administrator through a `space-admin` role binding on the account's top space, and the key's `admin` reads whether that binding exists",
+      "why": "One source of truth for access; decision 0021 treats the changelog-deprecated field as superseded",
+      "impact": "A port drops the field, which Spacelift's provider always sends as `false`, and binds the key to `space-admin` on the account's top space instead",
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
+    },
+    {
+      "id": "DV-014",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "Fetches OIDC API key issuers as configured",
+      "infraweave": "Issuers are fetched over HTTPS only, optionally restricted to `auth.oidc_api_keys.allowed_issuers`",
+      "why": "A self-hosted server fetching user-supplied URLs is an SSRF path",
+      "impact": "OIDC API keys whose issuer is plain HTTP, or outside a configured allowlist, are refused",
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
+    },
+    {
+      "id": "DV-015",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "Self-hosted documents no rotation of its JWT signing key ([report 24](../research/reference/24-self-hosted-reference.md#35-encryption-and-kms))",
+      "infraweave": "Signing keys rotate automatically every 90 days",
+      "why": "Rotation limits key exposure",
+      "impact": "Relying parties read the JWKS document rather than pinning one key",
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
+    },
+    {
+      "id": "DV-016",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "Does not document reissue of the federation token during a run ([report 12](../research/reference/12-cloud-integrations-and-oidc.md))",
+      "infraweave": "The federation token file is refreshed during long runs",
+      "why": "A run past one hour otherwise loses cloud access",
+      "impact": "None; runs longer than the token lifetime keep their cloud credentials",
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
+    },
+    {
+      "id": "DV-017",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "Browser session lifetime is undocumented",
+      "infraweave": "Session lifetimes are stated, configurable defaults",
+      "why": "A self-hosted operator needs a known value",
+      "impact": "None",
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
+    },
+    {
+      "id": "DV-018",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "Seat limits by plan",
+      "infraweave": "Seats are the `seats` limit of the organization's tier, pooled across its accounts, counting each member once and API keys as Spacelift counts them, and enforced only while billing is on (DV-101); a seat beyond the pool, or beyond an account limit an organization admin sets, answers `403` `limit-reached`",
+      "why": "Seats are one more tier limit, with one refusal for every limit",
+      "impact": "None while billing is off; with billing on, the limits of Spacelift's documented plans until the operator changes them",
+      "source": "[0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#tiers)"
+    },
+    {
+      "id": "DV-019",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "The `legacy` space carries access-policy behaviour",
+      "infraweave": "`legacy` is an ordinary space with no special semantics",
+      "why": "Access policies, its only special behaviour, are superseded",
+      "impact": "None for clients; imported access policies follow the supersession register",
+      "source": "[0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale)"
+    },
+    {
+      "id": "DV-020",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "System role contents are not published ([report 14](../research/reference/14-spaces-rbac-and-identity.md))",
+      "infraweave": "System role contents are derived from the legacy fallback column of the action catalogue; parity is checked against `Role.actions` once captured",
+      "why": "A role either grants an action or the fallback level decides, as one set-membership test",
+      "impact": "A system role's action list may differ from Spacelift's until the capture lands",
+      "source": "[0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale)"
+    },
+    {
+      "id": "DV-021",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "The worker pool controller and drift detection system roles' slugs are unrecorded",
+      "infraweave": "Their slugs are `worker-pool-controller` and `drift-detection-manager`",
+      "why": "A slug is needed to bind them",
+      "impact": "Configurations that name Spacelift's slugs for these roles may need the name changed",
+      "source": "[0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale)"
+    },
+    {
+      "id": "DV-022",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "The schema marks some actions \"do not use\"",
+      "infraweave": "Disabled actions cannot be assigned to roles; operations they would govern use their fallback",
+      "why": "A role must not depend on an action that grants nothing",
+      "impact": "A role create or update naming a disabled action is rejected",
+      "source": "[0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale)"
+    },
+    {
+      "id": "DV-023",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "Two statements conflict on whether an `ACTIVE` managed user with no binding can log in",
+      "infraweave": "Such a user logs in with empty grants",
+      "why": "The newer changelog statement wins",
+      "impact": "None",
+      "source": "[0007 Rationale](../research/decisions/0007-authorization-spaces-and-roles.md#rationale)"
+    },
+    {
+      "id": "DV-024",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Workers talk MQTT or HTTP long-poll; self-hosted runs a built-in broker or bridges to IoT Core, and keeps an `iot` queue for worker messages",
+      "infraweave": "HTTP long-poll only, under `/worker/v1`; no MQTT transport, broker listener or IoT Core bridge, and no `iot` queue",
+      "why": "Spacelift retires MQTT for workers on 2027-03-30; a broker adds a port, a component and a second delivery path; Spacelift's launchers cannot reach infraweave anyway (DV-001)",
+      "impact": "Worker networks need outbound HTTPS to `serve` only; load balancer idle timeouts must exceed the poll hold by 15 seconds",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale), [0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale), [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale)"
+    },
+    {
+      "id": "DV-025",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Leaves a run alone while a worker executes it, for up to 30 days",
+      "infraweave": "A run whose worker stays offline for `run.lost_after` (default 60 minutes) is a lost run: it fails with note `worker lost` and releases the stack. A worker that returns in time lets its run continue",
+      "why": "A stack should not stay locked for weeks behind a dead host, and an hour rides out restarts and short outages without killing a half-applied run",
+      "impact": "A run on a crashed worker fails after an hour and can then be retried, instead of holding the stack",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-026",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Defaults to Spacelift's own runner images",
+      "infraweave": "Defaults to infraweave's own runner images; the shared image contract (UID 1983, the same configuration precedence) keeps Spacelift's images usable",
+      "why": "An installation does not depend on another vendor's registry",
+      "impact": "None for stacks that name an image; stacks on the default get infraweave's",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-027",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Launcher settings are `SPACELIFT_*` environment variables",
+      "infraweave": "Launcher settings are named `INFRAWEAVE_LAUNCHER_*`",
+      "why": "The launcher is infraweave's client, not Spacelift's",
+      "impact": "Worker deployment configuration renames its variables",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-028",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "`REGO_V0` is the provider's default engine; the API's default is unverified",
+      "infraweave": "`REGO_V1` is the default when a create omits the engine",
+      "why": "Rego v1 is OPA's current language",
+      "impact": "A policy written for v0 sets the engine explicitly",
+      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)"
+    },
+    {
+      "id": "DV-029",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Removes `http.send`, `opa.runtime`, `rego.parse_module`, `time.now_ns` and `trace` from policies",
+      "infraweave": "Also removes `net.lookup_ip_addr`",
+      "why": "DNS lookups from the server reach the network the other removals keep policies away from",
+      "impact": "A policy using `net.lookup_ip_addr` fails to compile at save",
+      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)"
+    },
+    {
+      "id": "DV-030",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Documents no outcome for a policy evaluation error",
+      "infraweave": "Each policy type has a stated fail-closed outcome; an `APPROVAL` error leaves the run waiting",
+      "why": "A policy that cannot be evaluated must not let a plan apply or a user log in",
+      "impact": "None for policies that evaluate; a broken policy blocks rather than passes",
+      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)"
+    },
+    {
+      "id": "DV-031",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "The `sanitized` helper's truncation of SHA-256 is unverified ([report 20](../research/reference/20-vendors.md#13-resource-sanitization))",
+      "infraweave": "`sanitized` uses infraweave's own truncation",
+      "why": "A rule is needed until a capture shows Spacelift's",
+      "impact": "A policy comparing sanitized values with strings produced by Spacelift may not match",
+      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)"
+    },
+    {
+      "id": "DV-032",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "External state access uses the Terraform `remote` backend",
+      "infraweave": "External access uses the Terraform `http` backend with a token",
+      "why": "The `remote` API is a second surface with its own JSON:API shapes and login flow; `http` already serves `terraform_remote_state` and `terraform state pull`",
+      "impact": "Configurations that read state from outside change to `backend \"http\"`",
+      "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"
+    },
+    {
+      "id": "DV-033",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "State upload and download URLs point at the object store",
+      "infraweave": "They point at infraweave, which proxies and keeps state sealed at rest",
+      "why": "The server holds the encryption; states are small enough to proxy",
+      "impact": "Worker networks need no route to the bucket for state",
+      "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"
+    },
+    {
+      "id": "DV-034",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "The lock kind taken while planning is undocumented",
+      "infraweave": "Planning takes a shared lock",
+      "why": "Concurrent read-only plans need not serialise",
+      "impact": "None",
+      "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"
+    },
+    {
+      "id": "DV-035",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "A stopped run can leave a state lock behind",
+      "infraweave": "A run's locks are released when it ends",
+      "why": "No stuck lock needs a manual unlock",
+      "impact": "None; manual unlock is rarely needed",
+      "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"
+    },
+    {
+      "id": "DV-036",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "SaaS keeps non-current state versions for 30 days",
+      "infraweave": "Non-current versions are kept 90 days by default (`state.noncurrent_retention`; `0` keeps them forever)",
+      "why": "Long enough to roll back past a quarter's changes, while storage stays bounded",
+      "impact": "Rollback reaches further back than on SaaS; an operator may shorten or lengthen it",
+      "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"
+    },
+    {
+      "id": "DV-037",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "Self-hosted offers SQS or a PostgreSQL queue",
+      "infraweave": "The PostgreSQL queue only",
+      "why": "Enqueue joins the change's transaction, which SQS cannot",
+      "impact": "Operators provision no SQS queues",
+      "source": "[0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale), [0005 Rationale](../research/decisions/0005-persistence-postgresql.md#rationale)"
+    },
+    {
+      "id": "DV-038",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "A fixed receive count of 3 before dead-lettering",
+      "infraweave": "A retry limit per job kind, default 5, with exponential backoff and full jitter",
+      "why": "Different kinds tolerate different numbers of failures",
+      "impact": "None",
+      "source": "[0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale)"
+    },
+    {
+      "id": "DV-039",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "Separate dead-letter queues",
+      "infraweave": "A `dead` job state kept 30 days, listed and acted on through three operations of the operator API, outside the Spacelift surface: `GET /operator/v1/queue/jobs`, `POST /operator/v1/queue/jobs/{id}/retry`, `DELETE /operator/v1/queue/jobs/{id}`",
+      "why": "Dead work is inspectable and retryable in place",
+      "impact": "New operator API; no Spacelift client uses it",
+      "source": "[0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale), [0011 Decision](../research/decisions/0011-persistent-work-queue.md#decision)"
+    },
+    {
+      "id": "DV-040",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "A separate FIFO queue",
+      "infraweave": "Ordering keys on jobs",
+      "why": "Ordering applies per key, not per queue",
+      "impact": "None",
+      "source": "[0011 Rationale](../research/decisions/0011-persistent-work-queue.md#rationale)"
+    },
+    {
+      "id": "DV-041",
+      "group": "VCS: decision 0012",
+      "spacelift": "SaaS installs Spacelift's GitHub Marketplace app",
+      "infraweave": "The operator registers a GitHub App, as self-hosted Spacelift requires",
+      "why": "infraweave has no global app of its own",
+      "impact": "Operators create and register an app; repositories install that app",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-042",
+      "group": "VCS: decision 0012",
+      "spacelift": "Spacelift's own webhook endpoints",
+      "infraweave": "Webhook URLs under `/webhooks/vcs/`",
+      "why": "One route family for every provider",
+      "impact": "VCS webhook configurations point at the new path",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-043",
+      "group": "VCS: decision 0012",
+      "spacelift": "One webhook secret at a time",
+      "infraweave": "The previous secret is accepted for a window after rotation",
+      "why": "Rotation without dropped deliveries",
+      "impact": "None",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-044",
+      "group": "VCS: decision 0012",
+      "spacelift": "No delivery listing or replay",
+      "infraweave": "Routes to list received deliveries and replay one",
+      "why": "Debugging a missed trigger without the provider's console",
+      "impact": "New operations; no Spacelift client uses them",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-045",
+      "group": "VCS: decision 0012",
+      "spacelift": "VCS agents speak gRPC to a separate gateway service with its own load balancer",
+      "infraweave": "`infraweave vcs-agent` long-polls `serve` over HTTPS with its own token layout; no gateway process and no gRPC listener",
+      "why": "Reuses the worker protocol's shape and any HTTPS load balancer",
+      "impact": "`spacelift-vcs-agent` does not connect; agent pools run `infraweave vcs-agent`",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale), [0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale)"
+    },
+    {
+      "id": "DV-046",
+      "group": "VCS: decision 0012",
+      "spacelift": "The docs promise a strict request allowlist; the released agent at the research pin validates nothing",
+      "infraweave": "The allowlist is on by default, derived from the client's own route table, and the agent refuses unmatched Azure DevOps requests",
+      "why": "Without validation the agent is a general proxy into a private network",
+      "impact": "Integrations that relied on unvalidated proxying fail until their route is listed",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)",
+      "pending": {
+        "captures": [
+          "C78"
+        ],
+        "settles": "Whether the released VCS agent validates requests, which decides whether this departs from the agent as well as from the docs"
+      }
+    },
+    {
+      "id": "DV-047",
+      "group": "VCS: decision 0012",
+      "spacelift": "The individual commit check name is undocumented",
+      "infraweave": "`infraweave/<stack slug>`",
+      "why": "A stable name is needed for branch protection",
+      "impact": "Branch protection rules copied from Spacelift need the check name changed",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-048",
+      "group": "Secrets: decision 0013",
+      "spacelift": "The choice between KMS and an RSA key is permanent; only KMS keys rotate, yearly",
+      "infraweave": "`infraweave secrets rewrap` moves the keyring between a local key, KMS providers or a new key in a few statements",
+      "why": "Operators change custody without a reinstall",
+      "impact": "None",
+      "source": "[0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale)"
+    },
+    {
+      "id": "DV-049",
+      "group": "Secrets: decision 0013",
+      "spacelift": "Kubernetes deployments can use only RSA",
+      "infraweave": "GCP KMS, Azure Key Vault and Vault are offered beside AWS KMS",
+      "why": "Every reference deployment gets a managed key option",
+      "impact": "None",
+      "source": "[0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale)"
+    },
+    {
+      "id": "DV-050",
+      "group": "Secrets: decision 0013",
+      "spacelift": "In the local-key mode one RSA key both encrypts and signs",
+      "infraweave": "The JWT signing key is a separate sealed row, apart from the encryption root",
+      "why": "Rotating one never touches the other",
+      "impact": "None",
+      "source": "[0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale)"
+    },
+    {
+      "id": "DV-051",
+      "group": "Secrets: decision 0013",
+      "spacelift": "Documents no minimum length for masked values",
+      "infraweave": "Values shorter than 4 bytes are not masked in run logs",
+      "why": "Masking `1` or `on` destroys the log and protects nothing",
+      "impact": "A secret shorter than 4 bytes appears in logs; such secrets should be lengthened",
+      "source": "[0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale)"
+    },
+    {
+      "id": "DV-052",
+      "group": "Registry: decision 0014",
+      "spacelift": "Splits registry discovery (`spacelift.io`) from the protocol host (`app.spacelift.io`)",
+      "infraweave": "Discovery and the protocol share the installation's host",
+      "why": "One host to deploy, certify and allow",
+      "impact": "Module and provider source addresses use the installation host",
+      "source": "[0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale)"
+    },
+    {
+      "id": "DV-053",
+      "group": "Registry: decision 0014",
+      "spacelift": "A failed provider verification blocks neither publishing nor use",
+      "infraweave": "Publishing a provider version checks that every uploaded file exists and matches its declared checksum",
+      "why": "A bad upload fails at publish, not at `terraform init`",
+      "impact": "Publishing pipelines see an error for a bad upload",
+      "source": "[0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale)"
+    },
+    {
+      "id": "DV-054",
+      "group": "Registry: decision 0014",
+      "spacelift": "Labels registry protocol 404 bodies `text/plain`",
+      "infraweave": "Serves them as `application/json`",
+      "why": "The body is JSON",
+      "impact": "None for Terraform and OpenTofu",
+      "source": "[0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale)"
+    },
+    {
+      "id": "DV-055",
+      "group": "Registry: decision 0014",
+      "spacelift": "Behaviour for yanked versions is uncaptured",
+      "infraweave": "Yanked versions are neither listed nor downloadable, even by an exact pin",
+      "why": "A yanked version is withdrawn",
+      "impact": "An exact pin to a yanked version fails to install",
+      "source": "[0014 Rationale](../research/decisions/0014-module-and-provider-registry.md#rationale)",
+      "pending": {
+        "captures": [
+          "C132"
+        ],
+        "settles": "What Spacelift does with yanked versions"
+      }
+    },
+    {
+      "id": "DV-056",
+      "group": "Events: decision 0015",
+      "spacelift": "Its own delivery headers",
+      "infraweave": "Adds `X-Infraweave-Delivery` and `X-Infraweave-Event` to every HTTP delivery",
+      "why": "Receivers can deduplicate and route without parsing the body",
+      "impact": "None; receivers may use them",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale)"
+    },
+    {
+      "id": "DV-057",
+      "group": "Events: decision 0015",
+      "spacelift": "`retryOnFailure` retries `5xx`",
+      "infraweave": "Also retries network errors, timeouts and `429`",
+      "why": "A receiver that is down or throttling is a transient failure",
+      "impact": "Receivers may see more retries and deduplicate by `X-Infraweave-Delivery`",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale)"
+    },
+    {
+      "id": "DV-058",
+      "group": "Events: decision 0015",
+      "spacelift": "Fixed audit, notification and delivery retention",
+      "infraweave": "Each retention is an operator setting",
+      "why": "Storage and compliance needs are the operator's",
+      "impact": "None",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale)"
+    },
+    {
+      "id": "DV-059",
+      "group": "Events: decision 0015",
+      "spacelift": "Raises worker usage events for negotiated contracts",
+      "infraweave": "Requires `events.worker_usage.limit` and `events.worker_usage.percentile`; without a limit the event is never raised",
+      "why": "infraweave has no contracts",
+      "impact": "Consumers of the usage event configure a limit first",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale)"
+    },
+    {
+      "id": "DV-060",
+      "group": "Observability: decision 0017",
+      "spacelift": "Selects a `Datadog` or `AWS` observability vendor",
+      "infraweave": "OTLP is the only export; Datadog and X-Ray are reached through OTLP-capable agents",
+      "why": "Each vendor SDK adds dependencies and code paths to test",
+      "impact": "Operators point an OTLP collector or agent at infraweave",
+      "source": "[0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale)"
+    },
+    {
+      "id": "DV-061",
+      "group": "Observability: decision 0017",
+      "spacelift": "A separate Prometheus exporter process queries the API with an API key",
+      "infraweave": "infraweave serves the exporter's series itself at `/metrics/accounts` on the admin listener, with the `spacelift_` prefix renamed `infraweave_` and `account` and `organization` labels, the account's slug and its organization's slug, on every series",
+      "why": "No extra process, credential or per-replica duplication; one installation hosts many organizations and accounts",
+      "impact": "Scrape configurations target infraweave instead of the exporter, and dashboards rename the metric prefix",
+      "source": "[0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale)"
+    },
+    {
+      "id": "DV-062",
+      "group": "Observability: decision 0017",
+      "spacelift": "Probes are `/readiness` and `/startup` on `:8080`",
+      "infraweave": "Probes are `/livez`, `/readyz` and `/startupz` on `:9090`; `:8080` is the API listener",
+      "why": "Probes stay off the public listener",
+      "impact": "Orchestrator probe configuration changes",
+      "source": "[0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale)"
+    },
+    {
+      "id": "DV-063",
+      "group": "Observability: decision 0017",
+      "spacelift": "Workers upload traces, CPU profiles and logs to a run observability bucket",
+      "infraweave": "Workers export traces over OTLP to the operator's collector",
+      "why": "One telemetry path, owned by the operator",
+      "impact": "Operators run a collector the workers can reach",
+      "source": "[0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale)"
+    },
+    {
+      "id": "DV-064",
+      "group": "Observability: decision 0017",
+      "spacelift": "Logs queries per request",
+      "infraweave": "No per-request query logging at `info`; the access log records the route pattern, never the body",
+      "why": "Bodies carry secrets and personal data",
+      "impact": "Log pipelines that parsed query logs lose them",
+      "source": "[0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale)"
+    },
+    {
+      "id": "DV-065",
+      "group": "Flows: decision 0018",
+      "spacelift": "Flows is a separately linked organization with its own login",
+      "infraweave": "Flows belongs to the infraweave account, which takes the place of Spacelift Flows' organization: its projects, apps and agent pools are the account's, its users are the account's members, and the Deploy link is implicit",
+      "why": "One identity and access model across the product",
+      "impact": "No linking step; Flows users are the members the account admits",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-066",
+      "group": "Flows: decision 0018",
+      "spacelift": "HTTP Endpoint and MCP surfaces use subdomains (`mcp.`, `oauth.`)",
+      "infraweave": "Endpoint addresses fall back to paths when no wildcard domain is configured; MCP is served at `/flows/mcp`",
+      "why": "A self-hosted install may have no wildcard DNS",
+      "impact": "Clients configured with Spacelift's subdomains use the paths",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-067",
+      "group": "Flows: decision 0018",
+      "spacelift": "A GraphQL Request Deploy block",
+      "infraweave": "An API Request block over the REST API",
+      "why": "infraweave serves no GraphQL (DV-001)",
+      "impact": "Flows using the GraphQL block are rewritten to the API Request block",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-068",
+      "group": "Flows: decision 0018",
+      "spacelift": "Self-hosted Flows runs on EKS only",
+      "infraweave": "Flows runs wherever infraweave runs; agents run in Kubernetes or Docker",
+      "why": "Every reference deployment carries Flows",
+      "impact": "None",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-069",
+      "group": "Flows: decision 0018",
+      "spacelift": "`flowctl` and `terraform-provider-flows` call RPC-style `/cli/...` and `/provider/...` routes",
+      "infraweave": "The Flows API is REST under `/flows/v1/`; infraweave's CLI and provider replace both clients",
+      "why": "Decision 0001's REST rule applies to every family",
+      "impact": "`flowctl` and `terraform-provider-flows` do not work; their operations remain the parity list",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-070",
+      "group": "Intelligence: decision 0019",
+      "spacelift": "Intent's `discover`, `query` and `mutate` tools work over GraphQL",
+      "infraweave": "They work over infraweave's OpenAPI operations",
+      "why": "infraweave serves no GraphQL (DV-001)",
+      "impact": "MCP clients see OpenAPI operation names in tool results",
+      "source": "[0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale)"
+    },
+    {
+      "id": "DV-071",
+      "group": "Intelligence: decision 0019",
+      "spacelift": "The provided AI integration is Spacelift's, flagged `isSpaceliftProvided`, with a budget on the Free tier",
+      "infraweave": "The provided integration is the operator's, flagged `isInstallationProvided`. Its budget is the `ai-budget` limit of each organization's tier, pooled across its accounts and metered in US dollars per 30 days from the operator's model prices; a request beyond it answers `403` `limit-reached`",
+      "why": "The installation, not Spacelift, pays for the model, and a tier limit gives callers one refusal for every limit",
+      "impact": "Clients read `isInstallationProvided`; operators price the default model and set `ai-budget` per tier or grant",
+      "source": "[0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale)"
+    },
+    {
+      "id": "DV-072",
+      "group": "Intelligence: decision 0019",
+      "spacelift": "The chat transport is unpublished",
+      "infraweave": "An infraweave-defined SSE endpoint",
+      "why": "A transport is needed and none is documented",
+      "impact": "Chat clients use infraweave's endpoint",
+      "source": "[0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale)"
+    },
+    {
+      "id": "DV-073",
+      "group": "Intelligence: decision 0019",
+      "spacelift": "Spacelift's terms and documentation search",
+      "infraweave": "The terms are the operator's, and `search_docs` searches infraweave's documentation",
+      "why": "infraweave cannot accept terms or search docs on Spacelift's behalf",
+      "impact": "None",
+      "source": "[0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale)"
+    },
+    {
+      "id": "DV-074",
+      "group": "Intelligence: decision 0019",
+      "spacelift": "`spacelift-intent` does not verify provider checksums or signatures",
+      "infraweave": "Intent verifies provider checksums and signatures",
+      "why": "Providers run with cloud credentials on workers",
+      "impact": "An unsigned or mismatched provider is refused",
+      "source": "[0019 Rationale](../research/decisions/0019-ai-provider-boundary.md#rationale)"
+    },
+    {
+      "id": "DV-075",
+      "group": "Packaging: decision 0020",
+      "spacelift": "Ships ECS and CloudFormation reference deployments",
+      "infraweave": "No ECS or CloudFormation reference deployment",
+      "why": "The supported set stays testable",
+      "impact": "ECS operators adapt the container image themselves",
+      "source": "[0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale)"
+    },
+    {
+      "id": "DV-076",
+      "group": "Packaging: decision 0020",
+      "spacelift": "Infrastructure modules and the Helm chart version separately from the application",
+      "infraweave": "Modules and chart share the application's version",
+      "why": "One version answers which artefacts fit together",
+      "impact": "Operators pin one version",
+      "source": "[0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale)"
+    },
+    {
+      "id": "DV-077",
+      "group": "Packaging: decision 0020",
+      "spacelift": "Launchers download from Spacelift and are verified with GPG keys from a public key server",
+      "infraweave": "Launchers download from the installation itself and are verified with Sigstore",
+      "why": "Air-gapped installs reach nothing else; no second trust root",
+      "impact": "Worker bootstrap scripts change their download and verification steps",
+      "source": "[0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale)"
+    },
+    {
+      "id": "DV-078",
+      "group": "Packaging: decision 0020",
+      "spacelift": "Self-hosted needs a licence token and lacks the public pool and the Azure and GCP integrations",
+      "infraweave": "No licence token; those limits are not inherited, and the public worker pool is a chart option (`publicWorkerPool.enabled`)",
+      "why": "infraweave mirrors SaaS, not the self-hosted subset",
+      "impact": "None",
+      "source": "[0020 Rationale](../research/decisions/0020-reference-deployments-and-packaging.md#rationale), [0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#self-hosted-limits-are-not-inherited)"
+    },
+    {
+      "id": "DV-079",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "`tier` answers a `BillingTier` enum value, and `tierFeatures` lists `BillingTierFeature` values",
+      "infraweave": "`tier` answers a tier object: `name`, `features` (sorted infraweave feature names) and `limits` (limit name to value). `tierFeatures` answers the entitlement of the account's organization as infraweave feature names. Every operation names its capability in `x-infraweave-feature`; a switched-off feature answers `403` `feature-disabled`, and with billing on a feature outside the entitlement answers `403` `feature-not-in-tier`",
+      "why": "Tiers are data an operator defines, which the enum cannot express, and feature names are infraweave's own",
+      "impact": "Clients that branch on `tier` read the object's `name` or `features`; the [feature catalogue](../implementation/capability-roadmap.md#feature-catalogue) maps each `BillingTierFeature` value to its features",
+      "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
+    },
+    {
+      "id": "DV-080",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "Billing mutations change a Stripe subscription",
+      "infraweave": "Billing mutations answer `403` `installation-unsupported`; reads answer with local meaning (`billedExternally: true`, `usage` over a trailing 30 days, empty add-on lists)",
+      "why": "A fake success looks like progress in a test and fails in production",
+      "impact": "Billing automation receives an explicit refusal",
+      "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
+    },
+    {
+      "id": "DV-081",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "The Azure integration, Origin and global plugin templates rely on Spacelift's own apps and catalogue",
+      "infraweave": "They rely on operator-registered apps and catalogues: `cloud.azure`, `vcs.origin` and `plugins.catalog_paths`; without one, the operation answers `installation-unsupported`",
+      "why": "infraweave operates no global apps",
+      "impact": "Operators register the apps before these features work",
+      "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
+    },
+    {
+      "id": "DV-082",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "Accepts some superseded enum values in a disabled state",
+      "infraweave": "A superseded enum value is rejected outright",
+      "why": "A request that would do nothing should fail visibly",
+      "impact": "Clients sending a superseded value receive `400` `invalid-request`",
+      "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
+    },
+    {
+      "id": "DV-083",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "spacectl picks one credential when several are set, in an order its docs and source disagree on, and stores profiles in `config.json` or a file per alias",
+      "infraweave": "`infraweavectl` errors when two methods are set without `INFRAWEAVE_API_PREFERRED_METHOD`, and stores profiles in one strict YAML file, `$XDG_CONFIG_HOME/infraweave/config.yaml`, written `0600`",
+      "why": "Never pick silently between conflicting inputs; one strict file",
+      "impact": "Scripts set one credential method or the preference variable",
+      "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
+    },
+    {
+      "id": "DV-084",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "GraphQL `errors` with message text; no documented status codes or stable codes ([report 06](../research/reference/06-spacectl-and-clients.md#24-error-behaviour))",
+      "infraweave": "An HTTP status per failure class and `application/problem+json` from one slug registry; fixed titles keep `not found` and `unauthorized` as the provider and spacectl match them; hidden and missing resources both answer `404`; field errors carry `errors` with `pointer` and `reason`; protocol endpoints answer what their own clients expect",
+      "why": "Any HTTP client, proxy and retry library can act on the status; ported string matches keep working",
+      "impact": "A port changes transport only; its message-text checks still match",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-085",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "Updates are whole-input mutations (`stackUpdate`, `stackConfigAdd`)",
+      "infraweave": "Every update route keeps `PUT`, which replaces, and gains `PATCH` with `application/merge-patch+json`, in which `null` resets a field to its default; configuration elements get an item `PUT` that answers `201` or `200`",
+      "why": "Providers want full replacement, people want to change one field",
+      "impact": "Providers use `PUT`; CLIs and scripts may use `PATCH`",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-086",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "Last write wins",
+      "infraweave": "Item `GET`, `PUT` and `PATCH` return a strong `ETag`; `PUT`, `PATCH` and `DELETE` accept `If-Match`, and a stale tag answers `412` `precondition-failed`. Without `If-Match`, last write wins",
+      "why": "Optional protection against lost updates",
+      "impact": "None unless the client sends `If-Match`",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-087",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "An unset relation reads as `null`",
+      "infraweave": "A sub-read of an unset optional relation answers `204 No Content`",
+      "why": "`404` on such a route always means the parent is missing or hidden",
+      "impact": "Clients treat `204` as \"none\"",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-088",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "Unknown input fields are not documented as rejected",
+      "infraweave": "Request bodies are strict: an unknown field answers `400` `invalid-request` with reason `unknown-field`; `StackInput.administrative` stays, deprecated and ignored",
+      "why": "A misspelt body field silently ignored writes the wrong state",
+      "impact": "Clients that send extra fields remove them",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-089",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "Label limits are undocumented",
+      "infraweave": "Labels are 1 to 255 characters of UTF-8 with no control characters or edge whitespace, at most 100 per entity, compared byte for byte; a duplicate answers `422` `validation-failed`",
+      "why": "Bounded, unambiguous labels",
+      "impact": "Imports with longer, more numerous or duplicate labels fail with the field named",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-090",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "Cron and timezone acceptance is unverified",
+      "infraweave": "Five-field cron with `*`, `n`, `a-b` and `/step`, Vixie day matching; names, `?`, `L`, `W`, `#` and `@` macros are rejected. Timezones are IANA names (embedded `time/tzdata`), absent means `UTC`; abbreviations and numeric offsets are rejected",
+      "why": "Schedules must fire when the user expects, or fail loudly",
+      "impact": "Imports with an expression or zone outside these rules fail with a pointer to the field",
+      "source": "[0022 Rationale](../research/decisions/0022-api-errors-and-update-semantics.md#rationale)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-091",
+      "group": "Errors, updates and input: decision 0022",
+      "spacelift": "Unknown keys in `.spacelift/config.yml` are unverified",
+      "infraweave": "Known keys are typed strictly and fail the run in `INITIALIZING`; unknown keys warn in the run log and `Run.runtimeConfig`, or fail with `runs.runtime_config.unknown_keys: reject`",
+      "why": "Failing every stack because a key is newer than infraweave turns schema lag into an outage",
+      "impact": "Repositories with a mistyped known key see the run fail with the key's path",
+      "source": "[0022 Constraints](../research/decisions/0022-api-errors-and-update-semantics.md#constraints)",
+      "pending": {
+        "captures": [
+          "C2",
+          "C3",
+          "C5",
+          "C24",
+          "C26",
+          "C30",
+          "C97",
+          "C155",
+          "C156"
+        ],
+        "settles": "Whether Spacelift has stable error codes or is looser than infraweave's input rules"
+      }
+    },
+    {
+      "id": "DV-092",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "The worker list has no state for a worker that holds a run but has stopped polling",
+      "infraweave": "A worker unseen for `worker.offline_after` (default 3 minutes) is an offline worker, listed with status `OFFLINE`, a fourth `WorkerStatus`, and claims no new run; its run keeps its state and stack lock until DV-025 applies",
+      "why": "An operator needs to see which worker a waiting run depends on",
+      "impact": "Clients that switch on `WorkerStatus` handle `OFFLINE`",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-093",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "The documented worker pool setup generates an RSA 4096 key ([report 10](../research/reference/10-workers-and-execution.md#23-credentials))",
+      "infraweave": "The pool key must be EC P-256; a CSR with any other key answers `422` `validation-failed`. Run secrets are sealed to it with infraweave's own envelope (ECDH P-256, HKDF-SHA256, AES-256-GCM)",
+      "why": "The envelope runs under Go's FIPS 140-3 mode, and one key per pool serves both registration and sealing",
+      "impact": "Pool setup scripts generate a P-256 key in place of RSA",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale), [0013 Rationale](../research/decisions/0013-secrets-at-rest.md#rationale)"
+    },
+    {
+      "id": "DV-094",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "Terraform's and OpenTofu's `http` clients send `Content-MD5`, which a backend checks",
+      "infraweave": "`Content-MD5` is checked as usual, except under `GODEBUG=fips140=only`, where Go refuses MD5: the header is accepted and ignored, and the body's SHA-256 is recorded and checked instead",
+      "why": "FIPS 140-3 mode must run without an MD5 exemption, and the SHA-256 that every write records already detects a corrupt body",
+      "impact": "None for Terraform and OpenTofu; under `fips140=only` a bad `Content-MD5` no longer answers `400`",
+      "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale), [0013 Decision](../research/decisions/0013-secrets-at-rest.md#fips-140-3)"
+    },
+    {
+      "id": "DV-095",
+      "group": "Events: decision 0015",
+      "spacelift": "Clients poll for run logs, run state and worker pool queues",
+      "infraweave": "Run logs, run state, worker pool queues and Flows events are also served as server-sent-event streams in the public API, each with a polling equivalent; the console's live views use them",
+      "why": "Live views without a request per second per viewer, for the console, `infraweavectl` and integrators",
+      "impact": "None; polling still works, and a client may switch to the streams",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale), [0023 Decision](../research/decisions/0023-console.md#decision)"
+    },
+    {
+      "id": "DV-096",
+      "group": "Events: decision 0015",
+      "spacelift": "Flows reaches Deploy through a separately linked integration",
+      "infraweave": "Deploy events are Flows events natively, in one event model; the event kinds include drift, policy outcomes, notifications and worker changes",
+      "why": "A run state change or a drift result triggers a flow without a bridge",
+      "impact": "None for Deploy clients; flows that reacted to Spacelift Deploy use the Deploy trigger blocks",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale), [0018 Decision](../research/decisions/0018-flows-runtime.md#decision)"
+    },
+    {
+      "id": "DV-097",
+      "group": "Events: decision 0015",
+      "spacelift": "Notification policies return strings with `spacelift::logs::*` placeholders",
+      "infraweave": "Strings a notification policy returns are text templates ([0024](../research/decisions/0024-expression-language.md)), and `logs(phase)` replaces the placeholders",
+      "why": "One template form across Deploy and Flows",
+      "impact": "Notification policies that used the placeholders call `logs(phase)`",
+      "source": "[0015 Rationale](../research/decisions/0015-events-notifications-webhooks-audit.md#rationale), [0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-098",
+      "group": "Flows: decision 0018",
+      "spacelift": "Flows apps are JavaScript bundles written against `@slflows/sdk/v1` and run by agents in Node.js runtimes",
+      "infraweave": "An app version is a multi-architecture OCI image whose program serves the versioned `App` gRPC contract; `infraweave flows-agent` runs each app in its own container. infraweave has no JavaScript runtime and no compatibility layer, and refuses a JavaScript bundle with `422` `validation-failed`",
+      "why": "A protobuf contract evolves safely across releases, any gRPC language can serve it, and apps get ordinary libraries and networking",
+      "impact": "Spacelift's apps and app registries do not work; an app is rebuilt as an image, in Go on `pkg/flows/appsdk` or in any gRPC language",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-099",
+      "group": "Flows: decision 0018",
+      "spacelift": "Apps may ship browser code (`ui.js`, `uiCode`)",
+      "infraweave": "Apps contribute declarative widgets only, of fixed types the console renders",
+      "why": "No third-party script runs in the console's origin under the user's session",
+      "impact": "Apps that drew their own interface declare widgets instead",
+      "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale), [0023 Decision](../research/decisions/0023-console.md#decision)"
+    },
+    {
+      "id": "DV-100",
+      "group": "Packaging: decision 0020",
+      "spacelift": "Ships a Flows runtime image in which agents run every app",
+      "infraweave": "No runtime image: each first-party Flows app is an OCI image of its own per app version, a Go program on `pkg/flows/appsdk`, signed and listed in infraweave's first-party app registry",
+      "why": "Apps carry their own dependencies, and an app upgrades without an infraweave release",
+      "impact": "Air-gapped installs mirror the app images they use into their own registry",
+      "source": "[0020 Decision](../research/decisions/0020-reference-deployments-and-packaging.md#decision), [0018 Decision](../research/decisions/0018-flows-runtime.md#decision)"
+    },
+    {
+      "id": "DV-101",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "Each account's plan gates its features",
+      "infraweave": "`billing` is a feature of the installation, off by default: no entitlement check runs and every organization behaves as Enterprise. Tiers, organization tiers and grants are data managed through the operator API (`api/operator.openapi.yaml`) and `infraweavectl operator`, effective without a restart; five tiers (Free, Starter, Starter+, Business, Enterprise) are seeded from Spacelift's documented plans",
+      "why": "Most installations serve one company and want every feature; one that hosts others turns billing on and gets Spacelift's packaging without writing it",
+      "impact": "None while billing is off; with billing on, organizations see Spacelift's documented gates",
+      "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
+    },
+    {
+      "id": "DV-102",
+      "group": "Names: decision 0001 and the glossary",
+      "spacelift": "Spacelift's names on every surface: `SPACELIFT_*` run variables, `/mnt/workspace/spacelift.oidc`, `.spacelift/` repository files, `package spacelift` policies, `spacelift_` provider resources, spacectl, `flowctl`",
+      "infraweave": "infraweave's own names, with no Spacelift alias: `INFRAWEAVE_*` run variables such as `INFRAWEAVE_API_TOKEN` and `INFRAWEAVE_OIDC_TOKEN`, `/mnt/workspace/infraweave.oidc`, `.infraweave/config.yml` and `.infraweave/workflow.yml`, `package infraweave` with `data.infraweave.result`, `infraweave_` provider resources, and `infraweavectl`. DV-027, DV-047, DV-056 and DV-061 apply the same rule to launcher settings, check names, delivery headers and metrics",
+      "why": "infraweave mirrors Spacelift's capabilities, not its interface; a Spacelift name would claim a compatibility infraweave does not offer",
+      "impact": "Hooks, policies, repositories and configurations rename the prefix: `SPACELIFT_` to `INFRAWEAVE_`, `.spacelift/` to `.infraweave/`, `package spacelift` to `package infraweave`, `spacelift_` to `infraweave_`",
+      "source": "[0001 Rationale](../research/decisions/0001-rest-first-spacelift-surface.md#rationale), [GLOSSARY](../../GLOSSARY.md)"
+    },
+    {
+      "id": "DV-103",
+      "group": "Expressions: decision 0024",
+      "spacelift": "Flows expressions are JavaScript, evaluated by agents in Node.js runtimes",
+      "infraweave": "Every expression a user writes, in Flows and in Deploy, is CEL, type-checked against its context and evaluated on the server in the `scheduler` process mode with a cost limit; agents never see an expression. Multi-step logic uses `cel.bind`, named expressions and the Transform block's steps form; there is no Script block",
+      "why": "Expressions are bounded, deterministic and checked while the user edits, and one language serves Deploy and Flows",
+      "impact": "Flow definitions from Spacelift import only after their expressions are rewritten in CEL",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale), [0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"
+    },
+    {
+      "id": "DV-104",
+      "group": "Expressions: decision 0024",
+      "spacelift": "`.spacelift/workflow.yml` commands are Go templates",
+      "infraweave": "`.infraweave/workflow.yml` commands are text templates (`${{ … }}`) rendered by the runner, with every interpolated value quoted for the shell",
+      "why": "A target or workspace name can never become shell syntax",
+      "impact": "Custom workflow files are rewritten in the text-template form",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-105",
+      "group": "Expressions: decision 0024",
+      "spacelift": "Environment variable values interpolate `${NAME}`",
+      "infraweave": "Interpolation is `${{ env.NAME }}`, rendered on the server; `${NAME}` is left to the shell",
+      "why": "One template form, and no ambiguity with shell syntax",
+      "impact": "Values that relied on `${NAME}` interpolation switch to `${{ env.NAME }}`",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-106",
+      "group": "Expressions: decision 0024",
+      "spacelift": "Blueprint and template context values for time and randomness change on each render",
+      "infraweave": "They are fixed per rendered change and stored with it, so re-rendering reproduces them",
+      "why": "Retries and replays give the same result",
+      "impact": "None for a single render; re-renders no longer drift",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-107",
+      "group": "Expressions: decision 0024",
+      "spacelift": "A stack dependency output reference copies an output as it is",
+      "infraweave": "An output reference may carry an expression that shapes the value",
+      "why": "Simple reshaping needs no extra stack",
+      "impact": "None; references without an expression behave as on Spacelift",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-108",
+      "group": "Console: decision 0023",
+      "spacelift": "Some entities carry the actions the caller may take, and the web interface decides the rest itself",
+      "infraweave": "Every resource the API returns carries `allowedActions`, computed by the code that enforces those actions: the caller's grants and, for a resource with a state machine such as a run, the transitions its state allows",
+      "why": "The console shows, hides or disables controls from that list alone and never decides a permission or a transition",
+      "impact": "An added read-only field; clients that ignore it are unaffected",
+      "source": "[0023 Decision](../research/decisions/0023-console.md#decision)"
+    },
+    {
+      "id": "DV-109",
+      "group": "Tenancy: decisions 0006, 0007, 0014 and 0021",
+      "spacelift": "The account is the top level: each holds its own plan, users, identity provider and spaces, and nothing groups accounts ([report 14](../research/reference/14-spaces-rbac-and-identity.md))",
+      "infraweave": "Root, organization, account, spaces. `root` is the installation's top node, which only operators act on and which holds nothing but organizations. An organization is a customer's agreement: its tier and grants, which every account inherits; its limits, pooled across its accounts, with account limits an organization admin may set below the pool; and its members and identity providers. An account is a separate business entity and the data boundary, as a Spacelift account is. Organization admins create and remove accounts and see usage across them through the served `Organization` tag, outside the parity surface, but read none of an account's stacks, runs, state or secrets. Nothing inherits from root or from the organization. The operator API keeps the installation-level actions: creating organizations, each with its first account, tiers, grants and the billing switch",
+      "why": "One agreement can cover separate business entities, such as two national arms of one company, whose data must stay apart while their tier, limits and people stay shared",
+      "impact": "None for an account's own clients, which see one account as on Spacelift; the `Organization` tag is new and no Spacelift client uses it",
+      "source": "[0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision), [0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#decision)"
+    },
+    {
+      "id": "DV-110",
+      "group": "Tenancy: decisions 0006, 0007, 0014 and 0021",
+      "spacelift": "Identity is per account: each account configures its own identity provider, MFA enforcement and users, so a person in two accounts is two users",
+      "infraweave": "Authentication happens at the organization: its identity providers, one or more, its MFA enforcement and its session lifetime. A person is one member of the organization, with roles per account; a role in one account grants nothing in another. Authorization happens per account: the account's `LOGIN` policies, evaluated on its top space, decide access and roles when the member enters it, and a member no account admits sees an empty account switcher. A session or API key works in one account at a time, API keys belong to an account, and organization keys reach only the `Organization` tag. A member counts once against `seats`; identities from two identity providers are two members until an organization admin links them, explicitly and after one sign-in through each provider, into one member ID, and nothing is linked by e-mail address",
+      "why": "One sign-in for every account of one agreement, and one seat per person; linking by e-mail would let whoever controls an address at one provider take over a member",
+      "impact": "SSO, SCIM and MFA settings configure the organization's identity, so a change applies to every account of the organization; scripts that manage users per account manage the account's role bindings instead",
+      "source": "[0006 Decision](../research/decisions/0006-authentication-and-tokens.md#decision), [0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision)"
+    },
+    {
+      "id": "DV-111",
+      "group": "Tenancy: decisions 0006, 0007, 0014 and 0021",
+      "spacelift": "A \"root admin\" is `space-admin` on the `root` space, and settings name \"non-root admins\" (`accountToggleAllowNonRootAdminSpaceCreation`, `/account/api-key-non-root-managers`); Spacelift Flows has its own \"organization admin\"",
+      "infraweave": "The account admin is `space-admin` on the account's top space, which the account's immutable slug addresses. Served names say \"admin\" and \"non-admin\": `allowNonAdminSpaceCreation`, `accountToggleAllowNonAdminSpaceCreation`, `apiKeyEnableNonAdminManagers` at `/account/api-key-non-admin-managers`, and `apiKeysManagedByNonAdmins`. Spacelift Flows' organization admin is the account admin too. No served space or name is `root`, which names only the installation's top node",
+      "why": "`root` is the installation's, and no account reaches it",
+      "impact": "Ports address the top space by the account's slug, bind admins there, and call the renamed operations",
+      "source": "[0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision), [0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision)"
+    },
+    {
+      "id": "DV-112",
+      "group": "Tenancy: decisions 0006, 0007, 0014 and 0021",
+      "spacelift": "`moduleShare` shares a module with any other Spacelift account",
+      "infraweave": "A share is the one exception to account isolation, and works only between accounts of the same organization; a share to an account of another organization answers `422` `validation-failed`. It exposes the module's fields and version downloads only, needs `module-sharing` in both accounts' entitlement, and its revocation hides the module while runs in flight finish",
+      "why": "The organization is the agreement boundary, and accounts of different customers never see each other",
+      "impact": "Shares to accounts outside the organization are refused",
+      "source": "[0014 Decision](../research/decisions/0014-module-and-provider-registry.md#decision), [0007 Decision](../research/decisions/0007-authorization-spaces-and-roles.md#decision)"
+    },
+    {
+      "id": "DV-113",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "`/mcp` clients authorize through Spacelift's OAuth discovery, client registration, authorization and token endpoints, whose details beyond the consent page and the redirect hosts are undocumented ([report 22](../research/reference/22-intelligence.md)); Spacelift Flows authorizes on an `oauth.` subdomain",
+      "infraweave": "A minimal built-in OAuth authorization server for `/mcp` and `/flows/mcp`: RFC 8414 metadata, RFC 7591 dynamic client registration, and authorization and token endpoints; PKCE with `S256` only; a consent page in the console, on the console session; access tokens lasting about an hour, with rotating refresh tokens; `mcp:read` and `mcp:write` scopes, narrowed by the member's normal permissions; redirect URIs limited to loopback plus the allowlist that account admins maintain",
+      "why": "A self-hosted installation has no external authorization server, and each rule is a stated default where Spacelift's are unpublished",
+      "impact": "MCP clients register and authorize as with any OAuth server; a client that sends `plain` PKCE or an unlisted redirect URI is refused",
+      "source": "[0006 Decision](../research/decisions/0006-authentication-and-tokens.md#decision), [0019 Decision](../research/decisions/0019-ai-provider-boundary.md#decision)"
+    },
+    {
+      "id": "DV-114",
+      "group": "Names: decision 0001 and the glossary",
+      "spacelift": "Served API names carry Spacelift's brand: `spaceliftIntelligenceEnabled`, `accountSetSpaceliftIntelligenceEnabled`, `spaceliftIntelligenceTermsAccepted`, `spaceliftIntelligenceTermsLatestVersion`, `spaceliftAwsAccountId`, the VCS provider `SPACELIFT`, the `SpaceliftMetrics` schema and the policy input `spacelift.*`",
+      "infraweave": "No served operationId, schema, property, enum value, header, environment variable, policy input key or description contains \"spacelift\". One rename table in decision 0001 maps each reference name to its infraweave name: `aiEnabled`, `accountSetAiEnabled`, `aiTermsAccepted`, `aiTermsLatestVersion`, `installationAwsAccountId`, `INFRAWEAVE`, `AccountMetrics`, `INFRAWEAVE_*` and `infraweave.*`, with DV-111's admin names. `TestUnitServedNames` checks every served bundle against the rule and the table",
+      "why": "DV-102's rule applied to the API itself: a Spacelift name would claim a compatibility infraweave does not offer, and one table keeps every rename findable",
+      "impact": "Ports rename these operations, fields, enum values and policy input keys as the table lists; `specref parity` treats each rename as a recorded divergence",
+      "source": "[0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision)"
+    }
+  ]
+}

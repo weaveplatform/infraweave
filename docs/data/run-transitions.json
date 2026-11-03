@@ -1,0 +1,474 @@
+{
+  "$schema": "schema/run-transitions.schema.json",
+  "records": [
+    {
+      "id": "T1",
+      "from": null,
+      "to": "QUEUED",
+      "runTypes": "all",
+      "cause": "A run is created by any route in section 1. A queued run waits for the stack lock, approval, upstream stacks or external dependencies",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#queued); [G] `runTrigger`, `taskCreate`, `runPromote`",
+      "source": "report 08"
+    },
+    {
+      "id": "T2",
+      "from": "QUEUED",
+      "to": "READY",
+      "runTypes": "all",
+      "cause": "Nothing blocks the run any more: no blocking run holds the stack lock, approval policies approved, upstream dependency runs finished, every external dependency is `FINISHED` or `SKIPPED`",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#queued), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy)",
+      "source": "report 08"
+    },
+    {
+      "id": "T3",
+      "from": "QUEUED",
+      "to": "DISCARDED",
+      "runTypes": "all",
+      "cause": "A user discards the queued run",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#queued)",
+      "source": "report 08"
+    },
+    {
+      "id": "T4",
+      "from": "QUEUED",
+      "to": "CANCELED",
+      "runTypes": "all",
+      "cause": "`runCancel` on a run that has not started [G]; a newer run's push policy `cancel` rule (same run type only, best effort) [D] [push policy](https://docs.spacelift.io/concepts/policy/push-policy#canceling-in-progress-runs); cancellation of a run pending approval [D]; proposed and test runs still queued or ready after two days [D] [RN 2026-09-01]; any run still waiting after 30 days [D] [RN 2026-09-17]; downstream runs when a dependency chain breaks [D] [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies#dependencies-overview)",
+      "evidence": "[G] [D] [RN]",
+      "source": "report 08"
+    },
+    {
+      "id": "T5",
+      "from": "QUEUED",
+      "to": "FAILED",
+      "runTypes": "all",
+      "cause": "An approval policy `reject` rule fires: the rules section says the run fails at once [D], while the review walkthrough on the same page describes **Reject** as canceling the run [D], so `CANCELED` is possible and the target is *(unverified)*; an external dependency is marked `FAILED` [D]",
+      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies)",
+      "source": "report 08"
+    },
+    {
+      "id": "T6",
+      "from": "QUEUED",
+      "to": "SKIPPED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "A dependent stack's run whose referenced upstream outputs did not change, unless `Trigger always` is set; also the documented example of runs after a failed upstream run",
+      "evidence": "[D] [stack dependencies](https://docs.spacelift.io/concepts/stack/stack-dependencies)",
+      "source": "report 08"
+    },
+    {
+      "id": "T7",
+      "from": "READY",
+      "to": "PREPARING",
+      "runTypes": "all",
+      "cause": "A worker in the stack's pool becomes available",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#ready)",
+      "source": "report 08"
+    },
+    {
+      "id": "T8",
+      "from": "READY",
+      "to": "DISCARDED",
+      "runTypes": "all",
+      "cause": "A user discards the ready run, including the bulk **Discard** on a worker pool queue",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#ready), [bulk actions](https://docs.spacelift.io/product/bulk-actions)",
+      "source": "report 08"
+    },
+    {
+      "id": "T9",
+      "from": "READY",
+      "to": "CANCELED",
+      "runTypes": "all",
+      "cause": "No worker picks the run up: two days for proposed and test runs, seven days for tracked runs, tasks and destroy runs; a push policy `cancel`; the 30-day rule",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01]",
+      "source": "report 08"
+    },
+    {
+      "id": "T10",
+      "from": "PREPARING",
+      "to": "INITIALIZING",
+      "runTypes": "all",
+      "cause": "The worker pulls the runner image and starts the container",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#preparing)",
+      "source": "report 08"
+    },
+    {
+      "id": "T11",
+      "from": "PREPARING",
+      "to": "FAILED",
+      "runTypes": "all",
+      "cause": "The handover between the server and the worker fails",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#preparing)",
+      "source": "report 08"
+    },
+    {
+      "id": "T12",
+      "from": "INITIALIZING",
+      "to": "PLANNING",
+      "runTypes": [
+        "PROPOSED",
+        "TRACKED",
+        "TESTING"
+      ],
+      "cause": "Initialization succeeds; the next state depends on the run type",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#initializing), [proposed](https://docs.spacelift.io/concepts/run/proposed#planning)",
+      "source": "report 08"
+    },
+    {
+      "id": "T13",
+      "from": "INITIALIZING",
+      "to": "PERFORMING",
+      "runTypes": [
+        "TASK"
+      ],
+      "cause": "Initialization succeeds. With `skipInitialization` the vendor initialization does not run; whether the run then still passes through `INITIALIZING` or goes from `PREPARING` straight to `PERFORMING` is *(unverified)*",
+      "evidence": "[D] [task](https://docs.spacelift.io/concepts/run/task#skipping-initialization); [G] `taskCreate`",
+      "source": "report 08"
+    },
+    {
+      "id": "T14",
+      "from": "INITIALIZING",
+      "to": "DESTROYING",
+      "runTypes": [
+        "DESTROY"
+      ],
+      "cause": "Initialization succeeds and the destroy command runs",
+      "evidence": "[I] from the `DESTROYING` description [G], the `destroy` workflow command used when a stack is deleted [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool), and the `before_destroy` hook being used during stack destruction [D] [stack settings](https://docs.spacelift.io/concepts/stack/stack-settings#customizing-workflow). Whether a destroy run plans and waits for confirmation first is *(unverified)*",
+      "source": "report 08"
+    },
+    {
+      "id": "T15",
+      "from": "INITIALIZING",
+      "to": "FAILED",
+      "runTypes": "all",
+      "cause": "A before-init hook or vendor initialization fails",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#initializing)",
+      "source": "report 08"
+    },
+    {
+      "id": "T16",
+      "from": "INITIALIZING",
+      "to": "STOPPED",
+      "runTypes": "all",
+      "cause": "A user sends a stop signal (`runStop`), which the worker may honour. A task cannot be stopped once it is `PERFORMING` [D]",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#stopped); [G] `runStop`",
+      "source": "report 08"
+    },
+    {
+      "id": "T17",
+      "from": "PLANNING",
+      "to": "FINISHED",
+      "runTypes": [
+        "PROPOSED",
+        "TRACKED"
+      ],
+      "cause": "A proposed run plans successfully with no approval policy hold; a tracked run's plan has no changes to resources or outputs (a no-op), unless force apply is set",
+      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria), [tracked](https://docs.spacelift.io/concepts/run/tracked#handling-no-op-changes); [G] `ForceApplyMode`",
+      "source": "report 08"
+    },
+    {
+      "id": "T18",
+      "from": "PLANNING",
+      "to": "FAILED",
+      "runTypes": [
+        "PROPOSED",
+        "TRACKED",
+        "TESTING"
+      ],
+      "cause": "Invalid code, provider API errors, a plan policy `deny`, or a worker crash",
+      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria)",
+      "source": "report 08"
+    },
+    {
+      "id": "T19",
+      "from": "PLANNING",
+      "to": "STOPPED",
+      "runTypes": [
+        "PROPOSED",
+        "TRACKED"
+      ],
+      "cause": "A user stops the run; Spacelift stops a proposed run when a newer commit is pushed to its branch",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#stopped), [GitHub](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations)",
+      "source": "report 08"
+    },
+    {
+      "id": "T20",
+      "from": "PLANNING",
+      "to": "UNCONFIRMED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The plan has changes and either autodeploy is off, a plan policy warns, or the stack is locked (locking disables autodeploy). The worker encrypts the workspace, uploads it to object storage and leaves the run",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [creating a stack](https://docs.spacelift.io/concepts/stack/creating-a-stack#lock-a-stack-in-spacelift)",
+      "source": "report 08"
+    },
+    {
+      "id": "T21",
+      "from": "PLANNING",
+      "to": "APPLYING",
+      "runTypes": [
+        "TRACKED",
+        "TESTING"
+      ],
+      "cause": "Autodeploy is on and no plan policy warns; a module test case always proceeds as if autodeployed. No second handover happens",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#approval-flow), [test case](https://docs.spacelift.io/concepts/run/test-case)",
+      "source": "report 08"
+    },
+    {
+      "id": "T22",
+      "from": "PLANNING",
+      "to": "PENDING_REVIEW",
+      "runTypes": [
+        "PROPOSED"
+      ],
+      "cause": "A plan policy returns a warning and approval policies are attached",
+      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review)",
+      "source": "report 08"
+    },
+    {
+      "id": "T23",
+      "from": "PENDING_REVIEW",
+      "to": "FINISHED",
+      "runTypes": [
+        "PROPOSED"
+      ],
+      "cause": "Every attached approval policy approves",
+      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review)",
+      "source": "report 08"
+    },
+    {
+      "id": "T24",
+      "from": "PENDING_REVIEW",
+      "to": "FAILED",
+      "runTypes": [
+        "PROPOSED"
+      ],
+      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5)",
+      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
+      "source": "report 08"
+    },
+    {
+      "id": "T25",
+      "from": "PENDING_REVIEW",
+      "to": "CANCELED",
+      "runTypes": [
+        "PROPOSED"
+      ],
+      "cause": "30 days after creation",
+      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#pending-review), [run](https://docs.spacelift.io/concepts/run#automatic-termination)",
+      "source": "report 08"
+    },
+    {
+      "id": "T26",
+      "from": "UNCONFIRMED",
+      "to": "CONFIRMED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "A user confirms (`runConfirm`), only after approval policies approve",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#review-a-run); [G] `runConfirm`",
+      "source": "report 08"
+    },
+    {
+      "id": "T27",
+      "from": "UNCONFIRMED",
+      "to": "DISCARDED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "A user discards (`runDiscard`, `runDiscardAll`); seven days without change; the 30-day rule",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard`",
+      "source": "report 08"
+    },
+    {
+      "id": "T28",
+      "from": "UNCONFIRMED",
+      "to": "REPLAN_REQUESTED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "A user picks resources from the plan and requests a targeted replan (`runTargetedReplan(targets)`)",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#targeted-replan); [G] `runTargetedReplan`, `REPLAN_REQUESTED`",
+      "source": "report 08"
+    },
+    {
+      "id": "T29",
+      "from": "UNCONFIRMED",
+      "to": "FAILED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5)",
+      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
+      "source": "report 08"
+    },
+    {
+      "id": "T30",
+      "from": "REPLAN_REQUESTED",
+      "to": "PREPARING_REPLAN",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The scheduler picks the run up and a worker restores the saved workspace",
+      "evidence": "[G] state descriptions; order [I] from them",
+      "source": "report 08"
+    },
+    {
+      "id": "T31",
+      "from": "REPLAN_REQUESTED",
+      "to": "FAILED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "Seven days without change: the saved workspace is kept for seven days only",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01]",
+      "source": "report 08"
+    },
+    {
+      "id": "T32",
+      "from": "PREPARING_REPLAN",
+      "to": "PLANNING",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The replan executes `plan` with the selected targets",
+      "evidence": "[I] from the `.Targets` plan template parameter, which the workflow tool fills \"during targeted replans\" [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool#how-does-it-work), and from `RunStateTransition.stateVersion`, which lets a state recur in one run [G]",
+      "source": "report 08"
+    },
+    {
+      "id": "T33",
+      "from": "CONFIRMED",
+      "to": "PREPARING_APPLY",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "A worker picks the confirmed run up; a second handover starts",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying); [G]",
+      "source": "report 08"
+    },
+    {
+      "id": "T34",
+      "from": "CONFIRMED",
+      "to": "FAILED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "Seven days without change, or the 30-day rule",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01]",
+      "source": "report 08"
+    },
+    {
+      "id": "T35",
+      "from": "PREPARING_APPLY",
+      "to": "APPLYING",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The handover succeeds",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying)",
+      "source": "report 08"
+    },
+    {
+      "id": "T36",
+      "from": "PREPARING_APPLY",
+      "to": "FAILED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The handover fails, for example the worker disappears",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying)",
+      "source": "report 08"
+    },
+    {
+      "id": "T37",
+      "from": "APPLYING",
+      "to": "FINISHED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The apply succeeds, or `SPACELIFT_SKIP_APPLYING=true` skips it",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#success-criteria)",
+      "source": "report 08"
+    },
+    {
+      "id": "T38",
+      "from": "APPLYING",
+      "to": "FAILED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The apply fails",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#success-criteria)",
+      "source": "report 08"
+    },
+    {
+      "id": "T39",
+      "from": "APPLYING",
+      "to": "DESTROYING",
+      "runTypes": [
+        "TESTING"
+      ],
+      "cause": "Always, whether the apply succeeded or failed",
+      "evidence": "[D] [test case](https://docs.spacelift.io/concepts/run/test-case)",
+      "source": "report 08"
+    },
+    {
+      "id": "T40",
+      "from": "DESTROYING",
+      "to": "FINISHED",
+      "runTypes": [
+        "TESTING",
+        "DESTROY"
+      ],
+      "cause": "The destroy succeeds and, for a test case, every earlier phase succeeded",
+      "evidence": "[D] [test case](https://docs.spacelift.io/concepts/run/test-case#success-criteria)",
+      "source": "report 08"
+    },
+    {
+      "id": "T41",
+      "from": "DESTROYING",
+      "to": "FAILED",
+      "runTypes": [
+        "TESTING",
+        "DESTROY"
+      ],
+      "cause": "The destroy fails, or a test case's apply had failed",
+      "evidence": "[D] [test case](https://docs.spacelift.io/concepts/run/test-case#success-criteria)",
+      "source": "report 08"
+    },
+    {
+      "id": "T42",
+      "from": "PERFORMING",
+      "to": "FINISHED",
+      "runTypes": [
+        "TASK"
+      ],
+      "cause": "The command exits 0",
+      "evidence": "[D] [task](https://docs.spacelift.io/concepts/run/task#performing-a-task)",
+      "source": "report 08"
+    },
+    {
+      "id": "T43",
+      "from": "PERFORMING",
+      "to": "FAILED",
+      "runTypes": [
+        "TASK"
+      ],
+      "cause": "The command exits non-zero",
+      "evidence": "[D] [task](https://docs.spacelift.io/concepts/run/task#performing-a-task)",
+      "source": "report 08"
+    },
+    {
+      "id": "T44",
+      "from": "PREPARING_REPLAN",
+      "to": "FAILED",
+      "runTypes": [
+        "TRACKED"
+      ],
+      "cause": "The handover between the server and the worker fails while the saved workspace is restored for a replan, as T11 and T36 fail the other preparing states",
+      "evidence": "[I] No Spacelift source describes this edge; decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md#the-state-machine-is-the-authority) adds it as the analogue of T11 and T36",
+      "source": "decision 0008"
+    }
+  ]
+}

@@ -23,7 +23,8 @@ Conventions in the trees:
 The tree is organised by ring first and by subject second. Ring 1,
 `internal/entity`, holds infraweave's enterprise rules as pure Go with no
 I/O: the run state machine with its 22 `RunState` values and the
-transition table of [report 08](../reference/08-run-lifecycle.md#3-transitions),
+transition table of the [run-transitions register](../../data/run-transitions.json),
+report 08's 43 transitions and decision 0008's T44,
 the seven priority levels, policy combination semantics per type, space
 reachability and inheritance, module and provider version numbering, the
 per-vendor command sets and change models, the Flows invocation status
@@ -572,7 +573,8 @@ commit together.
 ```text
 internal/entity/run/
   machine.go         Next(run, Event) (State, error): the only legal way to change state
-  transitions.go     the table of report 08: (type, from, event) → to, guard
+  transitions.go     report 08's 43 transitions and decision 0008's T44, from
+                     docs/data/run-transitions.json: (type, from, event) → to, guard
   guards.go          canConfirm, canDiscard, canRetry, canStop, blocking run rules
   priority.go        Tier(run) 1..7; Less(a, b) by tier then creation time
   timers.go          deadlines: 2 days (proposed, testing), 7 days (blocking), 30 days (all)
