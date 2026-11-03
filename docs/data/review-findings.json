@@ -373,7 +373,8 @@
       "files": [
         "docs/research/reference/03-deploy-core-api-inventory.md",
         "docs/research/reference/04-platform-api-inventory.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -392,7 +393,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Which `BillingTierFeature`, if any, gates OIDC single sign-on?"
           ]
@@ -470,12 +471,13 @@
       "files": [
         "docs/research/reference/03-deploy-core-api-inventory.md",
         "docs/research/reference/04-platform-api-inventory.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C16",
       "evidence": [
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "What do the Intent, template, role binding and managed-user operations do beyond their Bruno request names (102 Purpose cells)?"
           ]
@@ -487,11 +489,12 @@
       "subject": "03",
       "severity": "style",
       "finding": "section 1.1 credits the tables to generators in the research scratchpad, which is not committed",
-      "change": "Reworded: reports describe their method and name no uncommitted scripts (P12)",
+      "change": "Reworded: reports describe their method and name no uncommitted scripts (PD-12)",
       "status": "folded",
       "files": [
         "docs/research/reference/03-deploy-core-api-inventory.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -504,7 +507,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "the reports describe their method without naming scripts"
           ]
@@ -520,7 +523,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/01-spacelift-landscape.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C2",
       "evidence": [
@@ -531,7 +535,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Which HTTP status accompanies a GraphQL error: always 200, or 4xx and 5xx by cause?"
           ]
@@ -1086,7 +1090,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/06-spacectl-and-clients.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -1097,7 +1102,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Does SaaS answer `debugInfo` with an empty `selfHostedVersion`, although the schema calls the field invalid on SaaS?"
           ]
@@ -1198,7 +1203,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/06-spacectl-and-clients.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -1209,7 +1215,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "spacectl relies on the error for `runStack`"
           ]
@@ -1567,8 +1573,7 @@
           "file": "docs/research/reference/08-run-lifecycle.md",
           "present": [
             "inside one stack the lock order stands, so a raised tracked run still queues behind an earlier tracked run"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1635,8 +1640,7 @@
           "present": [
             "A drift detection run on a pool whose drift runs are disabled is created failed, with an explanatory note",
             "Whether it is created directly in `FAILED` is *(unverified)*"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1700,8 +1704,7 @@
           "file": "docs/research/reference/08-run-lifecycle.md",
           "present": [
             "`TESTING` [D]; `DESTROY`, from `StackState.DESTROYING`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1723,8 +1726,7 @@
             "the module runs its test cases on each commit ([module registry](https://docs.spacelift.io/vendors/terraform/module-registry))",
             "A test case marked `negative: true` in the module's `.spacelift/config.yml` is expected to fail",
             "exposed as `Run.expectFailure` [G]; which final state a negative test that fails reaches is *(unverified)*"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1744,8 +1746,7 @@
           "file": "docs/research/reference/08-run-lifecycle.md",
           "present": [
             "The handover in `PREPARING_REPLAN` fails, as T11 and T36 do for the other preparing states"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1766,8 +1767,7 @@
           "present": [
             "Over the cap, further drift runs are skipped until running ones finish",
             "means the `SKIPPED` state or no run at all is *(unverified)*"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1787,8 +1787,7 @@
           "present": [
             "a policy without the rule defers to one with it",
             "a value outside the three fails the evaluation, triggers no run and notifies"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1807,8 +1806,7 @@
           "file": "docs/research/reference/08-run-lifecycle.md",
           "present": [
             "A run that has not started [G]; that this means `QUEUED` and `READY` is [I] from the state descriptions"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1850,8 +1848,7 @@
           "file": "docs/research/reference/08-run-lifecycle.md",
           "present": [
             "`replan`, `promote`, `priority` (with the deprecated `prioritize` and `deprioritize`) and `task`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1872,8 +1869,7 @@
             "the run page also says in prose that nothing can follow `DISCARDED`, `FAILED`, `STOPPED` or `FINISHED`",
             "`CANCELED` and `SKIPPED` the table is the only docs statement",
             "`RunStateTransition.terminal` is the schema's per-transition flag"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1892,8 +1888,7 @@
           "file": "docs/research/reference/08-run-lifecycle.md",
           "present": [
             "the second is deprecated as no longer used [G] [RN 2026-10-20]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1914,8 +1909,7 @@
             "none: the provider never sends the top-level field; its `terraform_version` writes `vendorConfig.terraform.version`",
             "resource_stack.go#L1403",
             "never sends `isDisabled`, `skipVendorBinaryDownload` or the top-level `terraformVersion`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1935,8 +1929,7 @@
           "present": [
             "the commands of a hook list are joined with `&&` and each is wrapped in braces, so a newline inside one entry can hide a failing command",
             "a run that stops to wait for confirmation or approval resumes in a fresh container, so tools a hook installed earlier are gone"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1957,8 +1950,7 @@
           "present": [
             "The provider rejects an explicit empty string, and sends",
             "resource_stack.go#L535"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -1977,8 +1969,7 @@
           "file": "docs/research/reference/07-stack-model.md",
           "present": [
             "the public pool does so automatically, while a private pool needs `SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED=true` on its workers"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2049,8 +2040,7 @@
             "`KUBERNETES`, applied by the server: the provider attribute is optional and computed",
             "`OPENTOFU`, applied by the server (provider attribute optional and computed)",
             "`TERRAFORM_FOSS`, applied by the server (provider attribute optional and computed)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2070,8 +2060,7 @@
           "present": [
             "The Pulumi version and language SDK come from the runner image [D](https://docs.spacelift.io/concepts/stack/stack-settings)",
             "For Pulumi, the image selects the Pulumi version and language SDK."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2091,8 +2080,7 @@
           "present": [
             "`stack: ID!`, `config: ConfigInput!` / `stack: ID!`, `id: ID!`",
             "`ConfigElement!` / `ConfigElement`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2112,8 +2100,7 @@
           "present": [
             "for a context, its space and the child spaces [D](https://docs.spacelift.io/concepts/configuration/context)",
             "for a policy, every space that inherits from the policy's space [D](https://docs.spacelift.io/concepts/spaces)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2133,8 +2120,7 @@
           "present": [
             "`UNCONFIRMED` as needing attention, `FAILED` as failed",
             "and `FINISHED` as finished; `PREPARING`, `READY`, `DISCARDED` and `STOPPED` sit in no tab"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2155,8 +2141,7 @@
           "present": [
             "Passes `-concise` to plan (1.7+) and to apply and destroy (1.10+)",
             "the schema's description names plan, apply and refresh instead [G]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2176,8 +2161,7 @@
           "present": [
             "Creating, updating, deleting and re-slugging a stack each need an Admin-level action",
             "setting or syncing the tracked commit needs only Writer"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2197,8 +2181,7 @@
           "present": [
             "the docs list a per-vendor command to run as a task before deletion",
             "`pulumi destroy --non-interactive --yes`, and a label-selected `kubectl delete`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2218,8 +2201,7 @@
           "present": [
             "because pruning relies on `--prune`, a run fails when no YAML file is left",
             "a plugin stack label of `*` attaches it to every stack in the space"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2239,8 +2221,7 @@
           "present": [
             "Version or range [D](https://docs.spacelift.io/vendors/terragrunt/reference)",
             "latest available at creation [D](https://docs.spacelift.io/vendors/terragrunt/reference)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2303,8 +2284,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "push adds `current_version` (the latest version number, `0.0.0` before the first)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2324,8 +2304,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "the contract adds `queued_runs` (an integer) to each `stacks[]` entry"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2344,8 +2323,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "`commits[]` (oldest first, each a `commit` plus its own `affected_files`)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2364,8 +2342,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "plus the object of the event that fired (the contract gates each with `if`/`then`)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2384,8 +2361,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "the provider has no client-side check, so the API refuses it"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2404,8 +2380,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "proposes for every affected push or pull request (a push to the tracked branch matches both `track` and `propose`)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2425,8 +2400,7 @@
           "present": [
             "`policyDetach(id)` takes the attachment ID [S]",
             "resource_policy_attachment.go#L162-L169"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2468,8 +2442,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "`Policy.hasAttachedStacks` is a boolean that is true for either kind [G]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2489,8 +2462,7 @@
           "present": [
             "continuous-integration.yaml#L37-L38",
             "the workflow's own comment gives that reason"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2532,8 +2504,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "unreachable hosts appear under `ansible.dark` [D] <https://docs.spacelift.io/vendors/ansible/policies>"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2552,8 +2523,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "for initialization policies also `input.run.creator_session`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2572,8 +2542,7 @@
           "file": "docs/research/reference/09-policies.md",
           "present": [
             "`deny_admin` removes admin but keeps non-admin access. If no rule matches, the login is denied [D] login, [D] contract."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2616,8 +2585,7 @@
             "the autoscaler undrains a busy worker, leaves it alone and ends the scale-down",
             "keeps the worker drained, heartbeats the hook and re-checks later",
             "re-check delay starts at 2 seconds and doubles, capped at 15 minutes and at the hook timeout minus 60 seconds"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2636,8 +2604,7 @@
           "file": "docs/research/reference/10-workers-and-execution.md",
           "present": [
             "When true, the pool query reads `availableAt`; when false, a query without it is used, so the delay counts from worker registration (`createdAt`)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2658,8 +2625,7 @@
           "present": [
             "The environment page defines the same prefixes by stage: `ro_` reaches every read stage (everything except applying) and `wo_` only the applying stage",
             "extra mounts follow the same stage split is [I] from the shared prefix names"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2700,8 +2666,7 @@
           "file": "docs/research/reference/10-workers-and-execution.md",
           "present": [
             "raises a plan-time warning, not an error, that points to `env_vars` for secrets"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2721,8 +2686,7 @@
           "present": [
             "the account default for public or private pools, then the vendor default image",
             "The runtime configuration page states this order directly"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2742,8 +2706,7 @@
           "present": [
             "Broker endpoint carried in the token as `broker.endpoint`",
             "[S] [saas.tftpl][ec2-ud]; [D] [worker-pools][wp]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2765,8 +2728,7 @@
             "on self-hosted since v6.4.0",
             "worker pools page gives the same 2027-03-30 date",
             "the self-hosted v7.1.0 changelog deprecates MQTT, including the built-in broker, without naming the release that removes it"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2785,8 +2747,7 @@
           "file": "docs/research/reference/10-workers-and-execution.md",
           "present": [
             "after an upgrade, a pool keeps a stored `commsProtocol`, and a pool with no stored value switches to `poll`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2806,8 +2767,7 @@
           "present": [
             "CEL rules forbid `maxRuns` when true and require it when false",
             "min 0; required unless `disabled`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2826,8 +2786,7 @@
           "file": "docs/research/reference/10-workers-and-execution.md",
           "present": [
             "the `gcp` target builds on `gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine` and the FIPS targets on `ghcr.io/spacelift-io/alpine-fips`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2846,8 +2805,7 @@
           "file": "docs/research/reference/10-workers-and-execution.md",
           "present": [
             "detach: `intentProject: ID!` only"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2866,8 +2824,7 @@
           "file": "docs/research/reference/10-workers-and-execution.md",
           "present": [
             "desired capacity is above the group minimum, reset desired capacity to the target value"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2888,8 +2845,7 @@
             "Azure `vmss_name` and `instance_id` [S] [azure_controller.go][as-az]",
             "internal/azure_controller.go#L441-L442",
             "internal/gcp_controller.go#L349-L350"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2910,8 +2866,7 @@
             "internal/state.go#L54-L273",
             "autoscaler/autoscaler.tf#L62-L176",
             "aws.pkr.hcl#L101-L183"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/reference/10-workers-and-execution.md",
@@ -2919,8 +2874,7 @@
             "templates/statefulset.yaml#L69-L87",
             "variables.tf#L211-L215",
             "variables.tf#L380-L421"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2941,8 +2895,7 @@
             "An IoT topic rule selects every message on `<ns>/writeonly/#`, adds a timestamp",
             "the MIT module hard-codes the `spacelift` namespace in its rule",
             "[S] [iot.tf][sh-iot]; [D] [message-queues][sh-mq]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2961,8 +2914,7 @@
           "file": "docs/research/reference/13-configuration.md",
           "present": [
             "The write-only `value_wo` and `content_wo` cannot be `ForceNew`; a change to them takes effect only through the `ForceNew` `value_wo_version` or `content_wo_version`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -2981,8 +2933,7 @@
           "file": "docs/research/reference/13-configuration.md",
           "present": [
             "it works between variables defined in different places, contexts included"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3002,8 +2953,7 @@
           "present": [
             "Refused [D](https://docs.spacelift.io/concepts/configuration/environment)",
             "Runs and tasks only [D](https://docs.spacelift.io/concepts/configuration/environment)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3022,8 +2972,7 @@
           "file": "docs/research/reference/13-configuration.md",
           "present": [
             "yet its own priority section ranks context hooks too"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3043,8 +2992,7 @@
           "present": [
             "It is valid for 3 hours, and only while its run is in `PLANNING`, `APPLYING` or `PERFORMING`.",
             "it can manage stacks, contexts, integrations and configuration, but cannot read Terraform state, runs, tasks or their logs"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3065,8 +3013,7 @@
           "present": [
             "One sentence of the Terraform provider page says the API token goes to runs of stacks that have roles attached",
             "Every run receiving a token, narrowed by the stack's roles, is the reading both pages support [I]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3086,8 +3033,7 @@
           "present": [
             "Version 2 files; in version 1 files rank 3 outranks it",
             "Highest in both file versions"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3107,8 +3053,7 @@
           "present": [
             "the configuration page itself has one context rank and does not separate auto-attached contexts",
             "A stack labelled `feature:ignore_runtime_config` ignores the runtime file, so ranks 1 and 2 drop out for it"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3127,8 +3072,7 @@
           "file": "docs/research/reference/13-configuration.md",
           "present": [
             "carries either a `yaml` document or the fields `environment` (`[EnvVarInput!]`), `projectRoot`, `runnerImage`, `gitSparseCheckoutPaths` and the eleven hook lists, not both"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3147,8 +3091,7 @@
           "file": "docs/research/reference/13-configuration.md",
           "present": [
             "and contexts contribute only variables, files and hooks [D](https://docs.spacelift.io/concepts/configuration/context)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3191,8 +3134,7 @@
           "file": "docs/research/reference/16-state-management.md",
           "present": [
             "resource_stack.go#L763-L768"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3211,8 +3153,7 @@
           "file": "docs/research/reference/16-state-management.md",
           "present": [
             "Its description says it takes precedence over `manage_state` [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L826-L831)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3231,8 +3172,7 @@
           "file": "docs/research/reference/16-state-management.md",
           "present": [
             "The provider checks this only for `terraform_external_state_access`, not for `opentofu.external_state_access`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3251,8 +3191,7 @@
           "file": "docs/research/reference/16-state-management.md",
           "present": [
             "are built on the states bucket's object versions [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/reference-architecture/reference/object-storage)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3272,8 +3211,7 @@
           "present": [
             "State history and rollback (section 6) are built on",
             "## 6. State history and rollback"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3294,8 +3232,7 @@
             "including listing versions and reading or copying a given version, because state history and rollback rely on it",
             "pre-signed `GET` and `PUT` URLs signed with SigV4",
             "lifecycle rules for the limited-retention buckets, since Spacelift deletes no expired objects itself"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3316,8 +3253,7 @@
           "present": [
             "a public access block (on unless `enable_public_access_block_on_s3` is false)",
             "and gives it no lifecycle rule"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3336,8 +3272,7 @@
           "file": "docs/research/reference/16-state-management.md",
           "present": [
             "so Terragrunt external dependencies that read a state outside the stack do not work"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3358,8 +3293,7 @@
           "present": [
             "the queries `searchTofuWorkspaces(input: SearchInput!)` and `searchTofuWorkspacesSuggestions`",
             "the lock action has no matching mutation, so it presumably governs locks taken through the backend [I]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3381,8 +3315,7 @@
             "each run records the value it used in `RuntimeConfig.terragrunt.useStateManagement: Boolean!`",
             "Whether a run can flip state management this way, against the creation-only rule below, is *(unverified)*",
             "the runtime file cannot override OpenTofu external state access, which always comes from the stack"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3402,8 +3335,7 @@
           "present": [
             "Migrating a Terraform stack that uses the OpenTofu workflow tool to the OpenTofu vendor carries `external_state_access_enabled` over",
             "CDKTF stacks under managed state must remove the local backend CDKTF adds"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -3412,7 +3344,7 @@
       "subject": "11",
       "severity": "wrong",
       "finding": "sections 14.5 and 14.6 said the vcs-agent applies an allowlist with `--use-allowlist` and a blocklist with `--blocklist-path`; at `553aba3b3e54` both flags are defined but absent from the command's `Flags` list, so the agent always runs the empty blocklist, validates nothing, and ignores `--allowed-projects`",
-      "change": "14.6 and both flag rows rewritten, citing `main.go` L140-L153; urfave/cli's lookup behaviour is inferred; open (C78, P4)",
+      "change": "14.6 and both flag rows rewritten, citing `main.go` L140-L153; urfave/cli's lookup behaviour is inferred; open (C78, PD-04)",
       "status": "open",
       "files": [
         "docs/research/reference/11-vcs-integrations.md"
@@ -3671,7 +3603,7 @@
         {
           "file": "docs/research/reference/12-cloud-integrations-and-oidc.md",
           "present": [
-            "(`space`, optional on create [G]; the space used when it is omitted is *(unverified)*)"
+            "(`space`, optional on create [G]; the space used when it is omitted is *(unverified)* (C87))"
           ]
         }
       ]
@@ -4693,7 +4625,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/15-module-and-provider-registry.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C133",
       "evidence": [
@@ -4705,7 +4638,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "`FAILED` version or a yanked one"
           ]
@@ -4820,7 +4753,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/18-scheduling-drift-dependencies.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C156",
       "evidence": [
@@ -4831,7 +4765,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "such as names, `@daily`, `?`, seconds or stepped ranges"
           ]
@@ -4847,7 +4781,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/18-scheduling-drift-dependencies.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C153",
       "evidence": [
@@ -4855,11 +4790,11 @@
           "file": "docs/research/reference/18-scheduling-drift-dependencies.md",
           "present": [
             "is required by the schema [G], but the UI marks the name",
-            "What the API does with an empty name is *(unverified)*."
+            "What the API does with an empty name is *(unverified)* (C153)."
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "What does the API do with an empty `ScheduledRunInput.name`"
           ]
@@ -4875,7 +4810,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/18-scheduling-drift-dependencies.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C163",
       "evidence": [
@@ -4887,7 +4823,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Which stack states does `ignoreState` admit"
           ]
@@ -4967,7 +4903,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/17-blueprints-and-templates.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C140",
       "evidence": [
@@ -4979,7 +4916,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Does the service reject a blueprint body with neither or both of `stack` and `stacks`?"
           ]
@@ -5205,7 +5142,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/21-resources-scans-search.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C200",
       "evidence": [
@@ -5217,7 +5155,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Does the server honour `SearchInput.orderBy`"
           ]
@@ -5375,7 +5313,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/20-vendors.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C185",
       "evidence": [
@@ -5386,7 +5325,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "How does the native Terragrunt vendor supply `terragrunt` at the chosen `terragruntVersion`?"
           ]
@@ -5655,7 +5594,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/20-vendors.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C187",
       "evidence": [
@@ -5667,7 +5607,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Which API does the single-stack OpenTofu migration banner call"
           ]
@@ -5886,7 +5826,8 @@
       "status": "open",
       "files": [
         "docs/research/reference/25-other-integrations.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "question": "C254",
       "evidence": [
@@ -5898,7 +5839,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "How are parameter values substituted at install"
           ]
@@ -6140,7 +6081,7 @@
       "subject": "24",
       "severity": "copied",
       "finding": "section 14.2 quoted 299 variable descriptions from MIT module repositories that no `NOTICE` covers",
-      "change": "Description column dropped; a note points to the linked lines (P13)",
+      "change": "Description column dropped; a note points to the linked lines (PD-13)",
       "status": "folded",
       "files": [
         "docs/research/reference/24-self-hosted-reference.md"
@@ -6512,7 +6453,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/26-scope-and-tiers.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -6522,7 +6464,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "but not what `tier` and `tierFeatures` return there"
           ]
@@ -6538,7 +6480,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/26-scope-and-tiers.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -6548,7 +6491,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "lists it among the features self-hosted lacks, and report 26 now cites it"
           ]
@@ -6564,7 +6507,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/26-scope-and-tiers.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -6576,7 +6520,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "contexts on Free (the pricing comparison table starts at Starter+)"
           ]
@@ -6592,7 +6536,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/26-scope-and-tiers.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -6604,7 +6549,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Only fragments are published: Starter has a seat limit and one private worker, and no session listing"
           ]
@@ -7015,7 +6960,8 @@
       "status": "folded",
       "files": [
         "docs/research/reference/28-data-model.md",
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
@@ -7025,7 +6971,7 @@
           ]
         },
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "Can one run be listed under several pull requests?"
           ]
@@ -7267,8 +7213,8 @@
       "id": "RES-08.12",
       "subject": "0011",
       "severity": "style",
-      "finding": "grammar \"fixed by P9\", a question",
-      "change": "\"0022's answer to P9\"",
+      "finding": "grammar \"fixed by PD-09\", a question",
+      "change": "\"0022's answer to PD-09\"",
       "status": "folded",
       "files": [
         "docs/research/decisions/0011-persistent-work-queue.md"
@@ -7277,7 +7223,7 @@
         {
           "file": "docs/research/decisions/0011-persistent-work-queue.md",
           "present": [
-            "The grammar is small and fixed by 0022's answer to P9"
+            "The grammar is small and fixed by 0022's answer to PD-09"
           ],
           "absent": [
             "fixed by P9"
@@ -9303,8 +9249,7 @@
           "present": [
             "the longest chain of **Depends on** edges (24 edges)",
             "the registry chain (P12 → P13 → P17 → P17b) and the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9323,8 +9268,7 @@
             "the `blob.delete` job and the `blob.expire` periodic task on P2c's queue and ticker",
             "P2c comes before P2b, because object storage registers `blob.delete` and `blob.expire` on the queue and `secrets rotate` enqueues `secrets.reseal`",
             "Periodic tasks: `queue.prune` and `idempotency.purge`."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9362,8 +9306,7 @@
           "present": [
             "**Depends on:** P4, P3b, P5.",
             "P4b follows P5, because stack role bindings bind a stack"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9381,8 +9324,7 @@
           "present": [
             "**Depends on:** P7, P6, P4, P2b.",
             "P8 needs both, because the run handover carries the resolved environment"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9399,8 +9341,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "drift runs at priority levels 6 and 7 on private pools, each pool's drift run limits enforced in the claim"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9417,8 +9358,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "`modulePolicyAttachment`, `moduleAttachableAwsIntegrations`,"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9436,8 +9376,7 @@
           "present": [
             "**Depends on:** P13, P15.",
             "P13 --> P17[P17 Module registry]"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9456,8 +9395,7 @@
             "Their `403` denial scenarios need P4's authorizer, so P4's exit holds them to decision 0016's evidence rule.",
             "P4b's exit holds them to decision 0016's evidence rule once the authorizer and bindings exist",
             "and P3b's operations with their `403` denial scenarios, meet decision 0016's evidence rule"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9475,8 +9413,7 @@
           "present": [
             "Viewer `implemented` and API Keys, Auth and Sessions and Security Keys `partial`",
             "Roles, the binding and grant-view operations of Spaces, API Keys and `stackRoleBindings`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9493,8 +9430,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "Managed Users less its role-binding reads (P4b) and group integrations (P18)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9511,8 +9447,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "Every Search Suggestions operation lands with the search it completes, in that search's phase."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9529,8 +9464,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "Terragrunt, Pulumi, CloudFormation and Kubernetes each run a tracked run to `FINISHED` in acceptance."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9548,8 +9482,7 @@
           "present": [
             "P14, P15, P16, P17b and P18b",
             "P19b, P21 and P22b"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9588,8 +9521,7 @@
           "present": [
             "Slack channel access rules on managed user groups: `managedUserGroupIntegrations`,",
             "IdP groups at login map onto each account's managed user groups (P3b)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9618,8 +9550,7 @@
           "file": "docs/research/decisions/0001-rest-first-spacelift-surface.md",
           "present": [
             "The Terraform and OpenTofu provider lives in its own repository, `weaveplatform/terraform-provider-infraweave`, because the"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9638,8 +9569,7 @@
             "These have no decision. The plan builds what does not depend on the answer and invents no answer.",
             "P28 task 3 amends report 26",
             "amend the report 26 cells decision 0021's constraints name (section 7.8's MQTT transport, section 7.7's legacy AWS mutations)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9657,8 +9587,7 @@
           "present": [
             "`admin` field: a body that sets it answers `400 invalid-request`",
             "`space-admin` binding on the account's top space, which reads `false` until P4b serves API key bindings"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9675,8 +9604,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "Captures C17, C39, C42 and C104 replay once recorded."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9713,8 +9641,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "`spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9787,8 +9714,7 @@
           "file": "docs/research/decisions/0001-rest-first-spacelift-surface.md",
           "present": [
             "The Terraform and OpenTofu provider lives in its own repository, `weaveplatform/terraform-provider-infraweave`, because the"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9838,8 +9764,7 @@
             "flat: tool version catalogue (P5, P20)",
             "(report 30 captures; P1c)",
             "marks the plan phase that creates a package or directory, as the [plan](plan.md) assigns it"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9858,15 +9783,13 @@
             "SearchInput predicate, order and cursor types (P5)",
             "compiles SearchInput predicates to SQL under Reachable (P5)",
             "merge-patch and If-Match for strict handlers (P5)"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/implementation/repo-layout.md",
           "present": [
             "flat: managed entities, scans, generic search (P22, P22b)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9885,8 +9808,7 @@
             "helm/infraweave/ chart for serve and scheduler, one Deployment per process mode",
             "helm/infraweave-workers/ chart for infraweave launcher",
             "First-party Flows apps are OCI images of their own, one per app version"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9904,8 +9826,7 @@
           "present": [
             "From P1b: forbidigo rejects `time.Sleep` in `_test.go` files",
             "From P24b: one `cli_<area>.feature` per capability row"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9943,8 +9864,7 @@
           "present": [
             "vcs-agent, flows-agent, migrate up and status, auth, secrets, version",
             "`secrets generate-kek`, `secrets rewrap`, `secrets rotate` (decision 0013), then exit"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9963,8 +9883,7 @@
             "compose.yaml: one infraweave all and one launcher",
             "infraweave/ (serve, scheduler) and infraweave-workers/ (launcher)",
             "static checks of every deployment root"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -9982,8 +9901,7 @@
           "present": [
             "A managed user group: calls `managedUserGroup` and `managedUserGroupDelete`",
             "Logins map IdP groups onto it from P23"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10002,8 +9920,7 @@
             "A Terraform row is `implemented` only when all of them are done",
             "Also reads `tier` (P3b) and `installationAwsAccountId` (P15)",
             "Also calls `runDiscardAll` (Runs, P10)"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/implementation/capability-roadmap.md",
@@ -10011,8 +9928,7 @@
             "Also reads `defaultPublicWorkerPoolRunnerImage` (P14)",
             "Also calls `stateUploadUrl` (P11) and `stackMigrateVendor` (P20b)",
             "Also reads `terragruntVersions` and `kubectlVersions` (P20)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10029,8 +9945,7 @@
           "file": "docs/implementation/capability-roadmap.md",
           "present": [
             "P4b (`stackRoleBindings`), P6, P7"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10069,8 +9984,7 @@
           "present": [
             "A `space-admin` role binding on the account's top space",
             "Decision 0006 rejects the field, and the key's `admin` reads the binding"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10106,8 +10020,7 @@
           "file": "docs/research/decisions/0013-secrets-at-rest.md",
           "present": [
             "Spacelift documents no minimum length for masked values; masking `1` or `on` would destroy the log and protect nothing."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10132,8 +10045,7 @@
           "file": "docs/research/decisions/0022-api-errors-and-update-semantics.md",
           "present": [
             "each is a deliberate departure until then"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10328,37 +10240,32 @@
           "file": "docs/research/decisions/0005-persistence-postgresql.md",
           "present": [
             "any `scheduler` replica takes any job (process modes are decision 0004's)"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0011-persistent-work-queue.md",
           "present": [
             "with the `scheduler` process mode (decision 0004)"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0014-module-and-provider-registry.md",
           "present": [
             "The protocol is served by the `serve` process mode ([0004](0004-repository-architecture.md))"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0017-observability-and-health.md",
           "present": [
             "worker hosts run `infraweave launcher` ([0004](0004-repository-architecture.md))"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0020-reference-deployments-and-packaging.md",
           "present": [
             "how the process modes of decision 0004 are deployed",
             "Decision 0004 owns the code structure and the process modes."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10452,15 +10359,13 @@
           "file": "docs/research/decisions/0008-run-execution-and-worker-protocol.md",
           "present": [
             "kept in `worker_pool_ca` and sealed by"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0013-secrets-at-rest.md",
           "present": [
             "`private_key_sealed`, the installation's pool CA"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10480,8 +10385,7 @@
             "`break_glass`, `operator`, `anonymous`",
             "in the installation's configuration, `auth.operator.keys`",
             "it is exchanged at `POST /auth/token` for an API token whose audience is the operator API"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10499,9 +10403,8 @@
           "file": "docs/research/decisions/0007-authorization-spaces-and-roles.md",
           "present": [
             "and sets `features.disabled` in the installation's configuration",
-            "decision 0021's (P2), which does not serve the type"
-          ],
-          "absent": []
+            "decision 0021's (PD-02), which does not serve the type"
+          ]
         }
       ]
     },
@@ -10572,8 +10475,7 @@
             "completes as `succeeded` with outcome `skipped`",
             "counted in `infraweave.features.skipped`, and is not retried",
             "`state.retention`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10581,7 +10483,7 @@
       "id": "DES-07.10",
       "severity": "wrong",
       "finding": "0021's S1 examples named the stack `administrative` flag and `WebhooksIntegration.secret`, which 0007, 0022 and 0015 serve",
-      "change": "Moved to the served-and-ignored rows of 0021's P2 table and of the roadmap's deprecated-but-served table",
+      "change": "Moved to the served-and-ignored rows of 0021's PD-02 table and of the roadmap's deprecated-but-served table",
       "status": "folded",
       "files": [
         "docs/research/decisions/0021-capability-scope-and-supersession.md",
@@ -10593,16 +10495,14 @@
           "present": [
             "Served, marked deprecated and ignored: `StackInput.administrative` is accepted and reads back `false`",
             "Served, marked deprecated, always an empty string"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/implementation/capability-roadmap.md",
           "present": [
             "accepted and ignored, it reads back `false`",
             "Live in the schema and no longer used: always an empty string"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10620,8 +10520,7 @@
           "file": "docs/research/decisions/0015-events-notifications-webhooks-audit.md",
           "present": [
             "or when the process runs with `GODEBUG=fips140=only`, which refuses SHA-1"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10642,15 +10541,13 @@
             "No driver computes or sends MD5, because `GODEBUG=fips140=only` refuses it",
             "One installation hosts many accounts ([0007](0007-authorization-spaces-and-roles.md))",
             "A Flows organization, the top of Spacelift Flows' hierarchy, is an infraweave account"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0004-repository-architecture.md",
           "present": [
             "A Flows organization is an infraweave account"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10670,8 +10567,7 @@
             "`infraweave_events`",
             "wakes server-sent-event streams",
             "wakes run log streams"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10709,7 +10605,7 @@
         {
           "file": "docs/research/decisions/0012-vcs-integration-model.md",
           "present": [
-            "It builds `BLOB` and `ORIGIN` as schema-only interfaces (P3)",
+            "It builds `BLOB` and `ORIGIN` as schema-only interfaces (PD-03)",
             "A `/infraweave` comment that proposes bypasses it."
           ],
           "absent": [
@@ -10756,8 +10652,7 @@
             "Only console routes fall back: a path under a prefix that another handler owns",
             "`/worker/`, `/vcs-agent/`, `/webhooks/`, `/downloads/`, `/blobs/`",
             "answers that handler's `404`, never `index.html`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10777,8 +10672,7 @@
             "Steps that drive the API use the SDK, `pkg/sdk`",
             "the Playwright journeys against a real `infraweave all` built with `-cover`",
             "`make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10798,8 +10692,7 @@
             "the hand-written layer over `pkg/client/<spec>` that every Go client uses",
             "The Go SDK for Flows apps ([0018](0018-flows-runtime.md))",
             "The console's TypeScript source ([0023](0023-console.md))"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0004-repository-architecture.md",
@@ -10831,8 +10724,7 @@
             "The key is an opaque string of 1 to 255 characters",
             "A value outside 1 to 100 is",
             "Keys, buckets and the operator switch live behind interfaces"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10864,8 +10756,7 @@
           "present": [
             "0005's `modules` store, under `<account>/<module ulid>/<ULID>`",
             "Captures C129 to C138 may change the choices marked as infraweave's"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10921,15 +10812,13 @@
             "Every series also carries an `account` label, the account's slug",
             "`infraweave.queue.claim_latency`",
             "worker hosts run `infraweave launcher`"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/data/deviations.json",
           "present": [
             "`account` and `organization` labels, the account's slug and its organization's slug, on every series"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10948,8 +10837,7 @@
           "present": [
             "`registry-file-url`",
             "Tokens of the registry's `proxy` file URLs"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -10990,8 +10878,7 @@
             "five named `platform` packages, among them `platform/seal`, because the runner seals workspaces",
             "and `platform/expr`, because it renders workflow command templates",
             "the sealed formats (`platform/seal`)"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11011,8 +10898,7 @@
             "`internal/platform/expr`, with no business rule, which the server and the runner both use",
             "collects each domain's surfaces through an assembly `Surfaces()` method and so imports no domain",
             "`internal/features`, at the bottom of the domain graph"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11058,22 +10944,19 @@
             "Deploy and Flows share the envelope, the emit path and the kind registry in `internal/platform/outbox`",
             "The `events` domain holds only the sinks",
             "Flows triggers are a fan-out consumer inside `flows`, so `events` never imports `flows`."
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0004-repository-architecture.md",
           "present": [
             "`internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox`"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/research/decisions/0018-flows-runtime.md",
           "present": [
             "Deploy events reach flows natively: the fan-out consumer inside `flows`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11233,8 +11116,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "`flows_engine.feature` (`@postgres`, `@flows-agent`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11253,8 +11135,7 @@
           "present": [
             "## P24c: Console",
             "**Depends on:** P24b, P18d, P25b."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11274,16 +11155,14 @@
             "It lands in P1c, where every acceptance step drives the API through it, and gains the token exchange in P3.",
             "`infraweavectl` starts in P3b with its `operator` group",
             "`infraweavectl`, infraweave's own CLI, completes over `pkg/sdk`"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/implementation/plan.md",
           "present": [
             "1. The provider over `pkg/sdk`",
             "`pkg/sdk` gains the exchange and exchanges again before `validUntil`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11303,15 +11182,13 @@
             "The object store emulators, the `fips-only` job and the scheduled cloud job land in P2b",
             "for `s3` on RustFS, `gcs` on fake-gcs-server and `azureblob` on Azurite",
             "6. CI: `postgres-next` runs `storetest`"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/implementation/plan.md",
           "present": [
             "the scheduled `objectstore-cloud` job runs `objectstoretest`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11365,8 +11242,7 @@
             "a worker unseen for `worker.offline_after` (3 minutes) is `OFFLINE`",
             "worker stays offline past `run.lost_after` (60 minutes) as a lost run",
             "Records DV-025 and DV-092."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11487,8 +11363,7 @@
             "with `${{ env.NAME }}` text templates rendered in `serve` at the run handover in P8 and `${NAME}` left to the shell",
             "before workflow files (P10), notification text (P18), templates (P21) and Flows (P18c) need them",
             "An output reference may carry an expression over `value` and `outputs`"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11531,8 +11406,7 @@
             "is a text template over `event` and `logs(phase)`",
             "policy `type: NOTIFICATION`. Records DV-097.",
             "and `infraweave_logs`; polling stays. Records DV-095."
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11632,8 +11506,7 @@
           "present": [
             "Every resource the API returns carries `allowedActions`, computed by the evaluator that enforces them",
             "`allowedActions` include only the transitions its state allows"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/data/deviations.json",
@@ -11670,8 +11543,7 @@
           "present": [
             "runs in flight on the public worker pool; a run beyond it waits",
             "### Deprecated but served"
-          ],
-          "absent": []
+          ]
         }
       ]
     },
@@ -11729,8 +11601,7 @@
             "From P24c: the `console` job runs `npm ci`, `tsc --strict`",
             "From P18d: `buf breaking` against the last release's `api/proto/flows/app/v1/`",
             "A behaviour change amends the decision record it rests on in place"
-          ],
-          "absent": []
+          ]
         },
         {
           "file": "docs/implementation/definition-of-done.md",
@@ -12667,11 +12538,12 @@
       "change": "Their Blocks cells say what the capture is still for",
       "status": "folded",
       "files": [
-        "docs/research/reference/30-open-questions.md"
+        "docs/research/reference/30-open-questions.md",
+        "docs/data/open-questions.json"
       ],
       "evidence": [
         {
-          "file": "docs/research/reference/30-open-questions.md",
+          "file": "docs/data/open-questions.json",
           "present": [
             "parity evidence only: decision",
             "makes the session lifetime an organization setting, so the capture records Spacelift's value and nothing waits on it",
