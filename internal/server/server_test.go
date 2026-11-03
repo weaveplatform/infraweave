@@ -34,6 +34,16 @@ func TestUnitValidate(t *testing.T) {
 			func(c *Config) { c.Shutdown.Timeout = 0 },
 			"server.shutdown.timeout must be positive",
 		},
+		{
+			"empty bucket",
+			func(c *Config) { c.RateLimit.Expensive.Burst = 0 },
+			"server.rate_limit.expensive: rate must be positive",
+		},
+		{
+			"no key lifetime",
+			func(c *Config) { c.Idempotency.TTL = 0 },
+			"server.idempotency.ttl must be positive",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -72,12 +72,43 @@ phase.
 | `server.listen` | `--listen` | `INFRAWEAVE_SERVER_LISTEN` | `:8080` |
 | `server.admin_listen` | `--admin-listen` | `INFRAWEAVE_SERVER_ADMIN_LISTEN` | `:9090` |
 | `server.shutdown.timeout` | `--shutdown-timeout` | `INFRAWEAVE_SERVER_SHUTDOWN_TIMEOUT` | `30s` |
+| `server.rate_limit.standard.rate` | | `INFRAWEAVE_SERVER_RATE_LIMIT_STANDARD_RATE` | `10` (per second) |
+| `server.rate_limit.standard.burst` | | `INFRAWEAVE_SERVER_RATE_LIMIT_STANDARD_BURST` | `100` |
+| `server.rate_limit.expensive.rate` | | `INFRAWEAVE_SERVER_RATE_LIMIT_EXPENSIVE_RATE` | `1` (per second) |
+| `server.rate_limit.expensive.burst` | | `INFRAWEAVE_SERVER_RATE_LIMIT_EXPENSIVE_BURST` | `10` |
+| `server.rate_limit.disabled_callers` | | `INFRAWEAVE_SERVER_RATE_LIMIT_DISABLED_CALLERS` (comma-separated) | none |
+| `server.idempotency.ttl` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_TTL` | `24h` |
 
 A flag beats the environment, which beats the YAML file named by
 `--config`. The file is strict: an unknown key fails startup. On `SIGINT`
 or `SIGTERM` the server stops accepting connections and drains in-flight
 requests for up to `server.shutdown.timeout`. `infraweave version` prints
 the build's version, commit and date.
+
+Every request on the API listener applies
+[decision 0003](docs/research/decisions/0003-api-conventions.md)'s
+controls, whether its operation is implemented or a stub:
+
+- **Rate limits.** Each caller has a token bucket per cost class: the
+  operation's `x-infraweave-cost`, `standard` or `expensive`. A bucket holds
+  `burst` requests and refills at `rate` a second. Every response carries
+  `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`, and
+  an empty bucket answers `429` with `Retry-After`.
+- **Idempotency keys.** A `POST` or `PATCH` with an `Idempotency-Key` runs
+  once. A repeat replays the first response with `Idempotency-Replayed:
+  true`; a key reused for another request answers `422`, one still in
+  flight `409`. A `5xx` is not kept, so a retry runs again. Searches ignore
+  the key.
+- **The operator switch.** A caller in `server.rate_limit.disabled_callers`
+  gets `503` `api-disabled`, and other callers are unaffected. The list is
+  read at startup.
+
+Until authentication arrives the caller is the client's IP address, so
+behind a proxy every client shares the proxy's budget. Buckets and keys
+are held in process memory: each replica enforces its own budget and keeps
+its own keys, which is right for one replica only. A shared store arrives
+with [decision 0005](docs/research/decisions/0005-persistence-postgresql.md)'s
+phase.
 
 ## Layout
 
