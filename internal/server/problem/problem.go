@@ -14,7 +14,7 @@ import (
 const ContentType = "application/problem+json"
 
 // TypePrefix starts every problem type URI; the slugs are listed in
-// docs/research/decisions/0003-api-conventions.md.
+// docs/research/decisions/0022-api-errors-and-update-semantics.md.
 const TypePrefix = "urn:infraweave:problem:"
 
 // Problem is one problem detail. Field names match the Problem schema.

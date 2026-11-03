@@ -1,6 +1,6 @@
 # 26: Scope and tiers
 
-Checked against: docs read 2026-10-28 (SaaS and `self-hosted/latest`, v7.1.0); spacelift.io/pricing read 2026-10-28; schema `b3255fe38f5e`; spacelift-api-bruno `7cad4574954b`; terraform-provider-spacelift v1.57.0 (`c72b9bd2f3c3`); the specification reference `api/reference/spacelift/spacelift.openapi.yaml` and `coverage.md`; infraweave's `api/deploy.openapi.yaml` at the work tree's commit; reports 01 to 25.
+Checked against: docs read 2026-10-28 (SaaS and `self-hosted/latest`, v7.1.0); spacelift.io/pricing read 2026-10-28; schema `b3255fe38f5e`; spacelift-api-bruno `7cad4574954b`; terraform-provider-spacelift v1.57.0 (`c72b9bd2f3c3`); the specification reference `api/reference/spacelift/spacelift.openapi.yaml` and `coverage.md`; infraweave's `api/deploy.openapi.yaml` at the work tree's commit; reports 01 to 25; decision [0021](../decisions/0021-capability-scope-and-supersession.md) as accepted on 2026-11-03.
 
 Research baseline: **2026-10-28**.
 
@@ -11,7 +11,10 @@ one row for each of the 53 tags of the specification reference, the 56
 resources and the 62 data sources of the Terraform provider. Each row names
 the report that owns the behaviour, the plan that offers it, infraweave's
 availability state and the provisional phase that delivers it. Section 7
-records every interface excluded as superseded, with its evidence. The
+records every interface excluded as superseded, with its evidence. Decision
+[0021](../decisions/0021-capability-scope-and-supersession.md) turns the plan
+column into infraweave's seeded tiers and maps each `BillingTierFeature`
+value to infraweave's own feature; this report keeps Spacelift's names. The
 implementation plan (IMP-01, [#31](https://github.com/weaveplatform/infraweave/issues/31))
 takes its scope and its ordering from here; the inventory reports
 [03](03-deploy-core-api-inventory.md), [04](04-platform-api-inventory.md) and
@@ -201,7 +204,7 @@ account's own `tierFeatures` is readable [G].
 | Tier notices | Absent from the self-hosted pages for registries, blueprints, templates, VCS features and webhooks | [D]; reports 11, 15, 17, 19 |
 | What `tier` and `tierFeatures` return | Not documented | *(unverified)*; report 14 |
 | Cloud integrations | AWS and generic OIDC only; the Azure and GCP integrations are not available, and OIDC federation is the recommended substitute | [D] <https://docs.spacelift.io/self-hosted>; report [12](12-cloud-integrations-and-oidc.md) |
-| AI | Intent, the MCP server, Infra Assistant and Intent policies work; the Spacelift-provided AI integration does not, so a bring-your-own-model integration is needed; run summarisation (Saturnhead Assist) is not yet available | [D] <https://docs.spacelift.io/self-hosted/latest/concepts/intelligence>; report 22 |
+| AI | Intent, the MCP server, Infra Assistant and Intent policies work; the Spacelift-provided AI integration does not, so a bring-your-own-model integration is needed. The self-hosted Intelligence page lists run summarisation (Saturnhead Assist) as not yet available, while the self-hosted changelog adds run summaries in v7.0.0 (report [22](22-intelligence.md) section 4.3); which holds for v7.1.0 is *(unverified)* | [D] <https://docs.spacelift.io/self-hosted/latest/concepts/intelligence>, <https://docs.spacelift.io/self-hosted/latest/installing-spacelift/changelog>; report 22 |
 | GitHub | No Marketplace app; a custom GitHub app is needed | [D]; report 11 |
 | Slack | The install creates its own Slack app; `slackAppConfig` and its mutations work only there | [D], [G]; report 19 |
 | Public pool | Not available: the customer runs every worker. The Prometheus exporter reports zero pending public-pool runs on self-hosted, which agrees | [D] <https://docs.spacelift.io/self-hosted>; [S], report 19 |
@@ -225,7 +228,9 @@ account's own `tierFeatures` is readable [G].
 
 ## 3. `BillingTierFeature`
 
-The enum has 31 values [G]. Only `AUDITING`, `SCIM` and `SCANS` carry a
+The enum has 31 values [G]. Decision
+[0021](../decisions/0021-capability-scope-and-supersession.md) maps each to
+the infraweave feature that covers it. Only `AUDITING`, `SCIM` and `SCANS` carry a
 description, and `AUDIT_WEBHOOKS` is deprecated in favour of `AUDITING` [G],
 listed on 2026-10-20 [RN]. Where the meaning cell says "[I] from the name" or
 "from the operations gated", nothing published defines the value. "Operations
@@ -610,15 +615,16 @@ reference, and `AwsIntegration.legacy` marks integrations they create [G].
 The two resources are `superseded`. The `spacelift_aws_role` data source is
 not marked deprecated, but it reads the same legacy `StackIntegrations.aws`
 field and has no non-legacy use, so it is `superseded` too [I] from the
-resource's deprecation. Whether infraweave still needs the two legacy
-mutations, for example to read stacks that have them, is a question for the
-plan (report 12 section 2).
+resource's deprecation. The two legacy mutations stay in scope, served and
+marked deprecated, and the importer keeps the integrations they created
+(decision [0021](../decisions/0021-capability-scope-and-supersession.md),
+report 12 section 2).
 
 ### 7.8 Other dated supersessions
 
 | Interface | Replaced by | Evidence | Effect on scope |
 |---|---|---|---|
-| Worker transport over AWS IoT Core (`worker-iot.spacelift.io`) | HTTP long-poll | Long-poll added 2026-07-20; IoT Core sunset on 2027-03-30 [RN] | The MQTT transport stays in scope for self-hosted's own broker; the SaaS IoT Core endpoint is out (report [10](10-workers-and-execution.md) section 4.2) |
+| Worker transport over AWS IoT Core (`worker-iot.spacelift.io`) | HTTP long-poll | Long-poll added 2026-07-20; IoT Core sunset on 2027-03-30 [RN]; the self-hosted v7.1.0 changelog deprecates MQTT, including the built-in broker [D] | Superseded under S3 of decision [0021](../decisions/0021-capability-scope-and-supersession.md): neither the SaaS IoT Core endpoint nor a self-hosted broker is in scope; long-poll is (report [10](10-workers-and-execution.md) section 4.2) |
 | The `pulumi-spacelift` provider | Pulumi's Terraform bridge over the Spacelift Terraform provider | Retirement and archival set for 2026-12-10 [RN] | No infraweave Pulumi provider is needed (report [06](06-spacectl-and-clients.md)) |
 | `changeLLMVendor`, `llmVendor` | none | Removed on 2026-08-21 [RN] | Absent from the schema [G] |
 | `PENDING` in `RunState` | none | "This state is no longer used", 2026-10-20 [RN] [G] | Not reachable (report [08](08-run-lifecycle.md)) |
@@ -656,16 +662,20 @@ rerun must fold those corrections in.
 - Scope is every row of sections 4 to 6 whose state is not `superseded`: 53
   tags, 52 resources and 58 data sources, plus the 8 untagged operations of
   report 04.
-- `BillingTierFeature` is a per-account feature set separate from RBAC. A
-  self-hosted, open-source product still has to answer `tier` and
-  `tierFeatures`, and the plan must say what they return.
-- Several capabilities have no stated plan; the plan has to place them
-  without a tier signal.
+- `BillingTierFeature` is a per-account feature set separate from RBAC.
+  infraweave has tiers of its own: decision
+  [0021](../decisions/0021-capability-scope-and-supersession.md) seeds Free,
+  Starter, Starter+, Business and Enterprise from the plan column, gives
+  each account one tier, and answers `tier` with a tier object and
+  `tierFeatures` with the account's entitlement. Billing is off by default,
+  so every account behaves as Enterprise until an operator turns it on.
+- Several capabilities have no stated plan; decision 0021 seeds them in
+  every tier until a capture places them.
 - FedRAMP shows that every feature must work with private workers only; the
   public pool is optional infrastructure.
 - Self-hosted Spacelift lacks the public worker pool, the Azure and GCP
-  integrations and the hosted AI integration; infraweave's self-hosted packaging (P27) does not inherit
-  those limits by default, and the plan must say which it keeps.
+  integrations and the hosted AI integration; infraweave's self-hosted
+  packaging (P27) does not inherit those limits (decision 0021).
 - Superseded interfaces still appear in stored data (legacy AWS
   integrations, `legacy` space, access-policy residue); an importer from
   Spacelift meets them even though infraweave does not serve them.
@@ -691,6 +701,7 @@ rerun must fold those corrections in.
     from `V5_STARTER_PLUS_2`;
   - the plan of every capability whose plan reads "Not stated";
   - what `tier` and `tierFeatures` return on a self-hosted install;
+  - whether self-hosted v7.1.0 offers run summaries;
   - whether the `blueprintWithGroup*` mutations remain supported;
   - whether access policies are still evaluated after 2026-05-30;
   - which policy types `WORKFLOW_POLICIES` covers.
@@ -717,7 +728,7 @@ rerun must fold those corrections in.
 - <https://docs.spacelift.io/product/fedramp> **[D]**
 - <https://docs.spacelift.io/self-hosted>, <https://docs.spacelift.io/concepts/identity-access-management/admin>, <https://docs.spacelift.io/concepts/run/task> **[D]**
 - <https://docs.spacelift.io/product/changelog> **[RN]**
-- <https://docs.spacelift.io/self-hosted/latest/concepts/intelligence> **[D]**
+- <https://docs.spacelift.io/self-hosted/latest/concepts/intelligence>, <https://docs.spacelift.io/self-hosted/latest/installing-spacelift/changelog> **[D]**
 - <https://docs.spacelift.io/concepts/policy/deprecated>, <https://docs.spacelift.io/concepts/policy/deprecated/migrate-to-spaces>, <https://docs.spacelift.io/concepts/policy/stack-access-policy>, <https://docs.spacelift.io/concepts/policy/login-policy> **[D]**
 - <https://docs.spacelift.io/concepts/stack/stack-settings> **[D]**
 - The tier notices cited per feature in reports [03](03-deploy-core-api-inventory.md) section 10, [04](04-platform-api-inventory.md), [14](14-spaces-rbac-and-identity.md) section 11 and [19](19-events-notifications-audit.md) section 12 **[D]**.

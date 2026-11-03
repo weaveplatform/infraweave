@@ -15,8 +15,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/openapibundle"
 )
 
-// conventions is decision 0003, which lists every problem slug once.
+// conventions is decision 0003, whose table holds the slugs its spec
+// components use.
 const conventions = "../docs/research/decisions/0003-api-conventions.md"
+
+// problems is decision 0022, whose table is the complete list of problem
+// slugs. Its rows for 0003's slugs must keep 0003's status.
+const problems = "../docs/research/decisions/0022-api-errors-and-update-semantics.md"
 
 const problemPrefix = "urn:infraweave:problem:"
 
@@ -80,22 +85,32 @@ func TestUnitDeployConventionComponents(t *testing.T) {
 	}
 }
 
-// TestUnitDeployProblemTypes checks that every problem example in the spec
-// uses a slug decision 0003 lists, with the status the record gives it, so
-// the record stays the one list of problem types.
-func TestUnitDeployProblemTypes(t *testing.T) {
-	record, err := os.ReadFile(conventions)
+// slugTable reads a decision record's problem table: every row that starts
+// with a backticked slug and a three-digit status.
+func slugTable(t *testing.T, record string) map[string]int {
+	t.Helper()
+	text, err := os.ReadFile(record)
 	if err != nil {
 		t.Fatal(err)
 	}
 	listed := map[string]int{}
 	for _, m := range regexp.MustCompile("(?m)^\\| `([a-z-]+)` \\| ([0-9]{3}) \\|").
-		FindAllStringSubmatch(string(record), -1) {
+		FindAllStringSubmatch(string(text), -1) {
 		listed[m[1]], _ = strconv.Atoi(m[2])
 	}
 	if len(listed) == 0 {
-		t.Fatalf("%s lists no problem slugs", conventions)
+		t.Fatalf("%s lists no problem slugs", record)
 	}
+	return listed
+}
+
+// TestUnitDeployProblemTypes checks that every problem example in the spec
+// uses a slug decision 0022 lists, with the status the record gives it, so
+// that record stays the one complete list of problem types. It also checks
+// that every slug decision 0003 defines is used and has the same status in
+// both records.
+func TestUnitDeployProblemTypes(t *testing.T) {
+	listed := slugTable(t, problems)
 	used := map[string]bool{}
 	for name, r := range loadDeploy(t).Components.Responses {
 		mt := r.Value.Content.Get("application/problem+json")
@@ -108,15 +123,18 @@ func TestUnitDeployProblemTypes(t *testing.T) {
 		status, known := listed[slug]
 		switch {
 		case !found || !known:
-			t.Errorf("response %s: type %q is not a slug listed in %s", name, typ, conventions)
+			t.Errorf("response %s: type %q is not a slug listed in %s", name, typ, problems)
 		case ex["status"] != float64(status):
 			t.Errorf("response %s: status %v, record says %d", name, ex["status"], status)
 		}
 		used[slug] = true
 	}
-	for slug := range listed {
+	for slug, status := range slugTable(t, conventions) {
 		if !used[slug] {
 			t.Errorf("%s lists %s, but no response uses it", conventions, slug)
+		}
+		if listed[slug] != status {
+			t.Errorf("%s gives %s status %d, %s gives %d", conventions, slug, status, problems, listed[slug])
 		}
 	}
 }

@@ -63,7 +63,9 @@ unchanged and are repeated here only so the served API has one complete list.
 | `invalid-cursor` | 400 | (0003) | 0003 |
 | `unauthenticated` | 401 | `unauthorized: authentication required` | No credential, or one that is malformed, expired, revoked or for another audience. Sent with `WWW-Authenticate: Bearer` |
 | `forbidden` | 403 | `unauthorized: permission denied` | The caller can read the resource but lacks the action it asked for |
-| `feature-disabled` | 403 | `feature disabled` | The operator turned off the `BillingTierFeature` that gates the operation with `features.disabled`, or Flows with `flows.enabled: false` (decision 0021); the body carries the value as `feature`, absent for Flows |
+| `feature-disabled` | 403 | `feature disabled` | The operator switched off, with `features.disabled`, the feature that gates the operation or the value it sets (decision 0021); the body carries the feature as `feature` |
+| `feature-not-in-tier` | 403 | `feature not in tier` | Billing is on and the account's entitlement lacks the feature that gates the operation or the value it sets (decision 0021); the body carries `feature`, and `tiers`, the names of the tiers that include it |
+| `limit-reached` | 403 | `limit reached` | Billing is on and the request would take the account above one of its limits, such as seats or private workers (decision 0021); the body carries `limit` and the account's limit as `value` |
 | `installation-unsupported` | 403 | `installation unsupported` | The operation needs a service that only Spacelift operates, such as its billing or usage reporting (decision 0021) |
 | `not-found` | 404 | `not found` | The route's resource, or one of its parents, does not exist or is not readable by the caller |
 | `method-not-allowed` | 405 | `method not allowed` | The path exists without this method; sent with `Allow` |
@@ -79,7 +81,6 @@ unchanged and are repeated here only so the served API has one complete list.
 | `webhook-verification-failed` | 422 | `webhook verification failed` | Setting an enabled audit trail webhook whose verification delivery is not answered with a 2xx (decision 0015) |
 | `idempotency-key-reuse` | 422 | (0003) | 0003 |
 | `rate-limited` | 429 | (0003) | 0003 |
-| `ai-budget-exhausted` | 429 | `ai budget exhausted` | The AI integration's usage budget for the period is spent; sent with `Retry-After` until the budget resets (decision 0019) |
 | `internal-error` | 500 | `internal error` | An unexpected failure. The body never carries the cause; `instance` identifies the request |
 | `not-implemented` | 501 | `not implemented` | A route that the spec serves but no handler implements yet |
 | `upstream-error` | 502 | `upstream error` | A synchronous call to a system infraweave depends on failed: a VCS host, a cloud API, a VCS agent pool with no connected agent |
@@ -240,11 +241,9 @@ every request against the bundled spec before the handler (giving
 
 ## Constraints
 
-- **0003's single list.** 0003 states that its table is the only list of
-  slugs, and `api/deploy_test.go` reads that table. Accepting this record
-  amends that sentence to name this record's table as the complete list; the
-  test then reads this table. Until then, no spec example may use a slug from
-  this record.
+- **0003's slugs.** 0003 names this record's table as the complete list of
+  slugs, and `api/deploy_test.go` reads this table for every problem example
+  in the spec, and 0003's table for the slugs its components must use.
 - **Unverified Spacelift behaviour.** C2, C3 and C5 may show that Spacelift
   puts stable codes in `extensions` or answers specific statuses; a stable
   code would become an extension member here, not a change of slug. C24, C26,
@@ -252,8 +251,9 @@ every request against the bundled spec before the handler (giving
   each is a deliberate departure until then.
 - **Spacelift clients still do not work unchanged** (0001). The titles help a
   port, not a re-point.
-- **Tier gates.** When a disabled feature answers `feature-disabled` is
-  decision 0021's; a further slug it needs is added to this table.
+- **Tier gates.** When a feature answers `feature-disabled` or
+  `feature-not-in-tier`, and which limits answer `limit-reached`, is
+  decision 0021's.
 
 ## Verification
 

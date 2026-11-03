@@ -1,6 +1,6 @@
 # 0007: Authorization: spaces and roles
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -17,6 +17,11 @@ policy assigns roles at login and the result is frozen for the session
 Access policies, the older per-stack Rego rules, are disabled and superseded
 ([26 section 7.4](../reference/26-scope-and-tiers.md#74-access-policies-and-legacy-access-rules-replaced-by-spaces-and-rbac)).
 
+On Spacelift, keeping customers apart is the service operator's concern,
+outside the product's model. infraweave is self-hosted, and one deployment may serve several teams or customers that
+must not see one another's data, so tenancy is part of authorization rather
+than an accident of deployment.
+
 infraweave needs one evaluator that answers three questions the same way
 everywhere: may this principal perform this action on this subject; which
 spaces may it act in, for list filtering; and why, for the grant views
@@ -24,6 +29,29 @@ spaces may it act in, for list filtering; and why, for the grant views
 [0006](0006-authentication-and-tokens.md) supplies the principal.
 
 ## Decision
+
+### Tenancy
+
+- **An installation hosts many accounts.** Each account is a tenant with its
+  own spaces, users, groups, roles, bindings, API keys, tier
+  ([0021](0021-capability-scope-and-supersession.md)) and data. Every
+  account-scoped table carries `account_id`, and every query filters by the
+  principal's account.
+- **The principal fixes the account.** Every credential is issued for one
+  account (decision [0006](0006-authentication-and-tokens.md) issues them),
+  so a request never names the account it acts in. A person who belongs to
+  two accounts holds a separate session in each.
+- **Accounts never see each other.** An entity of another account answers
+  `404`, as one the caller cannot read does. No role, binding or admin flag
+  reaches across accounts.
+- **The operator runs the installation.** The operator creates, renames
+  and deletes accounts, gives each its tier and grants, sets
+  `features.disabled` and runs the public worker pool, all through the
+  operator API (0021). Creating an account seeds its `root` and `legacy`
+  spaces and its system roles, and names its first user, who holds
+  `space-admin` on `root`. An operator principal holds no role in any
+  account and reads no account's stacks, state or secrets; deleting an
+  account deletes its data.
 
 ### Spaces
 
@@ -77,8 +105,10 @@ spaces may it act in, for list filtering; and why, for the grant views
   `validation-failed`, naming the action. A role with bindings can be
   deleted only after its bindings are; the answer otherwise is `409`, problem
   `invalid-state`.
-- **System roles** are seeded per account, immutable, and defined from the
-  fallback column, so legacy levels and system roles are one thing:
+- **System roles** are infraweave's own: seeded per account, immutable, and
+  defined from the fallback column, so legacy levels and system roles are
+  one thing. Their slugs and contents are fixed here, and nothing in this
+  record waits on a capture of Spacelift's:
 
   | Slug | Actions |
   |---|---|
@@ -263,21 +293,24 @@ Departures from Spacelift, for the plan's deviations register:
 | Departure | Why |
 |---|---|
 | `legacy` has no special semantics | Access policies, its only special behaviour, are superseded |
-| System role contents are derived from the fallback column | Spacelift does not publish them (report 14 section 3.2); parity is checked against `Role.actions` once captured |
-| The worker pool controller and drift detection system roles' slugs are `worker-pool-controller` and `drift-detection-manager` | Spacelift's slugs for both are unrecorded (report 14 section 3.2) |
+| infraweave defines its own system roles, with contents derived from the fallback column | Spacelift does not publish their contents ([14 section 3.2](../reference/14-spaces-rbac-and-identity.md#32-system-roles)); one rule keeps the roles and the legacy levels consistent |
+| The worker pool controller and drift detection system roles' slugs are `worker-pool-controller` and `drift-detection-manager` | Spacelift's slugs for both are unrecorded (report 14 section 3.2); these are infraweave's names |
+| One installation hosts many accounts, separated by `account_id` | Spacelift keeps customers apart on its own service; a self-hosted product needs the separation inside one deployment |
 | Disabled actions cannot be assigned to roles | The schema marks them "do not use"; operations they would govern use their fallback |
 | An `ACTIVE` managed user with no binding logs in with empty grants | The 2026-04-14 changelog is the newer of two conflicting statements (report 14 section 4.2) |
 
 ## Constraints
 
-- **Tenancy.** Snapshots are per account; whether an installation hosts more
-  than one account is outside this record.
+- **Tenancy is logical.** Accounts share one database and one set of
+  processes; separation rests on `account_id` filters and the per-account
+  snapshot. An operator who needs physical separation runs one installation
+  per tenant.
 - **Staleness bound.** A lost invalidation message leaves a replica at most 5
   seconds behind.
-- **Unverified facts** this record proposes around: system role contents,
-  the worker pool controller and drift detection roles' slugs, what non-root admins may edit with the
-  creation setting off, and the login conflict above (report 14,
-  *(unverified)* markers). Each is a constant or a table row to change.
+- **Unverified facts** this record decides around: what non-root admins
+  may edit with the creation setting off, and the login conflict above
+  (report 14, *(unverified)* markers). Each is a constant or a table row to
+  change.
 - **Out of scope.** Flows-side permissions for `flows_project` bindings are
   decision 0018's; tier gates on custom roles or login policies are 0021's;
   seat limits are 0021's.
@@ -285,6 +318,7 @@ Departures from Spacelift, for the plan's deviations register:
 ## Verification
 
 - `internal/authz` unit tests, table-driven from report 14's worked cases:
+  an entity of another account answering as hidden;
   propagation from `root`; inheritance read-up through a chain and stopping
   at the first space without `inherit_entities`; an inherited grant folded to
   `space-reader`; stack self-read; group and direct bindings combining;
@@ -300,7 +334,10 @@ Departures from Spacelift, for the plan's deviations register:
   `test/acceptance/features/authz_spaces.feature` (tree changes, refused
   moves, grant views), `authz_bindings.feature` (each actor kind, stack
   escalation rules), `authz_login_policy.feature` (rules, `deny_message`
-  aggregation, session revocation on change).
+  aggregation, session revocation on change), `authz_tenancy.feature` (two
+  accounts on one installation: each sees only its own spaces and stacks,
+  another account's stack answers `404`, and a new account starts with its
+  seeded spaces, system roles and first admin).
 
 ## References
 
@@ -308,3 +345,4 @@ Departures from Spacelift, for the plan's deviations register:
 - [26 section 7.4](../reference/26-scope-and-tiers.md#74-access-policies-and-legacy-access-rules-replaced-by-spaces-and-rbac): what spaces and RBAC supersede.
 - [28 section 12.2](../reference/28-data-model.md#122-account-and-spaces): the account and space tables.
 - [27 section 12](../reference/27-reference-materials.md#12-cross-tool-comparison): no reference tool models space inheritance.
+- [GLOSSARY](../../../GLOSSARY.md): installation, account, operator, role.

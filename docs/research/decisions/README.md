@@ -34,7 +34,7 @@ record is missing from this index or its status here differs from its own.
 | 0004 | [Repository architecture and process topology](0004-repository-architecture.md) | Proposed |
 | 0005 | [Persistence: PostgreSQL, embedded migrations and object storage](0005-persistence-postgresql.md) | Proposed |
 | 0006 | [Authentication and tokens](0006-authentication-and-tokens.md) | Proposed |
-| 0007 | [Authorization: spaces and roles](0007-authorization-spaces-and-roles.md) | Proposed |
+| 0007 | [Authorization: spaces and roles](0007-authorization-spaces-and-roles.md) | Accepted |
 | 0008 | [Run execution and the worker protocol](0008-run-execution-and-worker-protocol.md) | Proposed |
 | 0009 | [Policy engine: embedded OPA, Rego v0 and v1](0009-policy-engine-opa.md) | Proposed |
 | 0010 | [Terraform and OpenTofu state backend](0010-state-backend.md) | Proposed |
@@ -48,5 +48,5 @@ record is missing from this index or its status here differs from its own.
 | 0018 | [Flows runtime](0018-flows-runtime.md) | Proposed |
 | 0019 | [AI provider boundary](0019-ai-provider-boundary.md) | Proposed |
 | 0020 | [Reference deployments and packaging](0020-reference-deployments-and-packaging.md) | Proposed |
-| 0021 | [Capability scope and supersession](0021-capability-scope-and-supersession.md) | Proposed |
+| 0021 | [Capability scope, features and tiers](0021-capability-scope-and-supersession.md) | Accepted |
 | 0022 | [Served API errors, update semantics and input strictness](0022-api-errors-and-update-semantics.md) | Proposed |
