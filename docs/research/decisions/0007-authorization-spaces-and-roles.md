@@ -436,9 +436,10 @@ Departures from Spacelift, for the plan's deviations register:
   installation per organization.
 - **Staleness bound.** A lost invalidation message leaves a replica at most 5
   seconds behind.
-- **Unverified facts** this record decides around: what space admins below
-  the top space may edit with the creation setting off, and the login conflict above
-  (report 14, *(unverified)* markers). Each is a constant or a table row to
+- **Unverified facts** this record decides around: the slugs Spacelift gives
+  the worker pool controller and drift detection system roles, what space
+  admins below the top space may edit with the creation setting off, and the
+  login conflict above (report 14, *(unverified)* markers). Each is a constant or a table row to
   change.
 - **Out of scope.** Flows-side permissions for `flows_project` bindings are
   decision 0018's; tier gates on custom roles or login policies are 0021's;

@@ -235,6 +235,17 @@ The tables mark this resolution **+R**:
 The tables mark **+V** where an empty `search…` page triggers `viewer` to tell
 "nothing visible" from "not logged in".
 
+The `stack`, `module`, `policy`, `blueprint` and `template` list commands
+build an `orderBy` (`starred` descending for stacks, `name` for the rest),
+but their pagers copy only `first` and `fullTextSearch`, so the order never
+reaches the server; `audit-trail list` and the module version and policy
+sample commands do send theirs, `createdAt` descending
+**[S]** [stack/list.go#L102-L108](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/list.go#L102-L108),
+[#L152-L155](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/list.go#L152-L155),
+[audittrail/list.go#L142-L146](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/audittrail/list.go#L142-L146).
+Report [21](21-resources-scans-search.md) covers what the server does with
+an order.
+
 ## 3. Command inventory
 
 spacectl at `6bf167cb62a6` has 108 commands: 88 that act and
@@ -411,7 +422,7 @@ start-up `debugInfo` probe and, with an API key or GitHub token, an
 | Command | GraphQL operations | Flags that matter | Notes |
 |---|---|---|---|
 | `spacectl mcp` ([mcp.go#L24](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/mcp/mcp.go#L24)) | n/a | n/a | Command group. Manage MCP server. |
-| `spacectl mcp server` ([mcp.go#L34](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/mcp/mcp.go#L34)) | `runConfirm`, `runDiscard`, `runPrioritizeSet`, `runPrioritySet`, `runProposeLocalWorkspace`, `runTrigger`, `uploadLocalWorkspace`, `apiKey`, `apiKeys`, `blueprint`, `context`, `module`, `policy`, `searchBlueprints`, `searchContexts`, `searchModules`, `searchPolicies`, `searchStacks`, `searchWorkerPools`, `space`, `spaces`, `stack`, `stacks`, `workerPool`, +V | none | Serves the MCP tools in section 6 over stdio; the tools take IDs, so the directory-based stack resolution is not used. The 2.5.0+ variant enables upload headers for `local_preview`. Variants: Self-Hosted 2.5.0+. |
+| `spacectl mcp server` ([mcp.go#L34](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/mcp/mcp.go#L34)) | `runConfirm`, `runDiscard`, `runPrioritizeSet`, `runPrioritySet`, `runProposeLocalWorkspace`, `runTrigger`, `uploadLocalWorkspace`, `apiKey`, `apiKeys`, `blueprint`, `context`, `module`, `policy`, `searchBlueprints`, `searchContexts`, `searchModules`, `searchPolicies`, `searchStacks`, `searchWorkerPools`, `space`, `spaces`, `stack`, `stacks`, `workerPool`, +V | none | Serves the MCP tools in section 6 over stdio; the **+V** is theirs: `list_stacks`, `list_modules` and `search_modules` keep the viewer fallback on an empty page ([module/mcp.go#L605](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/module/mcp.go#L605)). The tools take IDs, so the directory-based stack resolution is not used. The 2.5.0+ variant enables upload headers for `local_preview`. Variants: Self-Hosted 2.5.0+. |
 
 ## 4. Operations spacectl sends
 

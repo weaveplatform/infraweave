@@ -574,7 +574,7 @@ internal/entity/run/
   machine.go         Next(run, Event) (State, error): the only legal way to change state
   transitions.go     the table of report 08: (type, from, event) → to, guard
   guards.go          canConfirm, canDiscard, canRetry, canStop, blocking run rules
-  priority.go        Tier(run) 1..7; Less(a, b) by tier then creation time
+  priority.go        Level(run) 1..7; Less(a, b) by priority level then creation time
   timers.go          deadlines: 2 days (proposed, testing), 7 days (blocking), 30 days (all)
   followups.go       FollowUps(run, to) []job.Kind: schedule, evaluate approval, notify
 internal/usecase/runstate/

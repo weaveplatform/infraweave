@@ -969,7 +969,7 @@ Terraform provider v1.57.0 **[S]** (schema in `api/reference/spacelift/terraform
 |---|---|---|
 | `spacelift_named_webhook` (resource) | `name`, `space_id`, `endpoint`, `enabled` (required); `labels` (set), `retry_on_failure` (default `false`), `secret` (deprecated), `secret_wo` with `secret_wo_version` (write-only, Terraform/OpenTofu 1.11+) | `namedWebhooksIntegrationCreate`, `...Update`, `...Delete`, `namedWebhooksIntegration` |
 | `spacelift_named_webhook` (data) | `webhook_id`; returns the fields plus `secret_header_keys` | `namedWebhooksIntegration` |
-| `spacelift_named_webhook_secret_header` | `webhook_id`, `key`, `value` (deprecated) or `value_wo` with `value_wo_version`; all force replacement | `namedWebhooksIntegrationSetHeaders`, `...DeleteHeaders` |
+| `spacelift_named_webhook_secret_header` | `webhook_id`, `key`, `value` (deprecated) or `value_wo` with `value_wo_version`; all but `value_wo` force replacement | `namedWebhooksIntegrationSetHeaders`, `...DeleteHeaders` |
 | `spacelift_webhook` (resource and data) | `endpoint`; exactly one of `stack_id`, `module_id`; `enabled` (default `true`), `retry_on_failure`, `secret` or `secret_wo` (force replacement) | `webhooksIntegrationCreate`, `...Update`, `...Delete` |
 | `spacelift_audit_trail_webhook` | `endpoint`, `enabled` (required); `include_runs`, `retry_on_failure`, `custom_headers` (map); `secret` or `secret_wo` required, forcing replacement | `auditTrailSetWebhook`, `auditTrailDeleteWebhook`, `auditTrailWebhook` |
 

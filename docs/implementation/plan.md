@@ -216,7 +216,7 @@ flowchart LR
   P12 --> P13[P13 Policies]
   P13 --> P13b[P13b Login and other policies]
   P4b --> P13b
-  P13 --> P14[P14 Public pool and Kubernetes]
+  P13 --> P14[P14 Public worker pool and Kubernetes]
   P9 --> P15[P15 Cloud and OIDC]
   P10 --> P16[P16 Schedules and dependencies]
   P13 --> P17[P17 Module registry]
@@ -1517,7 +1517,7 @@ the tooling around evaluation: samples, captures, simulation and templates.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
    `Deprecation` headers. Feature: `platform_deprecation.feature`.
 3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
-   `policy_sample_quota`, sealed samples in `policy-inputs`;
+   `policy_sample_budgets`, sealed samples in `policy-inputs`;
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
    `policySearchEvaluationRecordSuggestions`, `policyInputCaptures`,
    `policyInputCapture`. Test: a sealing test that finds no input value in
@@ -1644,7 +1644,7 @@ with output references and external dependencies.
    `stackScheduledDelete`, `stackScheduledDeleteCreate`,
    `stackScheduledDeleteUpdate`, `stackScheduledDeleteDelete`. Records
    DV-090.
-2. Drift detection: `drift_detection` rows, drift runs at tiers 6 and 7 on
+2. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
    private pools, each pool's drift run limits enforced in the claim,
    reconcile. Operations:
    `stackIntegrationDriftDetectionCreate`,

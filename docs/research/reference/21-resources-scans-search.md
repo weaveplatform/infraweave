@@ -470,9 +470,11 @@ themselves as supporting ordering, and each suggestions field marks which fields
 `orderable` [G]. A saved stacks view also stores a sort order [D] organizing. The
 specific descriptions are the better evidence that ordering is honoured for the fields
 marked `orderable` [I]; for other fields it is *(unverified)*. spacectl sends
-`orderBy` for module versions and policy evaluation records (`createdAt` `DESC`) and
-worker pools in `draw` (`position`) [S] (spacectl
+`orderBy` for module versions, policy evaluation records and audit trail
+entries (`createdAt` `DESC`, a pager that copies the order) and worker pools
+in `draw` (`position`) [S] (spacectl
 `internal/cmd/module/search_version.go#L110-L113`,
+`internal/cmd/audittrail/list.go#L18-L21`, `#L142-L146`,
 `internal/cmd/policy/samples_indexed.go#L148-L152`,
 `internal/cmd/draw/data/workerpools.go#L102-L107`). The `stack`, `module`, `policy`,
 `blueprint` and `template` list commands build an order (`starred` `DESC` for stacks,

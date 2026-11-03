@@ -838,7 +838,7 @@ internal/governance/
 └── infrastructure/opa/
     ├── engine.go            implements application/port.Engine with github.com/open-policy-agent/opa/v1/rego
     ├── prepared.go          PrepareForEval per (policy ID, body hash, Rego version), shared across goroutines
-    ├── capabilities.go      the five disabled built-ins removed from ast.CapabilitiesForThisVersion()
+    ├── capabilities.go      the six disabled built-ins removed from ast.CapabilitiesForThisVersion()
     └── preamble/            per-type preamble modules, embedded
 ```
 
@@ -1654,7 +1654,7 @@ Scheduler process mode:
 8. `internal/sourcecontrol/application/routing/push.go`: per stack, builds a `governance/api.PushInput` and calls `Evaluator.Push`.
 9. `internal/governance/application/evaluate/push.go`: no push policy is attached, so the default policy runs: a changed file under the project root on a non-tracked branch gives `propose`. `PolicyEvaluated` and a receipt are stored in governance's transaction.
 10. `internal/sourcecontrol/application/routing/dedupe.go`: no run exists for this SHA and run type on the stack.
-11. `internal/orchestration/api.Runs.Trigger` into `orchestration/application/trigger/trigger.go`: takes the run specification from `stackconfig/api.Stacks.RunSpec`; no approval policy is attached.
+11. `internal/orchestration/api.Runs.Trigger` into `orchestration/application/trigger/trigger.go`: records the run's type, commit and target; the run specification is read at handover in step 16; no approval policy is attached.
 12. `internal/orchestration/domain/queue/queue.go`: `Enqueue` creates the `PROPOSED` run in `QUEUED` and moves it to `READY` in the same transaction (proposed runs take no stack lock); `RunCreated` and `RunStateChanged` go to the outbox; `AfterCommit` wakes the pool.
 13. `internal/sourcecontrol/interfaces/consumers/run.go`: `RunStateChanged` sets a pending check through `application/feedback/checks.go` and `infrastructure/github/checks.go`.
 
@@ -1680,7 +1680,7 @@ Scheduler process mode, consequences:
 ### A tracked run awaits approval and applies on a private worker
 
 1. `POST /stacks/{id}/runs` reaches `orchestration/interfaces/rest/runs.go` through the composed strict server; `identity/interfaces/middleware/authn.go` has set the principal.
-2. `internal/orchestration/application/trigger/trigger.go`: `identity/api.Decider.Can(TriggerRun, space)`; `RunSpec` snapshot.
+2. `internal/orchestration/application/trigger/trigger.go`: `identity/api.Decider.Can(TriggerRun, space)`; the run's type, commit and target are recorded, and the run specification is read at handover.
 3. `governance/api.Evaluator.Approval` at `QUEUED` approves.
 4. `internal/orchestration/domain/queue/queue.go`: `Enqueue` creates the `TRACKED` run; no other blocking run holds the stack, so the run takes the lock and moves to `READY`.
 5. `internal/execution/agent/launcher` on the customer's host polls with the private pool's credentials; `Dispatcher.Claim` gives `PREPARING`.
