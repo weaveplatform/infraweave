@@ -1509,7 +1509,7 @@ edited, two of them in rings other than ring 1.
 4. `internal/usecase/templateversion/port.go publish.go deprecate.go *_test.go`.
 5. `internal/usecase/templatedeployment/port.go deploy.go update.go delete.go *_test.go`: creates stacks through a `StackCreator` port and runs through `runstate`; renders bodies with `entity/expr`, with `now` and the seed stored on the change record.
 6. `internal/usecase/stack/input.go`: `CreateInput` gains the owning deployment.
-7. `internal/adapter/postgres/templates.go`, `migrations/NNNNN_templates.sql` (decision 0005's single stream), `storetest/templates.go`; `surfaces.go` gains the template `SurfaceContext` gateway.
+7. `internal/adapter/postgres/templates.go`, `migrations/NNNNN_templates.sql` (the templates stream of decision 0005), `storetest/templates.go`; `surfaces.go` gains the template `SurfaceContext` gateway.
 8. `api/src/deploy/paths-templates.yaml`, each operation tagged `x-infraweave-feature: templates`; `make generate`.
 9. `internal/entity/feature/catalogue.yaml`: `templates` and `blueprints` at Business.
 10. `internal/adapter/rest/controller/template/*.go` and `presenter/template.go`, with `allowedActions` per template and deployment.

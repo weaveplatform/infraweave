@@ -68,7 +68,7 @@
       "id": "DV-008",
       "group": "Architecture and persistence: decisions 0004 and 0005",
       "spacelift": "Ships the launcher as a separate binary and image that embeds the worker binary ([report 10](../research/reference/10-workers-and-execution.md))",
-      "infraweave": "The launcher is the `launcher` process mode of the one `infraweave` binary, and the phase executor inside the run container is the hidden `runner` subcommand of the same static binary, which the launcher mounts",
+      "infraweave": "The launcher is the `launcher` process mode of the one `infraweave` binary, and the runner inside the run container is the hidden `runner` subcommand of the same static binary, which the launcher mounts",
       "why": "Launcher, runner and server share a version by construction; the launcher's package graph stays free of server code, so `cmd/infraweave-agent`, a build for worker hosts that links only `internal/agent`, is a one-file change when image size or a review requires it",
       "impact": "Worker hosts run `infraweave launcher` in place of Spacelift's launcher image; custom runner images need no embedded worker binary",
       "source": "[0004 Rationale](../research/decisions/0004-repository-architecture.md#rationale), [0004 Constraints](../research/decisions/0004-repository-architecture.md#constraints)"

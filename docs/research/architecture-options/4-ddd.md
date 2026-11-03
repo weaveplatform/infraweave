@@ -743,7 +743,7 @@ internal/orchestration/
 │   ├── state.go             the 22 RunState values, terminal and passive flags
 │   ├── machine.go           allowed transitions T1 to T44 as a table, per run type: report 08's 43
 │   │                        and decision 0008's T44, from docs/data/run-transitions.json
-│   ├── priority.go          presets and the seven pool tiers of report 08
+│   ├── priority.go          presets and the seven priority levels of report 08
 │   └── run.go               Run entity: type, state, state version, commit, priority, workflow ID
 ├── domain/timer/rules.go    2, 7 and 30 day rules
 ├── application/
@@ -1847,9 +1847,8 @@ Placement choices settled in this file:
 - **Flows has its own spec, tables and projects**, reads Deploy events through the
   shared kernel's envelope, and calls Deploy through an outbound anticorruption layer.
 - **Persistence is per context**, one migration stream each, no foreign keys across
-  contexts; identifiers cross as kernel IDs. Decision 0005 describes one gap-free
-  stream in `internal/store/migrations`, so this option needs that decision to allow
-  per-context streams.
+  contexts; identifiers cross as kernel IDs. Decision 0005's named streams, one per
+  domain, are these streams, so the option needs no departure from it.
 - **The sealed formats sit in the kernel.** Decision 0013 has the runner seal
   workspaces and the launcher open specs with the same code the server uses, and rule 7
   keeps the agent away from `shared/crypt`, so the object and pool envelope formats are

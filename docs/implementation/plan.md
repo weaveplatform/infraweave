@@ -2547,7 +2547,8 @@ rules that make infraweave installable and upgradable.
 **Tasks**
 1. Release: archives for every platform with `SHA256SUMS`, the distroless
    server image with the console embedded (the build fails when the
-   embedded directory has no `index.html`), the FIPS image, runner images,
+   embedded directory has no `index.html`), which runs in FIPS 140-3 mode
+   by default so no separate FIPS image ships, runner images,
    and one image per first-party Flows app version listed in infraweave's
    first-party app registry, all signed with Sigstore and carrying SLSA
    provenance and an SPDX SBOM; the release workflow verifies each before

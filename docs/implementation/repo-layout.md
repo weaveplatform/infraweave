@@ -224,7 +224,7 @@ infraweave/
 │   └── stubgen/
 ├── deploy/                        decision 0020's packaging and reference deployments (P27)
 │   ├── images/                    image definitions: runner-terraform and runner-opentofu (P9), the other
-│   │                              runners (P20, P20b), the server and FIPS images (P27)
+│   │                              runners (P20, P20b), the server image (P27)
 │   ├── compose/compose.yaml       one infraweave all and one infraweave launcher on Docker
 │   ├── helm/infraweave/           chart for serve and scheduler, one Deployment per process mode
 │   ├── helm/infraweave-workers/   chart for infraweave launcher

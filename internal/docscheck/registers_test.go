@@ -40,13 +40,15 @@ const notes = `{
   "records": [
     {"id": "N-1", "text": "See [01](../research/reference/01-a.md#01-a-report) and N-2.",
      "reports": ["docs/research/reference/01-a.md"],
-     "evidence": {"file": "docs/research/reference/01-a.md", "present": ["Checked against:   v1"], "absent": ["v2"]}},
+     "evidence": {"file": "docs/research/reference/01-a.md", "present": ["Checked against:   v1"], "absent": ["v2", "N-9, see [gone](gone.md)"]}},
     {"id": "N-2", "text": "A second note.",
      "evidence": [{"file": "docs/research/reference/01-a.md", "present": ["A report"]}]}
   ]
 }`
 
-// registerTree is tree() with one register whose report cites N-1.
+// registerTree is tree() with one register whose report cites N-1. N-1's
+// absent phrase cites a missing id and links a missing file, which the
+// checks leave alone: evidence is another file's text.
 func registerTree() fstest.MapFS {
 	m := tree()
 	m["docs/data/schema/common.schema.json"] = file(commonSchema)
@@ -205,7 +207,7 @@ func TestUnitRegisterFindings(t *testing.T) {
 		},
 		{
 			name:  "phrase that should be gone",
-			edit:  func(m fstest.MapFS) { m["docs/data/notes.json"] = file(strings.Replace(notes, `"absent": ["v2"]`, `"absent": ["v1"]`, 1)) },
+			edit:  func(m fstest.MapFS) { m["docs/data/notes.json"] = file(strings.Replace(notes, `"absent": ["v2"`, `"absent": ["v1"`, 1)) },
 			want:  `N-1: docs/research/reference/01-a.md still contains "v1"`,
 			where: "docs/data/notes.json:4",
 		},

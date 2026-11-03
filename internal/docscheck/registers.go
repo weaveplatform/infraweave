@@ -220,7 +220,7 @@ func (c *checker) registerLinks(r *register) {
 	d := &doc{path: r.path, anchors: map[string]bool{}}
 	for _, rec := range r.records {
 		var texts []string
-		stringsOf(rec, &texts)
+		stringsOf(r.text(rec), &texts)
 		id, _ := rec["id"].(string)
 		for _, s := range texts {
 			for _, m := range mdLink.FindAllStringSubmatch(codeSpan.ReplaceAllString(s, ""), -1) {
@@ -256,8 +256,7 @@ func (c *checker) citations() {
 		for _, rec := range r.records {
 			id, _ := rec["id"].(string)
 			var texts []string
-			// The id itself is a definition, not a citation.
-			stringsOf(withoutID(rec), &texts)
+			stringsOf(r.text(rec), &texts)
 			for _, s := range texts {
 				check(r.path, r.line(id), s)
 			}
@@ -265,10 +264,14 @@ func (c *checker) citations() {
 	}
 }
 
-func withoutID(rec map[string]any) map[string]any {
+// text is the part of a record that is the register's own prose. The id is
+// a definition, not a citation, and evidence phrases are other files' text:
+// their links start from those files, and an absent phrase holds exactly the
+// words, an old ID among them, that must not exist any more.
+func (r *register) text(rec map[string]any) map[string]any {
 	out := make(map[string]any, len(rec))
 	for k, v := range rec {
-		if k != "id" {
+		if k != "id" && k != r.proof {
 			out[k] = v
 		}
 	}

@@ -143,7 +143,7 @@ infraweave/
 │   └── fixtures/               (P9) Terraform and OpenTofu projects, Git repositories, policy corpus
 ├── tools/                      unchanged: thin mains over internal/devtools
 ├── deploy/                     (P27) decision 0020's images, charts, Compose file and Terraform modules
-│   ├── images/                 server, agent and runner (P9, P20) image definitions
+│   ├── images/                 server and runner (P9, P20) image definitions
 │   ├── compose/                compose.yaml: one infraweave all and one launcher
 │   ├── helm/                   infraweave/ (serve, scheduler) and infraweave-workers/ (launcher)
 │   ├── terraform/              modules/<cloud>/ for aws, azure and google, and examples/
@@ -917,7 +917,7 @@ internal/state/
     ├── backend/          Terraform http backend: GET, POST, LOCK, UNLOCK; lock ID checks
     ├── state/            versions, import (100 MB cap), rollback as a new version, 90-day non-current retention
     ├── tfe/              read-only Terraform Cloud state API subset for external access
-    ├── http/             hand-written chi routes /state/v1/{stack}; chi.RegisterMethod("LOCK") and ("UNLOCK");
+    ├── http/             hand-written chi routes /state/v1/stacks/{stack}; chi.RegisterMethod("LOCK") and ("UNLOCK");
     │                     strict partial for state version operations
     └── pg/               managed_state_versions, state_locks
 ```
