@@ -183,12 +183,17 @@ behaviour, it replaces infraweave's choice through the lifecycle above.
 
 ### The feature catalogue (P5)
 
-Every feature of infraweave is an entry in one catalogue file,
-`internal/features/catalogue.yaml` (decision 0004 places the `features`
-domain). An entry has a name, a kind, a description, the features it
-requires, the seeded tiers that include it, and the `BillingTierFeature`
-values it covers for parity (the mapping section below). There are three
-kinds:
+Every feature of infraweave is an entry in one catalogue, the register
+[docs/data/features.json](../../data/features.json), its one source. The
+`features` domain (decision 0004 places it) compiles it in:
+`make generate` writes `internal/features/catalogue_gen.go` from the
+register, and `make verify-generate` fails when that file is stale. An
+entry has a name, a kind, a description, the features it requires, the
+lowest seeded tier that includes it and its owning phase. The
+`BillingTierFeature` values it covers for parity (the mapping section
+below) are the `tier-feature:` records of
+[docs/data/capabilities.json](../../data/capabilities.json), which the
+generator reads with it. There are three kinds:
 
 | Kind | Gates | Where the gate sits | Examples |
 |---|---|---|---|
@@ -464,8 +469,9 @@ with an honest local meaning, and otherwise refuses with
 ### Mapping from `BillingTierFeature`
 
 Each value maps to the infraweave features that cover it, so parity stays
-traceable. The catalogue carries the same mapping, and a test checks that
-every live value has one.
+traceable. The `tier-feature:` records of
+[capabilities.json](../../data/capabilities.json) carry the same mapping for
+the catalogue, and a test checks that every live value has one.
 
 | `BillingTierFeature` | infraweave feature | Kind |
 |---|---|---|
@@ -691,8 +697,9 @@ acceptance feature that runs work therefore runs it on a private pool.
   policy, carries `Deprecation`; a superseded value, such as policy type
   `ACCESS`, fails validation with the replacement named.
 - **The availability-state check.** `specref parity --states --check`
-  ([0016](0016-testing-and-acceptance.md)) fails when report 26 claims a
-  state the tests do not show. It also fails on:
+  ([0016](0016-testing-and-acceptance.md)) fails when a record of
+  [capabilities.json](../../data/capabilities.json) claims a state the tests
+  do not show. It also fails on:
   - a `superseded` row without its four recorded items;
   - a `schema-only` operation without `x-infraweave-basis`.
 

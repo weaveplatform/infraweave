@@ -175,7 +175,7 @@ jobs:
             exit 0
           fi
           title="feat(reference): update the Spacelift OpenAPI specification from upstream"
-          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review `api/reference/spacelift/coverage.md` for new, excluded and RPC-shaped operations. A new tag also needs a row in `docs/research/reference/26-scope-and-tiers.md`, which `make docs-check` enforces.\n' "$SUMMARY" "$RESULT")
+          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review `api/reference/spacelift/coverage.md` for new, excluded and RPC-shaped operations. A new tag also needs a `tag:` record in `docs/data/capabilities.json`, which `make docs-check` enforces.\n' "$SUMMARY" "$RESULT")
           git config user.name "weaveplatform-release-please[bot]"
           git config user.email "weaveplatform-release-please[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
