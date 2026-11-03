@@ -1,18 +1,19 @@
-# 0021: Capability scope and supersession
+# 0021: Capability scope, features and tiers
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
 The research set fixes one scope rule before any design: infraweave mirrors
-everything Spacelift offers, at every tier, and leaves out only an interface
-that a newer Spacelift interface supersedes, with evidence
-([README](../README.md#decisions-fixed-before-writing)). Report 26 applies the
-rule row by row. It gives every tag, Terraform resource and data source an
+everything Spacelift lets a user do, at every tier, and leaves out only an
+interface that a newer Spacelift interface supersedes, with evidence
+([README](../README.md#decisions-fixed-before-writing)). infraweave mirrors
+capability, not interface: Spacelift is the reference foundation, and
+infraweave's own surfaces use infraweave's names. Report 26 applies the rule
+row by row. It gives every tag, Terraform resource and data source an
 availability state, and lists the exclusions it found in its
 [supersession boundaries](../reference/26-scope-and-tiers.md#7-supersession-boundaries).
-The rule itself, and four product questions that depend on it, are still
-open:
+Four product questions depend on the rule:
 
 | Question | Report 30 entry |
 |---|---|
@@ -21,7 +22,13 @@ open:
 | Where Spacelift's docs and its own clients disagree, which does infraweave's CLI (`infraweavectl`) follow? | P4 |
 | Does infraweave gate features by Spacelift's editions and its 31 `BillingTierFeature` values? | P5 |
 
-Four facts shape the answers:
+The maintainer's requirement for P5 is that every feature carries a tier
+from the start, that billing is itself a feature, and that an installation
+behaves as Enterprise until an operator turns billing on. One installation
+hosts many accounts ([0007](0007-authorization-spaces-and-roles.md)), so a
+tier is something each account has.
+
+Five facts shape the answers:
 
 - **Deprecation evidence is uneven.** The schema marks deprecated output
   fields and enum values, but the snapshot carries no input-field
@@ -38,9 +45,17 @@ Four facts shape the answers:
 - **Self-hosted Spacelift is narrower than SaaS.** It has no public worker
   pool, no Azure or GCP integration and no hosted AI integration
   ([26 section 2.3](../reference/26-scope-and-tiers.md#23-self-hosted)).
-- **Clients read tier data.** `tier` and `tierFeatures` are part of the
-  surface, and what they return on a self-hosted install is undocumented
-  (C122).
+- **Spacelift's gates are partly published.** Report 26 gives each tag and
+  each `BillingTierFeature` value the lowest plan the docs or the pricing
+  page name, and marks the rest "Not stated"
+  ([26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature),
+  [section 4](../reference/26-scope-and-tiers.md#4-capability-table-api-tags)).
+  A plain Starter tier is published only in fragments (C260).
+- **`BillingTierFeature` is a billing artefact, not a feature list.** Some
+  values name a Spacelift product (`SPACELIFT_INTELLIGENCE`), some are
+  quantities or add-ons (`UNLIMITED_SEATS`, `ADDITIONAL_PUBLIC_WORKER`), one
+  is deprecated (`AUDIT_WEBHOOKS`), and its pairing with operations is
+  inferred by name (C14, C121, C122).
 
 ## Decision
 
@@ -116,7 +131,7 @@ carries the state of each row forward.
 
 | State | Holds when |
 |---|---|
-| `implemented` | Every operation of the row is served with behaviour, and meets [0016](0016-testing-and-acceptance.md)'s evidence rule: passing scenarios against real dependencies for a success, a denial and a failure path. Its feature gate is wired. Every capture that blocks it is resolved to a fixture, or its behaviour is recorded as infraweave's choice in a decision record |
+| `implemented` | Every operation of the row is served with behaviour, and meets [0016](0016-testing-and-acceptance.md)'s evidence rule: passing scenarios against real dependencies for a success, a denial and a failure path. Its feature is in the catalogue and its gate is wired. Every capture that blocks it is resolved to a fixture, or its behaviour is recorded as infraweave's choice in a decision record |
 | `partial` | Some operations of the row meet `implemented`; the others are `stub` or `missing` |
 | `stub` | Every operation is routed and answers 501 from the generated server. A stub is never delivery |
 | `missing` | At least one operation has no route |
@@ -146,7 +161,7 @@ only; the owning decision records each behaviour infraweave chose.
 | `RunState.PENDING` | S1 | Absent from the served enum |
 | `TerraformWorkflowTool.OPEN_TOFU` | live in the schema | Served, marked deprecated for stacks only, since modules and Terragrunt still need it |
 | `INITIALIZATION` and `TASK` policy types | live in the schema | Served and marked deprecated. The aliases `TASK_RUN` (of `TASK`) and `TERRAFORM_PLAN` (of `PLAN`) are S2 and not served ([26 section 7.3](../reference/26-scope-and-tiers.md#73-policy-types)) |
-| MQTT worker transport | S3 | Not served: long-poll is the replacement and the self-hosted v7.1.0 release deprecates the built-in broker too ([10 section 4.2](../reference/10-workers-and-execution.md#42-transports)). Decision 0008 owns the worker protocol and answers P6 |
+| MQTT worker transport | S3 | Not served, neither the SaaS IoT Core endpoint nor a self-hosted broker: long-poll is the replacement and the self-hosted v7.1.0 release deprecates the built-in broker too ([10 section 4.2](../reference/10-workers-and-execution.md#42-transports)). Decision 0008 owns the worker protocol and answers P6 |
 | `pulumi-spacelift` | S3 | No infraweave Pulumi provider. Pulumi users bridge infraweave's Terraform provider ([06 section 7.1](../reference/06-spacectl-and-clients.md#71-pulumi-provider)) |
 
 ### Schema-only capabilities (P3)
@@ -158,10 +173,197 @@ behaviour, it replaces infraweave's choice through the lifecycle above.
 
 | Capability | Built as |
 |---|---|
-| Scans ([21 section 5](../reference/21-resources-scans-search.md#5-scans)) | Scan configurations and scan runs executed on workers like any run, recording discovered resources against managed entities; gated by `SCANS` |
+| Scans ([21 section 5](../reference/21-resources-scans-search.md#5-scans)) | Scan configurations and scan runs executed on workers like any run, recording discovered resources against managed entities; the `scans` capability |
 | `BLOB` source provider ([11 section 10](../reference/11-vcs-integrations.md#10-other-source-providers-in-the-enum)) | Commit archives read from S3 or S3-compatible storage with the schema's three authentication methods; the access key is sealed (decision 0013) |
 | Origin integration (same section) | Spacelift backs it with its own global app. infraweave reads an operator-registered Origin app from `vcs.origin` configuration; without one, `originIntegrationInstallURL` answers `installation-unsupported` |
 | Plugin templates, server side ([25 section 2](../reference/25-other-integrations.md#2-plugins)) | Custom templates as the schema describes. Global templates are loaded from `spacelift-io/plugins` (MIT) at a pinned commit, with its notice under decision 0002's rules, plus any directory the operator adds in `plugins.catalog_paths` |
+
+### The feature catalogue (P5)
+
+Every feature of infraweave is an entry in one catalogue file,
+`internal/features/catalogue.yaml` (decision 0004 places the `features`
+domain). An entry has a name, a kind, a description, the features it
+requires, the seeded tiers that include it, and the `BillingTierFeature`
+values it covers for parity (the mapping section below). There are three
+kinds:
+
+| Kind | Gates | Where the gate sits | Examples |
+|---|---|---|---|
+| Capability | A set of operations. Usually an API tag; finer where Spacelift gates part of a tag | Every operation of every served OpenAPI document carries `x-infraweave-feature` naming exactly one capability | `stacks`, `drift-detection`, `targeted-replan`, `scheduling` |
+| Option | One value or mode of a field inside an operation | The schema property carries `x-infraweave-feature` naming the option and the gated value; the catalogue entry names the same field | `aggregated-vcs-checks` (`vcsChecks: AGGREGATED`), `multiple-vcs-integrations` (`isDefault: false`), each IaC vendor (`StackVendor`) |
+| Limit | A quantity, as a whole number in a unit the entry states | The domain that creates the counted thing | `seats`, `private-workers`, `public-worker-slots`, `ai-budget` |
+
+- **Coverage.** Every operation belongs to exactly one capability, and every
+  option names its field. The catalogue covers Deploy; Flows, as
+  `flows-engine`, `flows-apps`, `flows-agents`, `flows-data-tables`,
+  `flows-forms` and `flows-mcp-tools`; the `console`; and each IaC vendor,
+  as an option on `StackVendor` such as `vendor-opentofu`. Flows has no
+  switch of its own: it turns off like any other feature, and every Flows
+  feature requires `flows-engine`.
+- **Names.** Feature names are infraweave's own: lower-case English words
+  joined by hyphens, never a Spacelift product or `BillingTierFeature`
+  spelling. A capability that covers the rest of an API tag takes the tag's
+  name, such as `worker-pools` or `vcs-integrations`, unless that name
+  collides with a glossary term: the Billing tag's capability is `usage`,
+  because `billing` is the feature below. A name is a public contract,
+  since `features.disabled`, the tier object and grants carry it, so
+  renaming one is a breaking change.
+- **Requirements.** An entry may require other features, such as
+  `drift-detection` requiring `private-worker-pools`. A feature whose
+  requirement is not in an account's entitlement is not in it either.
+- **Splitting.** When a release moves operations out of a capability into a
+  new, finer one, every tier that held the original capability gains the new
+  one, so no account loses an operation it had.
+
+### Tiers
+
+A tier is data: a name, a set of features and a set of limit values. Tiers
+are not an ordered ladder. A feature check is set membership, so an operator
+can define a tier that holds a Business feature without a Starter+ one.
+
+infraweave seeds five tiers from report 26. Each feature is placed at the
+plan Spacelift documents for it, read from report 26's Plan column with these
+rules:
+
+| Report 26 plan | Seeded tiers |
+|---|---|
+| All, UI support | Every seeded tier |
+| Paid | Starter and above. Starter is the lowest paid plan the pricing page describes |
+| Starter+, Business, Enterprise, from a docs notice or the schema | That tier and above |
+| Starter+ from the pricing page's comparison table only | Every seeded tier. The table has no Free or Starter column, so it is no evidence against them |
+| Not stated | Every seeded tier: infraweave does not invent a gate. C261 corrects the placement |
+| A finer gate inside a row | The finer feature at its own plan, the rest of the row at the row's plan |
+
+Enterprise holds every feature and no limit, including features a release
+adds later, and the operator cannot edit or delete it, because it is what
+every account has while billing is off. Enterprise+ is not seeded: it differs from Enterprise only in
+how Spacelift installs and supports it (self-hosted, FedRAMP, air-gapped,
+escalation), none of which is a feature of infraweave.
+
+The features not in every seeded tier:
+
+| Lowest seeded tier | Features |
+|---|---|
+| Starter | Capabilities `policies`, `notifications`, `webhooks`, `modules`, `module-sharing`, `oidc-federation`, `oidc-sso`, `tasks`; option `notification-policies` (policy `type: NOTIFICATION`) |
+| Starter+ | Capabilities `drift-detection`, `private-worker-pools`, `ignored-runs`, `sessions` |
+| Business | Capabilities `scheduling`, `targeted-replan`, `blueprints`, `templates`, `terraform-provider-registry` (with the GPG Keys tag, whose keys sign provider releases); option `aggregated-vcs-checks` |
+| Enterprise | Capabilities `audit-trail`, `saml-sso`, `scim`, `mfa`, `vcs-agent-pools`, `servicenow`; options `oidc-api-keys` (API key type `OIDC`), `multiple-vcs-integrations` |
+
+Every other feature, including all of Flows, the console, every IaC vendor,
+`scans`, `ai-integrations` and `intent`, is in every seeded tier.
+
+Seeded limits, where no value means no limit:
+
+| Limit | Unit | Free | Starter | Starter+ | Business | Enterprise |
+|---|---|---|---|---|---|---|
+| `seats` | users, and API keys as [14 section 4.4](../reference/14-spaces-rbac-and-identity.md#44-api-keys) counts them | 2 | 2 | | | |
+| `private-workers` | registered private workers | 0 | 0 | 2 | 3 | |
+| `public-worker-slots` | runs in flight on the public worker pool | 1 | 1 | 2 | 2 | |
+| `ai-budget` | the period budget of decision 0019's default AI integration | USD 10 per 30 days | | | | |
+
+Where Spacelift publishes no value for a tier (Starter's seats and public
+slots, Business's "configurable" public workers), the seed takes the value
+of the tier below it, and C260 corrects it.
+
+The seed is installed once. After that, the other four tiers are the
+operator's data, and the operator can add tiers of its own. A release adds
+a new feature to a seeded tier its catalogue entry names only while that
+tier still matches its seed.
+
+### Accounts, grants and entitlement
+
+- **One tier per account.** Every account (decision 0007) holds exactly one
+  tier. A new account gets the installation's default tier, Enterprise
+  unless the operator changes it.
+- **Grants.** The operator can grant an account a feature its tier lacks,
+  or set one of its limits to a value above or below the tier's. Grants
+  belong to the account and survive a change of tier.
+- **Switch-offs.** `features.disabled` stays operator configuration. It
+  removes a feature from every account of the installation:
+
+  ```yaml
+  features:
+    disabled: [ai-integrations, scans]
+  ```
+
+  Strict decoding rejects an unknown name, `billing`, and Spacelift's
+  spellings such as `SCANS`, so a typo cannot silently leave a feature on.
+  Changes take effect at restart, like any other configuration.
+- **Entitlement** is the account's tier, plus its grants, minus the
+  switched-off features, minus every feature whose requirements are not in
+  that set. Limit values come from a grant if one exists, else the tier.
+
+### Billing
+
+`billing` is the feature that turns entitlement enforcement on. It belongs
+to the installation, not to a tier, and it is off by default. While it is
+off, no entitlement check runs and every account behaves as Enterprise:
+every feature not in `features.disabled`, and no limits. Tiers, account
+tiers and grants can still be edited, so an operator can prepare them
+before switching billing on.
+
+Tiers, the billing switch, account tiers and grants are data, managed only
+through the operator API: its own OpenAPI document,
+`api/operator.openapi.yaml`, outside the parity surface because Spacelift has
+no counterpart, and reachable only by operator principals (decision 0006
+issues their credentials; any other credential answers `401
+unauthenticated`). `infraweavectl operator` wraps it with `tier`, `account`,
+`grant` and `billing` commands. A change takes effect without a restart:
+each write bumps `accounts.entitlement_version` for the accounts it touches
+and notifies `infraweave_invalidate`, and replicas rebuild their per-account
+entitlement snapshot as they do for authorization (decision 0007). Deleting
+a tier that an account holds answers `409 invalid-state`.
+
+### What callers see
+
+One chi middleware in `internal/features` runs after authentication and
+before the handler. It checks the operation's capability; the handler's
+input validation checks options; the domain that creates a counted thing
+checks limits.
+
+| Slug (decision [0022](0022-api-errors-and-update-semantics.md)) | When | Body members |
+|---|---|---|
+| `feature-disabled` (403) | The feature is in `features.disabled` | `feature` |
+| `feature-not-in-tier` (403) | Billing is on and the account's entitlement lacks the feature | `feature`; `tiers`, the names of the tiers that include it, smallest first (fewest features, then name) |
+| `limit-reached` (403) | Billing is on and creating the thing would take the account above a limit | `limit`; `value`, the account's limit |
+
+- `feature-disabled` wins over `feature-not-in-tier`: the operator's
+  switch-off is the cause a caller can do nothing about.
+- An option is checked only when a write changes the field to the gated
+  value, so a `PATCH` of another field of an aggregated-checks integration
+  still succeeds after a downgrade.
+- `public-worker-slots` is a concurrency limit: a run beyond it waits in the
+  queue rather than failing (decision 0008 schedules the public pool).
+- `ai-budget` counts spend in its period and resets when the period ends.
+  A request that would spend beyond it answers `limit-reached` like any
+  other limit, so a caller sees one problem type for every tier limit.
+- A worker that reconnects under its existing registration is not a new
+  private worker.
+
+### Downgrade and upgrade
+
+A change of tier, a removed grant or a new switch-off deletes nothing.
+
+- **Gated background work pauses.** A schedule of a feature outside the
+  entitlement does not fire, and a queued job of such a feature is completed
+  as skipped at dequeue (decision 0011), logged and counted in
+  `infraweave.features.skipped`, with no retry.
+- **Stored option values stay.** While the account lacks the option,
+  infraweave behaves as if the field held its default.
+- **Over a limit, nothing stops and nothing is added.** Existing users,
+  keys and workers keep working; creating another answers `limit-reached`
+  until the count is below the limit.
+- **Upgrading resumes.** Schedules fire again from their next occurrence;
+  missed firings are not caught up, so an upgrade cannot start a burst of
+  runs.
+
+A Business account with five schedules and four private workers moves to
+Starter+:
+
+| Item | On Starter+ | Back on Business |
+|---|---|---|
+| The five schedules | Kept; none fires. Reading or changing them answers `feature-not-in-tier` with `feature: scheduling` and `tiers: [Business, Enterprise]` | Fire again from their next occurrence |
+| The four private workers | All four stay registered and take runs. A fifth registration answers `limit-reached` with `limit: private-workers`, `value: 2`, and so does a new one after two leave, since two is not below two | The limit is 3, so a new registration succeeds once fewer than three are registered |
 
 ### Vendor-bound operations
 
@@ -173,57 +375,63 @@ with an honest local meaning, and otherwise refuses with
 
 | Operation or service | infraweave's answer |
 |---|---|
-| `tier` | `V5_ENTERPRISE_PLUS`, the edition that offers self-hosting ([26 section 2.1](../reference/26-scope-and-tiers.md#21-saas-plans)) |
-| `tierFeatures` | Every `BillingTierFeature` value that is not superseded and not in `features.disabled` |
-| `seats` | No limit, with the count of users in use |
+| `tier` | A tier object in place of the `BillingTier` enum: `name`, `features` (sorted names) and `limits` (a map from limit name to value; an absent limit has no limit). With billing off, the Enterprise tier |
+| `tierFeatures` | The account's entitlement, as infraweave feature names |
+| `seats` | The `seats` limit of the entitlement, or no limit, with the count in use |
 | `usage` and the usage CSV export | Computed from infraweave's own run and worker records over a trailing 30-day window, which is the period `usage` covers on Spacelift; there is no billing period ([19 section 11](../reference/19-events-notifications-audit.md#11-usage-data-and-usage-export)) |
 | `billingSubscription`, `onTrialUntil` | `null` |
 | `billedExternally` | `true`: no Stripe subscription exists |
 | `availableBillingAddons`, `availableSelfServicePlans` | Empty lists |
-| `billingSubscriptionCreate`, `billingSubscriptionUpdateV2`, `billingSubscriptionDelete`, `billingSubscriptionUpdateInfo`, `billingSubscriptionUpdateTier` | `installation-unsupported` |
+| `billingSubscriptionCreate`, `billingSubscriptionUpdateV2`, `billingSubscriptionDelete`, `billingSubscriptionUpdateInfo`, `billingSubscriptionUpdateTier` | `installation-unsupported`. An account's tier changes through the operator API |
 | `debugInfo` | infraweave's commit and version; an empty licence |
 | Usage reporting to Spacelift | `installation-unsupported`: there is no recipient ([0015](0015-events-notifications-webhooks-audit.md)) |
 | The Spacelift-provided AI integration | Decided in [0019](0019-ai-provider-boundary.md) |
 | The GitHub Marketplace app | An operator-registered GitHub App, as self-hosted Spacelift requires (decision 0012) |
 | The Azure integration's managed Entra applications | Created through an operator-registered Entra application in `cloud.azure`, which needs permission to create applications in its tenant. Without one, `azureIntegrationCreate` answers `installation-unsupported` |
-| The public worker pool | An optional, operator-run shared pool ([0020](0020-reference-deployments-and-packaging.md)) |
+| The public worker pool | An optional pool the operator runs for every account of the installation ([0020](0020-reference-deployments-and-packaging.md)) |
 
-### Features and tiers (P5)
+### Mapping from `BillingTierFeature`
 
-infraweave has no editions and no commercial gates. Every capability is
-available on every install. The operator can turn features off:
+Each value maps to the infraweave features that cover it, so parity stays
+traceable. The catalogue carries the same mapping, and a test checks that
+every live value has one.
 
-```yaml
-features:
-  disabled: [SPACELIFT_INTELLIGENCE, SCANS]
-```
+| `BillingTierFeature` | infraweave feature | Kind |
+|---|---|---|
+| `ACCESS_POLICIES` | none: superseded (S1), space role bindings replace it | |
+| `ADDITIONAL_PUBLIC_WORKER` | a grant raising `public-worker-slots` | limit |
+| `ADVANCED_SCHEDULING` | `scheduling` | capability |
+| `AGGREGATED_VCS_CHECKS` | `aggregated-vcs-checks` | option |
+| `API_KEYS_OIDC` | `oidc-api-keys` | option |
+| `AUDITING` | `audit-trail` | capability |
+| `AUDIT_WEBHOOKS` | `audit-trail`: superseded (S2) by `AUDITING` | capability |
+| `BLUEPRINTS` | `blueprints`, `templates` | capability |
+| `CAN_UPDATE_SSO_SAML` | `saml-sso` | capability |
+| `CLOUD_CREDENTIAL_GENERATION` | `cloud-integrations` | capability |
+| `CUSTOM_SSO_SAML` | `saml-sso` | capability |
+| `DRIFT_DETECTION` | `drift-detection` | capability |
+| `MFA` | `mfa` | capability |
+| `MULTIPLE_VCS` | `multiple-vcs-integrations` | option |
+| `NOTIFICATION_POLICIES` | `notification-policies`, `notifications` | option, capability |
+| `PRIVATE_MODULE_SHARING` | `module-sharing` | capability |
+| `PRIVATE_VCS` | `vcs-agent-pools` | capability |
+| `PRIVATE_WORKERS` | `private-worker-pools`, `private-workers` | capability, limit |
+| `RUN_STATE_CHANGE_WEBHOOKS` | `webhooks` | capability |
+| `TARGETED_REPLAN` | `targeted-replan` | capability |
+| `TERRAFORM_PROVIDER_VERSIONS` | `terraform-provider-registry` | capability |
+| `UNLIMITED_SEATS` | no `seats` value | limit |
+| `WORKFLOW_POLICIES` | `policies` | capability |
+| `OIDC_FEDERATION_TOKEN_GENERATION` | `oidc-federation` | capability |
+| `RUN_IGNORED_TRIGGERS` | `ignored-runs` | capability |
+| `ACCOUNT_AI_CONTROL` | `ai-account-controls` | capability |
+| `SPACELIFT_INTELLIGENCE` | `ai-integrations`, `intent` | capability |
+| `SERVICE_NOW_INTEGRATION` | `servicenow` | capability |
+| `BACKSTAGE_INTEGRATION` | `backstage` | capability |
+| `SCIM` | `scim` | capability |
+| `SCANS` | `scans` | capability |
 
-- **Values.** `features.disabled` takes `BillingTierFeature` names. Strict
-  decoding rejects an unknown or superseded name (`ACCESS_POLICIES`,
-  `AUDIT_WEBHOOKS`), so a typo cannot silently leave a feature on. The
-  default is empty.
-- **Which operations a value gates.** The served spec names the gating
-  value on each operation as `x-infraweave-feature`. The first assignment
-  comes from the pairing in [26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature),
-  which is by name [I], and captures C14, C121 and C122 correct it.
-- **Enforcement.** One chi middleware, in `internal/features` (decision
-  0004 owns placement), runs after authentication and before the handler.
-  An operation gated by a disabled value answers 403 `feature-disabled`, a
-  slug decision 0022 lists, with the value in the problem's `feature`
-  member. Background work of a disabled feature stops: the queue (decision
-  0011) discards a gated job at dequeue, logs it, and counts it in
-  `infraweave.features.skipped`, with no retry.
-- **Data is kept.** Disabling a feature deletes nothing. Re-enabling it
-  resumes from the stored configuration. Changes take effect at restart,
-  like any other configuration.
-- **Flows.** Flows has no `BillingTierFeature`, so it is switched off with
-  `flows.enabled: false` ([0018](0018-flows-runtime.md)), the one switch
-  outside `features.disabled`. A disabled Flows answers `feature-disabled`
-  on its own API routes in the same way, with no `feature` member, and the
-  Deploy-side `Flows` reads answer an empty integration.
-- **What the switch is for.** It serves operators with a policy reason to
-  keep a feature off, such as AI or VCS agent pools, and it gives clients
-  and tests one real code path for "feature not available".
+The first assignment of operations to capabilities starts from report 26's
+pairing, which is by name [I], and captures C14, C121 and C122 correct it.
 
 ### Docs against clients (P4)
 
@@ -266,24 +474,49 @@ acceptance feature that runs work therefore runs it on a private pool.
 - **P3, option (a), not stubs.** A 501 is not delivery, and the scope rule
   has no "until documented" clause. The `schema-only` basis keeps the
   weaker evidence visible instead of hiding it behind a stub.
-- **P5, options (a) and (c) combined, not (b).** An edition setting would
-  fix artificial limits into an open product, and it could not express a
-  single policy switch such as "no AI". Pure option (a) leaves clients
-  without a tier answer, and tests without the refusal path. Per-feature
-  switches, all on by default, give both.
-- **`V5_ENTERPRISE_PLUS` for `tier`.** Self-hosted Spacelift is sold at that
-  level and carries the Enterprise tier's functionality. Returning a value
-  that Spacelift's enum lacks would break the enum contract for one
-  constant.
+- **P5, tiers as data with per-feature switches, not (a) alone or a fixed
+  edition setting.** A gate added after clients and data exist is a breaking
+  change, so every feature carries a tier from the start. Tiers as data let
+  an operator who hosts infraweave for others package it as Spacelift does,
+  or differently, without a release; a fixed edition setting could do
+  neither, and could not express a single policy switch such as "no AI".
+  Per-feature switches keep that policy switch, and give clients and tests
+  one real refusal path.
+- **Billing off by default.** Most installations serve one company, with
+  no commercial relationship between operator and accounts. With billing off
+  they run no entitlement checks and see every feature, which is what the
+  maintainer asked for, while the gates exist and are tested for those who
+  turn billing on.
+- **Seeded from Spacelift's documented plans.** Capability parity covers the
+  gates too: an operator who switches billing on gets Spacelift's packaging
+  without writing it. Where Spacelift publishes nothing, a gate infraweave
+  invented would be a restriction with no source, so the feature goes in
+  every tier until a capture says otherwise.
+- **infraweave's names, with a mapping.** `BillingTierFeature` mixes
+  products, quantities, add-ons and a deprecated value, and its spellings
+  name Spacelift. Kinds and names of infraweave's own make every gate one of
+  three checks; the mapping table keeps each Spacelift value traceable.
+- **Every operation in exactly one capability.** A test can then prove that
+  nothing is ungated, and an operator can predict what a switch-off does.
+- **Downgrade deletes nothing.** A tier change is often temporary or a
+  mistake. Pausing work and refusing growth keeps data and running
+  infrastructure intact, and an upgrade needs no restore.
+- **403 for both new slugs.** Neither is transient: retrying does not help
+  until an operator changes the account, which 429 or 409 would not convey.
+- **Refusal over simulation.** A fake billing or Entra success looks like
+  progress in a test and fails in production. `installation-unsupported`
+  is explicit and testable.
 - **P4, option (c) with a default.** Following the docs everywhere would
   copy a profile layout that the released CLI no longer uses. Following the
   clients everywhere would copy an agent that validates nothing. A rule
   plus a recorded case keeps both kinds of choice reviewable.
-- **Refusal over simulation.** A fake billing or Entra success looks like
-  progress in a test and fails in production. `installation-unsupported`
-  is explicit and testable.
-- **Departure from Spacelift:** `tier` is a constant and `tierFeatures` is
-  operator configuration, not a commercial plan.
+- **Departure from Spacelift:** `tier` returns a tier object instead of a
+  `BillingTier` value, and `tierFeatures` returns infraweave feature names.
+  The enum names Spacelift's plan generations and cannot express a tier an
+  operator defines.
+- **Departure from Spacelift:** billing is off by default, so every account
+  behaves as Enterprise; tiers and grants are managed through an operator
+  API that has no Spacelift counterpart.
 - **Departure from Spacelift:** the billing mutations refuse; reads answer
   with local meaning.
 - **Departure from Spacelift:** the Azure integration, Origin and global
@@ -296,20 +529,21 @@ acceptance feature that runs work therefore runs it on a private pool.
 
 ## Constraints
 
-- **Inferred gate pairing.** The `BillingTierFeature` pairing with
-  operations is inferred by name. Until captures C14, C121 and C122
-  resolve, some `x-infraweave-feature` annotations may gate the wrong
-  operation; the effect is limited to installs that disable features.
-- **Report 26 cells to amend.** Report 26 section 7.8 keeps the MQTT
-  transport in scope for self-hosted. Under S3 it is superseded, and
-  decision 0008 reaches the same answer for P6. That cell, and section
-  7.7's open question on the legacy AWS mutations, are amended when this
-  record is accepted.
+- **Inferred gate pairing.** The pairing of operations with
+  `BillingTierFeature` values, and so the first assignment of operations to
+  capabilities, is inferred by name. Until captures C14, C121 and C122
+  resolve, some operations may sit in the wrong capability; the effect is
+  limited to installations that switch billing on or disable features.
+- **Seed gaps.** A plain Starter tier is published only in fragments, and
+  the pricing page gives Starter one private worker while the docs place
+  private worker pools from Starter+; the seed follows the docs, which rank
+  higher. Free's separate API key count is unpublished and not seeded. C260
+  and C261 correct the seed; a correction changes data, not the design.
 - **Input deprecations.** Input deprecations rest on the changelog until
   the snapshot fetcher requests them (P15).
 - **Unverified operator equivalents.** Whether Origin supports
   customer-registered apps is unverified (C11). If it does not, Origin is
-  refused on every install, and the gap is recorded in report 26.
+  refused on every installation, and the gap is recorded in report 26.
 - **Superseded data in imports.** Data that uses superseded interfaces
   (legacy AWS integrations, the `legacy` space, access-policy residue)
   reaches infraweave only through the importer. The importer's design is
@@ -325,17 +559,34 @@ acceptance feature that runs work therefore runs it on a private pool.
 - **`TestUnitSupersededEnums`** fails when a served enum contains a value
   that the schema marks deprecated or no longer used, unless the value is
   listed as live-but-deprecated in this record.
-- **`TestUnitFeatureAnnotations`** fails when an `x-infraweave-feature`
-  names an unknown or superseded `BillingTierFeature`, or when a tag that
-  report 26 pairs with a value has no annotated operation.
+- **`TestUnitFeatureCatalogue`** (`internal/features`) fails when:
+  - an operation of a served OpenAPI document has no `x-infraweave-feature`,
+    or one that names anything but a capability;
+  - a gated schema property names anything but an option, or an option's
+    catalogue field does not exist;
+  - a live `BillingTierFeature` value of the snapshot has no mapping;
+  - the seeded Enterprise tier lacks a feature or holds a limit.
+- **`TestUnitEntitlement`** (`internal/features`), table-driven: tier plus
+  grants minus switch-offs, requirements, limit grants above and below the
+  tier, and billing off.
 - **`TestUnitFeaturesConfig`** (`internal/features`) covers strict decoding
-  of `features.disabled`, and the rejection of `ACCESS_POLICIES` and of an
-  unknown name.
-- **`test/acceptance/features/platform_features.feature`** (`@postgres`):
-  - `tier` and `tierFeatures` with nothing disabled;
-  - a disabled `SPACELIFT_INTELLIGENCE` answering 403 `feature-disabled`
-    on an AI route and leaving other routes untouched;
+  of `features.disabled`, and the rejection of an unknown name, of
+  `billing`, and of `SCANS`.
+- **`test/acceptance/features/platform_features.feature`** (`@postgres`),
+  billing off:
+  - `tier` answers the Enterprise tier object and `tierFeatures` every
+    feature;
+  - a disabled `ai-integrations` answers 403 `feature-disabled` on an AI
+    route and leaves other routes untouched;
+  - a disabled `flows-engine` answers `feature-disabled` on Flows routes;
   - a skipped background job.
+- **`test/acceptance/features/platform_tiers.feature`**, billing on:
+  - an account on Starter+ creating a schedule answers
+    `feature-not-in-tier` naming Business and Enterprise;
+  - a seat beyond the limit answers `limit-reached`;
+  - the Business to Starter+ downgrade above, then the upgrade back;
+  - a tier change applies to a running server without a restart;
+  - an account credential on the operator API answers 401.
 - **`test/acceptance/features/platform_billing.feature`**: every Billing
   operation answers as the vendor-bound table says, and each mutation
   answers 403 `installation-unsupported`.
@@ -354,16 +605,20 @@ acceptance feature that runs work therefore runs it on a private pool.
 - [README: decisions fixed before writing](../README.md#decisions-fixed-before-writing),
   [sources and ranking](../README.md#target-version-and-sources).
 - [26: availability states](../reference/26-scope-and-tiers.md#12-availability-states),
+  [plan vocabulary](../reference/26-scope-and-tiers.md#13-plan-vocabulary),
   [editions](../reference/26-scope-and-tiers.md#2-editions),
   [`BillingTierFeature`](../reference/26-scope-and-tiers.md#3-billingtierfeature),
+  [API tags](../reference/26-scope-and-tiers.md#4-capability-table-api-tags),
   [supersession boundaries](../reference/26-scope-and-tiers.md#7-supersession-boundaries).
 - [30: product decisions](../reference/30-open-questions.md#product-decisions)
-  P2, P3, P4, P5 and P15; captures C11, C14, C121, C122.
+  P2, P3, P4, P5 and P15; captures C11, C14, C121, C122, C260 and C261.
 - [01: what is out of scope](../reference/01-spacelift-landscape.md#13-what-is-out-of-scope).
 - [09: deprecated policy types](../reference/09-policies.md#12-deprecated-types-and-their-replacements).
 - [14: API key fields](../reference/14-spaces-rbac-and-identity.md#81-types-and-fields).
 - [22: the MCP endpoint](../reference/22-intelligence.md#71-endpoint-and-transport).
-- Decisions 0001, 0002 and 0003; decisions 0007, 0008, 0011, 0012, 0013 and
-  0022, written alongside this one.
+- [GLOSSARY](../../../GLOSSARY.md): feature, capability, option, limit,
+  tier, grant, entitlement, billing, installation, account, operator.
+- Decisions 0001, 0002 and 0003; decisions 0004, 0006, 0007, 0008, 0011,
+  0012, 0013, 0019 and 0022, written alongside this one.
 - [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745) (`Deprecation`),
   [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594) (`Sunset`).

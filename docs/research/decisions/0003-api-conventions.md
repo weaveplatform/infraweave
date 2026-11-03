@@ -109,8 +109,10 @@ change to retrofit once clients exist:
 
 ### Problem types
 
-Each problem `type` is `urn:infraweave:problem:<slug>`. This is the only list
-of slugs.
+Each problem `type` is `urn:infraweave:problem:<slug>`. The complete list of
+slugs is the errors table of
+[0022](0022-api-errors-and-update-semantics.md), which repeats these five
+unchanged; this table holds the slugs this record defines.
 
 | Slug | Status | Meaning |
 |---|---|---|
@@ -181,8 +183,9 @@ The scaffolder adds them to each operation and records each addition in
 ## Verification
 
 - `api/deploy_test.go` checks that every component named above exists in the
-  bundled spec, and that every problem response's example `type` is a slug
-  from the table above.
+  bundled spec, that every problem response's example `type` is a slug from
+  0022's complete list with the status it gives, and that every slug in the
+  table above is used by a response and listed in 0022 with the same status.
 - Server behaviour (replay, 409, 422, 429, the operator switch, cursor
   round-trips) is verified by unit and Gherkin acceptance tests in the
   server's middleware packages (#15).
