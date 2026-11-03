@@ -360,7 +360,7 @@ so that member sees an empty list.
 ### Superseded interfaces
 
 - **Access policies** are never evaluated. Whether the API stores or refuses
-  `ACCESS` policies is decision 0021's (P2), which does not serve the
+  `ACCESS` policies is decision 0021's (PD-02), which does not serve the
   type; they grant nothing,
   and `User.cannotEvaluateAccessPolicies` is always `true`.
 - **The stack `administrative` flag** is accepted and reads back `false`. An

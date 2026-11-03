@@ -123,7 +123,7 @@ Disagreements between the sources:
 - **`ACCESS` after 2026-05-30.** The docs say access policies are disabled on that
   date, which is before the baseline, yet the deprecated page still describes them
   as working, and neither the schema [G] nor the policy contract [D] contract
-  marks `ACCESS` deprecated. Whether Spacelift still evaluates them is *(unverified)*.
+  marks `ACCESS` deprecated. Whether Spacelift still evaluates them is *(unverified)* (C47).
 - **`INITIALIZATION` and `TASK`.** The docs deprecate both; the schema does not.
   The policy contract defines `TASK` but has no `INITIALIZATION` entry at all
   [D] contract, so its input schema is no longer published. Both top sources rank
@@ -134,7 +134,7 @@ Disagreements between the sources:
 The docs mark policies as a paid-account feature [D] policy. `BillingTierFeature`
 has three policy-related values, `ACCESS_POLICIES`, `NOTIFICATION_POLICIES` and
 `WORKFLOW_POLICIES` [G]. Which policy types `WORKFLOW_POLICIES` covers is
-*(unverified)*; report 26 owns tiers.
+*(unverified)* (C48); report 26 owns tiers.
 
 ## 2. Policy engine and language
 
@@ -151,7 +151,7 @@ has three policy-related values, `ACCESS_POLICIES`, `NOTIFICATION_POLICIES` and
 - The provider documents `engine_type` as defaulting to `REGO_V0`, optional and
   computed [S] [`resource_policy.go#L112-L120`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_policy.go#L112-L120).
   The API's own default when the field is omitted is not stated in the schema, so
-  that it is `REGO_V0` is *(unverified)*.
+  that it is `REGO_V0` is *(unverified)* (C49).
 - The UI's editor has a version selector and a policy can switch versions at any
   time [D] policy, [RN 2025-11-07].
 - `policyRuntime { openPolicyAgentVersion }` returns the OPA version Spacelift runs
@@ -287,11 +287,12 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   A non-empty `approve_with_note` or `reject_with_note` set approves or rejects and
   records each note against the decision [D] approval, [D] contract.
 - `approve` must be definable for a run to progress; `reject` is optional. A reject
-  fails the run at once [D] approval.
+  fails the run at once [D] approval; report 08 finds the same page's walkthrough
+  describing it as canceling, so the target state is *(unverified)* (C40).
 - Across policies, a proposed run in `PENDING_REVIEW` finishes only once every
   attached approval policy approves [D]
   <https://docs.spacelift.io/concepts/run/proposed>. That a single reject from any one
-  policy fails the run regardless of the others is *(unverified)*, though it follows
+  policy fails the run regardless of the others is *(unverified)* (C41), though it follows
   the "denial wins" rule in section 2.4 [I].
 - Reviews come from `runReview(stack, run, decision, note)`, with `RunReviewDecision`
   `APPROVE` or `REJECT`, stored as `RunReview` with the run state and `stateVersion`
@@ -383,7 +384,7 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   policy [D] task.
 - Server-side initialization: any `deny` prevents the run or task from initializing
   [D] init. The resulting run state is not stated; that it is `FAILED` is
-  *(unverified)*.
+  *(unverified)* (C52).
 - Worker-side initialization: a private worker loads a policy file from
   `SPACELIFT_LAUNCHER_RUN_INITIALIZATION_POLICY`, refuses to start if it does not
   validate, and evaluates it before a run initializes; it may call `exec` and read
@@ -521,7 +522,7 @@ the edges [D] contract:
 | `GIT_PUSH` | `push`, `pull_request`, `in_progress`, `vcs_integration`, `stack` or `module` | `push`: `affected_files`, `affected_stacks_count`, `author`, `branch`, `commits[]` (oldest first, each a `commit` plus its own `affected_files`), `created_at`, `hash`, `message`, `tag`. `pull_request`: `action`, `action_initiator`, `affected_stacks_count`, `approved`, `author`, `base`, `closed`, `comment`, `diff`, `draft`, `head`, `head_owner`, `id`, `labels`, `mergeable`, `title`, `undiverged`. `vcs_integration`: `id`, `name`, `description`, `provider`, `is_default`, `labels`, `space`, `created_at`, `updated_at` [D] contract. `push` is null on a PR event; `pull_request` is null on a plain push [D] push |
 | `PLAN` | `spacelift`* (`commit`, `request.timestamp_ns`, `run`, `previous_run`, `stack`, `module`), one vendor block, `third_party_metadata` (`custom`, `infracost`) | `previous_run` is absent on the stack's first evaluation [D] plan |
 | `TASK` | `request`* (`command`, `remote_ip`, `timestamp_ns`), `session`*, `stack` or `module` | Module tasks get `module` instead of `stack` [D] task |
-| `TRIGGER` | `run`, `stack`, `stacks[]`, `workflow[]` (`id`, `stack_id`, `state`, `type`); or `module` (with `version`) and `stacks[]` | `stack` is the finished run's stack and `stacks` lists every stack in the account, in the same shape [D] trigger; the contract adds `queued_runs` (an integer) to each `stacks[]` entry [D] contract. `version`: `commit`, `created_at`, `id`, `latest`, `number`, `state`, `test_runs` [D] contract |
+| `TRIGGER` | `run`, `stack`, `stacks[]`, `workflow[]` (`id`, `stack_id`, `state`, `type`); or `module` (with `version`) and `stacks[]` | `stack` is the finished run's stack and `stacks` lists every stack in the account, in the same shape [D] trigger; the contract adds `queued_runs` (an integer) to each `stacks[]` entry [D] contract; what it counts, and whether module-version events carry it, is *(unverified)* (C55). `version`: `commit`, `created_at`, `id`, `latest`, `number`, `state`, `test_runs` [D] contract |
 | `NOTIFICATION` | `account`* (`name`), `webhook_endpoints`* (`id`, `labels`), plus the object of the event that fired (the contract gates each with `if`/`then`) | `run_updated` (`run`, `stack`, `state`, `note`, `username`, `timing[]` of `state` and `duration` in ns, `urls.run`, `plan_policy_decision` (`deny`, `warn`), `policy_receipts`); `internal_error` (`error`, `message`, `severity`); `module_version` (`module`, `version`); `worker_usage` (contracted limit, percentile, concurrency, burst budget and cycle fields) [D] contract |
 | `INTENT` | `resource`* (`resource_id`, `provider`, `provider_version`, `resource_type`, `operation`, `current_state`, `proposed_state`), `reviews` (`allow[]`, `deny[]`) | `current_state` is null on create, `proposed_state` null on delete [D] intent |
 | `INITIALIZATION` | not in the contract | From the migration table: `commit`, `run`, `stack`, `request.timestamp_ns` [D] migrate-approval |
@@ -567,7 +568,7 @@ the edges [D] contract:
 - The docs name push, approval, plan and trigger as the types that touch a run and
   so can set flags [D] policy; the contract defines `flag` on all nine types
   [D] contract. What a flag set by a type with no run (login, access, notification,
-  intent) does is *(unverified)*.
+  intent) does is *(unverified)* (C50).
 - Policies of the same type do not see each other's flags; flags pass between
   types [D] policy. They appear in the UI, which makes them useful for debugging
   [D] policy.
@@ -581,7 +582,7 @@ the edges [D] contract:
   [D] contract.
 - Within one evaluation, resets apply first and new flags second [D] flag-reset.
 - Policies without a `PolicyULID` (older policies) can set flags but not reset any
-  [D] flag-reset. How a policy gets a ULID is *(unverified)*.
+  [D] flag-reset. How a policy gets a ULID is *(unverified)* (C51).
 - Supported on push, approval, plan and trigger [D] flag-reset. During targeted
   replans, plan and approval policies run several times in one run, and reset lets the
   flags follow the current plan [D] flag-reset; report 08 owns targeted replan.
@@ -631,7 +632,7 @@ the edges [D] contract:
 type except trigger, which has one per event [G]. A capture is a real input kept for
 policy authors with the values the contract marks sensitive removed [G]. Captures
 are not mentioned in the docs; how often Spacelift captures, and whether captures need
-`sample`, is *(unverified)*. `INTENT` and `INITIALIZATION` have no capture kind [G].
+`sample`, is *(unverified)* (C53). `INTENT` and `INITIALIZATION` have no capture kind [G].
 
 spacectl exposes `policy list`, `show`, `samples`, `sample`, `simulate` and
 `samples-indexed` (search over evaluation records); `simulate` calls
@@ -651,7 +652,7 @@ Report 06 owns spacectl.
 - The example library is packaged as a Go module whose `Templates()` embeds every
   `examples/**/<name>.yml` with its sibling `.rego`, and validates name, type and body
   [S] [`templates.go`](https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc8/templates.go).
-  That the in-product templates are served from this module is *(unverified)*
+  That the in-product templates are served from this module is *(unverified)* (C54)
   [I, from the matching fields `name`, `type`, `description`, `labels`, `body`].
 
 ## 7. Attaching policies
@@ -725,7 +726,7 @@ A run left in `PENDING_REVIEW` is canceled 30 days after creation [D]
 | `labels` | `[String!]!` | `labels` (set) | Carries `autoattach:` labels |
 | `space` / `spaceDetails` | `ID!` / `Space!` | `space_id` (optional, computed) | Login policies only in root |
 | `description` | `String` | `description` (non-empty if set) | Markdown in the UI [D] policy |
-| `createdAt`, `updatedAt` | `Int!` | | Unix timestamps; the schema does not state the unit [G] |
+| `createdAt`, `updatedAt` | `Int!` | | Unix timestamps; the schema does not state the unit [G], so the unit is *(unverified)* (C56) |
 | `plugin` | `Plugin` | | Set when a plugin manages the policy; edits then go through the plugin [G], [RN 2025-11-13] |
 | `attachedStacks`, `attachedStack(id)`, `hasAttachedStacks`, `attachedIntentProjects`, `hasAttachedIntentProjects` | | | Attachments, including automatic ones |
 | `evaluationRecords`, `evaluationSample(key)`, `searchEvaluationRecords`, `sampleCount`, `notificationCount` | | | Section 6 |
@@ -740,7 +741,7 @@ optional), `policyUpdatev2(id, input: PolicyUpdateInput)` (`name`, `body` requir
 Queries: `policy(id)`, `policies`, `searchPolicies`, `searchSpacePolicies`,
 `policyRuntime`, `policyTemplate`, `searchPolicyTemplates`, `policyInputCaptures`,
 `policyInputCapture`, `intentPolicyInputSchema`, `autoattachmentForLabels` [G].
-What `force` on `policyDelete` overrides is *(unverified)*.
+What `force` on `policyDelete` overrides is *(unverified)* (C9).
 
 Managing policies in the UI needs admin rights [D] policy. Policies are written
 through the UI or the Terraform provider; the docs prefer Terraform so that policies
@@ -911,8 +912,12 @@ comment quoted in 2.1].
 ## What this means for infraweave
 
 - **Ten live types, three aliases.** The policy store must accept all 13
-  `PolicyType` names, normalise the three aliases to their current names, and keep
-  `ACCESS`, `INITIALIZATION` and `TASK` working while flagging them deprecated.
+  `PolicyType` names as input, normalize the three aliases to their current names,
+  and keep `INITIALIZATION` and `TASK` working while flagging them deprecated.
+  Which deprecated interfaces infraweave serves, among them `ACCESS` policies and
+  the deprecated `policyCreate` and `policyUpdate`, is product decision PD-02,
+  answered by decision 0021, which serves neither: an `ACCESS` policy fails
+  validation with its replacement named.
 - **Two Rego dialects.** Each policy carries an engine version; evaluation needs OPA
   in both v0 and v1 modes, a fixed preamble per type that defines the result object
   and defaults, rejection of policies that redefine those rules with another type,
@@ -922,6 +927,8 @@ comment quoted in 2.1].
   field for field, including the per-type run variants, the vendor blocks in plan
   input, custom inputs from `*.custom.spacelift.json`, and the documented null versus
   absent quirk for `terragrunt`. Publishing a contract document is part of parity.
+  Whether the contract is pinned as a committed snapshot beside the introspection
+  schema, so these citations stay stable, is product decision PD-14, still open.
 - **Combination semantics.** Each type has its own rule for merging several
   policies (deny wins, ignore wins, all approvals required, disagreeing priorities
   fail or fall back to normal, lock values must agree, login messages sorted and
@@ -951,18 +958,23 @@ comment quoted in 2.1].
   in `QUEUED` does not satisfy the `UNCONFIRMED` evaluation [I, from the
   `reviews.current`/`older` input shape].
 - A single `reject` from one of several approval policies fails the run
-  *(unverified)*.
-- Whether `ACCESS` policies are still evaluated after 2026-05-30 *(unverified)*.
-- The API's default engine when `engineType` is omitted *(unverified)*; the provider
+  *(unverified)* (C41).
+- Whether `ACCESS` policies are still evaluated after 2026-05-30 *(unverified)* (C47).
+- The API's default engine when `engineType` is omitted *(unverified)* (C49); the provider
   documents `REGO_V0`.
 - What a flag set by a login, access, notification or intent policy does
-  *(unverified)*.
-- How a policy acquires the `PolicyULID` needed to reset flags *(unverified)*.
-- The run state after a server-side initialization `deny` *(unverified)*.
-- When and how often Spacelift records `PolicyInputCapture` documents *(unverified)*.
-- That in-product templates come from the example library module *(unverified)*.
-- What `force` on `policyDelete` overrides *(unverified)*.
-- Which policy types `WORKFLOW_POLICIES` gates *(unverified)*.
+  *(unverified)* (C50).
+- How a policy acquires the `PolicyULID` needed to reset flags *(unverified)* (C51).
+- The run state after a server-side initialization `deny` *(unverified)* (C52).
+- When and how often Spacelift records `PolicyInputCapture` documents *(unverified)* (C53).
+- That in-product templates come from the example library module *(unverified)* (C54).
+- What `force` on `policyDelete` overrides *(unverified)* (C9).
+- Which policy types `WORKFLOW_POLICIES` gates *(unverified)* (C48).
+- Whether an approval policy `reject` fails or cancels the run *(unverified)* (C40).
+- What `queued_runs` counts on each trigger policy `stacks[]` entry, and whether
+  module-version events carry it *(unverified)* (C55).
+- The unit of `Policy.createdAt` and `updatedAt` *(unverified)* (C56).
+- Which OPA version evaluates policies in Spacelift SaaS *(unverified)* (C57).
 - The INITIALIZATION evaluation sits between `QUEUED`/`READY` and `INITIALIZING`
   [I, from "before they start"].
 
@@ -975,7 +987,7 @@ comment quoted in 2.1].
 | terraform-provider-spacelift | v1.57.0 (`c72b9bd2f3c3`) |
 | spacelift-policies-example-library | `6ff5edb08bc8` (2026-08-23); its CI pins OPA 0.64.0 and Regal v0.36.1 |
 | spacectl | `6bf167cb62a6` |
-| OPA version in Spacelift SaaS | not recorded; `policyRuntime` returns it |
+| OPA version in Spacelift SaaS | not recorded; `policyRuntime` returns it *(unverified)* (C57) |
 
 ## Sources
 

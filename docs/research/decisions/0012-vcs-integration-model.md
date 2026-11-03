@@ -29,7 +29,7 @@ and claims it with fencing
 [section 5.4](../reference/27-reference-materials.md#54-do-not-copy),
 [section 4.3](../reference/27-reference-materials.md#43-borrow)).
 
-P4 asks which default the VCS agent follows where the docs (a strict allowlist)
+PD-04 asks which default the VCS agent follows where the docs (a strict allowlist)
 and the agent source at the pin (no validation, because the flags are never
 registered) disagree
 ([11 section 14.6](../reference/11-vcs-integrations.md#146-what-it-proxies-request-validation);
@@ -110,7 +110,7 @@ not provider names.
   GitHub Enterprise Server, including the manifest flow
   ([11 section 4.2](../reference/11-vcs-integrations.md#42-operations)).
 - **Out of this record.** Which other providers are served is decision
-  0021's. It builds `BLOB` and `ORIGIN` as schema-only interfaces (P3);
+  0021's. It builds `BLOB` and `ORIGIN` as schema-only interfaces (PD-03);
   the `INFRAWEAVE` provider, whose files sit in the database and which
   Spacelift calls `SPACELIFT` (0001's rename table), is documented, so its
   scope rule serves it; it does not name `SHOWCASE`. Each served provider implements `Source` and needs no
@@ -267,7 +267,7 @@ the launcher's mapping of pool names to endpoints is 0008's.
   ([11 section 14.2](../reference/11-vcs-integrations.md#142-addressing)).
 - **Credentials stay on the server.** The server adds the VCS credential
   headers to each request; the agent holds only its pool key and network reach.
-- **Validation (P4, VCS agent part).** The agent validates every request
+- **Validation (PD-04, VCS agent part).** The agent validates every request
   against an allowlist by default. `--validation` (`INFRAWEAVE_VCS_AGENT_VALIDATION`)
   takes `allowlist` (default), `blocklist` with `--blocklist-path`, or `none`.
   The allowlist for each vendor is the route table that infraweave's own
@@ -310,7 +310,7 @@ the launcher's mapping of pool names to endpoints is 0008's.
   ([11 section 14.7](../reference/11-vcs-integrations.md#147-workers-and-the-gateway)).
   Long-poll reuses the worker protocol's shape (0008) and any HTTPS load
   balancer, and 0001 already excludes running Spacelift's clients unchanged.
-- **P4: the strict allowlist, as the docs promise.** The research precedence
+- **PD-04: the strict allowlist, as the docs promise.** The research precedence
   rule ranks the docs above the source, and the docs' behaviour is also the
   safe one: the agent sits inside a private network, and without validation a
   compromised or misconfigured server could use it as a general proxy into that
@@ -378,6 +378,6 @@ the launcher's mapping of pool names to endpoints is 0008's.
   (Terrakube's inbox), [section 12](../reference/27-reference-materials.md#12-cross-tool-comparison).
 - [28 section 12.6](../reference/28-data-model.md#126-vcs-and-cloud-integrations):
   the integration tables.
-- [30, VCS captures](../reference/30-open-questions.md#vcs-integrations-report-11):
+- [30, VCS captures](../reference/30-open-questions.md#captures-needed):
   C78 and the other open VCS questions.
-- spacelift-io/vcs-agent at `553aba3b3e54` (MIT): the agent that P4 compares.
+- spacelift-io/vcs-agent at `553aba3b3e54` (MIT): the agent that PD-04 compares.

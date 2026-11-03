@@ -100,7 +100,9 @@ takes effect only through the `ForceNew` `value_wo_version` or
 [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_environment_variable.go#L46-L110);
 [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_mounted_file.go#L42-L109).
 Whether `stackConfigAdd` with an existing `id` replaces the element in place
-is *(unverified)*; the UI's edit-in-place behaviour suggests it does [I].
+is *(unverified)* (C97); the UI's edit-in-place behaviour suggests it does [I].
+How infraweave's REST update behaves where Spacelift's mutation takes a whole
+input object is product decision PD-08, answered by decision 0022.
 
 ## 2. Environment variables
 
@@ -132,7 +134,7 @@ cloud credentials that the SDK reads at run time, such as `AWS_ROLE_ARN` with
 `AWS_WEB_IDENTITY_TOKEN_FILE`
 [D](https://docs.spacelift.io/concepts/configuration/environment). Whether the
 prefix is stripped from the name the process sees is not stated on that page
-*(unverified)*; the docs' `GITHUB_TOKEN` example implies the provider reads the
+*(unverified)* (C98); the docs' `GITHUB_TOKEN` example implies the provider reads the
 unprefixed name [I].
 
 The private-worker launcher has the same prefixes for variables it forwards
@@ -273,7 +275,7 @@ the SaaS schema has `Context.hooks` [G].
 | `contextCreateV2` | `input: ContextInput!` | [G] |
 | `contextUpdateV2` | `id`, `input`, `replaceConfigElements: Boolean` | Without `replaceConfigElements: true`, `input.configAttachments` is ignored. With it, the context's elements become exactly the list sent, and omitted ones are deleted [G]. The provider never sets it [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_context.go#L245-L250) |
 | `contextCreate`, `contextUpdate` | Flat arguments, no hooks or elements | Deprecated in favour of the V2 forms [G]; listed in the changelog's deprecations on 2026-07-16 [RN](https://docs.spacelift.io/product/changelog) |
-| `contextDelete` | `id`, `force: Boolean` | Deleting detaches the context from every project and erases its data with no history kept [D](https://docs.spacelift.io/concepts/configuration/context). What `force` changes is undocumented *(unverified)* |
+| `contextDelete` | `id`, `force: Boolean` | Deleting detaches the context from every project and erases its data with no history kept [D](https://docs.spacelift.io/concepts/configuration/context). What `force` changes is undocumented *(unverified)* (C9) |
 | `contextAttach` | `id`, `stack`, `priority: Int!` | Returns `ContextStackAttachment!` [G] |
 | `contextDetach` | `id` (the attachment ID) | [G]; [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_context_attachment.go#L126-L130) |
 | `context`, `contexts`, `attachableContextsInSpace(id)`, `searchContexts`, `searchSpaceContexts` | | Reads [G] |
@@ -319,7 +321,7 @@ description to settle it [G].
 What `priority` an auto-attached attachment reports, and whether the
 `autoattach:*` reach into child spaces depends on their inheritance toggle (as
 the spaces page says for policies,
-[D](https://docs.spacelift.io/concepts/spaces)), are *(unverified)*.
+[D](https://docs.spacelift.io/concepts/spaces)), are *(unverified)* (C99).
 
 ### 5.5 Hook order with contexts
 
@@ -396,7 +398,7 @@ every run gets one
 [D](https://docs.spacelift.io/vendors/terraform/terraform-provider);
 [D](https://docs.spacelift.io/concepts/configuration/environment). Every run
 receiving a token, narrowed by the stack's roles, is the reading both pages
-support [I].
+support [I] (C104).
 
 The schema's description of `SPACELIFT_ENVIRONMENT` names API tokens, OIDC
 tokens and the `TF_VAR_spacelift_*` metadata as Spacelift-managed [G]. A
@@ -405,7 +407,7 @@ and spacelift-worker-image at their pinned commits finds only launcher and
 worker-pool variables (`SPACELIFT_TOKEN`, `SPACELIFT_POOL_PRIVATE_KEY`,
 `SPACELIFT_METADATA_*` and similar, report 10), and no run-time variable the
 docs omit [S]. The runner side that injects the variables is closed source, so
-this list cannot be checked for completeness *(unverified)*.
+this list cannot be checked for completeness *(unverified)* (C100).
 
 ### 6.3 Overriding a computed value
 
@@ -445,14 +447,14 @@ ranks 1 and 2 drop out for it
 
 | Point | What the sources say | Status |
 |---|---|---|
-| Runtime file version | Version 2 puts the file above stack settings. Version 1 put stack settings above `stack_defaults` [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration). That page says `version` defaults to `1`; the YAML reference says `version` is optional and ignored [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference) | Contradictory; which applies to a file without `version` is *(unverified)* |
-| No stack block | When the file has no block for the stack, the page lists the stack's settings first and `stack_defaults` second [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) | Read literally, that reverses rank 2 and 3 for such stacks *(unverified)* |
-| Hooks from the runtime file | The file's hooks "can override" stack hooks [D](https://docs.spacelift.io/concepts/stack/stack-settings) | Whether they replace or extend stack hooks, and what happens to context hooks, is *(unverified)* |
-| Computed values | A stack variable overrides a computed one [D](https://docs.spacelift.io/concepts/configuration/environment) | Where computed values rank against contexts is *(unverified)* |
-| Stack dependency inputs | Not placed in any order | *(unverified)* |
-| Launcher-forwarded variables | Not placed in any order | *(unverified)* |
-| Per-run overrides | `runTrigger(runtimeConfig: RuntimeConfigInput)` carries either a `yaml` document or the fields `environment` (`[EnvVarInput!]`), `projectRoot`, `runnerImage`, `gitSparseCheckoutPaths` and the eleven hook lists, not both; `proposeWithOverrides` and `runProposeLocalWorkspace` carry `environmentVarsOverrides` [G]; spacectl exposes `--env-var-override` and `--tf-env-var-override`, the latter adding a `TF_` prefix [S](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/local_preview.go#L150-L172) | Their rank is undocumented; that they win over every stored source is *(unverified)* [I] from their purpose |
-| Interpolation and precedence | `${NAME}` resolves on the worker across sources [D](https://docs.spacelift.io/concepts/configuration/environment) | Whether it resolves against the winning value only is *(unverified)* |
+| Runtime file version | Version 2 puts the file above stack settings. Version 1 put stack settings above `stack_defaults` [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration). That page says `version` defaults to `1`; the YAML reference says `version` is optional and ignored [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference) | Contradictory; which applies to a file without `version` is *(unverified)* (C27) |
+| No stack block | When the file has no block for the stack, the page lists the stack's settings first and `stack_defaults` second [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) | Read literally, that reverses rank 2 and 3 for such stacks *(unverified)* (C28) |
+| Hooks from the runtime file | The file's hooks "can override" stack hooks [D](https://docs.spacelift.io/concepts/stack/stack-settings) | Whether they replace or extend stack hooks, and what happens to context hooks, is *(unverified)* (C29) |
+| Computed values | A stack variable overrides a computed one [D](https://docs.spacelift.io/concepts/configuration/environment) | Where computed values rank against contexts is *(unverified)* (C101) |
+| Stack dependency inputs | Not placed in any order | *(unverified)* (C101) |
+| Launcher-forwarded variables | Not placed in any order | *(unverified)* (C101) |
+| Per-run overrides | `runTrigger(runtimeConfig: RuntimeConfigInput)` carries either a `yaml` document or the fields `environment` (`[EnvVarInput!]`), `projectRoot`, `runnerImage`, `gitSparseCheckoutPaths` and the eleven hook lists, not both; `proposeWithOverrides` and `runProposeLocalWorkspace` carry `environmentVarsOverrides` [G]; spacectl exposes `--env-var-override` and `--tf-env-var-override`, the latter adding a `TF_` prefix [S](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/local_preview.go#L150-L172) | Their rank is undocumented; that they win over every stored source is *(unverified)* (C102) [I] from their purpose |
+| Interpolation and precedence | `${NAME}` resolves on the worker across sources [D](https://docs.spacelift.io/concepts/configuration/environment) | Whether it resolves against the winning value only is *(unverified)* (C103) |
 
 ### 7.3 Settings, not only variables
 
@@ -490,7 +492,8 @@ list is in report 07.
   `runtimeConfig` does.
 - Injection of the `TF_VAR_spacelift_*` metadata, an API token scoped by the
   stack's roles, an OIDC token in variable and file form, and the user-tunable
-  `SPACELIFT_*` switches.
+  `SPACELIFT_*` switches. Whether the tokens' formats match Spacelift's is
+  product decision PD-07, answered by decision 0006 (report 12).
 - `ro_`/`wo_` stage filtering, `${NAME}` interpolation on the worker, and log
   masking for secrets, `::add-mask` and well-known patterns, with the
   single-line limit.
@@ -502,15 +505,16 @@ list is in report 07.
 
 - Mounted file values are Base64 at the API, inferred from the provider passing
   its Base64 `content` straight into `ConfigInput.value`.
-- `stackConfigAdd` on an existing ID updating in place, inferred from the UI.
-- The rank of per-run overrides, inferred from their purpose.
+- `stackConfigAdd` on an existing ID updating in place, inferred from the UI (C97).
+- The rank of per-run overrides, inferred from their purpose (C102).
 - The `ro_`/`wo_` prefix being stripped before the process sees the variable,
-  inferred from the documented example.
+  inferred from the documented example (C98).
 - Version 1 versus 2 precedence for files without `version`, the order when
   the file has no stack block, how runtime-file hooks combine with stack and
   context hooks, where computed, dependency and launcher values rank, the
   priority of auto-attached attachments, inheritance and `autoattach:*`,
-  and `contextDelete(force)`: all undocumented and *(unverified)*.
+  and `contextDelete(force)`: all undocumented and *(unverified)* (C27, C28,
+  C29, C101, C99, C9).
 
 ## Versions at the research baseline
 

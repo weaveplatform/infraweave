@@ -59,7 +59,7 @@ project [D] [intel][intel].
 | Read the account through GraphQL | yes (`query`) | yes (Ask) | [D] [intel][intel] |
 | Discover provider schemas | yes (`provider`) | yes | [D] [intel][intel] |
 | Create, update, delete and import resources | yes, with `mcp:write` | yes, in Build mode | [D] [intel][intel] |
-| Run arbitrary GraphQL mutations | yes (`mutate`, with `mcp:write`) | *(unverified)*: the Build mode tool list names resource, state and dependency operations, not general mutations | [D] [mcp][mcp]; [D] [ia][ia] |
+| Run arbitrary GraphQL mutations | yes (`mutate`, with `mcp:write`) | *(unverified)* (C212): the Build mode tool list names resource, state and dependency operations, not general mutations | [D] [mcp][mcp]; [D] [ia][ia] |
 | Governed by Intent policy | yes | yes, in Build mode | [D] [intel][intel] |
 | Navigate the UI, read page context | no | yes | [D] [ia][ia] |
 | Search the Spacelift documentation | no | yes | [D] [ia][ia] |
@@ -107,7 +107,7 @@ The settings live under **Settings** > **Spacelift Intelligence** [D]
 | Token budget, Spacelift-provided integration | Free tier: USD 10 per 30-day window, reset in full; paid tiers: unlimited | [D] [intel][intel] |
 | BYOM integrations | No Spacelift-imposed limit; billed by the provider | [D] [aii][aii] |
 | Price of Intelligence | Free of charge for now; Spacelift reserves the right to charge with notice | [D] [ai-terms][ai-terms] §4 |
-| Spacelift-hosted AI usage | The same terms say Spacelift-hosted AI consumes Spacelift credits and is subject to usage limits Spacelift communicates; how credits relate to the free tier's USD 10 budget is not stated *(unverified)* | [D] [ai-terms][ai-terms] §3 |
+| Spacelift-hosted AI usage | The same terms say Spacelift-hosted AI consumes Spacelift credits and is subject to usage limits Spacelift communicates; how credits relate to the free tier's USD 10 budget is not stated *(unverified)* (C213) | [D] [ai-terms][ai-terms] §3 |
 | Intent release status | The legal page is titled "Spacelift Intent Early Access Release", effective 2025-10-08, and treats Intent as a beta, not recommended for production | [D] [intent-terms][intent-terms] |
 | Intent in the UI | Reached under _Try New Features_ > _Intent Projects_ | [D] [i-wp][i-wp] |
 | Intent and chat in Bruno | 36 requests carry the marker "Intent and AI chat preview feature" | [B] |
@@ -115,10 +115,10 @@ The settings live under **Settings** > **Spacelift Intelligence** [D]
 | Self-hosted | Intent, the MCP server, Infra Assistant and Intent policies ship from v6.0.0; run summaries from v7.0.0; no Spacelift-provided integration, so BYOM is required and no token budget applies | [RN] [sh-cl][sh-cl]; [D] [sh-intel][sh-intel]; [D] [sh-aii][sh-aii] |
 
 Whether Intent has left early access is not stated: the product pages carry
-no beta label, while the legal page and the UI menu do. *(unverified)*
+no beta label, while the legal page and the UI menu do. *(unverified)* (C214)
 
 Which tier `ACCOUNT_AI_CONTROL` gates, and what it controls, is not documented.
-*(unverified)*
+*(unverified)* (C215)
 
 ## 3. AI integrations
 
@@ -155,7 +155,7 @@ Provider strings: the schema description lists Anthropic, OpenAI, Google and
 Bedrock [G]; the Terraform provider sends `Anthropic`, `Bedrock`, `Google` and
 `OpenAI` [S] [tf-ai][tf-ai]; Bruno's example sends `OPENAI` [B]. The schema
 and the provider agree, so mixed case is the documented value; whether the API
-also accepts upper case is *(unverified)*.
+also accepts upper case is *(unverified)* (C216).
 
 ### 3.2 Providers and models
 
@@ -283,14 +283,14 @@ Data sources `spacelift_ai_integration` and `spacelift_ai_integrations` exist
 | Message | `IntentChatMessage`: `id`, `role` (user, assistant, system and others), `content` (JSON) | [G] |
 | Transcript | Markdown of the conversation with tool calls and results verbatim and reasoning dropped, pageable by message offset and limit, meant for continuing in an external agent harness | [G] |
 | Operations | `intentChatConversations(page, perPage, search)`, `intentChatConversation(id)`, `intentChatConversationCreate`, `intentChatConversationUpdate(id, description!)`, `intentChatConversationDelete(id)` | [G] |
-| UI | History is kept per user; conversations can be browsed, searched, switched and deleted | [D] [ia][ia] |
+| UI | History is kept per user, though no schema field names the owner (C268); conversations can be browsed, searched, switched and deleted | [D] [ia][ia] |
 | Model switching | The integration and model can change mid-conversation; history is adapted to the new provider's format | [D] [aii][aii] |
 | Audit | Resource type `INTENT_CHAT_CONVERSATION` with metadata `id` and `name` | [G] |
 | Panel | A resizable left sidebar on desktop, a floating window on small screens; a dedicated page and an **Ask** button by the search box | [D] [ia][ia]; [RN] [sh-cl][sh-cl] v6.4.1 |
 
 No GraphQL operation sends a chat message or streams a reply; the snapshot
 has only conversation CRUD and the transcript [G]. The chat exchange therefore
-uses another channel *(unverified)*, which also carries the token-budget
+uses another channel *(unverified)* (C217), which also carries the token-budget
 accounting.
 
 ### 4.3 Run summaries
@@ -302,7 +302,7 @@ accounting.
 | Output | A plain-language summary, the cause and suggested fixes, including code snippets; wording varies | [D] [sum][sum] |
 | Model | Whatever the Infra Assistant model picker has selected | [D] [sum][sum] |
 | Who may use it | Every user with read access to runs, once Infra Assistant is enabled | [D] [sum][sum] |
-| Coverage | All plans and all stack types since 2026-06-23; self-hosted from v7.0.0 | [RN] [cl][cl]; [RN] [sh-cl][sh-cl] |
+| Coverage | All plans and all stack types since 2026-06-23; self-hosted from v7.0.0 (C270) | [RN] [cl][cl]; [RN] [sh-cl][sh-cl] |
 
 The self-hosted v6.0.0 notes call the earlier summarization feature "Saturnhead
 Assist" [RN] [sh-cl][sh-cl].
@@ -362,10 +362,10 @@ credentials; state and history are recorded [D] [intent][intent].
 | `searchIntentProjects`, `searchIntentProjectsSuggestions` | `SearchInput`, `SearchSuggestionsInput` | Search across projects | [G] |
 | `intentProjectCreate` | `name!`, `description`, `labels`, `space!`, `workerPool`, `runnerImage` | Create | [G] |
 | `intentProjectUpdate` | `id!` and optional `name`, `description`, `labels`, `space`, `workerPool`, `runnerImage` | Update | [G] |
-| `intentProjectDelete` | `id!`, `keepResources` | Delete; `keepResources` presumably drops the project without destroying cloud resources *(unverified)* | [G] |
+| `intentProjectDelete` | `id!`, `keepResources` | Delete; `keepResources` presumably drops the project without destroying cloud resources *(unverified)* (C218) | [G] |
 | `intentProjectActivate` | `id!` | Make it the caller's active project | [G]; [D] [i-gs][i-gs] |
 | `intentProjectUnlock` | `id!` | Release the lock | [G] |
-| `intentProjectDisable` | `id!` | Switch to `READ_ONLY` *(unverified)*: inferred from `intentProjectEnable` restoring `READ_WRITE` | [G]; [D] [i-iac][i-iac] |
+| `intentProjectDisable` | `id!` | Switch to `READ_ONLY` *(unverified)* (C219): inferred from `intentProjectEnable` restoring `READ_WRITE` | [G]; [D] [i-iac][i-iac] |
 | `intentProjectEnable` | `id!` | Switch back to `READ_WRITE` | [G]; [D] [i-iac][i-iac] |
 | `intentProjectAttachWorkerPool` | `intentProject!`, `workerPool!` | Assign a private pool | [G]; [D] [i-exec][i-exec] |
 | `intentProjectDetachWorkerPool` | `intentProject!` | Return to the default pool | [G] |
@@ -457,10 +457,10 @@ descriptions [I]:
 |---|---|---|
 | (new) | policies allow | `PENDING` |
 | (new) | no rule matches | `PENDING_REVIEW` |
-| (new) | a policy denies | `FAILED` *(unverified)*, with `deny` reasons set |
+| (new) | a policy denies | `FAILED` *(unverified)* (C220), with `deny` reasons set |
 | `PENDING_REVIEW` | review `ALLOW` | `READY_FOR_EXECUTION` |
-| `PENDING_REVIEW` | review `DENY` | `FAILED` *(unverified)* |
-| `READY_FOR_EXECUTION` | the client calls the `intent` tool's `resume` | `PENDING` *(unverified)* |
+| `PENDING_REVIEW` | review `DENY` | `FAILED` *(unverified)* (C220) |
+| `READY_FOR_EXECUTION` | the client calls the `intent` tool's `resume` | `PENDING` *(unverified)* (C221) |
 | `PENDING` | the worker applies | `FINISHED` or `FAILED` |
 
 Policy evaluation reruns on review with the recorded reviews in
@@ -537,7 +537,7 @@ as runs (report 12) [I] from [i-cred][i-cred].
 Intent operations therefore travel the same launcher and worker path as runs
 (report 10), with an Intent-specific image [I] from [i-exec][i-exec]. The
 default image name, its contents and the message the launcher receives for an
-Intent execution are not documented *(unverified)*.
+Intent execution are not documented *(unverified)* (C222).
 
 ### 5.10 Intent to IaC
 
@@ -595,7 +595,7 @@ admins can manage Intent projects in their spaces by default [D]
 The Intent policy actions are separate from the general policy actions, so
 policy authors and resource operators can be different people [D]
 [intent][intent]. There is no action for reading a project; read access
-presumably follows space read access *(unverified)*.
+presumably follows space read access *(unverified)* (C223).
 
 ## 6. Intent policies
 
@@ -660,7 +660,7 @@ Input, from the policy contract [S] [contract][contract]:
 | Claude Code plugin | `spacelift-io/claude-plugins` adds a `spacelift` skill that guides tool choice | [D] [mcp][mcp] |
 
 Whether `/intent/mcp` was removed on schedule is not recorded in the
-changelog *(unverified)*.
+changelog *(unverified)* (C224).
 
 ### 7.2 Tools
 
@@ -675,7 +675,7 @@ changelog *(unverified)*.
 Asking for `intent` also enables `provider` [D] [mcp][mcp]. The input schemas
 of the five tools are not published; the docs only say that `provider` and
 `intent` carry long, multi-paragraph descriptions [D] [mcp-c][mcp-c].
-*(unverified)*
+*(unverified)* (C225)
 
 ### 7.3 Authentication
 
@@ -693,7 +693,7 @@ of the five tools are not published; the docs only say that `provider` and
 The registration endpoint means clients register dynamically, as the MCP
 authorization specification provides [I] from [sh-cl][sh-cl] v6.1.1. A
 refused registration returns an error naming the unsupported redirect host
-[D] [mcp-c][mcp-c]. The endpoint paths are not documented *(unverified)*.
+[D] [mcp-c][mcp-c]. The endpoint paths are not documented *(unverified)* (C226).
 
 ### 7.4 The `tools` query parameter
 
@@ -861,6 +861,8 @@ and `timeline_events` matches the project **History** tab [I] from comparing
   - A server-side proxy holds the keys and enforces the enabled flag.
   - A Spacelift-provided default and its token budget have no self-hosted
     equivalent, so the plan must state what infraweave offers by default.
+    That is product decision PD-11; decision [0019](../decisions/0019-ai-provider-boundary.md) takes BYOM
+    plus an optional operator-configured default with a budget.
 - **Account toggles.** Intelligence, assistant and Build mode are switched on
   separately and gated by acceptance of the terms. A non-admin can ask an
   admin to enable them.
@@ -891,6 +893,12 @@ and `timeline_events` matches the project **History** tab [I] from comparing
   - Bearer-token access, and a `tools` narrowing parameter.
   - A discover/query/mutate trio over infraweave's own API. That API is REST,
     not GraphQL, so the trio's shape is a design question for later tickets.
+  - Mirroring the hosted `/mcp` tools, the standalone `spacelift-intent`
+    server, or both is product decision PD-10; decision [0019](../decisions/0019-ai-provider-boundary.md)
+    takes the hosted tools only.
+  - Serving the former `/intent/mcp` beside `/mcp` is part of product
+    decision PD-02, answered by decision [0021](../decisions/0021-capability-scope-and-supersession.md): it is
+    not served.
 - **Conversations** are stored with versioning, a model choice per
   conversation and an exportable transcript. Run summaries go through the
   assistant.
@@ -919,7 +927,7 @@ and `timeline_events` matches the project **History** tab [I] from comparing
 - **Docs conflict on Bedrock.** The 2026-04-13 changelog says Bedrock BYOM
   serves both Infra Assistant and Intent [RN]. The AI integrations page says
   Intent never uses AI integrations [D]. The docs page is the higher source
-  and wins.
+  and wins (C227).
 - **Bruno and the schema differ on provider strings.** Bruno uses `OPENAI`
   [B], while the schema description and the Terraform provider use `OpenAI`
   [G] [S]. The schema wins.
@@ -935,7 +943,11 @@ and `timeline_events` matches the project **History** tab [I] from comparing
   - the OAuth endpoint paths;
   - whether `/intent/mcp` is gone;
   - upper-case provider values;
-  - how Spacelift-hosted AI credits relate to the token budget.
+  - how Spacelift-hosted AI credits relate to the token budget;
+  - what enforces the Intent resource actions, which no GraphQL mutation
+    carries (C8);
+  - whether the archived repository ([01](01-spacelift-landscape.md)) means
+    the open-source server is retired or moved (C15).
 
 ## Versions at the research baseline
 

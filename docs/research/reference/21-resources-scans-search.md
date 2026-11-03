@@ -54,7 +54,7 @@ annotated from the docs and sources.
 | Stack _Resources_ tab | The same view limited to one stack | The same five fields on `Stack`; also `Stack.entities`, `Stack.entity(id)`, `Stack.entityCount` | [D] resources; [G] |
 | _Configuration Management_ (stack tab, Resources tab, run _Tasks_ tab) | Ansible hosts, tasks and task executions | `searchAnsibleHosts`, `searchAnsibleTasks`, `ansibleHosts`, `ansibleTasks`, `ansibleHost`, `hasAnsibleStacks`, `AnsibleHost.searchAnsibleTaskExecutions` | [D] config-mgmt; [G] |
 | Run _Changes_ view | Per-entity changes planned or applied by a run | `Run.changesV2`, `Run.changesV3`, `Run.searchEntityChanges`, `Run.searchEntityChangesSuggestions`, `Run.delta` | [G]; [RN] 2026-09-23 |
-| Scans | Scan definitions, scan runs, discovered cloud resources and failures | `scan*` operations, `searchScans`, `ScanRun.searchResources`, `ScanRun.searchFailures` | [G]; [B] folder `Scans`; no docs page *(unverified)* |
+| Scans | Scan definitions, scan runs, discovered cloud resources and failures | `scan*` operations, `searchScans`, `ScanRun.searchResources`, `ScanRun.searchFailures` | [G]; [B] folder `Scans`; no docs page *(unverified)* (C11) |
 | Every list view's filter bar | Filterable fields and their values with counts | `search…Suggestions` fields (57 in the schema) | [G]; [B] folder `Advanced/Search Suggestions` |
 | Saved filter views | Named filter, search and sort sets per list view | `savedFilters`, `savedFilter`, `savedFilterCreate`, `savedFilterUpdate`, `savedFilterDelete` | [D] organizing; [G]; [B] |
 | Bulk action bar and drawer | Actions over a selection of stacks, runs, modules, notifications, workers or queued runs | Per-entity mutations (section 8) | [D] bulk; [G] |
@@ -97,7 +97,7 @@ annotated from the docs and sources.
 | `drifted` | `Int` | Unix time drift was detected on the entity, null if never |
 | `name` | `String!` | Entity name |
 | `parent` | `String!` | Parent: a module or another entity |
-| `thirdPartyMetadata` | `String` | Custom metadata a third-party integration attached; how it is written is *(unverified)* |
+| `thirdPartyMetadata` | `String` | Custom metadata a third-party integration attached; how it is written is *(unverified)* (C196) |
 | `type` | `String!` | Entity type, such as a provider resource type |
 | `updater` | `Run` | Run that last updated the entity |
 | `vendor` | `EntityVendor!` | Vendor-specific metadata (section 2.4) |
@@ -227,7 +227,7 @@ Rules:
   vendor; other vendors use `changesV2` [G] [RN] 2026-09-23. Before that date
   `changesV3` returned an empty list for them [RN] 2026-09-23.
 - `changePhase` on `searchEntityChanges` is a `String`, not the `EntityChangePhase`
-  enum [G]; the accepted spellings are *(unverified)*.
+  enum [G]; the accepted spellings are *(unverified)* (C197).
 - JSON-encoded attribute values in the run's resource changes panel render as
   structured JSON diffs [RN] 2026-03-03.
 - The bulk **Replan** action on the run changes view starts a targeted replan of the
@@ -253,14 +253,14 @@ unconfirmed run causes) count resources by kind of change.
 | `okCount`, `skipCount`, `rescueCount`, `ignoreCount`, `unreachableCount`, `failedCount` | Ansible task outcomes | `OK`, `SKIPPED`, `RESCUED`, `IGNORED`, `UNREACHABLE`, `FAILED` [I] |
 
 How replacements count (once in add and once in delete, or otherwise) is
-*(unverified)*.
+*(unverified)* (C198).
 
 ## 4. Configuration management (Ansible)
 
 - For Ansible stacks the stack page shows a _Configuration Management_ view in place of
   _Resources_; a toggle (**Enable configuration management view**) switches back to the
   resources view for historical resources [D] config-mgmt. Where the toggle is stored is
-  *(unverified)*; no stack field for it exists in the schema [G].
+  *(unverified)* (C199); no stack field for it exists in the schema [G].
 - The account _Resources_ view has a _Configuration Management_ tab, and an Ansible
   run's view has a _Tasks_ tab with per-task execution details and logs [D] config-mgmt.
 - The view shows the latest status of every inventory item from its most recent run,
@@ -307,7 +307,7 @@ resources ([19](19-events-notifications-audit.md)) [G].
 | `labels` | `[String!]!` | `[String!]!` | For filtering and grouping |
 | `providerConfigs` | `[ScanProviderConfig!]!` | `[ScanProviderConfigInput!]!` | At least one. One entry per provider configuration: several AWS regions are several entries, and two cloud accounts are two entries |
 | `scope` | `[ScanScope!]!` | `[ScanScopeInput!]!` | Resource types to discover and per-type filters |
-| `workerPool` | `ID!` | `ID!` (ULID) | Pool that runs the scan; it must be a discovery-type pool. No `WorkerPool` field or enum marks a pool as discovery-type, so how a pool becomes one is *(unverified)* |
+| `workerPool` | `ID!` | `ID!` (ULID) | Pool that runs the scan; it must be a discovery-type pool. No `WorkerPool` field or enum marks a pool as discovery-type, so how a pool becomes one is *(unverified)* (C194) |
 | `workerPoolName` | `String` | none | Null only when the pool no longer exists |
 | `runnerImage` | `String` | `String` | Optional custom runner image |
 | `latestRun` | `ScanRun` | none | Most recent run in any state; null before the first |
@@ -373,7 +373,7 @@ input validation [I: GraphQL rejects unknown input fields].
 | `state` | `ScanRunState!` | Lifecycle state |
 | `workerUlid` | `String` | Worker that picked the run up |
 | `resourceCount` | `Int!` | Resources recorded |
-| `resourceStats` | `ScanRunResourceStats!` | `managed` (identity matches an entity in some stack's state) and `unmanaged`; counted from stored resources, so both fall to zero once retention removes them. The retention period is *(unverified)* |
+| `resourceStats` | `ScanRunResourceStats!` | `managed` (identity matches an entity in some stack's state) and `unmanaged`; counted from stored resources, so both fall to zero once retention removes them. The retention period is *(unverified)* (C195) |
 | `note` | `String` | Outcome text, such as the failure reason or the note left by whoever canceled it |
 | `failures`, `failuresCount` | list, `Int!` | Problems that did not stop the run |
 | `searchFailures`, `searchResources` (and suggestions) | search | Paged failures and discovered resources |
@@ -469,7 +469,7 @@ not alphabetically) and defaults to newest first, many other search fields descr
 themselves as supporting ordering, and each suggestions field marks which fields are
 `orderable` [G]. A saved stacks view also stores a sort order [D] organizing. The
 specific descriptions are the better evidence that ordering is honoured for the fields
-marked `orderable` [I]; for other fields it is *(unverified)*. spacectl sends
+marked `orderable` [I]; for other fields it is *(unverified)* (C200). spacectl sends
 `orderBy` for module versions, policy evaluation records and audit trail
 entries (`createdAt` `DESC`, a pager that copies the order) and worker pools
 in `draw` (`position`) [S] (spacectl
@@ -489,7 +489,7 @@ provider's `spacelift_stacks` data source pages at 50 [S]
 (`spacelift/data_stacks.go#L84-L87`); spacectl's `draw` command asks for 100 worker
 pools per page [S] (spacectl `internal/cmd/draw/data/workerpools.go#L103`).
 `intentModuleResources` documents a 50-item maximum page [G]. Whether the search fields enforce a maximum, and what `first`
-defaults to, is *(unverified)*.
+defaults to, is *(unverified)* (C201).
 
 ### 6.2 Predicates and constraints **[G]**
 
@@ -508,11 +508,11 @@ matching values instead of keeping them), `constraint: SearchQueryFieldConstrain
 | `timeInLast` | `SearchQueryFieldConstraintTimeInLast` | `LAST15M`, `LAST30M`, `LAST1H`, `LAST4H`, `LAST1D`, `LAST7D`, `LAST14D` |
 
 Combination: within one predicate the values are alternatives ("one of") [G]. Across
-predicates the conditions are combined with AND *(unverified)*; the Terraform
+predicates the conditions are combined with AND *(unverified)* (C202); the Terraform
 provider's `spacelift_stacks` data source sends one predicate per filter block, so a
 list of `labels` blocks becomes several `label` predicates [S]
 (`spacelift/data_stacks.go#L61-L72`). Whether
-`stringMatches` is case-sensitive is *(unverified)*; only `stringEquals` is described
+`stringMatches` is case-sensitive is *(unverified)* (C203); only `stringEquals` is described
 as case-sensitive [G].
 
 Field names come from the suggestions output, not from the GraphQL type: for example
@@ -544,7 +544,7 @@ are ignored). `SearchSuggestionsOutput`: `filteredCount: Int!` and `fields:
 The constraint to use follows the type [I]: `booleanEquals` for `BOOLEAN`,
 `enumEquals` for `ENUM`, `stringEquals` or `stringMatches` for `STRING`,
 `hierarchyNode` or `hierarchyNodeValueEquals` for `HIERARCHY` (the space tree is the
-evident hierarchy, *(unverified)*), and `timeInRange` or `timeInLast` for `TIME`.
+evident hierarchy, *(unverified)* (C204)), and `timeInRange` or `timeInLast` for `TIME`.
 
 ### 6.4 Every search field **[G]**
 
@@ -656,14 +656,14 @@ Behaviour:
 
 - A view saves the selected filters, a search query and the sort order [D] organizing.
   Bruno's example `data` is `{"predicates":[]}` with `type: "STACKS"` [B]; the full
-  `data` format and the set of `type` values are *(unverified)*.
+  `data` format and the set of `type` values are *(unverified)* (C205).
 - New views are private. An admin can share a view with the whole account [D]
   organizing; this is `isPublic` [I]. Whether the API restricts `isPublic: true` to
-  admins is *(unverified)*.
+  admins is *(unverified)* (C206).
 - A user can mark one view as a personal default, applied the next time they open the
   list, and can reset to the Spacelift default view with no filters [D] organizing.
   `SavedFilter` has no default flag [G], so where the default is stored is
-  *(unverified)*; the UI has a key/value store for layout preferences,
+  *(unverified)* (C207); the UI has a key/value store for layout preferences,
   `uiConfigGet`/`uiConfigStore` [G] [B] folder `Advanced/UI State`.
 - A view can be updated with the current filters, renamed or deleted; a shared view
   cannot be deleted [D] organizing.
@@ -672,7 +672,7 @@ Behaviour:
   report 07 owns labels.
 - Separately from views, a user can reorder and hide list columns (not the name
   column) and reset them to the default [D] organizing; where that layout is stored is
-  *(unverified)*, with `uiConfigStore`, a per-user JSON blob that each call overwrites,
+  *(unverified)* (C207), with `uiConfigStore`, a per-user JSON blob that each call overwrites,
   the evident candidate [G] [I].
 
 ## 8. Bulk actions
@@ -695,7 +695,7 @@ listed below].
 | Stacks | Lock, Unlock | `stackLock(id, note)`, `stackUnlock(id)` |
 | Stacks | Run task | `taskCreate(stack, command, skipInitialization)` |
 | Stacks | Sync commit | `stackSyncCommit(id)`: point the stack at its tracked branch's HEAD |
-| Stacks | Trigger | `runTrigger(stack, …)`; `runTriggerBatch(input)` also exists [G], whether the UI uses it is *(unverified)* |
+| Stacks | Trigger | `runTrigger(stack, …)`; `runTriggerBatch(input)` also exists [G], whether the UI uses it is *(unverified)* (C208) |
 | Stack runs, Runs | Approve, Reject, Confirm, Discard | `runReview`, `runConfirm`, `runDiscard` |
 | Modules | Disable, Enable | `moduleDisable(id)`, `moduleEnable(id)` |
 | Modules | Favorite, Unfavorite | `starSet(id, star)`; its description says it stars a stack or a module, although it returns `Stack`; `Module.starred` reads the result [G] |
@@ -719,7 +719,7 @@ priority values and their semantics are report 08 and report 10.
 - Users see only stacks and runs in spaces where they have `read` [D] dashboard.
 - Predefined views are **Overview**, **Metrics** and **DORA**; users can add their own
   views and pick their widgets and layout [D] dashboard. Where custom views are stored
-  is *(unverified)*; no dashboard type exists in the schema, and `uiConfigStore` is the
+  is *(unverified)* (C207); no dashboard type exists in the schema, and `uiConfigStore` is the
   evident candidate [I].
 - The Stacks state widget excludes modules [RN] (`fix(dashboard): exclude modules from
   Stacks state dashboard element`, 2026-01-13).
@@ -735,7 +735,7 @@ priority values and their semantics are report 08 and report 10.
 | Overview | Favourite and recent stacks, largest stacks | [I: field names] | `favouriteStacks`, `favouriteModules`, `recentStacks(states)`, `largestStacks` (`StackTileWithResources`) |
 | Overview | Migrate stacks to native vendors, **Terragrunt** tab | Stacks still to migrate, with one-click migrate all [D] terragrunt | `stacksRequiringAttention.stackTerragruntMigration` (`migrated`, `readyToMigrate`) [I: field names] |
 | Overview | Migrate stacks to native vendors, **OpenTofu** tab | Stacks ready to migrate and the migration queue, linking to a filter, preview and migrate page [D] tofu-migration | none in `SpaceliftMetrics`; `openTofuMigrationCounts` (described as meant for the migration dashboard), `openTofuMigrateSearch` and `openTofuMigrationQueueSearch` [G]; report 20 |
-| Overview | Active users, Launch Pad, User Activity | [D] dashboard | none in `SpaceliftMetrics`; source *(unverified)* |
+| Overview | Active users, Launch Pad, User Activity | [D] dashboard | none in `SpaceliftMetrics`; source *(unverified)* (C209) |
 | Metrics | Drift detection coverage | Share and number of stacks with drift detection on | `driftDetectionCoverage` |
 | Metrics | Stack failures | Stacks entering `failed` per day, 30 days | `stackFailuresRange` |
 | Metrics | Number of deployments | Tracked runs finishing successfully per day, 30 days | `numberOfDeploymentsRange` |
@@ -759,13 +759,13 @@ page names.
 
 Units [G]: the lead time and recovery series are seconds; the change failure rate is a
 ratio; run durations are nanoseconds for `averageRunDuration` (the unit of the other
-duration series is *(unverified)*). `…Range` fields are per-day series and `…Value`
+duration series is *(unverified)* (C210)). `…Range` fields are per-day series and `…Value`
 fields a single figure for the whole range [G].
 
 `DataPoint` [G]: `timestamp: Int!`, `value: Float!`, `labels: [String!]!`.
 `metrics` takes no arguments; `metricsRange(input: MetricsInput)` takes `startTime` and
 `endTime` (`Int!`, Unix seconds per the Bruno example) [G] [B]. The window `metrics`
-uses when no range is given is *(unverified)*; the docs describe 30-day widgets [D]
+uses when no range is given is *(unverified)* (C211); the docs describe 30-day widgets [D]
 dashboard.
 
 Tiles [G]:
@@ -797,6 +797,9 @@ Tiles [G]:
   conditions, 50 values, throttle 1 ms to 1 min, default 5 s), runs on worker pools
   with seven states, failures, discovered resources with identity hashing, and the
   managed or unmanaged match against stack state. The tier flag is `SCANS`.
+  Building scans from the schema shape is product decision PD-03, answered by
+  decision [0021](../decisions/0021-capability-scope-and-supersession.md) as the
+  `scans` capability.
 - **One search contract.** One request shape for every list: cursor and page paging,
   full-text search, typed predicates with exclusion, wildcards, hierarchy and time
   constraints, ordering, and a suggestions twin that returns filterable fields with
@@ -811,7 +814,7 @@ Tiles [G]:
 
 ## Inferred and undocumented
 
-- Scans have no docs page; everything in section 5 is from the schema and Bruno. The
+- Scans have no docs page; everything in section 5 is from the schema and Bruno (C11). The
   state transitions, the use of Terraform provider list capabilities and the meaning
   of `FINISHED_WITH_ERRORS` are inferred.
 - How a worker pool becomes discovery-type is undocumented, and the schema has no

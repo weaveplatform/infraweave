@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "open-questions.schema.json",
+  "title": "Open questions of the research set",
+  "description": "Report 30's register of what the research could not settle: product decisions a maintainer takes (PD-nn), facts only a capture or Spacelift can confirm (Cn), and upstream changes that send a reader back to a report (RV-n). Every report that marks a claim *(unverified)* is listed in some record's reports, and every report a record lists cites its id.",
+  "x-id-pattern": "C[0-9]{1,3}|PD-[0-9]{2}|RV-[0-9]+",
+  "x-cite-pattern": "\\b(?:C[0-9]{1,3}|PD-[0-9]{2}|RV-[0-9]+)\\b",
+  "x-cited-in": "reports",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "schema/open-questions.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind"],
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"enum": ["product-decision", "capture", "re-verify"]},
+          "status": {
+            "description": "Absent while the entry is open. resolved: the question is settled and its text says how; answered: an Accepted decision record answers it.",
+            "enum": ["resolved", "answered"]
+          },
+          "area": {
+            "description": "For a capture: the group of reports it belongs to.",
+            "type": "string",
+            "minLength": 1
+          },
+          "question": {"$ref": "common.schema.json#/$defs/markdown"},
+          "options": {"$ref": "common.schema.json#/$defs/markdown"},
+          "resolver": {
+            "description": "Who settles a product decision, and the decision record that answers or proposes an answer to it.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "howToCapture": {"$ref": "common.schema.json#/$defs/markdown"},
+          "blocks": {
+            "description": "What waits on the answer.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "trigger": {"$ref": "common.schema.json#/$defs/markdown"},
+          "recheck": {
+            "description": "The reports and sections to re-read when the trigger fires.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "lookFor": {"$ref": "common.schema.json#/$defs/markdown"},
+          "reports": {
+            "description": "The reports the entry concerns, first the one that holds the claim; each cites the entry's id.",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "common.schema.json#/$defs/path"}
+          },
+          "recheckReports": {
+            "description": "For a re-verify trigger: the reports its recheck names. They need not cite the trigger, which concerns where their facts come from rather than a claim of theirs.",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "common.schema.json#/$defs/path"}
+          }
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"kind": {"const": "product-decision"}}},
+            "then": {
+              "required": ["question", "options", "resolver", "blocks"],
+              "propertyNames": {"enum": ["id", "kind", "status", "question", "options", "resolver", "blocks", "reports"]},
+              "properties": {"id": {"pattern": "^PD-[0-9]{2}$"}}
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "capture"}}},
+            "then": {
+              "required": ["area", "question", "howToCapture", "blocks", "reports"],
+              "propertyNames": {"enum": ["id", "kind", "status", "area", "question", "howToCapture", "blocks", "reports"]},
+              "properties": {"id": {"pattern": "^C[0-9]{1,3}$"}, "status": {"const": "resolved"}}
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "re-verify"}}},
+            "then": {
+              "required": ["trigger", "recheck", "lookFor"],
+              "propertyNames": {"enum": ["id", "kind", "trigger", "recheck", "lookFor", "recheckReports"]},
+              "properties": {"id": {"pattern": "^RV-[0-9]+$"}}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

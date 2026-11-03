@@ -38,7 +38,7 @@ On Spacelift, identity providers, MFA and users belong to one account.
 infraweave's tenancy is root, organization, account and spaces
 ([0007](0007-authorization-spaces-and-roles.md#tenancy)): an organization is
 one agreement covering several accounts, and its members sign in once
-through its identity providers. Open question P7 in
+through its identity providers. Open question PD-07 in
 [report 30](../reference/30-open-questions.md#product-decisions) asks whether
 the run credentials keep Spacelift's formats. Decision 0003 keys idempotency
 and rate limits by the authenticated principal once one exists; this record
@@ -523,7 +523,7 @@ break-glass credential.
 
 ## Rationale
 
-- **P7: identical formats by default, with a configurable issuer and
+- **PD-07: identical formats by default, with a configurable issuer and
   templates (option b).** Trust policies, Vault roles, CloudTrail filters and
   Azure federated credentials are infrastructure customers already wrote for
   Spacelift. Matching the claim names, the default subject template, the
@@ -709,7 +709,7 @@ Departures from Spacelift, for the plan's deviations register:
 - [14 sections 6 to 8 and 10](../reference/14-spaces-rbac-and-identity.md#6-single-sign-on): single sign-on, SCIM and MFA, API keys and sessions.
 - [22 section 7.3](../reference/22-intelligence.md#73-authentication) and [23 section 10.4](../reference/23-flows.md#104-live-oauth-authorization-server-metadata): Spacelift's MCP OAuth.
 - [24 section 3.5](../reference/24-self-hosted-reference.md#35-encryption-and-kms): self-hosted signing keys.
-- [30](../reference/30-open-questions.md#product-decisions): P7 and captures C17, C81, C83, C91, C94.
+- [30](../reference/30-open-questions.md#product-decisions): PD-07 and captures C17, C81, C83, C91, C94.
 - [GLOSSARY](../../../GLOSSARY.md): organization, account, member.
 - [RFC 7519](https://www.rfc-editor.org/rfc/rfc7519) (JWT), [RFC 7517](https://www.rfc-editor.org/rfc/rfc7517) (JWK), [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252) (loopback login for native clients), [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) (authorization server metadata), [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591) (dynamic client registration), [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707) (resource indicators), [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728) (protected resource metadata).
 - MCP authorization: <https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization>.

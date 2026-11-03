@@ -1,0 +1,3539 @@
+{
+  "$schema": "schema/open-questions.schema.json",
+  "records": [
+    {
+      "id": "PD-01",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "How do Spacelift's GraphQL errors map onto HTTP statuses and error bodies in the served API? Spacelift documents neither its status codes nor stable `extensions` codes, and spacectl and the provider match message text such as `not found` and `unauthorized`",
+      "options": "(a) a status per error class with a typed error body; (b) as (a), keeping Spacelift's message strings so that ported clients still match; (c) a GraphQL-style error envelope beside the REST status",
+      "resolver": "maintainer, in a decision record; captures C2, C3 and C5 inform it; answered in decision [0022](../research/decisions/0022-api-errors-and-update-semantics.md) (Accepted)",
+      "blocks": "the served API's error contract; ports of spacectl and the provider ([01](../research/reference/01-spacelift-landscape.md), [05](../research/reference/05-terraform-provider.md), [06](../research/reference/06-spacectl-and-clients.md))",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md",
+        "docs/research/reference/05-terraform-provider.md",
+        "docs/research/reference/06-spacectl-and-clients.md"
+      ]
+    },
+    {
+      "id": "PD-02",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Which deprecated or superseded Spacelift interfaces does infraweave serve? Candidates: `ACCESS` policies (disabled 2026-05-30); the deprecated `policyCreate` and `policyUpdate`; the versioned-blueprint family and plain blueprints beside templates; the legacy per-stack AWS integration and the legacy GCP integration; per-stack webhooks beside named webhooks; the per-stack Slack subscription; `/intent/mcp`; `ApiKeyInput.admin`; the `PENDING` run state; `TerraformWorkflowTool.OPEN_TOFU`; the MQTT worker transport; the Pulumi provider, read-only from 2026-12-10",
+      "options": "(a) serve each until Spacelift removes it; (b) serve only current interfaces and record each exclusion with its evidence in report 26; (c) accept and store without acting, as for `ACCESS` policies",
+      "resolver": "maintainer, with report 26's supersession boundaries; answered in decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) (Accepted)",
+      "blocks": "availability states in report 26; API scope in [03](../research/reference/03-deploy-core-api-inventory.md), [04](../research/reference/04-platform-api-inventory.md), [06](../research/reference/06-spacectl-and-clients.md), [09](../research/reference/09-policies.md), [10](../research/reference/10-workers-and-execution.md), [12](../research/reference/12-cloud-integrations-and-oidc.md), [17](../research/reference/17-blueprints-and-templates.md), [19](../research/reference/19-events-notifications-audit.md), [22](../research/reference/22-intelligence.md)",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/12-cloud-integrations-and-oidc.md",
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "PD-03",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Does infraweave implement features known only from the schema and Bruno, with no docs page: scans, the Origin (Cursor) integration, the `BLOB` VCS provider and the server side of plugin templates?",
+      "options": "(a) implement the schema shape; (b) serve the routes as stubs until Spacelift documents them; (c) leave them out until they are a documented capability",
+      "resolver": "maintainer, with report 26; capture C11 informs it; answered in decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) (Accepted)",
+      "blocks": "scope of [04](../research/reference/04-platform-api-inventory.md), [11](../research/reference/11-vcs-integrations.md), [21](../research/reference/21-resources-scans-search.md), [25](../research/reference/25-other-integrations.md)",
+      "reports": [
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/11-vcs-integrations.md",
+        "docs/research/reference/21-resources-scans-search.md",
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "PD-04",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Where Spacelift's docs and its own clients disagree, which does infraweave's CLI and VCS agent follow? Cases: spacectl's credential order (docs: token, GitHub, API key; source: token, API key, GitHub); profile storage (docs: a file per alias and a `current` link; source: one `config.json`); the vcs-agent default (docs: a strict allowlist; source at the pin: no validation)",
+      "options": "(a) the docs, by the research precedence rule; (b) the released clients, for drop-in compatibility; (c) a choice per case, recorded with its reason",
+      "resolver": "maintainer; capture C78 informs the agent case; answered in decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) (Accepted), with the agent's flags in [0012](../research/decisions/0012-vcs-integration-model.md)",
+      "blocks": "infraweave CLI and VCS agent defaults ([06](../research/reference/06-spacectl-and-clients.md), [11](../research/reference/11-vcs-integrations.md))",
+      "reports": [
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "PD-05",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Does infraweave gate features by Spacelift's editions and its 31 `BillingTierFeature` values, and if so, how do the gates apply to a self-hosted install?",
+      "options": "(a) no gates; (b) an edition setting that mirrors Spacelift's tiers; (c) one switch per feature",
+      "resolver": "maintainer, with report 26; answered in decision [0021](../research/decisions/0021-capability-scope-and-supersession.md) (Accepted): infraweave's own feature catalogue and tiers, billing off by default",
+      "blocks": "the tier model in report 26; tier checks in [03](../research/reference/03-deploy-core-api-inventory.md), [04](../research/reference/04-platform-api-inventory.md), [14](../research/reference/14-spaces-rbac-and-identity.md), [19](../research/reference/19-events-notifications-audit.md); captures C14, C121 and C122",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "PD-06",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Does infraweave's worker protocol offer MQTT, or HTTP long-poll only? Spacelift retires MQTT for workers on 2027-03-30",
+      "options": "(a) long-poll only; (b) long-poll plus an MQTT mode for existing launchers",
+      "resolver": "maintainer; answered in decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) (Accepted)",
+      "blocks": "the worker protocol ([10](../research/reference/10-workers-and-execution.md)) and self-hosted parity ([24](../research/reference/24-self-hosted-reference.md)); whether capture C65 is needed at all",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "PD-07",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Do infraweave's run credentials reproduce Spacelift's formats exactly, so that existing trust policies, provider code and identity-provider rules keep working? This covers the in-run API token (`iss`, `aud`, the `sub` path), the OIDC federation claims and subject template placeholders, the AWS external ID and the AWS `RoleSessionName`",
+      "options": "(a) identical formats; (b) identical by default, with a configurable issuer and templates; (c) infraweave's own formats with a migration guide",
+      "resolver": "maintainer; answered in decision [0006](../research/decisions/0006-authentication-and-tokens.md) (Accepted)",
+      "blocks": "[05](../research/reference/05-terraform-provider.md), [12](../research/reference/12-cloud-integrations-and-oidc.md), [13](../research/reference/13-configuration.md); captures C17, C81, C83, C91 and C94",
+      "reports": [
+        "docs/research/reference/05-terraform-provider.md",
+        "docs/research/reference/12-cloud-integrations-and-oidc.md",
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "PD-08",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "How does a REST update behave where Spacelift's GraphQL mutation takes a whole input object (`stackUpdate`, or `stackConfigAdd` with an existing `id`)?",
+      "options": "(a) `PUT` with full replacement; (b) `PATCH` with merge semantics; (c) both",
+      "resolver": "maintainer, in the REST conventions decision; answered in decision [0022](../research/decisions/0022-api-errors-and-update-semantics.md) (Accepted)",
+      "blocks": "the served API's update routes ([07](../research/reference/07-stack-model.md), [13](../research/reference/13-configuration.md)); captures C26 and C97",
+      "reports": [
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "PD-09",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "How strictly does infraweave parse inputs that Spacelift leaves loosely specified: unknown keys in `.spacelift/config.yml`, label length and characters, cron forms and timezone names?",
+      "options": "(a) strict, rejecting anything Spacelift's schemas do not list; (b) lenient, accepting whatever Spacelift may accept; (c) strict, with a compatibility switch",
+      "resolver": "maintainer; answered in decision [0022](../research/decisions/0022-api-errors-and-update-semantics.md) (Accepted)",
+      "blocks": "the runtime YAML parser ([07](../research/reference/07-stack-model.md)), label validation, schedules ([18](../research/reference/18-scheduling-drift-dependencies.md)); captures C24, C30, C155 and C156",
+      "reports": [
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "PD-10",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Does infraweave mirror the archived standalone `spacelift-intent` stdio server, only the hosted `/mcp` Intent tools, or both?",
+      "options": "(a) the hosted tools only; (b) both",
+      "resolver": "maintainer, after capture C15; answered in decision [0019](../research/decisions/0019-ai-provider-boundary.md) (Accepted)",
+      "blocks": "Intent parity scope ([01](../research/reference/01-spacelift-landscape.md), [22](../research/reference/22-intelligence.md))",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md",
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "PD-11",
+      "kind": "product-decision",
+      "status": "answered",
+      "question": "Does infraweave ship a default AI integration with a usage budget, as Spacelift does on SaaS, or bring-your-own-model only, as self-hosted Spacelift requires?",
+      "options": "(a) bring-your-own-model only; (b) that plus an optional operator-configured default with a budget",
+      "resolver": "maintainer; answered in decision [0019](../research/decisions/0019-ai-provider-boundary.md) (Accepted)",
+      "blocks": "AI integrations ([22](../research/reference/22-intelligence.md)); capture C213",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "PD-12",
+      "kind": "product-decision",
+      "status": "resolved",
+      "question": "Are the research generators and check scripts committed, or do the reports describe their method without scratchpad paths? **Resolved:** the reports describe their method without naming scripts; generated tables are maintained by hand from here, and report 29 with the register it summarises, [`graphql-inventory.json`](graphql-inventory.json), is the one generated, drift-checked artefact",
+      "options": "(a) commit the scripts; (b) drop the script references and maintain the tables by hand (chosen)",
+      "resolver": "maintainer, in the research pull requests",
+      "blocks": "none"
+    },
+    {
+      "id": "PD-13",
+      "kind": "product-decision",
+      "question": "Do the MIT self-hosted module repositories get a `NOTICE` entry, so that 24 section 14.2 can carry their variable descriptions?",
+      "options": "(a) add the entry and restore the descriptions; (b) keep the line links only",
+      "resolver": "maintainer, in decision 0002",
+      "blocks": "[24](../research/reference/24-self-hosted-reference.md) section 14.2",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "PD-14",
+      "kind": "product-decision",
+      "question": "Is Spacelift's policy contract (`https://app.spacelift.io/.well-known/policy-contract.json`) pinned as a committed snapshot beside the introspection schema?",
+      "options": "(a) pin it under `api/reference/spacelift/` and refresh it weekly; (b) keep it as a network source",
+      "resolver": "maintainer (specref)",
+      "blocks": "stable citations for policy inputs in [09](../research/reference/09-policies.md) and [19](../research/reference/19-events-notifications-audit.md); trigger RV-7",
+      "reports": [
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "PD-15",
+      "kind": "product-decision",
+      "question": "Does the snapshot fetcher request input-field deprecations (`includeDeprecated: true` on `inputFields`)? The snapshot carries none, so input deprecations such as `ModuleCreateInput.space` and `ScheduledDeleteInput.cronSchedule` are visible only in the changelog",
+      "options": "(a) fetch them and regenerate the inventory register; (b) keep the changelog as the source",
+      "resolver": "maintainer (specref)",
+      "blocks": "input deprecations in [15](../research/reference/15-module-and-provider-registry.md), [17](../research/reference/17-blueprints-and-templates.md), [18](../research/reference/18-scheduling-drift-dependencies.md) and report 29",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md",
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C1",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Do feature-flagged fields reach real tenants before they appear in the demo schema?",
+      "howToCapture": "Introspect a trial tenant and diff it against the snapshot",
+      "blocks": "completeness of the specification reference",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "C2",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Which HTTP status accompanies a GraphQL error: always 200, or 4xx and 5xx by cause?",
+      "howToCapture": "Capture an unauthorized request and a not-found request",
+      "blocks": "PD-01",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "C3",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does Spacelift put stable error codes in `extensions`?",
+      "howToCapture": "The same captures as C2; search spacectl and the provider for `extensions` keys",
+      "blocks": "PD-01; clients keying on codes rather than text",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "C4",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does the GraphQL API have a request rate limit, and how is it signalled (429, headers)? Which statuses does the provider's go-retryablehttp retry?",
+      "howToCapture": "Ask Spacelift or search the KB; read `DefaultRetryPolicy` at the version in the provider's `go.sum`; a load capture",
+      "blocks": "throttling and retry semantics",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md",
+        "docs/research/reference/05-terraform-provider.md"
+      ]
+    },
+    {
+      "id": "C5",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does a lookup of a missing object answer a GraphQL error containing `not found`, or null data? spacectl relies on the error for `runStack`, the provider on the text for reads",
+      "howToCapture": "Capture `stack(id:)` and `runStack` with an unknown ID",
+      "blocks": "PD-01; the REST 404 mapping",
+      "reports": [
+        "docs/research/reference/05-terraform-provider.md",
+        "docs/research/reference/06-spacectl-and-clients.md"
+      ]
+    },
+    {
+      "id": "C6",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Which permission do attachment mutations check while the schema marks their 18 actions (context, policy and cloud integration attach and detach, `STACK_ROLE_BINDING_*`, `STACK_WEBHOOK_*`) as disabled, and can those actions be put in a custom role?",
+      "howToCapture": "Custom roles holding single actions; `roleCreate` with a disabled action",
+      "blocks": "attachment permissions in the RBAC model",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/12-cloud-integrations-and-oidc.md",
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C7",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Is the operation-to-action pairing, made by name in 03 and 04, what the service checks?",
+      "howToCapture": "Call each mutation with a custom role holding one action",
+      "blocks": "the per-operation permission table",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md"
+      ]
+    },
+    {
+      "id": "C8",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "What enforces the actions no mutation carries: the Intent resource actions, `STACK_STATE_READ`, the `SPACE_*` actions and `STACK_WORKSPACE_LOCK`?",
+      "howToCapture": "Test the state backend, the MCP tools and the workspace tab with roles lacking each action; ask Spacelift",
+      "blocks": "permission checks outside GraphQL",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/16-state-management.md",
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C9",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "What does `force` change on `contextDelete` and `policyDelete`: attached projects, plugin-managed objects, or both?",
+      "howToCapture": "Delete an attached context and an attached policy with and without `force`",
+      "blocks": "delete semantics",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C10",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does `runRetry` create a new run or reuse the old one, and which run types may be retried (the schema says pull-request runs, spacectl says failed runs)?",
+      "howToCapture": "Retry a proposed and a tracked run and compare the returned IDs",
+      "blocks": "run history model",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C11",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "What are scans, the Origin (Cursor) integration, the `BLOB` provider and plugin templates in product terms, and do they exist on self-hosted?",
+      "howToCapture": "Search the KB and changelog; inspect a trial account's UI",
+      "blocks": "PD-03",
+      "reports": [
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/11-vcs-integrations.md",
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C12",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does `vcsAgentPoolReset` invalidate the old agent credentials at once?",
+      "howToCapture": "Reset a pool while an agent is connected and watch the agent",
+      "blocks": "credential rotation semantics",
+      "reports": [
+        "docs/research/reference/04-platform-api-inventory.md"
+      ]
+    },
+    {
+      "id": "C13",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Which plan gates the external integrations other than ServiceNow, such as Backstage?",
+      "howToCapture": "Pricing page; compare `tierFeatures` on two plans",
+      "blocks": "tier mapping in report 26",
+      "reports": [
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C14",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Which `BillingTierFeature`, if any, gates OIDC single sign-on? The docs put it on paid accounts and no feature name matches",
+      "howToCapture": "Compare `tierFeatures` on a free trial and a paid account",
+      "blocks": "PD-05; the SSO gate",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C15",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does the archived `spacelift-intent` repository mean the open-source Intent server is retired, or that it moved?",
+      "howToCapture": "Changelog, the repository README, the Intent docs; ask Spacelift",
+      "blocks": "PD-10",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md",
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C16",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "What do the Intent, template, role binding and managed-user operations do beyond their Bruno request names (102 Purpose cells)?",
+      "howToCapture": "Reports 14, 17 and 22 cover most; capture the UI's calls for the rest",
+      "blocks": "operation semantics in the served API",
+      "reports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md"
+      ]
+    },
+    {
+      "id": "C17",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Is the last path segment of the in-run token's `sub` claim the run ID?",
+      "howToCapture": "Decode a `SPACELIFT_API_TOKEN` from a live run",
+      "blocks": "PD-07",
+      "reports": [
+        "docs/research/reference/05-terraform-provider.md"
+      ]
+    },
+    {
+      "id": "C18",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Can `spacelift_run` and `spacelift_task` work with an in-run stack token, given that the docs say stack tokens reach no runs or tasks?",
+      "howToCapture": "Apply those resources from inside a stack that has an admin role",
+      "blocks": "what infraweave stack tokens may do",
+      "reports": [
+        "docs/research/reference/05-terraform-provider.md"
+      ]
+    },
+    {
+      "id": "C19",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does Spacelift check an AWS role's trust policy when an integration is attached, as the provider's retry on its trust error suggests?",
+      "howToCapture": "Attach an integration whose role does not trust Spacelift",
+      "blocks": "attach-time validation",
+      "reports": [
+        "docs/research/reference/05-terraform-provider.md",
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C20",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does SaaS answer `debugInfo` with an empty `selfHostedVersion`, although the schema calls the field invalid on SaaS?",
+      "howToCapture": "Capture `debugInfo` on SaaS",
+      "blocks": "spacectl's version gating",
+      "reports": [
+        "docs/research/reference/06-spacectl-and-clients.md"
+      ]
+    },
+    {
+      "id": "C21",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Which GraphQL operations does the Kubernetes worker-pool controller (v0.0.47) send? Its source is not public",
+      "howToCapture": "Proxy the controller's traffic against a trial account; ask Spacelift",
+      "blocks": "auto-registered pools and controller-managed workers",
+      "reports": [
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C22",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "Does the `Spacelift-Client-Type: spacectl` header make the server record sessions with `SessionChannel.SPACECTL`?",
+      "howToCapture": "Log in with spacectl and read the session list",
+      "blocks": "whether sessions carry a client channel",
+      "reports": [
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C23",
+      "kind": "capture",
+      "area": "Platform, API and clients (reports 01 to 06)",
+      "question": "What do the server sides of the browser login (`/cli_login`, `/auth_success`, `/auth_failure`) and of `GET /usageanalytics/csv` accept and return? Only the client halves are known",
+      "howToCapture": "Capture a `spacectl profile login` and a CSV export",
+      "blocks": "the browser login and usage export endpoints",
+      "reports": [
+        "docs/research/reference/01-spacelift-landscape.md",
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C24",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What length and character rules apply to stack labels?",
+      "howToCapture": "Create stacks with long and unusual labels",
+      "blocks": "PD-09; auto-attach matching",
+      "reports": [
+        "docs/research/reference/07-stack-model.md"
+      ]
+    },
+    {
+      "id": "C25",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What happens to queued and running runs when a stack is disabled?",
+      "howToCapture": "Disable a stack with a run queued and one running",
+      "blocks": "`stackDisable` side effects",
+      "reports": [
+        "docs/research/reference/07-stack-model.md"
+      ]
+    },
+    {
+      "id": "C26",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does `stackUpdate` keep or reset optional fields the input omits?",
+      "howToCapture": "Update with a minimal `StackInput` and read the stack back",
+      "blocks": "PD-08",
+      "reports": [
+        "docs/research/reference/07-stack-model.md"
+      ]
+    },
+    {
+      "id": "C27",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What does the runtime YAML `version` key do? One docs page says `\"2\"` changes precedence and an absent key means `1`; the YAML reference says the key is ignored",
+      "howToCapture": "Runs with `version: \"1\"`, `\"2\"` and no key, each with a conflicting `stack_defaults` value",
+      "blocks": "precedence between `stack_defaults` and stack settings",
+      "reports": [
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C28",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "When `config.yml` has no entry for a stack, do stack settings outrank `stack_defaults`, as one sentence of the runtime configuration page says?",
+      "howToCapture": "A run with `stack_defaults.runner_image` and a stack-level runner image",
+      "blocks": "the same precedence rule",
+      "reports": [
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C29",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Do runtime-file hooks replace or extend the stack's hooks, and what happens to context hooks?",
+      "howToCapture": "A run with hooks in a context, on the stack and in `config.yml`",
+      "blocks": "hook assembly for a run",
+      "reports": [
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C30",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Are unknown keys in `.spacelift/config.yml` rejected or ignored?",
+      "howToCapture": "A run with an unknown key",
+      "blocks": "PD-09",
+      "reports": [
+        "docs/research/reference/07-stack-model.md"
+      ]
+    },
+    {
+      "id": "C31",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which commands does OpenTofu `concise` affect: plan, apply and destroy (docs) or plan, apply and refresh (schema)?",
+      "howToCapture": "Run with `concise` on and read the logged commands",
+      "blocks": "runner flags",
+      "reports": [
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C32",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does `kubernetes.namespace: \"\"` behave like leaving the field out?",
+      "howToCapture": "Create two stacks and compare their runs",
+      "blocks": "the meaning of an empty value",
+      "reports": [
+        "docs/research/reference/07-stack-model.md"
+      ]
+    },
+    {
+      "id": "C33",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What is a `PARSE` run: what creates it, which states it passes, and does it take the stack lock?",
+      "howToCapture": "Ask Spacelift; look for the type in a trial account's run history",
+      "blocks": "the `RunType` state machine",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C34",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does a `DESTROY` run plan or wait for confirmation before `DESTROYING`?",
+      "howToCapture": "Delete a stack with `destroyResources: true` and read the run's `history`",
+      "blocks": "the destroy path",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C35",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Do `TESTING` runs take the module's lock?",
+      "howToCapture": "Push two commits to a module quickly and watch the test runs",
+      "blocks": "module test concurrency",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C36",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which state does `runKill` leave a run in, and what does the optional `state` argument of `runStop` and `runKill` do?",
+      "howToCapture": "Kill a run and read its `history`; call both with a stale `state`",
+      "blocks": "terminal states for forced stops",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C37",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which state does a push policy `cancel` give a run awaiting confirmation: `CANCELED` or `DISCARDED`?",
+      "howToCapture": "Cancel an unconfirmed run from a push policy",
+      "blocks": "push policy effects",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C38",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "After an upstream failure in a dependency chain, do downstream runs end `CANCELED` or `SKIPPED`? The dependencies page says both",
+      "howToCapture": "Fail an upstream run and read the downstream runs' states",
+      "blocks": "the run state machine for chains",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C39",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which state does a launcher logs timeout or run timeout produce?",
+      "howToCapture": "Exceed each timeout on a private worker",
+      "blocks": "worker-side terminations",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C40",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does an approval policy `reject` fail the run or cancel it? The approval page's rules section says fail, its walkthrough says cancel",
+      "howToCapture": "Reject a queued run and an unconfirmed run, then read `history`",
+      "blocks": "the targets of T5, T24 and T29",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C41",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does one `reject` from one of several attached approval policies fail the run regardless of the others?",
+      "howToCapture": "Attach two approval policies with opposite outcomes",
+      "blocks": "approval combination rules",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C42",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does a task created with `skipInitialization` pass through `INITIALIZING`?",
+      "howToCapture": "Capture such a task's `history`",
+      "blocks": "whether T13 or a `PREPARING` to `PERFORMING` edge exists",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C43",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Is a drift detection run on a pool with drift runs disabled created directly in `FAILED`, and do runs over the drift limit become `SKIPPED` or never get created?",
+      "howToCapture": "Set both limits on a private pool and read the drift runs",
+      "blocks": "creation edges; the use of `SKIPPED`",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C44",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Does a failed handover in `PREPARING_REPLAN` end the run in `FAILED`?",
+      "howToCapture": "Kill the worker during a targeted replan",
+      "blocks": "the replan loop's failure edge",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C45",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "How is a negative (`negative: true`, `Run.expectFailure`) module test case judged, and which final state does it reach when it fails as expected? Must its destroy still succeed?",
+      "howToCapture": "Run a module with a negative test case",
+      "blocks": "success criteria for `TESTING` runs",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C46",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which label produces the ignored-trigger reason `DISABLED_BY_LABEL`, and how do `CUSTOM_POLICY` and `CUSTOM_POLICY_NO_TRIGGER` differ?",
+      "howToCapture": "Ask Spacelift; capture ignored triggers under each setup",
+      "blocks": "ignored-trigger reasons infraweave emits",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md"
+      ]
+    },
+    {
+      "id": "C47",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Are `ACCESS` policies still evaluated after their disable date of 2026-05-30?",
+      "howToCapture": "Attach an access policy on a trial account and test it",
+      "blocks": "PD-02",
+      "reports": [
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "C48",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which policy types does `BillingTierFeature.WORKFLOW_POLICIES` gate?",
+      "howToCapture": "Pricing page; compare `tierFeatures` across plans",
+      "blocks": "tier mapping in report 26",
+      "reports": [
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "C49",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What is the API's default `engineType` when `policyCreatev2` omits it?",
+      "howToCapture": "Create a policy without `engineType` and read it back",
+      "blocks": "the default Rego dialect",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C50",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What effect does a flag set by a login, access, notification or Intent policy have, given those types touch no run?",
+      "howToCapture": "Sample such a policy and inspect the receipts",
+      "blocks": "whether flags live outside runs",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C51",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "How does a policy get the `PolicyULID` it needs to use `reset_flag`, and which policies lack one?",
+      "howToCapture": "Ask Spacelift; compare old and new policies through the API",
+      "blocks": "flag reset eligibility",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C52",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which run state follows a server-side initialization policy `deny`?",
+      "howToCapture": "Attach a deny-all initialization policy and trigger a run",
+      "blocks": "the run state machine ([08](../research/reference/08-run-lifecycle.md))",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C53",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "When does Spacelift record `PolicyInputCapture` documents, and do they depend on `sample`?",
+      "howToCapture": "Query `policyInputCaptures` before and after turning sampling on",
+      "blocks": "capture storage and privacy",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C54",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Are the in-product policy templates served from the spacelift-policies-example-library module?",
+      "howToCapture": "Compare `searchPolicyTemplates` with the library's 67 templates",
+      "blocks": "the template corpus",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C55",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "What does `queued_runs` count on each trigger policy `stacks[]` entry, and is it present on module-version events?",
+      "howToCapture": "Sample a trigger policy",
+      "blocks": "trigger policy input",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C56",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "In what unit are `Policy.createdAt` and `updatedAt`?",
+      "howToCapture": "Read a policy back and compare with its creation time",
+      "blocks": "REST timestamp mapping",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C57",
+      "kind": "capture",
+      "area": "Stacks, runs and policies (reports 07 to 09)",
+      "question": "Which OPA version evaluates policies?",
+      "howToCapture": "Query `policyRuntime` on a live account",
+      "blocks": "Rego compatibility",
+      "reports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "C58",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "What are the platform default preparing timeout and the default of `SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT`?",
+      "howToCapture": "Read `preparingTimeoutSeconds` on a pool with no override; ask Spacelift",
+      "blocks": "defaults bounding `PREPARING`",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C59",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Which fields does the worker pool token's JSON hold besides `broker.endpoint`?",
+      "howToCapture": "Decode the token of a test pool",
+      "blocks": "what a launcher learns from its credential",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C60",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "How does the API encode \"drift detection disabled\" for a pool: `driftDetectionRunLimit: 0` or something else?",
+      "howToCapture": "Toggle the setting in the UI and read the field back",
+      "blocks": "one REST encoding for the setting",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C61",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Which `WorkerStatus` does a worker report while both drained and busy?",
+      "howToCapture": "Drain a busy worker and read `status`",
+      "blocks": "status precedence",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C62",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Does `workerPoolCycle` wait for busy workers to finish?",
+      "howToCapture": "Cycle a pool during a long run",
+      "blocks": "recycle safety",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C63",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Does a drained busy worker finish its current run before going idle?",
+      "howToCapture": "Drain a busy worker and watch the run",
+      "blocks": "scale-in safety",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C64",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "What are the HTTP long-poll endpoint paths and payloads?",
+      "howToCapture": "Proxy a poll-mode launcher's traffic",
+      "blocks": "the worker protocol infraweave replaces",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C65",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "What is the MQTT payload schema on the `readonly` and `writeonly` topics?",
+      "howToCapture": "Capture messages on a self-hosted built-in broker",
+      "blocks": "needed only if PD-06 keeps MQTT",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C66",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Do the `SPACELIFT_WHITELIST_ENVS` `ro_` and `wo_` prefixes and the RO and WO extra mounts follow the read and apply stage split?",
+      "howToCapture": "A tracked run on a private worker that prints `env` and mounts in plan and apply hooks",
+      "blocks": "how the worker scopes passthrough values",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C67",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Is the default `spec.pod.activeDeadlineSeconds` 70 minutes (docs) or 81 minutes 20 seconds (CRD)?",
+      "howToCapture": "Inspect a run pod created by controller v0.0.47",
+      "blocks": "pod deadline against run timeout",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C68",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "What is the full input document of the worker-side initialization policy?",
+      "howToCapture": "A policy that prints `input`, with a sampled deny",
+      "blocks": "signed-run policy compatibility",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C69",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Which vendors besides the excluded Terraform vendor produce worker traces and metrics?",
+      "howToCapture": "Read `observabilityStatus` on OpenTofu, Pulumi and Ansible runs",
+      "blocks": "scope of the observability API",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C70",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "Which self-hosted release removes MQTT? The v7.1.0 notes name none",
+      "howToCapture": "Later self-hosted changelogs; ask Spacelift",
+      "blocks": "self-hosted parity window",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C71",
+      "kind": "capture",
+      "area": "Workers (report 10)",
+      "question": "How does the GCP autoscaler find its instance group when the GCP worker-pool module sets no `gcp_igm_id` metadata?",
+      "howToCapture": "Read a later module commit; ask Spacelift",
+      "blocks": "GCP autoscaling",
+      "reports": [
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C72",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "Does the stack label `feature:enable_git_checkout` still have any effect now that every integration has `useGitCheckout`?",
+      "howToCapture": "Toggle each on a trial account; ask Spacelift",
+      "blocks": "whether checkout mode is per integration only",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C73",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "What name does an individual (per-stack) VCS check carry on each provider?",
+      "howToCapture": "Capture a GitHub check run and the GitLab and Bitbucket statuses",
+      "blocks": "branch protection rules that name checks",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C74",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "Does Spacelift act on GitLab comment (note) events for `/spacelift` commands?",
+      "howToCapture": "Comment on a GitLab merge request",
+      "blocks": "comment commands on GitLab",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C75",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "How does Bitbucket Cloud write commit statuses and PR comments with only `read:*` token scopes?",
+      "howToCapture": "Connect with a read-only token and run a PR",
+      "blocks": "Bitbucket Cloud credential scopes",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C76",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "Does renaming a GitHub organization still rename the Spacelift account? The docs say yes; the 2026-06-08 changelog removes automatic renames",
+      "howToCapture": "Ask Spacelift, or rename a test organization",
+      "blocks": "account identity tied to an organization",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C77",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "Which integration field does Spacelift route through a VCS agent: `apiHost` (provider examples) or `userFacingHost` (docs)?",
+      "howToCapture": "A VCS agent pool with different values in each field",
+      "blocks": "the routing field for private VCS",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md",
+        "docs/research/reference/28-data-model.md"
+      ]
+    },
+    {
+      "id": "C78",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "Does a released vcs-agent register `--use-allowlist` and `--blocklist-path`, or does it validate nothing, as the source at `553aba3b3e54` does?",
+      "howToCapture": "Run the released binary with `--help` and with `SPACELIFT_VCS_AGENT_USE_ALLOWLIST=true` against a dummy endpoint",
+      "blocks": "PD-04; the agent's security default",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C79",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "Do the GitHub check's Preview and Deploy buttons rely on `check_run` `requested_action` events?",
+      "howToCapture": "Capture GitHub App webhook deliveries while pressing them",
+      "blocks": "GitHub event handling",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C80",
+      "kind": "capture",
+      "area": "VCS integrations (report 11)",
+      "question": "How does Spacelift verify each provider's webhook deliveries (signature header, GitLab token)?",
+      "howToCapture": "Replay a delivery with a wrong signature against a trial account",
+      "blocks": "webhook verification",
+      "reports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "C81",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Which external ID suffix (`read` or `write`) do tasks, destroy runs and module test runs use?",
+      "howToCapture": "Trigger each type against a role with CloudTrail logging",
+      "blocks": "PD-07; customer trust policies",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C82",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "What duration does `awsIntegrationCreate` apply when `durationSeconds` is omitted: the docs' one hour, or something else? (The provider always sends 900)",
+      "howToCapture": "Create through the API without the argument and read it back",
+      "blocks": "default session length",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C83",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "What is the exact AWS `RoleSessionName` on shared workers: the run ID alone, or `$runID@$stackID@$accountName` cut to 64 characters, and what replaces the stack ID for a module?",
+      "howToCapture": "Assume a role from a test stack and a test module; read CloudTrail",
+      "blocks": "PD-07; CloudTrail and SCP matching",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C84",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Which `RoleSessionName` and session tags does a private worker use when it assumes the role itself?",
+      "howToCapture": "Inspect CloudTrail for a worker-mode run",
+      "blocks": "audit parity for worker-side assumption",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C85",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "With `feature:aws_oidc_session_tagging`, who calls `AssumeRoleWithWebIdentity` with tags, given that the IaC tool normally performs the exchange?",
+      "howToCapture": "Run a tagged OIDC stack; read CloudTrail and the computed variables",
+      "blocks": "whether Spacelift itself exchanges tokens",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C86",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Are the native AWS integration's session tags transitive?",
+      "howToCapture": "Chain roles from a tagged session and inspect the tags",
+      "blocks": "role-chaining audit",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C87",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Which space does `awsIntegrationCreate` or `azureIntegrationCreate` use when `space` is omitted?",
+      "howToCapture": "Create without `space` and read it back",
+      "blocks": "the create endpoint's default",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C88",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Which credentials does a phase receive when a stack has only a read or only a write attachment?",
+      "howToCapture": "Attach read-only and run a tracked apply",
+      "blocks": "runtime semantics of attachments",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C89",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Does the Azure integration inject `ARM_SUBSCRIPTION_ID`, from the attachment or the integration default?",
+      "howToCapture": "Print `env` on a stack with an Azure attachment",
+      "blocks": "computed variables",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C90",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Are OIDC tokens refreshed for runs longer than an hour, or reissued for the apply phase?",
+      "howToCapture": "A run longer than an hour that decodes its token at apply",
+      "blocks": "long applies with expired tokens",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C91",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Are OIDC federation tokens signed with the KMS `RSA_4096` key, and with which `alg` (`PS512`, as `kmsjwt` does)?",
+      "howToCapture": "Decode a token header and read the JWKS",
+      "blocks": "PD-07; issuer algorithm choice",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C92",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Do parse runs receive an OIDC token?",
+      "howToCapture": "Inspect a parse run's environment, once C33 says how to get one",
+      "blocks": "token issuance scope",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C93",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Do module test runs ever carry `scope: read`, as the Azure page's credential list implies?",
+      "howToCapture": "Decode tokens from a module test run",
+      "blocks": "federated credential scopes",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C94",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "Does the `legacy` space ID carry a ULID suffix? The OIDC pages disagree",
+      "howToCapture": "Read the space, or decode a token from a run in it",
+      "blocks": "PD-07; subjects for legacy-space stacks",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C95",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "What does the OIDC discovery document list (algorithms, claims), and does SaaS serve it at the path the self-hosted page gives?",
+      "howToCapture": "Fetch `/.well-known/openid-configuration` on an account",
+      "blocks": "the issuer's discovery document",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C96",
+      "kind": "capture",
+      "area": "Cloud integrations and OIDC (report 12)",
+      "question": "How many federated credentials may one Azure app registration hold for Spacelift? The docs mention a cap without a number",
+      "howToCapture": "Microsoft's limits for the app; ask Spacelift",
+      "blocks": "Azure OIDC setup at scale",
+      "reports": [
+        "docs/research/reference/12-cloud-integrations-and-oidc.md"
+      ]
+    },
+    {
+      "id": "C97",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Does `stackConfigAdd` with an existing `id` update the element in place?",
+      "howToCapture": "Add an element twice with the same `id`",
+      "blocks": "PD-08",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C98",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Is the `ro_` or `wo_` prefix stripped from the variable name the process sees?",
+      "howToCapture": "A task running `env` with prefixed variables",
+      "blocks": "the run environment builder",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C99",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "What priority does an auto-attached context attachment report, and does `autoattach:*` reach child spaces whatever their inheritance setting?",
+      "howToCapture": "Query `attachedContexts`; test with an inheritance-off child space",
+      "blocks": "the attachment resource and auto-attach resolution",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C100",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Is the `TF_VAR_spacelift_*` and `SPACELIFT_*` list the report gives complete?",
+      "howToCapture": "A task printing `env`",
+      "blocks": "computed environment parity",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C101",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Where do computed values, stack dependency inputs and launcher-forwarded variables rank against contexts and stack variables?",
+      "howToCapture": "Runs defining one name at each level",
+      "blocks": "the full precedence order",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C102",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Do per-run overrides (`runtimeConfig.environment`, `environmentVarsOverrides`) win over every stored source?",
+      "howToCapture": "A run with an override that a context also sets",
+      "blocks": "per-run override precedence",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C103",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Does `${NAME}` interpolation resolve against the winning value only, and do computed values take part?",
+      "howToCapture": "A task with `X=${TF_VAR_spacelift_stack_id}` and a name set at two levels",
+      "blocks": "how the environment is built",
+      "reports": [
+        "docs/research/reference/13-configuration.md"
+      ]
+    },
+    {
+      "id": "C104",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Does every run get `SPACELIFT_API_TOKEN`, including runs of stacks without roles? The provider page says both",
+      "howToCapture": "Print `env` in a task on a role-less stack",
+      "blocks": "token injection rules",
+      "reports": [
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/05-terraform-provider.md"
+      ]
+    },
+    {
+      "id": "C105",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Which run states may read and which may write managed state, and what are the `http` backend's paths, lock semantics and credential format?",
+      "howToCapture": "Capture the injected backend file and its requests in a task",
+      "blocks": "the state backend",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C106",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Which Terraform Cloud `remote` API endpoints serve external state access?",
+      "howToCapture": "`terraform state pull` from outside with request logging",
+      "blocks": "the external access protocol",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C107",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Does the API itself refuse `stackObjectID` or `externalStateAccessEnabled` on a stack without managed state?",
+      "howToCapture": "Call the API directly with each",
+      "blocks": "validation rules",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C108",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "How long do state upload and download URLs live, and how long does an uploaded `objectId` stay valid?",
+      "howToCapture": "Capture the URLs and retry after delays",
+      "blocks": "expiry handling",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C109",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Which runs count as pending for state import and rollback?",
+      "howToCapture": "Try both with runs in different states",
+      "blocks": "preconditions",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C110",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "What happens on a rollback to a version past the 30-day retention, and when does `isStateRollback` clear?",
+      "howToCapture": "Roll back an expired version; read the flag after the next run",
+      "blocks": "rollback rules",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C111",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Are `TofuWorkspace` locks the managed backend's own locks, and do non-Terragrunt stacks expose workspaces?",
+      "howToCapture": "Query workspaces on a Terraform stack during a plan",
+      "blocks": "the lock model",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C112",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "How is OpenTofu state encryption configured on Spacelift, and what happens to outputs, the resources view and plan policies when state is encrypted?",
+      "howToCapture": "Ask Spacelift, or test with an `encryption` block",
+      "blocks": "encryption support",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C113",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "For a Terragrunt stack created with the provider defaults (`manageState: true`, `useStateManagement: false`), which value does the API honour?",
+      "howToCapture": "Create one and read `managesStateFile`",
+      "blocks": "managed state for default Terragrunt stacks",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C114",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "Can `terragrunt.use_state_management` in `.spacelift/config.yml` change state management for one run?",
+      "howToCapture": "Flip the key; inspect `RuntimeConfig.terragrunt` and the backend",
+      "blocks": "the creation-only rule",
+      "reports": [
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C115",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Can a non-root space admin edit their spaces while non-root space management is off? Two docs pages disagree",
+      "howToCapture": "Test with the setting off",
+      "blocks": "who may change space settings",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C116",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "What are the slugs and action sets of the built-in roles: Space reader, writer and admin, Worker pool controller and the drift detection role?",
+      "howToCapture": "Query `roles { slug actions isSystem }`",
+      "blocks": "seeding system roles",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C117",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Which legacy fallback applies to `STACK_SCHEDULED_DELETE_UPDATE`, which the docs tables omit?",
+      "howToCapture": "Test with a Writer-level user",
+      "blocks": "the fallback table",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C118",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Is a managed user with no role refused at login (docs) or given a token with empty access (changelog 2026-04-14)?",
+      "howToCapture": "Log in as an invited user with no bindings",
+      "blocks": "the login decision",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C119",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "How long does a browser session last, and can an account change it?",
+      "howToCapture": "Decode `validUntil` or the JWT `exp` of a web session; check account settings",
+      "blocks": "parity evidence only: decision [0006](../research/decisions/0006-authentication-and-tokens.md) states infraweave's defaults and makes the session lifetime an organization setting, so the capture records Spacelift's value and nothing waits on it",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C120",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "How is a FIDO2 security key registered, given that no GraphQL mutation does it?",
+      "howToCapture": "Capture the browser's calls while registering a key",
+      "blocks": "the MFA surface",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/28-data-model.md"
+      ]
+    },
+    {
+      "id": "C121",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Which plans include spaces (Free in particular), custom roles and login policies?",
+      "howToCapture": "Read `tierFeatures` on each plan; ask sales",
+      "blocks": "PD-05",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C122",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "How do SaaS billing gates apply to self-hosted installs? The self-hosted overview says the install carries the Enterprise tier's functionality where it applies, but not what `tier` and `tierFeatures` return there",
+      "howToCapture": "Self-hosted licence docs; ask Spacelift",
+      "blocks": "PD-05",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "C123",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "What happens to a personal API key when its owner is removed, beyond `disabledReason = DEPROVISIONED`?",
+      "howToCapture": "Remove a user who owns a key and read the key",
+      "blocks": "key lifecycle",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C124",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Does `ApiKeyInput.admin` still work, given that the changelog deprecates it and the schema does not?",
+      "howToCapture": "Create a key with `admin: true` and compare it with a root admin binding",
+      "blocks": "API compatibility",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C125",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Is the docs' `EXPIRED` user status derived from invitation age, since `UserStatus` has no such value?",
+      "howToCapture": "Read `managedUsers` for a stale invitation",
+      "blocks": "the user status model",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C126",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Do legacy `SpaceAccessLevel` grants propagate down and climb through inheritance exactly as role bindings do?",
+      "howToCapture": "Grant a level on a parent and read `Space.accessLevel` on children",
+      "blocks": "fallback evaluation",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C127",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Does inheritance's Read grant climb past the immediate parent?",
+      "howToCapture": "A three-level tree with inheritance on; check the grandparent",
+      "blocks": "upward visibility",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C128",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Under Identity Access Management, do binding changes force re-authentication (docs) or recompute access in place (changelog 2026-03-19)?",
+      "howToCapture": "Change a binding during a live session",
+      "blocks": "session design",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
+      "id": "C129",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Does the stale-run cleanup documented for self-hosted v7.0.0 (proposed and module test runs left in `READY` cancelled after two days) also apply on SaaS?",
+      "howToCapture": "Ask Spacelift; watch the SaaS changelog",
+      "blocks": "queue housekeeping",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C130",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Does `versionTrigger` on a `FAILED` version move it back to `PENDING` before retesting?",
+      "howToCapture": "Trigger a failed version and poll `state`",
+      "blocks": "the version state machine",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C131",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "What is `versionPush` for, and who calls it?",
+      "howToCapture": "Ask Spacelift",
+      "blocks": "whether an archive-based version path is needed",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C132",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Can consumers pinned to a yanked version still download it?",
+      "howToCapture": "Yank a version and run `terraform init` against it",
+      "blocks": "registry download rules",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C133",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Is each gap in a module's protocol version list (for example `2.11.0` of `spacelift-workerpool-on-ec2`) a `FAILED` version or a yanked one?",
+      "howToCapture": "Read `versions(includeFailed: true)` on an account that can see the module, or yank a demo version and recapture",
+      "blocks": "which states the protocol omits",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C134",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Which host does a US-region account write in module and provider `source` addresses?",
+      "howToCapture": "Read a US account's instructions snippet; ask Spacelift",
+      "blocks": "discovery and host routing",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C135",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Does a public provider answer the provider protocol without credentials?",
+      "howToCapture": "Probe a public provider's `versions` endpoint",
+      "blocks": "anonymous access",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C136",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Can a `DRAFT` provider version be revoked, and a `REVOKED` one deleted?",
+      "howToCapture": "Try both mutations",
+      "blocks": "the provider version state machine",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C137",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "How does `terraformProviderVersionUploadDocs` sort archive files into `OVERVIEW`, `RESOURCE`, `DATA_SOURCE` and `UNKNOWN`?",
+      "howToCapture": "Upload a standard `docs/` archive and read `docs.files`",
+      "blocks": "documentation rendering",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C138",
+      "kind": "capture",
+      "area": "Module and provider registry (report 15)",
+      "question": "Which RBAC action gates `terraformProviderVersionVerify` and `terraformProviderVersionUploadDocs`?",
+      "howToCapture": "Call both with single-action roles",
+      "blocks": "the permission model",
+      "reports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "C139",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Are the versioned-blueprint operations that carry no deprecation (`blueprintWithGroupCreate`, `Update`, `Delete`, `Blueprint.version`, `groupDetails`) still supported?",
+      "howToCapture": "Call them on a trial account; watch the changelog's deprecation lists",
+      "blocks": "PD-02",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "C140",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Does the service reject a blueprint body with neither or both of `stack` and `stacks`?",
+      "howToCapture": "`blueprintParseTemplate` on both bodies",
+      "blocks": "the validator rule",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C141",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "How does a body declare an `AVAILABLE_SPACES` input when neither JSON schema accepts that type?",
+      "howToCapture": "Create a template version with `type: available_spaces`",
+      "blocks": "input type completeness",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C142",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Are `validations` and `required` accepted on `boolean` and `select` inputs (docs yes, schema no)?",
+      "howToCapture": "`templateVersionParseTemplate` on such a body",
+      "blocks": "validation parity",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C143",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Is the template stack limit 10 (docs) or unlimited (schema)?",
+      "howToCapture": "Parse a body with 11 stacks",
+      "blocks": "validation parity",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C144",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Can a blueprint attach GCP integrations (the docs list them; the schema has only `aws` and `azure`)?",
+      "howToCapture": "Parse a blueprint with `attachments.clouds.gcp`",
+      "blocks": "attachment parity",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C145",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Which cel-go version and extensions does `celplate` use?",
+      "howToCapture": "Read `github.com/spacelift-io/celplate`, which is not among the local clones",
+      "blocks": "expression compatibility",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C146",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "May two versions of one template share a version number?",
+      "howToCapture": "Create two versions with the same number",
+      "blocks": "the uniqueness constraint",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/28-data-model.md"
+      ]
+    },
+    {
+      "id": "C147",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Can a deprecated template version still be deployed?",
+      "howToCapture": "Deprecate a version, then call `templateDeploymentCreate`",
+      "blocks": "deprecation semantics",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C148",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "What does `TemplateDeployment.inputs` return for secret inputs?",
+      "howToCapture": "Read a deployment with a secret input",
+      "blocks": "secret handling in the read model",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C149",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "How do `TEST` deployments differ from `REGULAR` ones beyond allowing drafts?",
+      "howToCapture": "Create both and compare stacks, locks and listing",
+      "blocks": "test deployment behaviour",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C150",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "What rule derives `TemplateDeploymentState` from stack and run states, and which actions are allowed in `NONE`, and revert in `DESTROYING_FAILED` and `DISCARDED`?",
+      "howToCapture": "Drive deployments through failures, confirmations and discards; try each action",
+      "blocks": "state-gated API behaviour",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C151",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "How often does Spacelift retry a postponed scheduled deletion?",
+      "howToCapture": "Ask Spacelift, or observe one",
+      "blocks": "scheduler design",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C152",
+      "kind": "capture",
+      "area": "Blueprints and templates (report 17)",
+      "question": "Does a revert add a change record?",
+      "howToCapture": "Revert a deployment and read `searchChangeHistory`",
+      "blocks": "the change history model",
+      "reports": [
+        "docs/research/reference/17-blueprints-and-templates.md"
+      ]
+    },
+    {
+      "id": "C153",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "What does the API do with an empty `ScheduledRunInput.name`, which the schema requires and the provider omits when unset?",
+      "howToCapture": "Create a scheduled run without a name",
+      "blocks": "field validation",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C154",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Which timezone applies to scheduled runs and tasks when `timezone` is omitted?",
+      "howToCapture": "Create one without `timezone` and read it back",
+      "blocks": "schedule semantics",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C155",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Which timezone names are accepted: IANA only, or abbreviations such as `CET`?",
+      "howToCapture": "Try several names",
+      "blocks": "PD-09",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C156",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Does the API accept cron forms beyond the template schema's five-field pattern, such as names, `@daily`, `?`, seconds or stepped ranges?",
+      "howToCapture": "Probe `stackIntegrationDriftDetectionCreate` with each form",
+      "blocks": "PD-09; the cron parser",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C157",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Is there a minimum interval between firings?",
+      "howToCapture": "Try `* * * * *`; ask Spacelift",
+      "blocks": "scheduler load limits",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C158",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "How are daylight-saving transitions handled?",
+      "howToCapture": "Observe a schedule across a transition",
+      "blocks": "firing correctness",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C159",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "What happens to firings missed while workers are down or the stack is locked?",
+      "howToCapture": "Observe; ask Spacelift",
+      "blocks": "catch-up semantics",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C160",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Is a fired one-shot schedule removed, or kept with a null `nextSchedule`?",
+      "howToCapture": "Read a timestamp schedule after it fires",
+      "blocks": "schedule lifecycle",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C161",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "What happens when a scheduled delete's destroy run fails, or when the stack has downstream dependants that block deletion?",
+      "howToCapture": "Test both",
+      "blocks": "the delete job's failure path",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C162",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "What value does `TF_VAR_spacelift_run_trigger` take for scheduled runs?",
+      "howToCapture": "Print it in a hook of a scheduled run",
+      "blocks": "environment parity",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C163",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Which stack states does `ignoreState` admit: every state (schema) or any final state (provider)?",
+      "howToCapture": "Enable it on a stack left `UNCONFIRMED` and watch for detection runs",
+      "blocks": "when drift detection fires",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C164",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Is drift detection supported for Kubernetes, Ansible and Terragrunt stacks?",
+      "howToCapture": "Enable it on each",
+      "blocks": "vendor scope",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C165",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "What is the default `ConfigType` of a stack dependency reference, and does `FILE_MOUNT` work?",
+      "howToCapture": "Create a reference without `type`; try `FILE_MOUNT`",
+      "blocks": "reference injection",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C166",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Which side of a dependency needs admin and which reader?",
+      "howToCapture": "Test with limited roles on each side",
+      "blocks": "the RBAC check",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C167",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Does a force-applied zero-change run stop in `UNCONFIRMED` when autodeploy is off?",
+      "howToCapture": "Trigger with `forceApply: SINGLE` on a stack without autodeploy",
+      "blocks": "run transitions",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C168",
+      "kind": "capture",
+      "area": "Scheduling, drift and dependencies (report 18)",
+      "question": "Can an external dependency be marked before any run carries it, and can it be marked again?",
+      "howToCapture": "Call `runExternalDependencyMarkAsCompleted` in each order",
+      "blocks": "completion semantics",
+      "reports": [
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
+      ]
+    },
+    {
+      "id": "C169",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Which tiers include the Slack integration and usage export?",
+      "howToCapture": "Pricing page; a free-account test",
+      "blocks": "tier gating in report 26",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C170",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Which `NotificationType` does a worker usage inbox entry carry, given that the docs name `WORKER_USAGE` and the enum has no such value?",
+      "howToCapture": "Trigger the notification on a contract account and read `searchNotifications`",
+      "blocks": "the inbox type set",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C171",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Whose notification policies run for module version events and for worker usage events: the module's space and the root space, as inferred?",
+      "howToCapture": "Policies in different spaces, with each event",
+      "blocks": "policy selection in the event router",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C172",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Is there a size limit on `spacelift::logs::*` substitution in webhook payloads and PR comments?",
+      "howToCapture": "Substitute large logs",
+      "blocks": "payload limits and truncation",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C173",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Which VCS providers support the notification policy `pull_request` route?",
+      "howToCapture": "Test per provider",
+      "blocks": "parity with [11](../research/reference/11-vcs-integrations.md)",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C174",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "What does the contract-only `truncate_body` field on the `pull_request` rule do?",
+      "howToCapture": "Send a long body with and without it",
+      "blocks": "the PR comment contract",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C175",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "What does the legacy per-stack Slack subscription (`/spacelift subscribe`, `StackIntegrationSlack.channelNames`) send?",
+      "howToCapture": "Subscribe a channel on SaaS",
+      "blocks": "PD-02",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C176",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Does `namedWebhooksIntegrationUpdate` honour a new `secret`, given that the docs say secrets cannot change?",
+      "howToCapture": "Update with a new secret and check the signature",
+      "blocks": "secret rotation",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C177",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "When a secret header and a policy rule's `headers` set the same name, which wins?",
+      "howToCapture": "Send both to a capture endpoint",
+      "blocks": "delivery header precedence",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C178",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "What is the outbound webhook contract: retry back-off, request timeout, retryable conditions (network errors, 429), the failure count for auto-disable, `Content-Type`, `User-Agent`, the `X-Signature` prefix, and how long SaaS keeps delivery records?",
+      "howToCapture": "Deliveries against a failing capture endpoint; read old deliveries; ask Spacelift",
+      "blocks": "the delivery contract",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C179",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "What default payload do module version and worker usage events send through a webhook rule with no `payload`?",
+      "howToCapture": "A webhook rule without `payload` for each event",
+      "blocks": "the default payload contract",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C180",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "What is the full set of audit `action` strings, and the `actor` prefixes for API keys, SSO users and other identity sources?",
+      "howToCapture": "Capture the audit webhook over a broad set of mutations; ask Spacelift",
+      "blocks": "audit vocabulary",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C181",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "What is the audit webhook's retry schedule, and does `retryOnFailure` govern it, or are deliveries always retried as the docs say?",
+      "howToCapture": "A failing endpoint with the flag on and off",
+      "blocks": "audit delivery guarantees",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C182",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Under `includeRuns`, does the audit webhook add run state change events (schema, docs) or annotate audit events (provider), and what shape do they take?",
+      "howToCapture": "Capture with the flag on and off",
+      "blocks": "the audit stream schema",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C183",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Which tables does the self-hosted `/selfhosted/metrics` export accept, and what is its envelope?",
+      "howToCapture": "Call it with an invalid `tables` value on a self-hosted install; the error lists them",
+      "blocks": "self-hosted usage export",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C184",
+      "kind": "capture",
+      "area": "Events, notifications and audit (report 19)",
+      "question": "Is `policy_receipts` under `run_updated.run` (docs) or at `run_updated` (contract and Datadog module), or both?",
+      "howToCapture": "Sample a notification policy evaluation",
+      "blocks": "notification policy compatibility",
+      "reports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "C185",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "How does the native Terragrunt vendor supply `terragrunt` at the chosen `terragruntVersion`?",
+      "howToCapture": "Pin a version other than the image's v0.93.3 and print `terragrunt --version` in `before_init`",
+      "blocks": "executor downloads; scope of `skipVendorBinaryDownload`",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C186",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "What is the minimum OpenTofu version for `OpenTofuFeature.OTEL_TRACING`, and what does Spacelift do with it?",
+      "howToCapture": "Query `openTofuFeatures(version:)` for several versions",
+      "blocks": "the OpenTofu feature table",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C187",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Which API does the single-stack OpenTofu migration banner call: `openTofuMigrate` with one stack, or `stackMigrateVendor`?",
+      "howToCapture": "Capture the UI's request",
+      "blocks": "whether `stackMigrateVendor` must accept `OpenTofu`",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C188",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Does a Terragrunt stack outside run-all mode, without `skipReplan`, reuse the saved plan in apply (schema) or plan again (limitations page)?",
+      "howToCapture": "Run one and read the apply log",
+      "blocks": "apply semantics; mocked-output safety",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C189",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Does deleting a native Terragrunt stack with `destroyResources: true` destroy its resources (changelog 2026-02-26), although the stack page says it is unsupported?",
+      "howToCapture": "Delete one on a trial account",
+      "blocks": "the Terragrunt destroy path",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C190",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Do Pulumi login and stack selection run before or after `before_init` hooks?",
+      "howToCapture": "A Pulumi stack whose `before_init` hook prints; read the log order",
+      "blocks": "Pulumi hook order",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C191",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Where does the Infracost plugin's `infracost.custom.spacelift.json` land in plan policy input: `third_party_metadata.infracost` or `third_party_metadata.custom.infracost`?",
+      "howToCapture": "Install the plugin and sample a plan policy",
+      "blocks": "the custom input contract",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C192",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Is the sanitization hash the last 8 bytes of SHA-256 (policy page) or 8 hexadecimal characters (examples)?",
+      "howToCapture": "Sanitize a known string and compare with SHA-256",
+      "blocks": "`sanitized()` compatibility in existing policies",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C193",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "What exact commands do Ansible runs, CloudFormation applies (change set execution) and Pulumi destroys use? The report infers them",
+      "howToCapture": "Read the logs of each run type",
+      "blocks": "runner command parity",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "C194",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "How does a worker pool become discovery-type, as `ScanInput.workerPool` requires?",
+      "howToCapture": "Create a scan against an ordinary private pool and read the error",
+      "blocks": "the pool kind and its validation",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C195",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "How long are scan resources kept before `resourceStats` drops to zero?",
+      "howToCapture": "Ask Spacelift, or observe an old scan run",
+      "blocks": "storage sizing",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C196",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "How is `ManagedEntity.thirdPartyMetadata` written?",
+      "howToCapture": "Ask Spacelift; watch later schemas and docs",
+      "blocks": "an entity field to populate or leave null",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C197",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Which spellings does the `changePhase: String` argument of `Run.searchEntityChanges` accept?",
+      "howToCapture": "Call it with `PLAN`, `plan` and an invalid value",
+      "blocks": "request validation",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C198",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "How does a replacement count in `Delta`: once in add and once in delete, or otherwise?",
+      "howToCapture": "Plan a replacement and read `Run.delta`",
+      "blocks": "plan summary figures",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C199",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Where is the Ansible \"Enable configuration management view\" toggle stored?",
+      "howToCapture": "Toggle it and watch the GraphQL calls",
+      "blocks": "whether the API exposes it",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C200",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Does the server honour `SearchInput.orderBy`, given that its generic description calls ordering unimplemented, and does it apply to fields not flagged `orderable`?",
+      "howToCapture": "`searchStacks` with opposite orderings, on orderable and other fields",
+      "blocks": "sort semantics of every list",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C201",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "What are the maximum and default `first` for search fields?",
+      "howToCapture": "A search with `first: 1000` and one with no `first`",
+      "blocks": "page-size limits",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C202",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Are multiple predicates combined with AND?",
+      "howToCapture": "Two predicates whose matches differ",
+      "blocks": "filter semantics",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C203",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Is `stringMatches` case-sensitive?",
+      "howToCapture": "Search with differently cased values",
+      "blocks": "filter semantics",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C204",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Is the space tree the hierarchy behind `HIERARCHY` suggestion fields, and are there others?",
+      "howToCapture": "Read `searchStacksSuggestions`",
+      "blocks": "hierarchy constraint semantics",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C205",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Which values can `SavedFilter.type` take, and what is the full `data` format?",
+      "howToCapture": "List saved filters after saving views on several lists",
+      "blocks": "saved filter storage",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C206",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Does the API restrict `isPublic: true` on saved filters to admins?",
+      "howToCapture": "`savedFilterCreate` with `isPublic: true` as a non-admin",
+      "blocks": "saved filter authorization",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C207",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Where are a user's default filter view, custom dashboard views and list column layouts stored (`uiConfigStore` or elsewhere)?",
+      "howToCapture": "Watch `uiConfigGet` and other calls while changing each",
+      "blocks": "per-user UI state storage",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C208",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Does the stacks bulk Trigger action call `runTrigger` per stack or `runTriggerBatch`?",
+      "howToCapture": "Watch the calls during a bulk trigger",
+      "blocks": "whether a batch trigger route is needed",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C209",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Which queries feed the Active users, Launch Pad and User Activity dashboard widgets?",
+      "howToCapture": "Watch the dashboard's calls as an admin",
+      "blocks": "dashboard completeness",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C210",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "In what unit are the run-duration series other than `averageRunDuration` (nanoseconds)?",
+      "howToCapture": "Compare `medianRunDuration` with known runs",
+      "blocks": "dashboard metric units",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C211",
+      "kind": "capture",
+      "area": "Resources, scans and search (report 21)",
+      "question": "Which window does `metrics` use when no range is given?",
+      "howToCapture": "Compare `metrics` with `metricsRange` over 30 days",
+      "blocks": "the default dashboard range",
+      "reports": [
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "C212",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Can Infra Assistant's Build mode run arbitrary GraphQL mutations, as the MCP `mutate` tool can?",
+      "howToCapture": "Capture Build mode tool calls",
+      "blocks": "the assistant's tool set",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C213",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "How do Spacelift-hosted AI credits (AI terms section 3) relate to the free tier's USD 10 token budget?",
+      "howToCapture": "Ask Spacelift; watch the pricing page",
+      "blocks": "PD-11",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C214",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Has Intent left early access? Product pages carry no beta label; the legal page and the UI menu do",
+      "howToCapture": "Ask Spacelift; watch the pricing page and changelog",
+      "blocks": "tier and support status in report 26",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C215",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "What does `BillingTierFeature.ACCOUNT_AI_CONTROL` gate, and on which tier?",
+      "howToCapture": "Compare accounts on different plans; ask Spacelift",
+      "blocks": "tier mapping for AI controls",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C216",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Does the API accept upper-case provider values such as Bruno's `OPENAI` besides `OpenAI`?",
+      "howToCapture": "`aiIntegrationCreate` with both spellings",
+      "blocks": "input validation",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C217",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "How are chat messages sent and replies streamed, given that GraphQL has only conversation records and transcripts?",
+      "howToCapture": "Capture the browser's traffic for Infra Assistant",
+      "blocks": "the chat transport and token accounting",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C218",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "What does `intentProjectDelete(keepResources: true)` do: keep the cloud resources and drop the state?",
+      "howToCapture": "Delete a test project with the flag",
+      "blocks": "Intent delete semantics",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C219",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Does `intentProjectDisable` set `state` to `READ_ONLY`?",
+      "howToCapture": "Disable a project and read `state`",
+      "blocks": "the project state machine",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C220",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Which state does an Intent operation take when a policy denies it, or a reviewer does: `FAILED`?",
+      "howToCapture": "Capture a denied operation of each kind",
+      "blocks": "the operation state machine",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C221",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Does the `intent` tool's `resume` move a `READY_FOR_EXECUTION` operation to `PENDING`?",
+      "howToCapture": "Capture through the MCP `intent` tool",
+      "blocks": "the review flow",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C222",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "What is the default Intent worker image, and what message does the launcher receive for an Intent execution?",
+      "howToCapture": "Read a private-pool launcher's logs during an Intent operation",
+      "blocks": "the worker protocol for Intent jobs ([10](../research/reference/10-workers-and-execution.md))",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C223",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Does read access to an Intent project follow space read access, given that there is no read action?",
+      "howToCapture": "Check with a reader role",
+      "blocks": "the RBAC model",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C224",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Was `/intent/mcp` removed after 2026-08-01 as announced?",
+      "howToCapture": "Request the old endpoint",
+      "blocks": "PD-02",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C225",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "What are the input schemas of the hosted `discover`, `query`, `provider`, `mutate` and `intent` tools?",
+      "howToCapture": "`tools/list` against `/mcp` with a valid session",
+      "blocks": "the tool contract an infraweave MCP endpoint must match",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C226",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "What are the OAuth endpoint paths (discovery, registration, authorization, token) for `/mcp`?",
+      "howToCapture": "Fetch `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` on an account",
+      "blocks": "nothing: decision [0006](../research/decisions/0006-authentication-and-tokens.md#the-oauth-authorization-server-for-mcp) serves infraweave's own authorization server, whose clients discover its paths from the metadata; the capture would only record Spacelift's",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C227",
+      "kind": "capture",
+      "area": "Intelligence (report 22)",
+      "question": "Does the Bedrock bring-your-own-model changelog entry of 2026-04-13 mean Intent can use AI integrations, contrary to the AI integrations page?",
+      "howToCapture": "Ask Spacelift; the docs page wins until then",
+      "blocks": "whether Intent calls an LLM server-side",
+      "reports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C228",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "What are Flows' pricing, tiers and plan limits?",
+      "howToCapture": "Ask Spacelift sales; the pricing page",
+      "blocks": "tier mapping in report 26",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C229",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "How does `flowctl` create an organization-wide custom app when it always sends a project ID?",
+      "howToCapture": "Test with an account; read the Flows UI",
+      "blocks": "app scoping",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C230",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Which audit log event types exist, and how long are entries kept?",
+      "howToCapture": "Export logs from a live organization; ask Spacelift",
+      "blocks": "audit parity and retention",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C231",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Which tools does the Flows MCP server expose besides `usage_instructions`?",
+      "howToCapture": "List tools against `https://mcp.useflows.eu` with an MCP client",
+      "blocks": "the MCP surface",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C232",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Are the live OAuth scopes `apps:viewer` and `apps:editor` the documented `apps:view`, and does the token endpoint accept the public clients `flowctl` registers?",
+      "howToCapture": "A dynamic registration and token exchange against the live server",
+      "blocks": "scope names and client types",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C233",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Does `flowctl` accept `--ui-entrypoint` and `-v`, as the docs show and the source does not declare?",
+      "howToCapture": "Check citty's flag handling, or run the published CLI in a sandbox",
+      "blocks": "CLI compatibility",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C234",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "What do the gateway's `http` and `grpc` ports serve?",
+      "howToCapture": "Ask Spacelift; inspect a running self-hosted gateway",
+      "blocks": "component interfaces and network policy",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C235",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Is the `spacelift-flows-agent` chart, which runs agents in Kubernetes, supported for self-hosted installs, given that the guide requires EC2 agents?",
+      "howToCapture": "Ask Spacelift",
+      "blocks": "supported agent topologies",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C236",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Which server listener keys does the current backend read: `publicPort` and `internalPort` (module) or `listeners` (chart example)?",
+      "howToCapture": "Compare with a backend release; ask Spacelift",
+      "blocks": "configuration schema",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C237",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Where are self-hosted Flows release notes published?",
+      "howToCapture": "Search the self-hosted changelog; ask Spacelift",
+      "blocks": "version tracking",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C238",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Which operation links a Spacelift Deploy account to a Flows organization? The schema has only read queries and role binding mutations",
+      "howToCapture": "Capture the traffic while linking",
+      "blocks": "nothing: decision [0018](../research/decisions/0018-flows-runtime.md) makes Flows part of the infraweave account, so no link operation exists to mirror",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C239",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "Which `kind` values do the Notifications, Trigger Run Batch, Trigger Task, Confirm Run, Review Run, Deploy Blueprint and GraphQL Request blocks use?",
+      "howToCapture": "Export a flow holding each block with `flowctl flow export`",
+      "blocks": "flow YAML compatibility for Deploy blocks",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C240",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "When does a Flows block reach `drifted`, given that no lifecycle callback can return it and the SDK lists it only in `blocks.list`?",
+      "howToCapture": "Watch a drifted block on a live account; ask Spacelift",
+      "blocks": "the block state machine",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C241",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "How do the Data Table, Form, Group and Concurrency Group blocks behave? The definition reference names them without a behaviour page",
+      "howToCapture": "Build a flow with each on a live account",
+      "blocks": "core block parity",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C242",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "How are agent pool tokens rotated, and which credentials do Deploy blocks use?",
+      "howToCapture": "Ask Spacelift; inspect a live organization",
+      "blocks": "credential handling",
+      "reports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C243",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Are `spacelift backend drain` (ECS module) and `spacelift backend drain-local` (Helm chart, docs) the same service, and what does `-local` change?",
+      "howToCapture": "Ask Spacelift, or run `spacelift backend --help` from a licensed image",
+      "blocks": "process topology",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C244",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Do the database migrations create any PostgreSQL extension?",
+      "howToCapture": "`\\dx` on a migrated test install; ask Spacelift",
+      "blocks": "which managed PostgreSQL offerings work",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C245",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Does the application use `OBJECT_STORAGE_BUCKET_USAGE_ANALYTICS`?",
+      "howToCapture": "Ask Spacelift; watch the changelog",
+      "blocks": "an undocumented bucket",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C246",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Does the Azure `DeleteAfter2Days` rule, whose prefixes include `spacelift-states`, delete current state blobs after two days, and is that intended?",
+      "howToCapture": "Check the rule against Azure lifecycle semantics; raise it on `terraform-azure-spacelift-selfhosted`",
+      "blocks": "state retention correctness",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C247",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Which Helm chart repository is canonical: `spacelift-helm-charts/spacelift-self-hosted` or `spacelift-self-hosted-helm-chart`?",
+      "howToCapture": "Check which publishes to `downloads.spacelift.io/helm`; ask Spacelift",
+      "blocks": "which image values apply",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C248",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "With `kms_arn` set, where do `ENCRYPTION_KMS_ENCRYPTION_KEY_ID` and `ENCRYPTION_KMS_SIGNING_KEY_ID` come from, given that the AWS module's key outputs are then null?",
+      "howToCapture": "Read the ECS and EKS modules' handling of empty outputs; ask Spacelift",
+      "blocks": "bring-your-own-key installs",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C249",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Is it intended that the AWS modules and states buckets keep noncurrent versions forever?",
+      "howToCapture": "Ask Spacelift, or raise it on `terraform-aws-spacelift-selfhosted`",
+      "blocks": "storage growth and state history retention",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md",
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "C250",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Do the CloudFormation pages on advanced installations, disaster recovery, PostgreSQL upgrades and Slack setup add anything to the reference architecture?",
+      "howToCapture": "Read the four pages",
+      "blocks": "completeness of [24](../research/reference/24-self-hosted-reference.md)",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C251",
+      "kind": "capture",
+      "area": "Self-hosted (report 24)",
+      "question": "Does self-hosted Spacelift send email at all? No SMTP setting exists in the docs or modules",
+      "howToCapture": "Ask Spacelift",
+      "blocks": "notification channels on self-hosted",
+      "reports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C252",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "When does `PluginTemplateParameterType` take the value `NONE`, given that the manifest schema allows only string, number and boolean?",
+      "howToCapture": "Create a template with an untyped parameter and read it back",
+      "blocks": "the manifest schema",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C253",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "Which role or action governs plugins, plugin templates and external integrations? No `Action` value names them",
+      "howToCapture": "Try the mutations with a non-admin key; ask Spacelift",
+      "blocks": "the permission model",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C254",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "How are parameter values substituted at install, and is the `${param.name}` syntax in the spaceforge README supported?",
+      "howToCapture": "Install a custom template that uses both forms",
+      "blocks": "the manifest templating contract",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C255",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "Does each managed resource a plugin creates carry `autoattach:<labelIdentifier>`?",
+      "howToCapture": "Install a plugin and read the created context's and policy's labels",
+      "blocks": "how installations reach stacks",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C256",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "Are `aws_sam`, `coverage` and `ssm_parameter_store` global templates on SaaS? The docs list ten plugins; the repository has thirteen",
+      "howToCapture": "Query `pluginTemplates`",
+      "blocks": "the global catalogue",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C257",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "How is a Backstage integration key represented in the API, and how is its seat exemption recorded, given that `APIKeyType` has only `SECRET` and `OIDC`?",
+      "howToCapture": "Create one in the UI and read it with `apiKeys`; capture the UI's call",
+      "blocks": "the integration key model",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C258",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "Which GraphQL call does the ServiceNow Business Rule make? The report infers `blueprintCreateStack`",
+      "howToCapture": "Read the script ServiceNow installs; capture its call",
+      "blocks": "the ServiceNow integration",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C259",
+      "kind": "capture",
+      "area": "Other integrations (report 25)",
+      "question": "What does the plugin logs upload endpoint (`/worker/plugin_logs_url`) return, and how long do its URLs live?",
+      "howToCapture": "Capture a plugin run's upload",
+      "blocks": "the plugin output contract",
+      "reports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "C260",
+      "kind": "capture",
+      "area": "Scope and tiers (report 26)",
+      "question": "What does a plain Starter tier (`V4_STARTER`, `V5_STARTER`) include, and which features separate `V5_STARTER_PLUS` from `V5_STARTER_PLUS_2`? Only fragments are published: Starter has a seat limit and one private worker, and no session listing",
+      "howToCapture": "Read `tierFeatures` on an account of each tier; ask Spacelift",
+      "blocks": "PD-05; the tier gates behind `tier` and `tierFeatures`",
+      "reports": [
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "C261",
+      "kind": "capture",
+      "area": "Scope and tiers (report 26)",
+      "question": "Which plan offers each capability whose plan reads \"Not stated\" in report 26: contexts on Free (the pricing comparison table starts at Starter+), roles, Ansible, plugins, Flows, scans, Slack, Repos, Blob Storage, Origin, the OpenTofu migration, Tofu workspaces and personal API keys, and the features `ACCESS_POLICIES`, `ACCOUNT_AI_CONTROL`, `SPACELIFT_INTELLIGENCE`, `BACKSTAGE_INTEGRATION`, `SCANS`, `PRIVATE_MODULE_SHARING` and `CLOUD_CREDENTIAL_GENERATION`?",
+      "howToCapture": "Compare `tierFeatures` on a Free and a paid account; read the pricing page's full comparison table",
+      "blocks": "PD-05",
+      "reports": [
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "C262",
+      "kind": "capture",
+      "area": "Scope and tiers (report 26)",
+      "status": "resolved",
+      "question": "**Resolved 2026-10-28 (RES-07 fact-check):** self-hosted has no public worker pool; <https://docs.spacelift.io/self-hosted> lists it among the features self-hosted lacks, and report 26 now cites it. The question was: does self-hosted Spacelift have a public worker pool?",
+      "howToCapture": "Self-hosted docs; query `publicWorkerPool` on a self-hosted install",
+      "blocks": "whether a self-hosted install needs a public pool",
+      "reports": [
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/31-review-log.md"
+      ]
+    },
+    {
+      "id": "C270",
+      "kind": "capture",
+      "area": "Scope and tiers (report 26)",
+      "question": "Does self-hosted Spacelift v7.1.0 offer run summaries? The self-hosted changelog adds them in v7.0.0 (report 22 section 4.3), while the self-hosted Intelligence page, <https://docs.spacelift.io/self-hosted/latest/concepts/intelligence>, still lists run summarisation as not yet available, so neither settles it",
+      "howToCapture": "Use Summarize and Explain on a run of a v7.1.0 install; ask Spacelift",
+      "blocks": "self-hosted parity rows in report 26 section 2.3; whether run summaries need a self-hosted caveat",
+      "reports": [
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C263",
+      "kind": "capture",
+      "area": "Reference materials (report 27)",
+      "question": "What versioning discipline does Temporal require when workflow code changes while executions are in flight?",
+      "howToCapture": "Read the workflow versioning pages for Temporal's Go SDK",
+      "blocks": "whether Temporal suits run orchestration",
+      "reports": [
+        "docs/research/reference/27-reference-materials.md"
+      ]
+    },
+    {
+      "id": "C264",
+      "kind": "capture",
+      "area": "Reference materials (report 27)",
+      "question": "Are Terramate Cloud's features (drift, deployments, dashboards, policies) sold only by subscription?",
+      "howToCapture": "Read Terramate's pricing and terms pages",
+      "blocks": "how far Terramate can be studied beyond its public docs",
+      "reports": [
+        "docs/research/reference/27-reference-materials.md"
+      ]
+    },
+    {
+      "id": "C265",
+      "kind": "capture",
+      "area": "Reference materials (report 27)",
+      "question": "Does the Digger orchestrator continue under the OpenTaco name, or is OpenTaco a separate product line?",
+      "howToCapture": "Read the diggerhq/digger README and recent releases, and the OpenTaco docs",
+      "blocks": "whether Digger stays a maintained reference",
+      "reports": [
+        "docs/research/reference/27-reference-materials.md"
+      ]
+    },
+    {
+      "id": "C266",
+      "kind": "capture",
+      "area": "Reference materials (report 27)",
+      "question": "How is Spacelift's self-hosted PostgreSQL queue implemented: table layout, locking and visibility timeout? Report 27 compares River with it by behaviour only",
+      "howToCapture": "Ask Spacelift, or read the queue tables on a self-hosted install",
+      "blocks": "the job queue engine choice",
+      "reports": [
+        "docs/research/reference/27-reference-materials.md",
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "C267",
+      "kind": "capture",
+      "area": "Data model (report 28)",
+      "question": "Which worker processed a run, and where does Spacelift record it? No schema field names the worker of a run",
+      "howToCapture": "Read run logs or the worker protocol messages on a private worker",
+      "blocks": "storing the run-to-worker link for audit and drain",
+      "reports": [
+        "docs/research/reference/28-data-model.md",
+        "docs/research/reference/10-workers-and-execution.md"
+      ]
+    },
+    {
+      "id": "C268",
+      "kind": "capture",
+      "area": "Data model (report 28)",
+      "question": "How is the owner of an Intent chat conversation stored? History is kept per user, but no schema field names an owner",
+      "howToCapture": "Query `intentChatConversations` as two users of one account",
+      "blocks": "per-user conversation storage",
+      "reports": [
+        "docs/research/reference/28-data-model.md",
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "C269",
+      "kind": "capture",
+      "area": "Data model (report 28)",
+      "question": "Can one run be listed under several pull requests? `PullRequest.runs` lists runs, but no `Run` field names a pull request",
+      "howToCapture": "Open two pull requests on the same head commit and read `runs` on each",
+      "blocks": "whether runs and pull requests need a join table or a column on `runs`",
+      "reports": [
+        "docs/research/reference/28-data-model.md",
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "RV-1",
+      "kind": "re-verify",
+      "trigger": "A new introspection snapshot in `sources.lock.yaml`",
+      "recheck": "Every **[G]** table in [03](../research/reference/03-deploy-core-api-inventory.md), [04](../research/reference/04-platform-api-inventory.md), [07](../research/reference/07-stack-model.md) to [25](../research/reference/25-other-integrations.md), [26](../research/reference/26-scope-and-tiers.md), and the register [`graphql-inventory.json`](graphql-inventory.json) behind [29](../research/reference/29-data-model-inventory.md)",
+      "lookFor": "Added, removed or deprecated fields and enum values; `Action` values losing their \"Disabled\" description (C6); a `WORKER_USAGE` `NotificationType` (C170); new `BillingTierFeature` values; descriptions for operations known only by Bruno names (C16)",
+      "recheckReports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md",
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/25-other-integrations.md",
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/research/reference/29-data-model-inventory.md"
+      ]
+    },
+    {
+      "id": "RV-2",
+      "kind": "re-verify",
+      "trigger": "A refresh of the docs mirror, or a change in the `llms.txt` counts",
+      "recheck": "[01](../research/reference/01-spacelift-landscape.md) section 3; every docs URL in 01 to 28",
+      "lookFor": "Removed or moved pages; new pages on scans, the Origin integration or plugins (C11); changed tier notices",
+      "recheckReports": [
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "RV-3",
+      "kind": "re-verify",
+      "trigger": "A changelog entry after 2026-10-28",
+      "recheck": "[09](../research/reference/09-policies.md), [17](../research/reference/17-blueprints-and-templates.md) and [22](../research/reference/22-intelligence.md) deprecation lists; [10](../research/reference/10-workers-and-execution.md) and [24](../research/reference/24-self-hosted-reference.md) transports; [14](../research/reference/14-spaces-rbac-and-identity.md) login and sessions; [20](../research/reference/20-vendors.md) vendors",
+      "lookFor": "Deprecations and removals (PD-02); `/intent/mcp` (C224); Intent leaving early access (C214); account renames (C76); input deprecations (PD-15)",
+      "recheckReports": [
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/22-intelligence.md",
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/24-self-hosted-reference.md",
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "RV-4",
+      "kind": "re-verify",
+      "trigger": "A new spacelift-api-bruno pin",
+      "recheck": "[03](../research/reference/03-deploy-core-api-inventory.md) and [04](../research/reference/04-platform-api-inventory.md) Purpose cells; dropped examples in `coverage.md`",
+      "lookFor": "New request docs for the 102 name-only Purpose cells",
+      "recheckReports": [
+        "docs/research/reference/03-deploy-core-api-inventory.md",
+        "docs/research/reference/04-platform-api-inventory.md"
+      ]
+    },
+    {
+      "id": "RV-5",
+      "kind": "re-verify",
+      "trigger": "A terraform-provider-spacelift release after v1.57.0",
+      "recheck": "[05](../research/reference/05-terraform-provider.md); provider defaults in [07](../research/reference/07-stack-model.md), [13](../research/reference/13-configuration.md), [16](../research/reference/16-state-management.md), [18](../research/reference/18-scheduling-drift-dependencies.md), [19](../research/reference/19-events-notifications-audit.md)",
+      "lookFor": "New resources and data sources (56 and 62 at the baseline); changed defaults and `ForceNew`; the operation map",
+      "recheckReports": [
+        "docs/research/reference/05-terraform-provider.md",
+        "docs/research/reference/07-stack-model.md",
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/16-state-management.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md",
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "RV-6",
+      "kind": "re-verify",
+      "trigger": "A spacectl commit after `6bf167cb62a6`",
+      "recheck": "[06](../research/reference/06-spacectl-and-clients.md); the metadata header in [08](../research/reference/08-run-lifecycle.md); list ordering in [21](../research/reference/21-resources-scans-search.md)",
+      "lookFor": "The command tree (108), operations (74) and MCP tools (37)",
+      "recheckReports": [
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/21-resources-scans-search.md"
+      ]
+    },
+    {
+      "id": "RV-7",
+      "kind": "re-verify",
+      "trigger": "A change to the policy contract (113,924 bytes on 2026-10-28)",
+      "recheck": "[09](../research/reference/09-policies.md), [19](../research/reference/19-events-notifications-audit.md)",
+      "lookFor": "Inputs and rules per type; `policy_receipts` placement (C184); `queued_runs` (C55); an `INITIALIZATION` entry",
+      "recheckReports": [
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "RV-8",
+      "kind": "re-verify",
+      "trigger": "A policy example library commit after `6ff5edb08bc8`",
+      "recheck": "[09](../research/reference/09-policies.md) section 6.3",
+      "lookFor": "Template and test counts (67 and 61); C54",
+      "recheckReports": [
+        "docs/research/reference/09-policies.md"
+      ]
+    },
+    {
+      "id": "RV-9",
+      "kind": "re-verify",
+      "trigger": "A self-hosted release after v7.1.0",
+      "recheck": "[24](../research/reference/24-self-hosted-reference.md); self-hosted rows in [01](../research/reference/01-spacelift-landscape.md), [10](../research/reference/10-workers-and-execution.md), [22](../research/reference/22-intelligence.md), [26](../research/reference/26-scope-and-tiers.md)",
+      "lookFor": "MQTT removal (C70); run summaries on self-hosted (C270); the CloudFormation drop in v8.0.0; new environment variables; Flows release notes (C237)",
+      "recheckReports": [
+        "docs/research/reference/24-self-hosted-reference.md",
+        "docs/research/reference/01-spacelift-landscape.md",
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/22-intelligence.md",
+        "docs/research/reference/26-scope-and-tiers.md"
+      ]
+    },
+    {
+      "id": "RV-10",
+      "kind": "re-verify",
+      "trigger": "A commit to the self-hosted module repositories or Helm charts",
+      "recheck": "[24](../research/reference/24-self-hosted-reference.md)",
+      "lookFor": "Buckets, queues and keys; the environment table (77 rows) and Helm table (135 leaves); C246, C247, C248, C249",
+      "recheckReports": [
+        "docs/research/reference/24-self-hosted-reference.md"
+      ]
+    },
+    {
+      "id": "RV-11",
+      "kind": "re-verify",
+      "trigger": "A release of the worker-pool modules, the autoscaler or the Kubernetes controller (v0.0.47)",
+      "recheck": "[10](../research/reference/10-workers-and-execution.md), [06](../research/reference/06-spacectl-and-clients.md)",
+      "lookFor": "CRD defaults (C67); controller operations (C21); `gcp_igm_id` (C71)",
+      "recheckReports": [
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/06-spacectl-and-clients.md"
+      ]
+    },
+    {
+      "id": "RV-12",
+      "kind": "re-verify",
+      "trigger": "A runner image release",
+      "recheck": "[10](../research/reference/10-workers-and-execution.md), [20](../research/reference/20-vendors.md)",
+      "lookFor": "Base images per target; the bundled Terragrunt version (C185)",
+      "recheckReports": [
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "RV-13",
+      "kind": "re-verify",
+      "trigger": "A vcs-agent release after `553aba3b3e54`",
+      "recheck": "[11](../research/reference/11-vcs-integrations.md)",
+      "lookFor": "Whether the allowlist flags are registered (C78)",
+      "recheckReports": [
+        "docs/research/reference/11-vcs-integrations.md"
+      ]
+    },
+    {
+      "id": "RV-14",
+      "kind": "re-verify",
+      "trigger": "A prometheus-exporter commit after `257f12096706`, or a Datadog module change",
+      "recheck": "[19](../research/reference/19-events-notifications-audit.md)",
+      "lookFor": "The 23 descriptors; Datadog metrics and tags against the docs",
+      "recheckReports": [
+        "docs/research/reference/19-events-notifications-audit.md"
+      ]
+    },
+    {
+      "id": "RV-15",
+      "kind": "re-verify",
+      "trigger": "A new `@slflows/sdk` (after 0.14.0), `flowctl`, Flows provider or app registry commit",
+      "recheck": "[23](../research/reference/23-flows.md)",
+      "lookFor": "Lifecycle statuses (C240); registry counts (116 and 10); CLI flags (C233)",
+      "recheckReports": [
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "RV-16",
+      "kind": "re-verify",
+      "trigger": "`spacelift-intent` is unarchived, moved or replaced",
+      "recheck": "[22](../research/reference/22-intelligence.md), [01](../research/reference/01-spacelift-landscape.md)",
+      "lookFor": "PD-10; C15",
+      "recheckReports": [
+        "docs/research/reference/22-intelligence.md",
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "RV-17",
+      "kind": "re-verify",
+      "trigger": "The Pulumi provider's read-only date, 2026-12-10, passes",
+      "recheck": "[06](../research/reference/06-spacectl-and-clients.md), [01](../research/reference/01-spacelift-landscape.md)",
+      "lookFor": "PD-02",
+      "recheckReports": [
+        "docs/research/reference/06-spacectl-and-clients.md",
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "RV-18",
+      "kind": "re-verify",
+      "trigger": "The MQTT dates pass: the switch recommended by 2027-01-01 and retirement on 2027-03-30",
+      "recheck": "[10](../research/reference/10-workers-and-execution.md), [24](../research/reference/24-self-hosted-reference.md), [01](../research/reference/01-spacelift-landscape.md)",
+      "lookFor": "Whether MQTT pools still connect; PD-06",
+      "recheckReports": [
+        "docs/research/reference/10-workers-and-execution.md",
+        "docs/research/reference/24-self-hosted-reference.md",
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "RV-19",
+      "kind": "re-verify",
+      "trigger": "A change to the pricing page",
+      "recheck": "[26](../research/reference/26-scope-and-tiers.md), [14](../research/reference/14-spaces-rbac-and-identity.md), [19](../research/reference/19-events-notifications-audit.md), [22](../research/reference/22-intelligence.md), [23](../research/reference/23-flows.md)",
+      "lookFor": "Plan lists and tier rows (C14, C121, C169, C215, C228, C260, C261)",
+      "recheckReports": [
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/22-intelligence.md",
+        "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "RV-20",
+      "kind": "re-verify",
+      "trigger": "A change to HashiCorp's registry protocol pages",
+      "recheck": "[15](../research/reference/15-module-and-provider-registry.md)",
+      "lookFor": "The module `versions` 404 divergence; provider response fields",
+      "recheckReports": [
+        "docs/research/reference/15-module-and-provider-registry.md"
+      ]
+    },
+    {
+      "id": "RV-21",
+      "kind": "re-verify",
+      "trigger": "An OpenTofu release",
+      "recheck": "[16](../research/reference/16-state-management.md), [20](../research/reference/20-vendors.md)",
+      "lookFor": "State encryption (C112); `concise` (C31); `OTEL_TRACING` (C186)",
+      "recheckReports": [
+        "docs/research/reference/16-state-management.md",
+        "docs/research/reference/20-vendors.md"
+      ]
+    },
+    {
+      "id": "RV-22",
+      "kind": "re-verify",
+      "trigger": "A Terragrunt release or a change to Spacelift's Terragrunt pages",
+      "recheck": "[20](../research/reference/20-vendors.md), [16](../research/reference/16-state-management.md)",
+      "lookFor": "Plan reuse (C188); resource deletion (C189)",
+      "recheckReports": [
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/16-state-management.md"
+      ]
+    },
+    {
+      "id": "RV-23",
+      "kind": "re-verify",
+      "trigger": "A change to Spacelift's AI or Intent terms",
+      "recheck": "[22](../research/reference/22-intelligence.md)",
+      "lookFor": "Credits (C213); early-access status (C214)",
+      "recheckReports": [
+        "docs/research/reference/22-intelligence.md"
+      ]
+    },
+    {
+      "id": "RV-24",
+      "kind": "re-verify",
+      "trigger": "A change in the spacelift-io GitHub organization listing (136 repositories at the baseline)",
+      "recheck": "[01](../research/reference/01-spacelift-landscape.md) section 5",
+      "lookFor": "New, archived or relicensed repositories",
+      "recheckReports": [
+        "docs/research/reference/01-spacelift-landscape.md"
+      ]
+    },
+    {
+      "id": "RV-25",
+      "kind": "re-verify",
+      "trigger": "A commit to the plugins repository or spaceforge, a Backstage plugin release after 0.3.3, or a Teleport docs change",
+      "recheck": "[25](../research/reference/25-other-integrations.md)",
+      "lookFor": "The 13-plugin catalogue (C256); the Teleport join method",
+      "recheckReports": [
+        "docs/research/reference/25-other-integrations.md"
+      ]
+    },
+    {
+      "id": "RV-26",
+      "kind": "re-verify",
+      "trigger": "A capture in this list is made",
+      "recheck": "The owning report and this list",
+      "lookFor": "Replace the *(unverified)* marker with **[C]**, mark the entry resolved and recheck any report that depends on it"
+    },
+    {
+      "id": "RV-27",
+      "kind": "re-verify",
+      "trigger": "A release, archival or licence change in a reference project of report 27 (OTF, OPA, Atlantis, Terrakube, Burrito, Terramate, Digger, River, Temporal)",
+      "recheck": "[27](../research/reference/27-reference-materials.md)",
+      "lookFor": "Pinned commits, licences and the comparisons built on them; C263 to C265",
+      "recheckReports": [
+        "docs/research/reference/27-reference-materials.md"
+      ]
+    },
+    {
+      "id": "RV-28",
+      "kind": "re-verify",
+      "trigger": "IMP-01 confirms or changes the phase spine",
+      "recheck": "[26](../research/reference/26-scope-and-tiers.md), [28](../research/reference/28-data-model.md)",
+      "lookFor": "Report 26's provisional phase column and the capability rows that cite it",
+      "recheckReports": [
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/research/reference/28-data-model.md"
+      ]
+    }
+  ]
+}

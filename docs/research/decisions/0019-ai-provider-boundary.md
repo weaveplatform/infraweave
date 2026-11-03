@@ -15,9 +15,9 @@ infraweave has to decide where the boundary to model providers sits and
 answer two product decisions from
 [30](../reference/30-open-questions.md#product-decisions):
 
-- **P10.** Does infraweave mirror the standalone `spacelift-intent` stdio
+- **PD-10.** Does infraweave mirror the standalone `spacelift-intent` stdio
   server, the hosted `/mcp` Intent tools, or both?
-- **P11.** Bring-your-own-model only, as self-hosted Spacelift requires, or
+- **PD-11.** Bring-your-own-model only, as self-hosted Spacelift requires, or
   also an operator-configured default integration with a usage budget, as
   SaaS offers?
 
@@ -43,7 +43,7 @@ The facts that constrain the answer:
 
 ## Decision
 
-### P10: hosted `/mcp` tools only
+### PD-10: hosted `/mcp` tools only
 
 infraweave serves the hosted MCP surface at `/mcp` and does not reproduce
 the standalone `spacelift-intent` server or its 18 tools. Local clients that
@@ -54,7 +54,7 @@ archived, its replacement is named by its own README, the hosted `intent`
 tool covers its use case with policies, locks and audit added, and no
 stored data needs migrating, since its state is a local SQLite file.
 
-### P11: BYOM plus an optional installation default
+### PD-11: BYOM plus an optional installation default
 
 - Customers create their own integrations (BYOM) for any of the four
   providers, with no infraweave-imposed limit.
@@ -292,12 +292,12 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
 
 ## Rationale
 
-- **P10, hosted only.** The archived server has no policies, locks, RBAC or
+- **PD-10, hosted only.** The archived server has no policies, locks, RBAC or
   audit, and keeps state in a local file, so mirroring it would add a
   second Intent with weaker guarantees
   ([22 section 8.5](../reference/22-intelligence.md#85-hosted-and-open-source-compared)).
   The stdio proxy keeps local-only MCP clients working without that cost.
-- **P11, option (b) with the default off.** It reproduces SaaS behaviour,
+- **PD-11, option (b) with the default off.** It reproduces SaaS behaviour,
   including the provided integration and `tokenUsage`, without a vendor
   service: the operator supplies the model and prices it, and the tier
   sets the budget. BYOM-only would leave those fields permanently empty
@@ -350,7 +350,7 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   mode's access to general mutations (C212), the
   operation transitions (C220, C221) and `ai-account-controls` (C215) are
   infraweave's own until captured
-  ([30, Intelligence](../reference/30-open-questions.md#intelligence-report-22)).
+  ([30, Intelligence](../reference/30-open-questions.md#captures-needed)).
 - **Intent's release status** is unclear (C214); infraweave ships Intent
   without a preview flag.
 - **Provider gaps.** A model a provider's discovery API omits cannot be

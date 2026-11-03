@@ -16,8 +16,9 @@
 //     and documentation exists;
 //   - every tag of the Spacelift reference spec appears in report 26, so the
 //     scope decision accounts for every area of the API;
-//   - every report with an *(unverified)* claim is linked from report 30,
-//     the register of open questions;
+//   - every report with an *(unverified)* claim is listed in the reports of
+//     a record of docs/data/open-questions.json, the register of open
+//     questions, which in turn makes the report cite that record's id;
 //   - every numbered architecture option has the same outline as the first,
 //     so the comparison in docs/research/architecture-options/README.md
 //     compares like with like;
@@ -34,6 +35,7 @@ package docscheck
 
 import (
 	"cmp"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -58,6 +60,7 @@ const (
 	roadmapDoc   = "docs/implementation/capability-roadmap.md"
 	scopeReport  = reportsDir + "/26-scope-and-tiers.md"
 	openReport   = reportsDir + "/30-open-questions.md"
+	openRegister = "docs/data/open-questions.json"
 	referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
 	unverified   = "*(unverified)*"
 )
@@ -387,26 +390,32 @@ func (c *checker) tags() error {
 	return nil
 }
 
-// unverified checks that report 30 links every report that marks a claim
-// *(unverified)*, so no open question is recorded only where it was found.
+// unverified checks that an open-questions record lists every report that
+// marks a claim *(unverified)*, so no open question is recorded only where it
+// was found. Report 30 is exempt: it defines the marker rather than using it.
+// Without the register there is nothing to check against, and a register
+// that does not decode is a finding of registers().
 func (c *checker) unverified() {
-	open, ok := c.docs[openReport]
-	if !ok {
+	b, err := fs.ReadFile(c.repo, openRegister)
+	if err != nil {
 		return
 	}
-	linked := map[string]bool{}
-	for i, l := range open.lines {
-		if open.code[i] {
-			continue
-		}
-		for _, m := range mdLink.FindAllStringSubmatch(codeSpan.ReplaceAllString(l, ""), -1) {
-			if u, err := url.Parse(m[1]); err == nil && u.Scheme == "" && u.Path != "" {
-				linked[path.Join(path.Dir(open.path), u.Path)] = true
-			}
+	var reg struct {
+		Records []struct {
+			Reports []string `json:"reports"`
+		} `json:"records"`
+	}
+	if json.Unmarshal(b, &reg) != nil {
+		return
+	}
+	listed := map[string]bool{}
+	for _, r := range reg.Records {
+		for _, p := range r.Reports {
+			listed[p] = true
 		}
 	}
 	for _, d := range c.sorted() {
-		if d == open || !reportName.MatchString(d.path) || linked[d.path] {
+		if d.path == openReport || !reportName.MatchString(d.path) || listed[d.path] {
 			continue
 		}
 		for i, l := range d.lines {
@@ -415,9 +424,9 @@ func (c *checker) unverified() {
 				c.add(
 					d.path,
 					i+1,
-					"report marks a claim %s but %s does not link it",
+					"report marks a claim %s but no record of %s lists it",
 					unverified,
-					path.Base(openReport),
+					openRegister,
 				)
 				break
 			}

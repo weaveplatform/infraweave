@@ -675,7 +675,7 @@ rerun must fold those corrections in.
   every tier until a capture places them.
 - FedRAMP shows that every feature must work with private workers only; the
   public pool is optional infrastructure.
-- Self-hosted Spacelift lacks the public worker pool, the Azure and GCP
+- Self-hosted Spacelift lacks the public worker pool (C262, resolved), the Azure and GCP
   integrations and the hosted AI integration; infraweave's self-hosted
   packaging (P27) does not inherit those limits (decision 0021).
 - Superseded interfaces still appear in stored data (legacy AWS
@@ -700,13 +700,13 @@ rerun must fold those corrections in.
 - The phase column is provisional until IMP-01 confirms the spine.
 - Open, marked *(unverified)* above:
   - what a plain Starter tier includes, and what separates `V5_STARTER_PLUS`
-    from `V5_STARTER_PLUS_2`;
-  - the plan of every capability whose plan reads "Not stated";
-  - what `tier` and `tierFeatures` return on a self-hosted install;
-  - whether self-hosted v7.1.0 offers run summaries;
-  - whether the `blueprintWithGroup*` mutations remain supported;
-  - whether access policies are still evaluated after 2026-05-30;
-  - which policy types `WORKFLOW_POLICIES` covers.
+    from `V5_STARTER_PLUS_2` (C260);
+  - the plan of every capability whose plan reads "Not stated" (C261);
+  - what `tier` and `tierFeatures` return on a self-hosted install (C122);
+  - whether self-hosted v7.1.0 offers run summaries (C270);
+  - whether the `blueprintWithGroup*` mutations remain supported (C139);
+  - whether access policies are still evaluated after 2026-05-30 (C47);
+  - which policy types `WORKFLOW_POLICIES` covers (C48).
 
 ## Versions at the research baseline
 

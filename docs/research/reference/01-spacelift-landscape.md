@@ -64,7 +64,7 @@ Caveats:
 - The demo account runs the current SaaS release **[I]**, since it is the
   endpoint the docs use for the public schema. Self-hosted Spacelift lags
   it (section 4), and feature-flagged fields can appear on a tenant before
-  they reach the demo schema *(unverified)*.
+  they reach the demo schema *(unverified)* (C1).
 - Introspection gives types, nullability, deprecations and descriptions. It
   gives neither authorization rules nor error semantics; those come from the
   docs, Bruno and client behaviour (sections 7 and 8).
@@ -350,14 +350,17 @@ Which HTTP status accompanies these errors is not known: spacectl's
 `unauthorized` check matches the error text whether it came from a GraphQL
 `errors` array or from a non-200 response body (report 06), so the clients'
 text matching does not show that errors arrive at HTTP 200 **[I]**, and no
-docs page states the status codes *(unverified)*. Neither source documents stable error codes
-in `extensions` *(unverified)*. The specification reference models every
+docs page states the status codes *(unverified)* (C2). Neither source documents stable error codes
+in `extensions` *(unverified)* (C3). The specification reference models every
 error as a `Problem` response, with 404 for lookups (report 02).
+How the served API maps these errors onto HTTP statuses and error bodies is
+product decision PD-01, answered by decision
+[0022](../decisions/0022-api-errors-and-update-semantics.md).
 
 ## 9. Rate limits
 
 No docs page read states a request rate limit for the GraphQL API
-*(unverified)*. The documented limits are product limits:
+*(unverified)* (C4). The documented limits are product limits:
 
 | Limit | Value | Evidence |
 |---|---|---|
@@ -471,14 +474,19 @@ The reference is an oracle in three ways:
 ## Inferred and undocumented
 
 - The HTTP status of GraphQL errors: the clients match error text whatever
-  the status, so it stays open *(unverified)*.
-- Error codes in `extensions`: no stable list found *(unverified)*.
+  the status, so it stays open *(unverified)* (C2).
+- Error codes in `extensions`: no stable list found *(unverified)* (C3).
 - An API request rate limit: none documented; the provider's limiter hints
-  that one exists **[I]** *(unverified)*.
+  that one exists **[I]** *(unverified)* (C4).
 - Feature-flagged fields reaching tenants before the demo schema
-  *(unverified)*.
+  *(unverified)* (C1).
 - The browser login's `/cli_login` page behaviour on the server side is known
-  only from spacectl's half of the handshake **[S]**.
+  only from spacectl's half of the handshake **[S]** (C23).
+- Whether the archived `spacelift-intent` repository means the open-source
+  Intent server is retired or that it moved *(unverified)* (C15). Whether
+  infraweave mirrors that stdio server beside the hosted `/mcp` Intent tools
+  is product decision PD-10, answered by decision
+  [0019](../decisions/0019-ai-provider-boundary.md).
 
 ## Versions at the research baseline
 

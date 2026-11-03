@@ -162,18 +162,19 @@ Selection rules **[S]**
 - **In-run token limits.** The docs say the injected token is valid for three
   hours, but only while the run that produced it is in the Planning, Applying or
   Performing state. A stack without role attachments receives a token that
-  cannot modify any Spacelift resource. With role attachments, the token manages
+  cannot modify any Spacelift resource (C104). With role attachments, the token manages
   stacks, contexts, integrations and configuration, but cannot create or read
   state, runs, tasks or their logs, and cannot read write-only configuration
   elements **[D]** (<https://docs.spacelift.io/vendors/terraform/terraform-provider>).
   `spacelift_run` and `spacelift_task` still call `runTrigger` and `taskCreate`,
   so they need a token with more access than an in-run stack token, such as an
-  API key **[I]** (from the docs' limits and the mutations those resources send).
+  API key **[I]** (from the docs' limits and the mutations those resources send)
+  (C18).
 - **In-run identity.** `spacelift_current_stack` and `spacelift_current_space` read
   the token's claims without an API call for the stack: `iss` must be
   `spacelift`, and `sub` is a path whose directory part is the stack or module ID
   **[S]** ([`getStackIDFromToken`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/data_current_space.go#L58-L79)).
-  The last path segment of `sub` is the run ID *(unverified)*: the provider
+  The last path segment of `sub` is the run ID *(unverified)* (C17): the provider
   discards it, and no docs page names it.
 - **No refresh.** The provider exchanges the API key once per configure and holds
   the JWT for the rest of the process **[S]** (no refresh path in
@@ -205,6 +206,9 @@ Transport behaviour **[S]**
 - Client-side rate limiting is off unless both `SPACELIFT_MAX_REQUESTS_PER_SECOND`
   and `SPACELIFT_MAX_REQUESTS_BURST` are set; then a token bucket throttles every
   request. The provider has no handling of its own for a server-side rate limit.
+  Whether the API has one, how it signals it, and which statuses the
+  library's default policy retries at the pinned version are *(unverified)*
+  (C4).
 
 ### Errors and missing objects
 
@@ -215,7 +219,8 @@ Transport behaviour **[S]**
   ID **[S]** ([`removeFromState`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/remove_from_state.go#L10-L20)).
   So the provider relies on the server's error message text, and a GraphQL
   query for a missing object answers with an error whose message holds
-  `not found` **[I]** (from this string match being the only not-found test).
+  `not found` **[I]** (from this string match being the only not-found test)
+  (C5).
 - **Error formatting.** GraphQL errors are joined as `message: key: value` with
   their `extensions`; an error containing `unauthorized` instead gains a hint
   that a stack's role can override space-level permissions and that a space ID,
@@ -731,7 +736,7 @@ The name matcher in section 2 misses these; the source shows where each one goes
   ([`resourceAWSIntegrationAttachmentCreate`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_aws_integration_attachment.go#L76-L97),
   [`resourceAWSRoleCreate`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_aws_role.go#L100-L136)).
   So Spacelift tests the role assumption at attach time and rejects the attach
-  when it fails **[I]** (from the retried error text).
+  when it fails **[I]** (from the retried error text) (C19).
 - **Role actions are validated against the live schema.** `spacelift_role` and
   `spacelift_role_actions` introspect the `Action` enum, including deprecated
   values, and reject unknown actions before sending `roleCreate` **[S]**
@@ -779,10 +784,14 @@ attribute should have an infraweave equivalent, or a recorded reason why not.
   `templateVersion` and others); the REST API needs equivalent sub-resource reads.
 - **Authentication.** A provider and CLI need both modes: an API key exchanged for
   a token, and a token injected into runs whose claims identify the stack and the
-  API endpoint.
+  API endpoint. Whether those run credentials reproduce Spacelift's formats
+  exactly is product decision PD-07, answered by decision
+  [0006](../decisions/0006-authentication-and-tokens.md).
 - **Not-found and asynchronous semantics.** Reads must distinguish "gone" from
   "error" without string matching, and deletes of stacks are asynchronous with a
-  `deleting` flag that clients poll.
+  `deleting` flag that clients poll. How the served API maps errors onto HTTP
+  statuses and error bodies is product decision PD-01, answered by decision
+  [0022](../decisions/0022-api-errors-and-update-semantics.md).
 - **Write-only values.** Config elements need a server-computed checksum so
   clients can detect drift on secrets they cannot read.
 - **Import IDs.** Composite import IDs (`context/<id>/<name>`, `<stack>/<schedule>`,
@@ -796,11 +805,11 @@ attribute should have an infraweave equivalent, or a recorded reason why not.
 | Claim | Inferred from |
 |---|---|
 | The API base URL a Spacelift JWT carries is in its `aud` claim | The docs say the token holds the endpoint; the provider takes it from `aud` alone ([`buildClientFromToken`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/provider.go#L238-L261)) |
-| A missing object answers a GraphQL error whose message contains `not found` | The provider's only not-found test is that string match ([`Query`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/internal/client.go#L52-L61)) |
+| A missing object answers a GraphQL error whose message contains `not found` (C5) | The provider's only not-found test is that string match ([`Query`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/internal/client.go#L52-L61)) |
 | A config element's `checksum` is hex-encoded | The provider's diff suppressor hex-decodes it and compares it with SHA-256 of the configured value (`ConfigElement.checksum` itself is non-null in the schema **[G]**) |
-| Spacelift tests an AWS role's trust policy when an integration is attached | The provider retries on the `you need to configure trust relationship` error |
-| `spacelift_run` and `spacelift_task` need more than an in-run stack token | The docs say stack tokens cannot access runs or tasks; these resources send `runTrigger` and `taskCreate` |
-| The last segment of the in-run token's `sub` is the run ID *(unverified)* | The provider splits `sub` as a path and keeps only the directory part |
+| Spacelift tests an AWS role's trust policy when an integration is attached (C19) | The provider retries on the `you need to configure trust relationship` error |
+| `spacelift_run` and `spacelift_task` need more than an in-run stack token (C18) | The docs say stack tokens cannot access runs or tasks; these resources send `runTrigger` and `taskCreate` |
+| The last segment of the in-run token's `sub` is the run ID *(unverified)* (C17) | The provider splits `sub` as a path and keeps only the directory part |
 | `terraform-operations.json` over-reports `id`, `name` and `type` and misses calls in shared helpers | Comparing it with the provider source (section 1) |
 
 ## Versions at the research baseline

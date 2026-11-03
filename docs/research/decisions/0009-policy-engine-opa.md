@@ -318,7 +318,7 @@ Who calls the engine, when, and what the result does to the run of decision
   ([09 section 3.3](../reference/09-policies.md#33-approval)), and what a flag set by a
   type with no run does. infraweave fails the run in both reject cases and ignores such
   flags.
-- Whether infraweave pins Spacelift's policy contract as a committed snapshot is P14,
+- Whether infraweave pins Spacelift's policy contract as a committed snapshot is PD-14,
   outside this record.
 
 ## Verification

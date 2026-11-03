@@ -195,7 +195,7 @@ The three-scenario evidence rule decides `implemented`:
 
 A Terraform resource or data source is `implemented` only when the
 operations it calls are and its provider scenario (below) passes. Report
-26's tables stay hand-maintained (report 30, P12);
+26's tables stay hand-maintained (report 30, PD-12);
 `specref parity --states --check docs/research/reference/26-scope-and-tiers.md`
 fails when a state cell disagrees with the computed one, so the report
 cannot claim more than the tests show. The scope behind the states is

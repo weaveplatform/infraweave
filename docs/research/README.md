@@ -83,7 +83,7 @@ exclusion is recorded with its evidence.
 | [27-reference-materials.md](reference/27-reference-materials.md) | Atlantis, OTF, Terrakube, Digger, Burrito, Terramate, the Flux tofu-controller, OPA, Temporal and River: what to borrow | Written |
 | [28-data-model.md](reference/28-data-model.md) | Wire entities, their relationships and the storage tables they imply | Written |
 | [29-data-model-inventory.md](reference/29-data-model-inventory.md) | Generated from the introspection snapshot: how to read the register [`graphql-inventory.json`](../data/graphql-inventory.json) of every type, field and enum value, and its counts | Written |
-| [30-open-questions.md](reference/30-open-questions.md) | Product decisions, captures needed and re-verify triggers | Written |
+| [30-open-questions.md](reference/30-open-questions.md) | How to use and resolve the open questions; the product decisions, captures needed and re-verify triggers are in [`open-questions.json`](../data/open-questions.json) | Written |
 | [31-review-log.md](reference/31-review-log.md) | What each fact-check pass found and changed | Written |
 | [glossary.md](reference/glossary.md) | Terms used across the set | Written |
 | [architecture-options/](architecture-options/README.md) | Five repository architecture options, their comparison and a recommendation | Written |
@@ -184,7 +184,9 @@ rules for committed snapshots.
 - **Citations.** Every external claim cites a URL. Claims about this
   repository cite a path.
 - **Unverified claims.** Claims that could not be confirmed against a primary
-  source are marked *(unverified)* and collected in 30-open-questions.
+  source are marked *(unverified)* and cite the open question that
+  carries them, a record of [`open-questions.json`](../data/open-questions.json)
+  such as C83.
 - **Facts and decisions are separate.** Reports hold facts; decisions live in
   [decision records](decisions/README.md), whose status is Proposed, Accepted
   or Superseded.
@@ -195,7 +197,8 @@ rules for committed snapshots.
   - every report carries its header and `## Sources`;
   - every decision carries a valid status and is indexed;
   - every tag of the specification reference appears in report 26;
-  - every report with an *(unverified)* claim is linked from report 30;
+  - every report with an *(unverified)* claim is listed in an
+    open-questions record, and cites its ID;
   - every architecture option has the outline of the first: the same H2s,
     and the same H3s under Deep dives and Walkthroughs.
 - **Generated report.** Report 29 and the register it summarises,
