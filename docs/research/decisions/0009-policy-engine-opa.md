@@ -241,7 +241,8 @@ Who calls the engine, when, and what the result does to the run of decision
   - The record is JSON, sealed with the streaming blob sealing of decision
     [0013](0013-secrets-at-rest.md) into the `policy-inputs` store (decision
     [0005](0005-persistence-postgresql.md)) under the key
-    `<account>/<policy>/<evaluation ulid>`; the AAD is that key.
+    `<account>/<policy>/<evaluation ulid>`, its content key bound to the
+    store and that key as 0013 binds every object.
   - `policy_evaluations` (report [28 section 12.4](../reference/28-data-model.md#124-policies-and-contexts))
     holds the key, outcome, timestamp and object key. Samples expire after 7 days, through
     the `blob.expire` task; a receipt whose sample is gone answers `sampleExpired: true`.

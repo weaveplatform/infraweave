@@ -1471,7 +1471,7 @@ to the table. The copy check found no docs prose.
   became `INFRAWEAVE_ENVIRONMENT` and `INFRAWEAVE`, no served name contains
   spacelift or matches a reference name of the rename table.
 - **Settled after the pass:** the sampling task is `worker.sample` with `worker.samples.retention`, matching the singular prefix of `worker.offline_after` and `worker.reap` (`runs.` and `workers.` name tables, not keys); 0018 gives the default Flows agent pool the account isolation 0008 gives the public worker pool; the plan no longer counts C226 and C238 as blocking; served descriptions no longer name Spacelift, and `TestUnitServedNames` reads every served string outside the mapping extensions.
-- **Left open, as style rather than contradiction:** object keys written with and without the store prefix (0005 owns the form) and deploy routes written with and without `/api/v1` (0003 owns it).
+- **Settled after the pass, as style:** records name a store and write its key without the store prefix (0005), and write deploy routes as the document's paths while every other surface, the operator API's `/operator/v1` among them, keeps its prefix (0003). Settling them exposed three contradictions, now resolved: 0005 kept `deliveries` 1 day where 0015 keeps delivery bodies with their rows for 7; plan P1 served `GET /api/v1/health`, which 0017 rejects, and now serves `/livez` on the admin listener; and 0009 bound a sample to its key alone, where 0013 binds every object to its store and key.
 
 ## What survived across the set
 

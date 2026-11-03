@@ -269,7 +269,7 @@ sees the same keys, buckets and switches.
   | `modules` | Module and provider archives | Registry | none | decision 0014 |
   | `policy-inputs` | Sampled policy inputs, sealed | Policy engine | 7 days | [0009](0009-policy-engine-opa.md) |
   | `uploads` | Client uploads, such as a state file at stack creation or a local-preview workspace | API clients, through pre-signed `PUT` | 1 day | the owning family |
-  | `deliveries` | Outbound webhook request and response bodies | Event delivery | 1 day | decision 0015 |
+  | `deliveries` | Outbound webhook request and response bodies | Event delivery | `events.deliveries.retention` | [0015](0015-events-notifications-webhooks-audit.md) |
   | `inbox` | Inbound webhook bodies above the inline limit, and queue payloads above 64 KiB | VCS intake, queue | 2 days | [0012](0012-vcs-integration-model.md), [0011](0011-persistent-work-queue.md) |
   | `run-observability` | Worker traces and metrics artifacts | Runner | 60 days | [0008](0008-run-execution-and-worker-protocol.md) |
   | `flows-events` | Flows event bodies above the inline limit | Flows engine | `flows.retention` | [0018](0018-flows-runtime.md) |
@@ -278,10 +278,18 @@ sees the same keys, buckets and switches.
   for the matching buckets; `run-artifacts` has no matching bucket, and its 30
   days is infraweave's own
   ([24 section 3.2](../reference/24-self-hosted-reference.md#32-object-storage-buckets)).
-  Each one is set by `objectstore.retention.<store>`.
+  Each one is set by `objectstore.retention.<store>`, except `deliveries`
+  and `flows-events`, whose bodies are read through their rows and so live
+  exactly as long as those rows, under the owner's setting. For deliveries
+  that is 7 days, where Spacelift suggests 1 day for its bucket.
 
-- **Keys.** Keys are `<store>/<account>/<owner path>/<ULID>`. An object is
-  written once and never overwritten, so the store needs neither versioning nor
+- **Keys.** A key is `<account>/<owner path>/<leaf>` within its store, and
+  the bucket holds the object under `<store>/<key>`, also when the store
+  has a bucket of its own, so moving a store copies objects without
+  renaming them. `blob_objects` keeps the store and the key apart, and
+  records name the store and write the key without the store prefix. The
+  leaf is a ULID, or a name the owner never reuses, such as a log chunk's
+  sequence number. An object is written once and never overwritten, so the store needs neither versioning nor
   read-after-overwrite consistency. A new version of anything, such as a state
   file, is a new object.
 - **No bucket versioning.** infraweave neither needs nor uses it. An operator

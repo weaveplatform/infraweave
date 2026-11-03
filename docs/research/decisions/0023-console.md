@@ -97,7 +97,7 @@ be air-gapped.
   Node.js process runs in production.
 - A `GET` for a path with no file returns `index.html`, so deep links work.
   Only console routes fall back: a path under a prefix that another handler
-  owns (`/api/`, `/flows/`, `/mcp`, `/.well-known/`, `/auth/`, `/oauth/`,
+  owns (`/api/`, `/operator/`, `/flows/`, `/mcp`, `/.well-known/`, `/auth/`, `/oauth/`,
   `/admin-login`, `/worker/`, `/vcs-agent/`, `/webhooks/`, `/downloads/`,
   `/blobs/`, `/state/`, `/registry/` and the other protocol endpoints)
   answers that handler's `404`, never `index.html`. The one console route

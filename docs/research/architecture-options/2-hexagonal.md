@@ -1191,8 +1191,8 @@ internal/shared/expr/                         (P9) the language and library of d
                                               the context; programs cached by source, surface and types
 internal/core/port/driving/expressions.go     Expressions: Check, Complete, Evaluate; Surface: TypedContext
 internal/core/expression/                     (P9) service over the Surface each domain registers
-internal/adapter/driving/http/deploy/expressions/   /api/v1/expressions/check, complete, evaluate
-internal/adapter/driving/http/deploy/policies/check.go   /api/v1/policies/check: Rego diagnostics
+internal/adapter/driving/http/deploy/expressions/   /expressions/check, complete, evaluate
+internal/adapter/driving/http/deploy/policies/check.go   /policies/check: Rego diagnostics
 ```
 
 | Surface | Evaluated by | Process mode |

@@ -125,6 +125,23 @@ unchanged; this table holds the slugs this record defines.
 A URN rather than a URL: RFC 9457 lets clients match on the `type` without
 dereferencing it, and infraweave has no documentation host to resolve one to.
 
+### Routes in the records
+
+- **A deploy route is written as its path in the document.** The deploy
+  API's server URL is `/api/v1`, and records write its routes relative to
+  it, as the OpenAPI document and the reference do: `PATCH /stacks/{stackId}`.
+  The full path appears only where the URL path itself is the point, such as
+  mounting the handler or the console's fallback prefixes
+  ([0023](0023-console.md)).
+- **Every other surface keeps its prefix.** Routes of the operator API
+  (`/operator/v1/...`, [0021](0021-capability-scope-and-supersession.md)),
+  Flows (`/flows/v1/...`), the state backend (`/state/v1/...`), the
+  registry protocol, authentication, OAuth, inbound webhooks, the worker
+  and VCS agent protocols, and the admin listener's probes
+  ([0017](0017-observability-and-health.md)) are written as the full path
+  the server answers. A bare path in a record is therefore always a deploy
+  route.
+
 ### Spec components
 
 `api/src/deploy/components-common.yaml` defines:

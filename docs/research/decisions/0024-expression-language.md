@@ -243,10 +243,10 @@ every client reports the same diagnostics:
 
 | Operation | Path | Does |
 |---|---|---|
-| Check | `POST /api/v1/expressions/check` | Parses and type-checks one expression or text template for a surface and a context (a flow block and input, a template, a stack); returns diagnostics with ranges, the result type and a static cost estimate |
-| Complete | `POST /api/v1/expressions/complete` | Returns completion items at a cursor: variables, fields from the typed context, functions with signatures, named expressions |
-| Evaluate | `POST /api/v1/expressions/evaluate` | Evaluates against sample data or a stored event the caller can read, with `secrets` replaced by masked placeholders, under the same limits; the workbench for expressions |
-| Check policy | `POST /api/v1/policies/check` | Parses and compiles a Rego body with 0009's preamble and returns diagnostics with ranges; simulation stays `policySimulatev2` |
+| Check | `POST /expressions/check` | Parses and type-checks one expression or text template for a surface and a context (a flow block and input, a template, a stack); returns diagnostics with ranges, the result type and a static cost estimate |
+| Complete | `POST /expressions/complete` | Returns completion items at a cursor: variables, fields from the typed context, functions with signatures, named expressions |
+| Evaluate | `POST /expressions/evaluate` | Evaluates against sample data or a stored event the caller can read, with `secrets` replaced by masked placeholders, under the same limits; the workbench for expressions |
+| Check policy | `POST /policies/check` | Parses and compiles a Rego body with 0009's preamble and returns diagnostics with ranges; simulation stays `policySimulatev2` |
 
 Flows serves the same operations under `/flows/v1/`. Each operation
 authorizes as a read of its context. `infraweavectl` exposes them as

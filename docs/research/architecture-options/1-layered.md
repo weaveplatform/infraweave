@@ -1104,8 +1104,8 @@ internal/support/expr/                   the language: Compile(surface, source, 
 └── shell/                               quoting for workflow command templates
 internal/workflow/exprflow/              typed context per surface: Flows block schemas and named expressions,
                                          event kind schemas, template inputs, run variables          (P9)
-internal/transport/http/api/expressions/ POST /api/v1/expressions/check, complete, evaluate              (P9)
-internal/transport/http/api/policies/check.go   POST /api/v1/policies/check over support/rego         (P13)
+internal/transport/http/api/expressions/ POST /expressions/check, complete, evaluate              (P9)
+internal/transport/http/api/policies/check.go   POST /policies/check over support/rego         (P13)
 ```
 
 The language is a pure library, so it sits in `support`, where every layer

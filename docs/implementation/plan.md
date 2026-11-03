@@ -381,10 +381,12 @@ package paths are today's (`internal/server/...`); P1b moves them.
 2. [#14](https://github.com/weaveplatform/infraweave/issues/14) `cmd/infraweave` with `serve` and `version`;
    `internal/server` builds the chi router with request ID and recovery,
    mounts the strict handler under `/api/v1`, turns `404` and `405` into
-   problem details and serves `GET /api/v1/health` from
-   `api/src/deploy/paths-system.yaml`. Strict YAML config with flag over
-   environment over file. Tests: `internal/server` unit tests for health, a
-   `501` stub, `404`, `405` and recovery; config precedence and unknown-key
+   problem details and serves `GET /livez` on the admin listener
+   (`server.admin_listen`, `:9090`), never on the API listener
+   ([0017](../research/decisions/0017-observability-and-health.md#health)).
+   Strict YAML config with flag over environment over file. Tests:
+   `internal/server` unit tests for `/livez`, a `501` stub, `404`, `405`
+   and recovery; config precedence and unknown-key
    rejection; `served_api.feature`.
 3. [#15](https://github.com/weaveplatform/infraweave/issues/15) `internal/server/ratelimit`, `internal/server/idempotency` and
    `internal/server/pagination`: token buckets per caller and cost class
@@ -403,7 +405,7 @@ package paths are today's (`internal/server/...`); P1b moves them.
 **Exit criteria**
 - The epic's acceptance holds on `main`: `make generate` reproduces the
   committed bundle, server, client and stubs byte for byte; a Stacks route
-  answers a `501` problem, health answers `200` and an unknown path answers a
+  answers a `501` problem, `/livez` answers `200` on the admin listener and an unknown path answers a
   `404` problem; a retried `POST` acts once; an exhausted budget answers
   `429` with `Retry-After`.
 - The parity report shows the 72 scaffolded operations present and every
@@ -590,8 +592,8 @@ needs from its first database connection.
    key and a bucket.
 5. `internal/platform/observe`: `log/slog` JSON with the standard fields,
    `X-Request-Id` validation and echo, the redacting handler, the access log;
-   the admin listener `server.admin_listen` (`:9090`) with `/livez`,
-   `/readyz` and `/startupz`; graceful shutdown order. `infraweave scheduler`
+   `/readyz` and `/startupz` beside P1's `/livez` on the admin listener,
+   with decision 0017's checks per process mode; graceful shutdown order. `infraweave scheduler`
    and `infraweave all` process modes start with no consumers yet. Tests:
    `TestUnitRedactHandler`, `TestUnitRequestID`,
    `TestUnitServerListeners`, `observability_health.feature` (readiness
@@ -1100,7 +1102,7 @@ environment, and the expression engine every later surface uses.
    the cost limit and timeout, `now` and the random seed fixed per
    evaluation, results masked by decision 0013's masker. The
    `expressions` domain, `internal/expressions`, serves `POST
-   /api/v1/expressions/check`, `/complete` and `/evaluate` over the
+   /expressions/check`, `/complete` and `/evaluate` over the
    surfaces each domain's assembly lists through `Surfaces()`. Tests:
    `TestUnitExprLibrary`, `TestUnitExprTemplates`,
    `TestUnitExprDeterminism`, `TestUnitExprCostLimit`,
@@ -1475,7 +1477,7 @@ state points, with receipts committed in the transition they justify.
    matching report 09 section 4, with the reference's `spacelift.*` input
    keys named `infraweave.*`, `GET /.well-known/policy-contract.json`,
    combination rules. Tests: `TestUnitPolicyContract`,
-   `TestUnitCombination`. `POST /api/v1/policies/check` compiles a body
+   `TestUnitCombination`. `POST /policies/check` compiles a body
    with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
 4. Evaluation points in `runs/internal/core/gates`: approval on `QUEUED`,
    `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
