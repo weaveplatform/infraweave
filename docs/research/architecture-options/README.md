@@ -80,9 +80,17 @@ Facts every option shares, so that the comparison is about structure alone:
   `scheduler`, with apps as versioned protobuf `App` gRPC services in
   containers run by `flows-agent`, the Go app SDK `pkg/flows/appsdk`, and
   no JavaScript runtime for apps or expressions (decision 0018);
+- root, organization, account and spaces: root holds organizations, an
+  organization holds accounts, members, identity providers, the tier,
+  grants and limits pooled across its accounts, and an account is the
+  data boundary whose top space is addressed by its slug; members
+  authenticate at the organization and are admitted per account by its
+  `LOGIN` policies, and the account admin holds `space-admin` on the top
+  space (decisions 0006, 0007 and 0021);
 - one feature catalogue of capabilities, options and limits with seeded
-  tiers, per-account tier and grants, `billing` off by default, an
-  operator-only API, and one chi middleware (decision 0021);
+  tiers, a tier and grants per organization with account limits below the
+  pool, `billing` off by default, an operator-only API that creates
+  organizations, and one chi middleware (decision 0021);
 - CEL expressions and `${{ }}` text templates in one package, evaluated by
   the server process modes and, for workflow command templates, by the
   runner, with editor endpoints under `/api/v1/expressions/` (decision
@@ -175,7 +183,7 @@ ports), `internal/adapter` (controllers, presenters, gateways) and
 | Per-consumer ports remove policy cycles: run, VCS and review use cases each declare a decision port | Domains are invisible: the run lifecycle spans about ten unrelated-looking packages |
 | Framework swaps (chi, pgx, OPA, SDKs) stay inside one adapter | depguard has no variable for the importing package, so "no sibling use case" takes about 116 generated rules and a new `tools/depguardgen` |
 | A vendor is mostly one pure entity package shared by server and worker | `usecase/runstate` is a shared service at the system's centre |
-| Inward-only direction plus a worker allow-list keeps persistence off workers | Event fan-out and Flows' separate tenancy are a file and a naming prefix, not structure |
+| Inward-only direction plus a worker allow-list keeps persistence off workers | Event fan-out and Flows' separate model are a file and a naming prefix, not structure |
 | Entitlement, sealed formats and the expression language are pure entities the runner can share | Limits need a consumer-side port in every creating interactor, and `allowedActions` travels through every output boundary and presenter |
 
 **Roadmap verdict.** Excellent for P7 to P10, P13 and P17, whose rules are
@@ -199,7 +207,7 @@ blocking run and both locks.
 | Pros | Cons |
 |---|---|
 | The run state machine and stack lock form one aggregate | P2 to P6 CRUD pays for aggregates, repositories, in-memory and SQL implementations, contract suites and events nobody reads yet |
-| Flows separates cleanly: its own spec, tables and tenancy behind one anticorruption layer | The outbox and bus, with idempotency and dead letters, must exist before the first run |
+| Flows separates cleanly: its own spec, tables and projects behind one anticorruption layer | The outbox and bus, with idempotency and dead letters, must exist before the first run |
 | A VCS provider is one package; P19 touches no other context | Consequences are eventually consistent (stack state, checks, audit); acceptance tests wait for effects |
 | Governance as an open host service gives policy hooks without cycles | 43 depguard rules and about 520 entries; every new context edits every boundary rule |
 | The context map makes every cross-domain effect explicit; any context could become a service | About 375 packages, about 70 thin; policy receipts commit before the transition that uses them; `StackQueue` is a hot aggregate |

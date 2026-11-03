@@ -21,7 +21,7 @@ Conventions in the trees:
 
 The tree is organised by the direction of dependency. One application core,
 `internal/core/`, holds the domain model and the application services of
-every Deploy and Flows domain: accounts, spaces, stacks, configuration,
+every Deploy and Flows domain: organizations, accounts, spaces, stacks, configuration,
 runs, schedules, workers, vendors, state, VCS, policies, cloud
 integrations, the registry, events, features and tiers, expressions,
 templates, resources, Intelligence and Flows. The core declares two kinds of port. Driving ports, in
@@ -194,7 +194,7 @@ Status of each area at P1 and the phase that completes it:
 | `core/stack` | stub: the 72 served operations answer 501 | P5 |
 | `adapter/driving/http` | router, problem details, generated `deploy` server, stubs | P1, then every phase that serves an API |
 | `adapter/driven/postgres`, `objectstore`, `shared/seal` | absent | P2 |
-| `core/account`, `core/space` | absent | P3, P4, P23 |
+| `core/account`, `core/space` | absent | P3, P3b, P4, P23 |
 | `core/feature`, `adapter/driving/http/operator` | absent | P3b |
 | `core/config` | absent | P6 |
 | `core/run`, `adapter/driving/scheduler`, `adapter/driven/queue` | absent | P7, P9, P10 |
@@ -226,10 +226,10 @@ internal/
   core/
     kernel/                                value types every domain shares; no behaviour beyond parsing
       ids.go                               ULID, Slug, UUID (Flows), parse and format
-      principal.go                         Principal: user, API key, run, worker, stack, operator; account;
-                                           spaces
+      principal.go                         Principal: member, API key, organization key, run, worker, stack,
+                                           operator; one organization and one account; spaces
       feature.go                           (P3b) Feature, Limit: catalogue names as typed values
-      space.go                             SpaceID, SpacePath; the root space constant
+      space.go                             SpaceID, SpacePath; an account's top space is the account's slug
       labels.go                            Labels, autoattach:<label> parsing
       page.go                              Page, Cursor (decision 0003 cursor encoding)
       problem.go                           domain error kinds the HTTP adapter maps to problem types,
@@ -258,17 +258,19 @@ internal/
                                            Audit
         templates.go                       (P21) Templates, Blueprints, Deployments
         resources.go                       (P22) Resources, Search
-        identity.go                        (P3) Accounts, Users, APIKeys, Sessions, Authenticator
+        identity.go                        (P3) Organizations, Accounts, Members, APIKeys, Sessions,
+                                           Authenticator; (P3b) Users, OrganizationAdmin, OAuthServer
         access.go                          (P4) Spaces, Roles, Bindings, Authorizer (Decider per principal)
-        sso.go                             (P23) SSO, SCIM
+        sso.go                             (P23) the organization's identity providers, SCIM, linking
         intel.go                           (P25) AIIntegrations, Assistant, Intent
-        features.go                        (P3b) Entitlements: For(account) gives a Snapshot with Has,
-                                           Limit, Check(feature), Reserve(limit, n); Operator: Tiers,
-                                           Accounts, Grants, Billing
+        features.go                        (P3b) Entitlements: For(organization) gives a Snapshot with Has,
+                                           Limit, Check(feature), Reserve(account, limit, n) against the
+                                           pool and the account limit; Operator: Tiers, Organizations,
+                                           Grants, Billing
         expressions.go                     (P9) Expressions: Check, Complete, Evaluate; Surface:
                                            TypedContext(ref), implemented by each domain that owns one
         streams.go                         (P9) EventFeed: Subscribe(filter, lastID) for the SSE adapter
-        flows.go                           (Flows) Organizations, Projects, Flows, Blocks, Invocations,
+        flows.go                           (Flows) Projects, Flows, Blocks, Invocations,
                                            Apps, AgentPools, NamedExpressions; FlowTasks: Claim, Complete
         types.go                           request and result DTOs shared by the files above; every
                                            resource DTO carries AllowedActions
@@ -323,18 +325,20 @@ internal/
                                            emit; (P9) EventFeed for the streams; (P18) inbox, named and
                                            stack webhooks, audit trail, notification routing, message
                                            text rendered as text templates
-    feature/                               (P3b) catalogue.yaml, tiers and their seed, account tiers,
-                                           grants, entitlement snapshots, the billing switch, operator
-                                           service
+    feature/                               (P3b) catalogue.yaml, tiers and their seed, organization tiers,
+                                           grants, pooled limits and account limits, entitlement
+                                           snapshots, the billing switch, operator service
     expression/                            (P9) editor service: Check, Complete, Evaluate over the Surface
                                            of each domain; named expressions are Flows'
     template/                              (P21) templates, versions, deployments, blueprints
     resource/                              (P22) managed entities, scans, search
-    account/                               (P3) accounts, users, API keys, sessions, invitations;
-                                           (P23) SSO settings, SCIM reconciliation
+    account/                               (P3) organizations, accounts, members, API keys, sessions;
+                                           (P3b) users, invitations, organization keys, the Organization
+                                           tag, the OAuth authorization server; (P23) the organization's
+                                           identity providers, SCIM reconciliation, identity linking
     space/                                 (P4) space tree, inheritance, actions, roles, bindings, Decider
     intel/                                 (P25) AI integrations, Infra Assistant, Intent projects
-    flows/                                 (Flows) organizations, projects, flows, blocks, apps, agent pools,
+    flows/                                 (Flows) the account's projects, flows, blocks, apps, agent pools,
                                            named expressions, data tables, forms
       engine/                              (Flows) delivery, buffered effects, timers, lifecycle, invocation
                                            status, limits, retention
@@ -496,7 +500,7 @@ pkg/
 | Schedules, drift, dependencies | `core/schedule` | `http/deploy/schedules`, `scheduler` | `postgres/schedules` | none |
 | Registry | `core/registry` | `registryproto`, `http/deploy/registry` | `postgres/registry`, `objectstore` | `.terraformrc` written by `runner` |
 | Events | `core/event` | `http/deploy/events`, `outbox`, `http/sse` | `delivery`, `slack`, `postgres/events`, `postgres/notify` | none |
-| Accounts, spaces, SSO | `core/account`, `core/space` | `http/middleware`, `http/deploy/identity`, `http/deploy/spaces` | `postgres/accounts`, `postgres/spaces`, `keys`, `idp/*` | none |
+| Organizations, accounts, spaces, SSO | `core/account`, `core/space` | `http/middleware`, `http/deploy/identity`, `http/deploy/spaces` | `postgres/accounts`, `postgres/spaces`, `keys`, `idp/*` | none |
 | Features and tiers | `core/feature` | `http/middleware/features.go`, `operator`, `scheduler` | `postgres/features`, `postgres/notify` | none |
 | Expressions | `core/expression`, `shared/expr` | `http/deploy/expressions`, `flowsapi` | none | `shared/expr` in `runner` |
 | Templates | `core/template` | `http/deploy/templates` | `postgres/templates` | none |
@@ -710,7 +714,7 @@ results. Evaluation points sit in other domains
 ([report 09](../reference/09-policies.md#8-where-each-type-is-evaluated)):
 `core/vcs` asks for push decisions, `core/run` for plan and approval
 decisions, `core/event` for notification decisions, `core/account` for
-login decisions. Each holds `driving.PolicyDecisions`; none imports
+login decisions when a member enters an account. Each holds `driving.PolicyDecisions`; none imports
 `core/policy` (rule 3).
 
 ```go
@@ -917,7 +921,8 @@ internal/core/registry/
   testcase.go                                 module test cases as TESTING runs through driving.Runs
   metadata.go                                 inputs, outputs, providers, submodules
   provider.go gpg.go verify.go                drafts, publish, revoke, checksums, signatures
-  share.go                                    space inheritance, explicit sharing, public flag
+  share.go                                    space inheritance, explicit sharing between accounts of one
+                                              organization, public flag
   protocol.go                                 implements driving.RegistryProtocol
 internal/adapter/driven/postgres/registry/    modules, module_versions, providers, provider_versions,
                                               provider_version_platforms, gpg_keys
@@ -938,17 +943,24 @@ the expiry the protocol tolerates.
 
 ```text
 internal/adapter/driving/http/middleware/authn.go   credentials to kernel.Principal through driving.Authenticator
-internal/core/port/driving/identity.go        Authenticator, Accounts, Users, APIKeys, Sessions
+internal/core/port/driving/identity.go        Authenticator, Organizations, Accounts, Members, Users, APIKeys,
+                                              Sessions
 internal/core/port/driving/access.go          Spaces, Roles, Bindings; Authorizer: For(ctx, Principal)
                                               (Decider, error); Decider: Allows(action, space),
                                               Reachable() []SpaceID
 internal/core/account/
-  account.go user.go apikey.go session.go     (P3) API key exchange, session snapshots
+  organization.go account.go member.go        (P3) root holds organizations; an organization holds accounts
+                                              and members; nothing inherits from either
+  apikey.go session.go                        (P3) API key exchange; sessions bound to one account
   token.go                                    (P3) short-lived tokens over driven.TokenSigner
-  login.go                                    (P13) login policy through driving.PolicyDecisions
-  sso.go scim.go                              (P23)
+  user.go orgadmin.go oauth.go                (P3b) users as members per account; the Organization tag;
+                                              the built-in OAuth authorization server
+  login.go                                    (P13) the account's login policy through
+                                              driving.PolicyDecisions when a member enters it
+  sso.go scim.go linking.go                   (P23) the organization's identity providers
 internal/core/space/
-  tree.go                                     (P4) root, parent, inheritance toggle, re-parenting checks
+  tree.go                                     (P4) the account's top space, parent, inheritance toggle,
+                                              re-parenting checks
   actions.go                                  (P4) the 150-value action catalogue and legacy fallback
   role.go binding.go                          (P4) system and custom roles; five actor kinds
   decide.go                                   (P4) Decider: propagation down, read up, implicit stack read
@@ -979,21 +991,23 @@ internal/core/feature/
   catalogue.go                                embeds and validates the catalogue; strict names
   tier.go seed.go                             tiers as data; the Free, Starter, Starter+, Business and
                                               Enterprise seed, installed once; Enterprise not editable
-  grant.go                                    per-account features and limit values, kept across tier changes
+  grant.go                                    per-organization features and limit values, kept across tier changes
+  limit.go                                    pooled limits across the organization's accounts; account limits
   entitlement.go                              tier plus grants minus features.disabled minus unmet
                                               requirements; limit values from grant, else tier
-  snapshot.go                                 per-account snapshot keyed by entitlement_version; rebuilt on
+  snapshot.go                                 per-organization snapshot keyed by entitlement_version; rebuilt on
                                               infraweave_invalidate through driven.Notifications
-  billing.go                                  the installation's billing switch; off: every account is Enterprise
+  billing.go                                  the installation's billing switch; off: every organization is Enterprise
   service.go                                  implements driving.Entitlements and driving.Operator
-internal/core/port/driving/features.go        Entitlements: For(account) Snapshot; Snapshot: Has, Check,
-                                              Limit, Reserve; Operator: Tiers, Accounts, Grants, Billing
+internal/core/port/driving/features.go        Entitlements: For(organization) Snapshot; Snapshot: Has, Check,
+                                              Limit, Reserve; Operator: Tiers, Organizations, Grants, Billing
 internal/adapter/driving/http/middleware/features.go
                                               after authentication: the operation's x-infraweave-feature,
                                               read from the generated route table, through driving.Entitlements
 internal/adapter/driving/http/operator/        implements gen/operator; operator principals only, else 401
 internal/adapter/driving/scheduler/consume.go  a job of a feature outside the entitlement completes as skipped
-internal/adapter/driven/postgres/features/     tiers, tier_features, tier_limits, account_tiers, grants
+internal/adapter/driven/postgres/features/     tiers, tier_features, tier_limits, organization_tiers, grants,
+                                              account_limits
 ```
 
 The catalogue is one core package that every other core domain reaches
@@ -1008,15 +1022,18 @@ three gates of decision 0021 sit where each one's information lives:
 
 `billing` is off by default: `Snapshot` then answers yes for every feature
 not in `features.disabled` and no limit applies, so an installation behaves
-as Enterprise without a check. Tiers, account tiers, grants and the billing
-switch are data written only through the operator API
-(`api/operator.openapi.yaml`, `infraweavectl operator`); each write bumps
-`accounts.entitlement_version` and notifies `infraweave_invalidate` in its
+as Enterprise without a check. Tiers, organization tiers, grants and the
+billing switch are data written only through the operator API
+(`api/operator.openapi.yaml`, `infraweavectl operator`), which also
+creates organizations, each with its first account; organization admins
+set account limits below the pool through the served `Organization` tag.
+Each write bumps `organizations.entitlement_version` and notifies
+`infraweave_invalidate` in its
 unit of work, and every replica rebuilds the snapshot it holds, so a change
 needs no restart. Downgrades delete nothing: the scheduler's job consumer is
 a driving adapter, so it asks the snapshot before handing a job to the core
 and completes a gated job as skipped, and schedules of a missing feature do
-not fire until the account regains it. The hexagon gives the gate one home
+not fire until the account's organization regains it. The hexagon gives the gate one home
 because every domain shares one core; the cost is that
 `core/port/driving/features.go` is another port every domain's fakes must
 cover.
@@ -1086,12 +1103,13 @@ driven one (rule 5). Every stream has a polling equivalent.
 ```text
 api/proto/flows/app/v1/                       (Flows) app.proto (App), host.proto (Host); buf breaking in CI
 pkg/flows/appsdk/                             (Flows) Serve(app), typed blocks, KV, timers, widgets; apptest/
-internal/core/port/driving/flows.go           Organizations, Projects, Flows, Blocks, Apps, Installations,
+internal/core/port/driving/flows.go           Projects, Flows, Blocks, Apps, Installations,
                                               AgentPools, Invocations, Secrets, NamedExpressions, DataTables;
                                               FlowTasks: Claim(pool, n), Complete(task, result), Host(call)
 internal/core/port/driven/agenttasks.go       AgentTasks: Submit(pool, Task) inside the Tx
 internal/core/flows/
-  org.go project.go membership.go             (Flows) one organization per account; projects, UUIDs, roles
+  project.go membership.go                    (Flows) the account's projects, UUIDs, roles; the account
+                                              admin takes Spacelift Flows' organization admin's place
   flow.go block.go link.go definition.go      (Flows) definition YAML with !expr values, strict import and export
   app.go installation.go registry.go          (Flows) app versions as OCI image digests with captured
                                               Describe manifests; hourly registry subscriptions
@@ -1151,8 +1169,9 @@ first-party apps are ordinary programs on it.
 Flows' parts are features of the catalogue (`flows-engine`, `flows-apps`,
 `flows-agents`, `flows-data-tables`, `flows-forms`, `flows-mcp-tools`),
 gated by the same middleware as Deploy; there is no Flows switch of its
-own. One organization per account shares Deploy's users, so `core/flows`
-reaches identity through `driving.Authorizer` like any domain. In a single
+own. Flows belongs to the account, in place of Spacelift Flows'
+organization, and shares its members, so `core/flows` reaches identity
+through `driving.Authorizer` like any domain. In a single
 hexagon Flows is three core packages and a handful of adapters, separated
 from Deploy only by rule 3: it reaches Deploy through `driving.Runs`,
 `driving.Stacks` and `driving.Subscriber`, and Deploy never reaches it. The
@@ -1677,9 +1696,9 @@ Where this layout rubs against the system:
 - **Vendors are split across two hexagons.** Adding Pulumi edits
   `core/iac/pulumi` and `worker/core/iac/pulumi`, with the job payload
   as the only contract between them; a mismatch shows only in acceptance.
-- **Flows shares the core without sharing its tenancy.** Flows projects and
-  their roles are a second access model inside the same core (one
-  organization per account), separated from spaces only by rule 3;
+- **Flows shares the core and the account.** Flows projects and their
+  roles are a second access model inside the same core, within the
+  account that owns them, separated from spaces only by rule 3;
   extracting Flows into its own service later means splitting the schema
   stream and `services.go`, not just moving a directory. The same sharing
   makes Deploy events native Flows triggers.

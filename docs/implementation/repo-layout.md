@@ -52,7 +52,7 @@ infraweave/
 │   ├── src/deploy/                editable fragments: info.yaml, components-common.yaml, paths-<family>.yaml
 │   ├── src/worker/                worker protocol fragments (P8)
 │   ├── src/flows/                 Flows API fragments under /flows/v1/ (P18c)
-│   ├── src/operator/              operator API fragments: accounts, tiers, grants, billing, queue (P3b)
+│   ├── src/operator/              operator API fragments: organizations, tiers, grants, billing, queue (P3b)
 │   ├── proto/flows/app/v1/        the versioned App and Host gRPC services of Flows apps (P18d)
 │   ├── deploy.openapi.yaml        bundled by make bundle; committed; drift-checked
 │   ├── oapi-server-<spec>.yaml    oapi-codegen server config; output internal/platform/gen/<spec>
@@ -78,8 +78,9 @@ infraweave/
 │   │   └── docscheck/             links, report headers, decision statuses, plan structure ← internal/docscheck
 │   ├── kernel/                    value types shared by domain APIs; parsing only, no I/O
 │   │   ├── ids.go                 ULID, Slug, UUID (Flows)
-│   │   ├── account.go space.go    AccountID, SpaceID, the root space
-│   │   ├── principal.go           user, API key, run, operator, worker, stack, Flows project
+│   │   ├── organization.go        OrganizationID; root, the installation's top node, is no value here
+│   │   ├── account.go space.go    AccountID, SpaceID, the account's top space addressed by its slug
+│   │   ├── principal.go           member, API key, organization key, run, operator, worker, stack, Flows project
 │   │   ├── labels.go              labels and autoattach: matching
 │   │   ├── run.go                 RunState (22 values), RunType, StackState, RunPriority wire names
 │   │   ├── vendor.go              VendorKind
@@ -150,12 +151,13 @@ infraweave/
 │   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.yaml
 │   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
 │   │   └── api/ assembly/ internal/{expressions,http}/
-│   ├── access/                    hexagon: accounts, users, groups, API keys, sessions, tokens, spaces, RBAC (P3 to P4b, P13b, P23)
+│   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, the OAuth
+│   │                              authorization server, spaces, RBAC, the Organization tag (P3 to P4b, P13b, P23)
 │   │   ├── api/                   Authenticator, Authorizer, Spaces, Tokens, identity reads, events
 │   │   ├── assembly/              New(Deps); Routes; Consumers; Cron; Close; DeployAPI alias
 │   │   └── internal/
-│   │       ├── core/              account apikey session token (P3); user group (P3b); space authz (P4); role binding (P4b);
-│   │       │                      login (P13b); sso scim mfa (P23); port
+│   │       ├── core/              organization account member apikey session token (P3); user group oauth (P3b);
+│   │       │                      space authz (P4); role binding (P4b); login (P13b); sso scim mfa (P23); port
 │   │       └── adapters/          http (incl. login.v1, P17); pg; saml oidc (P23)
 │   ├── stacks/                    flat: stacks, settings, hooks, labels, human lock (P5); dependency (P16)
 │   │   └── api/ assembly/ internal/{stacks,dependency,http,pg}/
@@ -169,8 +171,8 @@ infraweave/
 │   │       │                      promote replan forceapply dependencies port
 │   │       └── adapters/          http (Runs tag, log streaming); pg (runs, transitions, receipts,
 │   │                              assignments, stack_run_locks, stack_run_state, stack_outputs)
-│   ├── workers/                   hexagon: pools, workers, credentials, worker protocol endpoints (P8, P14)
-│   │   └── api/ assembly/ internal/{core/{pool,worker,credential,drain,waiter,port},adapters/{http,protocol,pg}}/
+│   ├── workers/                   hexagon: pools, workers, credentials, worker protocol endpoints, pool samples (P8, P14)
+│   │   └── api/ assembly/ internal/{core/{pool,worker,credential,drain,waiter,sample,port},adapters/{http,protocol,pg}}/
 │   ├── vendors/                   flat: tool version catalogue (P5, P20)
 │   │   └── api/ assembly/ internal/{vendors,http,pg}/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
@@ -194,9 +196,9 @@ infraweave/
 │   │   └── api/ assembly/ internal/{resources,search,scans,http,pg}/
 │   ├── intelligence/              hexagon: AI integrations, Infra Assistant, Intent, MCP (P25, P25b)
 │   │   └── api/ assembly/ internal/{core/{aiintegration,assistant,intent,tools,port},adapters/{http,mcp,providers,pg}}/
-│   └── flows/                     hexagon: Flows on the account's identity, in its own PostgreSQL schema; its Deploy
+│   └── flows/                     hexagon: Flows, belonging to the account, in its own PostgreSQL schema; its Deploy
 │       │                          triggers are a fan-out consumer here, so events never imports flows (P18c, P18d)
-│       └── api/ assembly/ internal/{core/{org,project,flow,block,invocation,event,trigger,app,agentpool,secret,datatable,port},
+│       └── api/ assembly/ internal/{core/{project,flow,block,invocation,event,trigger,app,agentpool,secret,datatable,port},
 │                                  adapters/{http,gateway,mcp,pg}}/
 ├── pkg/
 │   ├── client/
