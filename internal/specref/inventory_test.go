@@ -105,7 +105,8 @@ func decodeRegister(t *testing.T, b []byte) (string, map[string]inventoryType, [
 // encodes.
 func TestUnitInventoryRegisterSemantics(t *testing.T) {
 	b := InventoryRegister(fixtureSchema())
-	if !bytes.HasSuffix(b, []byte("}\n")) || !bytes.Contains(b, []byte("\n  \"records\": [\n    {\n      \"id\": ")) {
+	if !bytes.HasSuffix(b, []byte("}\n")) ||
+		!bytes.Contains(b, []byte("\n  \"records\": [\n    {\n      \"id\": ")) {
 		t.Errorf("register is not two-space indented with a trailing newline:\n%.200s", b)
 	}
 	schema, byID, ids := decodeRegister(t, b)
@@ -133,7 +134,8 @@ func TestUnitInventoryRegisterSemantics(t *testing.T) {
 	if f := fields["labels"]; f.Type != "[String!]!" || f.Nullable || f.Deprecated {
 		t.Errorf("labels = %+v", f)
 	}
-	if f := fields["runs"]; len(f.Args) != 1 || f.Args[0].Name != "before" || f.Args[0].Type != "String" ||
+	if f := fields["runs"]; len(f.Args) != 1 || f.Args[0].Name != "before" ||
+		f.Args[0].Type != "String" ||
 		!f.Args[0].Nullable {
 		t.Errorf("runs = %+v", f)
 	}
@@ -162,7 +164,11 @@ func TestUnitInventoryRegisterSemantics(t *testing.T) {
 		}
 	}
 	if !sawDefault || !sawDeprecatedValue {
-		t.Errorf("default autodeploy = false: %v; deprecated OLD: %v", sawDefault, sawDeprecatedValue)
+		t.Errorf(
+			"default autodeploy = false: %v; deprecated OLD: %v",
+			sawDefault,
+			sawDeprecatedValue,
+		)
 	}
 	if bytes.Contains(b, []byte("The stack name.")) || bytes.Contains(b, []byte("A stack.")) ||
 		bytes.Contains(b, []byte("The id field.")) {

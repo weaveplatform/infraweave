@@ -282,7 +282,9 @@ func TestUnitCheckFindings(t *testing.T) {
 				// second finding.
 				delete(m, "docs/data/schema/open-questions.schema.json")
 				m[openRegister] = file("{")
-				m["docs/research/reference/02-b.md"] = file(goodReport + "\nIt is *(unverified)*.\n")
+				m["docs/research/reference/02-b.md"] = file(
+					goodReport + "\nIt is *(unverified)*.\n",
+				)
 			},
 			want:  "not JSON",
 			where: "docs/data/open-questions.json:1",
@@ -461,8 +463,10 @@ const openSchema = `{"x-id-pattern": "C[0-9]+", "x-cite-pattern": "\\bC[0-9]+\\b
 func openQuestions(m fstest.MapFS, reports ...string) {
 	m["docs/data/schema/common.schema.json"] = file(commonSchema)
 	m["docs/data/schema/open-questions.schema.json"] = file(openSchema)
-	m[openRegister] = file(`{"$schema": "schema/open-questions.schema.json", "records": [{"id": "C1", "reports": ["` +
-		strings.Join(reports, `", "`) + `"]}]}`)
+	m[openRegister] = file(
+		`{"$schema": "schema/open-questions.schema.json", "records": [{"id": "C1", "reports": ["` +
+			strings.Join(reports, `", "`) + `"]}]}`,
+	)
 }
 
 // TestUnitCheckScopeAndOpenQuestions covers the capabilities register,

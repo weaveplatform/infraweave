@@ -28,6 +28,7 @@ func TestAccFeatures(t *testing.T) {
 		ScenarioInitializer: func(sc *godog.ScenarioContext) {
 			(&referenceSteps{}).register(sc)
 			(&deploySteps{}).register(sc)
+			(&servedSteps{}).register(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",
