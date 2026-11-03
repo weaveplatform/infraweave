@@ -1055,7 +1055,7 @@ by two partials: `features` for tiers, grants and the billing switch, and
 `access` for organizations, where creating one creates its first account.
 Organization admins create and remove accounts through the served
 `Organization` tag, which `access` serves, and set account limits through
-`features`' part of it. A write bumps `organizations.entitlement_version`
+`features`' part of it. A write bumps `organization_entitlements.entitlement_version`
 and sends `entitlement:<organization>` on `infraweave_invalidate`, so every
 replica rebuilds its snapshot without a restart, as `access` does for
 authorization (decision 0007). A limit is pooled: `Limits.Check` counts the

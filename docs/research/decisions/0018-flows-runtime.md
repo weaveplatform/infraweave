@@ -242,6 +242,19 @@ every release.
   `flows_agent.endpoint`, `flows_agent.pool_id`, `flows_agent.pool_token`,
   `flows_agent.executor` and `flows_agent.pool_size` (default 3), dials the
   server and runs app containers.
+- **The default agent pool** (`flows.default_agent_pool`) is one pool the
+  operator runs for every organization's accounts, as decision
+  [0008](0008-run-execution-and-worker-protocol.md)'s public worker pool is
+  for runs. Account isolation holds on it in three ways:
+  - an app container serves one app installation, which belongs to one
+    account, so no container is shared between accounts;
+  - every `Host` call is authorized against the account of the task that
+    made it, so KV, secrets, timers and messages never cross accounts;
+  - the claim takes tasks round-robin across accounts, so one account's
+    backlog cannot delay another's.
+
+  An account that needs its own network reach or isolation runs a pool of
+  its own.
 - **Gateway in the `serve` process mode.** The agent connects to
   `wss://<host>/flows/agent/v1/connect` on any `serve` replica, with the pool
   ID and token in the `Authorization` header. Pool tokens are 64 random

@@ -401,7 +401,7 @@ has failed":
 
 ### Pool samples
 
-- **The job.** `workers.sample`, a periodic queue task of `scheduler`
+- **The job.** `worker.sample`, a periodic queue task of `scheduler`
   ([0011](0011-persistent-work-queue.md)), runs every minute and writes one
   row per pool to `worker_pool_samples(account_id, worker_pool_id,
   sampled_at, busy_workers, registered_workers, queued_runs)`, primary key
@@ -409,7 +409,7 @@ has failed":
   so a second run in the same minute is a no-op. The public pool has one
   row per account that has runs on it, counting that account's busy
   workers and queued runs, and its registered workers.
-- **Retention.** `workers.samples.retention`, default 35 days: a month of
+- **Retention.** `worker.samples.retention`, default 35 days: a month of
   daily assessments plus a margin. The same task deletes older rows.
 - **Readers.** Other domains read samples only through the workers
   domain's `api/` package, `SamplesBetween(pool, from, to)`; the worker
@@ -616,7 +616,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   account limit below it.
 - `internal/workers` sample tests on a fake clock: one row per pool per
   minute, a repeated minute writes nothing, rows older than
-  `workers.samples.retention` are deleted, and `SamplesBetween` returns the
+  `worker.samples.retention` are deleted, and `SamplesBetween` returns the
   window.
 - `internal/workerapi` tests: registration refused for a foreign chain, a reset
   serial, a replayed `jti` and a skewed `iat`; poll hold, wake-up and timeout;

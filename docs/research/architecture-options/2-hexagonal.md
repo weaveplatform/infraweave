@@ -1027,7 +1027,7 @@ billing switch are data written only through the operator API
 (`api/operator.openapi.yaml`, `infraweavectl operator`), which also
 creates organizations, each with its first account; organization admins
 set account limits below the pool through the served `Organization` tag.
-Each write bumps `organizations.entitlement_version` and notifies
+Each write bumps `organization_entitlements.entitlement_version` and notifies
 `infraweave_invalidate` in its
 unit of work, and every replica rebuilds the snapshot it holds, so a change
 needs no restart. Downgrades delete nothing: the scheduler's job consumer is

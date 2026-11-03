@@ -921,7 +921,7 @@ internal/service/features/
 │                          no check at all while billing is off
 └── billing.go             the installation's billing switch
 internal/repository/features/            tiers, tier_features, tier_limits, organization_grants, account_limits, billing
-internal/repository/account/             organizations.tier and organizations.entitlement_version
+internal/repository/account/             organization_entitlements.tier and .entitlement_version
 internal/transport/http/features.go      the chi middleware after authn.go, before every handler
 internal/transport/http/operator/        the operator API: organizations, tiers, grants, billing; writes bump
                                          entitlement_version and notify
@@ -951,7 +951,7 @@ the billing switch are data written only through the operator API
 `infraweavectl operator`), which also creates organizations, each with its
 first account; organization admins add accounts and set account limits
 through the served `Organization` tag. A write bumps
-`organizations.entitlement_version` and notifies `infraweave_invalidate`,
+`organization_entitlements.entitlement_version` and notifies `infraweave_invalidate`,
 so every replica rebuilds the snapshot without a restart. A downgrade deletes nothing: gated jobs are skipped,
 schedules pause, stored option values read as their defaults, and things
 already over a limit keep running.

@@ -295,7 +295,7 @@ internal/
 │   │                                        Gate for the middleware; implements every consumer's limit port
 │   │                                        against the organization's pool and the account limit  (P3b)
 │   ├── operator/                            the operator API: organizations, tiers, organization tiers, grants,
-│   │                                        the billing switch; bumps organizations.entitlement_version  (P3b)
+│   │                                        the billing switch; bumps organization_entitlements.entitlement_version  (P3b)
 │   ├── oauthserver/                         the built-in OAuth authorization server for /mcp and /flows/mcp  (P3b)
 │   ├── authenticate/                        API key, session, run token → Principal  (P3)
 │   ├── token/                               API key exchange, short-lived JWT  (P3)
@@ -905,7 +905,7 @@ internal/entity/feature/
   decide.go          Gate: feature-disabled wins over feature-not-in-tier; CheckLimit → limit-reached
 internal/usecase/entitlement/
   port.go            TierStore, GrantStore, BillingReader, SnapshotCache, Invalidations
-  snapshot.go        For(organization) → Entitlement; rebuilt when organizations.entitlement_version moves
+  snapshot.go        For(organization) → Entitlement; rebuilt when organization_entitlements.entitlement_version moves
   gate.go            Gate(ctx, principal, feature): the middleware's call
   limits.go          SeatLimit, PrivateWorkerLimit, AIBudget: one method per consumer's port, each
                      counting across the organization's accounts, then against the account limit
@@ -956,7 +956,7 @@ the installation-level actions, among them creating an organization with
 its first account. Each of its operations gets a controller method, input
 and output boundaries and presenter functions, and `infraweavectl
 operator` wraps them through `pkg/sdk`. A write bumps
-`organizations.entitlement_version` for the organizations it touches and
+`organization_entitlements.entitlement_version` for the organizations it touches and
 notifies `infraweave_invalidate`, and each replica's
 `SnapshotCache` rebuilds, so a change takes effect without a restart.
 

@@ -717,7 +717,8 @@ Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [000
 **Depends on:** P2b, P2c.
 
 Every API request carries a principal: API keys exchange for tokens, sessions
-can be listed and revoked, and the break-glass admin can log in before any SSO
+can be listed and revoked, and each organization's break-glass admin, whose
+credential only the operator sets, can log in before any identity provider
 exists. The `access` domain is created with the tenancy model: root, the
 organizations it holds, their accounts and their members.
 
@@ -756,7 +757,7 @@ organizations it holds, their accounts and their members.
    `authn.Middleware`: session rows, the `__Host-infraweave_session` cookie
    with the `Origin` rule, the 60-second cache cleared by
    `infraweave_invalidate`, forced revocation, `authn.sessions.expire`;
-   break-glass login at `/admin-login`; CLI loopback tokens. A session or
+   break-glass login at `/admin-login`, an organization-admin session with no account and no seat that reaches only the `Organization` and `SSO` tags, its credential in `organization_break_glass` set through the operator API; CLI loopback tokens. A session or
    token works in one account at a time: entering another account of the
    member's organization issues a session bound to that account, which
    P13b's login policies admit or refuse. Operations:
@@ -835,13 +836,14 @@ use.
    on, `403 feature-not-in-tier`; input validation checks options.
    Entitlement belongs to the organization: its tier plus its grants,
    which every account inherits, with snapshots rebuilt on
-   `organizations.entitlement_version` through `infraweave_invalidate`; the
+   `organization_entitlements.entitlement_version` through `infraweave_invalidate`; the
    dequeue check completes a job of a feature outside the entitlement as
    skipped, counted in `infraweave.features.skipped`. Limits are pooled: a
    limit counts its thing across every account of the organization, an
    organization admin may set an account limit below the pool for any
    account, and creating the thing beyond either answers
-   `403 limit-reached`. `seats` counts a member once however many accounts
+   `403 limit-reached`, whose `scope` member names the organization or the
+   account. `seats` counts a member once however many accounts
    admit it, and API keys as Spacelift counts them. Strict
    `features.disabled`. Tests: `TestUnitFeatureCatalogue`,
    `TestUnitEntitlement`, `TestUnitPooledLimits`,
@@ -864,7 +866,9 @@ use.
    installation-level actions only: organizations, tiers, the billing
    switch, organization tiers, grants and the queue's dead jobs. Creating
    an organization creates its first account, whose slug may be the
-   organization's. Operator principals from `auth.operator.keys` exchange
+   organization's; the account starts unclaimed until an organization admin
+   claims it (`accounts.claimed_at`, a second claim answers `409`, decision
+   [0007](../research/decisions/0007-authorization-spaces-and-roles.md)). Operator principals from `auth.operator.keys` exchange
    at `POST /auth/token` for a token no other route accepts ([0006](../research/decisions/0006-authentication-and-tokens.md)).
    `cmd/infraweavectl` starts over `pkg/sdk` with `profile`, `whoami`,
    `version`, `api` and the `operator` group (`tier`, `organization`,
@@ -1200,10 +1204,10 @@ container runs a stub runner until P9.
    worker stays offline past `run.lost_after` (60 minutes) as a lost run
    with the note `worker lost`; drain, cycle and reset as decision 0008's
    table. Records DV-025 and DV-092.
-6. `workers.sample`, a periodic task in the `scheduler` process mode that
+6. `worker.sample`, a periodic task in the `scheduler` process mode that
    runs every minute and writes each pool's busy workers, registered
    workers and queued runs to `worker_pool_samples`, kept for
-   `workers.samples.retention` (35 days). `workers/api` serves the samples,
+   `worker.samples.retention` (35 days). `workers/api` serves the samples,
    which P18's `worker_usage` events and P18b's usage read
    ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
    [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)). Tests: `TestUnitWorkerPoolSample` in virtual time,
@@ -1929,7 +1933,7 @@ expression in CEL.
 - `flows-engine` in `features.disabled` answers `403 feature-disabled` on
   every Flows route and pauses the flows' schedules and timers without
   deleting them.
-- Captures C228, C230, C238, C240 and C241 replay once recorded.
+- Captures C228, C230, C240 and C241 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P18d: Flows apps, agents and Deploy blocks
@@ -2468,7 +2472,7 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
 **Exit criteria**
 - AI Integrations and the AI settings of Account Settings meet decision
   0016's evidence rule.
-- Captures C212, C213, C215, C216, C217, C225 and C226 replay once recorded.
+- Captures C212, C213, C215, C216, C217 and C225 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P25b: Intent

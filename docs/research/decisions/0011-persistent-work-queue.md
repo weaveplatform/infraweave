@@ -270,7 +270,7 @@ once by three rules.
   | `authn.keys.rotate` | 1 day | [0006](0006-authentication-and-tokens.md) |
   | `run.timers` | 1 minute | [0008](0008-run-execution-and-worker-protocol.md) |
   | `worker.reap` | 30 seconds | [0008](0008-run-execution-and-worker-protocol.md) |
-  | `workers.sample` | 1 minute | [0008](0008-run-execution-and-worker-protocol.md) |
+  | `worker.sample` | 1 minute | [0008](0008-run-execution-and-worker-protocol.md) |
   | `state.retention` | 1 day | [0010](0010-state-backend.md) |
   | `vcs.deliveries.prune` | 1 hour | [0012](0012-vcs-integration-model.md) |
   | `secrets.rotate` | 1 day | [0013](0013-secrets-at-rest.md) |

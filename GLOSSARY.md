@@ -22,6 +22,22 @@ _Avoid_: group, enterprise, tenant
 A separate business entity within an organization, with its own spaces, stacks and data, which no other account can see.
 _Avoid_: tenant, workspace, sub-organization
 
+**Top space**:
+The space at the head of an account's tree, addressed by the account's slug.
+_Avoid_: root space, root
+
+**Account admin**:
+A member who administers an account, holding the space-admin role on its top space.
+_Avoid_: root admin, owner
+
+**Account limit**:
+A limit an organization admin sets for one account below the organization's pooled limit.
+_Avoid_: cap, quota, sub-limit
+
+**Break-glass admin**:
+An organization's emergency sign-in, whose credential only the operator sets, used when no identity provider works.
+_Avoid_: root user, superuser
+
 **Member**:
 A person in an organization, signed in through the organization's identity providers and holding roles per account.
 _Avoid_: account user, login

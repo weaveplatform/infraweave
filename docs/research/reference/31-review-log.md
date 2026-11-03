@@ -1423,7 +1423,7 @@ to the table. The copy check found no docs prose.
 | 10 | *wrong*: 0021 kept the tier, grants, limits and `entitlement_version` on the account | On the organization; limits pooled with `account_limits` below; an account limit above the pool answers 422; the organization API section and `organization` capability; `infraweavectl operator organization` |
 | 11 | *wrong*: 0022's `feature-not-in-tier` and `limit-reached` described the account's entitlement and limit | The organization's entitlement; `limit-reached` carries `scope`; `validation-failed` names cross-organization shares and account limits above the pool |
 | 12 | *wrong*: 0008, 0020 and 0021 ran the public pool for every account with `public-worker-slots` per account | For every organization, with the slots pooled and an optional account limit |
-| 13 | *wrong*: 0015 read per-minute worker samples that 0008 did not record | 0008's `workers.sample` task writing `worker_pool_samples`, kept by `workers.samples.retention`, read through the workers domain; 0011 lists the task |
+| 13 | *wrong*: 0015 read per-minute worker samples that 0008 did not record | 0008's `worker.sample` task writing `worker_pool_samples`, kept by `worker.samples.retention`, read through the workers domain; 0011 lists the task |
 | 14 | *missing*: 0008 named neither infraweave's run variables nor their config element category | `INFRAWEAVE_*`, `TF_VAR_infraweave_*` and `INFRAWEAVE_ENVIRONMENT` |
 | 15 | *missing*: 0005's `database.iam_auth` knew only `aws`, though 0020's Azure and Google modules use Entra and IAM database authentication | `azure` and `gcp` in `BeforeConnect`, TLS required, no Cloud SQL connector |
 | 16 | *wrong*: 0005's `gcs` and `azureblob` drivers deleted the object on a checksum mismatch, while 0020 says `serve` does not delete | The object stays under its `pending` row for `blob.expire`; `serve` holds `objectstore.Writer`; 0016's cloud job proves the writer's delete is refused; 0020's least-privilege table |
@@ -1448,7 +1448,7 @@ to the table. The copy check found no docs prose.
 
 - **The six DES-07 questions are answered:** the authorization server
   (0006, in the `access` domain), worker usage samples (0008's
-  `workers.sample` and `worker_pool_samples`, read through the workers
+  `worker.sample` and `worker_pool_samples`, read through the workers
   domain), database IAM authentication outside AWS (0005's `azure` and
   `gcp`), the owner of object deletion (`scheduler` alone, 0005 and 0020),
   registry sharing across accounts (within one organization, 0007 and
@@ -1460,7 +1460,8 @@ to the table. The copy check found no docs prose.
 - **The served bundle:** after `SPACELIFT_ENVIRONMENT` and `SPACELIFT`
   became `INFRAWEAVE_ENVIRONMENT` and `INFRAWEAVE`, no served name contains
   spacelift or matches a reference name of the rename table.
-- **Left open:** names that differ only in number, `worker.` against `workers.` (0008, 0011) and `run.` against `runs.` (0008, 0022), where the maintainer's answers fix the new names; object keys written with and without the store prefix (0005 owns the form); deploy routes written with and without `/api/v1` (0003 owns it); 0018's default Flows agent pool, which serves every organization's accounts with no tenancy rule like 0008's for the public pool; served descriptions copied from the reference that still say Spacelift, which the name test does not read; the glossary terms 0010's "operator release" and 0020's "key root" clash with; and the plan, which still cites C226 and C238 as blocking.
+- **Settled after the pass:** the sampling task is `worker.sample` with `worker.samples.retention`, matching the singular prefix of `worker.offline_after` and `worker.reap` (`runs.` and `workers.` name tables, not keys); 0018 gives the default Flows agent pool the account isolation 0008 gives the public worker pool; the plan no longer counts C226 and C238 as blocking.
+- **Left open, as style rather than contradiction:** object keys written with and without the store prefix (0005 owns the form); deploy routes written with and without `/api/v1` (0003 owns it); and served descriptions copied from the reference that still say Spacelift, which the name test does not read and which each family's scaffold rewrites when the family is implemented.
 
 ## What survived across the set
 
