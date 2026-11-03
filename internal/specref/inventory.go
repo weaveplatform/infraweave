@@ -2,25 +2,84 @@ package specref
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 )
 
-// Inventory renders every named type of the schema as report 29, the data
-// model inventory under docs/research/reference. Everything it prints comes
-// from the schema and the lock, including the research baseline (the fetch
-// date, not today), so regenerating from unchanged snapshots is
-// byte-identical and make verify-reference can diff it.
+// The inventory is two files: the register docs/data/graphql-inventory.json,
+// one record per named type of the schema, and report 29 under
+// docs/research/reference, which says what the register holds and counts it.
+// Everything either prints comes from the schema and the lock, including the
+// research baseline (the fetch date, not today), so regenerating from
+// unchanged snapshots is byte-identical and make verify-reference can diff
+// both.
 //
 // Descriptions are left out on purpose: they are Spacelift's prose and carry
 // no stated licence, whereas type, field and value names are facts about the
-// interface. The links assume the report lives in docs/research/reference.
-func Inventory(s *Schema, lock *Lock) []byte {
+// interface.
+
+// inventoryRegister is the register's document; its shape is
+// docs/data/schema/graphql-inventory.schema.json.
+type inventoryRegister struct {
+	//nolint:tagliatelle // $schema is the register convention of docs/data
+	Schema  string          `json:"$schema"`
+	Records []inventoryType `json:"records"`
+}
+
+type inventoryType struct {
+	ID            string           `json:"id"`
+	Kind          string           `json:"kind"`
+	Implements    []string         `json:"implements,omitempty"`
+	ImplementedBy []string         `json:"implementedBy,omitempty"`
+	Fields        []inventoryField `json:"fields,omitempty"`
+	Values        []inventoryValue `json:"values,omitempty"`
+	Members       []string         `json:"members,omitempty"`
+}
+
+// inventoryField is an output field, an input field or an argument. Only an
+// output field has args and deprecation; only an input field or an argument
+// has a default. The snapshot's introspection query does not ask for input
+// field deprecation, so input fields carry none.
+type inventoryField struct {
+	Name              string           `json:"name"`
+	Args              []inventoryField `json:"args,omitempty"`
+	Type              string           `json:"type"`
+	Nullable          bool             `json:"nullable"`
+	Default           *string          `json:"default,omitempty"`
+	Deprecated        bool             `json:"deprecated,omitempty"`
+	DeprecationReason string           `json:"deprecationReason,omitempty"`
+}
+
+type inventoryValue struct {
+	Name              string `json:"name"`
+	Deprecated        bool   `json:"deprecated,omitempty"`
+	DeprecationReason string `json:"deprecationReason,omitempty"`
+}
+
+// inventoryKinds orders the register's records and the report's summary.
+var inventoryKinds = []struct{ kind, title string }{
+	{KindObject, "Object types"},
+	{KindInterface, "Interfaces"},
+	{KindUnion, "Unions"},
+	{KindInputObject, "Input objects"},
+	{KindEnum, "Enums"},
+	{KindScalar, "Scalars"},
+}
+
+// RegisterSchema is the $schema member of the inventory register, relative to
+// docs/data as docscheck requires.
+const RegisterSchema = "schema/graphql-inventory.schema.json"
+
+// inventoryTypes groups the schema's named types by kind, each group sorted
+// by name. GraphQL's own __Schema, __Type, … describe introspection, not
+// Spacelift, so they are left out.
+func inventoryTypes(s *Schema) map[string][]*Type {
 	types := make([]*Type, 0, len(s.Types))
 	for _, t := range s.Types {
-		// GraphQL's own __Schema, __Type, … describe introspection, not Spacelift.
 		if !strings.HasPrefix(t.Name, "__") {
 			types = append(types, t)
 		}
@@ -30,7 +89,83 @@ func Inventory(s *Schema, lock *Lock) []byte {
 	for _, t := range types {
 		byKind[t.Kind] = append(byKind[t.Kind], t)
 	}
+	return byKind
+}
 
+// InventoryRegister renders the register: two-space indented JSON with a
+// trailing newline, records ordered by kind as inventoryKinds lists them and
+// then by name, fields and values in upstream order.
+func InventoryRegister(s *Schema) []byte {
+	byKind := inventoryTypes(s)
+	doc := inventoryRegister{Schema: RegisterSchema, Records: []inventoryType{}}
+	for _, k := range inventoryKinds {
+		for _, t := range byKind[k.kind] {
+			doc.Records = append(doc.Records, inventoryRecord(t))
+		}
+	}
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	// Defaults and deprecation reasons hold <, > and &, which the default
+	// escaping would turn into < and friends.
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	// The document is strings, bools and slices of them, which always encode.
+	_ = enc.Encode(doc)
+	return b.Bytes()
+}
+
+func inventoryRecord(t *Type) inventoryType {
+	r := inventoryType{ID: t.Name, Kind: t.Kind}
+	switch t.Kind {
+	case KindObject, KindInterface:
+		r.Implements = refNames(t.Interfaces)
+		r.ImplementedBy = refNames(t.PossibleTypes)
+		for _, f := range t.Fields {
+			out := inventoryField{
+				Name:       f.Name,
+				Type:       f.Type.String(),
+				Nullable:   !f.Type.NonNull(),
+				Deprecated: f.IsDeprecated,
+			}
+			if f.IsDeprecated {
+				out.DeprecationReason = strings.TrimSpace(f.DeprecationReason)
+			}
+			for _, a := range f.Args {
+				out.Args = append(out.Args, inventoryInput(a))
+			}
+			r.Fields = append(r.Fields, out)
+		}
+	case KindUnion:
+		r.Members = refNames(t.PossibleTypes)
+	case KindInputObject:
+		for _, f := range t.InputFields {
+			r.Fields = append(r.Fields, inventoryInput(f))
+		}
+	case KindEnum:
+		for _, v := range t.EnumValues {
+			out := inventoryValue{Name: v.Name, Deprecated: v.IsDeprecated}
+			if v.IsDeprecated {
+				out.DeprecationReason = strings.TrimSpace(v.DeprecationReason)
+			}
+			r.Values = append(r.Values, out)
+		}
+	}
+	return r
+}
+
+func inventoryInput(v InputValue) inventoryField {
+	return inventoryField{
+		Name:     v.Name,
+		Type:     v.Type.String(),
+		Nullable: !v.Type.NonNull(),
+		Default:  v.DefaultValue,
+	}
+}
+
+// Inventory renders report 29. Its links assume it lives in
+// docs/research/reference and the register in docs/data.
+func Inventory(s *Schema, lock *Lock) []byte {
+	byKind := inventoryTypes(s)
 	var b strings.Builder
 	w := func(format string, args ...any) { fmt.Fprintf(&b, format, args...) }
 	pins := inventoryPins(lock)
@@ -42,12 +177,15 @@ func Inventory(s *Schema, lock *Lock) []byte {
 	)
 	w("Research baseline: **%s**.\n\n", pins.date)
 	w(
-		"Generated by `make reference-inventory` from `api/reference/spacelift/introspection.json`; do not edit.\n\n",
+		"Generated by `make reference-inventory` from `api/reference/spacelift/introspection.json`, together with the register [`graphql-inventory.json`](../../data/graphql-inventory.json); do not edit either.\n\n",
 	)
 	w(
-		"Every type, field and enum value in Spacelift's GraphQL schema, with its type, nullability and deprecation, so other reports can cite a field without opening the snapshot. Descriptions are left out. Report [28](28-data-model.md) builds the entity model on this inventory.\n\n",
+		"The register holds every type of Spacelift's GraphQL schema, one record per type whose `id` is the type name, so other reports can cite a type, field or enum value without opening the snapshot. Descriptions are left out: they are Spacelift's prose and carry no stated licence. Report [28](28-data-model.md) builds the entity model on this inventory.\n\n",
 	)
-
+	w("## Reading the register\n\n")
+	w(
+		"A record's `kind` is the GraphQL type kind. `OBJECT` and `INTERFACE` records list their `fields` in upstream order, each with its `args`, its `type` in SDL notation such as `[String!]!`, whether it is `nullable`, and `deprecated` with the `deprecationReason` upstream gives, if any; `implements` and `implementedBy` link interfaces and the types that implement them. `INPUT_OBJECT` records list `fields` with their `default` and no deprecation, because the snapshot's introspection query does not ask for input field deprecation. `ENUM` records list `values`, `UNION` records list `members`, and `SCALAR` records hold only the name. Root queries and mutations are the fields of the `Query` and `Mutation` records. Records run in the order of the summary below, by name within a kind.\n\n",
+	)
 	w("## Summary\n\n| Kind | Types | Fields, values or members |\n|---|---|---|\n")
 	for _, k := range inventoryKinds {
 		members := 0
@@ -59,26 +197,6 @@ func Inventory(s *Schema, lock *Lock) []byte {
 		}
 		w("| %s | %d | %d |\n", k.title, len(byKind[k.kind]), members)
 	}
-	w("\nRoot queries and mutations are the fields of `Query` and `Mutation`.\n")
-
-	for _, k := range inventoryKinds {
-		if k.kind == KindScalar {
-			continue
-		}
-		w("\n## %s\n", k.title)
-		for _, t := range byKind[k.kind] {
-			w("\n### %s\n\n", t.Name)
-			inventoryType(w, t)
-		}
-	}
-
-	w("\n## Scalars\n\n")
-	names := make([]string, 0, len(byKind[KindScalar]))
-	for _, t := range byKind[KindScalar] {
-		names = append(names, t.Name)
-	}
-	w("%s.\n", codeList(names))
-
 	w("\n## Sources\n\n")
 	w(
 		"- [`introspection.json`](../../../api/reference/spacelift/introspection.json): introspection of %s, sha256 `%s`, fetched %s.\n",
@@ -90,16 +208,6 @@ func Inventory(s *Schema, lock *Lock) []byte {
 		"- [`sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): the pins of every upstream input.\n",
 	)
 	return []byte(b.String())
-}
-
-// inventoryKinds orders the report's sections; the summary uses the same order.
-var inventoryKinds = []struct{ kind, title string }{
-	{KindObject, "Object types"},
-	{KindInterface, "Interfaces"},
-	{KindUnion, "Unions"},
-	{KindInputObject, "Input objects"},
-	{KindEnum, "Enums"},
-	{KindScalar, "Scalars"},
 }
 
 type pinText struct{ short, sha, fetched, date, endpoint string }
@@ -125,65 +233,10 @@ func inventoryPins(lock *Lock) pinText {
 	return p
 }
 
-func inventoryType(w func(string, ...any), t *Type) {
-	switch t.Kind {
-	case KindObject, KindInterface:
-		if names := refNames(t.Interfaces); len(names) > 0 {
-			w("Implements %s.\n\n", codeList(names))
-		}
-		if names := refNames(t.PossibleTypes); len(names) > 0 {
-			w("Implemented by %s.\n\n", codeList(names))
-		}
-		w("| Field | Type | Nullable | Deprecated |\n|---|---|---|---|\n")
-		for _, f := range t.Fields {
-			w(
-				"| `%s` | `%s` | %s | %s |\n",
-				cell(f.Name+argList(f.Args)),
-				cell(f.Type.String()),
-				yesNo(!f.Type.NonNull()),
-				deprecation(f.IsDeprecated, f.DeprecationReason),
-			)
-		}
-	case KindUnion:
-		w("One of %s.\n", codeList(refNames(t.PossibleTypes)))
-	case KindInputObject:
-		// The snapshot's introspection query does not ask for input field
-		// deprecation, so this table carries defaults where the others
-		// carry deprecation.
-		w("| Field | Type | Nullable | Default |\n|---|---|---|---|\n")
-		for _, f := range t.InputFields {
-			w(
-				"| `%s` | `%s` | %s | %s |\n",
-				cell(f.Name),
-				cell(f.Type.String()),
-				yesNo(!f.Type.NonNull()),
-				defaultValue(f.DefaultValue),
-			)
-		}
-	case KindEnum:
-		w("| Value | Deprecated |\n|---|---|\n")
-		for _, v := range t.EnumValues {
-			w("| `%s` | %s |\n", cell(v.Name), deprecation(v.IsDeprecated, v.DeprecationReason))
-		}
-	}
-}
-
-// argList renders a field's arguments in SDL, e.g. (id: ID!, first: Int = 10).
-func argList(args []InputValue) string {
-	if len(args) == 0 {
-		return ""
-	}
-	out := make([]string, len(args))
-	for i, a := range args {
-		out[i] = a.Name + ": " + a.Type.String()
-		if a.DefaultValue != nil {
-			out[i] += " = " + *a.DefaultValue
-		}
-	}
-	return "(" + strings.Join(out, ", ") + ")"
-}
-
 func refNames(refs []TypeRef) []string {
+	if len(refs) == 0 {
+		return nil
+	}
 	out := make([]string, len(refs))
 	for i, r := range refs {
 		out[i] = r.Named().Name
@@ -191,60 +244,53 @@ func refNames(refs []TypeRef) []string {
 	return out
 }
 
-func yesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
+// InventoryOutputs names the two files of the inventory.
+type InventoryOutputs struct {
+	Report   string
+	Register string
 }
 
-func deprecation(deprecated bool, reason string) string {
-	switch {
-	case !deprecated:
-		return ""
-	case strings.TrimSpace(reason) == "":
-		return "yes"
-	default:
-		return cell(reason)
-	}
-}
-
-func defaultValue(v *string) string {
-	if v == nil {
-		return ""
-	}
-	return "`" + cell(*v) + "`"
-}
-
-// cell makes text safe inside a Markdown table cell: a bare | would end the
-// cell, and a newline would end the row.
-func cell(s string) string {
-	s = strings.ReplaceAll(s, "|", `\|`)
-	return strings.Join(strings.Fields(s), " ")
-}
-
-// InventoryFile writes the inventory of the reference directory dir to out.
-func InventoryFile(dir, out string) error {
+func inventoryFiles(dir string, out InventoryOutputs) (map[string][]byte, error) {
 	src, err := ReadSources(dir)
+	if err != nil {
+		return nil, err
+	}
+	return map[string][]byte{
+		out.Report:   Inventory(src.Schema, src.Lock),
+		out.Register: InventoryRegister(src.Schema),
+	}, nil
+}
+
+// InventoryFile writes the inventory of the reference directory dir.
+func InventoryFile(dir string, out InventoryOutputs) error {
+	files, err := inventoryFiles(dir, out)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(out, Inventory(src.Schema, src.Lock), filePerm); err != nil {
-		return fmt.Errorf("specref: %w", err)
+	for _, p := range []string{out.Report, out.Register} {
+		if err := os.WriteFile(p, files[p], filePerm); err != nil {
+			return fmt.Errorf("specref: %w", err)
+		}
 	}
 	return nil
 }
 
-// CheckInventory fails with ErrDrift when out is not the inventory the
-// reference directory dir generates.
-func CheckInventory(dir, out string) error {
-	src, err := ReadSources(dir)
+// CheckInventory fails with ErrDrift, naming each stale file, when the
+// committed inventory is not what the reference directory dir generates.
+func CheckInventory(dir string, out InventoryOutputs) error {
+	files, err := inventoryFiles(dir, out)
 	if err != nil {
 		return err
 	}
-	got, err := os.ReadFile(out)
-	if err != nil || !bytes.Equal(got, Inventory(src.Schema, src.Lock)) {
-		return fmt.Errorf("%w: %s (run make reference-inventory)", ErrDrift, out)
+	var drift error
+	for _, p := range []string{out.Report, out.Register} {
+		got, err := os.ReadFile(p)
+		if err != nil || !bytes.Equal(got, files[p]) {
+			drift = errors.Join(
+				drift,
+				fmt.Errorf("%w: %s (run make reference-inventory)", ErrDrift, p),
+			)
+		}
 	}
-	return nil
+	return drift
 }

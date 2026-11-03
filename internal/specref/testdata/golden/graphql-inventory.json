@@ -1,0 +1,954 @@
+{
+  "$schema": "schema/graphql-inventory.schema.json",
+  "records": [
+    {
+      "id": "Attachment",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "context",
+          "type": "Context!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Context",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Group",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Mirror",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Mutation",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "stackCreate",
+          "args": [
+            {
+              "name": "input",
+              "type": "StackInput!",
+              "nullable": false
+            },
+            {
+              "name": "manageState",
+              "type": "Boolean!",
+              "nullable": false
+            }
+          ],
+          "type": "Stack!",
+          "nullable": false
+        },
+        {
+          "name": "stackUpdate",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "input",
+              "type": "StackInput!",
+              "nullable": false
+            }
+          ],
+          "type": "Stack!",
+          "nullable": false
+        },
+        {
+          "name": "stackDelete",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "force",
+              "type": "Boolean",
+              "nullable": true
+            }
+          ],
+          "type": "Stack",
+          "nullable": true
+        },
+        {
+          "name": "stackLock",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "Stack!",
+          "nullable": false
+        },
+        {
+          "name": "runCancel",
+          "args": [
+            {
+              "name": "stack",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "run",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "Run!",
+          "nullable": false
+        },
+        {
+          "name": "runTrigger",
+          "args": [
+            {
+              "name": "stack",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Run!",
+          "nullable": false
+        },
+        {
+          "name": "runDiscard",
+          "args": [
+            {
+              "name": "stack",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "run",
+              "type": "ID",
+              "nullable": true
+            }
+          ],
+          "type": "Run!",
+          "nullable": false
+        },
+        {
+          "name": "contextCreate",
+          "args": [
+            {
+              "name": "input",
+              "type": "ContextInput!",
+              "nullable": false
+            }
+          ],
+          "type": "Context!",
+          "nullable": false
+        },
+        {
+          "name": "contextCreateV2",
+          "args": [
+            {
+              "name": "input",
+              "type": "ContextInput!",
+              "nullable": false
+            }
+          ],
+          "type": "Context!",
+          "nullable": false
+        },
+        {
+          "name": "contextAttach",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "stack",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "priority",
+              "type": "Int!",
+              "nullable": false
+            }
+          ],
+          "type": "Attachment!",
+          "nullable": false
+        },
+        {
+          "name": "contextDetach",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Attachment",
+          "nullable": true
+        },
+        {
+          "name": "stackScheduledRunCreate",
+          "args": [
+            {
+              "name": "stack",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "input",
+              "type": "ScheduledRunInput!",
+              "nullable": false
+            }
+          ],
+          "type": "ScheduledRun",
+          "nullable": true
+        },
+        {
+          "name": "stackScheduledRunDelete",
+          "args": [
+            {
+              "name": "stack",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "scheduledRun",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "ScheduledRun",
+          "nullable": true
+        },
+        {
+          "name": "spaceThingCreate",
+          "args": [
+            {
+              "name": "space",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "Context",
+          "nullable": true
+        },
+        {
+          "name": "oidcCreate",
+          "args": [
+            {
+              "name": "clientId",
+              "type": "String!",
+              "nullable": false
+            }
+          ],
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "oidcUpdate",
+          "args": [
+            {
+              "name": "clientId",
+              "type": "String!",
+              "nullable": false
+            }
+          ],
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "oidcDelete",
+          "type": "Boolean",
+          "nullable": true
+        },
+        {
+          "name": "oidcRotateSecret",
+          "type": "Boolean",
+          "nullable": true
+        },
+        {
+          "name": "accountSetName",
+          "args": [
+            {
+              "name": "name",
+              "type": "String!",
+              "nullable": false
+            }
+          ],
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "doSomethingWeird",
+          "args": [
+            {
+              "name": "x",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "Boolean",
+          "nullable": true
+        },
+        {
+          "name": "trackEvent",
+          "args": [
+            {
+              "name": "name",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "Boolean",
+          "nullable": true
+        },
+        {
+          "name": "logout",
+          "type": "Boolean",
+          "nullable": true
+        },
+        {
+          "name": "groupUpdate",
+          "args": [
+            {
+              "name": "input",
+              "type": "GroupUpdateInput!",
+              "nullable": false
+            }
+          ],
+          "type": "Group!",
+          "nullable": false
+        },
+        {
+          "name": "repoUpdate",
+          "args": [
+            {
+              "name": "token",
+              "type": "String",
+              "nullable": true
+            },
+            {
+              "name": "custom",
+              "type": "CustomUpdateInput",
+              "nullable": true
+            }
+          ],
+          "type": "Repo!",
+          "nullable": false
+        },
+        {
+          "name": "mirrorUpdate",
+          "args": [
+            {
+              "name": "input",
+              "type": "MirrorUpdateInput!",
+              "nullable": false
+            }
+          ],
+          "type": "Mirror!",
+          "nullable": false
+        },
+        {
+          "name": "repoLink",
+          "args": [
+            {
+              "name": "link",
+              "type": "LinkInput!",
+              "nullable": false
+            }
+          ],
+          "type": "Repo!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Query",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "stack",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Stack",
+          "nullable": true
+        },
+        {
+          "name": "stacks",
+          "type": "[Stack!]!",
+          "nullable": false
+        },
+        {
+          "name": "searchStacks",
+          "args": [
+            {
+              "name": "input",
+              "type": "SearchInput!",
+              "nullable": false
+            }
+          ],
+          "type": "SearchStacksOutput!",
+          "nullable": false
+        },
+        {
+          "name": "searchStacksSuggestions",
+          "args": [
+            {
+              "name": "input",
+              "type": "SearchInput!",
+              "nullable": false
+            }
+          ],
+          "type": "SearchStacksOutput!",
+          "nullable": false
+        },
+        {
+          "name": "searchSpaceStacks",
+          "args": [
+            {
+              "name": "space",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "input",
+              "type": "SearchInput!",
+              "nullable": false
+            }
+          ],
+          "type": "SearchStacksOutput!",
+          "nullable": false
+        },
+        {
+          "name": "run",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Run",
+          "nullable": true
+        },
+        {
+          "name": "runStack",
+          "args": [
+            {
+              "name": "runId",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Stack",
+          "nullable": true
+        },
+        {
+          "name": "context",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Context",
+          "nullable": true
+        },
+        {
+          "name": "accountName",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "terraformVersions",
+          "args": [
+            {
+              "name": "filter",
+              "type": "SearchInput",
+              "nullable": true
+            },
+            {
+              "name": "limit",
+              "type": "Int",
+              "nullable": true
+            }
+          ],
+          "type": "[String!]!",
+          "nullable": false
+        },
+        {
+          "name": "oldStack",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Stack",
+          "nullable": true,
+          "deprecated": true,
+          "deprecationReason": "Use stack instead."
+        },
+        {
+          "name": "repo",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Repo",
+          "nullable": true
+        },
+        {
+          "name": "group",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Group",
+          "nullable": true
+        },
+        {
+          "name": "mirror",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "Mirror",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "Repo",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Run",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "stack",
+          "type": "Stack!",
+          "nullable": false
+        },
+        {
+          "name": "logs",
+          "args": [
+            {
+              "name": "tail",
+              "type": "Int",
+              "nullable": true
+            }
+          ],
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "ScheduledRun",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "SearchStacksOutput",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "edges",
+          "type": "[Stack!]!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Stack",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "labels",
+          "type": "[String!]!",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "type": "StackState!",
+          "nullable": false
+        },
+        {
+          "name": "runs",
+          "args": [
+            {
+              "name": "before",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "[Run!]!",
+          "nullable": false
+        },
+        {
+          "name": "history",
+          "type": "[Run!]!",
+          "nullable": false
+        },
+        {
+          "name": "owner",
+          "type": "Owner",
+          "nullable": true
+        },
+        {
+          "name": "latestRun",
+          "type": "Run",
+          "nullable": true
+        },
+        {
+          "name": "legacy",
+          "type": "String",
+          "nullable": true,
+          "deprecated": true,
+          "deprecationReason": "gone"
+        },
+        {
+          "name": "score",
+          "type": "Float",
+          "nullable": true
+        },
+        {
+          "name": "count",
+          "type": "Int",
+          "nullable": true
+        },
+        {
+          "name": "enabled",
+          "type": "Boolean",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "Team",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "User",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "Owner",
+      "kind": "UNION",
+      "members": [
+        "User",
+        "Team"
+      ]
+    },
+    {
+      "id": "ContextInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "CustomUpdateInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "space",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "labels",
+          "type": "[String!]",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "GroupUpdateInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "LinkInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "repo",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "url",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "MirrorUpdateInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "email",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "custom",
+          "type": "CustomUpdateInput",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "ScheduledRunInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "cron",
+          "type": "[String!]",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "SearchInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "query",
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "StackInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "space",
+          "type": "ID",
+          "nullable": true
+        },
+        {
+          "name": "workerPool",
+          "type": "ID",
+          "nullable": true
+        },
+        {
+          "name": "autodeploy",
+          "type": "Boolean!",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "state",
+          "type": "StackState",
+          "nullable": true,
+          "default": "READY"
+        },
+        {
+          "name": "vendor",
+          "type": "VendorInput",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "VendorInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "terraformVersion",
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "StackState",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "READY"
+        },
+        {
+          "name": "OLD",
+          "deprecated": true,
+          "deprecationReason": "unused"
+        }
+      ]
+    },
+    {
+      "id": "Boolean",
+      "kind": "SCALAR"
+    },
+    {
+      "id": "Float",
+      "kind": "SCALAR"
+    },
+    {
+      "id": "ID",
+      "kind": "SCALAR"
+    },
+    {
+      "id": "Int",
+      "kind": "SCALAR"
+    },
+    {
+      "id": "String",
+      "kind": "SCALAR"
+    }
+  ]
+}

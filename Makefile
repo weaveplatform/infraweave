@@ -122,15 +122,16 @@ reference:
 	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
 
 INVENTORY := docs/research/reference/29-data-model-inventory.md
+INVENTORY_REGISTER := docs/data/graphql-inventory.json
 
-## reference-inventory: regenerate report 29, the data model inventory, from the introspection snapshot
+## reference-inventory: regenerate the GraphQL inventory register and report 29 from the introspection snapshot
 reference-inventory:
-	$(GO) run ./tools/specref inventory --dir $(REFERENCE_DIR) --out $(INVENTORY)
+	$(GO) run ./tools/specref inventory --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
-## verify-reference: fail if the committed reference or report 29 is not what the snapshots generate
+## verify-reference: fail if the committed reference, report 29 or the inventory register is not what the snapshots generate
 verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
-	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY)
+	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
 ## docs-check: links, report headers and decision statuses under docs/ (internal/docscheck)
 docs-check:

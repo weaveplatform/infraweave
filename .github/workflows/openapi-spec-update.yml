@@ -36,6 +36,7 @@ env:
   BRANCH: reference/openapi-spec-update
   LOCK: api/reference/spacelift/sources.lock.yaml
   INVENTORY: docs/research/reference/29-data-model-inventory.md
+  INVENTORY_REGISTER: docs/data/graphql-inventory.json
 
 jobs:
   check:
@@ -179,7 +180,7 @@ jobs:
           git config user.name "weaveplatform-release-please[bot]"
           git config user.email "weaveplatform-release-please[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A api/reference/spacelift "$INVENTORY"
+          git add -A api/reference/spacelift "$INVENTORY" "$INVENTORY_REGISTER"
           git commit -qm "$title"
           git push --force -u origin "$BRANCH"
           pr=$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')

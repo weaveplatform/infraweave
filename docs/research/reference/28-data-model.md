@@ -11,9 +11,10 @@ each followed by the cardinality of every relationship and the field or page
 that shows it. Section 12 derives the relational tables those entities and
 their access patterns imply. It is derived structure, not a design:
 choosing PostgreSQL and the schema design belong to decision 0005 (planned in
-[#29](https://github.com/weaveplatform/infraweave/issues/29)). Report 29 is
-the generated inventory of every type, field and enum in the schema; this
-report names only the fields that carry a relationship or drive a key or an
+[#29](https://github.com/weaveplatform/infraweave/issues/29)). The register
+[`graphql-inventory.json`](../../data/graphql-inventory.json), which report 29
+summarises, is the generated inventory of every type, field and enum in the
+schema; this report names only the fields that carry a relationship or drive a key or an
 index. The behaviour behind each entity is in reports
 [07](07-stack-model.md) to [25](25-other-integrations.md), and report
 [26](26-scope-and-tiers.md) says which of them are in scope.
@@ -629,11 +630,13 @@ actor kind Flows project (section 12.2).
 
 ## 13. The generated inventory
 
-Report 29 is generated from the introspection snapshot and lists every object
-type with every field (type, nullability, deprecation) and every enum value.
-This report draws on it for relationships only. When a table here and report
-29 disagree about a field, report 29 is the higher source, because it is
-regenerated from the snapshot and fails verification on drift.
+The register [`graphql-inventory.json`](../../data/graphql-inventory.json) is
+generated from the introspection snapshot and holds every object type with
+every field (type, nullability, deprecation) and every enum value; report
+[29](29-data-model-inventory.md) says how to read it. This report draws on it
+for relationships only. When a table here and the register disagree about a
+field, the register is the higher source, because it is regenerated from the
+snapshot and fails verification on drift.
 
 ## What this means for infraweave
 

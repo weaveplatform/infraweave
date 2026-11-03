@@ -592,7 +592,9 @@ Three provider resources still call superseded mutations
 (`spacelift_idp_group_mapping`, `spacelift_user`, `spacelift_repo_file`) and
 stay in scope: the resource is live, only its call is replaced (report
 [05](05-terraform-provider.md) section 4). Deprecated output fields and enum
-values beyond the root fields are listed field by field in report 29.
+values beyond the root fields are listed field by field in the register
+[`graphql-inventory.json`](../../data/graphql-inventory.json) (report
+[29](29-data-model-inventory.md)).
 
 ### 7.6 GCP service-account integration, replaced by OIDC
 
