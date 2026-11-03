@@ -98,7 +98,7 @@ bundle:
 # Run from its own module graph rather than as a go.mod tool: built against
 # ours, its dependencies would be upgraded past what it was released with.
 # deps-refresh.yml moves it to the latest release.
-OAPI_CODEGEN := github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.1
+OAPI_CODEGEN := github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.2
 
 # One per api/src/<service>/; each needs api/oapi-{server,client}-<service>.yaml.
 SPECS := $(patsubst api/src/%/info.yaml,%,$(wildcard api/src/*/info.yaml))
