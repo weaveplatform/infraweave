@@ -12,6 +12,8 @@ Conventions in the trees:
 
 - `← internal/server/problem` names where the code lives today.
 - `(P7)` marks something a later phase creates.
+- `(Flows)` marks the Flows phases, which directly follow the events phase
+  (P18).
 - A line with neither is new structure for code that exists today or for
   P1, the phase in progress.
 
@@ -21,8 +23,8 @@ The tree is organised by the direction of dependency. One application core,
 `internal/core/`, holds the domain model and the application services of
 every Deploy and Flows domain: accounts, spaces, stacks, configuration,
 runs, schedules, workers, vendors, state, VCS, policies, cloud
-integrations, the registry, events, templates, resources, Intelligence and
-Flows. The core declares two kinds of port. Driving ports, in
+integrations, the registry, events, features and tiers, expressions,
+templates, resources, Intelligence and Flows. The core declares two kinds of port. Driving ports, in
 `internal/core/port/driving`, are the interfaces through which the outside
 world asks the core to do something: create a stack, trigger a run, report a
 worker's progress, ingest a webhook, read a state file. Driven ports, in
@@ -30,18 +32,19 @@ worker's progress, ingest a webhook, read a state file. Driven ports, in
 reaches the outside world: the PostgreSQL stores and the unit of work,
 object storage, the work queue, the policy engine, VCS providers, cloud
 credential issuers, the token signer, secrets sealing, outbound delivery,
-AI providers and the clock.
+AI providers, Flows app tasks and the clock.
 
 Adapters implement ports and live in `internal/adapter/`. Driving adapters,
 in `internal/adapter/driving/`, turn something outside into a call on a
 driving port: the HTTP server (the generated `deploy` strict server, the
 worker long-poll API and the hand-written protocols for VCS webhooks, the
 Terraform state backend and the registry), the queue consumers and cron of
-the scheduler process mode, and the gateways for VCS agents and Flows agents. Driven
+the scheduler process mode, the server-sent event streams, the console's
+static files and the gateways for VCS agents and Flows agents. Driven
 adapters, in `internal/adapter/driven/`, implement driven ports over real
-infrastructure: PostgreSQL, S3-compatible and local object storage, the
-queue that decision 0011 picks, embedded OPA, GitHub and the other VCS
-providers, AWS, Azure and GCP, KMS, SMTP and Slack.
+infrastructure: PostgreSQL, the four object store drivers (`s3`, `gcs`,
+`azureblob`, `fs`), decision 0011's queue, embedded OPA, GitHub and the
+other VCS providers, AWS, Azure and GCP, KMS, SMTP and Slack.
 
 The worker side is a second hexagon, `internal/worker/`, because it runs on
 customer hosts with outbound HTTPS only
@@ -49,9 +52,19 @@ customer hosts with outbound HTTPS only
 core holds the launcher loop, the phase executor and the per-vendor command
 sets; its ports name the control plane, the container runtime, workspace
 transfer and tool binaries; its adapters speak the worker protocol, Docker
-and Kubernetes. It shares no package with the server's core or adapters, so
-the worker side's construction path links no PostgreSQL adapter, no object
-storage credentials and no other domain's internals.
+and Kubernetes. The Flows agent lives in the same hexagon, beside the
+launcher, because it too runs on customer hosts and dials out. The worker
+hexagon shares no package with the server's core or adapters, so the worker
+side's construction path links no PostgreSQL adapter, no object storage
+credentials and no other domain's internals.
+
+Two pure libraries belong to neither hexagon, because both run the same
+code: `internal/shared/expr`, the expression language of decision 0024,
+which the server evaluates and the runner uses to render workflow command
+templates, and `internal/shared/seal`, the sealed formats of decision 0013,
+which the server writes and the launcher and runner open and write. They
+hold no I/O, no port and no domain type, and they are the first packages the
+two hexagons share.
 
 Dependency rules:
 
@@ -71,13 +84,17 @@ Dependency rules:
 6. `internal/worker/...` imports nothing under `internal/core/`,
    `internal/adapter/` or `internal/app/`, and no database driver;
    `internal/worker/core/...` imports nothing under
-   `internal/worker/adapter/`.
+   `internal/worker/adapter/`. From `internal/` it may import only its own
+   tree and `internal/shared/...`.
 7. No package under `internal/core/`, `internal/adapter/` or
    `internal/worker/` imports `internal/app/`. Only `internal/app/...` and
    `cmd/...` construct adapters and wire them to the core.
 8. `internal/tooling/...` is imported only by `tools/...`; no runtime
    package imports it.
 9. `pkg/...` imports nothing under `internal/` or `cmd/`.
+10. `internal/shared/...` imports nothing under `internal/` except
+    `internal/shared/...`: the standard library and pure libraries such as
+    cel-go only.
 
 Rule 3 is the one that makes a single core hold together at infraweave's
 size: twenty domain packages in one hexagon would otherwise import each
@@ -94,49 +111,77 @@ infraweave/
   cmd/
     infraweave/             main.go only: builds the cobra root from internal/app/cli
                             and exits; process modes serve, scheduler, launcher, all (hidden: runner),
-                            vcs-agent, flows-agent; migrate up, migrate status, version
-    infraweavectl/          (P24) the CLI, a client over pkg/client/deploy; no server code
+                            vcs-agent, flows-agent; migrate up, migrate status, secrets, version
+    infraweave-agent/       slim build for worker and agent hosts: launcher, runner, vcs-agent,
+                            flows-agent from internal/app/agentcli; links only the worker hexagon
+                            and internal/shared; built when image size or a customer's review asks
+                            for it (decision 0004)
+    infraweavectl/          (P24b) the CLI over pkg/sdk only: spacectl-shaped tree, flows group,
+                            infraweavectl operator, infraweavectl mcp, expr check, complete and eval
   internal/
     app/                    NEW: composition root, one file per process mode, config, cobra tree
     buildinfo/              ← internal/buildinfo (unchanged)
     core/                   NEW: the hexagon (kernel, ports, one package per domain)
     adapter/                NEW: driving/ and driven/ adapters
     worker/                 NEW (P8): the worker side's own hexagon (core, ports, adapters)
+    shared/                 NEW: pure libraries both hexagons import: expr (P9), seal (P2)
     contract/               NEW (P2): contract suites for driven ports
     tooling/                NEW: specref, openapibundle, stubgen, docscheck (dev tooling, not runtime)
   pkg/
     client/deploy/          ← pkg/client/deploy (unchanged; generated)
+    client/flows/           (Flows) generated from api/flows.openapi.yaml
+    client/operator/        (P3b) generated from api/operator.openapi.yaml
+    sdk/                    (P24) the SDK: hand-written layer over pkg/client/<spec>: token exchange,
+                            Idempotency-Key on writes, 429 retries, pagination iterators, typed
+                            problem errors, typed SSE stream iterators
+    flows/appsdk/           (Flows) the Go app SDK: generated App and Host stubs, Serve(app), typed
+                            block definitions, apptest/ for app tests without an agent or a server
   api/                      unchanged layout; oapi-server-*.yaml outputs move to
-                            internal/adapter/driving/http/gen/<spec>; adds src/worker (P8)
+                            internal/adapter/driving/http/gen/<spec>; adds src/worker (P8),
+                            src/operator (P3b, api/operator.openapi.yaml) and src/flows (Flows)
+    proto/flows/app/v1/     (Flows) the App and Host gRPC services, package infraweave.flows.app.v1
+  web/
+    console/                (P24c) the console: React 19, TypeScript strict, Vite; orval-generated
+                            client and TanStack Query hooks; console.go embeds dist/ through embed.FS
   test/
     acceptance/             ← test/acceptance; features per domain, testcontainers (decision 0016)
   tools/                    unchanged; the three spec tools import internal/tooling/*
   docs/                     unchanged
-  deploy/                   (P27) Helm chart, Terraform modules for AWS, Azure and GCP, images
-  Makefile                  generate writes servers to internal/adapter/driving/http/gen/<spec>;
-                            stubgen path follows; build unchanged (cmd/* cross-compiled, CGO off)
-  .golangci.yml             depguard enabled with the nine rules above (one entry per core domain)
+  deploy/                   (P27) Helm chart, Terraform modules for AWS, Azure and GCP, server and
+                            runner images; Flows apps are OCI images their authors build
+  Makefile                  generate writes servers to internal/adapter/driving/http/gen/<spec>,
+                            the App stubs with buf and the console client with orval; build
+                            cross-compiles cmd/* with CGO off, the console first in release builds
+  .golangci.yml             depguard enabled with the ten rules above (one entry per core domain)
   .testcoverage.yml         exclusions: ^cmd/, ^tools/, ^internal/adapter/driving/http/gen/,
-                            ^pkg/client/, ^internal/worker/adapter/controlplane/client/
+                            ^pkg/client/, ^pkg/flows/appsdk/appv1/,
+                            ^internal/worker/adapter/controlplane/client/
   go.mod                    one module, unchanged path
 ```
 
 What changes at the root and why:
 
-- `internal/` gains four top-level areas (`core`, `adapter`, `worker`,
-  `contract`) and loses the `server` directory. Everything a reader needs to
-  know about a package's permissions follows from which of the four it is
-  under.
+- `internal/` gains five top-level areas (`core`, `adapter`, `worker`,
+  `shared`, `contract`) and loses the `server` directory. Everything a
+  reader needs to know about a package's permissions follows from which of
+  them it is under.
 - `cmd/infraweave` appears with P1 and stays a few lines long. The command
   tree lives in `internal/app/cli`, because building a process mode means building
   adapters, and only the composition root may do that (rule 7).
-- `pkg/` keeps only the generated `deploy` client. Store, object storage and
-  queue interfaces are driven ports owned by the core, not public packages,
-  because the hexagon's contract is internal and publishing it would freeze
-  it.
-- `api/` stays the source of truth for specifications. Only the
-  generated server output path moves, from `internal/server/gen` to the
-  driving HTTP adapter.
+  `cmd/infraweave-agent` builds the worker hexagon alone from
+  `internal/app/agentcli`, for hosts that should carry no server code.
+- `pkg/` holds the generated clients, the SDK that wraps them, and the
+  Flows app SDK. Store, object storage and queue interfaces are driven ports
+  owned by the core, not public packages, because the hexagon's contract is
+  internal and publishing it would freeze it. The Terraform provider lives in
+  its own repository, `weaveplatform/terraform-provider-infraweave`, on
+  `pkg/sdk` (decision 0001).
+- `api/` stays the source of truth for specifications, including the
+  protobuf contract of Flows apps. Only the generated server output path
+  moves, from `internal/server/gen` to the driving HTTP adapter.
+- `web/console/` is a client of the public API like `infraweavectl`; its
+  build output is embedded by the binary and served by a driving adapter
+  (decision 0023).
 
 ## Full package tree
 
@@ -148,15 +193,19 @@ Status of each area at P1 and the phase that completes it:
 | `core/kernel`, `core/port` | skeleton: IDs, principal, page cursor; stack ports | P1 to P5, growing with every domain |
 | `core/stack` | stub: the 72 served operations answer 501 | P5 |
 | `adapter/driving/http` | router, problem details, generated `deploy` server, stubs | P1, then every phase that serves an API |
-| `adapter/driven/postgres`, `objectstore` | absent | P2 |
+| `adapter/driven/postgres`, `objectstore`, `shared/seal` | absent | P2 |
 | `core/account`, `core/space` | absent | P3, P4, P23 |
+| `core/feature`, `adapter/driving/http/operator` | absent | P3b |
 | `core/config` | absent | P6 |
 | `core/run`, `adapter/driving/scheduler`, `adapter/driven/queue` | absent | P7, P9, P10 |
 | `core/worker`, `adapter/driving/http/workerapi`, `internal/worker` | absent | P8, P14 |
 | `core/iac` | absent | P9 (Terraform, OpenTofu), P20 (the rest) |
+| `shared/expr`, `core/expression`, `adapter/driving/http/sse` | absent | P9 |
 | `core/state`, `core/vcs`, `core/policy`, `core/cloud`, `core/schedule` | absent | P11, P12 and P19, P13, P15, P16 |
 | `core/registry`, `core/event` | absent | P17, P18 |
-| `core/template`, `core/resource`, `core/intel`, `core/flows` | absent | P21, P22, P25, P26 |
+| `core/template`, `core/resource`, `core/intel` | absent | P21, P22, P25 |
+| `core/flows`, `adapter/driving/gateway` (Flows), `worker/core/flowsagent` | absent | Flows |
+| `adapter/driving/http/console` | absent | P24c |
 
 ```text
 internal/
@@ -177,11 +226,15 @@ internal/
   core/
     kernel/                                value types every domain shares; no behaviour beyond parsing
       ids.go                               ULID, Slug, UUID (Flows), parse and format
-      principal.go                         Principal: user, API key, run, worker, stack; account; spaces
+      principal.go                         Principal: user, API key, run, worker, stack, operator; account;
+                                           spaces
+      feature.go                           (P3b) Feature, Limit: catalogue names as typed values
       space.go                             SpaceID, SpacePath; the root space constant
       labels.go                            Labels, autoattach:<label> parsing
       page.go                              Page, Cursor (decision 0003 cursor encoding)
-      problem.go                           domain error kinds the HTTP adapter maps to problem types
+      problem.go                           domain error kinds the HTTP adapter maps to problem types,
+                                           including feature-disabled, feature-not-in-tier, limit-reached
+      actions.go                           AllowedActions: the set every returned resource carries
     port/
       driving/                             what adapters may ask the core to do
         stacks.go                          Stacks: Create, Get, List, Update, Delete, Lock, Unlock,
@@ -209,8 +262,16 @@ internal/
         access.go                          (P4) Spaces, Roles, Bindings, Authorizer (Decider per principal)
         sso.go                             (P23) SSO, SCIM
         intel.go                           (P25) AIIntegrations, Assistant, Intent
-        flows.go                           (P26) Organizations, Projects, Flows, Blocks, Invocations, Apps
-        types.go                           request and result DTOs shared by the files above
+        features.go                        (P3b) Entitlements: For(account) gives a Snapshot with Has,
+                                           Limit, Check(feature), Reserve(limit, n); Operator: Tiers,
+                                           Accounts, Grants, Billing
+        expressions.go                     (P9) Expressions: Check, Complete, Evaluate; Surface:
+                                           TypedContext(ref), implemented by each domain that owns one
+        streams.go                         (P9) EventFeed: Subscribe(filter, lastID) for the SSE adapter
+        flows.go                           (Flows) Organizations, Projects, Flows, Blocks, Invocations,
+                                           Apps, AgentPools, NamedExpressions; FlowTasks: Claim, Complete
+        types.go                           request and result DTOs shared by the files above; every
+                                           resource DTO carries AllowedActions
       driven/                              what the core needs from outside
         tx.go                              (P2) UnitOfWork: Tx(ctx, fn), AfterCommit(ctx, fn)
         stores.go                          (P2) one interface per aggregate: StackStore, RunStore,
@@ -224,7 +285,10 @@ internal/
                                            and its events.fanout job (decision 0015)
         audit.go                           (P18) AuditLog: Record(ctx, Entry) inside the Tx (decision 0015)
         clock.go                           Clock, IDs (ULID source)
-        sealer.go                          (P6) Sealer: Seal, Open; envelope keys (decision 0013)
+        sealer.go                          (P2) Sealer: Seal, Open, SealToPool; keyring and data keys
+                                           (decision 0013)
+        notify.go                          (P7) Notifications: Listen(channel) for infraweave_events,
+                                           infraweave_logs and infraweave_invalidate
         signer.go                          (P3) TokenSigner: sign and verify JWTs, JWKS (decision 0006)
         policyengine.go                    (P13) PolicyEngine: Compile, Evaluate (decision 0009)
         vcsprovider.go                     (P12) VCSProvider: VerifyWebhook, Parse, Files, Archive,
@@ -235,7 +299,8 @@ internal/
         mail.go                            (P3) Mail: invitations
         idp.go                             (P23) IdentityProvider: SAML, OIDC
         ai.go                              (P25) AIProvider: chat, tools (decision 0019)
-        flowsruntime.go                    (P26) Runtime: evaluate expressions, run app handlers on agents
+        agenttasks.go                      (Flows) AgentTasks: Submit(pool, Task) as a flows.agent_task job;
+                                           app calls only, never an expression
     stack/                                 (P5) model, validation, settings, lock, enable, reslug
     config/                                (P6) contexts, config elements, attachments, auto-attach,
                                            runtime config merge, priority order
@@ -254,32 +319,49 @@ internal/
                                            combination per type, flags, receipts, sampling
     cloud/                                 (P15) AWS, Azure, GCP integrations, OIDC claims, attachments
     registry/                              (P17) modules, versions, test cases, providers, GPG keys, sharing
-    event/                                 (P18) event catalogue, inbox, named and stack webhooks,
-                                           audit trail, notification routing
+    event/                                 (P7) the shared event model: envelope, kind registry and schemas,
+                                           emit; (P9) EventFeed for the streams; (P18) inbox, named and
+                                           stack webhooks, audit trail, notification routing, message
+                                           text rendered as text templates
+    feature/                               (P3b) catalogue.yaml, tiers and their seed, account tiers,
+                                           grants, entitlement snapshots, the billing switch, operator
+                                           service
+    expression/                            (P9) editor service: Check, Complete, Evaluate over the Surface
+                                           of each domain; named expressions are Flows'
     template/                              (P21) templates, versions, deployments, blueprints
     resource/                              (P22) managed entities, scans, search
     account/                               (P3) accounts, users, API keys, sessions, invitations;
                                            (P23) SSO settings, SCIM reconciliation
     space/                                 (P4) space tree, inheritance, actions, roles, bindings, Decider
     intel/                                 (P25) AI integrations, Infra Assistant, Intent projects
-    flows/                                 (P26) organizations, projects, flows, blocks, apps, agent pools
-      engine/                              (P26) events, lineage, invocations, limits, retries
+    flows/                                 (Flows) organizations, projects, flows, blocks, apps, agent pools,
+                                           named expressions, data tables, forms
+      engine/                              (Flows) delivery, buffered effects, timers, lifecycle, invocation
+                                           status, limits, retention
+      blocks/                              (Flows) core blocks and Deploy blocks in Go
 
   adapter/
     driving/
       http/                                chi router, middleware, problem mapping
         problem/                           ← internal/server/problem
         middleware/                        request ID, recovery, authentication (calls driving.Authenticator),
-                                           idempotency and rate limits (decision 0003), body limits
+                                           features (P3b, calls driving.Entitlements), idempotency and rate
+                                           limits (decision 0003), body limits
+        sse/                               (P9) text/event-stream writer: Last-Event-ID resume, 15 s
+                                           keepalive comments, slow-consumer and shutdown end messages
+        console/                           (P24c) static files from web/console, index.html fallback,
+                                           CSP with a per-response style nonce, placeholder page
         gen/
           deploy/                          ← internal/server/gen/deploy (server.gen.go, unimplemented.gen.go)
           worker/                          (P8) worker protocol strict server
+          operator/                        (P3b) operator API strict server
+          flows/                           (Flows) Flows API strict server
         deploy/                            strict server composition for the deploy spec
           server.go                        embeds every family's partial implementation, stubs one level deeper
           stacks/                          implements the Stacks operations over driving.Stacks
           runs/                            (P7) runs, tasks, reviews, logs
           config/ spaces/ identity/ workers/ policies/ vcs/ cloud/ schedules/ state/ registry/
-          events/ templates/ resources/ intel/            (P3 to P25) one package per family
+          events/ templates/ resources/ intel/ expressions/   (P3 to P25) one package per family
         workerapi/                         (P8) implements gen/worker over driving.RunProgress and
                                            driving.Workers: register, long-poll, signals, presigned URLs
         webhook/                           (P12) POST /webhooks/vcs/{provider}/{integration}: store, then
@@ -287,7 +369,9 @@ internal/
         statebackend/                      (P11) Terraform http backend: GET, POST, LOCK, UNLOCK
         registryproto/                     (P17) /.well-known/terraform.json, modules.v1, providers.v1,
                                            login.v1 and the token endpoint
-        flowsapi/                          (P26) Flows API, flow HTTP endpoints, MCP endpoints
+        operator/                          (P3b) implements gen/operator over driving.Operator; operator
+                                           principals only
+        flowsapi/                          (Flows) implements gen/flows; flow HTTP endpoints, forms, MCP
         mcp/                               (P25) platform MCP server
       scheduler/                           (P7) the scheduler process mode's loops
         consume.go                         one handler per job kind; calls the matching driving port
@@ -296,20 +380,24 @@ internal/
                                            SKIP LOCKED on every replica, no leader
       outbox/                              (P7) the events.fanout job: hands each event to the
                                            driving.Subscriber implementations
-      gateway/                             (P19) VCS agent long-poll (decision 0012); (P26) Flows agent WebSockets
+      gateway/                             (P19) VCS agent long-poll (decision 0012); (Flows) Flows agent
+                                           WebSockets: claims flows.agent_task jobs for its sockets
     driven/
       postgres/                            (P2) pool, UnitOfWork, migrator, readiness
         migrations/                        one migration stream for the whole schema, embedded,
                                            NNNNN_*.sql (decision 0005)
         stacks/ runs/ config/ workers/ state/ vcs/ policies/ cloud/ schedules/ registry/ events/
         templates/ resources/ accounts/ spaces/ intel/ flows/
-                                           one package per store port family (P2 to P26)
+                                           one package per store port family (P2 to P25, Flows)
         outbox/                            (P7) the events table of decision 0015, fan-out marks, retention
-      objectstore/                         (P2)
-        s3/                                S3-compatible, presigned SigV4
-        fs/                                local disk for single-node installs and tests
-        gcs/ azureblob/                    (P27)
-      queue/                               (P7) the decision 0011 implementation behind driven.Queue
+      objectstore/                         (P2) the four drivers of decision 0005, each on its own SDK;
+                                           objects written once, no bucket versioning
+        s3/                                AWS S3 and S3-compatible stores, x-amz-checksum-sha256
+        gcs/                               Google Cloud Storage, V4 signed URLs through signBlob
+        azureblob/                         Azure Blob Storage, user delegation SAS
+        fs/                                local or shared POSIX volume; signed /blobs/{token} URLs
+      queue/                               (P7) the decision 0011 implementation behind driven.Queue and
+                                           driven.AgentTasks; logical queues include flows
       opa/                                 (P13) embedded OPA v1: prepared queries, capabilities, timeouts
       vcs/
         github/                            (P12) App and Enterprise, HMAC verification, checks, comments
@@ -317,8 +405,9 @@ internal/
         agentpool/                         (P19) any provider reached through the VCS agent gateway
       cloud/
         aws/ azure/ gcp/ vault/            (P15) credential issuance
-      keys/                                (P3) JWT signing keys, JWKS; (P6) local master key
-      kms/                                 (P6) AWS KMS and other roots for the Sealer (decision 0013)
+      keys/                                (P3) JWT signing keys, JWKS
+      sealer/                              (P2) keyring over shared/seal: data keys, rewrap, rotation
+      kms/                                 (P2) KEK providers: local, awskms, gcpkms, azurekv, vault
       delivery/                            (P18) HMAC-signed HTTP delivery, request and response capture
       slack/                               (P18)
       smtp/                                (P3)
@@ -326,7 +415,6 @@ internal/
         saml/ oidc/                        (P23)
       ai/
         anthropic/ openai/ bedrock/        (P25) per decision 0019
-      flowsruntime/                        (P26) routes evaluations to agents through the gateway
       clock/                               system clock and ULID source
 
   worker/                                  (P8) the worker side's hexagon; links nothing above
@@ -335,7 +423,8 @@ internal/
       executor/                            phases and hooks inside the run container (runner)
       vcsagent/                            (P19) vcs-agent: long-polls the gateway, checks each request
                                            against its provider allowlist, forwards it (decision 0012)
-      flowsagent/                          (P26) flows-agent: WebSocket to the gateway, runtime pool
+      flowsagent/                          (Flows) flows-agent: WebSocket to the gateway, frames, app
+                                           containers per installation and digest, Host relay
                                            (decision 0018)
       iac/                                 per-vendor command sets: init, plan, show, apply, destroy
         terraform/ opentofu/               (P9)
@@ -348,6 +437,7 @@ internal/
         workspace.go                       Workspace: Download, Upload (presigned URLs only)
         binaries.go                        Binaries: Resolve(vendor, constraint), Verify
         rego.go                            Rego: Evaluate(policy, input) for initpolicy
+        apps.go                            (Flows) AppContainers: Start(image digest), Dial, Recycle
     adapter/
       controlplane/                        long-poll client over the generated worker client
         client/                            (P8) generated from api/worker.openapi.yaml
@@ -357,20 +447,37 @@ internal/
       binaries/                            download, checksum and signature checks
       rego/                                (P14) OPA evaluation with exec allowed, worker side only
       vcsproxy/                            (P19) HTTP to the private VCS for vcsagent
-      runtimes/                            (P26) Node.js runtimes in Docker or Kubernetes for flowsagent
+      appcontainers/                       (Flows) docker (optional gVisor), kubernetes (pod per app, mTLS,
+                                           NetworkPolicy), process (development only)
+      appgrpc/                             (Flows) gRPC client to App and server for Host, agent-local
 
   contract/                                (P2) suites every implementation of a driven port runs
     storetest/                             one file per store port; run against postgres
-    objecttest/                            run against s3 (MinIO container) and fs
+    objecttest/                            put, get, head, delete, multipart, checksums, signed URLs,
+                                           expiry; against RustFS, fake-gcs-server, Azurite and fs
     queuetest/                             (P7) claims, leases and fencing, retries and the dead state,
                                            ordering keys, priority (decision 0011)
     policytest/                            (P13) the example library corpus against opa
     vcstest/                               (P12) recorded provider payloads per adapter
     controlplanetest/                      (P8) worker protocol against workerapi and controlplane
 
+  shared/                                  pure libraries both hexagons import (rule 10)
+    expr/                                  (P9) decision 0024: CEL through cel-go, ${{ }} text templates
+                                           with the $${{ escape, the curated library (cel.bind, fail,
+                                           merge, pick, omit, url, json, random from the seed), the
+                                           JSON Schema to CEL type provider, cost limit and timeout,
+                                           compiled-program cache, POSIX shell quoting
+    seal/                                  (P2) decision 0013's formats, each with a version byte: object
+                                           segments in AES-256-GCM through NewGCMWithRandomNonce with
+                                           index and last flag in the associated data; the pool envelope
+                                           (ECDH P-256, HKDF-SHA256, AES-256-GCM)
+
 pkg/
   client/
     deploy/                                ← pkg/client/deploy (generated)
+    flows/ operator/                       (Flows, P3b) generated
+  sdk/                                     (P24) the SDK over the generated clients
+  flows/appsdk/                            (Flows) Go app SDK; appv1/ holds the buf-generated stubs
 ```
 
 ### Where each domain's code sits
@@ -388,12 +495,15 @@ pkg/
 | Cloud integrations | `core/cloud` | `http/deploy/cloud` | `cloud/<provider>`, `keys` | credentials in the job |
 | Schedules, drift, dependencies | `core/schedule` | `http/deploy/schedules`, `scheduler` | `postgres/schedules` | none |
 | Registry | `core/registry` | `registryproto`, `http/deploy/registry` | `postgres/registry`, `objectstore` | `.terraformrc` written by `executor` |
-| Events | `core/event` | `http/deploy/events`, `outbox` | `delivery`, `slack`, `postgres/events` | none |
+| Events | `core/event` | `http/deploy/events`, `outbox`, `http/sse` | `delivery`, `slack`, `postgres/events`, `postgres/notify` | none |
 | Accounts, spaces, SSO | `core/account`, `core/space` | `http/middleware`, `http/deploy/identity`, `http/deploy/spaces` | `postgres/accounts`, `postgres/spaces`, `keys`, `idp/*` | none |
+| Features and tiers | `core/feature` | `http/middleware/features.go`, `operator`, `scheduler` | `postgres/features`, `postgres/notify` | none |
+| Expressions | `core/expression`, `shared/expr` | `http/deploy/expressions`, `flowsapi` | none | `shared/expr` in `executor` |
 | Templates | `core/template` | `http/deploy/templates` | `postgres/templates` | none |
 | Resources and search | `core/resource` | `http/deploy/resources` | `postgres/resources` | none |
 | Intelligence | `core/intel` | `http/deploy/intel`, `mcp` | `ai/<provider>`, `postgres/intel` | none |
-| Flows | `core/flows`, `core/flows/engine` | `flowsapi`, `gateway` | `postgres/flows`, `flowsruntime` | `core/flowsagent`, the `flows-agent` subcommand (decision 0018) |
+| Flows | `core/flows`, `core/flows/engine`, `core/flows/blocks` | `flowsapi`, `gateway`, `scheduler` | `postgres/flows`, `queue` (agent tasks), `objectstore` | `core/flowsagent`, `appcontainers`, `appgrpc`; the `flows-agent` subcommand (decision 0018) |
+| Console and clients | none: every client calls the API | `http/console`, `http/sse` | none | none |
 
 ## Deep dives
 
@@ -685,6 +795,19 @@ payload is defined twice: by the `worker` spec for the wire, and by
 conversion in `adapter/controlplane`. The duplication is the price of keeping
 generated types out of a core.
 
+The spec's secret part reaches the worker sealed to the pool's P-256 public
+key in infraweave's own envelope (decision 0013): `core/run` builds the
+spec and calls `driven.Sealer.SealToPool`, which `adapter/driven/sealer`
+implements over `internal/shared/seal`. On the host,
+`worker/core/launcher/spec.go` opens it with the pool's private key through
+the same `shared/seal` package and rejects a spec issued for another run or
+state version, and `executor` seals a workspace in the object segment format
+before uploading it. Both formats use only FIPS 140-3 approved constructions
+(AES-256-GCM through `cipher.NewGCMWithRandomNonce`, ECDH P-256,
+HKDF-SHA256) and begin with a version byte. Sealing code is the one place
+where the worker hexagon and the server must agree byte for byte, which is
+why it is a shared library rather than a copy on each side.
+
 Pools grow by adapter: Docker workers at P8, Kubernetes at P14
 ([report 10](../reference/10-workers-and-execution.md#7-docker-based-and-kubernetes-workers)).
 A worker's binary is the same static `infraweave` executable; the launcher
@@ -711,7 +834,7 @@ internal/core/vcs/
   normalize.go                                provider payload to one PushEvent or PullRequestEvent
   route.go                                    match stacks and modules by integration, repository, branch;
                                               project root and globs
-  dedupe.go                                   (stack, sha, run type); /spacelift comments bypass
+  dedupe.go                                   (stack, sha, run type); comment commands bypass
   process.go                                  per target: driving.PolicyDecisions.Push, then
                                               driving.Runs.Trigger or an ignored-trigger record
   feedback.go                                 Subscriber for RunStateChanged: checks, PR comments,
@@ -770,8 +893,11 @@ needs the run's current state, which `core/state` reads through
 `driving.Runs.Get`, not through `core/run`'s store. Spacelift builds state
 history on bucket versioning
 ([report 16](../reference/16-state-management.md#6-state-history-and-rollback));
-decision 0010 writes each version as its own object, so the object storage
-port needs no version calls and the `fs` adapter needs no emulation.
+decisions 0005 and 0010 write each version as its own sealed object, written
+once and never overwritten, so history rests on `managed_state_versions`
+rows alone. The object storage port has no version calls, every driver
+(`s3`, `gcs`, `azureblob`, `fs`) passes one contract suite, and none needs
+bucket versioning.
 
 ### Module and provider registry protocol
 
@@ -844,6 +970,57 @@ knowing how reachability was computed. Run-scoped principals (the state
 backend, the registry inside a run, the worker API) are a principal kind of
 their own, minted by `core/account` and checked by the same `Decider`.
 
+### Features and tiers
+
+```text
+internal/core/feature/
+  catalogue.yaml                              every capability, option and limit: kind, requirements,
+                                              seeded tiers, covered BillingTierFeature values (decision 0021)
+  catalogue.go                                embeds and validates the catalogue; strict names
+  tier.go seed.go                             tiers as data; the Free, Starter, Starter+, Business and
+                                              Enterprise seed, installed once; Enterprise not editable
+  grant.go                                    per-account features and limit values, kept across tier changes
+  entitlement.go                              tier plus grants minus features.disabled minus unmet
+                                              requirements; limit values from grant, else tier
+  snapshot.go                                 per-account snapshot keyed by entitlement_version; rebuilt on
+                                              infraweave_invalidate through driven.Notifications
+  billing.go                                  the installation's billing switch; off: every account is Enterprise
+  service.go                                  implements driving.Entitlements and driving.Operator
+internal/core/port/driving/features.go        Entitlements: For(account) Snapshot; Snapshot: Has, Check,
+                                              Limit, Reserve; Operator: Tiers, Accounts, Grants, Billing
+internal/adapter/driving/http/middleware/features.go
+                                              after authentication: the operation's x-infraweave-feature,
+                                              read from the generated route table, through driving.Entitlements
+internal/adapter/driving/http/operator/        implements gen/operator; operator principals only, else 401
+internal/adapter/driving/scheduler/consume.go  a job of a feature outside the entitlement completes as skipped
+internal/adapter/driven/postgres/features/     tiers, tier_features, tier_limits, account_tiers, grants
+```
+
+The catalogue is one core package that every other core domain reaches
+through `driving.Entitlements`, as it reaches `driving.Authorizer`, so the
+three gates of decision 0021 sit where each one's information lives:
+
+| Gate | Where | Answer |
+| --- | --- | --- |
+| Capability | `http/middleware/features.go`, once per request after authentication | `403 feature-disabled` when the operator switched it off, else `403 feature-not-in-tier` naming the tiers that hold it |
+| Option | the core service's input validation (`core/stack` for `StackVendor`, `core/vcs` for aggregated checks and multiple integrations), which calls `Snapshot.Check` only when a write sets the gated value | the same two problems |
+| Limit | the core service that creates the counted thing: `core/account` for seats, `core/worker` for private workers, `core/run` for public worker slots (a run beyond the limit waits in the queue), `core/intel` for the AI budget | `403 limit-reached` with the limit and its value |
+
+`billing` is off by default: `Snapshot` then answers yes for every feature
+not in `features.disabled` and no limit applies, so an installation behaves
+as Enterprise without a check. Tiers, account tiers, grants and the billing
+switch are data written only through the operator API
+(`api/operator.openapi.yaml`, `infraweavectl operator`); each write bumps
+`accounts.entitlement_version` and notifies `infraweave_invalidate` in its
+unit of work, and every replica rebuilds the snapshot it holds, so a change
+needs no restart. Downgrades delete nothing: the scheduler's job consumer is
+a driving adapter, so it asks the snapshot before handing a job to the core
+and completes a gated job as skipped, and schedules of a missing feature do
+not fire until the account regains it. The hexagon gives the gate one home
+because every domain shares one core; the cost is that
+`core/port/driving/features.go` is another port every domain's fakes must
+cover.
+
 ### Events: notifications, webhooks and audit
 
 ```text
@@ -881,39 +1058,182 @@ subscriber is in the same core, the catalogue is one package, and the event
 payload types live in `core/port/driving/types.go` so that subscribers can
 read them without importing the producer.
 
+Deploy and Flows share this one event model (decision 0015): the envelope,
+the emit path through `driven.Outbox` and the kind registry in `core/event`
+(`run_updated`, `drift_detected`, `policy_evaluated`,
+`notification_created`, `module_version`, `internal_error`,
+`worker_usage`, `worker_updated`, `flows.event`), each kind with a JSON
+Schema that types webhook payloads, stream messages, Flows trigger outputs
+and the expressions that read them. Flows trigger blocks are one more
+fan-out target: `core/flows/blocks/deploy.go` is a `driving.Subscriber`
+whose `Handle` inserts the root `flow_events` row and its `flows.deliver`
+jobs in the fan-out's own unit of work, so no bridge sits between the two.
+Every string a notification policy returns is a text template that
+`core/event/delivery.go` renders with `internal/shared/expr` in the delivery
+job, against the event document.
+
+The server-sent event streams of decision 0015 (run logs, run state,
+worker pool queue, Flows events) are driving HTTP handlers in
+`http/deploy/runs`, `http/deploy/workers` and `flowsapi`, written through
+`http/sse`. Each authorizes as its polling equivalent and reads through
+`driving.EventFeed`, which `core/event` implements over `driven.Notifications`
+(`LISTEN` on `infraweave_events` and `infraweave_logs` in
+`adapter/driven/postgres/notify`), so the driving adapter never reaches a
+driven one (rule 5). Every stream has a polling equivalent.
+
 ### Flows engine
 
 ```text
-internal/core/port/driving/flows.go           Organizations, Projects, Flows, Blocks, Apps,
-                                              Installations, AgentPools, Invocations, Secrets, DataTables
-internal/core/port/driven/flowsruntime.go     Runtime: Evaluate(expr, scope), Invoke(handler, input)
+api/proto/flows/app/v1/                       (Flows) app.proto (App), host.proto (Host); buf breaking in CI
+pkg/flows/appsdk/                             (Flows) Serve(app), typed blocks, KV, timers, widgets; apptest/
+internal/core/port/driving/flows.go           Organizations, Projects, Flows, Blocks, Apps, Installations,
+                                              AgentPools, Invocations, Secrets, NamedExpressions, DataTables;
+                                              FlowTasks: Claim(pool, n), Complete(task, result), Host(call)
+internal/core/port/driven/agenttasks.go       AgentTasks: Submit(pool, Task) inside the Tx
 internal/core/flows/
-  org.go project.go membership.go             (P26) own tenancy: organizations and projects, UUIDs
-  flow.go block.go link.go definition.go      (P26) flow definition YAML, block catalogue
-  app.go installation.go registry.go          (P26) app versions, bundles, subscriptions
-  agentpool.go                                (P26) pools, tokens, project exposure
-  deploy.go                                   (P26) Deploy subscription blocks: Subscriber for run events
+  org.go project.go membership.go             (Flows) one organization per account; projects, UUIDs, roles
+  flow.go block.go link.go definition.go      (Flows) definition YAML with !expr values, strict import and export
+  app.go installation.go registry.go          (Flows) app versions as OCI image digests with captured
+                                              Describe manifests; hourly registry subscriptions
+  agentpool.go                                (Flows) pools, hashed tokens, project exposure
   engine/
-    event.go lineage.go                       events with primary and secondary parents
-    invocation.go                             derived status, 60-day retention
-    limits.go                                 monthly and hourly event limits
-    dispatch.go                               block execution through driven.Runtime
-internal/adapter/driving/http/flowsapi/        REST for flowctl and the provider; flow HTTP endpoints; MCP
-internal/adapter/driving/gateway/flows.go      agent WebSockets
-internal/adapter/driven/flowsruntime/          routes evaluations and app handlers to agents
-internal/adapter/driven/postgres/flows/        flows_* tables
+    deliver.go                                flows.deliver: evaluate input configuration with shared/expr
+                                              under the stored now and seed, run the block
+    effects.go                                buffered events, pending events, timers and messages committed
+                                              with the delivery's completion; KV runs live
+    timers.go lifecycle.go status.go          flows.timer, flows.lifecycle keyed by entity,
+                                              flows.invocation.status keyed by invocation
+    limits.go retention.go                    monthly and hourly counters (UTC); 60-day retention
+  blocks/
+    core.go                                   (Flows) every core block in Go; Transform with the steps form
+    deploy.go                                 (Flows) Deploy triggers as a driving.Subscriber; Trigger Run,
+                                              Confirm Run and API Request through driving ports
+internal/adapter/driving/scheduler/consume.go  the flows logical queue with its own worker count
+internal/adapter/driving/gateway/flows.go      wss://<host>/flows/agent/v1/connect; claims flows.agent_task for
+                                              its sockets up to their capacity; task, call, reply, result frames
+internal/adapter/driving/http/flowsapi/        /flows/v1/ over gen/flows; HTTP Endpoint blocks, forms, MCP
+internal/adapter/driven/queue/                 driven.AgentTasks: flows.agent_task partitioned by pool
+internal/adapter/driven/postgres/flows/        the flows schema and its tables
+internal/worker/core/flowsagent/
+  agent.go                                    `flows-agent`: dial, hello, ping every 20 s, capacity
+  tasks.go                                    a task frame to an App RPC on the right container; result frame
+  host.go                                     Host calls (KV, locks, ListBlocks, SetWidget) relayed as call frames
+internal/worker/adapter/appcontainers/         docker (optional gVisor), kubernetes, process (development)
+internal/worker/adapter/appgrpc/               App client and Host server over a Unix socket or pod mTLS
 ```
 
-Flows is a separate product with its own tenancy and identifiers
-([report 23](../reference/23-flows.md#2-resource-hierarchy)). In a single
-hexagon it is two core packages and a handful of adapters, separated from
-Deploy only by rule 3: it reaches Deploy through `driving.Runs` and
-`driving.Subscriber`, and Deploy never reaches it. The engine's queueing
-(events per block, retries, the hourly limit,
-[report 23](../reference/23-flows.md#4-events-invocations-and-limits)) uses
-the same `driven.Queue` as runs, under its own job kinds. JavaScript never
-runs in the server: block expressions and app handlers run on agents that
-dial the gateway, and `driven.Runtime` is the port to them (decision 0018).
+The engine is core code on the same driven queue as runs: a block delivery
+is a `flows.deliver` job on the `flows` logical queue, consumed in the
+`scheduler` process mode, so a busy flow never delays Deploy's fan-out and
+no second scheduler, lease model or retry policy exists (decision 0018).
+A core block runs in Go in the same job. An app block is a call on
+`driven.AgentTasks`, which enqueues a `flows.agent_task` job for the pool;
+the `serve` replica holding an agent's WebSocket claims it through
+`driving.FlowTasks.Claim` and pushes a `task` frame, and the agent's
+`result` frame returns the app's buffered effects, which
+`FlowTasks.Complete` commits in one unit of work with the delivery's
+completion, so a retried delivery never emits twice. Waits (Sleep, Show
+Form, pending events, app timers) are rows the scheduler's ticker turns into
+`flows.timer` jobs.
+
+Apps are infrastructure code: each is an OCI image serving the versioned
+`App` gRPC service of `api/proto/flows/app/v1/`, run as its own container,
+one per installation and image digest, by `flows-agent` in the worker
+hexagon. The agent serves the `Host` service to its apps and relays the live
+calls to the server as frames; gRPC never leaves the agent's host. An app
+receives evaluated configuration and only the secrets it resolved to; it
+never sees an expression, because `engine/deliver.go` evaluates every input
+in the server with `internal/shared/expr`. Apps contribute declarative
+widgets only, which the console renders; no app ships browser code. The Go
+app SDK, `pkg/flows/appsdk`, is public so app authors build on it, and
+first-party apps are ordinary programs on it.
+
+Flows' parts are features of the catalogue (`flows-engine`, `flows-apps`,
+`flows-agents`, `flows-data-tables`, `flows-forms`, `flows-mcp-tools`),
+gated by the same middleware as Deploy; there is no Flows switch of its
+own. One organization per account shares Deploy's users, so `core/flows`
+reaches identity through `driving.Authorizer` like any domain. In a single
+hexagon Flows is three core packages and a handful of adapters, separated
+from Deploy only by rule 3: it reaches Deploy through `driving.Runs`,
+`driving.Stacks` and `driving.Subscriber`, and Deploy never reaches it. The
+shared core is what makes Deploy events native Flows triggers; it is also
+why Flows shares the schema stream and `services.go`.
+
+### Expressions
+
+```text
+internal/shared/expr/                         (P9) the language and library of decision 0024; no I/O
+  env.go                                      cel-go environment per surface: declared variables and types
+  library.go                                  strings, lists, maps, regex, encoding, maths, time, random, fail
+  typeprovider.go                             JSON Schema to CEL object types; additionalProperties to dyn
+  template.go                                 ${{ }} text templates, $${{ escape, value rendering rules
+  shell.go                                    POSIX quoting for workflow command templates
+  eval.go                                     cost limit, timeout, source and result caps; now and seed in
+                                              the context; programs cached by source, surface and types
+internal/core/port/driving/expressions.go     Expressions: Check, Complete, Evaluate; Surface: TypedContext
+internal/core/expression/                     (P9) service over the Surface each domain registers
+internal/adapter/driving/http/deploy/expressions/   /api/v1/expressions/check, complete, evaluate
+internal/adapter/driving/http/deploy/policies/check.go   /api/v1/policies/check: Rego diagnostics
+```
+
+| Surface | Evaluated by | Process mode |
+| --- | --- | --- |
+| Flows input, static and output configuration, Transform | `core/flows/engine` | `scheduler` (static configuration also at save in `serve`) |
+| Blueprint and template bodies | `core/template` | `serve` for a synchronous create, `scheduler` for a queued deployment change |
+| Output references, environment interpolation | `core/run` handover | `serve`, at handover |
+| Notification text | `core/event` delivery | `scheduler` |
+| `.infraweave/workflow.yml` command templates | `worker/core/executor` | the runner, at initialization, shell-quoted |
+
+The language is one pure library, so every surface evaluates the same
+functions under the same limits (`expressions.cost_limit`,
+`expressions.timeout`) with the same deterministic `now` and seed. Typed
+contexts belong to the domains that own the data: each domain implements
+`driving.Surface` (the block's output and signal schemas from
+`core/flows`, event kind schemas from `core/event`, template inputs from
+`core/template`, run variables from `core/config`), and `core/expression`
+reaches each through that driving port, so the editor endpoints answer for
+any surface without importing a domain. Secrets resolve in the server; only
+literal `secrets.KEY` names load. The runner is the one consumer outside the
+server hexagon, and it sees only the fixed run parameters, never a secret.
+The cost is structural: the worker hexagon imports a package it does not
+own, and rule 10 keeps `shared/expr` free of anything either hexagon would
+not accept.
+
+### Console and clients
+
+```text
+pkg/client/<spec>/                            generated by oapi-codegen from each served bundle
+pkg/sdk/                                      (P24) one client over every spec: API key to token exchange,
+                                              Idempotency-Key, 429 and Retry-After, iterators, typed problems,
+                                              typed stream iterators
+cmd/infraweavectl/                            (P24b) cobra and viper over pkg/sdk only; operator, flows, expr, mcp
+web/console/                                  (P24c) React 19, TypeScript strict, Vite, TanStack Router and
+                                              Query, orval client from the served bundle, Radix, Tailwind 4,
+                                              React Flow, CodeMirror 6; console.go embeds dist/
+internal/adapter/driving/http/console/        (P24c) serves the embedded files at /
+```
+
+Every client, the console included, calls only operations of the served
+OpenAPI bundles; no endpoint exists for one client alone. The SDK wraps the
+generated clients rather than replacing them, `infraweavectl` and the
+provider (in `weaveplatform/terraform-provider-infraweave`) call the API
+only through it, and the console's TypeScript client is generated from the
+same bundle. The console is a driving adapter's static files:
+`http/console` answers `/` from the `embed.FS` that `web/console/console.go`
+declares, falls back to `index.html` for deep links except under `/api/`,
+`/mcp`, `/.well-known/` and the protocol paths, sends the strict content
+security policy, and serves a placeholder page when the binary was built
+without the console. The browser holds the session cookie of decision
+0006, never a token, and the SSE streams update its cache.
+
+`allowedActions` is computed where actions are enforced: each core service
+fills the `AllowedActions` field of the DTO it returns through its driving
+port from the caller's `Decider` and, for a resource with a state machine,
+the transitions `core/run/machine.go` allows from its current state. The
+HTTP adapter copies the field into the response, and the console shows,
+hides or disables controls from it alone. Because every service is in one
+core and every DTO is in `types.go`, the field is one addition per DTO; the
+cost is that `types.go` grows again.
 
 ### Composition root
 
@@ -923,7 +1243,9 @@ internal/app/
   serve.go                                    the serve process mode: router with every driving HTTP adapter
   scheduler.go                                (P7) the scheduler process mode: job handlers, cron, the ticker
   launcher.go                                 (P8) the launcher process mode: internal/worker only
-  agents.go                                   (P19, P26) vcs-agent and flows-agent: internal/worker only
+  agents.go                                   (P19, Flows) vcs-agent and flows-agent: internal/worker only
+  agentcli/                                   cobra tree for cmd/infraweave-agent: launcher, runner, vcs-agent,
+                                              flows-agent; imports internal/worker and internal/shared only
   all.go                                      serve and scheduler in one process
   services.go                                 constructs every core service from driven adapters
   ports.go                                    a struct holding every driving port, for the adapters
@@ -968,8 +1290,10 @@ func Launcher(ctx context.Context, cfg config.Worker) error {
 Process modes are functions over the same constructors. `serve` builds every
 service and every HTTP driving adapter; `scheduler` builds every service and
 the queue handlers, cron and the event fan-out; `all` does both in one process
-for single-node installs and the acceptance suite; `launcher` builds the
-worker hexagon only. Spacelift ships the same split, a server and a drain
+for single-node installs and the acceptance suite; `launcher`, `vcs-agent`
+and `flows-agent` build the worker hexagon only, which is why
+`cmd/infraweave-agent` can link `internal/app/agentcli` and nothing of the
+server. Spacelift ships the same split, a server and a drain
 from one binary
 ([report 24](../reference/24-self-hosted-reference.md#21-process-inventory)),
 and the hexagon expresses it without a structural change: a process mode is a choice
@@ -989,6 +1313,9 @@ api/
   src/worker/*.yaml                           (P8) worker protocol
   oapi-server-worker.yaml                     (P8) output: internal/adapter/driving/http/gen/worker/server.gen.go
   oapi-client-worker.yaml                     (P8) output: internal/worker/adapter/controlplane/client/client.gen.go
+  src/operator/*.yaml, src/flows/*.yaml       (P3b, Flows) the operator and Flows APIs, servers and clients alike
+  proto/flows/app/v1/*.proto                  (Flows) buf generate: pkg/flows/appsdk/appv1
+web/console/src/api/                          (P24c) orval client and Query hooks from the bundles, committed
 internal/tooling/specref/                     reference generation, scaffold, inventory (report 29)
 internal/tooling/stubgen/                     UnimplementedStrict for each generated strict server
 ```
@@ -997,7 +1324,10 @@ internal/tooling/stubgen/                     UnimplementedStrict for each gener
 | --- | --- | --- | --- |
 | deploy | `adapter/driving/http/gen/deploy` | `adapter/driving/http/deploy/<family>`, composed in `deploy/server.go` | `pkg/client/deploy` (public: the provider and `infraweavectl` import it) |
 | worker (P8) | `adapter/driving/http/gen/worker` | `adapter/driving/http/workerapi` | `internal/worker/adapter/controlplane/client` (internal: both ends ship in one binary and version together) |
-| none: hand-written | none | `webhook`, `statebackend`, `registryproto`, `flowsapi`, `mcp` | none |
+| operator (P3b) | `adapter/driving/http/gen/operator` | `adapter/driving/http/operator` | `pkg/client/operator` |
+| flows (Flows) | `adapter/driving/http/gen/flows` | `adapter/driving/http/flowsapi` | `pkg/client/flows` |
+| `App` protobuf (Flows) | none: apps serve it | `pkg/flows/appsdk` for Go apps | `worker/adapter/appgrpc` |
+| none: hand-written | none | `webhook`, `statebackend`, `registryproto`, flow HTTP endpoints, `mcp` | none |
 
 Generated code is entirely an adapter concern; no core package imports a
 generated type. The `deploy` strict interface spans every domain, so each
@@ -1022,7 +1352,10 @@ Each family package holds the driving ports it needs and converts generated
 request objects to the DTOs in `core/port/driving/types.go`. The Makefile's
 `generate` loop runs stubgen against
 `internal/adapter/driving/http/gen/$$s/server.gen.go`, and `verify-generate`
-diffs that directory instead of `internal/server/gen`.
+diffs that directory instead of `internal/server/gen`, plus the App stubs
+and the console's generated client. `pkg/sdk` is hand-written over every
+`pkg/client/<spec>`, so one SDK client spans Deploy, Flows and the operator
+API.
 
 ### Tests and enforcement
 
@@ -1031,12 +1364,16 @@ diffs that directory instead of `internal/server/gen`.
 | Unit tests | beside the code in every core, adapter and worker package |
 | Core service tests | `core/<domain>/*_test.go`, with fakes of driven ports and of the driving ports of other domains |
 | State machine tests | `core/run/machine_test.go`: every pair of report 08's states, allowed or forbidden |
-| Driven adapter contract runs | each adapter's tests call `contract/<port>test.Run`; PostgreSQL and MinIO through testcontainers |
+| Driven adapter contract runs | each adapter's tests call `contract/<port>test.Run`; PostgreSQL through testcontainers; `objecttest` against RustFS, fake-gcs-server, Azurite and local disk, blocking |
+| Shared libraries | `shared/expr`: the function library, rendering and quoting as tables; `shared/seal`: known-answer vectors per format version |
+| FIPS | a blocking CI job runs the suite with `GODEBUG=fips140=only` on a `GOFIPS140=certified` build (decision 0013) |
+| Flows apps | `pkg/flows/appsdk/apptest` runs a fixture app; `buf breaking` against the last release blocks |
+| Console | `tsc --strict`, ESLint strict, Vitest at 95% total and 90% per directory, Playwright against `infraweave all` |
 | Handler tests | `adapter/driving/http/...`, with fakes of driving ports |
 | Worker tests | `worker/core/...` with fake ports; `worker/adapter/docker` against a Docker daemon in CI |
 | Acceptance | `test/acceptance`: godog features against `infraweave all` and a real worker (decision 0016) |
 
-The nine rules are depguard lists in `.golangci.yml`. depguard matches
+The ten rules are depguard lists in `.golangci.yml`. depguard matches
 imports by plain string prefix. In `lax` mode it resolves an import matched
 by both an allow and a deny entry in favour of the longer prefix, so "deny
 the core, allow its ports" is one list; in the default `original` mode the
@@ -1083,24 +1420,31 @@ linters:
             - github.com/weaveplatform/infraweave/internal/core/port
             - github.com/weaveplatform/infraweave/internal/core/kernel
         worker:                                 # rule 6
-          files: ["**/internal/worker/**", "**/internal/app/launcher.go"]
+          files: ["**/internal/worker/**", "**/internal/app/launcher.go", "**/internal/app/agentcli/**"]
           deny:
             - pkg: github.com/weaveplatform/infraweave/internal/core
             - pkg: github.com/weaveplatform/infraweave/internal/adapter
             - pkg: github.com/jackc/pgx
             - pkg: github.com/aws/aws-sdk-go-v2/service/s3
+        shared:                                 # rule 10
+          list-mode: lax
+          files: ["**/internal/shared/**"]
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal/
+          allow:
+            - github.com/weaveplatform/infraweave/internal/shared
 ```
 
 Rule 3's list is written once per core domain, because a deny entry is a
 prefix and the allowed own-domain prefix differs per domain: about six
-lists at P6 and twenty-one at P27. A domain added without its list is not
+lists at P6 and twenty-three at P27. A domain added without its list is not
 an error, only unguarded, so the review checklist names the list. The
 `.golangci.yml` setting `new: true` with `whole-files: true` reports a
 forbidden import in any file a change touches, which covers every new import.
 
 Coverage implications:
 
-- About 25 packages at P1, about 175 at P27.
+- About 25 packages at P1, about 200 at P27.
 - Port-only packages (`core/port/driving`, `core/port/driven`) hold
   interfaces and DTOs; DTO helpers need small tests to clear 90%.
 - `internal/app` and `internal/app/cli` are mostly wiring and are covered by
@@ -1143,6 +1487,25 @@ Coverage implications:
 9. The private worker's next poll claims the confirmed run; `CONFIRMED` to `PREPARING_APPLY` (T33); the launcher starts a fresh container and the executor restores the workspace through a presigned URL.
 10. `executor/phases.go`: apply; the state backend accepts writes because the run is in `APPLYING`; `PREPARING_APPLY` to `APPLYING` to `FINISHED` (T35, T37).
 11. `core/run/service.go`: the terminal transition of a blocking run enqueues `run.schedule` for the stack, so the next queued tracked run can become `READY`; the event fan-out delivers `RunStateChanged` to `core/vcs/feedback.go` (GitHub deployment marked active) and `core/event` (webhooks, and the audit webhook when it includes runs).
+
+### A drift event starts a flow
+
+1. Scheduler process mode, `internal/adapter/driving/scheduler/cron.go`: the ticker claims a due drift detection schedule and calls `driving.Drift.Run`; `internal/core/schedule` checks `drift-detection` through `driving.Entitlements` (billing is off, so every feature is in) and calls `driving.Runs.Trigger` for a proposed drift detection run.
+2. `core/run/trigger.go` and `gates.go`: `QUEUED`, then `READY` on the stack's private pool; the pool's worker claims it in `workerapi/poll.go` and `launcher` opens the sealed spec with `shared/seal`.
+3. `worker/core/executor/phases.go`: plans with the OpenTofu command set and reports changes; `core/run/progress.go` finishes the run and, in the same unit of work, appends `run_updated` and `drift_detected` through `driven.Outbox` (`postgres/outbox`), which enqueues one `events.fanout` job per event.
+4. Scheduler process mode, `adapter/driving/outbox/fanout.go`: hands `drift_detected` to every `driving.Subscriber`; `core/event` finds no notification route, and `core/flows/blocks/deploy.go` finds an enabled Deploy trigger block of kind `drift_detected` whose filter matches the stack's labels.
+5. `blocks/deploy.go`: `flows-engine` is in the entitlement, so in the fan-out's unit of work it inserts the root `flow_events` row, linked to the Deploy event by ID, and one `flows.deliver` job per linked input, keyed `(event, block, input)`; the event's `now` and seed are fixed and stored with it.
+6. Scheduler process mode, `flows` queue: `core/flows/engine/deliver.go` evaluates the next block's input configuration with `shared/expr`, for example the text template `Drift on ${{ outputs.driftTrigger.stack.name }}`, typed against the `drift_detected` schema, under the stored `now` and seed.
+7. The block is an app block, so `deliver.go` calls `driven.AgentTasks.Submit`; `adapter/driven/queue` enqueues `flows.agent_task` for the project's agent pool.
+8. Serve process mode, `adapter/driving/gateway/flows.go`: the replica holding that pool's agent socket claims the job through `driving.FlowTasks.Claim` and pushes a `task` frame carrying the `HandleEvent` request in its JSON encoding.
+9. Flows agent, `worker/core/flowsagent/tasks.go`: reuses the container for that installation and image digest, or starts one through `worker/adapter/appcontainers/docker`, and calls `HandleEvent` over gRPC through `worker/adapter/appgrpc`; a KV read the app makes is a `Host` call relayed as a `call` frame.
+10. The app returns an emitted event as a buffered effect; the agent sends a `result` frame; `gateway/flows.go` calls `driving.FlowTasks.Complete`, and `engine/effects.go` commits the new `flow_events` row, its deliveries and the delivery's completion in one unit of work.
+11. `engine/status.go` (`flows.invocation.status`) recomputes the invocation; `core/event` wakes `driving.EventFeed`, and the Flows events stream in `flowsapi` sends `flows.event` and `invocation_updated` to the console through `http/sse`.
+
+One event model carries the change from the run transition to the flow: the
+Deploy event and the root Flows event share decision 0015's envelope and
+emit path, and the Flows trigger is a subscriber in the same core, not a
+bridge.
 
 ### Adding an IaC vendor: Pulumi (P20)
 
@@ -1189,7 +1552,7 @@ About 20 new files and 6 edited. The domain touches every top-level area of
 
 | Today's package | New location | Notes |
 | --- | --- | --- |
-| `cmd/` (`cmd/README.md`) | `cmd/infraweave/main.go`, `cmd/README.md` | `main.go` builds the cobra root from `internal/app/cli`; `cmd/infraweavectl` arrives with P24 |
+| `cmd/` (`cmd/README.md`) | `cmd/infraweave/main.go`, `cmd/README.md` | `main.go` builds the cobra root from `internal/app/cli`; `cmd/infraweavectl` arrives with P24b and `cmd/infraweave-agent` with the slim build |
 | `api` (`api/doc.go`, `api/deploy_test.go`) | `api` | unchanged; the embedded specs feed the router and the parity test |
 | `api/src/deploy` | `api/src/deploy` | unchanged; families added by `make scaffold`; `api/src/worker` joins at P8 |
 | `api/reference/spacelift` | `api/reference/spacelift` | unchanged; read only by `internal/tooling/specref` and tests |
@@ -1200,14 +1563,14 @@ About 20 new files and 6 edited. The domain touches every top-level area of
 | `internal/server/problem` | `internal/adapter/driving/http/problem` | maps `kernel` error kinds to problem types; slugs stay in decision 0003 and 0022 |
 | `internal/specref` | `internal/tooling/specref` | |
 | `internal/stubgen` | `internal/tooling/stubgen` | |
-| `pkg/client/deploy` | `pkg/client/deploy` | unchanged |
+| `pkg/client/deploy` | `pkg/client/deploy` | unchanged; `pkg/sdk` wraps it from P24 |
 | `tools/openapi-bundle` | `tools/openapi-bundle` | imports `internal/tooling/openapibundle` |
 | `tools/specref` | `tools/specref` | imports `internal/tooling/specref` |
 | `tools/stubgen` | `tools/stubgen` | imports `internal/tooling/stubgen` |
 | `test/acceptance` | `test/acceptance` | gains a feature per domain and a harness that starts `infraweave all` and a worker |
 | `api/oapi-server-deploy.yaml` | same file | `output: internal/adapter/driving/http/gen/deploy/server.gen.go` |
 | `Makefile` | same file | stubgen and `verify-generate` read `internal/adapter/driving/http/gen`; `docs-check` runs `./internal/tooling/docscheck` |
-| `.golangci.yml` | same file | depguard enabled with the nine rules; per-domain lists for rule 3 |
+| `.golangci.yml` | same file | depguard enabled with the ten rules; per-domain lists for rule 3 |
 | `.testcoverage.yml` | same file | `^internal/server/gen/` becomes `^internal/adapter/driving/http/gen/`; adds the internal worker client |
 
 ## Numbers
@@ -1216,15 +1579,15 @@ Estimates, rounded.
 
 | Measure | Today (P1) | End of P27 |
 | --- | --- | --- |
-| Go packages | about 25 (13 today plus `cmd/infraweave`, `app`, `app/cli`, `app/config`, `core/kernel`, two port packages, `core/stack`, `http`, `http/middleware`, `http/deploy`, `http/deploy/stacks`) | about 175 |
-| Top-level directories under `internal/` | 6 (`app`, `buildinfo`, `core`, `adapter`, `tooling`, plus `contract` from P2) | 7 (`worker` from P8) |
-| Dependency rules | 9 | 9 |
-| depguard lists and entries | 9 lists, about 35 entries | about 30 lists (21 for rule 3), about 130 entries |
+| Go packages | about 25 (13 today plus `cmd/infraweave`, `app`, `app/cli`, `app/config`, `core/kernel`, two port packages, `core/stack`, `http`, `http/middleware`, `http/deploy`, `http/deploy/stacks`) | about 200 |
+| Top-level directories under `internal/` | 6 (`app`, `buildinfo`, `core`, `adapter`, `tooling`, plus `contract` from P2) | 8 (`shared` from P2, `worker` from P8) |
+| Dependency rules | 10 | 10 |
+| depguard lists and entries | 10 lists, about 38 entries | about 33 lists (23 for rule 3), about 145 entries |
 | Files touched to add a vendor | about 10 new, 4 edited | same |
 | Files touched to add a domain | about 20 new, 6 edited | same, with the shared files longer each time |
 | Packages a stack update crosses | 6 hand-written: `http/middleware`, `http/deploy/stacks`, `core/port/driving`, `core/stack`, `core/port/driven`, `postgres/stacks`; plus `gen/deploy` | same |
 | Largest package | `adapter/driving/http/gen/deploy`, about 24k generated lines | `gen/deploy`, about 240k generated lines at full scope (725 reference operations); hand-written: `core/run`, about 10k lines |
-| Thin packages at risk under the 90% floor | `app/cli`, `core/port/driving` DTO helpers | about 12: `app`, `app/cli`, the port packages, `gateway`, `worker/adapter/kubernetes`, `cloud/*`, `idp/*`, `ai/*` |
+| Thin packages at risk under the 90% floor | `app/cli`, `core/port/driving` DTO helpers | about 14: `app`, `app/cli`, `app/agentcli`, the port packages, `gateway`, `http/console`, `worker/adapter/kubernetes`, `appcontainers`, `cloud/*`, `idp/*`, `ai/*` |
 
 ## Placement choices and friction
 
@@ -1256,11 +1619,25 @@ Placement choices settled in this file:
   request is where the worker waits, so the claim happens there; the
   scheduler process mode owns everything with no client waiting.
 - **The worker protocol client is internal.** Both ends ship in one binary;
-  `pkg/client/deploy` stays the only public package.
+  the public packages are the API clients, the SDK and the Flows app SDK.
 - **IaC vendor code lives under `iac/`, not `vendor/`.** The go command
   treats any directory named `vendor` as vendored dependencies: `go list
   ./...` skips it and an import of a path through it fails, so
   `core/iac/<name>` and `worker/core/iac/<name>` hold the vendor packages.
+- **Two pure libraries sit outside both hexagons.** `shared/expr` and
+  `shared/seal` hold code the server and the worker side must run
+  identically: the expression language the runner renders workflow
+  templates with, and the sealed formats the launcher opens and the runner
+  writes. Rule 10 keeps them free of ports and domain types.
+- **The feature gate is core, its checks are adapters and services.** The
+  catalogue and entitlement are one core package; the capability check is
+  HTTP middleware, the job skip is the scheduler's driving adapter, and each
+  limit is checked by the core service that creates the counted thing.
+- **Flows apps run in the worker hexagon.** `flows-agent` sits beside the
+  launcher because both run on customer hosts and dial out; the engine and
+  every expression stay in the server's core.
+- **The console is a driving adapter's static files.** It reaches the core
+  only through the public API, like every other client.
 - **Non-REST protocols are driving adapters beside the strict server.**
   Webhooks, the state backend and the registry protocol are hand-written chi
   routes under `adapter/driving/http`, excluded from code generation by the
@@ -1300,10 +1677,19 @@ Where this layout rubs against the system:
 - **Vendors are split across two hexagons.** Adding Pulumi edits
   `core/iac/pulumi` and `worker/core/iac/pulumi`, with the job payload
   as the only contract between them; a mismatch shows only in acceptance.
-- **Flows shares the core without sharing its tenancy.** Organizations and
-  projects are a second tenancy model inside the same core, separated from
-  spaces only by rule 3; extracting Flows into its own service later means
-  splitting the schema stream and `services.go`, not just moving a directory.
+- **Flows shares the core without sharing its tenancy.** Flows projects and
+  their roles are a second access model inside the same core (one
+  organization per account), separated from spaces only by rule 3;
+  extracting Flows into its own service later means splitting the schema
+  stream and `services.go`, not just moving a directory. The same sharing
+  makes Deploy events native Flows triggers.
+- **The worker hexagon is not self-contained.** `shared/expr` and
+  `shared/seal` are imported by both hexagons; a change to either is a
+  change to both sides, released together in one binary but versioned
+  against launchers that customers upgrade later.
+- **Cross-cutting ports multiply.** `driving.Entitlements`,
+  `driving.Surface` and the `AllowedActions` field reach every domain, so
+  every domain's fakes and DTOs grow with them, and `types.go` with them.
 - **The composition root concentrates the system.** `internal/app` is the
   only package that sees everything; at P27 it is the largest hand-written
   coordination point and the first place a merge conflict appears.
