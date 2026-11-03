@@ -6508,13 +6508,19 @@
       "files": [
         "docs/research/reference/26-scope-and-tiers.md",
         "docs/research/reference/30-open-questions.md",
-        "docs/data/open-questions.json"
+        "docs/data/open-questions.json",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
           "file": "docs/research/reference/26-scope-and-tiers.md",
           "present": [
-            "Rows ticked from Starter+ include contexts, custom tasks, stack dependencies",
+            "Rows ticked from Starter+ include contexts, custom tasks, stack dependencies"
+          ]
+        },
+        {
+          "file": "docs/data/capabilities.json",
+          "present": [
             "Not on Starter [G]; session management from Starter+ [C]",
             "Starter+ [C]; Free not stated"
           ]
@@ -6537,14 +6543,20 @@
       "files": [
         "docs/research/reference/26-scope-and-tiers.md",
         "docs/research/reference/30-open-questions.md",
-        "docs/data/open-questions.json"
+        "docs/data/open-questions.json",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
           "file": "docs/research/reference/26-scope-and-tiers.md",
           "present": [
             "the FAQ describes a Starter plan payable monthly by card whose upgrade for a second private worker is Starter+ [C]",
-            "Of a plain Starter tier, only fragments are published",
+            "Of a plain Starter tier, only fragments are published"
+          ]
+        },
+        {
+          "file": "docs/data/capabilities.json",
+          "present": [
             "Starter+ and above: unlimited users; Free: 2 users [C]; Free and Starter have seat limits [D]"
           ]
         },
@@ -6564,11 +6576,12 @@
       "change": "Runs row and `spacelift_task` corrected",
       "status": "folded",
       "files": [
-        "docs/research/reference/26-scope-and-tiers.md"
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/research/reference/26-scope-and-tiers.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "All; tasks paid [D]; targeted replan Business [D]"
           ]
@@ -6583,11 +6596,12 @@
       "change": "Added",
       "status": "folded",
       "files": [
-        "docs/research/reference/26-scope-and-tiers.md"
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/research/reference/26-scope-and-tiers.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "`ADVANCED_SCHEDULING`, `RUN_IGNORED_TRIGGERS`, `RUN_STATE_CHANGE_WEBHOOKS`",
             "All; scheduling Business [D]; dependencies Starter+ [C]; ignored triggers Starter+ [D]"
@@ -6603,14 +6617,20 @@
       "change": "`stub`, `1 [S]`; totals 51 missing and 7 stub",
       "status": "folded",
       "files": [
-        "docs/research/reference/26-scope-and-tiers.md"
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
           "file": "docs/research/reference/26-scope-and-tiers.md",
           "present": [
-            "The operation map records no call; the read reuses the resource's `stack` query [S]",
             "data sources `missing` 51, `stub` 7, `superseded` 4"
+          ]
+        },
+        {
+          "file": "docs/data/capabilities.json",
+          "present": [
+            "The operation map records no call; the read reuses the resource's `stack` query [S]"
           ]
         }
       ]
@@ -6623,11 +6643,12 @@
       "change": "Note and count corrected; still superseded",
       "status": "folded",
       "files": [
-        "docs/research/reference/26-scope-and-tiers.md"
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/research/reference/26-scope-and-tiers.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "Reads `stack` or `module` and the deprecated `StackIntegrations.gcp` field through the resource's read; the operation map records no call"
           ]
@@ -6642,11 +6663,12 @@
       "change": "Notes corrected",
       "status": "folded",
       "files": [
-        "docs/research/reference/26-scope-and-tiers.md"
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/research/reference/26-scope-and-tiers.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "Reads `managedUserGroups`; its `policy` attribute is deprecated",
             "Reads `managedUsers` [S]"
@@ -6681,11 +6703,12 @@
       "change": "Marked [I] from [C]",
       "status": "folded",
       "files": [
-        "docs/research/reference/26-scope-and-tiers.md"
+        "docs/research/reference/26-scope-and-tiers.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/research/reference/26-scope-and-tiers.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "Private workers only [D]; so none on a Free account, which has no private worker [I] from [C]"
           ]
@@ -9567,7 +9590,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "These have no decision. The plan builds what does not depend on the answer and invents no answer.",
-            "P28 task 3 amends report 26",
+            "amend the report 26 cells decision 0021's constraints name",
             "amend the report 26 cells decision 0021's constraints name (section 7.8's MQTT transport, section 7.7's legacy AWS mutations)"
           ]
         }
@@ -9893,11 +9916,12 @@
       "change": "P3b",
       "status": "folded",
       "files": [
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/implementation/capability-roadmap.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "A managed user group: calls `managedUserGroup` and `managedUserGroupDelete`",
             "Logins map IdP groups onto it from P23"
@@ -9911,19 +9935,25 @@
       "change": "Notes name the phases; the reading rule says a row is implemented only when all are",
       "status": "folded",
       "files": [
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
           "file": "docs/implementation/capability-roadmap.md",
           "present": [
-            "A Terraform row is `implemented` only when all of them are done",
+            "A Terraform row is `implemented` only when all of them are done"
+          ]
+        },
+        {
+          "file": "docs/data/capabilities.json",
+          "present": [
             "Also reads `tier` (P3b) and `installationAwsAccountId` (P15)",
             "Also calls `runDiscardAll` (Runs, P10)"
           ]
         },
         {
-          "file": "docs/implementation/capability-roadmap.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "Also reads `defaultPublicWorkerPoolRunnerImage` (P14)",
             "Also calls `stateUploadUrl` (P11) and `stackMigrateVendor` (P20b)",
@@ -9938,11 +9968,12 @@
       "change": "Added",
       "status": "folded",
       "files": [
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
-          "file": "docs/implementation/capability-roadmap.md",
+          "file": "docs/data/capabilities.json",
           "present": [
             "P4b (`stackRoleBindings`), P6, P7"
           ]
@@ -9955,17 +9986,21 @@
       "change": "Slack channel access rules, P18",
       "status": "folded",
       "files": [
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/capabilities.json"
       ],
       "evidence": [
         {
           "file": "docs/implementation/capability-roadmap.md",
+          "absent": [
+            "IdP group mappings are SSO's"
+          ]
+        },
+        {
+          "file": "docs/data/capabilities.json",
           "present": [
             "group integrations give a Slack channel access rules (report 14 section 4.3)",
             "P4b (role bindings), P18 (group integrations)"
-          ],
-          "absent": [
-            "IdP group mappings are SSO's"
           ]
         }
       ]
@@ -9976,11 +10011,12 @@
       "change": "Replaced by a root `space-admin` binding, P4b",
       "status": "folded",
       "files": [
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/supersessions.json"
       ],
       "evidence": [
         {
-          "file": "docs/implementation/capability-roadmap.md",
+          "file": "docs/data/supersessions.json",
           "present": [
             "A `space-admin` role binding on the account's top space",
             "Decision 0006 rejects the field, and the key's `admin` reads the binding"
@@ -10487,7 +10523,8 @@
       "status": "folded",
       "files": [
         "docs/research/decisions/0021-capability-scope-and-supersession.md",
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/supersessions.json"
       ],
       "evidence": [
         {
@@ -10498,7 +10535,7 @@
           ]
         },
         {
-          "file": "docs/implementation/capability-roadmap.md",
+          "file": "docs/data/supersessions.json",
           "present": [
             "accepted and ignored, it reads back `false`",
             "Live in the schema and no longer used: always an empty string"
@@ -11337,7 +11374,7 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.yaml` with every capability",
+            "4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue_gen.go`, which `make generate`",
             "for the installation-level actions only: organizations, tiers, the billing switch",
             "Entitlement belongs to the organization: its tier plus its grants"
           ],
@@ -11523,7 +11560,8 @@
       "change": "Feature and seeded-tier columns, a feature catalogue section with capabilities, options, limits and the billing switch; P18c; `public-worker-slots`; the register corrected",
       "status": "folded",
       "files": [
-        "docs/implementation/capability-roadmap.md"
+        "docs/implementation/capability-roadmap.md",
+        "docs/data/features.json"
       ],
       "evidence": [
         {
@@ -11541,8 +11579,13 @@
         {
           "file": "docs/implementation/capability-roadmap.md",
           "present": [
-            "runs in flight on the public worker pool; a run beyond it waits",
             "### Deprecated but served"
+          ]
+        },
+        {
+          "file": "docs/data/features.json",
+          "present": [
+            "runs in flight on the public worker pool; a run beyond it waits"
           ]
         }
       ]

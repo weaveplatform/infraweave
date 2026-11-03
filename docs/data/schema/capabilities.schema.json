@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "capabilities.schema.json",
+  "title": "Every capability of the Spacelift reference, with infraweave's plan for it",
+  "description": "One record per tag of api/reference/spacelift/spacelift.openapi.yaml, per untagged operation, per resource and data source of terraform-provider-spacelift v1.57.0, and per BillingTierFeature value. spacelift holds report 26's research: the cells are markdown, and the labels [D], [G], [B], [S], [RN], [C] and [I] are report 26's source labels. infraweave holds the capability roadmap's columns: the feature that gates the row, its lowest seeded tier, the phases of docs/implementation/plan.md that build it and its availability state.",
+  "x-id-pattern": "tag:[A-Z][A-Za-z ]*[A-Za-z]|operation:[a-z][A-Za-z]*|resource:spacelift_[a-z0-9_]+|data-source:spacelift_[a-z0-9_]+|tier-feature:[A-Z][A-Z_]*[A-Z]",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "$defs": {
+    "phase": {
+      "description": "A phase of docs/implementation/plan.md, or none for a superseded row.",
+      "type": "string",
+      "pattern": "^(P[0-9]+[a-z]?|none)$"
+    },
+    "spacelift": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inventory": {
+          "description": "Tags: the report that lists the tag's operations one by one.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "owningReport": {
+          "description": "The report that records the behaviour; the first named owns most of it.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "plan": {
+          "description": "The lowest SaaS plan that offers the capability, in report 26 section 1.3's vocabulary.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "tierFeatures": {
+          "description": "BillingTierFeature values that reports 03 and 04 pair with the row's operations, by name.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "rootFields": {
+          "description": "Terraform rows: the count of GraphQL root fields the provider calls.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "meaning": {
+          "description": "BillingTierFeature values: what the value gates.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "selfHosted": {
+          "description": "BillingTierFeature values: what self-hosted and FedRAMP offer.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "operationsTagged": {
+          "description": "BillingTierFeature values: the operations reports 03 and 04 pair with the value; zero means no operation's name matches it.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "notes": {"$ref": "common.schema.json#/$defs/markdown"}
+      }
+    },
+    "infraweave": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "description": "The features of docs/data/features.json that gate the row or cover the value.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "lowestTier": {
+          "description": "The lowest seeded tier of each feature the row names.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "phase": {
+          "description": "The owning phase: the one whose exit makes the row implemented.",
+          "$ref": "#/$defs/phase"
+        },
+        "apiPhase": {
+          "description": "Terraform rows: the phase that serves the core operations the row calls.",
+          "$ref": "#/$defs/phase"
+        },
+        "providerPhase": {
+          "description": "Terraform rows: the phase that builds the row in infraweave's provider.",
+          "$ref": "#/$defs/phase"
+        },
+        "also": {
+          "description": "Tags: the phases that deliver some of the tag's operations, with what each delivers.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "state": {
+          "description": "The availability state of decision 0021 that the record claims; at the research baseline, 2026-10-28, report 26's computed state.specref parity --states --check fails when it claims more than the passing scenarios show.",
+          "enum": ["implemented", "partial", "stub", "missing", "superseded"]
+        },
+        "delivers": {
+          "description": "BillingTierFeature values: what the phase delivers.",
+          "$ref": "common.schema.json#/$defs/markdown"
+        },
+        "notes": {"$ref": "common.schema.json#/$defs/markdown"}
+      }
+    }
+  },
+  "properties": {
+    "$schema": {"const": "schema/capabilities.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "infraweave"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"enum": ["tag", "operation", "resource", "data-source", "tier-feature"]},
+          "ops": {
+            "description": "Tags: the operations the reference files under the tag.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "number": {
+            "description": "BillingTierFeature values: the value's position in the enum.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "spacelift": {"$ref": "#/$defs/spacelift"},
+          "infraweave": {"$ref": "#/$defs/infraweave"}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"kind": {"const": "tag"}}},
+            "then": {
+              "required": ["ops", "spacelift"],
+              "properties": {
+                "id": {"pattern": "^tag:"},
+                "spacelift": {"required": ["inventory", "owningReport", "plan", "tierFeatures"]},
+                "infraweave": {"required": ["feature", "lowestTier", "phase", "state"]}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "operation"}}},
+            "then": {
+              "properties": {
+                "id": {"pattern": "^operation:"},
+                "infraweave": {"required": ["feature", "lowestTier", "phase"]}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"enum": ["resource", "data-source"]}}},
+            "then": {
+              "required": ["spacelift"],
+              "properties": {
+                "id": {"pattern": "^(resource|data-source):"},
+                "spacelift": {"required": ["owningReport", "plan", "tierFeatures", "rootFields"]},
+                "infraweave": {"required": ["feature", "lowestTier", "apiPhase", "providerPhase", "state"]}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "resource"}}},
+            "then": {"properties": {"id": {"pattern": "^resource:"}}}
+          },
+          {
+            "if": {"properties": {"kind": {"const": "data-source"}}},
+            "then": {"properties": {"id": {"pattern": "^data-source:"}}}
+          },
+          {
+            "if": {"properties": {"kind": {"const": "tier-feature"}}},
+            "then": {
+              "required": ["number", "spacelift"],
+              "properties": {
+                "id": {"pattern": "^tier-feature:"},
+                "spacelift": {"required": ["meaning", "plan", "operationsTagged", "owningReport"]},
+                "infraweave": {"required": ["feature", "phase", "delivers"]}
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

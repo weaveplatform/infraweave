@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "supersessions.schema.json",
+  "title": "Interfaces infraweave leaves out as superseded, and deprecated ones it serves",
+  "description": "A superseded record (SUP-) is an interface decision 0021's supersession test leaves out: S1 retired, S2 schema-deprecated with a replacement infraweave serves, S2a a shadowed V1 twin, S3 deprecated with a named replacement by the source that owns an interface the schema does not hold. No phase builds it; replacementPhase names the phase that serves the need instead. Report 26 section 7 holds the evidence. A served record (DEP-) stays served and carries deprecated: true, because the schema or a decision keeps it live.",
+  "x-id-pattern": "(SUP|DEP)-[0-9]{2}",
+  "x-cite-pattern": "\\b(SUP|DEP)-[0-9]{2}\\b",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "schema/supersessions.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "treatment", "interface"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "treatment": {"enum": ["superseded", "served"]},
+          "interface": {"$ref": "common.schema.json#/$defs/markdown"},
+          "kind": {
+            "description": "What sort of interface it is: an operation, a field, an enum value, a provider resource.",
+            "type": "string",
+            "minLength": 1
+          },
+          "rule": {
+            "description": "The supersession rule of decision 0021 that holds, and how.",
+            "type": "string",
+            "pattern": "^S(1|2a?|3)\\b"
+          },
+          "replacement": {"$ref": "common.schema.json#/$defs/markdown"},
+          "replacementPhase": {
+            "description": "The phases that serve the replacement, or none.",
+            "type": "string",
+            "pattern": "^(none|P[0-9]+[a-z]?(, P[0-9]+[a-z]?)*)$"
+          },
+          "evidence": {"$ref": "common.schema.json#/$defs/markdown"},
+          "phase": {
+            "description": "The phase that serves the deprecated interface.",
+            "type": "string",
+            "pattern": "^P[0-9]+[a-z]?$"
+          },
+          "why": {"$ref": "common.schema.json#/$defs/markdown"}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"treatment": {"const": "superseded"}}},
+            "then": {
+              "required": ["kind", "rule", "replacement", "replacementPhase", "evidence"],
+              "properties": {"id": {"pattern": "^SUP-"}},
+              "not": {"anyOf": [{"required": ["phase"]}, {"required": ["why"]}]}
+            }
+          },
+          {
+            "if": {"properties": {"treatment": {"const": "served"}}},
+            "then": {
+              "required": ["phase", "why"],
+              "properties": {"id": {"pattern": "^DEP-"}},
+              "not": {"anyOf": [{"required": ["kind"]}, {"required": ["rule"]}, {"required": ["replacement"]}, {"required": ["replacementPhase"]}, {"required": ["evidence"]}]}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

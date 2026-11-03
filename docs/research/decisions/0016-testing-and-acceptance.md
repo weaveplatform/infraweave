@@ -180,8 +180,8 @@ operation is both. "Missing" is reported, not failed: it is the backlog.
 A scenario names the operations it exercises with tags
 `@op:<operationId>`. `specref parity --states` combines the parity outcome
 with the last acceptance result (godog's JSON report in
-`cover/accept/cucumber.json`) and computes report 26's state per tag and
-per Terraform row:
+`cover/accept/cucumber.json`) and computes the state of each tag and
+Terraform record of [capabilities.json](../../data/capabilities.json):
 
 The three-scenario evidence rule decides `implemented`:
 
@@ -194,11 +194,11 @@ The three-scenario evidence rule decides `implemented`:
 | `superseded` | as in the parity table |
 
 A Terraform resource or data source is `implemented` only when the
-operations it calls are and its provider scenario (below) passes. Report
-26's tables stay hand-maintained (report 30, PD-12);
-`specref parity --states --check docs/research/reference/26-scope-and-tiers.md`
-fails when a state cell disagrees with the computed one, so the report
-cannot claim more than the tests show. The scope behind the states is
+operations it calls are and its provider scenario (below) passes. The
+register's states stay hand-maintained (report 30, PD-12);
+`specref parity --states --check docs/data/capabilities.json` fails when a
+recorded state disagrees with the computed one, so the register cannot
+claim more than the tests show. The scope behind the states is
 [0021](0021-capability-scope-and-supersession.md)'s.
 
 ### The Terraform provider parity oracle
@@ -346,8 +346,8 @@ coverage it would contribute is not waived.
 - **Template databases.** A fresh database per scenario costs one
   `CREATE DATABASE … TEMPLATE`, far less than migrating each time, and
   removes cross-scenario interference without serializing the suite.
-- **`@op:` tags for states.** Report 26's states would otherwise be a
-  claim; tying them to passing scenarios makes the state column a test
+- **`@op:` tags for states.** The recorded states would otherwise be a
+  claim; tying them to passing scenarios makes each recorded state a test
   result, and the three-scenario rule stops a happy-path test from
   certifying an operation whose denials and failures are untested.
 - **Rejected: sqlmock or an in-memory store for acceptance.** They accept

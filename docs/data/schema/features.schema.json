@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "features.schema.json",
+  "title": "The feature catalogue",
+  "description": "Every feature of infraweave, decision 0021's catalogue and its one source: make generate writes internal/features/catalogue_gen.go from it. A capability gates a set of operations, an option one value of a field, a limit a quantity, and the switch turns entitlement enforcement on for the installation. A feature is in every seeded tier from lowestTier up; a limit's tier with no value has no limit. The id is the name features.disabled, the tier object and grants carry.",
+  "x-id-pattern": "[a-z][a-z0-9]*(-[a-z0-9]+)*",
+  "type": "object",
+  "required": ["$schema", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "schema/features.schema.json"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "phase"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"enum": ["capability", "option", "limit", "switch"]},
+          "gates": {
+            "description": "For a capability or the switch: what it gates.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "field": {
+            "description": "For an option: the field and the value it gates.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "unit": {
+            "description": "For a limit: what it counts.",
+            "$ref": "common.schema.json#/$defs/markdown"
+          },
+          "lowestTier": {
+            "description": "The smallest seeded tier that holds the feature.",
+            "enum": ["Free", "Starter", "Starter+", "Business", "Enterprise"]
+          },
+          "values": {
+            "description": "For a limit: its value in each seeded tier. A tier with no value has no limit.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "free": {"type": "integer", "minimum": 0},
+              "starter": {"type": "integer", "minimum": 0},
+              "starterPlus": {"type": "integer", "minimum": 0},
+              "business": {"type": "integer", "minimum": 0},
+              "enterprise": {"type": "integer", "minimum": 0}
+            }
+          },
+          "requires": {
+            "description": "Features that must be in an entitlement for this one to be.",
+            "type": "array",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"}
+          },
+          "phase": {
+            "description": "The owning phase of docs/implementation/plan.md.",
+            "type": "string",
+            "pattern": "^P[0-9]+[a-z]?$"
+          },
+          "notes": {"$ref": "common.schema.json#/$defs/markdown"}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"kind": {"const": "capability"}}},
+            "then": {
+              "required": ["gates", "lowestTier"],
+              "not": {"anyOf": [{"required": ["field"]}, {"required": ["unit"]}, {"required": ["values"]}]}
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "option"}}},
+            "then": {
+              "required": ["field", "lowestTier"],
+              "not": {"anyOf": [{"required": ["gates"]}, {"required": ["unit"]}, {"required": ["values"]}]}
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "limit"}}},
+            "then": {
+              "required": ["unit", "values"],
+              "not": {"anyOf": [{"required": ["gates"]}, {"required": ["field"]}, {"required": ["lowestTier"]}]}
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "switch"}}},
+            "then": {
+              "required": ["gates"],
+              "not": {"anyOf": [{"required": ["field"]}, {"required": ["unit"]}, {"required": ["values"]}, {"required": ["lowestTier"]}, {"required": ["requires"]}]}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

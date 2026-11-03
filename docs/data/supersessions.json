@@ -1,0 +1,351 @@
+{
+  "$schema": "schema/supersessions.schema.json",
+  "records": [
+    {
+      "id": "SUP-01",
+      "treatment": "superseded",
+      "interface": "`ACCESS` policies and the `STACK_ACCESS` alias, with `BillingTierFeature.ACCESS_POLICIES`",
+      "kind": "Policy type",
+      "rule": "S1",
+      "replacement": "Space role bindings",
+      "replacementPhase": "P4b",
+      "evidence": "Disabled for every account on 2026-05-30; `STACK_ACCESS` deprecated on 2026-10-20 (report 26 sections 7.3 and 7.4)"
+    },
+    {
+      "id": "SUP-02",
+      "treatment": "superseded",
+      "interface": "`RunState.PENDING`",
+      "kind": "Enum value",
+      "rule": "S1",
+      "replacement": "None",
+      "replacementPhase": "none",
+      "evidence": "\"No longer used\", 2026-10-20 (report 26 section 7.8)"
+    },
+    {
+      "id": "SUP-03",
+      "treatment": "superseded",
+      "interface": "The `STACK_WEBHOOK_CREATE`, `STACK_WEBHOOK_UPDATE` and `STACK_WEBHOOK_DELETE` actions",
+      "kind": "Actions",
+      "rule": "S1",
+      "replacement": "None",
+      "replacementPhase": "none",
+      "evidence": "\"Disabled. Do not use.\" in the schema (report [19](../research/reference/19-events-notifications-audit.md) section 7)"
+    },
+    {
+      "id": "SUP-04",
+      "treatment": "superseded",
+      "interface": "`changeLLMVendor`, `llmVendor`",
+      "kind": "Operations",
+      "rule": "S1",
+      "replacement": "None",
+      "replacementPhase": "none",
+      "evidence": "Removed on 2026-08-21 (report 26 section 7.8)"
+    },
+    {
+      "id": "SUP-05",
+      "treatment": "superseded",
+      "interface": "`TERRAFORM_PLAN`",
+      "kind": "Policy type alias",
+      "rule": "S2",
+      "replacement": "`PLAN`",
+      "replacementPhase": "P13",
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.3)"
+    },
+    {
+      "id": "SUP-06",
+      "treatment": "superseded",
+      "interface": "`TASK_RUN`",
+      "kind": "Policy type alias",
+      "rule": "S2",
+      "replacement": "`TASK`",
+      "replacementPhase": "P13b",
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.3)"
+    },
+    {
+      "id": "SUP-07",
+      "treatment": "superseded",
+      "interface": "`policyCreate`, `policyUpdate`",
+      "kind": "Operations",
+      "rule": "S2",
+      "replacement": "`policyCreatev2`, `policyUpdatev2`",
+      "replacementPhase": "P13",
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-08",
+      "treatment": "superseded",
+      "interface": "`policySimulate`",
+      "kind": "Operation",
+      "rule": "S2",
+      "replacement": "`policySimulatev2`",
+      "replacementPhase": "P13b",
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-09",
+      "treatment": "superseded",
+      "interface": "The versioned-blueprint family: `blueprintVersionedGroup*`, `blueprintVersion*`, `blueprintDeployment*`, `searchBlueprintDeployments`, `searchBlueprintVersionedGroups`, `searchBlueprintVersionedGroupsSuggestions`, `Stack.blueprintDeployment`",
+      "kind": "Operations and field",
+      "rule": "S2",
+      "replacement": "Templates, template versions and template deployments",
+      "replacementPhase": "P21",
+      "evidence": "Deprecated on 2026-07-16; three members removed on 2026-10-20 (report 26 section 7.2)"
+    },
+    {
+      "id": "SUP-10",
+      "treatment": "superseded",
+      "interface": "`stackIntegrationGcpCreate`, `stackIntegrationGcpDelete`, `StackIntegrations.gcp`",
+      "kind": "Operations and field",
+      "rule": "S2",
+      "replacement": "The OIDC federation token",
+      "replacementPhase": "P15",
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.6)"
+    },
+    {
+      "id": "SUP-11",
+      "treatment": "superseded",
+      "interface": "`ApiKeyInput.admin`",
+      "kind": "Input field",
+      "rule": "S2, through the changelog",
+      "replacement": "A `space-admin` role binding on the account's top space",
+      "replacementPhase": "P4b",
+      "evidence": "Deprecated in the changelog on 2026-07-16 (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 8.1; decision 0021). Decision 0006 rejects the field, and the key's `admin` reads the binding ([DV-013](../implementation/deviations.md#identity-and-access-decisions-0006-and-0007))"
+    },
+    {
+      "id": "SUP-12",
+      "treatment": "superseded",
+      "interface": "`contextCreate`, `contextUpdate`, `managedUserGroupCreate`, `managedUserGroupUpdate`, `managedUserInvite`",
+      "kind": "Operations",
+      "rule": "S2",
+      "replacement": "Their `V2` forms",
+      "replacementPhase": "P6, P3b",
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-13",
+      "treatment": "superseded",
+      "interface": "`sharedModules`",
+      "kind": "Operation",
+      "rule": "S2",
+      "replacement": "`sharedModulesV2`",
+      "replacementPhase": "P17",
+      "evidence": "Deprecated on 2026-08-21 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-14",
+      "treatment": "superseded",
+      "interface": "`revision`, `revisionCreate`, `searchRevisions`, `searchRevisionsSuggestions`",
+      "kind": "Operations",
+      "rule": "S2",
+      "replacement": "`repoCommit`, `repoCommitCreate`, `searchRepoCommits`, `searchRepoCommitsSuggestions`",
+      "replacementPhase": "P19b",
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-15",
+      "treatment": "superseded",
+      "interface": "`runPrioritizeSet`, `Run.isPrioritized`",
+      "kind": "Operation and field",
+      "rule": "S2",
+      "replacement": "`runPrioritySet`, `Run.priorityPreset`",
+      "replacementPhase": "P7",
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-16",
+      "treatment": "superseded",
+      "interface": "`acceptedTermsAndConditionsAI`, `latestTermsAndConditionsVersionAI`, `bedrockInferenceProfiles`",
+      "kind": "Operations",
+      "rule": "S2",
+      "replacement": "`aiTermsAccepted`, `aiTermsLatestVersion` (the reference's `spaceliftIntelligenceTermsAccepted` and `spaceliftIntelligenceTermsLatestVersion`), `availableAIModels`",
+      "replacementPhase": "P25",
+      "evidence": "Deprecated on 2026-08-27 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-17",
+      "treatment": "superseded",
+      "interface": "The mutation form of `templateVersionParseTemplate`, and `blueprintVersionParseTemplate`",
+      "kind": "Operations",
+      "rule": "S2",
+      "replacement": "The `templateVersionParseTemplate` query",
+      "replacementPhase": "P21",
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.1)"
+    },
+    {
+      "id": "SUP-18",
+      "treatment": "superseded",
+      "interface": "`BillingTierFeature.AUDIT_WEBHOOKS`",
+      "kind": "Enum value",
+      "rule": "S2",
+      "replacement": "`AUDITING`",
+      "replacementPhase": "P18b",
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-19",
+      "treatment": "superseded",
+      "interface": "The flat hook fields on `Stack` (`afterApply`, `beforeInit` and the rest)",
+      "kind": "Fields",
+      "rule": "S2",
+      "replacement": "`Stack.hooks`",
+      "replacementPhase": "P5",
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-20",
+      "treatment": "superseded",
+      "interface": "`bitbucketCloudIntegrationCreate`, `bitbucketCloudIntegrationUpdate`",
+      "kind": "Operations",
+      "rule": "S2a",
+      "replacement": "Their `V2` forms",
+      "replacementPhase": "P19",
+      "evidence": "The reference routes the `V2` twin (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-21",
+      "treatment": "superseded",
+      "interface": "`moduleUpdate`, `terraformProviderVersionRegisterPlatform`",
+      "kind": "Operations",
+      "rule": "S2a",
+      "replacement": "Their `V2` forms",
+      "replacementPhase": "P17, P17b",
+      "evidence": "The reference routes the `V2` twin (report 26 section 7.5)"
+    },
+    {
+      "id": "SUP-22",
+      "treatment": "superseded",
+      "interface": "`spacelift_aws_role`, `spacelift_stack_aws_role` (resources and data sources)",
+      "kind": "Provider",
+      "rule": "S3",
+      "replacement": "`spacelift_aws_integration` and `spacelift_aws_integration_attachment`",
+      "replacementPhase": "P15",
+      "evidence": "Deprecated in provider v1.57.0 (report 26 section 7.7)"
+    },
+    {
+      "id": "SUP-23",
+      "treatment": "superseded",
+      "interface": "`spacelift_gcp_service_account`, `spacelift_stack_gcp_service_account` (resources and data sources)",
+      "kind": "Provider",
+      "rule": "S3",
+      "replacement": "The OIDC federation token",
+      "replacementPhase": "P15",
+      "evidence": "Deprecated in provider v1.57.0 and calls the S2 mutations above (report 26 section 7.6)"
+    },
+    {
+      "id": "SUP-24",
+      "treatment": "superseded",
+      "interface": "The `policy` block of `spacelift_user` and `spacelift_idp_group_mapping`",
+      "kind": "Provider",
+      "rule": "S3",
+      "replacement": "`spacelift_role_attachment`",
+      "replacementPhase": "P4b",
+      "evidence": "Deprecated in provider v1.57.0 (report 26 section 7.4)"
+    },
+    {
+      "id": "SUP-25",
+      "treatment": "superseded",
+      "interface": "The login policy `space_admin`, `space_write` and `space_read` rules",
+      "kind": "Policy rules",
+      "rule": "S3",
+      "replacement": "The login policy `roles` rule",
+      "replacementPhase": "P13b",
+      "evidence": "Deprecated in the docs (report 26 section 7.4)"
+    },
+    {
+      "id": "SUP-26",
+      "treatment": "superseded",
+      "interface": "`/intent/mcp`",
+      "kind": "Endpoint",
+      "rule": "S3",
+      "replacement": "`/mcp`",
+      "replacementPhase": "P25",
+      "evidence": "Merged into `/mcp` on 2026-04-13, announced for removal (report [22](../research/reference/22-intelligence.md) section 7; decision [0019](../research/decisions/0019-ai-provider-boundary.md))"
+    },
+    {
+      "id": "SUP-27",
+      "treatment": "superseded",
+      "interface": "The standalone `spacelift-intent` stdio server",
+      "kind": "Client",
+      "rule": "S3",
+      "replacement": "The hosted `intent` tool, with `infraweavectl mcp` for stdio clients",
+      "replacementPhase": "P25b, P24b",
+      "evidence": "The repository is archived and its README names the hosted tools (decision 0019)"
+    },
+    {
+      "id": "SUP-28",
+      "treatment": "superseded",
+      "interface": "The MQTT worker transport, its built-in broker and the IoT Core endpoint",
+      "kind": "Protocol",
+      "rule": "S3",
+      "replacement": "HTTP long-poll",
+      "replacementPhase": "P8",
+      "evidence": "Long-poll added 2026-07-20, IoT Core sunset on 2027-03-30, broker deprecated in self-hosted v7.1.0 (decisions [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) and 0021; report 26 section 7.8 still keeps it, and P28 amends it)"
+    },
+    {
+      "id": "SUP-29",
+      "treatment": "superseded",
+      "interface": "`pulumi-spacelift`",
+      "kind": "Client",
+      "rule": "S3",
+      "replacement": "Pulumi's Terraform bridge over infraweave's provider",
+      "replacementPhase": "P24",
+      "evidence": "Retirement set for 2026-12-10 (report 26 section 7.8)"
+    },
+    {
+      "id": "DEP-01",
+      "treatment": "served",
+      "interface": "`stackIntegrationAwsCreate`, `stackIntegrationAwsDelete`",
+      "phase": "P15",
+      "why": "Live in the schema; `AwsIntegration.legacy` is `true` for integrations they create"
+    },
+    {
+      "id": "DEP-02",
+      "treatment": "served",
+      "interface": "`TerraformWorkflowTool.OPEN_TOFU`, for stacks",
+      "phase": "P5",
+      "why": "Live in the schema; modules and Terragrunt still need it"
+    },
+    {
+      "id": "DEP-03",
+      "treatment": "served",
+      "interface": "`INITIALIZATION` and `TASK` policy types",
+      "phase": "P13b",
+      "why": "Deprecated in the docs, live in the schema"
+    },
+    {
+      "id": "DEP-04",
+      "treatment": "served",
+      "interface": "The `feature:add_plan_pr_comment` stack label",
+      "phase": "P12",
+      "why": "Decision [0012](../research/decisions/0012-vcs-integration-model.md) posts its comments beside notification policy `pull_request` rules"
+    },
+    {
+      "id": "DEP-05",
+      "treatment": "served",
+      "interface": "Per-stack and per-module webhooks, the per-stack Slack subscription",
+      "phase": "P18",
+      "why": "In scope, on the same delivery path as named webhooks (decision [0015](../research/decisions/0015-events-notifications-webhooks-audit.md))"
+    },
+    {
+      "id": "DEP-06",
+      "treatment": "served",
+      "interface": "`blueprintWithGroupCreate`, `blueprintWithGroupUpdate`, `blueprintWithGroupDelete`",
+      "phase": "P21",
+      "why": "Carry no deprecation; whether Spacelift still supports them is unverified (report 26 section 7.2)"
+    },
+    {
+      "id": "DEP-07",
+      "treatment": "served",
+      "interface": "The stack `administrative` flag",
+      "phase": "P5",
+      "why": "Live in the schema but disabled by Spacelift on 2026-06-01 (report 26 section 7.4): accepted and ignored, it reads back `false`, and a space admin role binding (P4b) gives what it gave"
+    },
+    {
+      "id": "DEP-08",
+      "treatment": "served",
+      "interface": "`WebhooksIntegration.secret`",
+      "phase": "P18",
+      "why": "Live in the schema and no longer used: always an empty string ([0015](../research/decisions/0015-events-notifications-webhooks-audit.md))"
+    }
+  ]
+}
