@@ -46,7 +46,7 @@ record is missing from this index or its status here differs from its own.
 | 0016 | [Testing and acceptance against real dependencies](0016-testing-and-acceptance.md) | Accepted |
 | 0017 | [Observability and health](0017-observability-and-health.md) | Proposed |
 | 0018 | [Flows engine, apps and agents](0018-flows-runtime.md) | Accepted |
-| 0019 | [AI provider boundary](0019-ai-provider-boundary.md) | Proposed |
+| 0019 | [AI provider boundary](0019-ai-provider-boundary.md) | Accepted |
 | 0020 | [Reference deployments and packaging](0020-reference-deployments-and-packaging.md) | Accepted |
 | 0021 | [Capability scope, features and tiers](0021-capability-scope-and-supersession.md) | Accepted |
 | 0022 | [Served API errors, update semantics and input strictness](0022-api-errors-and-update-semantics.md) | Accepted |
