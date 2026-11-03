@@ -229,19 +229,32 @@ func TestUnitCheckFindings(t *testing.T) {
 			where: "api/reference/spacelift/spacelift.openapi.yaml:1",
 		},
 		{
-			name: "unverified report not linked from report 30",
+			name: "unverified report not listed by an open question",
 			edit: func(m fstest.MapFS) {
+				openQuestions(m, "docs/research/reference/01-a.md")
 				m["docs/research/reference/30-open-questions.md"] = file(goodReport +
-					"\n[01](01-a.md) [web](https://example.com/02-b.md) [self](#sources) `[02](02-b.md)`\n" +
-					"\n```\n[02](02-b.md)\n```\n\nOpen claims stay *(unverified)*.\n")
+					"\nOpen claims stay *(unverified)*.\n")
 				m["docs/research/reference/01-a.md"] = file(
-					goodReport + "\nIt is *(unverified)*.\n",
+					goodReport + "\nIt is *(unverified)* (C1).\n",
 				)
 				m["docs/research/reference/02-b.md"] = file(goodReport +
 					"\nThe `*(unverified)*` marker.\n\n```\n*(unverified)*\n```\n\nIt is *(unverified)*.\n\nSo is this *(unverified)*.\n")
 			},
-			want:  "report marks a claim *(unverified)* but 30-open-questions.md does not link it",
+			want:  "report marks a claim *(unverified)* but no record of docs/data/open-questions.json lists it",
 			where: "docs/research/reference/02-b.md:17",
+		},
+		{
+			name: "open questions not JSON",
+			edit: func(m fstest.MapFS) {
+				openQuestions(m)
+				// Without a register that uses it, the schema would be a
+				// second finding.
+				delete(m, "docs/data/schema/open-questions.schema.json")
+				m[openRegister] = file("{")
+				m["docs/research/reference/02-b.md"] = file(goodReport + "\nIt is *(unverified)*.\n")
+			},
+			want:  "not JSON",
+			where: "docs/data/open-questions.json:1",
 		},
 		{
 			name: "option heading differs",
@@ -379,15 +392,31 @@ func TestUnitCheckFindings(t *testing.T) {
 	}
 }
 
-// TestUnitCheckScopeAndOpenQuestions covers reports 26 and 30 when they
-// satisfy their checks, and report 26 without a spec to check it against.
+// openSchema is a minimal open-questions schema: records are cited as C<n>
+// and name the reports that must cite them.
+const openSchema = `{"x-id-pattern": "C[0-9]+", "x-cite-pattern": "\\bC[0-9]+\\b", "x-cited-in": "reports"}`
+
+// openQuestions adds an open-questions register whose one record, C1, lists
+// reports.
+func openQuestions(m fstest.MapFS, reports ...string) {
+	m["docs/data/schema/common.schema.json"] = file(commonSchema)
+	m["docs/data/schema/open-questions.schema.json"] = file(openSchema)
+	m[openRegister] = file(`{"$schema": "schema/open-questions.schema.json", "records": [{"id": "C1", "reports": ["` +
+		strings.Join(reports, `", "`) + `"]}]}`)
+}
+
+// TestUnitCheckScopeAndOpenQuestions covers reports 26 and 30 and the
+// open-questions register when they satisfy their checks, and report 26
+// without a spec to check it against. Report 30 defines the marker, so no
+// record lists it.
 func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
 	m := tree()
 	m["docs/research/reference/26-scope-and-tiers.md"] = file(goodReport + "\n| Stacks | Runs |\n")
 	m["docs/research/reference/30-open-questions.md"] = file(
-		goodReport + "\n[01](./01-a.md#sources)\n",
+		goodReport + "\n| *(unverified)* | A claim no primary source confirms |\n",
 	)
-	m["docs/research/reference/01-a.md"] = file(goodReport + "\nIt is *(unverified)*.\n")
+	openQuestions(m, "docs/research/reference/01-a.md")
+	m["docs/research/reference/01-a.md"] = file(goodReport + "\nIt is *(unverified)* (C1).\n")
 	for name, withSpec := range map[string]bool{"with spec": true, "without spec": false} {
 		t.Run(name, func(t *testing.T) {
 			if withSpec {

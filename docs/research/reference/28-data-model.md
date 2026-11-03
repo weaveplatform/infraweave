@@ -112,7 +112,7 @@ erDiagram
 | Actor to bindings | one to zero or more | `ManagedUser.userRoleBindings`, `ManagedUserGroup.userRoleBindings`, `ApiKey.apiKeyRoleBindings`, `Stack.roleBindings`, all `[...!]!` [G] |
 | User to group | many to many | `ManagedUserGroup.managedUsers: [ManagedUser!]!` and `ManagedUser.latestGroups: [String!]!` [G]; group membership comes from the IdP at login (report 14 section 4.3) |
 | User to personal API keys | one to zero or more; a key has zero or one owner | `ManagedUser.personalApiKeys: [ApiKey!]!`; `ApiKey.isPersonal`; `ApiKey.owner: String` is the owner's login, null for organization-level keys [G] |
-| User to security keys | one to zero or more | `SecurityKey.owner: String!` [G]; how a key is registered is *(unverified)* (report 14) |
+| User to security keys | one to zero or more | `SecurityKey.owner: String!` [G]; how a key is registered is *(unverified)* (C120) (report 14) |
 | Session to user | many to one, by login | `Session.login: String!`; no object reference [G] |
 | SSO and SCIM settings | zero or one per account | `samlSettings`, `oidcSettings` and `scimSettings` are nullable root queries "if the account is using" them [G] |
 
@@ -168,7 +168,7 @@ erDiagram
 | Stack to managed entities | one to zero or more | `Stack.entities: [ManagedEntity!]!`; `ManagedEntity.stackId: ID!` [G] (report [21](21-resources-scans-search.md) section 2.2) |
 | Managed entity to run | zero or one creator, zero or one updater | `ManagedEntity.creator: Run`, `.updater: Run` [G] |
 | Stack to outputs | one to zero or more | `Stack.outputs: [StackOutput!]!` [G] |
-| Pull request to runs | zero or more runs per pull request; no `Run` field names a pull request, so whether a run can sit under several is not shown *(unverified)* | `PullRequest.runs: [Run!]!`; `PullRequest.run` is deprecated [G] (report [11](11-vcs-integrations.md) section 12.5) |
+| Pull request to runs | zero or more runs per pull request; no `Run` field names a pull request, so whether a run can sit under several is not shown *(unverified)* (C269) | `PullRequest.runs: [Run!]!`; `PullRequest.run` is deprecated [G] (report [11](11-vcs-integrations.md) section 12.5) |
 
 ## 4. Policies and contexts
 
@@ -233,7 +233,7 @@ erDiagram
 | Stack or module to pool | zero or one private pool; null means the public pool | `Stack.workerPool: WorkerPool`, `Module.workerPool: WorkerPool` [G] |
 | Pool to its users | one to zero or more | `WorkerPool.users: [WorkerPoolUser!]!` with `stackId` and `isModule` [G] |
 | Pool to Intent projects and scans | one to zero or more | `WorkerPool.intentProjects`, `WorkerPool.scans`; `Scan.workerPool: ID!` [G] |
-| Worker to run | zero or one at a time | A worker processes one run at a time [D]; `Worker.busy` [G] (report 10 section 1). No schema field names the worker of a run [G]; how Spacelift records it is *(unverified)* |
+| Worker to run | zero or one at a time | A worker processes one run at a time [D]; `Worker.busy` [G] (report 10 section 1). No schema field names the worker of a run [G]; how Spacelift records it is *(unverified)* (C267) |
 
 ## 6. VCS and cloud integrations
 
@@ -264,7 +264,7 @@ erDiagram
 | Default integration | at most one per provider per account | One default and any number of space-level integrations per provider [D] (report 11 section 2.3) |
 | Stack or module to VCS integration | zero or one; null means the provider default or a detached stack | `Stack.vcsIntegration: VCSIntegration` [G]; `vcsIntegrationId` empty means the default; deleting an integration in use sets `vcsDetached` [D] [G] (report 11 section 2.3) |
 | Stack to repository | exactly one provider, repository and branch | `Stack.provider: VCSProvider!`, `.repository: String!`, `.branch: String!` [G] (report 11 section 2.4) |
-| VCS integration to agent pool | zero or one, by address | `private://<pool>` in the integration's host [D] (report 11 section 14.2); no schema field links them [G]; which host field the service routes by is *(unverified)* |
+| VCS integration to agent pool | zero or one, by address | `private://<pool>` in the integration's host [D] (report 11 section 14.2); no schema field links them [G]; which host field the service routes by is *(unverified)* (C77) |
 | Agent pool to connections | one to zero or more | `VCSAgentPool.agentConnections: [VCSAgentConnection!]!` [G] |
 | Spacelift Repos | repo to commits one to many; commit to parent zero or one, and a commit may be the parent of zero or more; commit to files one to many; repo to space zero or one (`Repo.space: Space` is nullable) | `Repo.commits`, `RepoCommit.parentCommit: RepoCommit`, `RepoCommit.files: [RepoFile!]!`, `RepoFile.commit: RepoCommit!` [G] |
 | Repo to stacks and modules | one to zero or more | `Repo.stacks: [ID!]!`, `Repo.modules: [ID!]!` [G] |
@@ -408,7 +408,7 @@ erDiagram
 | Project to operations | one to zero or more; each names one resource | `IntentResourceOperation.resourceID: String!` [G] (report 22 section 5.5) |
 | Operation to reviews | one to zero or more | `IntentResourceOperation.reviews: [IntentResourceOperationReview!]!` [G] |
 | Project lock | zero or one holder at a time | `isLocked`, `lockedBy`, `lockedUntil` [G] (report 22 section 5.4) |
-| Conversation owner | one user | History is kept per user [D] (report 22 section 4.2); no schema field names the owner [G], so how it is stored is *(unverified)* |
+| Conversation owner | one user | History is kept per user [D] (report 22 section 4.2); no schema field names the owner [G], so how it is stored is *(unverified)* (C268) |
 | Conversation to messages | one to zero or more | `IntentChatConversation.messages: [IntentChatMessage!]!` [G] |
 | Conversation to AI integration | zero or one, the last used | `lastUsedAIIntegration: AIIntegration` [G] |
 | Space to AI integrations | zero or one space per integration | `AIIntegration.space: Space` is nullable; Spacelift-provided integrations have `isSpaceliftProvided` [G] (report 22 section 3.1) |
@@ -574,7 +574,7 @@ installation is a plan decision.
 | Table | Key | Main columns | Foreign keys | Indexes | Driven by |
 |---|---|---|---|---|---|
 | `templates` | `(account, ulid)` | slug, name, space, labels | `space` | unique `(account, slug)` | Report 17 section 3 |
-| `template_versions` | `(template, ulid)` | version number, state, raw body, inputs, stack keys, published at, deprecated at and note | `template` | `(template, version)`; whether it is unique is *(unverified)* (report 17 section 7.3) | Report 17 sections 7.2 to 7.4 |
+| `template_versions` | `(template, ulid)` | version number, state, raw body, inputs, stack keys, published at, deprecated at and note | `template` | `(template, version)`; whether it is unique is *(unverified)* (C146) (report 17 section 7.3) | Report 17 sections 7.2 to 7.4 |
 | `template_deployments` | `(template, slug)` | name, space, pinned version, type (`TEST` or not), state, inputs, scheduled delete | `template`, `template_version` | `(space)` | Report 17 section 9 |
 | `template_deployment_changes` | `(deployment, ulid)` | version and inputs, previous version and inputs | `deployment` | `(deployment, created_at)` | Report 17 section 9 |
 | `blueprints` | `(account, ulid)` | slug, name, space, state, raw body, inputs, labels | `space` | unique `(account, slug)` | Report 17 section 4 |
@@ -663,13 +663,14 @@ regenerated from the snapshot and fails verification on drift.
 - All of section 12 is derived [I]; the derivation sources are named per
   table.
 - Open, marked *(unverified)* above or in the cited reports:
-  - which worker processed a run, since no schema field records it;
+  - which worker processed a run, since no schema field records it (C267);
   - who owns a chat conversation in the data, beyond "history is kept per
-    user";
+    user" (C268);
   - which host field routes a VCS integration through an agent pool (report
-    11 section 14.2);
-  - whether `TemplateVersion.version` is unique per template;
-  - whether one run can be listed under several pull requests.
+    11 section 14.2) (C77);
+  - whether `TemplateVersion.version` is unique per template (C146);
+  - whether one run can be listed under several pull requests (C269);
+  - how a FIDO2 security key is registered (report 14) (C120).
 
 ## Versions at the research baseline
 

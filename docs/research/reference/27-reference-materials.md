@@ -754,7 +754,7 @@ queue and per-queue drain concurrency, and fires cron from the drain
 - **Determinism constraints in product code.** Workflow code must replay
   identically, so changing run logic needs versioning of in-flight
   workflows [D] [Temporal docs](https://docs.temporal.io/) *(unverified:
-  the versioning page was not read)*.
+  the versioning page was not read)* (C263).
 
 ### 10.2 River
 
@@ -876,13 +876,13 @@ spacelift-intent (Apache-2.0), as report
   inferred from the datastore's documented scope.
 - The MPL-2.0 consequence for copied code is an inference from the licence
   text, not legal advice.
-- Temporal workflow versioning requirements were not read *(unverified)*.
+- Temporal workflow versioning requirements were not read *(unverified)* (C263).
 - Whether Terramate Cloud features are sold only by subscription was not
-  confirmed from a pricing page *(unverified)*.
+  confirmed from a pricing page *(unverified)* (C264).
 - Whether the Digger orchestrator continues under the OpenTaco name, beyond
-  the docs redirect, was not confirmed *(unverified)*.
+  the docs redirect, was not confirmed *(unverified)* (C265).
 - How Spacelift's own Postgres queue is implemented is not published, so the
-  River comparison is by behaviour only *(unverified)*.
+  River comparison is by behaviour only *(unverified)* (C266).
 
 ## Versions at the research baseline
 

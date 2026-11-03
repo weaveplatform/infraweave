@@ -184,7 +184,7 @@ The tables below follow the rows.
 | 20 | 03, 04 | *wrong*: six Purpose cells only restated the field name | Rewritten from argument and return types |
 | 21 | 04 | *missing*: the `oauthUser` row gave only Bruno's note that the browser flow cannot complete with an API key, while the docs and spacectl use it to exchange a GitHub token | Added the docs fact, noting that the docs win |
 | 22 | 03, 04 | *missing*: 102 Purpose cells are Bruno request names (all Intent rows, role bindings, templates and managed users): correct but saying little | Not changed: no local source describes most of them; recorded as C16 |
-| 23 | 03 | *style*: section 1.1 credits the tables to generators in the research scratchpad, which is not committed | Reworded: reports describe their method and name no uncommitted scripts (P12) |
+| 23 | 03 | *style*: section 1.1 credits the tables to generators in the research scratchpad, which is not committed | Reworded: reports describe their method and name no uncommitted scripts (PD-12) |
 | 24 | 01 | *unsupported*: that errors arrive at HTTP 200 was inferred from clients matching message text, but spacectl matches the text of non-200 bodies too | Now open (C2); the inferred list updated |
 | 25 | 01 | *missing*: did not say that the Pulumi provider is deprecated and goes read-only on 2026-12-10 | Added from its README |
 | 05-1 | 05 | *wrong*: six line anchors ran one line past the end of the file | Ranges end at the last line |
@@ -733,7 +733,7 @@ docs; a 6-word check against the unlicensed Flows repositories and the
 | 3 | 24 | *wrong*: `kms_arn` was described as bringing one's own key; it removes the whole `kms` module, so the in-application encryption and JWT signing keys are not created and their outputs are null | New bullet in 3.5 citing `main.tf` L13-L25 and `outputs.tf` L11-L19 (C248) |
 | 4 | 24 | *missing*: the EKS module's fourth KMS key, `aws_kms_key.ebs`, created when EBS encryption is on without a key ARN | Added to 3.5 and the section 6 encryption row |
 | 5 | 24 | *wrong*: section 14.1 left 97 schema types blank (types behind `$ref` unresolved) and listed `ingress.annotations` and `ingressV6.annotations` as `null` leaves; the real leaf is the `proxy-body-size` annotation with value `"0"` | Types filled from the schema; the two rows corrected to L229 and L254 |
-| 6 | 24 | *copied*: section 14.2 quoted 299 variable descriptions from MIT module repositories that no `NOTICE` covers | Description column dropped; a note points to the linked lines (P13) |
+| 6 | 24 | *copied*: section 14.2 quoted 299 variable descriptions from MIT module repositories that no `NOTICE` covers | Description column dropped; a note points to the linked lines (PD-13) |
 | 7 | 24 | *wrong*: noncurrent-version expiry and multipart abort were applied to every bucket; expiry applies to 6 buckets and the abort to 9, the modules, states and binaries buckets keep every noncurrent version, binaries has no encryption, public access block or lifecycle, and versioning is on for 9 | Notes rewritten with line ranges (C249) |
 | 8 | 24 | *wrong*: SQS long polling was said to be on the async queues; it is on all six queues that are not dead-letter queues, the queues exist only with `create_sqs`, and the drain consuming every queue lacked the observability guide's support | Corrected and cited |
 | 9 | 24 | *missing*: `ENVIRONMENT=prod`, which every module sets | Row added; the table grows from 76 to 77 rows |
@@ -926,7 +926,7 @@ takes part in findings 40 and 55.
 | 9 | 0009 | *unsupported*: "any reject rejects" is *(unverified)* in 09 section 3.3 | Listed as infraweave's |
 | 10 | 0010 | *wrong*: `terraform force-unlock` sends an empty body, not the holder's ID; OpenTofu sends the ID | Rewritten; design affected |
 | 11 | 0011 | *wrong*: River's dead letters called Pro; open-source River keeps `discarded` jobs and retries them | Rationale narrowed; decision stands |
-| 12 | 0011 | *style*: grammar "fixed by P9", a question | "0022's answer to P9" |
+| 12 | 0011 | *style*: grammar "fixed by PD-09", a question | "0022's answer to PD-09" |
 | 13 | 0012 | *unsupported*: Digger dispatch is in 27 section 5.4 | Link added |
 | 14 | 0013 | *wrong*: a separate JWT key exists only in KMS mode | Corrected |
 | 15 | 0013 | *wrong*: Spacelift's keys "have no rotation path" | Corrected |
@@ -1003,8 +1003,8 @@ left to it.
   report 26, and 0003's five slugs.
 - **Consistency:** every problem slug is in 0022's table, every periodic
   task of 0005 to 0013 is in 0011's, every sealed column exists in its
-  owner, every test function is `TestUnit` or `TestAcc`, and report 30's P1
-  to P11 pointers name the records that answer them.
+  owner, every test function is `TestUnit` or `TestAcc`, and report 30's PD-01
+  to PD-11 pointers name the records that answer them.
 - **Rules:** status on line 3, the template's sections, no sequencing, no
   dashes, no contradiction of 0001 to 0003; 0022's amendment of 0003's
   "only list" remains a flagged proposal.
@@ -1322,7 +1322,7 @@ file for em and en dashes. The copy check found no docs prose.
 | 7 | *wrong*: 0007 had the operator set `features.disabled` through the operator API, which 0021 keeps as configuration, and said 0021 "proposes" not serving a type | Configuration; "does not serve" |
 | 8 | *wrong*: 0008's "administration API", 0011's `/admin/queue/...` routes under the account administrator permission and its verification line, and 0013's `POST /admin/secrets/rotate`, against 0021's operator API | Operator API operations reachable only by operator principals; DV-039 follows |
 | 9 | *missing*: 0011 lacked the dequeue feature check of 0021 (outcome `skipped`, `infraweave.features.skipped`) and 0010's daily `state.retention` task | Both added |
-| 10 | *wrong*: 0021's S1 examples named the stack `administrative` flag and `WebhooksIntegration.secret`, which 0007, 0022 and 0015 serve | Moved to the served-and-ignored rows of 0021's P2 table and of the roadmap's deprecated-but-served table |
+| 10 | *wrong*: 0021's S1 examples named the stack `administrative` flag and `WebhooksIntegration.secret`, which 0007, 0022 and 0015 serve | Moved to the served-and-ignored rows of 0021's PD-02 table and of the roadmap's deprecated-but-served table |
 | 11 | *missing*: 0015 sent the SHA-1 signature header unless `events.webhooks.fips` was set; 0013's `fips140=only` refuses SHA-1 | The header is also left out under `fips140=only` |
 | 12 | *wrong*: 0005 said Go's FIPS 140-3 mode refuses MD5 (only `fips140=only` does), left multi-account installations outside the record (0007 decides them), and 0004 and 0005 gave Flows a tenancy of its own (0018 maps its organization onto the account) | Corrected to each owning record |
 | 13 | *missing*: 0005's NOTIFY channel table lacked 0015's `infraweave_events` and `infraweave_logs` | Rows added |
@@ -1486,7 +1486,7 @@ to the table. The copy check found no docs prose.
 - **No prose is copied.** After the fixes no report shares a 12-word prose
   run with the docs mirror; the remaining hits are identifier lists,
   commands and one example value. Quotations from MIT sources without a
-  `NOTICE` entry were removed (P13).
+  `NOTICE` entry were removed (PD-13).
 - **Most corrections are precision, not direction.** Of the 337 findings
   on the reports, 123 are *wrong*; most of those are line anchors, types, counts, defaults
   and edge states. The design-relevant ones are the vcs-agent's allowlist
@@ -1502,7 +1502,7 @@ to the table. The copy check found no docs prose.
   (error status codes) and 26 against 01 (the self-hosted feature set).
 - **Left as they were:** the 102 Purpose cells that are Bruno request names
   (C16); the uncommitted generator scripts named by 03, 04, 05, 10 and 22 to
-  24 (P12); and one cross-report note from RES-05, that report 06 could
+  24 (PD-12); and one cross-report note from RES-05, that report 06 could
   record the spacectl list pagers dropping `orderBy`, which 06 does not yet
   do. From RES-07: report 14 section 11 still calls the self-hosted tier
   mapping undocumented, and report 08 does not record that tasks need a
@@ -1518,7 +1518,7 @@ to the table. The copy check found no docs prose.
   basis for design; where a finding left a question open, the plan works
   from the entry in 30, not from either source alone.
 - Generated tables carry fact-check fixes made by hand, so regenerating them
-  without folding those fixes in would reintroduce the errors (P12).
+  without folding those fixes in would reintroduce the errors (PD-12).
 
 ## Inferred and undocumented
 

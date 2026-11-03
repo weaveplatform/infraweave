@@ -26,7 +26,7 @@ and [10](../reference/15-module-and-provider-registry.md#10-the-provider-registr
 Report 28 proposes the tables
 ([28 section 12.7](../reference/28-data-model.md#127-modules-and-providers)).
 Several behaviours are still open captures: C129 to C138
-([30](../reference/30-open-questions.md#module-and-provider-registry-report-15)).
+([30](../reference/30-open-questions.md#captures-needed)).
 
 This record fixes what infraweave serves on the protocol side, how
 artefacts are stored, the version state machines, GPG handling and sharing.
@@ -427,6 +427,6 @@ only when the version itself is deleted.
 - [15](../reference/15-module-and-provider-registry.md), especially [section 13](../reference/15-module-and-provider-registry.md#13-self-hosted-differences) and [section 5](../reference/15-module-and-provider-registry.md#5-test-cases-and-test-runs).
 - [26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature): Spacelift's gating values, which [0021](0021-capability-scope-and-supersession.md) maps to the features above.
 - [28 section 12.7](../reference/28-data-model.md#127-modules-and-providers): tables.
-- [30](../reference/30-open-questions.md#module-and-provider-registry-report-15): captures C129 to C138.
+- [30](../reference/30-open-questions.md#captures-needed): captures C129 to C138.
 - HashiCorp's [service discovery](https://developer.hashicorp.com/terraform/internals/remote-service-discovery), [module](https://developer.hashicorp.com/terraform/internals/module-registry-protocol) and [provider](https://developer.hashicorp.com/terraform/internals/provider-registry-protocol) registry protocols.
 - [`hashicorp/terraform-config-inspect`](https://github.com/hashicorp/terraform-config-inspect) (MPL-2.0); [`ProtonMail/go-crypto`](https://github.com/ProtonMail/go-crypto) (BSD-3-Clause).

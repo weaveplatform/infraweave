@@ -44,9 +44,9 @@ resources view built from state in report 21.
 
 Which run states are allowed to read and which to write is not listed. That
 planning reads and takes a lock, and applying, destroying and performing
-tasks may write, follows from the phases in report 08 *(unverified)* [I].
+tasks may write, follows from the phases in report 08 *(unverified)* (C105) [I].
 The `http` backend's endpoint paths, lock semantics and credential format are
-not documented *(unverified)*.
+not documented *(unverified)* (C105).
 
 ### 1.2 Self-hosted storage
 
@@ -63,7 +63,7 @@ not documented *(unverified)*.
 State history and rollback (section 6) are built on the states bucket's
 object versions [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/reference-architecture/reference/object-storage). SaaS keeps non-current versions 30 days
 (section 6); self-hosted keeps them indefinitely unless the operator adds a
-rule [I] from the "Infinite" retention and the module.
+rule [I] from the "Infinite" retention and the module (C249).
 
 ## 2. `manage_state`
 
@@ -76,7 +76,7 @@ rule [I] from the "Infinite" retention and the module.
 | GraphQL update | none | | | `stackUpdate(id, input)` has no state argument, and `StackInput` has no state field [G] |
 | Terragrunt vendor | `StackConfigVendorTerragruntInput.useStateManagement` | `Boolean` | provider `false` | Terragrunt's own switch [G]; [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L826-L831) |
 | Terraform provider | `spacelift_stack.manage_state` | bool | `true` | `ForceNew`: a change replaces the stack [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L621-L627) |
-| Runtime file | `terragrunt.use_state_management` in `.spacelift/config.yml`; a `terragrunt` block replaces every Terragrunt value rather than merging | bool | | Listed as a runtime key [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration); each run records the value it used in `RuntimeConfig.terragrunt.useStateManagement: Boolean!` [G]. Whether a run can flip state management this way, against the creation-only rule below, is *(unverified)* |
+| Runtime file | `terragrunt.use_state_management` in `.spacelift/config.yml`; a `terragrunt` block replaces every Terragrunt value rather than merging | bool | | Listed as a runtime key [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration); each run records the value it used in `RuntimeConfig.terragrunt.useStateManagement: Boolean!` [G]. Whether a run can flip state management this way, against the creation-only rule below, is *(unverified)* (C114) |
 | Run record | `RuntimeConfig.opentofu.externalStateAccessEnabled` | `Boolean!` | | The value a run used [G]; the runtime file cannot override OpenTofu external state access, which always comes from the stack [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) |
 | Terraform provider | `spacelift_stack.terragrunt.use_state_management` | bool | `false` | Its description says it takes precedence over `manage_state` [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L826-L831); a change inside the block forces replacement [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L100-L105) |
 
@@ -96,7 +96,7 @@ rule [I] from the "Infinite" retention and the module.
 
 The provider enforces the last two rules before calling the API. Whether the
 API also refuses `stackObjectID` or `externalStateAccessEnabled` on a stack
-without managed state is *(unverified)*.
+without managed state is *(unverified)* (C107).
 
 ### 2.3 Defaults disagree
 
@@ -113,7 +113,7 @@ Terragrunt stack created with defaults unmanaged
 `import_state_file` and `terraform_external_state_access` instead treat the
 stack as managed when either value is true (a logical OR)
 [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L874-L882). Which value the API honours for a Terragrunt stack
-when they differ is *(unverified)*.
+when they differ is *(unverified)* (C113).
 
 ## 3. External state access
 
@@ -132,7 +132,7 @@ when they differ is *(unverified)*.
 Spacelift therefore serves state over two protocols: the `http` backend for
 its own runs, and a subset of the Terraform Cloud `remote` backend API for
 external readers [D]. Which endpoints of that API are implemented is not
-documented *(unverified)*. On Terragrunt stacks under managed state, a unit
+documented *(unverified)* (C106). On Terragrunt stacks under managed state, a unit
 cannot read another stack's state, so Terragrunt external dependencies that
 read a state outside the stack do not work
 [D](https://docs.spacelift.io/vendors/terragrunt/limitations).
@@ -170,7 +170,7 @@ read a state outside the stack do not work
 | UI import | Uploads through a pre-signed URL from the browser | [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/reference-architecture/reference/object-storage) |
 
 The URLs' lifetime, and how long an uploaded `objectId` stays valid before it
-is imported, are not documented *(unverified)*. On self-hosted, frontend
+is imported, are not documented *(unverified)* (C108). On self-hosted, frontend
 uploads land in the uploads bucket with a one-day retention, which bounds it
 there [I] from
 [D](https://docs.spacelift.io/self-hosted/latest/installing-spacelift/reference-architecture/reference/object-storage).
@@ -196,7 +196,7 @@ there [I] from
 | The import lands on top of the latest managed state as a new version marked as manually imported | [D](https://docs.spacelift.io/vendors/terraform/state-management); [G] (`ManagedStateVersion.imported`) |
 
 Stack locking is described in report 07. Which run states count as "pending"
-is not listed *(unverified)*.
+is not listed *(unverified)* (C109).
 
 ### 5.3 Importing resources, not files
 
@@ -246,7 +246,7 @@ copy error in the schema [G].
 
 What happens when the version to restore is older than 30 days and expired,
 and whether `isStateRollback` clears on the next run's write, are not
-documented *(unverified)*; the second follows from "currently using a
+documented *(unverified)* (C110); the second follows from "currently using a
 rolled-back state" [I].
 
 ## 7. Exporting state
@@ -267,12 +267,12 @@ rolled-back state" [I].
 | Stuck locks | A run stopped before completion can leave a workspace locked; unlock one, or all | [D](https://docs.spacelift.io/vendors/terragrunt/reference) |
 | GraphQL | `tofuWorkspaceUnlock(id: ID!): TofuWorkspace!`, `tofuWorkspaceUnlockAll(stack: ID!): TofuWorkspaceUnlockAllResponse!` (`unlockedWorkspaces`), and the queries `searchTofuWorkspaces(input: SearchInput!)` and `searchTofuWorkspacesSuggestions`. No mutation locks a workspace | [G] |
 | `TofuWorkspace` | `id: ID!`, `name: String!`, `isLocked: Boolean!`, `lockedBy: String`, `createdAt: Int!` | [G] |
-| Actions | `STACK_WORKSPACE_LOCK` and `STACK_WORKSPACE_UNLOCK`, default Admin; the lock action has no matching mutation, so it presumably governs locks taken through the backend [I] | [G]; [D](https://docs.spacelift.io/concepts/authorization/rbac-system) |
+| Actions | `STACK_WORKSPACE_LOCK` and `STACK_WORKSPACE_UNLOCK`, default Admin; the lock action has no matching mutation, so it presumably governs locks taken through the backend [I] (C8) | [G]; [D](https://docs.spacelift.io/concepts/authorization/rbac-system) |
 
 The schema describes `TofuWorkspace` as a workspace "used for local
 development" [G], while the docs present the same tab for Terragrunt units
 [D]. Whether these locks are the managed backend's own `http` locks, and
-whether non-Terragrunt stacks expose workspaces here, is *(unverified)*.
+whether non-Terragrunt stacks expose workspaces here, is *(unverified)* (C111).
 
 ## 9. OpenTofu state encryption
 
@@ -286,7 +286,7 @@ The docs say nothing more: not how encryption is configured on Spacelift
 key material should come from a context, and not what happens to features
 that parse state (outputs for stack dependencies, the resources view, plan
 policies) when the state Spacelift stores is encrypted. All of that is
-*(unverified)*. Because encryption happens inside the OpenTofu process before
+*(unverified)* (C112). Because encryption happens inside the OpenTofu process before
 the backend call, the managed backend would store ciphertext it cannot read
 [I] from OpenTofu's client-side design.
 

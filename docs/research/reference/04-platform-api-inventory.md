@@ -13,7 +13,10 @@ endpoints, and the eight operations the reference leaves untagged. It uses
 the table layout and enrichment rules of [report 03, section 1](03-deploy-core-api-inventory.md#1-how-to-read-the-tables):
 every row is generated from the specification reference, then enriched with
 permissions, tier gates, side effects and deprecations. Reports 11 to 25
-hold the behaviour behind these tags.
+hold the behaviour behind these tags. A Purpose cell such as "Get Role.
+[B]" is a Bruno request name: neither the schema nor the request's docs
+describe the operation, so what it does beyond its name is *(unverified)*
+(C16).
 
 | Label | Means |
 |---|---|
@@ -325,7 +328,8 @@ Enterprise plan, while OIDC single sign-on needs only a paid account
 [[D]](https://docs.spacelift.io/integrations/single-sign-on); SCIM needs Enterprise
 [[D]](https://docs.spacelift.io/integrations/single-sign-on/scim). An API key
 keeps working when SSO is misconfigured, which is the documented way back in
-**[B]**.
+**[B]**. Which `BillingTierFeature`, if any, gates OIDC single sign-on is
+*(unverified)* (C14).
 
 | Value | Description [G] |
 |---|---|
@@ -910,7 +914,7 @@ ServiceNow (Enterprise) and Backstage
 
 Settings of the built-in Origin (Cursor) integration; the read is null when
 the app is not installed **[B]**. No docs page describes it
-*(unverified)*.
+*(unverified)* (C11).
 
 ### Origin Integration (4)
 
@@ -1112,7 +1116,7 @@ Per-stack variants are fields of `Stack` in report 03.
 
 Scan definitions over cloud infrastructure, their runs and results; AWS is
 the only `ScanProvider` **[G]**. No docs page in the mirror describes scans
-*(unverified)*.
+*(unverified)* (C11).
 
 | Value | Description [G] |
 |---|---|
@@ -1570,7 +1574,13 @@ under Danger Zone, and the tag resolver finds no resource folder for them
   infraweave UI needs, since they are part of the mirrored surface.
 - Billing and tier operations describe a SaaS business model; a self-hosted
   infraweave still needs an answer for `tier` and `tierFeatures`, which
-  clients read.
+  clients read. Whether infraweave gates by Spacelift's tiers is product
+  decision PD-05, answered by decision [0021](../decisions/0021-capability-scope-and-supersession.md) (Accepted):
+  infraweave's own feature catalogue and tiers, with billing off by default.
+- Some interfaces here are deprecated or superseded (the legacy per-stack AWS
+  integration, GCP stack integrations, the single-version blueprints,
+  per-stack webhooks beside named webhooks); which of them infraweave serves
+  is product decision PD-02, answered by decision 0021 (Accepted).
 - Self-hosted-only operations (feature flags, debug info, queue stats) have
   SaaS behaviour defined (empty results), which is a compatibility contract.
 - The Danger Zone operations need confirmation or guard rails in any client.
@@ -1578,16 +1588,23 @@ under Danger Zone, and the tag resolver finds no resource folder for them
 ## Inferred and undocumented
 
 - Scans, the Origin integration, blob storage and plugin templates have no
-  docs page in the mirror *(unverified)*; their tables rest on the schema and
-  Bruno only.
+  docs page in the mirror *(unverified)* (C11); their tables rest on the schema and
+  Bruno only. Whether infraweave builds them is product decision PD-03,
+  answered by decision 0021 (Accepted): built to the schema's shape.
 - `cliConfirmationToken` backing the spacectl browser login is inferred from
   its description **[I]**; report 06 checks spacectl's source.
 - `vcsAgentPoolReset` invalidating old agent credentials is inferred by
-  analogy with `workerPoolReset` **[I]** *(unverified)*.
+  analogy with `workerPoolReset` **[I]** *(unverified)* (C12).
 - The audit trail having a single webhook is inferred from its singleton
   routes **[I]**.
 - Which plan gates external integrations other than ServiceNow is not stated
-  *(unverified)*.
+  *(unverified)* (C13).
+- Operation-to-action pairing in the RBAC notes is by name, as in report 03
+  **[I]**; whether it is what the service checks is *(unverified)* (C7).
+- 101 Purpose cells hold only a Bruno request name, among them every Intent
+  row and the template, role binding and managed-user rows: what those
+  operations do beyond their names is *(unverified)* (C16). Reports 14, 17
+  and 22 describe most of them.
 
 ## Versions at the research baseline
 

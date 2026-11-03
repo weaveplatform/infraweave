@@ -104,7 +104,7 @@ A command can carry several versioned implementations; the newest one the
 instance supports wins. Section 3 lists each command's variants. The schema
 describes `debugInfo` as not valid in SaaS **[G]** `Query.debugInfo`; spacectl
 reads an empty `selfHostedVersion` as SaaS, so the probe relies on SaaS
-answering with an empty value rather than an error **[I]** from `main.go`. `profile`,
+answering with an empty value rather than an error **[I]** from `main.go` (C20). `profile`,
 `whoami`, `registry` and `version` are not version-gated.
 
 ### 2.3 Credentials and sessions
@@ -165,7 +165,10 @@ Profiles:
 The docs and the source disagree on the profile layout. The source at the
 pinned commit holds every profile in one `config.json`; the docs page still
 describes per-alias files and a symlink. The source is what a reimplementation
-must read if it imports existing profiles **[I]** from the two.
+must read if it imports existing profiles **[I]** from the two. Which of
+the docs and the client infraweave's CLI follows, for the credential order
+and the profile layout, is product decision PD-04, answered by decision 0021
+(Accepted).
 
 Browser login (`profile login --method browser`)
 **[S]** [browserauth.go#L26](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/browserauth/browserauth.go#L26):
@@ -207,7 +210,7 @@ Spacelift MCP server, without the OAuth scope narrowing
 So the client depends on these server contracts: authorization failures
 carry the word `unauthorized` in the error text, and a missing or invisible
 entity usually comes back as `null`, except `runStack`, which errors with
-`not found` **[I]** from the handling above. The docs mirror names no rate
+`not found` **[I]** from the handling above (C5). The docs mirror names no rate
 limit for the GraphQL API **[I]** from a search of the mirror. spacectl has
 no rate-limit back-off; its only retry is a single resend after refreshing
 the proxy token on a suspected proxy rejection, besides the polling loops in
@@ -692,7 +695,7 @@ chart installs `public.ecr.aws/spacelift/kube-workerpool-controller` (chart
 `workers.spacelift.io/v1beta1` **[S]**
 [values.yaml](https://github.com/spacelift-io/spacelift-helm-charts/blob/4e02e1d22e73/spacelift-workerpool-controller/values.yaml).
 The controller's source is not public, so its GraphQL calls are not
-inventoried here *(unverified)*. Its `WorkerPool` spec shows what it does
+inventoried here *(unverified)* (C21). Its `WorkerPool` spec shows what it does
 with the API **[S]**
 [workers.spacelift.io_workerpools.yaml](https://github.com/spacelift-io/spacelift-helm-charts/blob/4e02e1d22e73/spacelift-workerpool-controller/config/crd/bases/workers.spacelift.io_workerpools.yaml):
 
@@ -819,7 +822,8 @@ has to provide. These are requirements on coverage, not design choices.
 - Clients key behaviour off error text (`unauthorized`) and `null` results,
   not HTTP status. A REST API that uses 401, 403 and 404 changes those
   contracts; the plan must state how infraweave's CLI and any compatibility
-  layer map them (section 2.4).
+  layer map them (section 2.4). That mapping is product decision PD-01,
+  answered by decision [0022](../decisions/0022-api-errors-and-update-semantics.md).
 - Several published clients pin old or deprecated surfaces: the Pulumi
   provider bridges Terraform provider v1.9.3 and is itself deprecated, with
   its repository going read-only on 2026-12-10; spacectl still calls
@@ -827,7 +831,8 @@ has to provide. These are requirements on coverage, not design choices.
   `terraformProviderVersionRegisterPlatform` against Self-Hosted before 3.0.0;
   the archived operator calls the deprecated `policyCreate` and
   `policyUpdate`. Parity work must decide which of these to serve
-  (sections 4 and 7).
+  (sections 4 and 7); that choice is product decision PD-02, answered by
+  decision [0021](../decisions/0021-capability-scope-and-supersession.md) (Accepted).
 - The Kubernetes worker-pool controller manages pools through the API with a
   dedicated system role and auto-registration; its calls are not public, so
   matching it needs captures (section 7.2).
@@ -838,14 +843,15 @@ has to provide. These are requirements on coverage, not design choices.
 | Item | Basis |
 |---|---|
 | Authorization errors carry `unauthorized` in their error text (a GraphQL error message or a non-200 body) | **[I]** from `determineClientError` matching the error string; no docs page states the format |
-| Unknown or invisible entities come back as `null`, not as errors, except `runStack`, which errors with `not found` | **[I]** from the null checks in the stack selector and log explorer, and the `not found` match in `stackGetByRunID` |
+| Unknown or invisible entities come back as `null`, not as errors, except `runStack`, which errors with `not found` | **[I]** from the null checks in the stack selector and log explorer, and the `not found` match in `stackGetByRunID` (C5) |
 | The GraphQL API has no published rate limit | **[I]** no page in the docs mirror names one |
-| SaaS answers `debugInfo` with an empty `selfHostedVersion` although the schema calls the field not valid in SaaS | **[I]** from spacectl treating an empty value as SaaS |
+| SaaS answers `debugInfo` with an empty `selfHostedVersion` although the schema calls the field not valid in SaaS | **[I]** from spacectl treating an empty value as SaaS (C20) |
 | `preview` can never send `runConfirm` | **[I]** the shared trigger code confirms only with `--auto-confirm`, which `preview` lacks |
 | Pulumi resources send the same operations as Terraform v1.9.3 | **[I]** the provider is a bridge over that version |
 | Worker and VCS-agent charts make no API calls themselves | **[I]** templates only set environment variables |
-| The worker-pool controller's GraphQL operations | *(unverified)*: source not public |
-| Whether spacectl's sessions are marked `SPACECTL` in `SessionChannel` because of the `Spacelift-Client-Type` header | *(unverified)*: the enum exists **[G]**, the mechanism is not documented |
+| The worker-pool controller's GraphQL operations | *(unverified)* (C21): source not public |
+| Whether spacectl's sessions are marked `SPACECTL` in `SessionChannel` because of the `Spacelift-Client-Type` header | *(unverified)* (C22): the enum exists **[G]**, the mechanism is not documented |
+| What the server sides of `/cli_login`, `/auth_success`, `/auth_failure` and `GET /usageanalytics/csv` accept and return | *(unverified)* (C23): only spacectl's client halves are known |
 | `Query` and `Mutate` return `nil` when a token cannot be obtained | **[S]** [client.go#L27](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/client/client.go#L27); behaviour, not intent, is recorded |
 
 ## Versions at the research baseline

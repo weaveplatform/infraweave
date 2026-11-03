@@ -242,7 +242,7 @@ once by three rules.
   - **Day of month with day of week.** When both are restricted, a time
     matches either one, as Vixie cron does.
   - **How strict input validation is** comes from
-    [0022](0022-api-errors-and-update-semantics.md)'s answer to P9.
+    [0022](0022-api-errors-and-update-semantics.md)'s answer to PD-09.
     `internal/cron` is the one parser.
 - **Time zones.**
   - **Names.** IANA names, read with `time.LoadLocation`. The binary embeds
@@ -342,7 +342,7 @@ work at once.
 - **Cron on table rows, not a cron library's in-process timer.** Fire times
   survive restarts, are visible as `nextSchedule` in the API, and are shared
   across replicas without election.
-- **An own cron parser.** The grammar is small and fixed by 0022's answer to P9. Owning it keeps
+- **An own cron parser.** The grammar is small and fixed by 0022's answer to PD-09. Owning it keeps
   validation errors, daylight-saving rules and the `nextSchedule` computation
   in one tested package.
   - **Rejected: `robfig/cron`.** It has had no release since 2020, and its

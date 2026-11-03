@@ -306,13 +306,13 @@ once [D] module-registry.
 | Phases: initialize, plan, apply, then destroy. The destroying phase runs whether apply succeeded or failed, because a partial apply may have created resources. | [D] test-case |
 | `SPACELIFT_SKIP_DESTROYING=true` in the module environment skips the destroying phase. | [D] test-case |
 | Success: the run reaches `FINISHED` only if every phase succeeds; any failed phase marks it `FAILED`. | [D] test-case |
-| Negative test cases are expected to fail. How the outcome inverts for a negative case is not described beyond "expected to fail". | [D] module-registry; *(unverified)* |
+| Negative test cases are expected to fail. How the outcome inverts for a negative case is not described beyond "expected to fail". | [D] module-registry; *(unverified)* (C45) |
 | Spacelift checks that at least some resources were created, without checking which. | [D] module-registry |
 | Test cases run in parallel, limited by the available workers, and in `depends_on` order when set. | [D] module-registry |
 | Each test case gets its own commit status in GitHub or GitLab. | [D] module-registry |
 | Test cases run on both proposed and tracked changes; only a tracked change creates a version. | [D] module-registry |
 | Module test runs cannot be cancelled by a push policy `cancel` rule. | [D] push-policy |
-| On self-hosted v7.0.0, proposed and module test runs left in `READY` with no worker are cancelled after 2 days (other runs after 7). Whether SaaS applies the same rule is *(unverified)*. | [D] sh-changelog |
+| On self-hosted v7.0.0, proposed and module test runs left in `READY` with no worker are cancelled after 2 days (other runs after 7). Whether SaaS applies the same rule is *(unverified)* (C129). | [D] sh-changelog |
 | A version's metadata may be produced by a separate parsing run (`Version.metadataParsingRun`), populated only when parsing happens on a worker. | [G] |
 
 ### 5.2 Local preview
@@ -383,7 +383,7 @@ true; `Module.versionsCount` counts `ACTIVE` versions when no state is given [G]
 | (none) | Tracked change on the tracked branch with a new `module_version`; or `versionCreate(module, commitSha?, version?)`; or a push policy `module_version` with `track` | `PENDING` | [D] module-registry; [G]; [D] push-policy |
 | `PENDING` | All test cases succeed, or the module has no test cases | `ACTIVE` | [D] module-registry |
 | `PENDING` | A test case fails | `FAILED` | [G] `FAILED` means testing failed |
-| `FAILED` | `versionTrigger(id, module)` | Re-tested; the resulting state follows the new test runs *(unverified: whether it passes through `PENDING`)* | [G] "Trigger failed Version" |
+| `FAILED` | `versionTrigger(id, module)` | Re-tested; the resulting state follows the new test runs *(unverified: whether it passes through `PENDING`)* (C130) | [G] "Trigger failed Version" |
 | any | `versionYank(id, module, note)` | Same state, `yanked = true`, `yankedBy` and `yankNote` set; cannot be undone | [G]; [D] module-registry |
 | any | `versionAnnotate(id, module, notes)` | Same state, `notes` set | [G] |
 | any | `versionDelete(id, module)` | Deleted; cannot be undone. Refused while an Intent module deployment uses the version; `moduleDelete` is refused likewise for the module | [G]; [D] <https://docs.spacelift.io/concepts/intelligence/intent/spacelift-modules> |
@@ -405,14 +405,14 @@ and treats `ACTIVE` as success, `FAILED` as an error, and anything else as still
 
 `versionPush(module, commitSha, commitMessage, version, tarballURL)` creates a version
 from an archive URL; the schema gives it no description and no client in the sources
-calls it *(unverified purpose)* [G].
+calls it *(unverified purpose)* (C131) [G].
 
 ### 6.5 Marking a version as bad
 
 A version marked as bad (`versionYank`) can no longer be downloaded or used by new
 consumers; the action is permanent and should carry a note [D] module-registry. Whether
 existing consumers pinned to an exact yanked version still download it is
-*(unverified)*. The protocol capture in section 9.3 suggests that versions which are not
+*(unverified)* (C132). The protocol capture in section 9.3 suggests that versions which are not
 usable leave the versions list and stop downloading [I].
 
 ### 6.6 Metadata
@@ -600,7 +600,7 @@ Terraform requires any registry to implement.
 | `<account>.app.spacelift.io` | Account API host, for example the `SPACELIFT_API_KEY_ENDPOINT` used to publish providers | [D] provider-registry |
 | Self-hosted | The provider page uses `your-hostname/your-org/yourprovider`; the self-hosted module page still shows `spacelift.io` | [D] sh-provider-registry; [D] sh-module-registry |
 
-Which host a US-region account writes in `source` addresses is *(unverified)*:
+Which host a US-region account writes in `source` addresses is *(unverified)* (C134):
 `spacelift.io` discovery points to the EU `app.spacelift.io` endpoints [C].
 
 ### 9.2 Service discovery
@@ -645,7 +645,7 @@ gaps (`2.11.0`, `3.0.2`, `4.4.0`, `5.6.0` and `6.0.2` are absent), and the downl
 endpoint answers `404` for each gap [C]. Because Spacelift rejects skipped numbers [D]
 module-registry, those numbers must exist as versions in some other state, so the
 protocol list and download both leave out versions that are not usable, most likely
-`FAILED` or yanked ones [I]. Which of the two causes each gap is *(unverified)*.
+`FAILED` or yanked ones [I]. Which of the two causes each gap is *(unverified)* (C133).
 
 ### 9.4 Provider endpoints
 
@@ -659,7 +659,7 @@ the provider type.
 
 Only `PUBLISHED` versions are usable, and a version constraint is resolved against them
 [D] provider-registry; that drafts and revoked versions are left out of `versions` is
-inferred [I]. Whether a public provider answers without credentials is *(unverified)*.
+inferred [I]. Whether a public provider answers without credentials is *(unverified)* (C135).
 
 ### 9.5 Authentication
 
@@ -742,7 +742,7 @@ login policies, non-admin keys must be allowed and granted `space_read` by the p
 | any | `terraformProviderVersionUpdate(version, description)` | Same status; sets the description (release notes) | [G] |
 | any | `terraformProviderVersionUploadDocs(version, archive)` | Same status; replaces `docs` | [G] |
 
-Whether a `DRAFT` can be revoked or a `REVOKED` version deleted is *(unverified)*.
+Whether a `DRAFT` can be revoked or a `REVOKED` version deleted is *(unverified)* (C136).
 
 | Field | Type | Meaning [G] |
 |---|---|---|
@@ -849,7 +849,7 @@ badge and a **Verify version** action [D].
 `terraformProviderVersionUploadDocs(version, archive)` takes a base64-encoded gzipped tar
 archive (`spacectl provider upload-docs --docs-archive`) [S]
 [upload_docs.go](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/provider/upload_docs.go).
-How files in the archive are classified into the doc types is *(unverified)*.
+How files in the archive are classified into the doc types is *(unverified)* (C137).
 
 | Field | Type | Meaning [G] |
 |---|---|---|
@@ -899,7 +899,7 @@ RBAC actions and legacy fallbacks [D] rbac: `TERRAFORM_PROVIDER_CREATE`,
 `TERRAFORM_PROVIDER_UPDATE` fall back to Admin; `TERRAFORM_PROVIDER_VERSION_CREATE`,
 `_DELETE`, `_PUBLISH`, `_REGISTER_PLATFORM`, `_REVOKE` and `_UPDATE` fall back to Writer
 [G] `Action`. No action names verification or documentation upload *(unverified which
-action gates them)*.
+action gates them)* (C138).
 
 ## 11. External modules
 
@@ -1016,7 +1016,8 @@ Sources: [S] [ctl-module module.go](https://github.com/spacelift-io/spacectl/blo
   classification; the action gating verification and docs upload.
 - The changelog deprecates `ModuleCreateInput.space` (2026-10-20), but the snapshot
   carries no input-field deprecation data at all, so the schema cannot confirm it; the
-  changelog is the only source.
+  changelog is the only source. Whether the snapshot fetcher requests input-field
+  deprecations is product decision PD-15, which is open.
 
 ## Versions at the research baseline
 

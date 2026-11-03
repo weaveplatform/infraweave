@@ -34,7 +34,7 @@ The research leaves the delivery contract largely undocumented: the retry
 back-off, timeouts, retryable conditions, failure counting, header
 precedence, default payloads for module and worker-usage events, and the
 audit stream's retries (captures C170 to C184,
-[30](../reference/30-open-questions.md#events-notifications-and-audit-report-19)).
+[30](../reference/30-open-questions.md#captures-needed)).
 infraweave has to fix each one, and say where it is choosing rather than
 copying.
 
@@ -509,7 +509,7 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
     its served schema and fails when a kind has no schema.
 - `TestUnitNotificationInputConformsToContract` validates each event document
   the policy reads against the `NOTIFICATION` entry of the policy contract,
-  pinned or held as a fixture as P14 decides.
+  pinned or held as a fixture as PD-14 decides.
 - `TestUnitAuditActionsCoverMutations` fails when a mutating operation in
   `api/deploy.openapi.yaml` lacks `x-infraweave-audit-action`.
 - `test/acceptance/features/events_webhooks.feature` (`@postgres`,
@@ -554,7 +554,7 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
 - [26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature): gating values.
 - [27 section 4.3](../reference/27-reference-materials.md#43-borrow): Terrakube's durable intake.
 - [28 section 12.9](../reference/28-data-model.md#129-events): tables.
-- [30](../reference/30-open-questions.md#events-notifications-and-audit-report-19): captures C169 to C184.
+- [30](../reference/30-open-questions.md#captures-needed): captures C169 to C184.
 - WHATWG HTML, [server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html):
   the stream format and `Last-Event-ID`.
 - PostgreSQL, [`NOTIFY`](https://www.postgresql.org/docs/current/sql-notify.html):

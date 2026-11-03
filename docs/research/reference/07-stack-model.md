@@ -110,7 +110,7 @@ the 38.
 | Slug | `stackCreate(slug:)` argument, not in `StackInput` | `String` | Generated from `name` | Immutable except through `stackReslug` [G]; `ForceNew` in the provider [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L686). | The stack ID used in URLs, `.spacelift/config.yml` keys and Kubernetes labels. | `slug` (optional, computed) |
 | Description | `description` | `String` | null | Markdown [G] [D](https://docs.spacelift.io/concepts/stack/stack-settings). | Free-form explanation. | `description` |
 | Space | `space` | `ID` | TF: `legacy` if that space exists, otherwise `root` [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L749) | Must be a space the caller can create stacks in; creating needs the Admin-level `STACK_CREATE` action [D](https://docs.spacelift.io/concepts/authorization/rbac-system) [G]. | Home space for access control and attachment inheritance (report 14). | `space_id` |
-| Labels | `labels` | `[String!]` | empty | Must be unique on a stack [D](https://docs.spacelift.io/concepts/stack/stack-settings); a set in Terraform [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L615). No length or character rules are documented *(unverified)*. | Free tags, some with built-in meaning ([section 4](#4-labels)). | `labels` |
+| Labels | `labels` | `[String!]` | empty | Must be unique on a stack [D](https://docs.spacelift.io/concepts/stack/stack-settings); a set in Terraform [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L615). No length or character rules are documented *(unverified)* (C24). | Free tags, some with built-in meaning ([section 4](#4-labels)). | `labels` |
 | Administrative | `administrative` | `Boolean` | TF `false` | Deprecated: ineffective since 2026-06-01, when each administrative stack was given a Space Admin role attachment instead [D](https://docs.spacelift.io/concepts/stack/stack-settings) [RN]. Still accepted on input [G]; deprecated in the provider [S]. | Formerly gave the stack an API token with Admin on its space and subspaces. | `administrative` (deprecated) |
 
 ### 2.2 Source code
@@ -234,7 +234,7 @@ planning [D](https://docs.spacelift.io/vendors/cloudformation/reference).
 
 | Field | Input type | Output type | Default | Meaning | TF attribute |
 |---|---|---|---|---|---|
-| `namespace` | `String!` | `String!` | required in the schema, but may be empty | Namespace for `kubectl`; empty means a multi-namespace stack, which docs discourage because of the access it needs [G] [D](https://docs.spacelift.io/vendors/kubernetes/getting-started). The provider rejects an explicit empty string, and sends `""` when the attribute is omitted [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L535). | `kubernetes.namespace` (optional) |
+| `namespace` | `String!` | `String!` | none: required in the schema; the provider sends `""` when the attribute is omitted | Namespace for `kubectl`; the docs describe a stack without one as a multi-namespace stack, which they discourage because of the access it needs [G] [D](https://docs.spacelift.io/vendors/kubernetes/getting-started). The provider rejects an explicit empty string, and sends `""` only when the attribute is omitted [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L535). That the server reads that `""` as a stack without a namespace, the same as leaving the field out, is *(unverified)* (C32). | `kubernetes.namespace` (optional) |
 | `kubectlVersion` | `String` | `String!` | computed by the server | `kubectl` version downloaded by the worker [G] [D](https://docs.spacelift.io/concepts/stack/creating-a-stack). | `kubernetes.kubectl_version` (optional, computed) |
 | `kubernetesWorkflowTool` | `KubernetesWorkflowTool` | `KubernetesWorkflowTool!` | `KUBERNETES`, applied by the server: the provider attribute is optional and computed, and only its description names the default [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L548) | `KUBERNETES` (standard `kubectl`) or `CUSTOM` [G]. | `kubernetes.kubernetes_workflow_tool` |
 
@@ -250,7 +250,7 @@ prunes labelled resources whose YAML has gone; because pruning relies on `--prun
 | `workspace` | `String` | `String` | null | Selected, or created if missing; ignored with managed state, which gives each stack its own workspace [D](https://docs.spacelift.io/concepts/stack/stack-settings). | `opentofu.workspace` |
 | `useSmartSanitization` | `Boolean` | `Boolean!` | TF `true` [S] | Sanitize only values marked sensitive [G]. | `opentofu.use_smart_sanitization` |
 | `externalStateAccessEnabled` | `Boolean` | `Boolean!` | TF `false` [S] | Read-only access to the state from outside the stack; needs managed state (report 16). | `opentofu.external_state_access` |
-| `concise` | `Boolean` | `Boolean!` | when unset at creation: `true` on 1.7+, else `false` [G] | Passes `-concise` to plan (1.7+) and to apply and destroy (1.10+) [D](https://docs.spacelift.io/vendors/opentofu); the schema's description names plan, apply and refresh instead [G]. While on, a version constraint admitting anything below 1.7.0 is rejected, checked against the lowest admitted version [D](https://docs.spacelift.io/vendors/opentofu). Built-in workflow tool only. | `opentofu.logging.concise` (TF default `true`) |
+| `concise` | `Boolean` | `Boolean!` | when unset at creation: `true` on 1.7+, else `false` [G] | Passes `-concise` to plan (1.7+) and to apply and destroy (1.10+) [D](https://docs.spacelift.io/vendors/opentofu); the schema's description names plan, apply and refresh instead [G]; which holds is *(unverified)* (C31). While on, a version constraint admitting anything below 1.7.0 is rejected, checked against the lowest admitted version [D](https://docs.spacelift.io/vendors/opentofu). Built-in workflow tool only. | `opentofu.logging.concise` (TF default `true`) |
 | `enableCPUProfiling` | `Boolean` | `Boolean!` | when unset at creation: `true` on 1.11+, else `false` [G] | Sets `TOFU_CPU_PROFILE` and uploads one pprof profile per run state; silently skipped below 1.11 [G] [D](https://docs.spacelift.io/vendors/opentofu). Built-in workflow tool only. | none; the provider does not expose it [D](https://docs.spacelift.io/vendors/opentofu/migration) |
 | `workflowTool` | `OpenTofuWorkflowTool` | `OpenTofuWorkflowTool!` | `OPENTOFU`, applied by the server (provider attribute optional and computed) [S] [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) | `OPENTOFU` or `CUSTOM` [G]; `CUSTOM` reads `.spacelift/workflow.yml` (report 20). | `opentofu.workflow_tool` |
 | `supportedFeatures` | none | `[OpenTofuFeatureCheck!]!` | read only | Per-feature support for the configured version [G]. | none |
@@ -397,7 +397,7 @@ provider manages the flag through `spacelift_stack_activator`, which reads
 `isDisabled` and calls the matching mutation only when it differs
 [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack_activator.go).
 `StackInput.isDisabled` also writes it [G]. What happens to runs already queued
-when a stack is disabled is not documented *(unverified)*.
+when a stack is disabled is not documented *(unverified)* (C25).
 
 ### 5.3 Deletion
 
@@ -448,7 +448,7 @@ including the raw `yaml` [G].
 
 | Top-level key | Type | Meaning |
 |---|---|---|
-| `version` | string | `"2"` selects the current precedence; absent means `1` [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration). The YAML reference instead says the key is optional and ignored [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference); which holds is *(unverified)*. |
+| `version` | string | `"2"` selects the current precedence; absent means `1` [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration). The YAML reference instead says the key is optional and ignored [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference); which holds is *(unverified)* (C27). |
 | `stack_defaults` | map | Settings for every stack using the repository. |
 | `stacks` | map of stack slug to settings | Per-stack settings; a stack value replaces the default outright, including lists and maps; merging needs YAML anchors and merge keys [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference). |
 | `module_version` | string | Module repositories: required plain `major.minor.patch` (report 15). |
@@ -475,14 +475,14 @@ With version 2, from strongest to weakest
 With version 1, stack settings beat `stack_defaults`. The same page then says
 that, when the file has no entry for the stack, the stack's settings come before
 `stack_defaults`; this contradicts the version 2 rule and is recorded as
-*(unverified)*. The label `feature:ignore_runtime_config` drops the file
+*(unverified)* (C28). The label `feature:ignore_runtime_config` drops the file
 entirely [D](https://docs.spacelift.io/concepts/stack/stack-settings).
 
 ### 7.3 Key reference
 
 | Key | Type | Default | Overrides | Notes |
 |---|---|---|---|---|
-| `before_init`, `after_init`, `before_plan`, `after_plan`, `before_apply`, `after_apply`, `before_perform`, `after_perform`, `before_destroy`, `after_destroy`, `after_run` | list of strings | empty list | the stack's hook lists | Whether context hooks are also replaced is not documented *(unverified)*. |
+| `before_init`, `after_init`, `before_plan`, `after_plan`, `before_apply`, `after_apply`, `before_perform`, `after_perform`, `before_destroy`, `after_destroy`, `after_run` | list of strings | empty list | the stack's hook lists | Whether context hooks are also replaced is not documented *(unverified)* (C29). |
 | `environment` | map of string to string | empty map | stack environment and attached contexts, on conflict | Values are strings, so lists such as `TF_VAR_x: '[a, b]'` are quoted. Report 13. |
 | `project_root` | string | empty, the working directory | `projectRoot` | |
 | `runner_image` | string | stack `runnerImage`, then the account default runner image, then the vendor image (for example `public.ecr.aws/spacelift/runner-terraform:latest` or `runner-opentofu:latest`) | `runnerImage` | |
@@ -503,7 +503,7 @@ The read model `RuntimeConfig` has the hooks, `environment`, `projectRoot`,
 `runnerImage`, `terraformVersion`, `terraformWorkflowTool`,
 `gitSparseCheckoutPaths`, `yaml`, and per-vendor `terraform`, `opentofu` and
 `terragrunt` objects [G]. Whether unknown keys are rejected or ignored is not
-documented *(unverified)*.
+documented *(unverified)* (C30).
 
 ## 8. What the read model adds
 
@@ -527,11 +527,11 @@ configuration elements from contexts, the stack and integrations; and
 | Promotion name | "Allow run promotion" is `githubActionDeploy` in GraphQL and `allow_run_promotion` (or deprecated `github_action_deploy`) in Terraform. | [G] [S] |
 | State management outside the input | `manageState` and `stackObjectID` are `stackCreate` arguments, not `StackInput` fields, and the read-back is `managesStateFile`; Terragrunt also has `useStateManagement` inside its vendor input. | [G] |
 | Two Terraform versions | `StackInput.terraformVersion` overrides `vendorConfig.terraform.version`; `Stack.terraformVersion` is overwritten with the applied version after an apply. | [G] [D](https://docs.spacelift.io/vendors/terraform/version-management) |
-| Required but empty | Kubernetes `namespace` is `String!` but an empty string means all namespaces. | [G] [S] |
+| Required but empty | Kubernetes `namespace` is `String!`, yet a stack may have none: the provider rejects an explicit `""` and sends `""` only when the attribute is omitted. Whether the server treats that `""` as a multi-namespace stack, as it would a stack without the field, is *(unverified)* (C32). | [G] [S] |
 | Nullability flips | `kubectlVersion`, `kubernetesWorkflowTool`, every `workflowTool`, `tool`, and most booleans are nullable on input and non-null on output; Terragrunt `useRunAll` and `useSmartSanitization` are non-null on input, unlike the other vendors' booleans. | [G] |
 | Version-dependent defaults | OpenTofu `concise` and `enableCPUProfiling` default by the lowest version a constraint admits when unset at creation. | [G] [D](https://docs.spacelift.io/vendors/opentofu) |
 | Conflicting Terragrunt default | `tool` defaults to `TERRAFORM_FOSS` in the schema and provider but to `OPEN_TOFU` in the UI. The schema is the higher source for the API; the UI default is a product fact for new stacks created there. | [G] [S] [RN] |
-| Full-object update | `stackUpdate` takes a whole `StackInput` with `name`, `branch` and `repository` required. Whether an omitted optional field keeps or resets its value is not documented; the provider always sends every hook list and never sends `isDisabled`, `skipVendorBinaryDownload` or the top-level `terraformVersion`. *(unverified)* | [G] [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L1105) |
+| Full-object update | `stackUpdate` takes a whole `StackInput` with `name`, `branch` and `repository` required. Whether an omitted optional field keeps or resets its value is not documented; the provider always sends every hook list and never sends `isDisabled`, `skipVendorBinaryDownload` or the top-level `terraformVersion`. *(unverified)* (C26) | [G] [S](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go#L1105) |
 | Timestamps | `createdAt`, `lockedAt`, `stateSetAt` and `lastApplyAt` are `Int` Unix seconds; `runsInRange` takes them as strings and allows at most 8 days. | [G] |
 | Lock holder | `lockedBy` is a username string. | [G] |
 | Public pool | A null `workerPool` means the shared public pool. | [G] |
@@ -561,7 +561,11 @@ configuration elements from contexts, the stack and integrations; and
   run promotion, OpenTofu defaults by version); the API contract must state its
   own.
 - Update semantics for omitted fields must be defined, since Spacelift's are not
-  documented.
+  documented. Whether a REST update replaces the whole object or merges is
+  product decision PD-08, answered by decision [0022](../decisions/0022-api-errors-and-update-semantics.md).
+- How strictly infraweave parses inputs Spacelift leaves loosely specified
+  (unknown runtime YAML keys, label length and characters) is product
+  decision PD-09, answered by decision 0022.
 
 ## Inferred and undocumented
 
@@ -572,11 +576,12 @@ configuration elements from contexts, the stack and integrations; and
   `STACK_UNLOCK_FORCE`].
 - `StackState` excludes the task and proposed-run states because it reflects
   tracked runs only [I: from the value descriptions].
-- Open: label length and character rules; queued runs on disable; omitted-field
-  semantics of `stackUpdate`; whether runtime hooks replace context hooks;
-  unknown runtime YAML keys; the `version` key contradiction and the no-entry
-  precedence sentence. Each is marked *(unverified)* above and listed for
-  30-open-questions.
+- Open: label length and character rules (C24); queued runs on disable (C25); omitted-field
+  semantics of `stackUpdate` (C26); whether runtime hooks replace context hooks (C29);
+  unknown runtime YAML keys (C30); the `version` key contradiction (C27) and the no-entry
+  precedence sentence (C28); the commands OpenTofu `concise` affects (C31); what the server makes of the empty Kubernetes
+  `namespace` the provider sends (C32). Each is marked *(unverified)* above
+  and listed in [open-questions.json](../../data/open-questions.json).
 
 ## Versions at the research baseline
 

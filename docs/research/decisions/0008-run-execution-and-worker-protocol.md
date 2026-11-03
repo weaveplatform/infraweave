@@ -30,7 +30,7 @@ facts shape the design.
   [0006](0006-authentication-and-tokens.md), the state backend is
   [0010](0010-state-backend.md) and source access is
   [0012](0012-vcs-integration-model.md). This record fixes how a run moves through
-  its states and how a worker takes part. It answers P6
+  its states and how a worker takes part. It answers PD-06
   ([30, product decisions](../reference/30-open-questions.md#product-decisions)).
 
 ## Decision
@@ -530,7 +530,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
 
 ## Rationale
 
-- **P6: HTTP long-poll only (option a).** Spacelift retires MQTT for workers on
+- **PD-06: HTTP long-poll only (option a).** Spacelift retires MQTT for workers on
   2027-03-30 and long-poll already covers every deployment path. A broker would
   add a port, a component and a second delivery path to test, and buy nothing:
   Spacelift's launchers cannot talk to infraweave anyway
