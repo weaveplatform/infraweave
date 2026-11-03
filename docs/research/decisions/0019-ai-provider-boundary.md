@@ -161,12 +161,32 @@ API (decision 0007).
 | `mutate` | MCP (`mcp:write`) | Call any non-`GET` operation by `operationId` with a body |
 | `provider` | MCP, assistant | Provider, resource and data source schemas from the OpenTofu registry, cached |
 | `intent` | MCP (`mcp:write`), Build mode | `create`, `update`, `delete`, `refresh`, `import`, `resume`, `read`, `status` and module deployment |
-| `navigate`, `page_context` | assistant | UI navigation and the current page's data, supplied by the browser |
+| `navigate`, `page_context` | assistant | Console navigation and the current page's context, supplied by the console (see [Console boundary](#console-boundary)) |
 | `search_docs` | assistant | Search infraweave's documentation, indexed into the binary at build time |
 
 Destructive tool calls from the assistant (any `delete`, eject, or a
-`mutate` on a `DELETE` operation) return a confirmation request to the UI;
-the model cannot confirm for the user.
+`mutate` on a `DELETE` operation) return a confirmation request to the
+console; the model cannot confirm for the user.
+
+### Console boundary
+
+Infra Assistant runs beside the console ([0023](0023-console.md)) and
+reaches infraweave through the same API as the user:
+
+- **What the assistant sees of the page.** The console supplies the current
+  route and the IDs of the resources on screen, and `page_context` returns
+  exactly that. The data behind those IDs reaches the model only through
+  `query`, so the model never sees what the user could not read through the
+  API.
+- **How it acts.** Every tool call is a REST API operation, run under the
+  identity of the user in the conversation, with that user's grants
+  (decision 0007). The assistant has no privileged path, no service
+  identity and no console-only endpoint. `navigate` asks the console to
+  change its route and performs no operation.
+- **Destructive actions confirm in the console.** A destructive tool call
+  streams `confirmation_required`, naming the operation and the resources,
+  and does not run. The console shows it to the user, and only the user's
+  confirmation there, sent with the user's session, lets the call run.
 
 ### Infra Assistant and run summaries
 

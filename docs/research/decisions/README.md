@@ -50,4 +50,5 @@ record is missing from this index or its status here differs from its own.
 | 0020 | [Reference deployments and packaging](0020-reference-deployments-and-packaging.md) | Accepted |
 | 0021 | [Capability scope, features and tiers](0021-capability-scope-and-supersession.md) | Accepted |
 | 0022 | [Served API errors, update semantics and input strictness](0022-api-errors-and-update-semantics.md) | Accepted |
+| 0023 | [Console](0023-console.md) | Accepted |
 | 0024 | [Expression language](0024-expression-language.md) | Accepted |
