@@ -48,12 +48,36 @@ Bundling fails when any of these happens:
 - a path, `operationId` or component is defined twice (the error names both files);
 - the result is not valid OpenAPI 3.0.3.
 
+### Running it
+
+`infraweave serve` serves the deploy API on the API listener under
+`/api/v1`, and the liveness probe `GET /livez` on the admin listener only
+([decision 0017](docs/research/decisions/0017-observability-and-health.md#health)).
+Every operation answers a `501` problem until its family is implemented, and
+every error, the router's 404 and 405 included, is an
+`application/problem+json` body. Routes check no credentials yet:
+authentication arrives with
+[decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)'s
+phase.
+
+| Setting | Flag | Environment | Default |
+|---|---|---|---|
+| `server.listen` | `--listen` | `INFRAWEAVE_SERVER_LISTEN` | `:8080` |
+| `server.admin_listen` | `--admin-listen` | `INFRAWEAVE_SERVER_ADMIN_LISTEN` | `:9090` |
+| `server.shutdown.timeout` | `--shutdown-timeout` | `INFRAWEAVE_SERVER_SHUTDOWN_TIMEOUT` | `30s` |
+
+A flag beats the environment, which beats the YAML file named by
+`--config`. The file is strict: an unknown key fails startup. On `SIGINT`
+or `SIGTERM` the server stops accepting connections and drains in-flight
+requests for up to `server.shutdown.timeout`. `infraweave version` prints
+the build's version, commit and date.
+
 ## Layout
 
 | Path | What |
 |---|---|
 | `api/` | OpenAPI documents, embedded for tests and tools by `api/doc.go` |
-| `cmd/<binary>/` | Entry points: thin cobra shims over `internal/`; excluded from the coverage gate |
+| `cmd/<binary>/` | Entry points: thin shims over `internal/`, such as `cmd/infraweave`, one cobra file per process mode over `internal/app`; excluded from the coverage gate |
 | `internal/` | Project-only packages; `internal/buildinfo` carries the version stamped in by `make build` |
 | `pkg/` | Public, importable packages |
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
@@ -65,7 +89,7 @@ Bundling fails when any of these happens:
 | Target | What |
 |---|---|
 | `make gate` | Everything CI runs: docs-check, vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
-| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a reference spec tag that report 26 does not name, or a report with *(unverified)* claims that report 30 does not link |
+| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/deploy/paths-<family>.yaml` with the decision 0003 conventions, then bundles |

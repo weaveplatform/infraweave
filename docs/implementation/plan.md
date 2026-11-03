@@ -131,7 +131,7 @@ and lint is clean.
 | Phase | Status | Notes |
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
-| P1 Served API skeleton | In progress | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs. Open: [#11](https://github.com/weaveplatform/infraweave/issues/11) parity report, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
+| P1 Served API skeleton | In progress | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`. Open: [#11](https://github.com/weaveplatform/infraweave/issues/11) parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
 | P1b Domain layout and depguard | Not started | |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P2 PostgreSQL, migrations and operability | Not started | |
@@ -388,7 +388,7 @@ package paths are today's (`internal/server/...`); P1b moves them.
    `UnimplementedStrict` into `internal/server/gen/deploy` and the client
    into `pkg/client/deploy`, with `make verify-generate`; [#10](https://github.com/weaveplatform/infraweave/issues/10) decision
    0003 and `api/src/deploy/components-common.yaml`.
-2. [#14](https://github.com/weaveplatform/infraweave/issues/14) `cmd/infraweave` with `serve` and `version`;
+2. Done: [#14](https://github.com/weaveplatform/infraweave/issues/14) `cmd/infraweave` with `serve` and `version`;
    `internal/server` builds the chi router with request ID and recovery,
    mounts the strict handler under `/api/v1`, turns `404` and `405` into
    problem details and serves `GET /livez` on the admin listener

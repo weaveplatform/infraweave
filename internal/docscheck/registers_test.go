@@ -54,7 +54,9 @@ func registerTree() fstest.MapFS {
 	m["docs/data/schema/common.schema.json"] = file(commonSchema)
 	m["docs/data/schema/notes.schema.json"] = file(noteSchema)
 	m["docs/data/notes.json"] = file(notes)
-	m["docs/research/reference/01-a.md"] = file(goodReport + "\nN-1 is open; `N-1` too.\n\n```\nN-9 in code is not a citation\n```\n")
+	m["docs/research/reference/01-a.md"] = file(
+		goodReport + "\nN-1 is open; `N-1` too.\n\n```\nN-9 in code is not a citation\n```\n",
+	)
 	return m
 }
 
@@ -90,7 +92,9 @@ func TestUnitRegisterFindings(t *testing.T) {
 		{
 			name: "wrong $schema",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/notes.json"] = file(strings.Replace(notes, "schema/notes.schema.json", "schema/x.schema.json", 1))
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, "schema/notes.schema.json", "schema/x.schema.json", 1),
+				)
 			},
 			want:  `$schema is "schema/x.schema.json", want "schema/notes.schema.json"`,
 			where: "docs/data/notes.json:1",
@@ -104,15 +108,21 @@ func TestUnitRegisterFindings(t *testing.T) {
 			where: "docs/data/schema/notes.schema.json:1",
 		},
 		{
-			name:  "record against the schema",
-			edit:  func(m fstest.MapFS) { m["docs/data/notes.json"] = file(strings.Replace(notes, `"text": "A second note.",`, "", 1)) },
+			name: "record against the schema",
+			edit: func(m fstest.MapFS) {
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, `"text": "A second note.",`, "", 1),
+				)
+			},
 			want:  "does not match notes.schema.json",
 			where: "docs/data/notes.json:1",
 		},
 		{
 			name: "schema without an id pattern",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/schema/notes.schema.json"] = file(strings.Replace(noteSchema, `"x-id-pattern": "N-[0-9]+",`, "", 1))
+				m["docs/data/schema/notes.schema.json"] = file(
+					strings.Replace(noteSchema, `"x-id-pattern": "N-[0-9]+",`, "", 1),
+				)
 			},
 			want:  "has no x-id-pattern",
 			where: "docs/data/schema/notes.schema.json:1",
@@ -120,7 +130,9 @@ func TestUnitRegisterFindings(t *testing.T) {
 		{
 			name: "bad id pattern",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/schema/notes.schema.json"] = file(strings.Replace(noteSchema, `"N-[0-9]+",`, `"N-[",`, 1))
+				m["docs/data/schema/notes.schema.json"] = file(
+					strings.Replace(noteSchema, `"N-[0-9]+",`, `"N-[",`, 1),
+				)
 			},
 			want:  "x-id-pattern:",
 			where: "docs/data/schema/notes.schema.json:1",
@@ -128,7 +140,9 @@ func TestUnitRegisterFindings(t *testing.T) {
 		{
 			name: "bad cite pattern",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/schema/notes.schema.json"] = file(strings.Replace(noteSchema, `"\\bN-[0-9]+\\b"`, `"("`, 1))
+				m["docs/data/schema/notes.schema.json"] = file(
+					strings.Replace(noteSchema, `"\\bN-[0-9]+\\b"`, `"("`, 1),
+				)
 			},
 			want:  "x-cite-pattern:",
 			where: "docs/data/schema/notes.schema.json:1",
@@ -143,15 +157,21 @@ func TestUnitRegisterFindings(t *testing.T) {
 			where: "docs/data/notes.json:1",
 		},
 		{
-			name:  "id against the pattern",
-			edit:  func(m fstest.MapFS) { m["docs/data/notes.json"] = file(strings.Replace(notes, `"id": "N-2"`, `"id": "X-2"`, 1)) },
+			name: "id against the pattern",
+			edit: func(m fstest.MapFS) {
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, `"id": "N-2"`, `"id": "X-2"`, 1),
+				)
+			},
 			want:  `record id "X-2" does not match`,
 			where: "docs/data/notes.json:7",
 		},
 		{
 			name: "duplicate id",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/notes.json"] = file(strings.Replace(notes, `"id": "N-2"`, `"id": "N-1"`, 1))
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, `"id": "N-2"`, `"id": "N-1"`, 1),
+				)
 				m["docs/research/reference/01-a.md"] = file(goodReport + "\nN-1\n")
 			},
 			want:  "record id N-1 appears twice",
@@ -160,7 +180,9 @@ func TestUnitRegisterFindings(t *testing.T) {
 		{
 			name: "broken link in a record",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/notes.json"] = file(strings.Replace(notes, "01-a.md#01-a-report", "01-a.md#nope", 1))
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, "01-a.md#01-a-report", "01-a.md#nope", 1),
+				)
 			},
 			want:  "has no heading #nope",
 			where: "docs/data/notes.json:4",
@@ -184,9 +206,18 @@ func TestUnitRegisterFindings(t *testing.T) {
 		{
 			name: "report that does not cite its record",
 			edit: func(m fstest.MapFS) {
-				m["docs/research/reference/01-a.md"] = file(goodReport + "\nN-10 is a different note.\n")
-				m["docs/data/notes.json"] = file(strings.Replace(notes, `"text": "A second note."`, `"text": "A second note.", "reports": []`, 1) +
-					"")
+				m["docs/research/reference/01-a.md"] = file(
+					goodReport + "\nN-10 is a different note.\n",
+				)
+				m["docs/data/notes.json"] = file(
+					strings.Replace(
+						notes,
+						`"text": "A second note."`,
+						`"text": "A second note.", "reports": []`,
+						1,
+					) +
+						"",
+				)
 			},
 			want:  "N-1 names docs/research/reference/01-a.md, which does not cite it",
 			where: "docs/data/notes.json:4",
@@ -194,27 +225,49 @@ func TestUnitRegisterFindings(t *testing.T) {
 		{
 			name: "record names a missing report",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/notes.json"] = file(strings.Replace(notes, `"reports": ["docs/research/reference/01-a.md"]`, `"reports": "docs/gone.md"`, 1))
+				m["docs/data/notes.json"] = file(
+					strings.Replace(
+						notes,
+						`"reports": ["docs/research/reference/01-a.md"]`,
+						`"reports": "docs/gone.md"`,
+						1,
+					),
+				)
 			},
 			want:  "N-1 names docs/gone.md, which does not exist",
 			where: "docs/data/notes.json:4",
 		},
 		{
-			name:  "missing evidence phrase",
-			edit:  func(m fstest.MapFS) { m["docs/data/notes.json"] = file(strings.Replace(notes, `"A report"`, `"Another report"`, 1)) },
+			name: "missing evidence phrase",
+			edit: func(m fstest.MapFS) {
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, `"A report"`, `"Another report"`, 1),
+				)
+			},
 			want:  `N-2: docs/research/reference/01-a.md does not contain "Another report"`,
 			where: "docs/data/notes.json:7",
 		},
 		{
-			name:  "phrase that should be gone",
-			edit:  func(m fstest.MapFS) { m["docs/data/notes.json"] = file(strings.Replace(notes, `"absent": ["v2"`, `"absent": ["v1"`, 1)) },
+			name: "phrase that should be gone",
+			edit: func(m fstest.MapFS) {
+				m["docs/data/notes.json"] = file(
+					strings.Replace(notes, `"absent": ["v2"`, `"absent": ["v1"`, 1),
+				)
+			},
 			want:  `N-1: docs/research/reference/01-a.md still contains "v1"`,
 			where: "docs/data/notes.json:4",
 		},
 		{
 			name: "evidence file missing",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/notes.json"] = file(strings.Replace(notes, `[{"file": "docs/research/reference/01-a.md"`, `[{"file": "docs/gone.md"`, 1))
+				m["docs/data/notes.json"] = file(
+					strings.Replace(
+						notes,
+						`[{"file": "docs/research/reference/01-a.md"`,
+						`[{"file": "docs/gone.md"`,
+						1,
+					),
+				)
 			},
 			want:  "N-2: evidence file docs/gone.md does not exist",
 			where: "docs/data/notes.json:7",
@@ -235,7 +288,8 @@ func TestUnitRegisterFindings(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, f := range found {
-				if strings.Contains(f.Message, tc.want) && strings.HasPrefix(f.String(), tc.where+":") {
+				if strings.Contains(f.Message, tc.want) &&
+					strings.HasPrefix(f.String(), tc.where+":") {
 					return
 				}
 			}
