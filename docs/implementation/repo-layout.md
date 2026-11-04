@@ -47,19 +47,23 @@ infraweave/
 │   ├── infraweave-agent/          optional slim build: registers the same agent/cli commands; links only internal/agent
 │   └── infraweavectl/             the CLI over pkg/sdk; a client, not a process mode (P3b, P24b)
 ├── api/                           specifications; the source of truth for every served API
-│   ├── src/deploy/                editable fragments: info.yaml, components-common.yaml, paths-<family>.yaml
+│   ├── src/api/                   editable fragments: info.yaml, components-common.yaml, paths-<family>.yaml;
+│   │                              Deploy and Flows families alike, Flows under /api/v1/flows/ (P18c)
 │   ├── src/worker/                worker protocol fragments (P8)
-│   ├── src/flows/                 Flows API fragments under /flows/v1/ (P18c)
 │   ├── src/operator/              operator API fragments: organizations, tiers, grants, billing, queue (P3b)
 │   ├── src/registry/              registry protocol description for contract tests; its routes are hand-written (P17)
 │   ├── proto/flows/app/v1/        the versioned App and Host gRPC services of Flows apps (P18d)
-│   ├── deploy.openapi.yaml        bundled by make bundle; committed; drift-checked
+│   ├── api.openapi.yaml           the served document, Deploy and Flows; bundled by make bundle; committed;
+│   │                              drift-checked
 │   ├── oapi-server-<spec>.yaml    oapi-codegen server config; output internal/platform/gen/<spec>
 │   ├── oapi-client-<spec>.yaml    oapi-codegen client config; output pkg/client/<spec> or internal/agent/wire
-│   ├── doc.go deploy_test.go      embeds of the bundles and the spec checks
+│   ├── doc.go api_test.go         embeds of the bundles and the spec checks
+│   ├── parity-baseline.*.json     accepted parity gaps per reference: .deploy.json (TestUnitAPIParity),
+│   │                              .flows.json (TestUnitFlowsParity, P18c)
 │   └── reference/
 │       ├── spacelift/             the Spacelift specification reference and its snapshots; generated
-│       ├── flows-clients.yaml     each flowctl and Flows provider RPC path mapped to its REST operation (P18c)
+│       ├── spacelift-flows/       the Flows reference: provider and flowctl RPC paths projected to REST
+│       │                          by rest-mapping.yaml into flows.openapi.yaml and coverage.md; generated (P18c)
 │       └── provider-parity.yaml   Terraform provider renames, type changes and omissions (P24)
 ├── internal/
 │   ├── app/                       composition root: serve, scheduler, all, migrate
@@ -125,9 +129,8 @@ infraweave/
 │   │   │   │                      CSP (P24c)
 │   │   │   └── strict/            principal and problem mapping, merge-patch and If-Match for strict handlers (P5)
 │   │   ├── gen/                   GENERATED strict servers, one package per spec
-│   │   │   ├── deploy/            server.gen.go, unimplemented.gen.go                      ← internal/server/gen/deploy
+│   │   │   ├── api/               server.gen.go, unimplemented.gen.go                      ← internal/server/gen/deploy
 │   │   │   ├── worker/            (P8)
-│   │   │   ├── flows/             (P18c)
 │   │   │   └── operator/          (P3b)
 │   │   ├── observe/               slog, OpenTelemetry, /metrics, readiness on its own port (P2, P18b)
 │   │   └── testkit/               fake clock, fake object store, HTTP recorder helpers
@@ -164,7 +167,7 @@ infraweave/
 │   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, the OAuth
 │   │                              authorization server, spaces, RBAC, the Organization tag (P3 to P4b, P13b, P23)
 │   │   ├── api/                   Authenticator, Authorizer, Spaces, Tokens, identity reads, events
-│   │   ├── assembly/              New(Deps); Routes; Consumers; Cron; Close; AccessDeploy alias
+│   │   ├── assembly/              New(Deps); Routes; Consumers; Cron; Close; AccessAPI alias
 │   │   └── internal/
 │   │       ├── core/              organization account member apikey session token (P3); user group oauth (P3b);
 │   │       │                      space authz (P4); role binding (P4b); login (P13b); sso scim mfa (P23); port
@@ -212,8 +215,7 @@ infraweave/
 │                                  adapters/{http,gateway,mcp,pg}}/
 ├── pkg/
 │   ├── client/
-│   │   ├── deploy/                GENERATED deploy client, wrapped by pkg/sdk
-│   │   ├── flows/                 GENERATED Flows client (P18c)
+│   │   ├── api/                   GENERATED client of the served API (Deploy and Flows), wrapped by pkg/sdk
 │   │   └── operator/              GENERATED operator API client (P3b)
 │   ├── sdk/                       decision 0001's SDK over pkg/client/<spec>: token exchange, idempotency keys,
 │   │                              retries, iterators, typed problem errors; every Go client uses it (P1c)
@@ -273,23 +275,27 @@ with no behaviour change.
 | Today | Target | What else changes |
 |---|---|---|
 | `cmd/` (`README.md` only) | `cmd/infraweave`, then `cmd/infraweavectl` (P3b) | one file per process mode |
-| `api`, `api/src/deploy`, `api/reference/spacelift` | unchanged | `api/src/deploy` grows one `paths-<family>.yaml` per family |
-| `api/oapi-server-deploy.yaml` | unchanged | `output: internal/platform/gen/deploy/server.gen.go` |
+| `api`, `api/reference/spacelift` | unchanged | |
+| `api/src/deploy` | `api/src/api` | grows one `paths-<family>.yaml` per family, Deploy and Flows |
+| `api/deploy.openapi.yaml` | `api/api.openapi.yaml` | bundled from `api/src/api`; `api/doc.go` embeds it |
+| `api/oapi-server-deploy.yaml`, `api/oapi-client-deploy.yaml` | `api/oapi-server-api.yaml`, `api/oapi-client-api.yaml` | `output: internal/platform/gen/api/server.gen.go`, package `api`; the client's output `pkg/client/api` |
+| `api/parity-baseline.json` | `api/parity-baseline.deploy.json` | `TestUnitDeployParity` and `TestUnitDeployParityChecks` become `TestUnitAPIParity` and `TestUnitAPIParityChecks`, which read it |
+| `api/deploy_test.go` | `api/api_test.go` | `TestUnitDeployBundleCurrent`, `TestUnitDeployConventionComponents` and `TestUnitDeployProblemTypes` become `TestUnitAPI…` |
 | `internal/buildinfo` | `internal/platform/buildinfo` | `LDFLAGS` paths in `Makefile` |
-| `internal/server/gen/deploy` | `internal/platform/gen/deploy` | regenerated by `make generate`, not moved by hand |
+| `internal/server/gen/deploy` | `internal/platform/gen/api` | regenerated by `make generate`, not moved by hand; `api.StrictServerInterface`, `api.UnimplementedStrict` |
 | `internal/server/problem` | `internal/platform/httpkit/problem` | every domain's HTTP adapter imports it |
 | `internal/server/{ratelimit,idempotency}` | `internal/platform/httpkit/middleware` | with recovery and the `404` and `405` problem handlers from `internal/server` |
 | `internal/server/pagination` | `internal/platform/httpkit/page` | encodes `internal/kernel`'s cursor and page |
 | `internal/server` listener and drain | `internal/platform/httpkit/serve` | the agent process modes share it from P8 |
 | `internal/server` `GET /livez` | `internal/platform/observe` | |
-| `internal/server` routing and `operations.go` | `internal/app/router.go`, `internal/app/operations.go` | `deployServer` composition and its assertion |
+| `internal/server` routing and `operations.go` | `internal/app/router.go`, `internal/app/operations.go` | `apiServer` composition and its assertion |
 | `internal/app/config.go` | `internal/app/config` | keys, flags and strictness unchanged |
 | `internal/specref` | `internal/devtools/specref` | `tools/specref` import path |
 | `internal/openapibundle` | `internal/devtools/openapibundle` | `tools/openapi-bundle` import path |
 | `internal/stubgen` | `internal/devtools/stubgen` | `tools/stubgen` import path; `make generate` stub input path |
 | `internal/docscheck` | `internal/devtools/docscheck` | `make docs-check` package path |
 | `internal/dataview` | `internal/devtools/dataview` | `tools/dataview` import path |
-| `pkg/client/deploy` | unchanged | |
+| `pkg/client/deploy` | `pkg/client/api` | regenerated by `make generate` |
 | `tools/openapi-bundle`, `tools/specref`, `tools/stubgen`, `tools/dataview` | unchanged | library import paths |
 | `test/acceptance` | unchanged | runs the built binary as a subprocess from P1c |
 | `Makefile` | unchanged path | `generate` and `verify-generate` paths, `LDFLAGS`, `docs-check` path |
@@ -331,7 +337,7 @@ rule, and the domain that owns its rule otherwise.
 |---|---|---|
 | A business domain | `internal/<domain>/` | One directory per domain in the tree above; a new domain gets the four-part skeleton |
 | What other domains call | `internal/<domain>/api/` | Interfaces, input and output types and events only; imports `internal/kernel`, `internal/platform/outbox` and the standard library |
-| Domain assembly | `internal/<domain>/assembly/` | `New(Deps)`, `Routes`, `Consumers`, `Cron`, `Close`, and an alias of the domain's strict partial named after the domain (`StacksDeploy`); only `internal/app` and `cmd/` import it |
+| Domain assembly | `internal/<domain>/assembly/` | `New(Deps)`, `Routes`, `Consumers`, `Cron`, `Close`, and an alias of the domain's strict partial named after the domain (`StacksAPI`); only `internal/app` and `cmd/` import it |
 | Domain logic | `internal/<domain>/internal/core/...` (hexagon) or `internal/<domain>/internal/<domain>/` (flat) | Core never imports adapters |
 | Rules with no I/O | a package of their own inside the owning domain | The run transition table, priority levels, policy combination and version numbering are tested as tables |
 | HTTP handlers | `internal/<domain>/internal/.../http` | A strict-server partial for the domain's operations; hand-written chi routes for protocols that are not the REST API |
@@ -369,7 +375,7 @@ Further rules:
   server by embedding each domain's partial at depth one and
   `UnimplementedStrict` at depth two. Each partial is embedded under its
   domain's alias, since an embedded field takes its type's name, and the
-  assertion `var _ deploy.StrictServerInterface = deployServer{}` makes an
+  assertion `var _ api.StrictServerInterface = apiServer{}` makes an
   operation two domains implement fail to compile.
 - **The agent process modes import `internal/agent` only.** `cmd/infraweave/agent.go`
   is the one place the agent path meets the rest of the binary.
@@ -522,7 +528,7 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | Output | Source | Regenerate | Verify |
 |---|---|---|---|
 | `api/<spec>.openapi.yaml` | `api/src/<spec>/*.yaml` | `make bundle` (part of `make generate`) | `make verify-generate` |
-| `api/src/deploy/paths-<family>.yaml` (first draft) | a reference tag | `make scaffold TAG=<tag> FAMILY=<family>`, then edited by hand | reviewed; the bundle is verified |
+| `api/src/api/paths-<family>.yaml` (first draft) | a reference tag, Deploy or Flows | `make scaffold TAG=<tag> FAMILY=<family>`, then edited by hand | reviewed; the bundle is verified |
 | `internal/platform/gen/<spec>/server.gen.go` | the bundle, `api/oapi-server-<spec>.yaml` | `make generate` | `make verify-generate` |
 | `internal/platform/gen/<spec>/unimplemented.gen.go` | the generated server | `make generate` (stubgen) | `make verify-generate` |
 | `pkg/client/<spec>`, `internal/agent/wire` | the bundle, `api/oapi-client-<spec>.yaml` | `make generate` | `make verify-generate` |
@@ -530,6 +536,9 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | The `App` and `Host` stubs | `api/proto/flows/app/v1/` | `make generate` | `make verify-generate`; `buf breaking` against the last release |
 | `api/reference/spacelift/spacelift.openapi.yaml`, `coverage.md` | the snapshots and `rest-mapping.yaml` | `make reference` | `make verify-reference` |
 | `api/reference/spacelift/` snapshots and `sources.lock.yaml` | upstream at the pinned versions | `make reference-fetch` (network) | `openapi-spec-update.yml` |
+| `api/reference/spacelift-flows/flows.openapi.yaml`, `coverage.md` | the provider structs, flowctl's `src/api.ts`, `schemas.yaml` and `rest-mapping.yaml` | `make reference` | `make verify-reference` |
+| `api/reference/spacelift-flows/` snapshots and `sources.lock.yaml` | upstream at the pinned versions | `make reference-fetch` (network) | `openapi-spec-update.yml` |
+| `docs/data/flows-sdk-inventory.json` | the pinned `@slflows/sdk` `index.d.ts`, identifiers only | `make reference-inventory` | `make verify-reference` |
 | [`docs/data/graphql-inventory.json`](../data/graphql-inventory.json), [`docs/research/reference/29-data-model-inventory.md`](../research/reference/29-data-model-inventory.md) | the introspection snapshot | `make reference-inventory` | `make verify-reference` |
 | `internal/features/catalogue.gen.go` | [`docs/data/features.json`](../data/features.json), with the `tier-feature:` records of [`capabilities.json`](../data/capabilities.json) | `make generate` | `make verify-generate` ([0021](../research/decisions/0021-capability-scope-and-supersession.md#the-feature-catalogue-pd-05)) |
 | [`docs/implementation/tiers.md`](tiers.md) | `docs/data/features.json` and `capabilities.json` | `make generate` (dataview) | `make verify-generate`; `TestUnitCommittedView` |
@@ -538,6 +547,6 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 
 One generated `StrictServerInterface` spans many domains. `internal/app`
 composes it by embedding, and each domain's `assembly/` package re-exports its
-partial under its domain's name (`StacksDeploy`), because `internal/app` cannot import the domain's
+partial under its domain's name (`StacksAPI`), because `internal/app` cannot import the domain's
 `internal/.../http` package
 ([generated code](../research/architecture-options/5-modular-monolith.md#generated-code)).

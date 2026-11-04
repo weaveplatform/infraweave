@@ -162,11 +162,13 @@ counterpart in the nightly cloud job.
 
 `specref` gains a `parity` subcommand, run by `make verify-parity` and by
 an acceptance scenario in `spec_reference.feature`. For every operation in
-`api/reference/spacelift/spacelift.openapi.yaml` it decides one outcome:
+`api/reference/spacelift/spacelift.openapi.yaml`, and in the Flows reference
+`api/reference/spacelift-flows/flows.openapi.yaml`
+([0018](0018-flows-runtime.md)), it decides one outcome:
 
 | Outcome | Condition |
 |---|---|
-| served | `api/deploy.openapi.yaml` has the same `operationId` with the same method and path |
+| served | `api/api.openapi.yaml` has the same `operationId` with the same method and path |
 | served with divergence | the same `operationId`, with each difference listed in `x-infraweave-divergence` |
 | superseded | listed in report 26 section 7, under the rule of [0021](0021-capability-scope-and-supersession.md) |
 | missing | none of the above |

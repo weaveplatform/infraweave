@@ -412,7 +412,7 @@ that the rest of the set, and the served API, are measured against:
 | Fetch | `make reference-fetch` (`specref fetch`) | introspection, `bruno.json`, `terraform-schema.json`, `terraform-operations.json` and the pins in [`sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml) |
 | Generate | `make reference` (`specref generate`) | [`spacelift.openapi.yaml`](../../../api/reference/spacelift/spacelift.openapi.yaml) (725 operations under 53 tags) and [`coverage.md`](../../../api/reference/spacelift/coverage.md) |
 | Verify | `make verify-reference` (`specref check`) | fails when the committed reference differs from what the snapshots generate |
-| Scaffold | `make scaffold TAG=… FAMILY=…` | copies one tag into a served-API fragment under `api/src/deploy/` |
+| Scaffold | `make scaffold TAG=… FAMILY=…` | copies one tag into a served-API fragment under `api/src/deploy/`, which becomes `api/src/api/` with P1b's rename ([#73](https://github.com/weaveplatform/infraweave/issues/73)) |
 | Refresh | `.github/workflows/openapi-spec-update.yml`, Mondays 04:41 UTC | re-fetches when the Bruno head or the latest provider release moves, and opens one PR |
 
 The reference is an oracle in three ways:

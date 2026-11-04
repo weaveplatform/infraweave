@@ -48,6 +48,14 @@ its reason. `TestUnitDeployParity` fails on a reference operation the
 baseline does not accept and on an entry the bundle no longer needs, so
 coverage of the reference only goes up.
 
+The document holds Deploy and, from P18c, Flows under `/api/v1/flows/`, so
+P1b ([#73](https://github.com/weaveplatform/infraweave/issues/73)) renames
+it from `deploy` to `api`: `api/src/api/`, `api/api.openapi.yaml`,
+`api/oapi-server-api.yaml` and `api/oapi-client-api.yaml`,
+`internal/platform/gen/api`, `pkg/client/api`,
+`api/parity-baseline.deploy.json` and `TestUnitAPIParity`
+([plan](docs/implementation/plan.md#p1b-domain-layout-and-depguard)).
+
 Bundling fails when any of these happens:
 
 - `info.yaml` is missing, or holds keys other than its own;

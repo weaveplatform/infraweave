@@ -72,9 +72,12 @@ are the records that can move.
   `TestUnitServedNames` checks every served bundle against both from P1c.
 - **REST, not GraphQL.** The served API is REST over JSON described by
   OpenAPI 3 ([0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0003](../research/decisions/0003-api-conventions.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md)). The Spacelift reference
-  `api/reference/spacelift/spacelift.openapi.yaml` is the parity oracle; the
-  served documents are `api/deploy.openapi.yaml`, `api/flows.openapi.yaml`
-  and the operator API's `api/operator.openapi.yaml`. Each difference is
+  `api/reference/spacelift/spacelift.openapi.yaml` is the parity oracle for
+  Deploy and `api/reference/spacelift-flows/flows.openapi.yaml` for Flows; the
+  served documents are `api/api.openapi.yaml`, which holds Deploy and Flows
+  under `/api/v1`, and the operator API's `api/operator.openapi.yaml`.
+  Until [#73](https://github.com/weaveplatform/infraweave/issues/73) lands,
+  the served document is `api/deploy.openapi.yaml`. Each difference is
   recorded in `x-infraweave-divergence` and in the
   [deviations register](../data/deviations.json).
 - **infraweave's own clients.** `pkg/sdk` wraps the generated
@@ -128,7 +131,7 @@ and lint is clean.
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
-| P1b Domain layout and depguard | Not started | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72): [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
+| P1b Domain layout and depguard | Not started | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72): [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P2 PostgreSQL, migrations and operability | Not started | |
 | P2b Object storage and secrets at rest | Not started | |
@@ -468,13 +471,33 @@ with a clean run over the whole tree.
    the guards read (`operations.go`) to `internal/app`. Update the `Makefile` (`LDFLAGS`, `generate`,
    `verify-generate`, `docs-check`), `.testcoverage.yml` and the `tools/`
    imports.
-2. Regenerate the strict server into `internal/platform/gen/deploy` by
-   changing `api/oapi-server-deploy.yaml`'s output; stubgen reads the new
-   path. `internal/app/router.go` composes a `deployServer` struct that
+2. Rename the served document from `deploy` to `api`
+   ([#73](https://github.com/weaveplatform/infraweave/issues/73)), since it
+   holds Deploy and Flows alike ([0018](../research/decisions/0018-flows-runtime.md)):
+   `api/src/deploy` becomes `api/src/api`, `api/oapi-server-deploy.yaml`
+   and `api/oapi-client-deploy.yaml` become `api/oapi-server-api.yaml` and
+   `api/oapi-client-api.yaml`, the bundle becomes `api/api.openapi.yaml`,
+   `pkg/client/deploy` becomes `pkg/client/api`, `api/parity-baseline.json`
+   becomes `api/parity-baseline.deploy.json`, `TestUnitDeployParity` and
+   `TestUnitDeployParityChecks` become `TestUnitAPIParity` and
+   `TestUnitAPIParityChecks`, and `api/deploy_test.go` becomes
+   `api/api_test.go`, its `TestUnitDeployBundleCurrent`,
+   `TestUnitDeployConventionComponents` and `TestUnitDeployProblemTypes`
+   becoming `TestUnitAPIBundleCurrent`, `TestUnitAPIConventionComponents`
+   and `TestUnitAPIProblemTypes`. The same pull request updates the
+   documents that describe the code as it stands and so name the old files:
+   the `README.md` sections on the served API and the `make` targets, report
+   26's state computation and versions, report 01's scaffold row, this
+   plan's REST bullet, decision 0004's "Today it holds" sentence, decision
+   0001's implemented checks, decision 0022's problem-type check and
+   `docs/data/README.md`. Regenerate the strict server into
+   `internal/platform/gen/api` (package `api`) through the renamed server
+   configuration's output; stubgen reads the new path.
+   `internal/app/router.go` composes an `apiServer` struct that
    embeds each domain's partial and `UnimplementedStrict` one level deeper,
-   with `var _ deploy.StrictServerInterface = deployServer{}`. An embedded
+   with `var _ api.StrictServerInterface = apiServer{}`. An embedded
    field takes its type's name, so each domain's `assembly/` package
-   re-exports its partial under its domain's name (`StacksDeploy`); no
+   re-exports its partial under its domain's name (`StacksAPI`); no
    domain exists yet, so the struct holds only the stubs.
 3. Create `internal/kernel` with `page.go` (decision 0003's cursor and page,
    which `httpkit/page` encodes); `ids.go` lands with P2 and `principal.go`
@@ -516,8 +539,13 @@ with a clean run over the whole tree.
 - `GOWORK=off go list ./...` shows no package under `internal/server`, and
   every package it lists sits where the [repo layout](repo-layout.md) places
   it.
-- `make verify-generate` checks `internal/platform/gen/deploy`; the parity
-  report is unchanged.
+- `make verify-generate` checks `internal/platform/gen/api` and
+  `pkg/client/api`, and no file under `api/`, `internal/` or `pkg/` names
+  `deploy.openapi.yaml`; the parity report is unchanged.
+- `README.md`, reports 01 and 26, decisions 0001, 0004 and 0022, this plan
+  and `docs/data/README.md` name `api/api.openapi.yaml`, `api/src/api`,
+  `pkg/client/api`, `api/parity-baseline.deploy.json` and the `TestUnitAPI…`
+  tests wherever they describe the code as it stands.
 - depguard runs clean over the whole tree, and each fixture violation fails
   `make lint`.
 - `make gate` passes at 95% in total and 90% per package.
@@ -562,16 +590,16 @@ passing success, denial and failure scenarios.
    operation counts as served with divergence, never as missing. The
    operations of the `Organization` tag are infraweave-only, outside the
    parity surface.
-4. `api/deploy_test.go`: `TestUnitFeaturePartitions` (every scenario tag
+4. `api/api_test.go`: `TestUnitFeaturePartitions` (every scenario tag
    maps to one CI partition), `TestUnitServedDeprecations`,
-   `TestUnitSupersededEnums` and `TestUnitDeployProblemTypes`; the problem
+   `TestUnitSupersededEnums` and `TestUnitAPIProblemTypes`; the problem
    slug registry in `internal/platform/httpkit/problem` gains every slug of
    decision 0022 (`TestUnitProblemRegistry`). `TestUnitServedNames`, the
    rename-table test, fails when an operationId, schema, property, enum
    value, header, environment variable, policy input key or description of
    any served bundle contains "spacelift" in any case, and when a row of decision
    0001's rename table is served under its reference name rather than its
-   infraweave name. Each later bundle (worker, flows, registry, operator)
+   infraweave name. Each later bundle (worker, registry, operator)
    joins the test in the phase that adds it. Records DV-114.
 5. CI: split the acceptance job into `accept-core`, `accept-runs` and
    `accept-integrations`, add `parity` and a scheduled `nightly`, and list
@@ -579,7 +607,7 @@ passing success, denial and failure scenarios.
    `needs`.
 6. `test/fixtures/captures/` layout with `TestUnitCaptureRedaction` and an
    empty `TestAccCaptures` replayer, ready for P28.
-7. `pkg/sdk` over `pkg/client/deploy` ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)): one client for every
+7. `pkg/sdk` over `pkg/client/api` ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)): one client for every
    served document, `Idempotency-Key` on every `POST` and `PATCH` reused
    across its retries, retries on `429` and on `503` with `Retry-After`,
    iterators that follow `nextCursor`, and a typed error per problem slug of
@@ -597,7 +625,7 @@ passing success, denial and failure scenarios.
   removed operation fails it.
 - No acceptance step calls `pkg/client` directly; `pkg/sdk` meets the
   per-package coverage bar.
-- `TestUnitServedNames` passes on `api/deploy.openapi.yaml`, and a fixture
+- `TestUnitServedNames` passes on `api/api.openapi.yaml`, and a fixture
   bundle with a property named `spaceliftAwsAccountId` and a description
   that names Spacelift fails it.
 - `make gate` passes at 95% in total and 90% per package; CI fails a run in
@@ -935,7 +963,7 @@ use.
    `features.disabled`. Tests: `TestUnitFeatureCatalogue`,
    `TestUnitEntitlement`, `TestUnitPooledLimits`,
    `TestUnitFeaturesConfig`. Records DV-018 and DV-101.
-5. The `Organization` tag in `api/src/deploy/paths-organization.yaml`:
+5. The `Organization` tag in `api/src/api/paths-organization.yaml`:
    infraweave-only operations, outside the parity surface, gated by the
    `organization` capability and reached by organization admins (members
    that hold an organization role) and organization keys. They cover the
@@ -953,7 +981,7 @@ use.
    `internal/platform/gen/operator` and `pkg/client/operator`, outside the
    parity surface, for the installation-level actions only: organizations,
    tiers, the billing switch, organization tiers, grants and the queue's
-   dead jobs. As for `deploy`, each domain serves its own operations:
+   dead jobs. As for `api`, each domain serves its own operations:
    `access` organizations, their first account and break-glass
    credentials, whose tables `features` cannot reference, and `features`
    the rest. Creating
@@ -1054,9 +1082,9 @@ Spaces and the evaluator decide every route from here on: deny by default,
    Tests: table tests from report 14's worked cases;
    `TestUnitClosureProperty`.
 4. Enforcement point: `x-infraweave-action` and `x-infraweave-subject` on
-   every operation of `api/deploy.openapi.yaml`, the scaffolder writing them
+   every operation of `api/api.openapi.yaml`, the scaffolder writing them
    from the catalogue, the generated route table and `authz.Require`
-   middleware. `api/deploy_test.go` fails on an operation without both.
+   middleware. `api/api_test.go` fails on an operation without both.
    Every resource the API returns carries `allowedActions`, computed by the
    evaluator that enforces them ([0023](../research/decisions/0023-console.md)). Records DV-108.
 5. Every list and search filters with `Reachable` as
@@ -2098,7 +2126,7 @@ own records, and the metrics and traces operators run infraweave with.
 
 **Exit criteria**
 - Audit Trail meets decision 0016's evidence rule, and every mutating
-  operation in `api/deploy.openapi.yaml` carries an audit action.
+  operation in `api/api.openapi.yaml` carries an audit action.
 - One trace ID spans a run's API request, its job, the launcher's phases and
   the runner's environment.
 - Captures C180 to C184 replay once recorded.
@@ -2131,31 +2159,59 @@ expression in CEL.
    `flows_projects.account_id` referencing `access`' accounts. The
    `templates` edge lands here if P21 has landed, and with P21 otherwise
    ([declared graph](repo-layout.md#declared-graph)).
-3. `api/src/flows/` bundled to `api/flows.openapi.yaml` under `/flows/v1/`,
-   generated into `internal/platform/gen/flows` and `pkg/client/flows`,
-   which `pkg/sdk` wraps; the Flows API operations from report 23 and
-   `api/reference/flows-clients.yaml`, each carrying the feature
+3. The Flows reference, `api/reference/spacelift-flows/`, beside
+   `api/reference/spacelift/`
+   ([02](../research/reference/02-graphql-to-rest-mapping.md#flows-rpc-to-rest)):
+   `specref fetch` pins the `terraform-provider-flows` Go structs (read
+   with `go/ast`) and `flowctl`'s `src/api.ts` (path literals and interface
+   types) in `sources.lock.yaml`, and validates the 46 published templates
+   and a live registry manifest against the overlay `schemas.yaml`
+   (`FlowDefinition`, `RegistryManifest`, `AppVersions`); `specref
+   inventory` writes the `@slflows/sdk` identifiers to the register
+   `docs/data/flows-sdk-inventory.json`, which feeds no REST operation. The
+   hand-written `rest-mapping.yaml` maps every RPC path by the verb rules
+   and overrides, and `specref generate` writes `flows.openapi.yaml`, each
+   operation marked `x-rpc`, a list of `{path, client}` with `client`
+   `provider` or `flowctl` (`/cli/flows/export` and
+   `/provider/flows/export_definition` share one operation), and
+   `coverage.md`, failing on an unmapped or stale RPC path. The five
+   test-scenario operations are accepted as missing in
+   `api/parity-baseline.flows.json` until PD-16 is decided.
+   Each record of [capabilities.json](../data/capabilities.json) gains
+   `product` (`deploy` or `flows`), the `Flows `-prefixed tags join as
+   `flows` records, and docscheck checks each reference's tags against its
+   own product's records. `make verify-reference` covers both references.
+4. The Flows operations in the served document: `api/src/api/` fragments
+   under `/api/v1/flows/...`, tagged `Flows Projects`, `Flows Apps`,
+   `Flows Data Tables` and the other `Flows `-prefixed tags, bundled into
+   `api/api.openapi.yaml` and served through `internal/platform/gen/api`
+   and `pkg/client/api`, which `pkg/sdk` wraps; the operations of report 23
+   and the Flows reference, each carrying the feature
    (`flows-engine`, `flows-data-tables`, `flows-forms` or
-   `flows-mcp-tools`) that gates it; the four project roles, and the
-   account admin in place of Spacelift Flows' organization admin, enforced
-   in the handlers. Test:
-   `TestUnitFlowsClientParity`. Records DV-069.
-4. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
+   `flows-mcp-tools`) that gates it. The operations no public client
+   reaches (invocations and event trees, retry and re-emit, members, teams,
+   service accounts and API keys, agent pools, registry subscriptions,
+   OIDC, audit and OTLP export) are designed from the docs and decision
+   0018's data model and carry `x-upstream: none`. The four project roles,
+   and the account admin in place of Spacelift Flows' organization admin,
+   are enforced in the handlers. Test: `TestUnitFlowsParity` against
+   `api/parity-baseline.flows.json`. Records DV-069.
+5. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
    `flows.lifecycle` and `flows.invocation.status` jobs, effects committed
    with the delivery, schedules through the cron ticker, limits and
    retention. Tests: `TestUnitFlowsDelivery`,
    `TestUnitFlowsInvocationStatus`, `TestUnitFlowsLimits`,
    `TestUnitFlowsDefinitionParse`.
-5. One event model: a fan-out consumer inside `internal/flows` treats
+6. One event model: a fan-out consumer inside `internal/flows` treats
    every enabled Deploy trigger block whose filter matches as a target and
    inserts the root `flow_events` row in the fan-out's transaction, so
    `events` never imports `flows`; `flows.event` feeds the
-   `GET /flows/v1/flows/{flowId}/events/stream` stream and the audit trail
+   `GET /api/v1/flows/flows/{flowId}/events/stream` stream and the audit trail
    under the `flows.` prefix. Input and static configuration, output
    customization and Transform are CEL, checked at save with the
    expression endpoints of P6. Feature: `expressions_flows.feature`.
    Records DV-096 and DV-103.
-6. Core blocks in Go in the `scheduler` process mode, with Transform's
+7. Core blocks in Go in the `scheduler` process mode, with Transform's
    steps form and no Script block; HTTP Endpoint blocks, forms at
    `/flows/forms/<block>`, and the flow and platform Flows MCP servers at
    `/flows/mcp/<flow>` and `/flows/mcp` (DV-066), authorized by P3b's
@@ -2163,13 +2219,16 @@ expression in CEL.
    `flowsIntegration`, `flowsProjects`, `flowsInstances`,
    `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
    `flowsProjectRoleBindingDelete`.
-7. Feature: `flows_engine.feature` (`@postgres`, `@flows-agent`: fan-out
+8. Feature: `flows_engine.feature` (`@postgres`, `@flows-agent`: fan-out
    and merge, echo, pending events, Sleep across a restart, manual retry
    and re-emit, limits, retention).
 
 **Exit criteria**
-- The Flows tag meets decision 0016's evidence rule, and every operation of
-  `api/flows.openapi.yaml` the engine serves passes its scenarios.
+- The Deploy-side `Flows` tag and every `Flows `-prefixed tag of
+  `api/api.openapi.yaml` meet decision 0016's evidence rule, and every
+  Flows operation the engine serves passes its scenarios.
+- `TestUnitFlowsParity` passes, and every reference operation outside
+  `api/parity-baseline.flows.json` is served.
 - A Deploy `run_updated` event and the Flows event it starts share one
   envelope, and the flow's event stream shows it.
 - `flows-engine` in `features.disabled` answers `403 feature-disabled` on
@@ -2599,7 +2658,7 @@ checks run is an [open item](#open-items).
    (eventual consistency, trust relationship retries, write-only values).
 5. The provider's half of `flows_clients.feature`: apply, an empty plan
    and import of a flow, held to the `terraform-provider-flows` operations
-   that `api/reference/flows-clients.yaml` maps.
+   that the Flows reference, `api/reference/spacelift-flows/`, maps.
 
 **Exit criteria**
 - Schema parity passes with every difference recorded.

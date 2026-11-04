@@ -45,7 +45,7 @@ the scaffolder is turning into served routes
 
 Every error response of the served API is `application/problem+json`
 ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)) using the `Problem` schema
-of `api/src/deploy/components-common.yaml`, with `type`
+of `api/src/api/components-common.yaml`, with `type`
 `urn:infraweave:problem:<slug>`. The status follows the class of the failure,
 and the `title` is fixed per slug. Where a ported Spacelift client matches
 text, the title carries that text, so the same substring test keeps working
@@ -231,7 +231,7 @@ every request against the bundled spec before the handler (giving
   constant with the same status and title, and every constant is in the register.
 - `api/deploy_test.go` (`TestUnitDeployProblemTypes`): every problem example in
   the bundled spec uses a slug from the problem register with its status and title.
-- `api/deploy_test.go`: every input schema sets `additionalProperties: false`;
+- `api/api_test.go`: every input schema sets `additionalProperties: false`;
   every update route has a matching `PATCH` with
   `application/merge-patch+json`; both are recorded in
   `x-infraweave-divergence`.
@@ -265,4 +265,4 @@ every request against the bundled spec before the handler (giving
   how Spacelift and its clients handle errors.
 - [02, errors](../reference/02-graphql-to-rest-mapping.md#errors): the
   reference's `Problem` responses.
-- `api/src/deploy/components-common.yaml`: the `Problem` schema.
+- `api/src/api/components-common.yaml`: the `Problem` schema.

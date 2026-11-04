@@ -64,7 +64,10 @@ markdown and keeps this report's source labels.
 
 How the states are computed:
 
-- infraweave's served surface is `api/deploy.openapi.yaml`: 72 operations,
+- infraweave's served surface is `api/deploy.openapi.yaml`, which P1b's
+  rename ([#73](https://github.com/weaveplatform/infraweave/issues/73))
+  makes `api/api.openapi.yaml`, which holds Flows from P18c
+  ([0018](../decisions/0018-flows-runtime.md#api-and-clients)): 72 operations,
   69 under `Stacks` and 3 under `Runs`. Every one is answered by
   `UnimplementedStrict`, which returns 501
   ([`internal/server/gen/deploy/unimplemented.gen.go`](../../../internal/server/gen/deploy/unimplemented.gen.go),

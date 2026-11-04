@@ -628,6 +628,10 @@ deployment or blueprint as a nullable column on `stacks` (section 12.3).
 Deploy-side Flows project role bindings are rows of `role_bindings` with
 actor kind Flows project (section 12.2).
 
+Flows test scenarios, their runs and their assertions (report 23 section
+10.1) have no table: whether infraweave builds them is product decision
+PD-16, which is open.
+
 ## 13. The generated inventory
 
 The register [`graphql-inventory.json`](../../data/graphql-inventory.json) is

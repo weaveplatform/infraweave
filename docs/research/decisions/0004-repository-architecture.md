@@ -127,9 +127,9 @@ summary:
   partial implementations by embedding, with `UnimplementedStrict` one
   level deeper. An embedded field takes its type's name, so each domain's
   `assembly` package re-exports its partial under a name of its own
-  (`StacksDeploy`, `RunsDeploy`). An operation two domains implement makes
+  (`StacksAPI`, `RunsAPI`). An operation two domains implement makes
   the method ambiguous, and the required assertion
-  `var _ deploy.StrictServerInterface = deployServer{}` then fails to
+  `var _ api.StrictServerInterface = apiServer{}` then fails to
   compile; without the assertion the ambiguity would pass. Protocols
   that are not infraweave's REST API (VCS webhooks, the Terraform `http`
   state backend, service discovery, the registry protocols, `login.v1`)
@@ -181,8 +181,8 @@ summary:
   business rule, and the domain that owns its rule otherwise.
 - **Today's packages** move as the
   [package mapping](../architecture-options/5-modular-monolith.md#package-mapping)
-  lists; `api/`, `pkg/client/deploy`, `tools/` and `test/acceptance` stay
-  where they are.
+  lists; `api/`, `tools/` and `test/acceptance` stay where they are, and
+  `pkg/client/deploy` becomes `pkg/client/api` with the one served document.
 
 ### Process topology: one binary, several process modes
 
@@ -191,7 +191,7 @@ with these cobra subcommands:
 
 | Process mode | Starts | Spacelift equivalent |
 |---|---|---|
-| `serve` | Each domain's routes: the `deploy` REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue except the `flows.agent_task` jobs of the Flows agents connected to it (decision 0018) | server, and the VCS and Flows gateways |
+| `serve` | Each domain's routes: the served REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue except the `flows.agent_task` jobs of the Flows agents connected to it (decision 0018) | server, and the VCS and Flows gateways |
 | `scheduler` | Each domain's queue consumers and outbox subscriptions, and the cron ticker, which every replica runs: due rows are claimed with `FOR UPDATE SKIP LOCKED`, so no leader is elected (decision 0011) | drain, with the scheduler folded in |
 | `launcher` | The launcher for a worker pool, from `internal/agent` only; it never calls `internal/app` | launcher |
 | `all` | `serve` and `scheduler` in one process, for single-node installs and acceptance tests | none |

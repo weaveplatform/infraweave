@@ -12614,7 +12614,7 @@
         {
           "file": "docs/research/architecture-options/5-modular-monolith.md",
           "present": [
-            "*stacksassembly.StacksDeploy",
+            "*stacksassembly.StacksAPI",
             "named after\n// its domain because an embedded field takes its type's name"
           ],
           "absent": [
@@ -13097,7 +13097,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "the listener lifecycle and the two-listener drain to `internal/platform/httpkit/serve`",
-            "re-exports its partial under its domain's name (`StacksDeploy`)",
+            "re-exports its partial under its domain's name (`StacksAPI`)",
             "`ids.go` lands with P2 and `principal.go` with P3"
           ],
           "absent": [

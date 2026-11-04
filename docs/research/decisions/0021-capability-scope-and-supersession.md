@@ -356,7 +356,7 @@ organization holds answers `409 invalid-state`.
 
 ### The organization API
 
-The `Organization` tag of the served deploy API is the organization admins'
+The `Organization` tag of the served API is the organization admins'
 API ([0007](0007-authorization-spaces-and-roles.md#tenancy)), outside the
 parity surface because Spacelift has no level above the account. Its
 operations take `ORGANIZATION_ADMIN` with the subject `organization`, accept

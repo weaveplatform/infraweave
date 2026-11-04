@@ -330,7 +330,7 @@ so that member sees an empty list.
 
 ### Enforcement point
 
-- **In the spec.** Every operation in `api/deploy.openapi.yaml` carries
+- **In the spec.** Every operation in `api/api.openapi.yaml` carries
   `x-infraweave-action` (an `Action` value, or the pseudo-actions
   `ACCOUNT_ADMIN`, `ORGANIZATION_ADMIN` and `AUTHENTICATED`) and
   `x-infraweave-subject`, which says where the subject's space comes from:
@@ -351,7 +351,7 @@ so that member sees an empty list.
   checks only where an operation needs two (stack bindings, moves, module
   sharing).
 - **Deny by default.** A route with no route-table entry answers `403`, and
-  `api/deploy_test.go` fails when any operation lacks either extension.
+  `api/api_test.go` fails when any operation lacks either extension.
 - **Answers.** A subject in a space where the caller lacks `SPACE_READ`
   answers `404`, as if it did not exist; a readable subject whose action is
   not allowed answers `403`, problem `forbidden`, naming the action. Decision
@@ -457,7 +457,7 @@ Departures from Spacelift, for the plan's deviations register:
 - A property test: after random creates, moves and deletes, `space_closure`
   equals the ancestors computed from `parent_id`, and `Reachable` equals
   `Authorize` over every space.
-- `api/deploy_test.go`: every operation has `x-infraweave-action` and
+- `api/api_test.go`: every operation has `x-infraweave-action` and
   `x-infraweave-subject`, and every action named exists in the catalogue.
 - `make verify-reference`: `actions.yaml` covers the `Action` enum exactly.
 - Gherkin acceptance against PostgreSQL in testcontainers:

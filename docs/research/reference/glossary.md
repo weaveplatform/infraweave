@@ -107,6 +107,7 @@ or drain, carry the product or component in brackets. infraweave's own language 
 | Flow definition | The YAML form of a flow, used by `flowctl flow export` and `terraform-provider-flows` ([23](23-flows.md)) |
 | flowctl | The Flows CLI (`@useflows/flowctl`), for custom app versions and flow export ([23](23-flows.md)) |
 | Flows | Spacelift's event-driven workflow product, separate from Spacelift Deploy, at `useflows.eu`, `useflows.us` or self-hosted ([23](23-flows.md)) |
+| Flows API | Spacelift Flows' private RPC interface: `POST /cli/...` for `flowctl` and `POST /provider/...` for the Flows provider, with a `{data, error}` envelope; no GraphQL and no published specification ([23](23-flows.md), [02](02-graphql-to-rest-mapping.md#flows-rpc-to-rest)) |
 | Flows project role binding | A Spacelift Deploy grant of a space role to a Flows project ([23](23-flows.md), [14](14-spaces-rbac-and-identity.md)) |
 | Force apply | Applying a tracked run despite a plan with no changes (`ForceApplyMode` `SINGLE`), optionally also for its dependants (`CASCADE`) ([08](08-run-lifecycle.md), [18](18-scheduling-drift-dependencies.md)) |
 | Gateway (Flows) | The self-hosted Flows component that agents connect to ([23](23-flows.md)) |
@@ -229,7 +230,7 @@ or drain, carry the product or component in brackets. infraweave's own language 
 | Search input | `SearchInput`: the shared request of every paged list, with paging, full-text search, predicates and ordering ([21](21-resources-scans-search.md)) |
 | Search suggestions | The twin of a search field that returns the filterable and orderable fields and their values with counts ([21](21-resources-scans-search.md)) |
 | Secret header | A write-only request header stored on a named webhook; its key is readable, its value never returned ([19](19-events-notifications-audit.md)) |
-| Served API | infraweave's own API, `api/deploy.openapi.yaml`, built from `api/src/deploy/` fragments. It starts from the reference and records each divergence ([02](02-graphql-to-rest-mapping.md)) |
+| Served API | infraweave's own API, `api/api.openapi.yaml`, built from `api/src/api/` fragments: Deploy and Flows in one document under `/api/v1`. It starts from the references and records each divergence ([02](02-graphql-to-rest-mapping.md)) |
 | Server (self-hosted process) | The `spacelift backend server` process: the UI, the GraphQL and REST APIs, webhooks and the built-in MQTT broker ([24](24-self-hosted-reference.md)) |
 | Service account (Flows) | A machine user with roles and API keys, created by organization admins ([23](23-flows.md)) |
 | Service discovery | `/.well-known/terraform.json`, which names the `login.v1`, `modules.v1`, `providers.v1` and state endpoints ([15](15-module-and-provider-registry.md)) |

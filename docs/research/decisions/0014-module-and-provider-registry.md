@@ -44,8 +44,8 @@ in `internal/registry`. Decision 0004 owns package placement. The routes
 are described in their own OpenAPI document,
 `api/src/registry/` bundled to `api/registry.openapi.yaml`, so that the
 contract tests of [0016](0016-testing-and-acceptance.md) cover them like the
-deploy API. The management operations (the Modules, Terraform Providers and
-GPG Keys tags) live in the deploy API as usual.
+served API. The management operations (the Modules, Terraform Providers and
+GPG Keys tags) live in the served API as usual.
 
 | Method | Path | Answer |
 |---|---|---|
@@ -301,7 +301,7 @@ in the seeded tiers that 0021 lists:
 
 The registry defines no limit. A caller whose entitlement lacks the
 capability gets the problem types of decision
-[0022](0022-api-errors-and-update-semantics.md) on the deploy API: 403
+[0022](0022-api-errors-and-update-semantics.md) on the served API: 403
 `feature-disabled` when the operator has switched the feature off, and 403
 `feature-not-in-tier` when billing is on and the organization's tier lacks it.
 The registry protocols are Terraform's, not infraweave's REST API, so they

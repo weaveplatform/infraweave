@@ -30,24 +30,28 @@ any feature work begins.
   [02](../reference/02-graphql-to-rest-mapping.md). infraweave's own spec is
   scaffolded from it family by family and may diverge from it, with each
   divergence recorded.
-- **Divergence is recorded in the parity baseline.** `specref parity`
-  (`make parity`) matches the served document's operations with the
-  reference's by `operationId` and route, ignoring path parameter names, and
+- **Divergence is recorded in the parity baselines.** `specref parity`
+  (`make parity`) matches the served document's operations with each
+  reference product's, Deploy's `api/reference/spacelift/` and Flows'
+  `api/reference/spacelift-flows/` ([0018](0018-flows-runtime.md)), by
+  `operationId` and route, ignoring path parameter names, and
   files each reference operation under its tag as present, moved (its
   `operationId` at another route, or its route under an `operationId` the
   reference lacks) or missing; a served operation that matches none is
-  infraweave-only. `api/parity-baseline.json` lists the missing operations
+  infraweave-only. `api/parity-baseline.deploy.json` and
+  `api/parity-baseline.flows.json` list the missing operations
   by tag and each moved one with the reason for the move, so a deliberate
   divergence, such as a renamed route, is a moved entry whose reason says
   why. Decision [0003](0003-api-conventions.md)'s conventions change
-  shapes, not identities, so they are not divergence. The baseline only
-  shrinks: `TestUnitDeployParity` fails on an operation the baseline does
-  not accept, on a move without a reason, and on an entry the comparison no
-  longer needs, which `make parity-baseline` removes.
+  shapes, not identities, so they are not divergence. The baselines only
+  shrink: `TestUnitAPIParity` and `TestUnitFlowsParity` fail on an
+  operation their baseline does not accept, on a move without a reason, and
+  on an entry the comparison no longer needs; `make parity-baseline`
+  rewrites both baselines to remove it.
 - **Every client is built on the same API.** The SDK, the CLI, the provider
   and the console call the served REST API and nothing else; no client has a
   private route.
-- **Surfaces outside the parity surface.** The deploy document also serves
+- **Surfaces outside the parity surface.** The served document also holds
   the `Organization` tag, the organization admins' API for accounts,
   members, identity providers, account limits and usage
   ([0021](0021-capability-scope-and-supersession.md)), which has no
@@ -106,12 +110,13 @@ infraweave's SDK is the Go package `pkg/sdk` together with the generated
 clients it wraps.
 
 - **Generated client.** `make generate` produces one oapi-codegen client per
-  served bundle, `pkg/client/<spec>` (`pkg/client/deploy` from
-  `api/deploy.openapi.yaml` today), and `make verify-generate` fails on any
+  served bundle, `pkg/client/<spec>` (`pkg/client/api` from
+  `api/api.openapi.yaml`, which holds Deploy and Flows), and
+  `make verify-generate` fails on any
   drift. `pkg/sdk` wraps these packages rather than replacing them: the
   generated code stays mechanical, drift-checked and outside the coverage
   gate, the hand-written layer stays small and inside it, and one SDK client
-  spans every served document (Deploy and Flows) with one credential and one
+  spans every served document with one credential and one
   transport. The generated packages stay public, but `pkg/sdk` is the
   supported entry point.
 - **Hand-written layer.** `pkg/sdk` adds what every client needs and the
@@ -269,7 +274,7 @@ Implemented:
 - `make verify-generate` fails when `pkg/client` differs from what the
   served bundle generates.
 - `TestUnitServedNames` (`api/deploy_test.go`) fails when any key or string
-  of the served deploy bundle outside the mapping extensions, descriptions
+  of the served `deploy` bundle outside the mapping extensions, descriptions
   and enum descriptions included, contains "spacelift" in any case; when a
   path, tag, operationId, schema, property, enum value, parameter or header
   name matches an identifier record of the rename register; or when a
@@ -287,6 +292,14 @@ Implemented:
 
 Planned:
 
+- The rename of P1b ([#73](https://github.com/weaveplatform/infraweave/issues/73)):
+  the served bundle becomes `api/api.openapi.yaml`, `TestUnitDeployParity`
+  and `TestUnitDeployParityChecks` become `TestUnitAPIParity` and
+  `TestUnitAPIParityChecks`, and `api/parity-baseline.json` becomes
+  `api/parity-baseline.deploy.json`.
+- From P18c, `TestUnitFlowsParity` (`api/parity_test.go`) holds the Flows
+  reference, `api/reference/spacelift-flows/flows.openapi.yaml`, to the
+  served document and `api/parity-baseline.flows.json` by the same rules.
 - `pkg/sdk` unit tests against a chi test server cover the token exchange and
   re-exchange, idempotency keys reused across retries, `Retry-After`
   handling, iteration across pages, and one typed error per slug; a test
@@ -299,7 +312,7 @@ Planned:
 
 - `api/reference/spacelift/sources.lock.yaml` (pins).
 - `internal/specref/rest.go` (rules).
-- `api/oapi-client-deploy.yaml` (generated client configuration).
+- `api/oapi-client-api.yaml` (generated client configuration).
 - [`api/reference/spacelift/terraform-schema.json`](../../../api/reference/spacelift/terraform-schema.json)
   (provider parity oracle).
 - [05](../reference/05-terraform-provider.md): what Spacelift's provider sends
