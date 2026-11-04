@@ -13382,6 +13382,82 @@
           ]
         }
       ]
+    },
+    {
+      "id": "DES-10.31",
+      "severity": "wrong",
+      "finding": "a back edge was defined as the reverse of an edge, but `cloudapi.Credentials` reverses none, since `cloud` imports no `runs`; and the rule bound each back edge when both ends existed, while P13b and P16 bind theirs at first use",
+      "change": "A back edge is a call to a domain constructed later, bound by the first phase that makes the call",
+      "status": "folded",
+      "files": [
+        "docs/implementation/repo-layout.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "A back edge is a call to a domain constructed later"
+          ],
+          "absent": [
+            "back edge is the reverse of an edge"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "A back edge is a call to a domain constructed later"
+          ],
+          "absent": [
+            "A back edge is the reverse of an edge in the table"
+          ]
+        },
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "bound in `internal/app` by the first phase that makes the call"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.32",
+      "severity": "wrong",
+      "finding": "phases that land a `features` or `configuration` edge did not depend on the phase that creates that domain: P5 to P9 on P3b, and P7 on P6",
+      "change": "P5 depends on P3b; P6 and P7 each land `runs`' `configuration` edge if the other has landed",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "P3b --> P5",
+            "`runs`' edge to `configuration` lands here if P7 has landed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.33",
+      "severity": "wrong",
+      "finding": "two operations read across the graph against its direction: `stackCreate` imported state, which `stacks` cannot reach, and `workers` served `workerPoolSearchSchedulableRuns` over runs",
+      "change": "`state` imports on `StackCreated`; `runs`' partial serves the schedulable-runs search",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "by `state` on `StackCreated` carrying the",
+            "which `runs`' partial serves, since `workers` imports no `runs` package"
+          ]
+        }
+      ]
     }
   ]
 }
