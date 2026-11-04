@@ -38,9 +38,13 @@ any feature work begins.
   files each reference operation under its tag as present, moved (its
   `operationId` at another route, or its route under an `operationId` the
   reference lacks) or missing; a served operation that matches none is
-  infraweave-only. `api/parity-baseline.deploy.json` and
-  `api/parity-baseline.flows.json` list the missing operations
-  by tag and each moved one with the reason for the move, so a deliberate
+  infraweave-only. Each product compares only the served operations under
+  its own tags, Flows' being those that start `Flows `, and a served
+  operation marked `x-upstream: none` is infraweave-only even on a reference
+  route. `api/parity-baseline.deploy.json` and
+  `api/parity-baseline.flows.json` list the missing operations by tag, with
+  the reason one is accepted where the baseline records it, and each moved
+  one with the reason for the move, so a deliberate
   divergence, such as a renamed route, is a moved entry whose reason says
   why. Decision [0003](0003-api-conventions.md)'s conventions change
   shapes, not identities, so they are not divergence. The baselines only
@@ -289,12 +293,14 @@ Implemented:
   removing a served path names its operations, serving a listed operation is
   an improvement until the baseline is rewritten, and a moved path passes
   once its reason is recorded.
+- `TestUnitFlowsParity` (`api/parity_test.go`) holds the Flows reference,
+  `api/reference/spacelift-flows/flows.openapi.yaml`, to the served document
+  and `api/parity-baseline.flows.json` by the same rules, and fails when a
+  test-scenario operation is accepted without a reason naming PD-16.
+  `TestUnitFlowsParityChecks` proves it as `TestUnitAPIParityChecks` does.
 
 Planned:
 
-- From P1d, `TestUnitFlowsParity` (`api/parity_test.go`) holds the Flows
-  reference, `api/reference/spacelift-flows/flows.openapi.yaml`, to the
-  served document and `api/parity-baseline.flows.json` by the same rules.
 - `pkg/sdk` unit tests against a chi test server cover the token exchange and
   re-exchange, idempotency keys reused across retries, `Retry-After`
   handling, iteration across pages, and one typed error per slug; a test

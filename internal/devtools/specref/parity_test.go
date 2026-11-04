@@ -102,12 +102,12 @@ func TestUnitParityCompare(t *testing.T) {
 	}
 	wantMoved := []MovedOperation{
 		{
-			Reference: ParityOperation{"stackDelete", "DELETE", "/stacks/{id}", "Stacks"},
-			Served:    ParityOperation{"stackRemove", "DELETE", "/stacks/{stackId}", "Stacks"},
+			Reference: ParityOperation{"stackDelete", "DELETE", "/stacks/{id}", "Stacks", false},
+			Served:    ParityOperation{"stackRemove", "DELETE", "/stacks/{stackId}", "Stacks", false},
 		},
 		{
-			Reference: ParityOperation{"stackLock", "POST", "/stack/{id}/lock", "Stacks"},
-			Served:    ParityOperation{"stackLock", "POST", "/stacks/{stackId}/lock", "Stacks"},
+			Reference: ParityOperation{"stackLock", "POST", "/stack/{id}/lock", "Stacks", false},
+			Served:    ParityOperation{"stackLock", "POST", "/stacks/{stackId}/lock", "Stacks", false},
 		},
 	}
 	if diff := cmp.Diff(wantMoved, stacks.Moved); diff != "" {
@@ -451,5 +451,111 @@ func writeFile(t *testing.T, path, data string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(data), filePerm); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestUnitParityDesigned proves an x-upstream: none operation is
+// infraweave-only even at a reference route or under a reference
+// operationId, leaving the reference operation missing.
+func TestUnitParityDesigned(t *testing.T) {
+	served := `openapi: 3.0.3
+paths:
+  /contexts:
+    get: {operationId: contextsDesigned, tags: [Contexts], x-upstream: none}
+  /sessions:
+    delete: {operationId: sessionDeleteAll, x-upstream: none}
+`
+	r, err := CompareParity([]byte(parityReference), []byte(served))
+	if err != nil {
+		t.Fatal(err)
+	}
+	contexts := tagParity(t, r, "Contexts")
+	if d := cmp.Diff([]string{"contexts"}, ids(contexts.Missing)); d != "" {
+		t.Errorf("missing (-want +got):\n%s", d)
+	}
+	if len(contexts.Only) != 1 || !contexts.Only[0].Designed || len(contexts.Moved) != 0 {
+		t.Errorf("contexts = %+v", contexts)
+	}
+	untagged := tagParity(t, r, Untagged)
+	if d := cmp.Diff([]string{"sessionDeleteAll"}, ids(untagged.Missing)); d != "" ||
+		len(untagged.Only) != 1 || len(untagged.Present) != 0 {
+		t.Errorf("a designed operation keeping a reference operationId: %+v", untagged)
+	}
+}
+
+// TestUnitProductParity proves each product compares only the served
+// operations under its own tags, so neither reports the other's as
+// infraweave-only.
+func TestUnitProductParity(t *testing.T) {
+	reference := `openapi: 3.0.3
+paths:
+  /flows/projects:
+    get: {operationId: listProjects, tags: [Flows Projects]}
+`
+	served := `openapi: 3.0.3
+paths:
+  /flows/projects:
+    get: {operationId: listProjects, tags: [Flows Projects]}
+  /flows/members:
+    get: {operationId: listMembers, tags: [Flows Members], x-upstream: none}
+  /flows-integration:
+    get: {operationId: flowsIntegration, tags: [Flows]}
+  /stacks:
+    get: {operationId: stacks, tags: [Stacks]}
+  /livez:
+    get: {operationId: livez}
+`
+	for _, tc := range []struct {
+		p             Product
+		present, only []string
+	}{
+		{Flows, []string{"listProjects"}, []string{"listMembers"}},
+		{Deploy, nil, []string{"flowsIntegration", "livez", "stacks"}},
+		{Product{}, []string{"listProjects"}, []string{"flowsIntegration", "listMembers", "livez", "stacks"}},
+	} {
+		r, err := tc.p.Parity([]byte(reference), []byte(served))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var present, only []string
+		for _, tp := range r.Tags {
+			present = append(present, ids(tp.Present)...)
+			only = append(only, ids(tp.Only)...)
+		}
+		slices.Sort(only)
+		if d := cmp.Diff(tc.present, present); d != "" {
+			t.Errorf("%q present (-want +got):\n%s", tc.p.Name, d)
+		}
+		if d := cmp.Diff(tc.only, only); d != "" {
+			t.Errorf("%q infraweave-only (-want +got):\n%s", tc.p.Name, d)
+		}
+	}
+}
+
+// TestUnitParityReasons proves a missing operation's reason survives a
+// rewrite while it stays missing, goes when it is served, and is an
+// improvement when the baseline gives a reason for an operation it does not
+// list as missing.
+func TestUnitParityReasons(t *testing.T) {
+	r := compareFixture(t)
+	prev := r.Baseline(nil)
+	if prev.Reasons != nil || strings.Contains(string(prev.JSON()), "reasons") {
+		t.Errorf("a baseline without reasons writes none: %s", prev.JSON())
+	}
+	prev.Reasons = map[string]string{"contexts": "Waits on PD-99.", "stacks": "Stale."}
+	if d := r.Diff(prev); !slices.Equal(d.Improvements,
+		[]string{"stacks has a reason, and the baseline does not list it as missing"}) {
+		t.Errorf("improvements = %q", d.Improvements)
+	}
+	next := r.Baseline(prev)
+	if d := cmp.Diff(map[string]string{"contexts": "Waits on PD-99."}, next.Reasons); d != "" {
+		t.Errorf("reasons (-want +got):\n%s", d)
+	}
+	back, err := ReadParityBaseline(next.JSON())
+	if err != nil || back.Reasons["contexts"] != "Waits on PD-99." {
+		t.Errorf("round trip: %+v %v", back, err)
+	}
+	if d := r.Diff(next); len(d.Improvements) != 0 {
+		t.Errorf("the rewritten baseline still has improvements: %s", d.Text())
 	}
 }

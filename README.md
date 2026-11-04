@@ -41,12 +41,13 @@ infraweave's own API is authored as fragments in `api/src/api/`:
 merges the fragments into `api/api.openapi.yaml`, served under `/api/v1`. The
 bundle is committed, and a unit test fails when it is stale.
 
-`make parity` compares the bundle with the reference by `operationId` and
-route. `api/parity-baseline.deploy.json` accepts the reference operations the bundle
-does not serve unchanged: the missing ones by tag, and each moved one with
-its reason. `TestUnitAPIParity` fails on a reference operation the
-baseline does not accept and on an entry the bundle no longer needs, so
-coverage of the reference only goes up.
+`make parity` compares the bundle with each product's reference by
+`operationId` and route. `api/parity-baseline.<product>.json` accepts the
+reference operations the bundle does not serve unchanged: the missing ones by
+tag, and each moved one with its reason. `TestUnitAPIParity` (Deploy) and
+`TestUnitFlowsParity` fail on a reference operation the baseline does not
+accept and on an entry the bundle no longer needs, so coverage of the
+reference only goes up.
 
 One document holds Deploy and, from P18c, Flows under `/api/v1/flows/`
 ([decision 0018](docs/research/decisions/0018-flows-runtime.md#api-and-clients)).
@@ -136,8 +137,8 @@ phase.
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
-| `make parity` | Prints the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.deploy.json` |
-| `make parity-baseline` | Rewrites `api/parity-baseline.deploy.json` to accept the current parity report, keeping each recorded reason for a move; review the diff |
+| `make parity` | Prints, for Deploy and then Flows, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.<product>.json` |
+| `make parity-baseline` | Rewrites both `api/parity-baseline.<product>.json` to accept the current parity report, keeping each recorded reason; review the diff |
 | `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
 | `make generate` | Bundles, then generates each strict chi server (`internal/platform/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |
 | `make verify-generate` | Fails if the committed bundles or generated code are stale |

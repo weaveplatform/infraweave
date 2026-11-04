@@ -280,8 +280,10 @@ func newRoot() *cobra.Command {
 		Long: "Matches the served document's operations with the reference's by operationId\n" +
 			"and route, and prints each reference operation as present, moved or missing and\n" +
 			"each served operation the reference lacks as infraweave-only, then how the\n" +
-			"report differs from the baseline. --write-baseline rewrites the baseline to\n" +
-			"accept the report, keeping the reason recorded for each unchanged move.",
+			"report differs from the baseline. Only the served operations under the\n" +
+			"product's own tags are compared. --write-baseline rewrites the baseline to\n" +
+			"accept the report, keeping the reason recorded for each unchanged move and\n" +
+			"each operation still missing.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			c, err := decode(v)
@@ -296,6 +298,7 @@ func newRoot() *cobra.Command {
 				Reference: filepath.Join(c.Dir, p.Spec),
 				Served:    c.Served,
 				Baseline:  c.Baseline,
+				Product:   p,
 			}
 			if c.WriteBaseline {
 				b, err := specref.WriteParityBaseline(files)

@@ -136,15 +136,17 @@ verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
 	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
-PARITY := --dir $(REFERENCE_DIR) --served api/api.openapi.yaml --baseline api/parity-baseline.deploy.json
+# PRODUCTS are the Spacelift products with a reference; specref --product
+# picks each one's reference directory and parity baseline.
+PRODUCTS := deploy flows
 
-## parity: print the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.deploy.json
+## parity: print, for each product, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.<product>.json
 parity:
-	$(GO) run ./tools/specref parity $(PARITY)
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p || exit 1; done
 
-## parity-baseline: rewrite api/parity-baseline.deploy.json to accept the current parity report, keeping recorded reasons (review the diff)
+## parity-baseline: rewrite each api/parity-baseline.<product>.json to accept the current parity report, keeping recorded reasons (review the diff)
 parity-baseline:
-	$(GO) run ./tools/specref parity $(PARITY) --write-baseline
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p --write-baseline || exit 1; done
 
 ## docs-check: links, report headers and decision statuses under docs/ (internal/devtools/docscheck)
 docs-check:
