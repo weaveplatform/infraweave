@@ -270,7 +270,7 @@ internal/
 │   ├── labels.go                         Labels, autoattach: matching
 │   ├── run.go                            RunState (22 values), RunType, StackState, RunPriority: wire names
 │   ├── vendor.go                         VendorKind
-│   ├── vcsroutes/                        provider API route tables shared by vcs and agent/vcsagent (P19)
+│   ├── vcsroutes/                        provider API route tables shared by vcs and agent/vcsagent (P19b)
 │   ├── audit.go                          AuditEntry: the entry every domain records
 │   └── page.go                           Cursor and Page of decision 0003
 │
@@ -615,13 +615,12 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id kernel.Slug
 A stack's response carries `state`, `blocked`, `blocker` and `lockedBy`. The
 first three are runs-owned and come from `runsapi.StackStatus`; only
 `lockedBy` (the human lock) is a stacks column. A list filtered by state
-joins across two domains, which the store answers with a read of
-`runs`' `stack_run_state` view granted to the stacks schema (see the
-friction list). Configuration elements and contexts are a separate domain
+joins across two domains, which `runsapi.StackStatus` answers from
+`runs`' stack-by-run-state view (see the friction list). Configuration elements and contexts are a separate domain
 because they attach to stacks and contexts alike, through polymorphic
 owners ([28, section 12.1](../reference/28-data-model.md#121-shapes-that-recur));
 a registry module's elements and attachments are `registry`'s rows, since
-`registry` sits below `configuration`, `policies` and `cloud`.
+`registry` imports `configuration`, `policies` and `cloud`.
 `configuration` subscribes to `StackUpdated` to recompute auto-attachments,
 and `runs` calls `configurationapi.Environment.Resolve` at handover to get
 the precedence order of [report 13](../reference/13-configuration.md#5-contexts).
@@ -1522,7 +1521,7 @@ drift.
 | Catalogue coverage | `features/internal/catalogue`: every operation of every served document and every gated field names a catalogue entry |
 | App contract | `pkg/flows/appsdk/apptest` runs a fixture app; `TestUnitAppContractCompatible` runs `buf breaking` against the last release |
 | Schema graph | `TestAccSchemaDependencies`: each stream applied in registration order, foreign keys and views checked against the per-domain depguard rules |
-| Rule entries | `TestUnitDepguardFixtures`: every domain directory has its graph rule and its `constructors` and `shared-below-domains` entries |
+| Rule entries | `TestUnitDepguardFixtures`: every domain directory has its graph rule and its `constructors` and `shared-below-domains` entries, and its `core-not-adapters` entry if it is a hexagon |
 | Acceptance | `test/acceptance/`: the binary in `all` mode plus a `launcher` and a `flows-agent`, real PostgreSQL, the object store drivers' emulators, a real OpenTofu run |
 | FIPS | the unit and acceptance suites again under `GODEBUG=fips140=only`, a blocking job |
 | Console | `web/console/`: `tsc --strict`, ESLint with typescript-eslint's strict configuration, Vitest at 95% in total and 90% per directory, Playwright journeys against a real `infraweave all` |
@@ -1636,7 +1635,7 @@ the declared graph.
 
 The declared graph at the end of P27, in construction order; each domain
 imports the `api/` packages of the domains its row names, and only domains
-above it:
+earlier in the order:
 
 | Domain | Imports the `api/` of | Back edges bound in `internal/app` |
 | --- | --- | --- |
@@ -1660,7 +1659,7 @@ above it:
 | `flows` | features, access, stacks, runs, templates | `platform/httpkit/dispatch` for the API Request block |
 | `expressions` | none; `internal/app` hands it every domain's `Surfaces()` | |
 
-A back edge is the reverse of an edge in the table, used after
+A back edge is a call to a domain constructed later, set after
 construction; it adds no import and no foreign key. Intent operations and
 scan runs reach worker pools through `runsapi`, so `intelligence` and
 `resources` import `runs` rather than `workers`' protocol.

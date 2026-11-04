@@ -13268,7 +13268,7 @@
     {
       "id": "DES-10.26",
       "severity": "wrong",
-      "finding": "`agent-isolation` denied only `$m/internal`, so `pkg/sdk` and `pkg/client` passed it although rule 7 says the agent imports only `pkg/flows/app/v1` from `pkg/`; its files named a `cmd/infraweave-agent` that does not exist while `cmd/infraweave/agent.go` went unchecked; the walkthrough added an `agent-isolation` entry for a new domain",
+      "finding": "`agent-isolation` denied only `$m/internal`, so `pkg/sdk` and `pkg/client` passed it although rule 7 says the agent imports only `pkg/flows/app/v1` from `pkg/`; its files named only the optional `cmd/infraweave-agent` while `cmd/infraweave/agent.go` went unchecked; the walkthrough added an `agent-isolation` entry for a new domain",
       "change": "The rule denies `$m/pkg`, allows `$m/pkg/flows/app/v1$` and covers `cmd/infraweave/agent.go`; the tree shows `pkg/flows/app/v1`; the walkthrough adds no agent entry",
       "status": "folded",
       "files": [

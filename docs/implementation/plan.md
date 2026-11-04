@@ -204,6 +204,7 @@ flowchart LR
   P3 --> P3b[P3b Organizations and features]
   P3 --> P4[P4 Spaces and authz]
   P4 --> P5[P5 Stacks]
+  P3b --> P5
   P5 --> P4b[P4b Roles and bindings]
   P3b --> P4b
   P5 --> P6[P6 Configuration and expressions]
@@ -344,8 +345,8 @@ The phase that creates a domain wires it into the
   any foreign key along that edge, which follows the import direction with
   `ON DELETE RESTRICT`. An edge to a domain that arrives later lands with that
   later phase.
-- A back edge is bound in `internal/app` by the phase in which both of its
-  ends exist.
+- A back edge, a call to a domain constructed later, is bound in
+  `internal/app` by the first phase that makes the call.
 
 `TestUnitDepguardFixtures` fails on a domain directory without its rule
 entries, and `TestAccSchemaDependencies` on a key or view against the graph.
@@ -463,8 +464,8 @@ with a clean run over the whole tree.
    two-listener drain to `internal/platform/httpkit/serve`, which the agent
    process modes share from P8; `GET /livez` to `internal/platform/observe`;
    recovery and the `404` and `405` problem handlers to
-   `internal/platform/httpkit/middleware`; routing to
-   `internal/app/router.go`. Update the `Makefile` (`LDFLAGS`, `generate`,
+   `internal/platform/httpkit/middleware`; routing and the operation table
+   the guards read (`operations.go`) to `internal/app`. Update the `Makefile` (`LDFLAGS`, `generate`,
    `verify-generate`, `docs-check`), `.testcoverage.yml` and the `tools/`
    imports.
 2. Regenerate the strict server into `internal/platform/gen/deploy` by
@@ -1094,8 +1095,8 @@ caller can do something.
    `managedUserUserRoleBindings`, `managedUserGroupUserRoleBindings`,
    `stackRoleBindings`. Legacy `SpaceAccessRule` inputs stored as bindings
    with `origin = access_rule`. An API key's `admin` reads whether it holds
-   `space-admin` on the account's top space (DV-013). `access` sits below
-   `stacks` in the [declared graph](repo-layout.md#declared-graph), so a
+   `space-admin` on the account's top space (DV-013). `stacks` imports
+   `access` in the [declared graph](repo-layout.md#declared-graph), so a
    stack binding holds the stack's ID without a foreign key, `stacks`
    removes a deleted stack's bindings through `accessapi`, and the stack
    binding operations and `stacksWithAccessToSpace`, which name stacks,
@@ -1156,7 +1157,7 @@ update semantics, input strictness and search every later family reuses.
    order. `vendors` imports `features` and `access`; `stacks` imports
    `features`, `access` and `vendors`, and its tables reference `access`'
    spaces; a stack holds its VCS integration's ID without a foreign key,
-   since `vcs` sits above `stacks`. The `stacks` edge to `workers` lands with P8, and `stacks`'
+   since `vcs` imports `stacks`. The `stacks` edge to `workers` lands with P8, and `stacks`'
    `runsapi.StackStatus` back edge with P7
    ([declared graph](repo-layout.md#declared-graph)).
 
@@ -1217,6 +1218,7 @@ environment, and the expression engine every later surface uses.
    `configuration` and `expressions`. `configuration` follows `stacks` in
    `domains.go` and the migration order and imports `features`, `access`
    and `stacks`; its attachments and stack elements reference `stacks`.
+   `runs`' edge to `configuration` lands here if P7 has landed.
    `expressions` has no `api/` and no migration stream, imports no domain
    and is constructed last, from every domain's `Surfaces()`
    ([declared graph](repo-layout.md#declared-graph)).
@@ -1272,9 +1274,10 @@ queued; nothing executes them until P8.
    `allowedActions` include only the transitions its state allows.
 6. The [domain wiring](#adding-a-domain) of `runs`, a
    hexagon, after `configuration` in `domains.go` and the migration order:
-   its edges to `features`, `access`, `stacks`, `configuration` and
-   `vendors`, with `runs` and `stack_run_locks` referencing `stacks`. Its
-   `workers` edge lands with P8 and its `policies` edge with P13. `stacks`
+   its edges to `features`, `access`, `stacks` and `vendors`, and to
+   `configuration` if P6 has landed (P6 adds it otherwise), with `runs` and
+   `stack_run_locks` referencing `stacks`. Its `workers` edge lands with P8
+   and its `policies` edge with P13. `stacks`
    reads run state through `runsapi.StackStatus`, a back edge that
    `internal/app` sets after construction (`SetStackStatus`), adding no
    import and no foreign key
@@ -1535,8 +1538,9 @@ read-only access, signed URLs, Terragrunt workspaces and retention.
 1. `stateUploadUrl` and `stateDownloadUrl` with tokens under
    `DeriveKey("state-upload-url")`; `PUT /state/v1/uploads/{token}` and
    `GET /state/v1/download/{token}`.
-2. Import at creation and later (`stackCreate` with `stackObjectID`,
-   `stackManagedStateImport`) with decision 0010's checks; rollback
+2. Import at creation, by `state` on `StackCreated` carrying the
+   `stackObjectID` of `stackCreate`, and later
+   (`stackManagedStateImport`), with decision 0010's checks; rollback
    (`stackManagedStateRollback`) as a new version; `isStateRollback`;
    `stackSearchManagedStateVersions`.
 3. External access with `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD`;
@@ -1728,9 +1732,10 @@ protocol, and the worker-side initialization policy that signed runs rest on.
    waits, the image registry allowlist, no
    priorities and no scheduled or drift runs. Records DV-078. Operations:
    `publicWorkerPool`, `workerUsage`, `defaultPublicWorkerPoolRunnerImage`,
-   `outgoingIPAddresses`, `workerPoolSearchSchedulableRuns`,
-   `workerPoolSearchSchedulableRunsSuggestions`, `workerPoolSearchUsers`,
-   `workerPoolSearchUsersSuggestions`. Feature: `workers_public_pool.feature`.
+   `outgoingIPAddresses`, `workerPoolSearchUsers`,
+   `workerPoolSearchUsersSuggestions`, and `workerPoolSearchSchedulableRuns`
+   and `workerPoolSearchSchedulableRunsSuggestions`, which `runs`' partial
+   serves, since `workers` imports no `runs` package. Feature: `workers_public_pool.feature`.
 2. `internal/agent/executor/kubernetes`: a controller that creates a pod per
    run and acts as a launcher, with `WorkerPool` and `Worker` resources.
    Feature: `workers_kubernetes.feature` (`@kubernetes`, k3s).
@@ -1898,7 +1903,7 @@ Terraform module registry protocol and `terraform login`.
    `runs` and `cloud`. A module's configuration elements and its context,
    policy and cloud integration attachments are `registry`'s rows, with
    foreign keys to `modules` and to the context, policy or integration,
-   because those domains sit above `registry`; a module holds its VCS
+   because `registry` imports those domains; a module holds its VCS
    integration's ID without a foreign key, as a stack does, and `vcs`
    serves `moduleAttachableVcsIntegrations` over `registryapi`. The waiting
    `vcs`→`registry` edge lands here too: `vcs` routes tag pushes to

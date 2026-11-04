@@ -308,7 +308,8 @@ change.
 - **Every domain carries its rule entries.** `make lint` checks the whole
   tree, not only new issues. `TestUnitDepguardFixtures` fails when a
   directory under `internal/` that is a domain lacks its graph rule or its
-  entries in `constructors` and `shared-below-domains`.
+  entries in `constructors` and `shared-below-domains`, and in
+  `core-not-adapters` for a hexagon.
 - **depguard matches plain prefixes.** An allow entry without a trailing
   `$` or `/` admits every package whose path starts with it, so
   `$m/internal/stacks/api` would let `$m/internal/stacks/apiutil` through.
