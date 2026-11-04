@@ -177,8 +177,8 @@
       "repoUpdate"
     ],
     "spacelift_repo_file": [
-      "repoFileHistory",
-      "revisionCreate"
+      "repoCommitCreate",
+      "repoFileHistory"
     ],
     "spacelift_role": [
       "role",
@@ -190,6 +190,9 @@
       "apiKeyRoleBinding",
       "apiKeyRoleBindingCreate",
       "apiKeyRoleBindingDelete",
+      "flowsProjectRoleBinding",
+      "flowsProjectRoleBindingBatchCreate",
+      "flowsProjectRoleBindingDelete",
       "stackRoleBinding",
       "stackRoleBindingCreate",
       "stackRoleBindingDelete",

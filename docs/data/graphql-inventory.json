@@ -1121,6 +1121,11 @@
           "name": "ownerLogin",
           "type": "String",
           "nullable": true
+        },
+        {
+          "name": "oauthScopes",
+          "type": "[String!]",
+          "nullable": true
         }
       ]
     },
@@ -10600,6 +10605,40 @@
           "nullable": false
         },
         {
+          "name": "scanResourcesIgnore",
+          "args": [
+            {
+              "name": "scan",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "identityHashes",
+              "type": "[String!]!",
+              "nullable": false
+            }
+          ],
+          "type": "[ScanIgnoredResource!]!",
+          "nullable": false
+        },
+        {
+          "name": "scanResourcesUnignore",
+          "args": [
+            {
+              "name": "scan",
+              "type": "ID!",
+              "nullable": false
+            },
+            {
+              "name": "identityHashes",
+              "type": "[String!]!",
+              "nullable": false
+            }
+          ],
+          "type": "[ScanIgnoredResource!]!",
+          "nullable": false
+        },
+        {
           "name": "stackScheduledDeleteCreate",
           "args": [
             {
@@ -14264,6 +14303,11 @@
           "name": "warn",
           "type": "[String!]!",
           "nullable": false
+        },
+        {
+          "name": "info",
+          "type": "[String!]!",
+          "nullable": false
         }
       ]
     },
@@ -16966,6 +17010,11 @@
           "nullable": false
         },
         {
+          "name": "isGovSlackAvailable",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
           "name": "slackIntegration",
           "type": "SlackIntegration",
           "nullable": true
@@ -18984,6 +19033,18 @@
           "name": "workerFindings",
           "type": "RunWorkerFindings",
           "nullable": true
+        },
+        {
+          "name": "traceSpans",
+          "args": [
+            {
+              "name": "input",
+              "type": "RunTraceSpansInput",
+              "nullable": true
+            }
+          ],
+          "type": "RunTraceSpansResponse",
+          "nullable": true
         }
       ]
     },
@@ -19540,6 +19601,108 @@
       ]
     },
     {
+      "id": "RunTraceSpan",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "traceId",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "spanId",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "parentSpanId",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "RunState!",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "RunTraceSpanType",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "scope",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "startTime",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "durationSeconds",
+          "type": "Float!",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "RunTraceSpanStatus!",
+          "nullable": false
+        },
+        {
+          "name": "statusMessage",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "childCount",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "attributes",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "events",
+          "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "RunTraceSpansResponse",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "totalCount",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "hasMore",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "nextToken",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "spans",
+          "type": "[RunTraceSpan!]!",
+          "nullable": false
+        }
+      ]
+    },
+    {
       "id": "RunTriggerBatchOutput",
       "kind": "OBJECT",
       "fields": [
@@ -19721,6 +19884,11 @@
           "nullable": false
         },
         {
+          "name": "slowestModules",
+          "type": "[RunWorkerMetricsModule!]!",
+          "nullable": false
+        },
+        {
           "name": "comparison",
           "type": "RunWorkerMetricsComparison!",
           "nullable": false
@@ -19744,6 +19912,131 @@
         {
           "name": "requiredRunCount",
           "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "RunWorkerMetricsDiagnostic",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "severity",
+          "type": "RunWorkerMetricsDiagnosticSeverity!",
+          "nullable": false
+        },
+        {
+          "name": "summary",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "detail",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "range",
+          "type": "RunWorkerMetricsDiagnosticRange",
+          "nullable": true
+        },
+        {
+          "name": "snippet",
+          "type": "RunWorkerMetricsDiagnosticSnippet",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "RunWorkerMetricsDiagnosticPosition",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "line",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "column",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "byte",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "RunWorkerMetricsDiagnosticRange",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "filename",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "start",
+          "type": "RunWorkerMetricsDiagnosticPosition!",
+          "nullable": false
+        },
+        {
+          "name": "end",
+          "type": "RunWorkerMetricsDiagnosticPosition!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "RunWorkerMetricsDiagnosticSnippet",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "context",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "code",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "startLine",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "highlightStartOffset",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "highlightEndOffset",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "values",
+          "type": "[RunWorkerMetricsDiagnosticValue!]!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "RunWorkerMetricsDiagnosticValue",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "traversal",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "statement",
+          "type": "String!",
           "nullable": false
         }
       ]
@@ -19833,6 +20126,27 @@
       ]
     },
     {
+      "id": "RunWorkerMetricsModule",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "source",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "local",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "installDurationSeconds",
+          "type": "Float!",
+          "nullable": false
+        }
+      ]
+    },
+    {
       "id": "RunWorkerMetricsProvider",
       "kind": "OBJECT",
       "fields": [
@@ -19895,8 +20209,8 @@
         },
         {
           "name": "errors",
-          "type": "[RunWorkerMetricsStateError!]!",
-          "nullable": false
+          "type": "[RunWorkerMetricsStateError!]",
+          "nullable": true
         },
         {
           "name": "slowestResources",
@@ -19922,6 +20236,11 @@
         {
           "name": "resourceAddress",
           "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "diagnostic",
+          "type": "RunWorkerMetricsDiagnostic",
           "nullable": true
         }
       ]
@@ -20288,6 +20607,30 @@
           "nullable": false
         },
         {
+          "name": "searchIgnoredResources",
+          "args": [
+            {
+              "name": "input",
+              "type": "SearchInput!",
+              "nullable": false
+            }
+          ],
+          "type": "SearchScanIgnoredResourcesOutput!",
+          "nullable": false
+        },
+        {
+          "name": "searchIgnoredResourcesSuggestions",
+          "args": [
+            {
+              "name": "input",
+              "type": "SearchSuggestionsInput!",
+              "nullable": false
+            }
+          ],
+          "type": "SearchSuggestionsOutput!",
+          "nullable": false
+        },
+        {
           "name": "latestRun",
           "type": "ScanRun",
           "nullable": true
@@ -20337,6 +20680,58 @@
         {
           "name": "node",
           "type": "Scan!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanIgnoredResource",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "identity",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "identityHash",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanIgnoredResourceConnection",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "cursor",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "node",
+          "type": "ScanIgnoredResource!",
           "nullable": false
         }
       ]
@@ -20460,6 +20855,11 @@
         },
         {
           "name": "isManaged",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "isIgnored",
           "type": "Boolean!",
           "nullable": false
         },
@@ -20680,6 +21080,21 @@
           "name": "message",
           "type": "String!",
           "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "ScanFailureCode!",
+          "nullable": false
+        },
+        {
+          "name": "providerErrorCode",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "createdAt",
+          "type": "Int!",
+          "nullable": false
         }
       ]
     },
@@ -20710,6 +21125,11 @@
         },
         {
           "name": "unmanaged",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "ignored",
           "type": "Int!",
           "nullable": false
         }
@@ -21424,6 +21844,22 @@
         {
           "name": "total",
           "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "SearchScanIgnoredResourcesOutput",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "edges",
+          "type": "[ScanIgnoredResourceConnection!]!",
+          "nullable": false
+        },
+        {
+          "name": "pageInfo",
+          "type": "PageInfo!",
           "nullable": false
         }
       ]
@@ -22219,7 +22655,9 @@
         {
           "name": "isGovSlackAvailable",
           "type": "Boolean!",
-          "nullable": false
+          "nullable": false,
+          "deprecated": true,
+          "deprecationReason": "Use the top-level 'isGovSlackAvailable' query instead."
         }
       ]
     },
@@ -29175,6 +29613,11 @@
           "name": "endTime",
           "type": "Int!",
           "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "String",
+          "nullable": true
         }
       ]
     },
@@ -30056,6 +30499,52 @@
         },
         {
           "name": "run",
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "RunTraceSpansInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "state",
+          "type": "RunState",
+          "nullable": true
+        },
+        {
+          "name": "traceId",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "parentSpanId",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "spanType",
+          "type": "RunTraceSpanType",
+          "nullable": true
+        },
+        {
+          "name": "errorsOnly",
+          "type": "Boolean",
+          "nullable": true
+        },
+        {
+          "name": "nameContains",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "minDurationSeconds",
+          "type": "Float",
+          "nullable": true
+        },
+        {
+          "name": "token",
           "type": "String",
           "nullable": true
         }
@@ -33695,6 +34184,42 @@
       ]
     },
     {
+      "id": "RunTraceSpanStatus",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "UNSET"
+        },
+        {
+          "name": "OK"
+        },
+        {
+          "name": "ERROR"
+        }
+      ]
+    },
+    {
+      "id": "RunTraceSpanType",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "SPACELIFT_ROOT"
+        },
+        {
+          "name": "SPACELIFT_STATE"
+        },
+        {
+          "name": "SPACELIFT_HOOK"
+        },
+        {
+          "name": "OPENTOFU_RESOURCE"
+        },
+        {
+          "name": "OPENTOFU_PROVIDER_INSTALL"
+        }
+      ]
+    },
+    {
       "id": "RunType",
       "kind": "ENUM",
       "values": [
@@ -33736,6 +34261,21 @@
         },
         {
           "name": "ProviderRegistryDuplicate"
+        },
+        {
+          "name": "SlowState"
+        }
+      ]
+    },
+    {
+      "id": "RunWorkerMetricsDiagnosticSeverity",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "ERROR"
+        },
+        {
+          "name": "WARNING"
         }
       ]
     },
@@ -33784,6 +34324,84 @@
         },
         {
           "name": "STRING_MAP"
+        }
+      ]
+    },
+    {
+      "id": "ScanFailureCode",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "UNKNOWN"
+        },
+        {
+          "name": "INTERNAL"
+        },
+        {
+          "name": "MANUAL"
+        },
+        {
+          "name": "INVALID_CONFIG"
+        },
+        {
+          "name": "CREDENTIALS_ASSUME_FAILED"
+        },
+        {
+          "name": "DISPATCH_FAILED"
+        },
+        {
+          "name": "ASSIGNMENT_UNDELIVERED"
+        },
+        {
+          "name": "ASSIGNMENT_UNSTARTED"
+        },
+        {
+          "name": "WORKER_UNRESPONSIVE"
+        },
+        {
+          "name": "WORKER_CRASHED"
+        },
+        {
+          "name": "WORKER_KILLED"
+        },
+        {
+          "name": "LAUNCHER_SETUP"
+        },
+        {
+          "name": "PROVIDER_DOWNLOAD"
+        },
+        {
+          "name": "PROVIDER_CONFIG_INVALID"
+        },
+        {
+          "name": "PROVIDER_CONFIGURE"
+        },
+        {
+          "name": "UNSUPPORTED_RESOURCE"
+        },
+        {
+          "name": "DEPENDENCY_SKIPPED"
+        },
+        {
+          "name": "TIMEOUT"
+        },
+        {
+          "name": "CREDENTIALS_EXPIRED"
+        },
+        {
+          "name": "ACCESS_DENIED"
+        },
+        {
+          "name": "THROTTLED"
+        },
+        {
+          "name": "INVALID_CREDENTIALS"
+        },
+        {
+          "name": "SERVICE_NOT_ENABLED"
+        },
+        {
+          "name": "PROVIDER_ERROR"
         }
       ]
     },

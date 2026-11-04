@@ -4730,6 +4730,26 @@
               },
               "isDeprecated": false,
               "deprecationReason": ""
+            },
+            {
+              "name": "oauthScopes",
+              "description": "OAuthScopes are the scopes granted to the OAuth session that performed the action, null for every other session.",
+              "args": [],
+              "type": {
+                "kind": "LIST",
+                "name": "",
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": "",
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
             }
           ],
           "inputFields": null,
@@ -26391,6 +26411,16 @@
                 }
               },
               "defaultValue": null
+            },
+            {
+              "name": "timezone",
+              "description": "Timezone, e.g. \"Europe/Warsaw\" or \"America/New_York\". Defaults to UTC.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
             }
           ],
           "interfaces": null,
@@ -37574,6 +37604,128 @@
               "deprecationReason": ""
             },
             {
+              "name": "scanResourcesIgnore",
+              "description": "Ignore resources in every run of a Scan, past and future, by their\nidentityHash. Resources that are already ignored are left as they are.",
+              "args": [
+                {
+                  "name": "scan",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "ID",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "identityHashes",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "LIST",
+                      "name": "",
+                      "ofType": {
+                        "kind": "NON_NULL",
+                        "name": "",
+                        "ofType": {
+                          "kind": "SCALAR",
+                          "name": "String",
+                          "ofType": null
+                        }
+                      }
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanIgnoredResource",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "scanResourcesUnignore",
+              "description": "Stop ignoring resources of a Scan, by their identityHash.",
+              "args": [
+                {
+                  "name": "scan",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "ID",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "identityHashes",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "LIST",
+                      "name": "",
+                      "ofType": {
+                        "kind": "NON_NULL",
+                        "name": "",
+                        "ofType": {
+                          "kind": "SCALAR",
+                          "name": "String",
+                          "ofType": null
+                        }
+                      }
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanIgnoredResource",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "stackScheduledDeleteCreate",
               "description": "Create a new ScheduledDelete for stack",
               "args": [
@@ -47427,6 +47579,30 @@
               },
               "isDeprecated": false,
               "deprecationReason": ""
+            },
+            {
+              "name": "info",
+              "description": "List of info messages. They never change the run's outcome.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "String",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
             }
           ],
           "inputFields": null,
@@ -55948,6 +56124,22 @@
               "deprecationReason": ""
             },
             {
+              "name": "isGovSlackAvailable",
+              "description": "Indicates whether connecting to GovSlack workspaces is supported in this environment.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "slackIntegration",
               "description": "Shows the details of the integration between your Slack workspace and your Spacelift account.",
               "args": [],
@@ -62209,6 +62401,29 @@
               },
               "isDeprecated": false,
               "deprecationReason": ""
+            },
+            {
+              "name": "traceSpans",
+              "description": "Paginated slice of the OTEL spans the run's workers and OpenTofu\ncaptured, oldest first. Without a filter the field returns every span,\nand most spans are OpenTofu internals. Start with\n`spanType: SPACELIFT_STATE` for one span per executed state. Drill into\na state with `parentSpanId`. Find failures with `errorsOnly` and slow\nspans with `minDurationSeconds`. `observabilityStatus.traces` says\nwhether the spans are complete. Null when the spans could not be read.",
+              "args": [
+                {
+                  "name": "input",
+                  "description": "",
+                  "type": {
+                    "kind": "INPUT_OBJECT",
+                    "name": "RunTraceSpansInput",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "OBJECT",
+                "name": "RunTraceSpansResponse",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
             }
           ],
           "inputFields": null,
@@ -64185,6 +64400,469 @@
           "possibleTypes": null
         },
         {
+          "kind": "OBJECT",
+          "name": "RunTraceSpan",
+          "description": "One OTEL span the run's workers or OpenTofu captured.",
+          "fields": [
+            {
+              "name": "traceId",
+              "description": "Hex trace ID. A run executed twice has one trace per execution.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "spanId",
+              "description": "Hex span ID.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "parentSpanId",
+              "description": "Hex ID of the parent span. Null for a root span.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "state",
+              "description": "The run state the span was captured in. UNKNOWN for a span captured\noutside a traced state.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "RunState",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "type",
+              "description": "What the span describes, when Spacelift classified it. Null for OpenTofu\ninternals.",
+              "args": [],
+              "type": {
+                "kind": "ENUM",
+                "name": "RunTraceSpanType",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "name",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "scope",
+              "description": "The instrumentation scope that produced the span, such as\n\"github.com/opentofu/opentofu/internal/tofu\".",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "startTime",
+              "description": "Unix timestamp of when the span started.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "durationSeconds",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Float",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "status",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "RunTraceSpanStatus",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "statusMessage",
+              "description": "The message recorded with an ERROR status. Null when there is none.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "childCount",
+              "description": "How many spans name this one as their parent. Drill into them with\n`parentSpanId`.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "attributes",
+              "description": "The span's attributes as a JSON object.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "events",
+              "description": "The span's events as a JSON array, such as the exception event that\nholds the full error message of a failed operation.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "RunTraceSpanStatus",
+          "description": "The OTEL status a span ended with.",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "UNSET",
+              "description": "The span never set a status. Most OpenTofu internals end this way.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "OK",
+              "description": "The span set a success status.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ERROR",
+              "description": "The span failed. `statusMessage` and the `spacelift.error.messages`\nattribute say how.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "RunTraceSpanType",
+          "description": "What a span describes, as Spacelift classified it when the worker emitted it.",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "SPACELIFT_ROOT",
+              "description": "The span around one execution of the run on a worker.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "SPACELIFT_STATE",
+              "description": "The span around one run state, such as Initialize, Plan or Apply.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "SPACELIFT_HOOK",
+              "description": "A user hook command the worker ran.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "OPENTOFU_RESOURCE",
+              "description": "OpenTofu's work on one resource instance.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "OPENTOFU_PROVIDER_INSTALL",
+              "description": "OpenTofu installing one provider.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "INPUT_OBJECT",
+          "name": "RunTraceSpansInput",
+          "description": "Selects which spans `Run.traceSpans` returns. Set filters combine with AND.",
+          "fields": null,
+          "inputFields": [
+            {
+              "name": "state",
+              "description": "Only the spans captured in this run state. UNKNOWN selects the spans\ncaptured outside a traced state.",
+              "type": {
+                "kind": "ENUM",
+                "name": "RunState",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "traceId",
+              "description": "Only the spans of this trace (hex). A run executed twice has one trace\nper execution.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "parentSpanId",
+              "description": "Only the direct children of this span (hex).",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "spanType",
+              "description": "Only the spans of this type. OpenTofu internals carry no type, so a type\nfilter never returns them.",
+              "type": {
+                "kind": "ENUM",
+                "name": "RunTraceSpanType",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "errorsOnly",
+              "description": "Only the spans that ended with an error status.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "nameContains",
+              "description": "Only the spans whose name contains this text, ignoring case.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "minDurationSeconds",
+              "description": "Only the spans that took at least this many seconds.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "token",
+              "description": "The `nextToken` of the previous page. Pass it with the same filters as\nthat page: the token marks a position, and a different filter reads a\ndifferent list from that position on.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
+            }
+          ],
+          "interfaces": null,
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "RunTraceSpansResponse",
+          "description": "",
+          "fields": [
+            {
+              "name": "totalCount",
+              "description": "How many spans match the filter, across every page.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "hasMore",
+              "description": "Whether a page follows this one.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "nextToken",
+              "description": "Token for the next page. Null on the last page.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "spans",
+              "description": "The spans of this page, oldest first.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "RunTraceSpan",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
           "kind": "INPUT_OBJECT",
           "name": "RunTriggerBatchInput",
           "description": "",
@@ -64740,6 +65418,12 @@
               "description": "",
               "isDeprecated": false,
               "deprecationReason": ""
+            },
+            {
+              "name": "SlowState",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
             }
           ],
           "possibleTypes": null
@@ -64751,7 +65435,7 @@
           "fields": [
             {
               "name": "outcome",
-              "description": "Summary of how the run ended, available independently of findings.\nNull if the summary could not be retrieved.",
+              "description": "Summary of how the run ended. A finished run is judged by its metrics and\nfindings. Null when retrieval of the summary, the metrics or the findings\nfailed. Retrieval failures do not produce GraphQL errors.",
               "args": [],
               "type": {
                 "kind": "OBJECT",
@@ -64873,6 +65557,30 @@
               "deprecationReason": ""
             },
             {
+              "name": "slowestModules",
+              "description": "The modules the run spent the most time installing, longest first. The\nrun only reports the slowest few modules. Being at the top is not a\nverdict: the slowest module of a fast run is not a slow module.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "RunWorkerMetricsModule",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "comparison",
               "description": "The population the P95 values were drawn from.",
               "args": [],
@@ -64941,6 +65649,380 @@
                 "ofType": {
                   "kind": "SCALAR",
                   "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "RunWorkerMetricsDiagnostic",
+          "description": "An error or warning OpenTofu reported in its machine-readable UI. The fields\nfollow https://opentofu.org/docs/cli/commands/validate/#json.",
+          "fields": [
+            {
+              "name": "severity",
+              "description": "Severity of the diagnostic. A state error holds only ERROR diagnostics.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "RunWorkerMetricsDiagnosticSeverity",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "summary",
+              "description": "A short description of the problem.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "detail",
+              "description": "More detail about the problem, possibly over several paragraphs. Null\nwhen OpenTofu reported none.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "range",
+              "description": "The part of the configuration the diagnostic points at. Null when\nOpenTofu reported none.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "RunWorkerMetricsDiagnosticRange",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "snippet",
+              "description": "An excerpt of the configuration around `range`. Null when OpenTofu\nreported none.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "RunWorkerMetricsDiagnosticSnippet",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "RunWorkerMetricsDiagnosticPosition",
+          "description": "One position in a configuration file.",
+          "fields": [
+            {
+              "name": "line",
+              "description": "One-based line in the file.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "column",
+              "description": "One-based count of Unicode characters from the start of the line.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "byte",
+              "description": "Zero-based byte offset into the file.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "RunWorkerMetricsDiagnosticRange",
+          "description": "The part of a configuration file a diagnostic points at.",
+          "fields": [
+            {
+              "name": "filename",
+              "description": "Path of the file, relative to the working directory of OpenTofu.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "start",
+              "description": "Inclusive start of the range.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "RunWorkerMetricsDiagnosticPosition",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "end",
+              "description": "Exclusive end of the range.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "RunWorkerMetricsDiagnosticPosition",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "RunWorkerMetricsDiagnosticSeverity",
+          "description": "The severity OpenTofu gives a diagnostic.",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "ERROR",
+              "description": "A problem that stopped OpenTofu.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "WARNING",
+              "description": "A problem OpenTofu reported without stopping.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "RunWorkerMetricsDiagnosticSnippet",
+          "description": "An excerpt of the configuration around a diagnostic's range.",
+          "fields": [
+            {
+              "name": "context",
+              "description": "The block the code is in, such as `resource \"aws_instance\" \"web\"`. Null\nwhen OpenTofu reported none.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "code",
+              "description": "The code around the range, possibly over several lines.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "startLine",
+              "description": "One-based line in the file of the first line of `code`.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "highlightStartOffset",
+              "description": "Zero-based character offset into `code` of the start of the expression\nthe diagnostic points at.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "highlightEndOffset",
+              "description": "Zero-based character offset into `code` of the end of the expression the\ndiagnostic points at.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "values",
+              "description": "Expression values that can explain the diagnostic. Empty when there are\nnone.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "RunWorkerMetricsDiagnosticValue",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "RunWorkerMetricsDiagnosticValue",
+          "description": "The value of one expression in a diagnostic's snippet.",
+          "fields": [
+            {
+              "name": "traversal",
+              "description": "An HCL-like traversal, such as `var.instance_count`.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "statement",
+              "description": "A short description of the value, such as `is a string`.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
                   "ofType": null
                 }
               },
@@ -65204,6 +66286,65 @@
         },
         {
           "kind": "OBJECT",
+          "name": "RunWorkerMetricsModule",
+          "description": "",
+          "fields": [
+            {
+              "name": "source",
+              "description": "Module source as the workflow tool reports it.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "local",
+              "description": "Whether the source starts with `./` or `../`, such as `./modules/vpc`.\nInstalling a local module only reads its files. Two module calls with\nthe same relative source, such as `./modules/iam` in two packages, are\none module.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "installDurationSeconds",
+              "description": "Time spent installing the module, summed over every run state that\ninstalled it. An install covers the registry lookup, the download and\nthe read of the module's files. The workflow tool installs modules\nduring init. A hook that runs init again installs them a second time.\nBoth installs are summed, so the time can be twice the time of one\ninstall.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Float",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
           "name": "RunWorkerMetricsProvider",
           "description": "",
           "fields": [
@@ -65225,7 +66366,7 @@
             },
             {
               "name": "installDurationSeconds",
-              "description": "Time spent installing the provider, summed over every run state that\ninstalled it.",
+              "description": "Time spent installing the provider, summed over every run state that\ninstalled it. The workflow tool installs providers during init. A hook\nthat runs init again installs them a second time. Both installs are\nsummed, so the time can be twice the time of one install.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -65375,22 +66516,18 @@
             },
             {
               "name": "errors",
-              "description": "Error details for this failed state, in the order the worker reported\nthem. Empty when the state did not fail or no details were captured.",
+              "description": "Error details for this failed state, in the order the worker reported\nthem. Empty when the state did not fail or no details were captured.\nNull when an error could not be resolved.",
               "args": [],
               "type": {
-                "kind": "NON_NULL",
+                "kind": "LIST",
                 "name": "",
                 "ofType": {
-                  "kind": "LIST",
+                  "kind": "NON_NULL",
                   "name": "",
                   "ofType": {
-                    "kind": "NON_NULL",
-                    "name": "",
-                    "ofType": {
-                      "kind": "OBJECT",
-                      "name": "RunWorkerMetricsStateError",
-                      "ofType": null
-                    }
+                    "kind": "OBJECT",
+                    "name": "RunWorkerMetricsStateError",
+                    "ofType": null
                   }
                 }
               },
@@ -65450,7 +66587,7 @@
           "fields": [
             {
               "name": "message",
-              "description": "The exception message, as the worker redacted it.",
+              "description": "The exception message, or the diagnostic's summary and detail in the\nsame format.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -65471,6 +66608,18 @@
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "diagnostic",
+              "description": "The OpenTofu diagnostic the error came from. Null when the error came\nfrom an exception message.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "RunWorkerMetricsDiagnostic",
                 "ofType": null
               },
               "isDeprecated": false,
@@ -67079,6 +68228,68 @@
               "deprecationReason": ""
             },
             {
+              "name": "searchIgnoredResources",
+              "description": "The resource identities ignored in this scan, with a set of predicates,\nordering and paging.",
+              "args": [
+                {
+                  "name": "input",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "INPUT_OBJECT",
+                      "name": "SearchInput",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "SearchScanIgnoredResourcesOutput",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "searchIgnoredResourcesSuggestions",
+              "description": "Information about fields available for searching this scan's ignored\nresources.",
+              "args": [
+                {
+                  "name": "input",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "INPUT_OBJECT",
+                      "name": "SearchSuggestionsInput",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "SearchSuggestionsOutput",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "latestRun",
               "description": "The scan's most recent run, in whatever state it is in. Null until the\nscan has run for the first time.",
               "args": [],
@@ -67241,6 +68452,311 @@
                 "ofType": {
                   "kind": "OBJECT",
                   "name": "Scan",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "ScanFailureCode",
+          "description": "",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "UNKNOWN",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "INTERNAL",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "MANUAL",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "INVALID_CONFIG",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "CREDENTIALS_ASSUME_FAILED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "DISPATCH_FAILED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ASSIGNMENT_UNDELIVERED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ASSIGNMENT_UNSTARTED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "WORKER_UNRESPONSIVE",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "WORKER_CRASHED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "WORKER_KILLED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "LAUNCHER_SETUP",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "PROVIDER_DOWNLOAD",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "PROVIDER_CONFIG_INVALID",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "PROVIDER_CONFIGURE",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "UNSUPPORTED_RESOURCE",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "DEPENDENCY_SKIPPED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "TIMEOUT",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "CREDENTIALS_EXPIRED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ACCESS_DENIED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "THROTTLED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "INVALID_CREDENTIALS",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "SERVICE_NOT_ENABLED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "PROVIDER_ERROR",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanIgnoredResource",
+          "description": "ScanIgnoredResource is a resource identity ignored in every run of a Scan.",
+          "fields": [
+            {
+              "name": "id",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "name",
+              "description": "Name of the resource at the time it was ignored.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "type",
+              "description": "The provider's type name, e.g. aws_s3_bucket.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "identity",
+              "description": "The provider's resource identity as a raw JSON string, taken from the\nresource when it was ignored.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "identityHash",
+              "description": "Hash of the ignored identity, the same as ScanResource.identityHash.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "createdAt",
+              "description": "CreatedAt is the unix timestamp (in seconds) at which the resource was ignored.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanIgnoredResourceConnection",
+          "description": "",
+          "fields": [
+            {
+              "name": "cursor",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "node",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ScanIgnoredResource",
                   "ofType": null
                 }
               },
@@ -67843,7 +69359,7 @@
             },
             {
               "name": "identity",
-              "description": "The provider's resource identity as a raw JSON string. Values the row has\nno column for - the region, the account, the ARN - live in here.",
+              "description": "The provider's resource identity as a raw JSON string. Values the row has\nno column for, like the region or the account, live in here.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -67888,6 +69404,22 @@
             {
               "name": "isManaged",
               "description": "Whether a stack's state holds an entity with the same resource identity.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "isIgnored",
+              "description": "Whether the resource is ignored in its Scan.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -68551,6 +70083,50 @@
               },
               "isDeprecated": false,
               "deprecationReason": ""
+            },
+            {
+              "name": "code",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ScanFailureCode",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "providerErrorCode",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "createdAt",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
             }
           ],
           "inputFields": null,
@@ -68604,7 +70180,7 @@
         {
           "kind": "OBJECT",
           "name": "ScanRunResourceStats",
-          "description": "ScanRunResourceStats splits a run's resources by whether a stack manages them.\nCounted off the stored resources, so it goes to zero once retention drops them.",
+          "description": "ScanRunResourceStats counts a run's resources by whether a stack manages them\nand whether they are ignored.\nCounted off the stored resources, so it goes to zero once retention drops them.",
           "fields": [
             {
               "name": "managed",
@@ -68625,6 +70201,22 @@
             {
               "name": "unmanaged",
               "description": "Resources no stack's state accounts for.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ignored",
+              "description": "Resources ignored in the run's Scan, managed or not.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -71851,6 +73443,57 @@
         },
         {
           "kind": "OBJECT",
+          "name": "SearchScanIgnoredResourcesOutput",
+          "description": "",
+          "fields": [
+            {
+              "name": "edges",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanIgnoredResourceConnection",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "pageInfo",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "PageInfo",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
           "name": "SearchScanResourcesOutput",
           "description": "",
           "fields": [
@@ -74516,8 +76159,8 @@
                   "ofType": null
                 }
               },
-              "isDeprecated": false,
-              "deprecationReason": ""
+              "isDeprecated": true,
+              "deprecationReason": "Use the top-level 'isGovSlackAvailable' query instead."
             }
           ],
           "inputFields": null,
@@ -75872,7 +77515,7 @@
             },
             {
               "name": "numberOfDeploymentsRange",
-              "description": "",
+              "description": "Number of deployments per day. A day without deployments has the value 0.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",

@@ -1669,6 +1669,12 @@ components:
           description: IdentityULID is the ULID of the identity that performed the action, if one is associated with it.
           nullable: true
           type: string
+        oauthScopes:
+          description: OAuthScopes are the scopes granted to the OAuth session that performed the action, null for every other session.
+          items:
+            type: string
+          nullable: true
+          type: array
         ownerLogin:
           description: OwnerLogin is the username of the person behind a personal API key session, null for every other actor.
           nullable: true
@@ -8789,6 +8795,10 @@ components:
           description: Start time of the metrics
           format: int32
           type: integer
+        timezone:
+          description: Timezone, e.g. "Europe/Warsaw" or "America/New_York". Defaults to UTC.
+          nullable: true
+          type: string
       required:
         - endTime
         - startTime
@@ -10368,6 +10378,11 @@ components:
           type: array
         id:
           type: string
+        info:
+          description: List of info messages. They never change the run's outcome.
+          items:
+            type: string
+          type: array
         warn:
           description: List of warning messages.
           items:
@@ -10377,6 +10392,7 @@ components:
         - createdAt
         - deny
         - id
+        - info
         - warn
       type: object
       x-graphql-type: PlanPoliciesOutcome
@@ -11562,9 +11578,13 @@ components:
           description: Author email (optional)
           nullable: true
           type: string
+          x-terraform:
+            - spacelift_repo_file.author_email
         authorName:
           description: Author name
           type: string
+          x-terraform:
+            - spacelift_repo_file.author_name
         description:
           description: Optional extended description for the commit
           nullable: true
@@ -11580,6 +11600,8 @@ components:
         repoID:
           description: The Repo ID
           type: string
+          x-terraform:
+            - spacelift_repo_file.repo_id
       required:
         - authorName
         - files
@@ -12219,6 +12241,7 @@ components:
         policyReceiptSample: served by GET /runs/{runId}/policy-receipt-sample
         searchEntityChanges: served by GET /runs/{runId}/search-entity-changes
         searchEntityChangesSuggestions: served by GET /runs/{runId}/search-entity-changes-suggestions
+        traceSpans: served by GET /runs/{runId}/trace-spans
         workerMetrics: served by GET /runs/{runId}/worker-metrics
       x-graphql-type: Run
     RunCancelRequest:
@@ -12976,6 +12999,162 @@ components:
         - runTile
       type: object
       x-graphql-type: RunTileWithApproval
+    RunTraceSpan:
+      description: One OTEL span the run's workers or OpenTofu captured.
+      properties:
+        attributes:
+          description: The span's attributes as a JSON object.
+          type: string
+        childCount:
+          description: |-
+            How many spans name this one as their parent. Drill into them with
+            `parentSpanId`.
+          format: int32
+          type: integer
+        durationSeconds:
+          type: number
+        events:
+          description: |-
+            The span's events as a JSON array, such as the exception event that
+            holds the full error message of a failed operation.
+          type: string
+        name:
+          type: string
+        parentSpanId:
+          description: Hex ID of the parent span. Null for a root span.
+          nullable: true
+          type: string
+        scope:
+          description: |-
+            The instrumentation scope that produced the span, such as
+            "github.com/opentofu/opentofu/internal/tofu".
+          type: string
+        spanId:
+          description: Hex span ID.
+          type: string
+        startTime:
+          description: Unix timestamp of when the span started.
+          format: int32
+          type: integer
+        state:
+          $ref: '#/components/schemas/RunState'
+        status:
+          $ref: '#/components/schemas/RunTraceSpanStatus'
+        statusMessage:
+          description: The message recorded with an ERROR status. Null when there is none.
+          nullable: true
+          type: string
+        traceId:
+          description: Hex trace ID. A run executed twice has one trace per execution.
+          type: string
+        type:
+          $ref: '#/components/schemas/RunTraceSpanType'
+      required:
+        - attributes
+        - childCount
+        - durationSeconds
+        - events
+        - name
+        - scope
+        - spanId
+        - startTime
+        - state
+        - status
+        - traceId
+      type: object
+      x-graphql-type: RunTraceSpan
+    RunTraceSpanStatus:
+      description: The OTEL status a span ended with.
+      enum:
+        - UNSET
+        - OK
+        - ERROR
+      type: string
+      x-enum-descriptions:
+        ERROR: |-
+          The span failed. `statusMessage` and the `spacelift.error.messages`
+          attribute say how.
+        OK: The span set a success status.
+        UNSET: The span never set a status. Most OpenTofu internals end this way.
+      x-graphql-type: RunTraceSpanStatus
+    RunTraceSpanType:
+      description: What a span describes, as Spacelift classified it when the worker emitted it.
+      enum:
+        - SPACELIFT_ROOT
+        - SPACELIFT_STATE
+        - SPACELIFT_HOOK
+        - OPENTOFU_RESOURCE
+        - OPENTOFU_PROVIDER_INSTALL
+      type: string
+      x-enum-descriptions:
+        OPENTOFU_PROVIDER_INSTALL: OpenTofu installing one provider.
+        OPENTOFU_RESOURCE: OpenTofu's work on one resource instance.
+        SPACELIFT_HOOK: A user hook command the worker ran.
+        SPACELIFT_ROOT: The span around one execution of the run on a worker.
+        SPACELIFT_STATE: The span around one run state, such as Initialize, Plan or Apply.
+      x-graphql-type: RunTraceSpanType
+    RunTraceSpansInput:
+      description: Selects which spans `Run.traceSpans` returns. Set filters combine with AND.
+      properties:
+        errorsOnly:
+          description: Only the spans that ended with an error status.
+          nullable: true
+          type: boolean
+        minDurationSeconds:
+          description: Only the spans that took at least this many seconds.
+          nullable: true
+          type: number
+        nameContains:
+          description: Only the spans whose name contains this text, ignoring case.
+          nullable: true
+          type: string
+        parentSpanId:
+          description: Only the direct children of this span (hex).
+          nullable: true
+          type: string
+        spanType:
+          $ref: '#/components/schemas/RunTraceSpanType'
+        state:
+          $ref: '#/components/schemas/RunState'
+        token:
+          description: |-
+            The `nextToken` of the previous page. Pass it with the same filters as
+            that page: the token marks a position, and a different filter reads a
+            different list from that position on.
+          nullable: true
+          type: string
+        traceId:
+          description: |-
+            Only the spans of this trace (hex). A run executed twice has one trace
+            per execution.
+          nullable: true
+          type: string
+      type: object
+      x-graphql-type: RunTraceSpansInput
+    RunTraceSpansResponse:
+      properties:
+        hasMore:
+          description: Whether a page follows this one.
+          type: boolean
+        nextToken:
+          description: Token for the next page. Null on the last page.
+          nullable: true
+          type: string
+        spans:
+          description: The spans of this page, oldest first.
+          items:
+            $ref: '#/components/schemas/RunTraceSpan'
+          type: array
+        totalCount:
+          description: How many spans match the filter, across every page.
+          format: int32
+          type: integer
+      required:
+        - hasMore
+        - spans
+        - totalCount
+      type: object
+      x-graphql-type: RunTraceSpansResponse
     RunTriggerBatchInput:
       properties:
         forceApply:
@@ -13156,6 +13335,7 @@ components:
         - ProviderVersionConflict
         - SlowProviderInstallCacheDisabled
         - ProviderRegistryDuplicate
+        - SlowState
       type: string
       x-graphql-type: RunWorkerFindingType
     RunWorkerFindings:
@@ -13187,6 +13367,14 @@ components:
           $ref: '#/components/schemas/RunWorkerMetricsDuration'
         failedResources:
           $ref: '#/components/schemas/RunWorkerMetricsFailedResources'
+        slowestModules:
+          description: |-
+            The modules the run spent the most time installing, longest first. The
+            run only reports the slowest few modules. Being at the top is not a
+            verdict: the slowest module of a fast run is not a slow module.
+          items:
+            $ref: '#/components/schemas/RunWorkerMetricsModule'
+          type: array
         slowestProviders:
           description: |-
             The providers the run spent the most time installing, longest first. The
@@ -13207,6 +13395,7 @@ components:
         - comparison
         - duration
         - failedResources
+        - slowestModules
         - slowestProviders
         - states
       type: object
@@ -13235,6 +13424,135 @@ components:
         - windowDays
       type: object
       x-graphql-type: RunWorkerMetricsComparison
+    RunWorkerMetricsDiagnostic:
+      description: |-
+        An error or warning OpenTofu reported in its machine-readable UI. The fields
+        follow https://opentofu.org/docs/cli/commands/validate/#json.
+      properties:
+        detail:
+          description: |-
+            More detail about the problem, possibly over several paragraphs. Null
+            when OpenTofu reported none.
+          nullable: true
+          type: string
+        range:
+          $ref: '#/components/schemas/RunWorkerMetricsDiagnosticRange'
+        severity:
+          $ref: '#/components/schemas/RunWorkerMetricsDiagnosticSeverity'
+        snippet:
+          $ref: '#/components/schemas/RunWorkerMetricsDiagnosticSnippet'
+        summary:
+          description: A short description of the problem.
+          type: string
+      required:
+        - severity
+        - summary
+      type: object
+      x-graphql-type: RunWorkerMetricsDiagnostic
+    RunWorkerMetricsDiagnosticPosition:
+      description: One position in a configuration file.
+      properties:
+        byte:
+          description: Zero-based byte offset into the file.
+          format: int32
+          type: integer
+        column:
+          description: One-based count of Unicode characters from the start of the line.
+          format: int32
+          type: integer
+        line:
+          description: One-based line in the file.
+          format: int32
+          type: integer
+      required:
+        - byte
+        - column
+        - line
+      type: object
+      x-graphql-type: RunWorkerMetricsDiagnosticPosition
+    RunWorkerMetricsDiagnosticRange:
+      description: The part of a configuration file a diagnostic points at.
+      properties:
+        end:
+          $ref: '#/components/schemas/RunWorkerMetricsDiagnosticPosition'
+        filename:
+          description: Path of the file, relative to the working directory of OpenTofu.
+          type: string
+        start:
+          $ref: '#/components/schemas/RunWorkerMetricsDiagnosticPosition'
+      required:
+        - end
+        - filename
+        - start
+      type: object
+      x-graphql-type: RunWorkerMetricsDiagnosticRange
+    RunWorkerMetricsDiagnosticSeverity:
+      description: The severity OpenTofu gives a diagnostic.
+      enum:
+        - ERROR
+        - WARNING
+      type: string
+      x-enum-descriptions:
+        ERROR: A problem that stopped OpenTofu.
+        WARNING: A problem OpenTofu reported without stopping.
+      x-graphql-type: RunWorkerMetricsDiagnosticSeverity
+    RunWorkerMetricsDiagnosticSnippet:
+      description: An excerpt of the configuration around a diagnostic's range.
+      properties:
+        code:
+          description: The code around the range, possibly over several lines.
+          type: string
+        context:
+          description: |-
+            The block the code is in, such as `resource "aws_instance" "web"`. Null
+            when OpenTofu reported none.
+          nullable: true
+          type: string
+        highlightEndOffset:
+          description: |-
+            Zero-based character offset into `code` of the end of the expression the
+            diagnostic points at.
+          format: int32
+          type: integer
+        highlightStartOffset:
+          description: |-
+            Zero-based character offset into `code` of the start of the expression
+            the diagnostic points at.
+          format: int32
+          type: integer
+        startLine:
+          description: One-based line in the file of the first line of `code`.
+          format: int32
+          type: integer
+        values:
+          description: |-
+            Expression values that can explain the diagnostic. Empty when there are
+            none.
+          items:
+            $ref: '#/components/schemas/RunWorkerMetricsDiagnosticValue'
+          type: array
+      required:
+        - code
+        - highlightEndOffset
+        - highlightStartOffset
+        - startLine
+        - values
+      type: object
+      x-graphql-type: RunWorkerMetricsDiagnosticSnippet
+    RunWorkerMetricsDiagnosticValue:
+      description: The value of one expression in a diagnostic's snippet.
+      properties:
+        statement:
+          description: A short description of the value, such as `is a string`.
+          type: string
+        traversal:
+          description: An HCL-like traversal, such as `var.instance_count`.
+          type: string
+      required:
+        - statement
+        - traversal
+      type: object
+      x-graphql-type: RunWorkerMetricsDiagnosticValue
     RunWorkerMetricsDuration:
       description: |-
         A measured duration next to its stack comparison. Either side can be missing
@@ -13334,6 +13652,33 @@ components:
           type: integer
       type: object
       x-graphql-type: RunWorkerMetricsInput
+    RunWorkerMetricsModule:
+      properties:
+        installDurationSeconds:
+          description: |-
+            Time spent installing the module, summed over every run state that
+            installed it. An install covers the registry lookup, the download and
+            the read of the module's files. The workflow tool installs modules
+            during init. A hook that runs init again installs them a second time.
+            Both installs are summed, so the time can be twice the time of one
+            install.
+          type: number
+        local:
+          description: |-
+            Whether the source starts with `./` or `../`, such as `./modules/vpc`.
+            Installing a local module only reads its files. Two module calls with
+            the same relative source, such as `./modules/iam` in two packages, are
+            one module.
+          type: boolean
+        source:
+          description: Module source as the workflow tool reports it.
+          type: string
+      required:
+        - installDurationSeconds
+        - local
+        - source
+      type: object
+      x-graphql-type: RunWorkerMetricsModule
     RunWorkerMetricsProvider:
       properties:
         address:
@@ -13344,7 +13689,9 @@ components:
         installDurationSeconds:
           description: |-
             Time spent installing the provider, summed over every run state that
-            installed it.
+            installed it. The workflow tool installs providers during init. A hook
+            that runs init again installs them a second time. Both installs are
+            summed, so the time can be twice the time of one install.
           type: number
       required:
         - address
@@ -13385,8 +13732,10 @@ components:
           description: |-
             Error details for this failed state, in the order the worker reported
             them. Empty when the state did not fail or no details were captured.
+            Null when an error could not be resolved.
           items:
             $ref: '#/components/schemas/RunWorkerMetricsStateError'
+          nullable: true
           type: array
         failed:
           description: |-
@@ -13417,15 +13766,18 @@ components:
           type: array
       required:
         - duration
-        - errors
         - failed
         - runState
       type: object
       x-graphql-type: RunWorkerMetricsState
     RunWorkerMetricsStateError:
       properties:
+        diagnostic:
+          $ref: '#/components/schemas/RunWorkerMetricsDiagnostic'
         message:
-          description: The exception message, as the worker redacted it.
+          description: |-
+            The exception message, or the diagnostic's summary and detail in the
+            same format.
           type: string
         resourceAddress:
           description: |-
@@ -13973,6 +14325,8 @@ components:
         - workerPool
       type: object
       x-graphql-omitted:
+        searchIgnoredResources: served by GET /scans/{scanId}/search-ignored-resources
+        searchIgnoredResourcesSuggestions: served by GET /scans/{scanId}/search-ignored-resources-suggestions
         searchRuns: served by GET /scans/{scanId}/search-runs
         searchRunsSuggestions: served by GET /scans/{scanId}/search-runs-suggestions
       x-graphql-type: Scan
@@ -14009,6 +14363,77 @@ components:
         - node
       type: object
       x-graphql-type: ScanConnection
+    ScanFailureCode:
+      enum:
+        - UNKNOWN
+        - INTERNAL
+        - MANUAL
+        - INVALID_CONFIG
+        - CREDENTIALS_ASSUME_FAILED
+        - DISPATCH_FAILED
+        - ASSIGNMENT_UNDELIVERED
+        - ASSIGNMENT_UNSTARTED
+        - WORKER_UNRESPONSIVE
+        - WORKER_CRASHED
+        - WORKER_KILLED
+        - LAUNCHER_SETUP
+        - PROVIDER_DOWNLOAD
+        - PROVIDER_CONFIG_INVALID
+        - PROVIDER_CONFIGURE
+        - UNSUPPORTED_RESOURCE
+        - DEPENDENCY_SKIPPED
+        - TIMEOUT
+        - CREDENTIALS_EXPIRED
+        - ACCESS_DENIED
+        - THROTTLED
+        - INVALID_CREDENTIALS
+        - SERVICE_NOT_ENABLED
+        - PROVIDER_ERROR
+      type: string
+      x-graphql-type: ScanFailureCode
+    ScanIgnoredResource:
+      description: ScanIgnoredResource is a resource identity ignored in every run of a Scan.
+      properties:
+        createdAt:
+          description: CreatedAt is the unix timestamp (in seconds) at which the resource was ignored.
+          format: int32
+          type: integer
+        id:
+          type: string
+        identity:
+          description: |-
+            The provider's resource identity as a raw JSON string, taken from the
+            resource when it was ignored.
+          type: string
+        identityHash:
+          description: Hash of the ignored identity, the same as ScanResource.identityHash.
+          type: string
+        name:
+          description: Name of the resource at the time it was ignored.
+          type: string
+        type:
+          description: The provider's type name, e.g. aws_s3_bucket.
+          type: string
+      required:
+        - createdAt
+        - id
+        - identity
+        - identityHash
+        - name
+        - type
+      type: object
+      x-graphql-type: ScanIgnoredResource
+    ScanIgnoredResourceConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/ScanIgnoredResource'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: ScanIgnoredResourceConnection
     ScanInput:
       properties:
         description:
@@ -14222,7 +14647,7 @@ components:
         identity:
           description: |-
             The provider's resource identity as a raw JSON string. Values the row has
-            no column for - the region, the account, the ARN - live in here.
+            no column for, like the region or the account, live in here.
           type: string
         identityHash:
           description: Hash of the identity, used to compare and deduplicate resources.
@@ -14232,6 +14657,9 @@ components:
           format: int32
           nullable: true
           type: integer
+        isIgnored:
+          description: Whether the resource is ignored in its Scan.
+          type: boolean
         isManaged:
           description: Whether a stack's state holds an entity with the same resource identity.
           type: boolean
@@ -14250,6 +14678,7 @@ components:
         - id
         - identity
         - identityHash
+        - isIgnored
         - isManaged
         - name
         - scan
@@ -14302,6 +14731,28 @@ components:
         - type
       type: object
       x-graphql-type: ScanResourceType
+    ScanResourcesIgnoreRequest:
+      description: The arguments of scanResourcesIgnore not carried in the path.
+      properties:
+        identityHashes:
+          items:
+            type: string
+          type: array
+      required:
+        - identityHashes
+      type: object
+      x-graphql-args-of: scanResourcesIgnore
+    ScanResourcesUnignoreRequest:
+      description: The arguments of scanResourcesUnignore not carried in the path.
+      properties:
+        identityHashes:
+          items:
+            type: string
+          type: array
+      required:
+        - identityHashes
+      type: object
+      x-graphql-args-of: scanResourcesUnignore
     ScanRun:
       description: A ScanRun is one execution of a Scan.
       properties:
@@ -14405,10 +14856,18 @@ components:
     ScanRunFailure:
       description: ScanRunFailure is a problem a run hit while scanning.
       properties:
+        code:
+          $ref: '#/components/schemas/ScanFailureCode'
+        createdAt:
+          format: int32
+          type: integer
         message:
           type: string
         providerConfig:
           $ref: '#/components/schemas/ScanProviderConfig'
+        providerErrorCode:
+          nullable: true
+          type: string
         resourceType:
           description: |-
             The resource type that couldn't be listed. Null when the whole provider
@@ -14416,6 +14875,8 @@ components:
           nullable: true
           type: string
       required:
+        - code
+        - createdAt
         - message
         - providerConfig
       type: object
@@ -14442,9 +14903,14 @@ components:
       x-graphql-type: ScanRun
     ScanRunResourceStats:
       description: |-
-        ScanRunResourceStats splits a run's resources by whether a stack manages them.
+        ScanRunResourceStats counts a run's resources by whether a stack manages them
+        and whether they are ignored.
         Counted off the stored resources, so it goes to zero once retention drops them.
       properties:
+        ignored:
+          description: Resources ignored in the run's Scan, managed or not.
+          format: int32
+          type: integer
         managed:
           description: Resources whose identity matches an entity in some stack's state.
           format: int32
@@ -14454,6 +14920,7 @@ components:
           format: int32
           type: integer
       required:
+        - ignored
         - managed
         - unmanaged
       type: object
@@ -15472,6 +15939,19 @@ components:
         - input
       type: object
       x-graphql-args-of: searchRuns
+    SearchScanIgnoredResourcesOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/ScanIgnoredResourceConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchScanIgnoredResourcesOutput
     SearchScanResourcesOutput:
       properties:
         edges:
@@ -16229,6 +16709,7 @@ components:
           nullable: true
           type: string
         isGovSlackAvailable:
+          deprecated: true
           description: Indicates whether GovSlack credentials are configured, allowing connections to GovSlack workspaces.
           type: boolean
       required:
@@ -16679,6 +17160,7 @@ components:
             $ref: '#/components/schemas/RunTile'
           type: array
         numberOfDeploymentsRange:
+          description: Number of deployments per day. A day without deployments has the value 0.
           items:
             $ref: '#/components/schemas/DataPoint'
           type: array
@@ -22557,19 +23039,19 @@ components:
 info:
   description: The Spacelift GraphQL API projected onto resource-oriented REST routes. Generated by `specref generate` from the pinned introspection snapshot, the spacelift-api-bruno collection and the Spacelift Terraform provider; see docs/research/reference/02-graphql-to-rest-mapping.md. Every operation names the GraphQL field it stands for in `x-graphql`.
   title: Spacelift API reference (REST projection)
-  version: schema-b3255fe38f5e
+  version: schema-1fc7d2c49a8e
   x-sources:
     bruno:
-      ref: 7cad4574954b569df083b2a809b68371fc385e6d
+      ref: d4d77d9333d99f69aa7fdaa96865864d9ec13b39
       repository: spacelift-io/spacelift-api-bruno
-      sha256: 97c0202c77a372f7725d76e65b6ae1ba9fe4579427f78014ad61a763ad2e1f46
+      sha256: 6e0e62ea8c7000cc9b03d6c29442159e06673daf650e1681dfae798da0bfbdda
     introspection:
       endpoint: https://demo.app.spacelift.io/graphql
-      sha256: b3255fe38f5ef8e08dfaf4fcabc47b12c7895d45ed360c4171692b532b994aed
+      sha256: 1fc7d2c49a8e8586f96306436b5bcb098753c5661fd077a2538d82d3f9666588
     provider:
-      ref: v1.57.0
+      ref: v1.58.0
       repository: spacelift-io/terraform-provider-spacelift
-      sha256: beab31f28e285b6dc8283dc7fbe5e5cf71aa4d7f9705c4cd148c081dc3e968ea
+      sha256: 0396d27a6a5d47814554c590fbee93c04efde480fe96d31711a23198051af443
 openapi: 3.0.3
 paths:
   /account/api-key-non-root-managers:
@@ -28257,9 +28739,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         default:
           $ref: '#/components/responses/Problem'
-      summary: Flows project role binding
+      summary: Get Project Role Binding
       tags:
         - Flows
+      x-bruno: Flows/Get Project Role Binding.bru
       x-graphql:
         field: flowsProjectRoleBinding
         operation: query
@@ -30752,6 +31235,28 @@ paths:
       x-bruno: Advanced/Forms/Is Generic Form Completed.bru
       x-graphql:
         field: isGenericFormCompleted
+        operation: query
+        type: Query
+      x-rest-style: read
+  /is-gov-slack-available:
+    get:
+      description: Indicates whether connecting to GovSlack workspaces is supported in this environment.
+      operationId: isGovSlackAvailable
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The isGovSlackAvailable result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Is Gov Slack Available
+      tags:
+        - Slack
+      x-bruno: Advanced/Slack/Is Gov Slack Available.bru
+      x-graphql:
+        field: isGovSlackAvailable
         operation: query
         type: Query
       x-rest-style: read
@@ -34265,10 +34770,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         default:
           $ref: '#/components/responses/Problem'
-      summary: Disable Personal API Key
+      summary: Revoke Personal API Key
       tags:
         - Personal API Keys
-      x-bruno: Personal API Keys/Disable Personal API Key.bru
+      x-bruno: Danger Zone/Revoke Personal API Key.bru
       x-graphql:
         field: personalApiKeyDisable
         operation: mutation
@@ -36580,6 +37085,50 @@ paths:
         operation: query
         type: Query
       x-rest-style: sub-read
+  /runs/{runId}/trace-spans:
+    get:
+      description: |-
+        Paginated slice of the OTEL spans the run's workers and OpenTofu
+        captured, oldest first. Without a filter the field returns every span,
+        and most spans are OpenTofu internals. Start with
+        `spanType: SPACELIFT_STATE` for one span per executed state. Drill into
+        a state with `parentSpanId`. Find failures with `errorsOnly` and slow
+        spans with `minDurationSeconds`. `observabilityStatus.traces` says
+        whether the spans are complete. Null when the spans could not be read.
+      operationId: runTraceSpans
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunTraceSpansInput'
+          in: query
+          name: input
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunTraceSpansResponse'
+          description: The traceSpans result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run trace spans
+      tags:
+        - Runs
+      x-graphql:
+        field: traceSpans
+        operation: query
+        type: Run
+      x-rest-style: field
   /runs/{runId}/worker-metrics:
     get:
       description: |-
@@ -37466,6 +38015,92 @@ paths:
         operation: mutation
         type: Mutation
       x-rest-style: update
+  /scans/{scanId}/resources-ignore:
+    post:
+      description: |-
+        Ignore resources in every run of a Scan, past and future, by their
+        identityHash. Resources that are already ignored are left as they are.
+      operationId: scanResourcesIgnore
+      parameters:
+        - in: path
+          name: scanId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: scan
+      requestBody:
+        content:
+          application/json:
+            example:
+              identityHashes:
+                - IDENTITY_HASH_HERE
+            schema:
+              $ref: '#/components/schemas/ScanResourcesIgnoreRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ScanIgnoredResource'
+                type: array
+          description: The scanResourcesIgnore result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Ignore Scan Resources
+      tags:
+        - Scans
+      x-bruno: Scans/Ignore Scan Resources.bru
+      x-graphql:
+        field: scanResourcesIgnore
+        operation: mutation
+        type: Mutation
+      x-rest-style: action
+  /scans/{scanId}/resources-unignore:
+    post:
+      description: Stop ignoring resources of a Scan, by their identityHash.
+      operationId: scanResourcesUnignore
+      parameters:
+        - in: path
+          name: scanId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: scan
+      requestBody:
+        content:
+          application/json:
+            example:
+              identityHashes:
+                - IDENTITY_HASH_HERE
+            schema:
+              $ref: '#/components/schemas/ScanResourcesUnignoreRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ScanIgnoredResource'
+                type: array
+          description: The scanResourcesUnignore result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Unignore Scan Resources
+      tags:
+        - Scans
+      x-bruno: Scans/Unignore Scan Resources.bru
+      x-graphql:
+        field: scanResourcesUnignore
+        operation: mutation
+        type: Mutation
+      x-rest-style: action
   /scans/{scanId}/runs/trigger:
     post:
       description: Queue a new run of an existing Scan.
@@ -37497,6 +38132,86 @@ paths:
         operation: mutation
         type: Mutation
       x-rest-style: action
+  /scans/{scanId}/search-ignored-resources:
+    get:
+      description: |-
+        The resource identities ignored in this scan, with a set of predicates,
+        ordering and paging.
+      operationId: scanSearchIgnoredResources
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: scanId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchScanIgnoredResourcesOutput'
+          description: The searchIgnoredResources result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Scan search ignored resources
+      tags:
+        - Scans
+      x-graphql:
+        field: searchIgnoredResources
+        operation: query
+        type: Scan
+      x-rest-style: field
+  /scans/{scanId}/search-ignored-resources-suggestions:
+    get:
+      description: |-
+        Information about fields available for searching this scan's ignored
+        resources.
+      operationId: scanSearchIgnoredResourcesSuggestions
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: scanId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchIgnoredResourcesSuggestions result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Scan search ignored resources suggestions
+      tags:
+        - Scans
+      x-graphql:
+        field: searchIgnoredResourcesSuggestions
+        operation: query
+        type: Scan
+      x-rest-style: field
   /scans/{scanId}/search-runs:
     get:
       description: The scan's runs, with a set of predicates, ordering and paging.
@@ -46704,7 +47419,11 @@ tags:
     name: Origin Integration
   - description: |-
       API keys scoped to you rather than to the account, for personal tooling.
-      Created, then enabled or disabled.
+      Each user creates their own.
+
+      A root admin can revoke one with **Revoke Personal API Key**, in **Danger Zone**.
+      Nothing turns a revoked key back on; its owner can only delete it with **API Keys
+      → Delete API Key** and create another.
 
       Whether users may create them at all is an account setting: read it with
       **Advanced → Account Settings → Personal Api Keys Enabled**. Changing it is
@@ -46782,6 +47501,11 @@ tags:
 
       **List Scan Provider Schemas** tells you which providers can be scanned and what
       each one accepts — anything absent there cannot be scanned.
+
+      **Ignore Scan Resources** leaves resources out of every run of a scan, past and
+      future; **Unignore Scan Resources** brings them back. Both take resource
+      `identityHash` values, from **Search Scan Run Resources** and **Search Scan Ignored
+      Resources** respectively.
 
       ⚠ `ScanProviderConfigInput.version` is typed as a plain `String` but only accepts
       particular values. Take them from **List Scan Provider Schemas**; anything else is
