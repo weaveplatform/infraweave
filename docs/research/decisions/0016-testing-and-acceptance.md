@@ -276,8 +276,10 @@ coverage it would contribute is not waived.
 - Unit coverage comes from each OS job; acceptance coverage from every
   acceptance partition. `make cover` merges them with `go tool covdata` and
   enforces `.testcoverage.yml`: 95% in total, 90% per package.
-- Exclusions stay as they are: `cmd/`, `tools/`, generated server code and
-  `pkg/client`. Adding one needs an amendment to this record.
+- Exclusions cover `cmd/`, `tools/` and generated code only: the strict
+  servers under `internal/platform/gen/`, the worker protocol client in
+  `internal/agent/wire/`, `pkg/client/` and the `App` stubs in
+  `pkg/flows/app/`. Adding one needs an amendment to this record.
 - Unreachable defensive branches are removed, not excluded.
 
 ### CI

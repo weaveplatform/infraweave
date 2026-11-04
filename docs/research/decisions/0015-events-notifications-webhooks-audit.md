@@ -54,9 +54,10 @@ Deploy and Flows share the envelope, the emit path and the kind registry
 in `internal/platform/outbox`, which sits below every domain that emits.
 The `events` domain holds only the sinks: the inbox, HTTP deliveries,
 Slack, Teams, pull request comments and the streams. Flows triggers are a
-fan-out consumer inside `flows`, so `events` never imports `flows`. The
-audit trail lives in `internal/audit`. Decision 0004 owns their
-placement.
+fan-out consumer inside `flows`, so `events` never imports `flows`. Each
+domain writes audit entries through `internal/platform/audit` in the
+change's own transaction, and `events` holds the trail's search and its
+shipper. Decision 0004 owns their placement.
 
 | Kind | Raised when | Subject | Notification policy |
 |---|---|---|---|

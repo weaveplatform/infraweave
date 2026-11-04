@@ -57,16 +57,16 @@ summary:
 |---|---|---|
 | `internal/<domain>/` | One business domain: a published `api/` package, an `assembly/` constructor package, a private `internal/` tree, and its own migration stream | `internal/platform`, `internal/kernel`, `internal/iac`, its own tree, other domains' `api/` packages, third-party libraries |
 | `internal/<domain>/api/` | Interfaces, input and output types and events other domains use | `internal/kernel`, `internal/platform/outbox`, the standard library |
-| `internal/platform/` | Infrastructure with no business rules: SQL and the unit of work, the outbox, decision 0011's job queue and cron ticker, object storage, envelope encryption, the HTTP kit with problem details, the generated servers, the embedded OPA runtime, the sealed formats (`platform/seal`), the expression engine (`platform/expr`), build information | no domain, no `internal/agent`, no `internal/app` |
+| `internal/platform/` | Infrastructure with no business rules: SQL and the unit of work, the outbox, decision 0011's job queue and cron ticker, object storage, the audit write (`platform/audit`), envelope encryption and KMS signing (`platform/crypt`), the HTTP kit with problem details, the in-process operation dispatcher (`platform/httpkit/dispatch`) and the console's embedded build (`platform/httpkit/console`), the generated servers, the embedded OPA runtime, the sealed formats (`platform/seal`), the expression engine (`platform/expr`), build information | no domain, no `internal/agent`, no `internal/app` |
 | `internal/kernel/` | Value types shared by domain APIs: IDs, spaces, principals, the run state vocabulary | the same as `platform` |
 | `internal/iac/` | Pure IaC vendor knowledge used by both the server and the worker | the same as `platform` |
-| `internal/agent/` | Everything that runs on a customer host: the launcher, the runner, vendor command sets, container runtimes, log masking, the internal worker-protocol client, the VCS agent and the Flows agent | `internal/kernel`, `internal/iac`, five named `platform` packages, among them `platform/seal`, because the runner seals workspaces ([0013](0013-secrets-at-rest.md)), and `platform/expr`, because it renders workflow command templates ([0024](0024-expression-language.md)); its own tree; never a domain, never SQL, the queue, object storage credentials or the keyring, which stays in `platform/crypt` |
+| `internal/agent/` | Everything that runs on a customer host: the launcher, the runner, vendor command sets, container runtimes, log masking, the internal worker-protocol client, the VCS agent and the Flows agent | `internal/kernel`, `internal/iac`, seven named `platform` packages, among them `platform/observe` and `platform/httpkit/serve`, because every agent process mode logs, traces and answers its own probes ([0017](0017-observability-and-health.md)), `platform/seal`, because the runner seals workspaces ([0013](0013-secrets-at-rest.md)), and `platform/expr`, because it renders workflow command templates ([0024](0024-expression-language.md)); `pkg/flows/app/v1`; its own tree; never a domain, never SQL, the queue, object storage credentials or the keyring, which stays in `platform/crypt` |
 | `internal/app/` | The composition root and the process modes | everything |
 | `internal/devtools/` | Libraries behind `tools/` (`specref`, `openapibundle`, `stubgen`) and the docs check (`docscheck`, run by `make docs-check`) | imported only by `tools/` and their own tests |
 | `pkg/client/` | Generated public clients, one per served OpenAPI document | nothing under `internal/` |
 | `pkg/sdk/` | The SDK of [0001](0001-rest-first-spacelift-surface.md): the hand-written layer over `pkg/client/<spec>` that every Go client uses | `pkg/client/`, the standard library and third-party libraries; nothing under `internal/` |
 | `pkg/flows/appsdk/` | The Go SDK for Flows apps ([0018](0018-flows-runtime.md)) | the generated `App` stubs; nothing under `internal/` |
-| `web/console/` | The console's TypeScript source ([0023](0023-console.md)); its build output is embedded by `internal/app` | not Go; it reaches infraweave only through the REST API |
+| `web/console/` | The console's TypeScript source ([0023](0023-console.md)); its build output is embedded by `internal/platform/httpkit/console`, which `serve` mounts | not Go; it reaches infraweave only through the REST API |
 
 - **Boundaries.** A domain reaches another domain only through its `api/`
   package. The Go compiler enforces the private part through the nested
@@ -106,6 +106,16 @@ summary:
   to a transactional outbox in the producer's transaction. The `policies`
   domain owns the input contracts and returns decisions as data; it
   imports none of its callers.
+- **Operations called in process.** Flows' API Request block and
+  Intelligence's `query` and `mutate` tools run a REST operation by its
+  `operationId` through `platform/httpkit/dispatch`, which `internal/app`
+  binds to the composed router after construction. The call passes the same
+  middleware, authorization and feature gate as an external request, as the
+  calling principal, and adds no edge to the declared graph.
+- **Worker work that is not a stack run.** Intent operations
+  ([0019](0019-ai-provider-boundary.md)) and scan runs reach a worker pool
+  through `runsapi`, so workers claim every job through one path
+  ([0008](0008-run-execution-and-worker-protocol.md)).
 - **Inside a domain.** Large domains split `internal/core/` from
   `internal/adapters/`, and core never imports adapters. Rules with no
   I/O, such as the run transition table, priority levels, policy combination
@@ -115,7 +125,12 @@ summary:
 - **Generated code.** Each spec's strict server is generated into
   `internal/platform/gen/<spec>`; `internal/app` composes the per-domain
   partial implementations by embedding, with `UnimplementedStrict` one
-  level deeper, so an operation with two owners fails to compile. Protocols
+  level deeper. An embedded field takes its type's name, so each domain's
+  `assembly` package re-exports its partial under a name of its own
+  (`StacksDeploy`, `RunsDeploy`). An operation two domains implement makes
+  the method ambiguous, and the required assertion
+  `var _ deploy.StrictServerInterface = deployServer{}` then fails to
+  compile; without the assertion the ambiguity would pass. Protocols
   that are not infraweave's REST API (VCS webhooks, the Terraform `http`
   state backend, service discovery, the registry protocols, `login.v1`)
   are hand-written chi routes that domains contribute.
@@ -155,7 +170,7 @@ summary:
   | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs` adapters; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
   | `internal/authn`, `internal/authz` | `internal/access` |
   | `internal/statebackend`, `internal/registry` | `internal/state`, `internal/registry` |
-  | `internal/events`, `internal/audit` | `internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox` |
+  | `internal/events`, `internal/audit` | `internal/events` for the sinks; the envelope, the kind registry and the outbox in `internal/platform/outbox`; the audit write in `internal/platform/audit`, called in the change's own transaction, and the audit trail's search and shipper in `internal/events` |
   | `internal/expr` | `internal/platform/expr`; the editor endpoints in `internal/expressions` |
   | `internal/features` | `internal/features` |
   | `internal/flows`, `internal/flows/agent` | `internal/flows`, `internal/agent/flowsagent` |
@@ -176,7 +191,7 @@ with these cobra subcommands:
 
 | Process mode | Starts | Spacelift equivalent |
 |---|---|---|
-| `serve` | Each domain's routes: the `deploy` REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue | server, and the VCS and Flows gateways |
+| `serve` | Each domain's routes: the `deploy` REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue except the `flows.agent_task` jobs of the Flows agents connected to it (decision 0018) | server, and the VCS and Flows gateways |
 | `scheduler` | Each domain's queue consumers and outbox subscriptions, and the cron ticker, which every replica runs: due rows are claimed with `FOR UPDATE SKIP LOCKED`, so no leader is elected (decision 0011) | drain, with the scheduler folded in |
 | `launcher` | The launcher for a worker pool, from `internal/agent` only; it never calls `internal/app` | launcher |
 | `all` | `serve` and `scheduler` in one process, for single-node installs and acceptance tests | none |
@@ -200,7 +215,7 @@ both binaries is decision 0020's.
 ## Rationale
 
 The [comparison matrix](../architecture-options/README.md#comparison-matrix)
-rates all five options on 24 criteria. Option 5 rates Good on 19 and Poor on
+rates all five options on 24 criteria. Option 5 rates Good on 16 and Poor on
 none, and leads the roadmap table outright. Its depguard burden rates Fair,
 about 26 rules and 270 entries, because the nested `internal/` directories
 leave the compiler to enforce most of each boundary.
@@ -215,11 +230,21 @@ leave the compiler to enforce most of each boundary.
   keeps inside option 5, but charges boundaries and presenters on every
   CRUD operation and cannot express "no sibling use case" without about
   110 generated lint rules.
-- **Option 4, DDD**, separates late domains best but pays the full tactical
-  cost on the CRUD phases, needs the outbox and event bus before the first
-  run, makes stack state and checks eventually consistent, commits policy
-  receipts apart from the transition that uses them, and carries the
-  heaviest lint and package count.
+- **Option 4, DDD**, as drawn, separates late domains best but pays the
+  full tactical cost on the CRUD phases, commits policy receipts apart from
+  the transition that uses them, and carries the heaviest lint and package
+  count. Its strongest variant keeps tactical patterns to the rule-heavy
+  domains and uses nested `internal/` directories, and then converges on
+  option 5's shape. What remains is DDD's preference for events between
+  contexts over synchronous calls, which a run transition committed in one
+  transaction does not want.
+- **Spacelift's workflow concepts and the three clouds do not separate the
+  options.** Flows is a domain on the shared event model and queue in
+  options 4 and 5 alike. Custom workflows are pure vendor knowledge in
+  `internal/iac` plus the runner's rendering through `platform/expr`. AWS,
+  Azure and Google Cloud are drivers behind interfaces in `platform`
+  (object storage, KEK and signing, database IAM authentication) and
+  adapters inside `cloud`, in every option.
 
 Option 5 keeps the property option 4 is strongest at (separable domains
 with their own tables) and the property options 1 to 3 keep (one
@@ -254,14 +279,25 @@ change.
 
 ## Constraints
 
-- **`runs` concentrates work.** It holds the state machine, queue gates,
-  scheduling, handover, timers, promotion and dependencies. If it
-  dominates the hand-written code or causes routine collisions, it splits
-  into sub-domains along those seams, keeping one migration stream.
-- **Back edges** (stacks reading run state, runs reading VCS sources and
-  cloud credentials at handover) are bound after construction in
-  `internal/app`. A stack list filtered by run state reads across two
-  schemas through one sanctioned read view.
+- **`runs` concentrates work and stays one domain.** It holds the state
+  machine, queue gates, scheduling, handover, timers, promotion and
+  dependencies. Splitting it would move a transition's writes across `api/`
+  calls and lose the single transaction. Its core packages reach the store
+  only through `lifecycle`, and the gate fails on a duplicate migration
+  number within a stream, so parallel phases collide in review, not in
+  production.
+- **Back edges** are bound after construction in `internal/app`: `stacks`
+  reads run state (`runsapi.StackStatus`), `runs` reads VCS sources,
+  cloud credentials and state versions at handover (`vcsapi.Sources`,
+  `cloudapi.Credentials`, `stateapi.Versions`), the worker protocol in
+  `workers` claims and reports through `runsapi.Scheduler` and
+  `runsapi.Reports`, and `access` evaluates `LOGIN` policies through
+  `policiesapi.Evaluator`. The
+  [declared graph](../../implementation/repo-layout.md#declared-graph)
+  lists every edge, the back edges and the construction order.
+- **The stack-by-run-state read view** lives in the `runs` migration stream
+  and is served through `runsapi.StackStatus`; it is the one sanctioned
+  read across two schemas, and the schema check holds it to the graph.
 - **The binary on worker hosts carries server code** it never executes. If
   image size or a customer's review requires it, `cmd/infraweave-agent` links
   only `internal/agent`.
@@ -269,9 +305,10 @@ change.
   little logic; keeping validation and constructors there gives each a
   test surface. Coverage exclusions are decision
   [0016](0016-testing-and-acceptance.md#coverage)'s.
-- **depguard reports only new issues** against the merge base in this
-  repository's configuration, so the rules are introduced with a clean run
-  over the whole tree.
+- **Every domain carries its rule entries.** `make lint` checks the whole
+  tree, not only new issues. `TestUnitDepguardFixtures` fails when a
+  directory under `internal/` that is a domain lacks its graph rule or its
+  entries in `constructors` and `shared-below-domains`.
 - **depguard matches plain prefixes.** An allow entry without a trailing
   `$` or `/` admits every package whose path starts with it, so
   `$m/internal/stacks/api` would let `$m/internal/stacks/apiutil` through.
@@ -302,7 +339,12 @@ change.
   from one domain to a domain that domain may not import, when a
   cross-domain key cascades or sets null on delete, when the declared
   graph has a cycle, or when a stream is registered before a stream it
-  depends on.
+  depends on. Views count as references: a view that reads another
+  domain's table must follow the graph, which the check reads from
+  `pg_depend`.
+- `internal/app/router.go` asserts that each composed server satisfies its
+  generated interface, so `make build` fails on an operation with two
+  owners.
 - `make docs-check` checks that the five option files keep one heading
   sequence and that this record's links resolve.
 

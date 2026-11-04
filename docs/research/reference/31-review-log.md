@@ -1,6 +1,6 @@
 # 31: Review log
 
-Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; the DES-07 cross-read of decisions 0001 to 0024 and the implementation documents, 2026-11-03; the DES-09 pass over decisions 0001 to 0024, report 30 and the served deploy bundle, 2026-11-03; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
+Checked against: the RES-02 to RES-08, ARC-01 and IMP-01 fact-check reviews, reports 01 and 03 to 28, decisions 0004 to 0022, the architecture options and the implementation documents as they stand after those reviews' fixes, 2026-10-28; the DES-05 correction pass on report 23, with the 46 Flows templates and six MIT `scenario.yaml` files read 2026-11-03; the DES-07 cross-read of decisions 0001 to 0024 and the implementation documents, 2026-11-03; the DES-09 pass over decisions 0001 to 0024, report 30 and the served deploy bundle, 2026-11-03; the DES-10 ratification of decision 0004 and the architecture options, 2026-11-04; introspection `b3255fe38f5e`; docs.spacelift.io read 2026-10-28.
 
 Research baseline: **2026-10-28**.
 
@@ -9,8 +9,8 @@ and the proposed decision records found and what each finding changed, so
 that a reader can tell which statements in reports 01 and 03 to 28, in
 decisions 0004 to 0022, in the architecture options and in the
 implementation documents are corrections rather than first drafts. It
-covers twelve passes, one per ticket from RES-02 to RES-08, ARC-01,
-IMP-01, DES-05, DES-07 and DES-09, and keeps every
+covers thirteen passes, one per ticket from RES-02 to RES-08, ARC-01,
+IMP-01, DES-05, DES-07, DES-09 and DES-10, and keeps every
 finding, shortened. Report 02 predates these
 tickets and had no pass. The open items the passes raised are entries in
 [30](30-open-questions.md), cited here by number; the terms are in the
@@ -99,6 +99,12 @@ changed. A second reader, who made none of the changes, cross-read the
 records, and each contradiction it found is fixed in the record that does
 not own the fact or listed as left open. The counting rule is DES-07's.
 
+DES-10 tested decision 0004 before any code moves into its layout. Three
+reviewers who had not written the options argued for DDD, stress-tested the
+modular monolith, and audited the one-way doors of the decisions 0004
+rests on; each claim they cited was read against the files before it
+counted. The counting rule is DES-07's.
+
 ## Findings
 
 Every finding is a record of
@@ -126,7 +132,8 @@ and status are queries of the register.
 | DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script |
 | DES-07 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the [implementation documents](../../implementation/plan.md) | about 250, plus the phase graph, every roadmap row and every changed file's dashes by script |
 | DES-09 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), [30](30-open-questions.md) and the served deploy bundle | about 300, plus every served name and every reference Spacelift and root identifier by script |
-| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,310 |
+| DES-10 | decision [0004](../decisions/0004-repository-architecture.md), the [architecture options](../architecture-options/README.md), the [repository layout](../../implementation/repo-layout.md), decisions [0015](../decisions/0015-events-notifications-webhooks-audit.md) and [0016](../decisions/0016-testing-and-acceptance.md) | about 120, plus the strict-server composition compiled in a scratch module |
+| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,430 |
 
 ## RES-02: platform API inventories, provider and clients
 
@@ -756,6 +763,47 @@ The pass's findings are the `DES-09.` records of the register
 - **Settled after the pass:** the sampling task is `worker.sample` with `worker.samples.retention`, matching the singular prefix of `worker.offline_after` and `worker.reap` (`runs.` and `workers.` name tables, not keys); 0018 gives the default Flows agent pool the account isolation 0008 gives the public worker pool; the plan no longer counts C226 and C238 as blocking; served descriptions no longer name Spacelift, and `TestUnitServedNames` reads every served string outside the mapping extensions.
 - **Settled after the pass, as style:** records name a store and write its key without the store prefix (0005), and write deploy routes as the document's paths while every other surface, the operator API's `/operator/v1` among them, keeps its prefix (0003). Settling them exposed three contradictions, now resolved: 0005 kept `deliveries` 1 day where 0015 keeps delivery bodies with their rows for 7; plan P1 served `GET /api/v1/health`, which 0017 rejects, and now serves `/livez` on the admin listener; and 0009 bound a sample to its key alone, where 0013 binds every object to its store and key.
 
+## DES-10: ratification of the repository architecture
+
+### Claims checked
+
+About 120 claims by hand. Three reviewers read decisions 0001 to 0024, the
+five options and the comparison, reports 08, 09, 10, 20, 23, 24, 26 and 28,
+the plan and the repository layout, and artifactweave's options, tree and
+refactor history as a comparison case. One argued the strongest case for
+DDD, one stress-tested option 5, and one audited the one-way doors of
+decisions 0004, 0005, 0006, 0007, 0008, 0011, 0013, 0015, 0018, 0019, 0021
+and 0024. Each finding's citations were read against the files, the
+strict-server composition was compiled with Go 1.27 in a scratch module,
+and the domain graph was rebuilt from every cross-domain `api` call the
+option 5 file names.
+
+### Findings
+
+The pass's findings are the `DES-10.` records of the register
+[review-findings.json](../../data/review-findings.json). Amendments the
+one-way-door audit proposed for decisions other than 0004 are folded by the
+passes that make them.
+
+### What survived
+
+- **Option 5 holds.** DDD as drawn is worse; its strongest variant, with
+  tactical patterns kept to the rule-heavy domains and nested `internal/`
+  directories, converges on option 5's shape. Hexagonal keeps its shared
+  port files and its single core. Option 5 rates Good on 16 of 24
+  criteria, Poor on none, and still leads the roadmap table.
+- **Neither workflow concept nor the three clouds separates options 4 and
+  5:** Flows is a domain on the shared event model and queue in both, custom
+  workflows are `iac` knowledge rendered by the runner, and AWS, Azure and
+  Google Cloud are drivers in `platform` and adapters in `cloud`.
+- **The maintainer's rulings:** option 5 is kept; every feature ships in
+  one deployment from the first release, so no domain is built for
+  separate deployment; foreign keys follow the import direction; `runs`
+  stays one domain.
+- **The `runs` transaction:** a run transition still commits the run, its
+  transition, the stack run lock, the queue item, the policy receipts and
+  the event in one transaction inside `runs`.
+
 ## What survived across the set
 
 - **Mechanical inventories hold.** Every operation, route, field, enum
@@ -831,4 +879,5 @@ holds.
 - The [implementation plan](../../implementation/plan.md), [capability roadmap](../../implementation/capability-roadmap.md), [deviations register](../../implementation/deviations.md), [repository layout](../../implementation/repo-layout.md) and [definition of done](../../implementation/definition-of-done.md), as edited by IMP-01; GitHub issues #5, #8 to #15 and #21 to #31, read 2026-10-28.
 - <https://spacelift.io/pricing>, read 2026-10-28 as raw HTML for RES-07.
 - The DES-09 pass, 2026-11-03, of decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) against the maintainer's answers to the DES-09 questions, with `api/deploy.openapi.yaml` and the reference specification.
+- The DES-10 pass, 2026-11-04, of decision [0004](../decisions/0004-repository-architecture.md) and the [architecture options](../architecture-options/README.md) against decisions 0001 to 0024, with artifactweave's `docs/research/architecture-options/` and its `internal/` tree read the same day.
 - The open questions the reviews raised: [30](30-open-questions.md).

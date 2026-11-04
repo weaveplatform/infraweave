@@ -243,11 +243,11 @@ agent host in `internal/agent`.
 |---|---|
 | A run transition (run row, transition, stack run lock, queue item, receipts, outbox event) is one transaction inside one domain | `runs` holds about a fifth of the hand-written code and is touched by P7, P9, P10, P13 and P16 |
 | The Go compiler enforces the domain boundary through nested `internal/`; one depguard rule per domain declares the graph that foreign keys follow | Stack state is runs data; a stack list filtered by state needs a read view across two schemas |
-| Policies own the input contract and return decisions as data, so policy hooks form no cycle | Three back edges (stacks to runs, runs to vcs, runs to cloud) are bound after construction |
-| `internal/agent` imports no domain and no persistence, so `cmd/infraweave-agent` is a short `main.go` | About 325 packages, about 40 thin ones under the 90% floor; 26 depguard rules and about 230 entries, most of them the graph |
+| Policies own the input contract and return decisions as data, so policy hooks form no cycle | Six back edges (stacks to runs; runs to vcs, cloud and state; workers to runs; access to policies) are bound after construction |
+| `internal/agent` imports no domain and no persistence, so `cmd/infraweave-agent` is a short `main.go` | About 325 packages, about 40 thin ones under the 90% floor; 26 depguard rules and about 270 entries, most of them the graph |
 | Each domain contributes `Routes`, `Consumers`, `Cron` and `Surfaces`, which map straight onto `serve` and `scheduler` | Long import paths and every constructor package named `assembly`, so imports need aliases |
 | A late domain is a new directory plus about 6 edits; Flows has its own schema and can be extracted | Foreign keys along the graph make a key against the import direction a move, not an edit |
-| The event model, sealing and expressions are platform, `features` sits at the bottom of the graph, and Flows triggers are one more fan-out consumer | The agent's platform allow-list grows to five packages, and `featuresapi` is one of the widest dependencies |
+| The event model, sealing and expressions are platform, `features` sits at the bottom of the graph, and Flows triggers are one more fan-out consumer | The agent's platform allow-list holds seven packages, and `featuresapi` is one of the widest dependencies |
 
 **Roadmap verdict.** Fits the spine phase by phase: P1 to P6 add one
 domain each; P7 to P10 happen inside `runs`, whose single-transaction
@@ -271,7 +271,7 @@ it (P1 to P6).
 | Criterion | 1 Layered | 2 Hexagonal | 3 Clean | 4 DDD | 5 Modular monolith |
 |---|---|---|---|---|---|
 | Distance from today's tree (moves and new tooling at P1) | Good | Good | Fair | Fair | Good |
-| Fit with the generated strict server and stubgen | Good | Good | Fair | Fair | Good |
+| Fit with the generated strict server and stubgen | Good | Good | Fair | Fair | Fair |
 | Cost of the CRUD phases P2 to P6 | Fair | Fair | Poor | Poor | Fair |
 | Finding one domain's code | Poor | Fair | Poor | Good | Good |
 
@@ -283,8 +283,10 @@ Notes:
   lint-config generator and two Makefile targets; DDD and Clean start with
   more top-level directories than they have code for.
 - Strict-server fit is Fair where a resource does not map to one owner:
-  Clean wraps each generated type in boundaries and presenters, and DDD
-  assembles the Stacks representation from two contexts.
+  Clean wraps each generated type in boundaries and presenters, DDD
+  assembles the Stacks representation from two contexts, and option 5
+  reads a stack's state, blocker and run lock from `runs` through a back
+  edge.
 
 ### Roadmap shape
 
@@ -301,7 +303,7 @@ How each option carries the 27-phase spine.
 | Flows separability, with its own projects, identifiers and schema (Flows phases) | Poor | Fair | Poor | Good | Good |
 | Late-domain addition without touching existing cores (P21, P22, P25) | Poor | Fair | Fair | Good | Good |
 | Process modes fall out of the structure (P7, P27) | Good | Good | Fair | Good | Good |
-| Extractability of a domain into a separate service | Poor | Poor | Poor | Good | Good |
+| Extractability of a domain into a separate service | Poor | Poor | Poor | Good | Fair |
 
 Notes:
 - DDD is Fair on run integrity because policy receipts commit in
@@ -313,6 +315,10 @@ Notes:
   option 2, and the kernel plus four contexts in option 4.
 - Clean is Fair on process modes because the worker side is a second axis across
   the rings.
+- The modular monolith is Fair on extractability: a domain's `api/` seam
+  is ready, but its foreign keys along the graph, the shared `jobs` table
+  and, for Flows, the fan-out transaction that inserts a trigger's first
+  event all bind it to the one database.
 
 ### The accepted design
 
@@ -365,7 +371,7 @@ file's Numbers section.
 | Coverage-floor friction (thin packages under 90%) | Good | Good | Fair | Poor | Fair |
 | Indirection per request (packages a stack update crosses) | Fair | Fair | Poor | Fair | Fair |
 | Files touched to add a domain | Fair | Fair | Fair | Poor | Good |
-| Shared hotspot files for parallel phases | Poor | Poor | Poor | Fair | Good |
+| Shared hotspot files for parallel phases | Poor | Poor | Poor | Fair | Fair |
 
 Clean is Poor on shared hotspots for the same reason as layered and
 hexagonal: every phase edits `app/usecases.go`, `app/controllers.go`,
@@ -377,7 +383,9 @@ hexagonal's and layered's. Hexagonal's and option 5's six edits to add a
 domain differ in kind: hexagonal's include the shared port files that every
 phase edits, option 5's are the composition root, the router, the
 configuration, the lint file, the catalogue and the domain's own graph
-rule.
+rule. Those six are still the modular monolith's hotspots, with the `runs`
+migration stream that P7 to P16 share, which is why it is Fair rather than
+Good on shared hotspots.
 
 The numbers behind the cost ratings:
 
@@ -404,8 +412,8 @@ lines for today's 72 operations and roughly 240k at the reference's 725.
 
 | | 1 Layered | 2 Hexagonal | 3 Clean | 4 DDD | 5 Modular monolith |
 |---|---|---|---|---|---|
-| Good | 9 | 13 | 6 | 10 | 19 |
-| Fair | 10 | 9 | 11 | 9 | 5 |
+| Good | 9 | 13 | 6 | 10 | 16 |
+| Fair | 10 | 9 | 11 | 9 | 8 |
 | Poor | 5 | 2 | 7 | 5 | 0 |
 
 The totals count 24 criteria, not weight them. The recommendation below
@@ -442,7 +450,7 @@ out.
 | Version skew | None between process modes: one build | None if released together; possible if not | A real concern: API contracts between services need versioning |
 | A run transition in one transaction | Yes: serve and scheduler share the database and the same domain code | Yes | No, once services own separate data: run, lock, queue and receipts need sagas or a shared database |
 | Independent scaling | Yes: each process mode is its own process and deployment | Yes | Yes |
-| Isolation of API latency from queue load | Yes: `serve` never consumes queues | Yes | Yes |
+| Isolation of API latency from queue load | Yes: `serve` consumes no queue except the Flows agent tasks its sockets deliver | Yes | Yes |
 | Singletons (cron firing, timers, stale-run sweeps) | None needed: every `scheduler` replica's ticker claims due rows with `FOR UPDATE SKIP LOCKED` (decision 0011), where OTF instead runs exclusive subsystems on one replica under an advisory lock | Same | Same, per service |
 | Launcher and agent binary size and attack surface on customer hosts | `infraweave` carries server code it never runs; `infraweave-agent` links only the agent tree | Smallest: links only launcher code | Smallest |
 | Flows apps on agent hosts | `flows-agent` starts one container per installation and app version digest and speaks gRPC to it locally; the agent needs Docker or a Kubernetes namespace | Same | Same |
@@ -460,7 +468,7 @@ differ only in where the wiring lives:
 | 2 Hexagonal | `internal/app` picks driving adapters over the same core | `internal/worker`, a second hexagon | `worker/core/flowsagent` with its container and gRPC adapters | `internal/app/agentcli` over the worker hexagon |
 | 3 Clean | `internal/app` starts controllers or job runners | `app/workerapp` over `usecase/agent` and `adapter/agent` | `usecase/agent/flowsagent` with `adapter/agent` gateways | `app/workerapp` |
 | 4 DDD | `internal/app` starts each context's `interfaces/rest` or `interfaces/consumers` and cron | `internal/execution/agent` | `internal/flows/agent` | the three context `agent/` trees |
-| 5 Modular monolith | `internal/app/modes.go` calls each domain's `Routes`, or its `Consumers`, `Cron` and `Surfaces` | `internal/agent`, wired through `internal/agent/cli` without `internal/app` | `internal/agent/flowsagent` | `internal/agent` and five platform packages |
+| 5 Modular monolith | `internal/app/modes.go` calls each domain's `Routes`, or its `Consumers`, `Cron` and `Surfaces` | `internal/agent`, wired through `internal/agent/cli` without `internal/app` | `internal/agent/flowsagent` | `internal/agent` and seven platform packages |
 
 ### Verdict
 
@@ -568,7 +576,7 @@ inside option 5 without changing its rules:
   `platform/httpkit/console` and calls only the public API.
 - **The worker and agent tree stays server-free.** `internal/agent` imports
   no domain and no persistence, only `internal/kernel`, `internal/iac` and
-  five platform packages, which keeps private workers and Flows agents
+  seven platform packages, which keeps private workers and Flows agents
   outbound-only and makes `cmd/infraweave-agent` a short `main.go`.
 - **Process modes are domain contributions.** `Routes`, `Consumers`,
   `Cron` and `Surfaces` decide what `serve` and `scheduler` start, so a new
@@ -588,13 +596,16 @@ inside option 5 without changing its rules:
   `runs` domain would become a workflow definition plus activities, and
   option 4's event-driven contexts would fit that shape better.
 - **`runs` outgrowing one domain.** If the `runs` domain passes about a
-  quarter of the hand-written code, or two phases routinely collide in it,
-  split it along its own seams (lifecycle, scheduling, handover,
-  dependencies) as sub-domains with their own `api/`, keeping one
-  migration stream.
+  quarter of the hand-written code, or more than a quarter of the pull
+  requests touching it from P11 to P16 conflict inside it, move the parts
+  outside the transition (scheduling, dependencies) into sub-domains with
+  their own `api/`. Lifecycle and every table a transition writes stay in
+  `runs`, so the transition keeps its one transaction.
 - **A requirement to deploy Flows or Intelligence separately.** The
   domains' `api/` seams make extraction feasible, after dropping their
-  foreign keys to `access`; if it becomes a launch requirement rather than
+  foreign keys to `access`, moving their work off the shared `jobs` table
+  and, for Flows, replacing the fan-out transaction with delivery of
+  published events; if it becomes a launch requirement rather than
   an option, option 4's published-event context map is the better starting
   point for those domains.
 - **Deploy and Flows events needing separate contracts.** Decisions 0015
@@ -606,16 +617,15 @@ inside option 5 without changing its rules:
   to move, or the domains to merge. If that recurs, the foreign-key rule is
   the thing to revisit, not the domain layout, and that needs its own
   decision.
-- **Domains landing without their depguard entries.** Rules 4, 6 and 7
-  name each domain. A domain with tables and no graph rule fails
-  `TestAccSchemaDependencies`, but one that skips its other three or four
-  entries is unguarded on those rules until someone notices. If that
-  recurs, the entries have to be generated from the directory list, as
-  option 3 does for its rule 2, and the enforcement cost rises toward the
-  other options'.
+- **Domains landing without their depguard entries.** Rules 4 and 6 name
+  each domain. A domain directory without its graph rule or those entries
+  fails `TestUnitDepguardFixtures`, and one with tables but no graph rule
+  fails `TestAccSchemaDependencies`. If the entries still drift, they have
+  to be generated from the directory list, as option 3 does for its rule 2,
+  and the enforcement cost rises toward the other options'.
 - **The agent's shared code outgrowing the platform.** If the runner, the
-  launcher or the Flows agent needs a sixth platform package, or one of the
-  five gains a store or a key, the code both sides share moves into a tree
+  launcher or the Flows agent needs an eighth platform package, or one of the
+  seven gains a store or a key, the code both sides share moves into a tree
   of its own, as option 2's `internal/shared`, and rule 7 names that tree.
 - **The coverage floor.** If the thin `api/` and `assembly/` packages cannot
   reach 90% without tests written for the floor, the coverage exclusions,
