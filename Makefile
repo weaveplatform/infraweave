@@ -79,16 +79,21 @@ accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
 	$(GO) test -count=1 -covermode=atomic -cover -coverpkg=$(MODULE)/... ./test/acceptance/... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
 
-REFERENCE_DIR := api/reference/spacelift
+# PRODUCTS are the Spacelift products with a reference; specref --product
+# picks each one's reference directory, inventory outputs and parity
+# baseline. Narrow it to run a target for one product (PRODUCTS=flows).
+PRODUCTS := deploy flows
+# PRODUCT is the one product scaffold copies from.
+PRODUCT ?= deploy
 
-## reference-fetch: refresh the Spacelift snapshots and sources.lock.yaml (network and terraform; pins from the lock unless overridden by flags or SPECREF_*)
+## reference-fetch: refresh each product's snapshots and sources.lock.yaml (network; terraform for deploy; pins from the lock unless overridden by SPECREF_*)
 reference-fetch:
-	$(GO) run ./tools/specref fetch --dir $(REFERENCE_DIR)
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref fetch --product $$p || exit 1; done
 
-## scaffold: copy one reference tag into an API fragment and rebundle (make scaffold TAG=Stacks FAMILY=stacks [FORCE=1])
+## scaffold: copy one reference tag into an API fragment and rebundle (make scaffold [PRODUCT=flows] TAG=Stacks FAMILY=stacks [FORCE=1])
 scaffold:
-	@test -n "$(TAG)" -a -n "$(FAMILY)" || { echo "usage: make scaffold TAG=<reference tag> FAMILY=<fragment name>"; exit 1; }
-	$(GO) run ./tools/specref scaffold --dir $(REFERENCE_DIR) --tag "$(TAG)" --out api/src/api/paths-$(FAMILY).yaml $(if $(FORCE),--force)
+	@test -n "$(TAG)" -a -n "$(FAMILY)" || { echo "usage: make scaffold [PRODUCT=<deploy|flows>] TAG=<reference tag> FAMILY=<fragment name>"; exit 1; }
+	$(GO) run ./tools/specref scaffold --product $(PRODUCT) --tag "$(TAG)" --out api/src/api/paths-$(FAMILY).yaml $(if $(FORCE),--force)
 	$(MAKE) bundle
 
 ## bundle: merge api/src/<service>/*.yaml fragments into api/<service>.openapi.yaml
@@ -120,25 +125,20 @@ verify-generate: generate
 	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
-## reference: regenerate the Spacelift OpenAPI reference and coverage report from the snapshots
+## reference: regenerate each product's OpenAPI reference and coverage report from its snapshots
 reference:
-	$(GO) run ./tools/specref generate --dir $(REFERENCE_DIR)
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref generate --product $$p || exit 1; done
 
-INVENTORY := docs/research/reference/29-data-model-inventory.md
-INVENTORY_REGISTER := docs/data/graphql-inventory.json
-
-## reference-inventory: regenerate the GraphQL inventory register and report 29 from the introspection snapshot
+## reference-inventory: regenerate each product's inventory: the GraphQL register and report 29 (deploy), the SDK register (flows)
 reference-inventory:
-	$(GO) run ./tools/specref inventory --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref inventory --product $$p || exit 1; done
 
-## verify-reference: fail if the committed reference, report 29 or the inventory register is not what the snapshots generate
+## verify-reference: fail if a committed reference, report 29 or an inventory register is not what the snapshots generate
 verify-reference:
-	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
-	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
-
-# PRODUCTS are the Spacelift products with a reference; specref --product
-# picks each one's reference directory and parity baseline.
-PRODUCTS := deploy flows
+	@for p in $(PRODUCTS); do \
+		$(GO) run ./tools/specref check --product $$p && \
+		$(GO) run ./tools/specref inventory --check --product $$p || exit 1; \
+	done
 
 ## parity: print, for each product, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.<product>.json
 parity:

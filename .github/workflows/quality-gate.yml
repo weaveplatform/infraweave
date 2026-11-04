@@ -111,10 +111,11 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      # Offline: regenerates from the committed snapshots and diffs, so an
-      # edit to rest-mapping.yaml or the generator without `make reference`
-      # (or `make reference-inventory` for report 29) fails here rather than
-      # shipping a stale spec or inventory.
+      # Offline: regenerates both products' references from the committed
+      # snapshots and diffs, so an edit to either rest-mapping.yaml, the Flows
+      # schemas.yaml or the generator without `make reference` (or
+      # `make reference-inventory` for report 29 and the two registers)
+      # fails here rather than shipping a stale spec or inventory.
       - name: Verify the generated reference
         run: make verify-reference
 
@@ -250,7 +251,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, reference, lint, vuln, build, coverage]
+    needs: [unit, accept, reference, generated, lint, vuln, build, coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed
