@@ -142,4 +142,4 @@ from the cited report, where its evidence and markers are.
   summarised in [31](31-review-log.md).
 - The open-questions register,
   [`open-questions.json`](../../data/open-questions.json), and its schema;
-  `internal/docscheck` checks it with every other register.
+  `internal/devtools/docscheck` checks it with every other register.

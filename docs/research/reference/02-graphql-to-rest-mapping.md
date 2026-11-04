@@ -8,7 +8,7 @@ terraform-provider-spacelift v1.57.0; for Flows, flowctl `96bdd03303a6` (read
 
 Research baseline: **2026-10-28**; flowctl re-read 2026-11-04.
 
-How `internal/specref` turns each of Spacelift's 665 root fields into a
+How `internal/devtools/specref` turns each of Spacelift's 665 root fields into a
 resource-oriented route, and how `rest-mapping.yaml` handles the fields that
 no rule can infer. Flows has no GraphQL API, so its reference is projected
 from RPC paths by the rules of [Flows: RPC to REST](#flows-rpc-to-rest).
@@ -320,7 +320,7 @@ starts a family by copying from the reference:
 ## Sources
 
 - [`api/reference/spacelift/sources.lock.yaml`](../../../api/reference/spacelift/sources.lock.yaml): the pinned inputs.
-- [`internal/specref/`](../../../internal/specref/): the mapping rules, the generator and the scaffolder.
+- [`internal/devtools/specref/`](../../../internal/devtools/specref/): the mapping rules, the generator and the scaffolder.
 - [`api/reference/spacelift/rest-mapping.yaml`](../../../api/reference/spacelift/rest-mapping.yaml): overrides and exclusions.
 - [`api/reference/spacelift/coverage.md`](../../../api/reference/spacelift/coverage.md): the generated coverage report.
 - [Decision 0003](../decisions/0003-api-conventions.md): the conventions the scaffolder applies.

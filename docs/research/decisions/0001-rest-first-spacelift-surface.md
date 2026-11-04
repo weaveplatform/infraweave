@@ -273,8 +273,8 @@ Implemented:
   core collections, ids moved from inputs into paths, and auth.
 - `make verify-generate` fails when `pkg/client` differs from what the
   served bundle generates.
-- `TestUnitServedNames` (`api/deploy_test.go`) fails when any key or string
-  of the served `deploy` bundle outside the mapping extensions, descriptions
+- `TestUnitServedNames` (`api/api_test.go`) fails when any key or string
+  of the served `api` bundle outside the mapping extensions, descriptions
   and enum descriptions included, contains "spacelift" in any case; when a
   path, tag, operationId, schema, property, enum value, parameter or header
   name matches an identifier record of the rename register; or when a
@@ -282,21 +282,16 @@ Implemented:
   `spaceliftAwsAccountId` and a description that names Spacelift proves
   that both checks reach what they claim to read, and its `x-terraform`
   value proves that the mapping extensions pass.
-- `TestUnitDeployParity` (`api/parity_test.go`) fails when a reference
+- `TestUnitAPIParity` (`api/parity_test.go`) fails when a reference
   operation is neither served unchanged nor accepted by
-  `api/parity-baseline.json`, and when a baseline entry is no longer needed.
-  `TestUnitDeployParityChecks` proves it against the committed documents:
+  `api/parity-baseline.deploy.json`, and when a baseline entry is no longer
+  needed. `TestUnitAPIParityChecks` proves it against the committed documents:
   removing a served path names its operations, serving a listed operation is
   an improvement until the baseline is rewritten, and a moved path passes
   once its reason is recorded.
 
 Planned:
 
-- The rename of P1b ([#73](https://github.com/weaveplatform/infraweave/issues/73)):
-  the served bundle becomes `api/api.openapi.yaml`, `TestUnitDeployParity`
-  and `TestUnitDeployParityChecks` become `TestUnitAPIParity` and
-  `TestUnitAPIParityChecks`, and `api/parity-baseline.json` becomes
-  `api/parity-baseline.deploy.json`.
 - From P1d, `TestUnitFlowsParity` (`api/parity_test.go`) holds the Flows
   reference, `api/reference/spacelift-flows/flows.openapi.yaml`, to the
   served document and `api/parity-baseline.flows.json` by the same rules.
@@ -311,7 +306,7 @@ Planned:
 ## References
 
 - `api/reference/spacelift/sources.lock.yaml` (pins).
-- `internal/specref/rest.go` (rules).
+- `internal/devtools/specref/rest.go` (rules).
 - `api/oapi-client-api.yaml` (generated client configuration).
 - [`api/reference/spacelift/terraform-schema.json`](../../../api/reference/spacelift/terraform-schema.json)
   (provider parity oracle).

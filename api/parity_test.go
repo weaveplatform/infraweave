@@ -10,12 +10,12 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/weaveplatform/infraweave/api"
-	"github.com/weaveplatform/infraweave/internal/specref"
+	"github.com/weaveplatform/infraweave/internal/devtools/specref"
 )
 
-// parityBaseline accepts the reference operations the deploy API does not
+// parityBaseline accepts the Deploy reference operations the API does not
 // serve unchanged; make parity-baseline rewrites it.
-const parityBaseline = "parity-baseline.json"
+const parityBaseline = "parity-baseline.deploy.json"
 
 func readParityBaseline(t *testing.T) *specref.ParityBaseline {
 	t.Helper()
@@ -30,7 +30,7 @@ func readParityBaseline(t *testing.T) *specref.ParityBaseline {
 	return b
 }
 
-func compareDeploy(t *testing.T, served []byte) *specref.ParityReport {
+func compareServed(t *testing.T, served []byte) *specref.ParityReport {
 	t.Helper()
 	r, err := specref.CompareParity(api.SpaceliftReference, served)
 	if err != nil {
@@ -39,13 +39,13 @@ func compareDeploy(t *testing.T, served []byte) *specref.ParityReport {
 	return r
 }
 
-// TestUnitDeployParity fails when the deploy API loses a reference operation
+// TestUnitAPIParity fails when the API loses a reference operation
 // that the baseline does not accept as missing or moved, when a move has no
 // reason, and when the baseline lists an operation the comparison no longer
 // needs, so coverage of the reference can only go up and the baseline
 // shrinks with it.
-func TestUnitDeployParity(t *testing.T) {
-	r := compareDeploy(t, api.Deploy)
+func TestUnitAPIParity(t *testing.T) {
+	r := compareServed(t, api.Served)
 	d := r.Diff(readParityBaseline(t))
 	for _, s := range d.Regressions {
 		t.Errorf("parity regression: %s", s)
@@ -60,10 +60,10 @@ func TestUnitDeployParity(t *testing.T) {
 
 type document = map[string]any
 
-func decodeDeploy(t *testing.T) (document, document) {
+func decodeServed(t *testing.T) (document, document) {
 	t.Helper()
 	var doc document
-	if err := yaml.Unmarshal(api.Deploy, &doc); err != nil {
+	if err := yaml.Unmarshal(api.Served, &doc); err != nil {
 		t.Fatal(err)
 	}
 	paths, _ := doc["paths"].(document)
@@ -79,7 +79,7 @@ func encode(t *testing.T, doc document) []byte {
 	return out
 }
 
-// stacksPath is the first path of the deploy API that holds a Stacks
+// stacksPath is the first path of the API that holds a Stacks
 // operation, with the operationIds under it.
 func stacksPath(t *testing.T, paths document) (string, []string) {
 	t.Helper()
@@ -92,7 +92,7 @@ func stacksPath(t *testing.T, paths document) (string, []string) {
 			}
 		}
 	}
-	t.Fatal("the deploy API has no Stacks path")
+	t.Fatal("the API has no Stacks path")
 	return "", nil
 }
 
@@ -116,16 +116,16 @@ func mentions(lines []string, id string) bool {
 	)
 }
 
-// TestUnitDeployParityChecks proves the parity test against the committed
+// TestUnitAPIParityChecks proves the parity test against the committed
 // documents: dropping a served operation, serving a reference operation the
 // baseline lists as missing and moving one each change its verdict.
-func TestUnitDeployParityChecks(t *testing.T) {
+func TestUnitAPIParityChecks(t *testing.T) {
 	baseline := readParityBaseline(t)
 	t.Run("removed operation is a regression", func(t *testing.T) {
-		doc, paths := decodeDeploy(t)
+		doc, paths := decodeServed(t)
 		p, opIDs := stacksPath(t, paths)
 		delete(paths, p)
-		d := compareDeploy(t, encode(t, doc)).Diff(baseline)
+		d := compareServed(t, encode(t, doc)).Diff(baseline)
 		for _, id := range opIDs {
 			if !mentions(d.Regressions, id) {
 				t.Errorf("removing %s does not name %s: %q", p, id, d.Regressions)
@@ -137,14 +137,14 @@ func TestUnitDeployParityChecks(t *testing.T) {
 		if err := yaml.Unmarshal(api.SpaceliftReference, &ref); err != nil {
 			t.Fatal(err)
 		}
-		doc, paths := decodeDeploy(t)
+		doc, paths := decodeServed(t)
 		listed := map[string]bool{}
 		for _, opIDs := range baseline.Missing {
 			for _, id := range opIDs {
 				listed[id] = true
 			}
 		}
-		// The first reference path the deploy API lacks whose operations the
+		// The first reference path the API lacks whose operations the
 		// baseline all lists as missing.
 		refPaths := ref["paths"].(document)
 		var added string
@@ -160,7 +160,7 @@ func TestUnitDeployParityChecks(t *testing.T) {
 		if added == "" {
 			t.Fatal("the baseline lists no reference path as missing")
 		}
-		r := compareDeploy(t, encode(t, doc))
+		r := compareServed(t, encode(t, doc))
 		d := r.Diff(baseline)
 		if len(d.Regressions) != 0 {
 			t.Errorf("serving %s: %s", added, d.Text())
@@ -175,11 +175,11 @@ func TestUnitDeployParityChecks(t *testing.T) {
 		}
 	})
 	t.Run("move passes once the baseline records its reason", func(t *testing.T) {
-		doc, paths := decodeDeploy(t)
+		doc, paths := decodeServed(t)
 		p, opIDs := stacksPath(t, paths)
 		paths["/moved"+p] = paths[p]
 		delete(paths, p)
-		r := compareDeploy(t, encode(t, doc))
+		r := compareServed(t, encode(t, doc))
 		d := r.Diff(baseline)
 		for _, id := range opIDs {
 			if !mentions(d.Regressions, id) {

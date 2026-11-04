@@ -16,16 +16,18 @@ import (
 
 	"github.com/cucumber/godog"
 
-	"github.com/weaveplatform/infraweave/internal/server"
-	"github.com/weaveplatform/infraweave/internal/server/idempotency"
-	"github.com/weaveplatform/infraweave/internal/server/problem"
-	"github.com/weaveplatform/infraweave/internal/server/ratelimit"
+	"github.com/weaveplatform/infraweave/internal/app"
+	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 )
 
 // servedSteps runs the server in-process on loopback ports the system
 // chooses, so scenarios never contend for a fixed port.
 type servedSteps struct {
-	srv *server.Running
+	srv *serve.Running
 	// test serves a test-only operation behind the API listener's controls,
 	// for behaviour no stubbed route can show: a POST that runs.
 	test *httptest.Server
@@ -80,9 +82,9 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 
 func discardLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
-func (s *servedSteps) start(ctx context.Context, c server.Config) error {
-	c.Listen, c.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
-	srv, err := server.Start(ctx, c, discardLog())
+func (s *servedSteps) start(ctx context.Context, c config.Config) error {
+	c.Server.Listen, c.Server.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
+	srv, err := app.Start(ctx, c, discardLog())
 	if err != nil {
 		return fmt.Errorf("start server: %w", err)
 	}
@@ -91,21 +93,21 @@ func (s *servedSteps) start(ctx context.Context, c server.Config) error {
 }
 
 func (s *servedSteps) running(ctx context.Context) error {
-	return s.start(ctx, server.Defaults())
+	return s.start(ctx, config.Defaults())
 }
 
 // runningWithBursts refills too slowly to matter while a scenario runs, so
 // the bursts alone decide what is admitted.
 func (s *servedSteps) runningWithBursts(ctx context.Context, standard, expensive int) error {
-	c := server.Defaults()
-	c.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: standard}
-	c.RateLimit.Expensive = ratelimit.Limit{Rate: 1e-6, Burst: expensive}
+	c := config.Defaults()
+	c.Server.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: standard}
+	c.Server.RateLimit.Expensive = ratelimit.Limit{Rate: 1e-6, Burst: expensive}
 	return s.start(ctx, c)
 }
 
 func (s *servedSteps) runningDisabling(ctx context.Context, caller string) error {
-	c := server.Defaults()
-	c.RateLimit.DisabledCallers = []string{caller}
+	c := config.Defaults()
+	c.Server.RateLimit.DisabledCallers = []string{caller}
 	return s.start(ctx, c)
 }
 
@@ -113,7 +115,7 @@ func (s *servedSteps) runningDisabling(ctx context.Context, caller string) error
 // settings around a handler that numbers each run, so a replay is told
 // apart from a second run.
 func (s *servedSteps) testOperation(path string) error {
-	r := server.Guarded(discardLog(), server.Defaults(), server.Operations{
+	r := app.Guarded(discardLog(), config.Defaults().Server, app.Operations{
 		http.MethodPost + " " + path: {Cost: ratelimit.Standard},
 	})
 	r.Post(path, func(w http.ResponseWriter, _ *http.Request) {

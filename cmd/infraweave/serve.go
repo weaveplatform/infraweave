@@ -6,23 +6,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/weaveplatform/infraweave/internal/app"
-	"github.com/weaveplatform/infraweave/internal/server"
+	"github.com/weaveplatform/infraweave/internal/app/config"
 )
 
 func serveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Serve the deploy API on the API listener and the probes on the admin listener",
+		Short: "Serve the API on the API listener and the probes on the admin listener",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := app.Load(cmd.Flags())
+			c, err := config.Load(cmd.Flags())
 			if err != nil {
 				return err
 			}
 			log := slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), nil))
-			return server.Run(cmd.Context(), c.Server, log)
+			return app.Serve(cmd.Context(), *c, log)
 		},
 	}
-	app.ServeFlags(cmd.Flags())
+	config.ServeFlags(cmd.Flags())
 	return cmd
 }

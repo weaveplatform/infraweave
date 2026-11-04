@@ -1,6 +1,6 @@
 // Command openapi-bundle merges api/src/<service>/*.yaml fragments into
 // api/<service>.openapi.yaml (make bundle). Logic lives in
-// internal/openapibundle.
+// internal/devtools/openapibundle.
 package main
 
 import (
@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/weaveplatform/infraweave/internal/buildinfo"
-	"github.com/weaveplatform/infraweave/internal/openapibundle"
+	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
+	"github.com/weaveplatform/infraweave/internal/devtools/openapibundle"
 )
 
 // config is every setting, from flag > OPENAPI_BUNDLE_* environment >

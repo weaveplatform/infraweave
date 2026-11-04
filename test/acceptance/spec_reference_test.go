@@ -15,7 +15,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 
 	"github.com/weaveplatform/infraweave/api"
-	"github.com/weaveplatform/infraweave/internal/specref"
+	"github.com/weaveplatform/infraweave/internal/devtools/specref"
 )
 
 // referenceDir is the committed reference, relative to this package.

@@ -15,7 +15,7 @@ for why infraweave is REST-first.
 
 | Piece | What |
 |---|---|
-| `internal/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
+| `internal/devtools/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
 | `tools/specref` | `fetch` (network and terraform); `generate`, `check`, `scaffold`, `inventory` and `parity` (offline) |
 | `api/reference/spacelift/` | Pinned snapshots, `sources.lock.yaml`, the hand-curated `rest-mapping.yaml`, and the generated spec and `coverage.md` |
 | `docs/research/` | Research reports in `reference/` (landscape, mapping rules, provider), decision records in `decisions/`; see its [README](docs/research/README.md) |
@@ -33,28 +33,25 @@ newer, it regenerates on a runner and opens a PR.
 
 ## The served API
 
-infraweave's own API is authored as fragments in `api/src/deploy/`:
+infraweave's own API is authored as fragments in `api/src/api/`:
 - `info.yaml` holds the document head;
 - `components-*.yaml` and `paths-<family>.yaml` hold only `paths` and `components`.
 
-`make bundle` (`tools/openapi-bundle` over `internal/openapibundle`) merges
-the fragments into `api/deploy.openapi.yaml`, served under `/api/v1`. The
+`make bundle` (`tools/openapi-bundle` over `internal/devtools/openapibundle`)
+merges the fragments into `api/api.openapi.yaml`, served under `/api/v1`. The
 bundle is committed, and a unit test fails when it is stale.
 
 `make parity` compares the bundle with the reference by `operationId` and
-route. `api/parity-baseline.json` accepts the reference operations the bundle
+route. `api/parity-baseline.deploy.json` accepts the reference operations the bundle
 does not serve unchanged: the missing ones by tag, and each moved one with
-its reason. `TestUnitDeployParity` fails on a reference operation the
+its reason. `TestUnitAPIParity` fails on a reference operation the
 baseline does not accept and on an entry the bundle no longer needs, so
 coverage of the reference only goes up.
 
-The document holds Deploy and, from P18c, Flows under `/api/v1/flows/`, so
-P1b ([#73](https://github.com/weaveplatform/infraweave/issues/73)) renames
-it from `deploy` to `api`: `api/src/api/`, `api/api.openapi.yaml`,
-`api/oapi-server-api.yaml` and `api/oapi-client-api.yaml`,
-`internal/platform/gen/api`, `pkg/client/api`,
-`api/parity-baseline.deploy.json` and `TestUnitAPIParity`
-([plan](docs/implementation/plan.md#p1b-domain-layout-and-depguard)).
+One document holds Deploy and, from P18c, Flows under `/api/v1/flows/`
+([decision 0018](docs/research/decisions/0018-flows-runtime.md#api-and-clients)).
+`make generate` turns it into the strict server in
+`internal/platform/gen/api` and the client in `pkg/client/api`.
 
 Bundling fails when any of these happens:
 
@@ -65,7 +62,7 @@ Bundling fails when any of these happens:
 
 ### Running it
 
-`infraweave serve` serves the deploy API on the API listener under
+`infraweave serve` serves the API on the API listener under
 `/api/v1`, and the liveness probe `GET /livez` on the admin listener only
 ([decision 0017](docs/research/decisions/0017-observability-and-health.md#health)).
 Every operation answers a `501` problem until its family is implemented, and
@@ -124,7 +121,7 @@ phase.
 |---|---|
 | `api/` | OpenAPI documents, embedded for tests and tools by `api/doc.go` |
 | `cmd/<binary>/` | Entry points: thin shims over `internal/`, such as `cmd/infraweave`, one cobra file per process mode over `internal/app`; excluded from the coverage gate |
-| `internal/` | Project-only packages; `internal/buildinfo` carries the version stamped in by `make build` |
+| `internal/` | Project-only packages, placed as [the repo layout](docs/implementation/repo-layout.md) says: the composition root in `internal/app`, shared value types in `internal/kernel`, infrastructure in `internal/platform` (`internal/platform/buildinfo` carries the version stamped in by `make build`), and the libraries behind `tools/` in `internal/devtools` |
 | `pkg/` | Public, importable packages |
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
@@ -135,14 +132,14 @@ phase.
 | Target | What |
 |---|---|
 | `make gate` | Everything CI runs: docs-check, vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
-| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists |
+| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
-| `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/deploy/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
-| `make parity` | Prints the deploy API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.json` |
-| `make parity-baseline` | Rewrites `api/parity-baseline.json` to accept the current parity report, keeping each recorded reason for a move; review the diff |
+| `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
+| `make parity` | Prints the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.deploy.json` |
+| `make parity-baseline` | Rewrites `api/parity-baseline.deploy.json` to accept the current parity report, keeping each recorded reason for a move; review the diff |
 | `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
-| `make generate` | Bundles, then generates each strict chi server (`internal/server/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |
+| `make generate` | Bundles, then generates each strict chi server (`internal/platform/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |
 | `make verify-generate` | Fails if the committed bundles or generated code are stale |
 | `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
 | `make reference` | Regenerates the spec and `coverage.md` from the snapshots |

@@ -202,7 +202,7 @@ The scaffolder adds them to each operation and records each addition in
 
 ## Verification
 
-- `api/deploy_test.go` checks that every component named above exists in the
+- `api/api_test.go` checks that every component named above exists in the
   bundled spec, that every problem response's example `type` is a slug of
   the problem register with its status and title, and that a response uses
   every slug the register gives to this record.

@@ -212,7 +212,7 @@ every request against the bundled spec before the handler (giving
 
 - **One register for both records.** 0003's slugs and this record's live in
   one problem register, each record marked with the decision that defines
-  it, and `api/deploy_test.go` reads it for every problem example in the
+  it, and `api/api_test.go` reads it for every problem example in the
   spec and for the slugs 0003's components must use.
 - **Unverified Spacelift behaviour.** C2, C3 and C5 may show that Spacelift
   puts stable codes in `extensions` or answers specific statuses; a stable
@@ -229,7 +229,7 @@ every request against the bundled spec before the handler (giving
 
 - `internal/problem/problem_test.go` (`TestUnitProblemRegistry`): every slug in the problem register has a
   constant with the same status and title, and every constant is in the register.
-- `api/deploy_test.go` (`TestUnitDeployProblemTypes`): every problem example in
+- `api/api_test.go` (`TestUnitAPIProblemTypes`): every problem example in
   the bundled spec uses a slug from the problem register with its status and title.
 - `api/api_test.go`: every input schema sets `additionalProperties: false`;
   every update route has a matching `PATCH` with

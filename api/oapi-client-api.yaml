@@ -1,0 +1,10 @@
+# oapi-codegen configuration for the API's Go client (make generate).
+package: api
+output: pkg/client/api/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true
+  exclude-tags:
+    - handwritten

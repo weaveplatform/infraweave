@@ -1,5 +1,5 @@
-Feature: Served deploy API
-  infraweave serve answers the deploy API on the API listener under /api/v1
+Feature: Served API
+  infraweave serve answers the API on the API listener under /api/v1
   and the probes on the admin listener alone (decision 0017). Every
   operation answers 501 until a family implements it, and every error,
   the router's own included, is a problem detail (decision 0003). Every
