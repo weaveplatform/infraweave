@@ -5,7 +5,7 @@
       "id": "DV-001",
       "group": "API surface: decisions 0001 and 0003",
       "spacelift": "One GraphQL endpoint with 285 queries and 380 mutations ([report 02](../research/reference/02-graphql-to-rest-mapping.md))",
-      "infraweave": "REST over JSON described by OpenAPI 3 (`api/deploy.openapi.yaml`); no GraphQL endpoint and no GraphQL facade. The reference spec projects every root field to a route, and the served spec is scaffolded from it family by family",
+      "infraweave": "REST over JSON described by OpenAPI 3 (`api/api.openapi.yaml`, Deploy and Flows in one document); no GraphQL endpoint and no GraphQL facade. The reference spec projects every root field to a route, and the served spec is scaffolded from it family by family",
       "why": "Standard HTTP status codes, caching, per-route authorization and rate limits; the chi and oapi-codegen toolchain; Spacelift's clients use fixed selections, so GraphQL's client-shaped queries buy nothing",
       "impact": "spacectl, `terraform-provider-spacelift`, the Bruno collection and direct GraphQL callers cannot talk to infraweave; a port changes transport, paths and bodies. Migration from Spacelift is a data import",
       "source": "[0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision)"
@@ -638,7 +638,7 @@
       "id": "DV-069",
       "group": "Flows: decision 0018",
       "spacelift": "`flowctl` and `terraform-provider-flows` call RPC-style `/cli/...` and `/provider/...` routes",
-      "infraweave": "The Flows API is REST under `/flows/v1/`; infraweave's CLI and provider replace both clients",
+      "infraweave": "infraweave's Flows operations are REST in the one served document, under `/api/v1/flows/`, their tags prefixed `Flows `; infraweave's CLI and provider replace both clients",
       "why": "Decision 0001's REST rule applies to every family",
       "impact": "`flowctl` and `terraform-provider-flows` do not work; their operations remain the parity list",
       "source": "[0018 Rationale](../research/decisions/0018-flows-runtime.md#rationale)"

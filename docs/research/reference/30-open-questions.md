@@ -25,8 +25,8 @@ behind them are in [31](31-review-log.md).
 
 ## How to use this list
 
-- **Numbering.** Product decisions are `PD-01` to `PD-15`, captures `C1`
-  to `C270` and re-verify triggers `RV-1` to `RV-28`. The prefixes keep
+- **Numbering.** Product decisions are `PD-01` to `PD-16`, captures `C1`
+  to `C271` and re-verify triggers `RV-1` to `RV-28`. The prefixes keep
   them apart from the plan's phases (P1, P1b) and from other registers' IDs.
   IDs are stable: a resolved entry keeps its ID and gains a status.
 - **Reports.** A record's `reports` lists the reports it concerns. The first
@@ -47,7 +47,7 @@ behind them are in [31](31-review-log.md).
 ## Product decisions
 
 The product decisions are the register's records of kind
-`product-decision`, `PD-01` to `PD-15`. Each holds the question, its
+`product-decision`, `PD-01` to `PD-16`. Each holds the question, its
 options, who resolves it and the decision record that answers or proposes
 an answer to it, and what waits on it. A decision that an Accepted record
 answers has the status `answered`; PD-12, which the research pull requests
@@ -55,7 +55,7 @@ settled, is `resolved`.
 
 ## Captures needed
 
-The captures are the records of kind `capture`, `C1` to `C270`. Each holds
+The captures are the records of kind `capture`, `C1` to `C271`. Each holds
 the question, how to capture the answer and what the answer blocks; its
 `area` groups it with the reports it came from, and its `reports` name the
 report that holds the claim first.

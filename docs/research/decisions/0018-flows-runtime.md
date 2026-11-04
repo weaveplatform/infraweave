@@ -259,7 +259,7 @@ every release.
   `wss://<host>/flows/agent/v1/connect` on any `serve` replica, with the pool
   ID and token in the `Authorization` header. Pool tokens are 64 random
   characters, stored as SHA-256, shown once and rotated by
-  `POST /flows/v1/agent-pools/{id}/token`.
+  `POST /api/v1/flows/agent-pools/{agentPoolId}/token`.
 - **Work routing through the queue.** App tasks are queue jobs of kind
   `flows.agent_task` partitioned by pool. The replica holding an agent's
   socket claims jobs for that pool up to the agent's free capacity and
@@ -334,7 +334,7 @@ and no `uiCode`.
 |---|---|
 | HTTP Endpoint block | `https://<words>.<flows.endpoints_domain>/<path>` when the operator sets a wildcard domain; otherwise `https://<host>/flows/e/<words>/<path>` |
 | Flow MCP server | `/flows/mcp/<flow>`, Streamable HTTP, tools from the flow's MCP Tool blocks |
-| Platform Flows MCP server | `/flows/mcp`, tools mirroring the Flows API operations plus `usage_instructions` |
+| Platform Flows MCP server | `/flows/mcp`, tools mirroring infraweave's Flows operations plus `usage_instructions` |
 | Forms | `/flows/forms/<block>` for the Consumer role |
 
 `audience` (`world`, `account`, `project`) is enforced before an event
@@ -346,28 +346,69 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 
 ### API and clients
 
-- **REST.** Flows has its own OpenAPI document, `api/flows.openapi.yaml`,
-  authored by infraweave under `/flows/v1/`, following decision 0003's
-  pagination, idempotency and rate limits. It covers every capability that
-  `flowctl` and the Flows provider reach
+- **REST, in the one served document.** Flows' operations are part of
+  infraweave's served OpenAPI document, `api/api.openapi.yaml`, under
+  `/api/v1/flows/...` (`/api/v1/flows/projects/{projectId}/flows`,
+  `GET /api/v1/flows/flows/{flowId}/events/stream`), following decision
+  0003's pagination, idempotency and rate limits. Their tags carry the
+  prefix `Flows ` (`Flows Projects`, `Flows Apps`, `Flows Data Tables` and
+  so on), so none collides with the Deploy-side `Flows` tag. The document
+  covers every capability that `flowctl` and the Flows provider reach
   ([sections 10 to 12](../reference/23-flows.md#10-the-flows-api)), the
-  expression endpoints of 0024, and the event stream of 0015.
+  expression endpoints of 0024, and the event stream of 0015. The agent
+  WebSocket, the MCP servers, HTTP Endpoint blocks and forms stay outside
+  OpenAPI at the paths above.
+- **The Flows reference.** Flows has no GraphQL API and no published
+  specification, so `specref` builds a second reference product,
+  `api/reference/spacelift-flows/`, beside `api/reference/spacelift/`.
+  Its pinned sources are the `terraform-provider-flows` request structs
+  (MIT, read with `go/ast`); `flowctl`'s `src/api.ts` (MIT: path literals
+  and interface types); and an overlay `schemas.yaml`
+  holding `FlowDefinition`, `RegistryManifest` and `AppVersions`, against
+  which `specref fetch` validates the 46 published templates and a live
+  registry manifest. `@slflows/sdk`'s `index.d.ts` declares no licence, so
+  it contributes identifiers only, through the register
+  `docs/data/flows-sdk-inventory.json`, and never feeds the REST document.
+  The hand-written `rest-mapping.yaml` projects each RPC path onto a REST
+  method, path, `operationId`, tag and parameters by the rules of
+  [02](../reference/02-graphql-to-rest-mapping.md#flows-rpc-to-rest), and
+  generation fails on an RPC path it does not map or a mapping no source
+  names. The outputs are `flows.openapi.yaml`, each operation marked
+  `x-rpc` with the list of RPC paths it answers, each with its client
+  (`provider` or `flowctl`), so `/cli/flows/export` and
+  `/provider/flows/export_definition` are one operation, and `coverage.md`.
+  The five `flowctl` test-scenario RPCs
+  ([23 section 10.1](../reference/23-flows.md#101-operations-used-by-flowctl))
+  are reference operations that `api/parity-baseline.flows.json` accepts as
+  missing, because infraweave has not designed test scenarios (PD-16). The web UI's private `/api/...` calls are not a source:
+  linking a Flows organization needs a paid Spacelift plan, so they are not
+  captured ([23 section 10.5](../reference/23-flows.md#105-web-ui-api), C271).
+  A served Flows operation that no public client reaches (invocations and
+  event trees, retry and re-emit, members, teams, service accounts and API
+  keys, agent pools, registry subscriptions, OIDC, audit and OTLP export) is
+  designed by infraweave from the docs and the data model above, and
+  carries `x-upstream: none`. Each record of `docs/data/capabilities.json`
+  names its `product` (`deploy` or `flows`), and docscheck holds each
+  reference's tags to its own product's records.
 - **Clients are infraweave's own** ([0001](0001-rest-first-spacelift-surface.md)).
-  `infraweavectl` and the provider cover Flows through the REST document
-  above. `api/reference/flows-clients.yaml` maps each RPC path of
-  `flowctl` and `terraform-provider-flows` to its REST operation, and serves
-  as their parity list. The server does not accept the RPC paths
-  `/cli/...` and `/provider/...`.
+  `infraweavectl` and the provider cover Flows through the served document,
+  through `pkg/client/api` and `pkg/sdk` like every other family. The Flows
+  reference is the parity list of `flowctl` and `terraform-provider-flows`.
+  The server does not accept the RPC paths `/cli/...` and `/provider/...`.
 - **Deploy-side operations.** The six operations of the reference `Flows`
   tag (`flowsInstances`, `flowsIntegration`, `flowsProjects` and the role
-  binding operations) are served in the deploy API. `flowsInstances`
+  binding operations) are served under the Deploy-side `Flows` tag of the
+  same document. `flowsInstances`
   returns this installation; `flowsIntegration` returns the built-in link,
   whose `accountID` and `accountName` name the caller's account where
   Spacelift's `organizationID` and `organizationName` name the Flows
   organization (0001's rename table). All six are gated by `flows-engine`,
   so with Flows switched off or outside the entitlement they answer
   `403 feature-disabled` or `403 feature-not-in-tier`, like every Flows
-  operation, rather than an empty result.
+  operation, rather than an empty result. `flowsProjects`
+  (`GET /flows-projects`) returns the same projects as
+  `GET /api/v1/flows/projects`, in the Deploy-side shape the role binding
+  operations use: one account owns both, so they are one set of projects.
 - **Access control.** The four project roles of
   [section 9.1](../reference/23-flows.md#91-roles), and the account admin
   in place of its organization admin, are enforced in the API
@@ -375,8 +416,10 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   capabilities, project access and MCP flow access of
   [section 9.3](../reference/23-flows.md#93-authorizations-and-capabilities);
   `:edit` requires its `:view` partner. The scope names `apps:viewer` and
-  `apps:editor` are accepted as aliases of `apps:view` and `apps:edit`
-  until capture C232 settles them.
+  `apps:editor` are accepted as aliases of `apps:view` and `apps:admin`
+  until capture C232 settles them. `test_scenarios:run` is accepted like the
+  other capabilities and grants nothing until test scenarios are designed
+  (PD-16).
 - **Audit.** Flows audit entries are audit events of
   [0015](0015-events-notifications-webhooks-audit.md) with a `flows.`
   resource-type prefix; the OTLP Logs export of
@@ -449,8 +492,16 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 - **Rejected: an RPC adapter for `flowctl` and the Flows provider.**
   Accepting `/cli/...` and `/provider/...` with Spacelift's `{"data",
   "error"}` envelope would be a non-REST surface, which decision 0001 rules
-  out; the mapping file keeps the clients' operations as the parity list
-  without serving their shape.
+  out; the Flows reference keeps the clients' operations as the parity
+  list without serving their shape.
+- **One document, not two.** Deploy and Flows share one account, one
+  credential and one SDK client, so one served document gives them one
+  generated server, one generated client, one rate-limit and idempotency
+  layer and one parity run. Spacelift sells Flows as a separate product
+  with an API of its own; a second infraweave document would reproduce that
+  split without a product boundary to justify it. The `Flows ` tag prefix
+  keeps the Flows families apart in the document, and the RPC surfaces
+  that are not OpenAPI keep their own `/flows/...` paths.
 - **Departure from Spacelift:** apps are OCI images serving a gRPC contract,
   not JavaScript bundles; Spacelift's apps and registries do not work
   with infraweave.
@@ -470,9 +521,10 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   infraweave serves no GraphQL (decision 0001).
 - **Departure from Spacelift:** self-hosted Flows runs anywhere infraweave
   runs, not only on EKS, and agents may run in Kubernetes or Docker.
-- **Departure from Spacelift:** the Flows API is REST under `/flows/v1/`,
-  so `flowctl` and `terraform-provider-flows` do not work against
-  infraweave; its own CLI and provider replace them.
+- **Departure from Spacelift:** infraweave's Flows operations are REST in
+  the one served document, under `/api/v1/flows/`, so `flowctl` and
+  `terraform-provider-flows` do not work against infraweave; its own CLI and
+  provider replace them.
 
 ## Constraints
 
@@ -516,9 +568,13 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 - `flows_clients.feature` (`@postgres`, `@terraform`, `@flows-agent`):
   `infraweavectl` publishes an app version and exports a flow;
   infraweave's provider applies, plans with no drift and imports a flow.
-- `TestUnitFlowsClientParity` fails when an RPC path in
-  `api/reference/flows-clients.yaml` names no operation of
-  `api/flows.openapi.yaml`.
+- `TestUnitFlowsParity` compares `api/reference/spacelift-flows/flows.openapi.yaml`
+  with the served `api/api.openapi.yaml` and fails on a reference operation
+  neither served nor accepted by `api/parity-baseline.flows.json`, as
+  `TestUnitAPIParity` does for Deploy with `api/parity-baseline.deploy.json`.
+- `specref generate` fails on an RPC path of the Flows sources that
+  `rest-mapping.yaml` does not map, and on a mapping whose RPC path no
+  source names.
 - `flows_deploy.feature` (`@postgres`, `@tofu`, `@flows-agent`): a Deploy
   trigger block reacts to a real run's state change and to a drift result,
   and Trigger Run starts one.

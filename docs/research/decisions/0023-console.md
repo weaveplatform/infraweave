@@ -83,7 +83,7 @@ be air-gapped.
 | Framework | React 19, TypeScript in strict mode, built with Vite |
 | Routing | TanStack Router: typed routes and typed search parameters, so filters, sorting and selected tabs live in the URL |
 | Server state | TanStack Query; the server-sent event streams of 0015 update its cache, and polling remains the fallback when a stream is closed |
-| API client | orval generates the TypeScript client and the TanStack Query hooks from the served OpenAPI bundle (`api/deploy.openapi.yaml` and its siblings) |
+| API client | orval generates the TypeScript client and the TanStack Query hooks from the served OpenAPI bundle (`api/api.openapi.yaml`, Deploy and Flows, and its siblings) |
 | Components | Radix primitives styled with Tailwind 4; components are copied into the repository and owned there (the shadcn pattern), not imported from a styled kit |
 | Theme | Design tokens as CSS custom properties, with light and dark sets; the console follows the system preference until the user picks one |
 | Canvas | React Flow (`@xyflow/react`) for the Flows canvas, the stack dependency graph and the spaces tree |

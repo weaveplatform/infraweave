@@ -248,10 +248,12 @@ every client reports the same diagnostics:
 | Evaluate | `POST /expressions/evaluate` | Evaluates against sample data or a stored event the caller can read, with `secrets` replaced by masked placeholders, under the same limits; the workbench for expressions |
 | Check policy | `POST /policies/check` | Parses and compiles a Rego body with 0009's preamble and returns diagnostics with ranges; simulation stays `policySimulatev2` |
 
-Flows serves the same operations under `/flows/v1/`. Each operation
-authorizes as a read of its context. `infraweavectl` exposes them as
-`infraweavectl expr check`, `complete` and `eval`, and the provider calls
-Check during plan for flows, blueprints and templates.
+Flows calls the same operations of the one served document, naming a flow
+block as the context, so Flows has no copies of them under
+`/api/v1/flows/`. Each operation authorizes as a read of its context.
+`infraweavectl` exposes them as `infraweavectl expr check`, `complete` and
+`eval`, and the provider calls Check during plan for flows, blueprints and
+templates.
 
 ### Workflow command templates
 

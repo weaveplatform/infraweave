@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-infraweave's served API (`api/deploy.openapi.yaml`) is scaffolded family by
+infraweave's served API (`api/api.openapi.yaml`) is scaffolded family by
 family from the Spacelift reference ([0001](0001-rest-first-spacelift-surface.md)).
 The reference inherits three gaps from GraphQL. Each would be a breaking
 change to retrofit once clients exist:
@@ -122,24 +122,31 @@ dereferencing it, and infraweave has no documentation host to resolve one to.
 
 ### Routes in the records
 
-- **A deploy route is written as its path in the document.** The deploy
+- **A served route is written as its path in the document.** The served
   API's server URL is `/api/v1`, and records write its routes relative to
   it, as the OpenAPI document and the reference do: `PATCH /stacks/{stackId}`.
   The full path appears only where the URL path itself is the point, such as
   mounting the handler or the console's fallback prefixes
   ([0023](0023-console.md)).
+- **Flows operations are written in full.** The served document's Flows
+  operations sit under `/api/v1/flows/...`
+  ([0018](0018-flows-runtime.md)), and records write them with that prefix
+  (`GET /api/v1/flows/flows/{flowId}/events/stream`), because a relative
+  `/flows/...` reads like the Flows surfaces outside the document.
 - **Every other surface keeps its prefix.** Routes of the operator API
   (`/operator/v1/...`, [0021](0021-capability-scope-and-supersession.md)),
-  Flows (`/flows/v1/...`), the state backend (`/state/v1/...`), the
+  the Flows surfaces outside OpenAPI (the agent WebSocket
+  `/flows/agent/v1/connect`, `/flows/mcp`, `/flows/e/...` and
+  `/flows/forms/...`), the state backend (`/state/v1/...`), the
   registry protocol, authentication, OAuth, inbound webhooks, the worker
   and VCS agent protocols, and the admin listener's probes
   ([0017](0017-observability-and-health.md)) are written as the full path
-  the server answers. A bare path in a record is therefore always a deploy
-  route.
+  the server answers. A bare path in a record is therefore always a route
+  of the served document.
 
 ### Spec components
 
-`api/src/deploy/components-common.yaml` defines:
+`api/src/api/components-common.yaml` defines:
 - parameters `IdempotencyKey`, `Cursor` and `Limit`;
 - headers `RateLimitLimit`, `RateLimitRemaining`, `RateLimitReset`,
   `RetryAfter` and `IdempotencyReplayed`;

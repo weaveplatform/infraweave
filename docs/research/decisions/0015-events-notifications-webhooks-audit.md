@@ -134,7 +134,7 @@ no capability needs a stream.
 | Run logs | `GET /runs/{runId}/logs/stream` | `log` (lines for one state and state version, with the continuation token), `state` (the run entered a state), `end` | `runLogs` with `state`, `stateVersion` and `token` |
 | Run state | `GET /runs/{runId}/stream` and `GET /stacks/{stackId}/runs/stream` | `run_updated`, `drift_detected`, `policy_evaluated` | The run, its history and the stack's runs |
 | Worker pool queue | `GET /worker-pools/{workerPoolId}/stream` and `GET /public-worker-pool/stream` | `run_updated` for runs scheduled on the pool, `worker_updated` | The pool's schedulable-run and worker searches |
-| Flows events | `GET /flows/v1/flows/{flowId}/events/stream` | `flows.event`, `invocation_updated`, `counters` | The flow's event and invocation lists |
+| Flows events | `GET /api/v1/flows/flows/{flowId}/events/stream` | `flows.event`, `invocation_updated`, `counters` | The flow's event and invocation lists |
 
 - **Format.** `Content-Type: text/event-stream`, `Cache-Control: no-store`
   and `X-Accel-Buffering: no`. Each message has `id:` (the event's ID, or
@@ -512,7 +512,7 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
   the policy reads against the `NOTIFICATION` entry of the policy contract,
   pinned or held as a fixture as PD-14 decides.
 - `TestUnitAuditActionsCoverMutations` fails when a mutating operation in
-  `api/deploy.openapi.yaml` lacks `x-infraweave-audit-action`.
+  `api/api.openapi.yaml` lacks `x-infraweave-audit-action`.
 - `test/acceptance/features/events_webhooks.feature` (`@postgres`,
   `@objectstore`) runs against a chi receiver started by the test. It
   covers signed deliveries, secret headers, retries on 5xx, auto-disable

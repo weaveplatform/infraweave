@@ -122,19 +122,18 @@ infraweave/
 │   ├── sdk/                    (P24) the SDK: token exchange, Idempotency-Key, 429 retries, iterators,
 │   │                           typed problem errors and stream iterators over the generated clients
 │   ├── client/
-│   │   ├── deploy/             generated deploy client
-│   │   ├── flows/              (Flows) generated Flows client
+│   │   ├── api/                generated client of the served API, Deploy and Flows
 │   │   └── operator/           (P3b) generated operator client
 │   └── flows/
 │       ├── app/v1/             (Flows) generated App and Host gRPC stubs, used by apps and by the agent
 │       └── appsdk/             (Flows) the Go app SDK: Serve, typed blocks, KV, timers, widgets; apptest/
-├── api/                        unchanged layout; oapi-server-*.yaml outputs move to internal/platform/gen
-│   ├── src/deploy/             the served REST API fragments
+├── api/                        the served document's files, named `api`; oapi-server-*.yaml outputs move to internal/platform/gen
+│   ├── src/api/                the served REST API fragments: Deploy, and Flows under /api/v1/flows/ (Flows)
 │   ├── src/worker/             (P8) the worker protocol fragments
 │   ├── src/operator/           (P3b) the operator API: organizations, tiers, organization tiers, grants, billing
-│   ├── src/flows/              (Flows) the Flows REST API under /flows/v1/
 │   ├── proto/flows/app/v1/     (Flows) the `App` and `Host` gRPC services, package infraweave.flows.app.v1
-│   └── reference/spacelift/    unchanged
+│   ├── reference/spacelift/    unchanged
+│   └── reference/spacelift-flows/  (P1d) the Flows reference: provider and flowctl RPC paths projected to REST
 ├── web/
 │   └── console/                (P24c) the console: React 19, TypeScript strict, Vite; orval client and
 │                               TanStack Query hooks generated from the served bundle and committed
@@ -196,7 +195,7 @@ What changes at the root and why:
 
 | Domain or tree | Status at P1 | Created or completed by |
 | --- | --- | --- |
-| `platform`, `kernel`, `devtools`, `app` | partial: buildinfo, httpkit/problem, gen/deploy, devtools, the serve process mode | P1 to P2; seal and crypt P2; queue P7; expr and httpkit/sse P9; rego P13; observe P18 |
+| `platform`, `kernel`, `devtools`, `app` | partial: buildinfo, httpkit/problem, gen/api, devtools, the serve process mode | P1 to P2; seal and crypt P2; queue P7; expr and httpkit/sse P9; rego P13; observe P18 |
 | `features` | absent | P3b catalogue, tiers, grants, billing and the operator API |
 | `access` | absent | P3 identity, tokens and the tenancy model, P3b the `Organization` tag and the authorization server, P4 spaces and RBAC, P23 organization identity providers and SCIM |
 | `stacks` | routes only (69 Stacks operations answer 501) | P5; stack dependencies P16 |
@@ -329,11 +328,10 @@ internal/
 │   │   │                                 internal/app for flows and intelligence (P18c, P25)
 │   │   └── strict/                       helpers for strict handlers: principal, problem mapping
 │   ├── gen/
-│   │   ├── deploy/                       server.gen.go, unimplemented.gen.go, features.gen.go (operation to
+│   │   ├── api/                          server.gen.go, unimplemented.gen.go, features.gen.go (operation to
 │   │   │                                 capability, from x-infraweave-feature)       ← internal/server/gen/deploy
 │   │   ├── worker/                       worker protocol strict server (P8)
-│   │   ├── operator/                     operator API strict server (P3b)
-│   │   └── flows/                        Flows API strict server (Flows)
+│   │   └── operator/                     operator API strict server (P3b)
 │   ├── observe/                          slog, OpenTelemetry, /metrics, readiness on its own port (P18)
 │   └── testkit/                          fake clock, fake object store, HTTP recorder helpers
 │
@@ -472,7 +470,7 @@ internal/
 │   └── internal/
 │       ├── core/{pool,worker,credential,drain,waiter,port}/
 │       └── adapters/
-│           ├── http/                     strict partial: pools, workers (deploy spec); pool queue streams
+│           ├── http/                     strict partial: pools, workers (api spec); pool queue streams
 │           ├── protocol/                 worker spec server: register, jobs long-poll, signals, heartbeat
 │           └── pg/                       worker_pools, workers, public_pool; private-workers checked through
 │                                         featuresapi.Limits
@@ -540,9 +538,8 @@ internal/
 pkg/
 ├── sdk/                                  (P24) wraps the generated clients below
 ├── client/
-│   ├── deploy/                                                          ← pkg/client/deploy
-│   ├── operator/                         (P3b)
-│   └── flows/                            (Flows)
+│   ├── api/                                                             ← pkg/client/deploy
+│   └── operator/                         (P3b)
 └── flows/{app/v1,appsdk}/                (Flows)
 ```
 
@@ -564,7 +561,7 @@ internal/stacks/
     │   ├── labels.go      label rules, autoattach: labels kept as data
     │   └── *_test.go      service tests with fake api dependencies
     ├── http/
-    │   ├── strict.go      DeployAPI: the 69 Stacks operations, embedded in app/router.go
+    │   ├── strict.go      API: the 69 Stacks operations, embedded in app/router.go
     │   └── convert.go     generated request types ↔ settings model
     └── pg/
         ├── store.go       stacks, stack_hooks
@@ -818,7 +815,7 @@ internal/workers/
     │   ├── waiter/                   in-process long-poll waiters woken by platform/sql/notify
     │   └── port/
     └── adapters/
-        ├── http/                     deploy-spec partial: WorkerPools tag
+        ├── http/                     api-spec partial: WorkerPools tag
         ├── protocol/
         │   ├── register.go           POST /worker/v1/register (JWS over the pool key), deregister
         │   ├── poll.go               POST /worker/v1/poll: heartbeat, held up to the poll timeout;
@@ -1175,8 +1172,8 @@ internal/flows/
     │   ├── datatable/ form/
     │   └── port/                Store, AgentTasks, Clock
     └── adapters/
-        ├── http/                strict partial for api/flows.openapi.yaml under /flows/v1/; the events stream;
-        │                        the Flows tag operations of the deploy API
+        ├── http/                strict partial for the Flows tags of api/api.openapi.yaml under /api/v1/flows/;
+        │                        the events stream; the Deploy-side Flows tag operations
         ├── trigger/             platform/events consumer: matching Deploy trigger blocks become root flow_events
         ├── gateway/             /flows/agent/v1/connect: frames, claims of flows.agent_task for connected pools
         ├── registry/            hourly registry subscriptions and digests
@@ -1246,7 +1243,7 @@ code.
 
 **Flows switches off like any feature.** `flows-engine`, `flows-apps`,
 `flows-agents`, `flows-data-tables`, `flows-forms` and `flows-mcp-tools`
-are catalogue entries: the features middleware gates `/flows/v1/` routes
+are catalogue entries: the features middleware gates `/api/v1/flows/` routes
 and the gateway, and the queue's `SkipGate` completes a gated feature's jobs
 as skipped, so a downgrade pauses timers, schedules and deliveries and
 deletes nothing.
@@ -1296,8 +1293,8 @@ schemas, the event kind schemas of `platform/outbox`, template inputs, a
 run's variables). `internal/app` collects them and hands them to the
 `expressions` domain, so the editor endpoints reach every surface without
 importing a domain, and a surface's `Env` authorizes the caller as a read
-of its context. `flows` serves the same operations under `/flows/v1/`
-through the same `editor` package, and `POST /policies/check`
+of its context. Flows contexts reach the same operations through the same
+`editor` package, with no copies under `/api/v1/flows/`, and `POST /policies/check`
 belongs to `policies`, because Rego is not an expression. Saving a flow, a
 template version, a policy's notification text or a variable type-checks
 through the owner's surface and refuses an error with `422
@@ -1314,13 +1311,13 @@ a replay evaluates the same values. Every evaluation runs under
 ### Console and clients
 
 ```text
-pkg/sdk/                       one Client across the deploy, flows and operator documents (P24)
+pkg/sdk/                       one Client across the api and operator documents (P24)
 ├── auth.go                    API key or OIDC key exchanged at POST /auth/token, cached until validUntil
 ├── transport.go               Idempotency-Key per call, reused on its retries; 429 and 503 with Retry-After
 ├── iter.go                    list operations as Go iterators over nextCursor
 ├── problem.go                 a typed error per decision 0022 slug, for errors.As
 └── stream.go                  typed stream iterators from x-infraweave-stream-messages
-pkg/client/{deploy,flows,operator}/   generated by oapi-codegen; outside the coverage gate
+pkg/client/{api,operator}/            generated by oapi-codegen; outside the coverage gate
 cmd/infraweavectl/             (P24b) cobra and viper over pkg/sdk: stack, module, policy, workerpool, flows,
                                operator, expr, mcp, api and the rest of the command tree of decision 0001
 web/console/                   (P24c)
@@ -1457,10 +1454,9 @@ packages, `internal/kernel`, `internal/iac` and `pkg/flows/app/v1`.
 
 | Spec | Fragments | Generated server | Implemented by | Client |
 | --- | --- | --- | --- | --- |
-| deploy | `api/src/deploy/` | `internal/platform/gen/deploy` | each domain's `internal/.../http` partial, composed in `app/router.go` | `pkg/client/deploy`, the console's orval client |
+| api | `api/src/api/`: Deploy, and Flows (Flows) | `internal/platform/gen/api` | each domain's `internal/.../http` partial, `flows/internal/adapters/http` among them, composed in `app/router.go` | `pkg/client/api`, the console's orval client |
 | worker | `api/src/worker/` (P8) | `internal/platform/gen/worker` | `workers/internal/adapters/protocol` | `internal/agent/wire` |
 | operator | `api/src/operator/` (P3b) | `internal/platform/gen/operator` | `features/internal/http` and `access/internal/adapters/http` | `pkg/client/operator` |
-| flows | `api/src/flows/` (Flows) | `internal/platform/gen/flows` | `flows/internal/adapters/http` | `pkg/client/flows`, the console's orval client |
 | `App` and `Host` gRPC | `api/proto/flows/app/v1/` (Flows) | `pkg/flows/app/v1` (buf generate) | apps (`App`); `agent/flowsagent/host` (`Host`) | `agent/flowsagent/apps` |
 | none (hand-written) | | | VCS webhooks (`vcs`), http state backend and `tfe` (`state`), discovery (`app`), modules.v1 and providers.v1 (`registry`), `login.v1` (`access`), the Flows agent gateway, HTTP endpoints and MCP (`flows`) | |
 
@@ -1475,7 +1471,7 @@ embedding:
 ```go
 // internal/app/router.go (excerpt)
 //
-// deployServer implements deploy.StrictServerInterface. Each domain's
+// apiServer implements api.StrictServerInterface. Each domain's
 // partial sits at depth one and the 501 stubs at depth two, so an
 // implemented operation shadows its stub, and two domains implementing the
 // same operation make the method ambiguous, so the assertion below fails to
@@ -1483,22 +1479,23 @@ embedding:
 // internal/app cannot import a domain's internal/.../http package,
 // so each assembly/ package re-exports its partial as an alias, named after
 // its domain because an embedded field takes its type's name:
-// type StacksDeploy = http.DeployAPI.
-type deployServer struct {
-	*stacksassembly.StacksDeploy
-	*runsassembly.RunsDeploy
-	*accessassembly.AccessDeploy
-	*policiesassembly.PoliciesDeploy       // (P13)
-	*expressionsassembly.ExpressionsDeploy // (P9)
+// type StacksAPI = http.API.
+type apiServer struct {
+	*stacksassembly.StacksAPI
+	*runsassembly.RunsAPI
+	*accessassembly.AccessAPI
+	*policiesassembly.PoliciesAPI       // (P13)
+	*expressionsassembly.ExpressionsAPI // (P9)
+	*flowsassembly.FlowsAPI             // (Flows)
 	stubs
 }
 
-type stubs struct{ deploy.UnimplementedStrict }
+type stubs struct{ api.UnimplementedStrict }
 
-var _ deploy.StrictServerInterface = deployServer{}
+var _ api.StrictServerInterface = apiServer{}
 ```
 
-The operator and flows servers compose the same way. The `Makefile`
+The operator server composes the same way. The `Makefile`
 generate loop keeps its shape; only the paths change:
 `api/oapi-server-<spec>.yaml` writes `internal/platform/gen/<spec>`,
 `api/oapi-client-<spec>.yaml` writes `pkg/client/<spec>`, and stubgen reads
@@ -1824,7 +1821,7 @@ Coverage:
     and a `flows.invocation.status` job. The emitted event goes through
     `platform/outbox` as `flows.event`, so audit and streams see it.
 11. `flows/internal/adapters/http` streams `flows.event` and
-    `invocation_updated` on `/flows/v1/flows/{flowId}/events/stream`
+    `invocation_updated` on `/api/v1/flows/flows/{flowId}/events/stream`
     through `platform/httpkit/sse`; the console's open stream updates its
     Query cache and the canvas shows the invocation as `processed`.
 
@@ -1835,7 +1832,7 @@ internals, and `events` never imports `flows`.
 
 ### Adding an IaC vendor: Pulumi (P20)
 
-1. `api/src/deploy/`: the Pulumi settings variant of the stack vendor union;
+1. `api/src/api/`: the Pulumi settings variant of the stack vendor union;
    `make generate`.
 2. `internal/kernel/vendor.go`: `VendorPulumi`.
 3. `internal/iac/pulumi/pulumi.go`, `settings.go`, `changes.go`
@@ -1861,7 +1858,7 @@ new files and 5 edited.
 
 ### Adding a business domain: templates (P21)
 
-1. `api/src/deploy/paths-templates.yaml` (scaffolded with `make scaffold`
+1. `api/src/api/paths-templates.yaml` (scaffolded with `make scaffold`
    from the reference tags); `make generate`.
 2. `internal/templates/api/templates.go`: `Deployments` for Flows and
    intelligence; `api/events.go`: `TemplateVersionPublished`,
@@ -1904,22 +1901,24 @@ stacks stream. About 20 new files and 6 edited.
 | Today's package | New location | Notes |
 | --- | --- | --- |
 | `cmd/` (`cmd/README.md` only) | `cmd/infraweave`, `cmd/infraweave-agent`, later `cmd/infraweavectl` (P24b) | one file per process mode; README kept |
-| `api` (`api/doc.go`, `api/deploy_test.go`) | `api` | unchanged; embeds stay, a `Worker` embed joins at P8 |
-| `api/src/deploy` | `api/src/deploy` | grows one `paths-<family>.yaml` per family |
+| `api` (`api/doc.go`, `api/deploy_test.go`) | `api` (`api/doc.go`, `api/api_test.go`) | embeds stay, reading `api.openapi.yaml`; the `TestUnitDeploy…` tests become `TestUnitAPI…`; a `Worker` embed joins at P8 |
+| `api/src/deploy` | `api/src/api` | grows one `paths-<family>.yaml` per family, Deploy and Flows |
+| `api/deploy.openapi.yaml` | `api/api.openapi.yaml` | the bundle of `api/src/api` |
+| `api/parity-baseline.json` | `api/parity-baseline.deploy.json` | read by `TestUnitAPIParity`; `api/parity-baseline.flows.json` joins it (P1d) |
 | `api/reference/spacelift` | `api/reference/spacelift` | unchanged |
 | `internal/buildinfo` | `internal/platform/buildinfo` | `-ldflags` paths in the `Makefile` change |
 | `internal/docscheck` | `internal/devtools/docscheck` | `make docs-check` path changes |
 | `internal/openapibundle` | `internal/devtools/openapibundle` | |
-| `internal/server/gen/deploy` | `internal/platform/gen/deploy` | regenerated, not moved by hand |
+| `internal/server/gen/deploy` | `internal/platform/gen/api` | regenerated, not moved by hand; package `api` |
 | `internal/server/problem` | `internal/platform/httpkit/problem` | used by every domain's HTTP adapter |
 | `internal/specref` | `internal/devtools/specref` | |
 | `internal/stubgen` | `internal/devtools/stubgen` | |
-| `pkg/client/deploy` | `pkg/client/deploy` | unchanged; `pkg/sdk` wraps it from P24 |
+| `pkg/client/deploy` | `pkg/client/api` | regenerated; `pkg/sdk` wraps it from P24 |
 | `tools/openapi-bundle` | `tools/openapi-bundle` | import path of the library changes |
 | `tools/specref` | `tools/specref` | import path of the library changes |
 | `tools/stubgen` | `tools/stubgen` | import path of the library changes |
 | `test/acceptance` | `test/acceptance` | features gain the binary and a worker from P9 |
-| `api/oapi-server-deploy.yaml` | same file | `output: internal/platform/gen/deploy/server.gen.go` |
+| `api/oapi-server-deploy.yaml`, `api/oapi-client-deploy.yaml` | `api/oapi-server-api.yaml`, `api/oapi-client-api.yaml` | `output: internal/platform/gen/api/server.gen.go` and `pkg/client/api` |
 | `Makefile` | same file | generate and verify-generate paths; ldflags; docs-check path |
 | `.golangci.yml` | same file | depguard enabled with the seven fixed rules and one graph rule per domain |
 | `.testcoverage.yml` | same file | `^internal/platform/gen/`, `^internal/agent/wire/` replace `^internal/server/gen/` |
@@ -1937,7 +1936,7 @@ Estimates, from the domains of report 26 and the trees above.
 | Files touched to add a vendor | n/a | about 12 new, 5 edited (the catalogue gains the vendor's option) |
 | Files touched to add a domain | n/a | about 20 new, 6 edited |
 | Packages a stack update crosses | 4 (`platform/httpkit/middleware`, `stacks/internal/http`, `stacks/internal/stacks`, `stacks/internal/pg`) | 7 (adds the `access` and `features` middleware and `accessapi`) |
-| Largest package | `internal/platform/gen/deploy` (generated, 24k lines) | `runs/internal/core/lifecycle` among hand-written ones, about 5k lines |
+| Largest package | `internal/platform/gen/api` (generated, 24k lines) | `runs/internal/core/lifecycle` among hand-written ones, about 5k lines |
 | Thin packages at risk under the 90% floor | `app/config` | about 40: `api/` and `assembly/` packages, migration embeds, `httpkit/console`, the Kubernetes executors |
 
 ## Placement choices and friction

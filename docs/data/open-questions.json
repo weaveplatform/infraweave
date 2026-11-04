@@ -202,6 +202,18 @@
       ]
     },
     {
+      "id": "PD-16",
+      "kind": "product-decision",
+      "question": "How does infraweave design Flows test scenarios? `flowctl` `96bdd03303a6` calls five test-scenario RPCs (list scenarios, start a run, start a batch, read a run with its assertions, cancel a run) and requests the `test_scenarios:run` capability, behind a feature flag; the docs describe neither, and no Flows table holds scenarios, runs or assertions",
+      "options": "(a) design scenarios, runs and assertions as Flows operations of the served document, with tables in the Flows schema; (b) leave test scenarios out and keep the five reference operations in the Flows parity baseline with a reason",
+      "resolver": "maintainer, in an amendment to decision [0018](../research/decisions/0018-flows-runtime.md)",
+      "blocks": "the five test-scenario operations, which `api/parity-baseline.flows.json` accepts as missing meanwhile; the `test_scenarios:run` capability, which grants nothing meanwhile",
+      "reports": [
+        "docs/research/reference/23-flows.md",
+        "docs/research/reference/28-data-model.md"
+      ]
+    },
+    {
       "id": "C1",
       "kind": "capture",
       "area": "Platform, API and clients (reports 01 to 06)",
@@ -2902,6 +2914,18 @@
       "blocks": "credential handling",
       "reports": [
         "docs/research/reference/23-flows.md"
+      ]
+    },
+    {
+      "id": "C271",
+      "kind": "capture",
+      "area": "Flows (report 23)",
+      "question": "What are the Flows web UI's private `/api/...` operations: methods, path templates and JSON shapes? Not captured: linking a Flows organization needs a paid Spacelift plan (the `/flows` page of a Spacelift Deploy account on a trial plan, `https://<account>.app.spacelift.io/flows`, answers \"Flows requires a paid Spacelift plan\", read 2026-11-04), and the research has no paid Flows organization. Revisited only if one becomes available",
+      "howToCapture": "With a paid Flows organization only: record the browser's `/api/...` calls across the screens no public client reaches, keeping method, path template and JSON shapes, never values, tokens or cookies",
+      "blocks": "nothing while no paid Flows organization exists: decision [0018](../research/decisions/0018-flows-runtime.md) designs the operations no public client reaches (invocations and event trees, retry and re-emit, members, teams, service accounts and API keys, agent pools, registry subscriptions, OIDC, audit and OTLP export) from the docs and its data model, marked `x-upstream: none`",
+      "reports": [
+        "docs/research/reference/23-flows.md",
+        "docs/research/reference/02-graphql-to-rest-mapping.md"
       ]
     },
     {

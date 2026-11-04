@@ -60,7 +60,7 @@ A phase is complete when:
 2. Its exit criteria hold, and the phase's last pull request links the
    evidence: test names, feature files and the CI run.
 3. Every operation the phase claims as implemented meets decision 0016's
-   evidence rule: it is served in `api/deploy.openapi.yaml` (or its spec), it
+   evidence rule: it is served in `api/api.openapi.yaml` (or its spec), it
    answers something other than 501, and at least three passing scenarios name
    it with `@op:<operationId>`: one success path, one 403 denial under
    [0007](../research/decisions/0007-authorization-spaces-and-roles.md), and

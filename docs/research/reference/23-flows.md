@@ -1,6 +1,6 @@
 # 23: Spacelift Flows
 
-Checked against: docs.spacelift.io `flows/` pages read 2026-10-28 (identical copies under `self-hosted/latest/flows/`); introspection `b3255fe38f5e`; `@slflows/sdk` 0.14.0 from npm; flowctl `3e7d42dabb01`; terraform-provider-flows v0.7.0 (`9d1a7ad4d937`); spacelift-helm-charts `4e02e1d22e73`; terraform-aws-eks-spacelift-flows-selfhosted `b7d32fa51c7e`; terraform-aws-spacelift-flows-agentpool-ec2 v1.3.0 (`6bb853a4d0a1`); the `flows-app-*` repositories at the commits in [section 6.5](#65-app-repositories); live OAuth metadata from `useflows.eu` read 2026-10-28; the 46 flow templates served as `https://docs.spacelift.io/flows/templates/<name>.yaml` and their index `templates.json`, read 2026-11-03; the `scenario.yaml` files of six MIT `flows-app-*` repositories at the commits in [section 3.7](#37-expressions-in-the-published-templates).
+Checked against: docs.spacelift.io `flows/` pages read 2026-10-28 (identical copies under `self-hosted/latest/flows/`); introspection `b3255fe38f5e`; `@slflows/sdk` 0.14.0 from npm; flowctl `3e7d42dabb01`, and `96bdd03303a6` (`main`, read 2026-11-04) for its test-scenario calls and requested scopes; spacelift-api-bruno `7cad4574954b` and `d4d77d9333d9` (`main`, read 2026-11-04); terraform-provider-flows v0.7.0 (`9d1a7ad4d937`); spacelift-helm-charts `4e02e1d22e73`; terraform-aws-eks-spacelift-flows-selfhosted `b7d32fa51c7e`; terraform-aws-spacelift-flows-agentpool-ec2 v1.3.0 (`6bb853a4d0a1`); the `flows-app-*` repositories at the commits in [section 6.5](#65-app-repositories); live OAuth metadata from `useflows.eu` read 2026-10-28 and again 2026-11-04; the 46 flow templates served as `https://docs.spacelift.io/flows/templates/<name>.yaml` and their index `templates.json`, read 2026-11-03; the `scenario.yaml` files of six MIT `flows-app-*` repositories at the commits in [section 3.7](#37-expressions-in-the-published-templates).
 
 Research baseline: **2026-10-28**.
 
@@ -811,6 +811,14 @@ of flow MCP servers) [D] [authz].
 | `data_tables:view` | View data tables | API and MCP resources |
 | `data_tables:edit` | Manage data tables | API and MCP resources |
 | `endpoints:access` | Call flow HTTP endpoints as the user | Not listed |
+| `test_scenarios:run` | Run a flow's test scenarios (section 10.1) *(inferred)* | API resource, read 2026-11-04 |
+
+The docs page lists thirteen capabilities, the first thirteen rows
+[D] [authz]. A fourteenth, `test_scenarios:run`, is not on the page: the API
+resource's protected-resource metadata lists it on 2026-11-04 [C] (metadata
+URL below), and `flowctl` requests it at `96bdd03303a6` [S] [fc-auth-main]
+L16-L17. What it allows is inferred from the `flowctl` calls that need it
+[I] from section 10.1.
 
 Every `:edit` capability needs its `:view` partner [D] [authz]. Scopes are
 not expanded server-side, so a client must request each capability it needs
@@ -818,7 +826,8 @@ not expanded server-side, so a client must request each capability it needs
 metadata of `https://useflows.eu` and `https://mcp.useflows.eu` [C]
 <https://useflows.eu/.well-known/oauth-protected-resource> and
 <https://mcp.useflows.eu/.well-known/oauth-protected-resource>, read
-2026-10-28.
+2026-10-28; the API resource's list read 2026-11-04 is the same plus
+`test_scenarios:run`.
 
 ### 9.4 Audit logs
 
@@ -833,7 +842,13 @@ metadata of `https://useflows.eu` and `https://mcp.useflows.eu` [C]
 
 Flows has no published API specification. It does have an HTTP API that the
 docs call the Flows API, gated by the `api` capability, and its first-party
-clients show its shape [D] [apikeys]; [D] [authz].
+clients show its shape [D] [apikeys]; [D] [authz]. It has no GraphQL schema
+and no Bruno collection: the `Spacelift/Flows/` folder of spacelift-api-bruno
+holds only GraphQL requests of the Deploy-side link, five at `7cad4574954b`
+(Batch Create Project Role Bindings, Delete Project Role Binding, Get Flows
+Integration, List Flows Instances, List Flows Projects) and six at
+`d4d77d9333d9`, which adds Get Project Role Binding [S] [bruno-flows];
+[S] [bruno-flows-main].
 
 | Property | Value | Source |
 |---|---|---|
@@ -847,6 +862,10 @@ clients show its shape [D] [apikeys]; [D] [authz].
 
 ### 10.1 Operations used by `flowctl`
 
+The first nine paths are those of `flowctl` `3e7d42dabb01`; `96bdd03303a6`
+adds the five test-scenario paths after them and leaves the nine unchanged
+[S] [fc-api]; [S] [fc-api-main].
+
 | Path | Request fields | Response | Source |
 |---|---|---|---|
 | `/cli/projects` | none | `projects[{id, name}]` | [S] [fc-api] L123-L126 |
@@ -858,6 +877,26 @@ clients show its shape [D] [apikeys]; [D] [authz].
 | `/cli/apps/list_versions` | `customAppId` | `data.versions[{id, version, draft}]` | [S] [fc-api] L104-L109 |
 | `/cli/flows/list_flows` | `projectId` | `data.flows[{id, name}]` | [S] [fc-api] L128-L131 |
 | `/cli/flows/export` | `flowId`, `omitIds`, `omitLayout`, `omitAppSchemas` | `data.data` (YAML) | [S] [fc-api] L133-L148 |
+| `/cli/flows/list_test_scenarios` | `flowId` | `data.scenarios[{id, name}]` | [S] [fc-api-main] L174-L177 |
+| `/cli/flows/start_test_scenario_run` | `scenarioId` | `data.id` (the run ID) | [S] [fc-api-main] L179-L184 |
+| `/cli/flows/start_test_scenario_run_batch` | `flowId` | `data.runIds`, `data.skipped[{scenarioId, reason}]` | [S] [fc-api-main] L186-L194 |
+| `/cli/flows/get_test_scenario_run` | `id` | `data.run`, `data.assertions` | [S] [fc-api-main] L196-L204 |
+| `/cli/flows/cancel_test_scenario_run` | `id` | | [S] [fc-api-main] L206-L208 |
+
+The test-scenario types are `TestScenario` `{id, name}`; `TestScenarioRun`
+`{id, scenarioId, status, error}`, with `status` one of `queued`, `pending`,
+`running`, `passed`, `failed` and `canceled` and `error` nullable; and
+`TestScenarioRunAssertion` `{assertionId, status, detail, blockName, kind,
+outputKey}`, with `status` one of `pending`, `passed` and `failed`, `kind`
+one of `output`, `input` and `noEvents`, and `detail`, `blockName` and
+`outputKey` nullable [S] [fc-api-main] L150-L172. `flowctl flow test`
+(`--id`, `--project` (`-p`), `--scenario` (`-s`, comma-separated names,
+default all)) runs them and waits for the results; it is registered only
+when `FLOWCTL_ENABLE_TEST_SCENARIOS` is `1` or `true`, and a source comment
+ties that switch to a `flows-testing-scenarios` feature flag on the server
+[S] [fc-flow-main] L212-L236, L378-L391. `package.json` at `96bdd03303a6`
+declares 0.7.0 [S] [fc-pkg-main]. Whether infraweave builds test scenarios
+is product decision PD-16, which is open.
 
 ### 10.2 Operations used by the provider
 
@@ -906,10 +945,29 @@ above.
 `https://oauth.useflows.eu/oauth/register`; response type `code`; grants
 `authorization_code` and `refresh_token`; PKCE `plain` and `S256`; token
 endpoint auth `client_secret_post` and `client_secret_basic`; scopes
-`profile`, `mcp`, `api`, `apps:viewer`, `apps:editor`, `apps:admin`. The
-scope names `apps:viewer` and `apps:editor` differ from the documented
-`apps:view`, and `flowctl` registers a public client (`token_endpoint_auth_method`
-`none`) that the metadata does not list *(unverified)* (C232).
+`profile`, `mcp`, `api`, `apps:viewer`, `apps:editor`, `apps:admin`; the
+same list on 2026-11-04. The scope names `apps:viewer` and `apps:editor`
+differ from the documented `apps:view` and from the `apps:view` and
+`apps:admin` of the protected-resource metadata (section 9.3); the
+authorization server lists no `flows:`, `app_installations:`, `secrets:`,
+`data_tables:` or `test_scenarios:` scope; and `flowctl` registers a public
+client (`token_endpoint_auth_method` `none`) that the metadata does not
+list. Which scope names the server accepts, and whether it accepts a public
+client, is *(unverified)* (C232).
+
+### 10.5 Web UI API
+
+The web UI calls a private `/api/...` API of its own (section 10's
+families). It is not captured: linking a Flows organization needs a paid
+Spacelift plan: the `/flows` page of a Spacelift Deploy account on a trial
+plan answers "Flows requires a paid Spacelift plan" [C]
+`https://<account>.app.spacelift.io/flows`, read 2026-11-04, so no account
+available to this research can reach it (C271). No public client reaches invocations and event trees, retry and
+re-emit, members, teams, service accounts and API keys, agent pools,
+registry subscriptions, OIDC, or audit and OTLP export; infraweave designs
+those operations from the docs pages cited in sections 4, 8 and 9 and the
+data model of [28 section 11](28-data-model.md#11-flows), and marks them
+`x-upstream: none` (decision [0018](../decisions/0018-flows-runtime.md#api-and-clients)).
 
 ## 11. flowctl
 
@@ -933,7 +991,7 @@ Generated by script.
 | Setting | Value | Source |
 |---|---|---|
 | Token file | `~/.spaceflows/cli-token.json` with `access_token`, `refresh_token`, `expires_at`, `client_id`, `base_url`, `token_endpoint` | [S] [fc-auth] L11, L50-L57 |
-| Requested scopes | `api apps:admin apps:view flows:view flows:edit` | [S] [fc-auth] L17 |
+| Requested scopes | `api apps:admin apps:view flows:view flows:edit`; `96bdd03303a6` adds `test_scenarios:run` | [S] [fc-auth] L17; [S] [fc-auth-main] L16-L17 |
 | `FLOWCTL_API_KEY` | API key auth, which overrides the stored token | [S] [fc-auth] L19-L40 |
 | `FLOWCTL_BASE_URL` | Required with `FLOWCTL_API_KEY` | [S] [fc-auth] L19-L40 |
 
@@ -1465,6 +1523,8 @@ shown in any source. The same Deploy actions also exist as the MIT
 | Audit event types and retention | Not documented *(unverified)* (C230) |
 | Flows MCP server tools beyond `usage_instructions` | Not documented *(unverified)* (C231) |
 | `apps:viewer` and `apps:editor` scopes, and public-client registration | Live metadata differs from docs and `flowctl` *(unverified)* (C232) |
+| The web UI's private `/api/...` operations | Not captured: linking a Flows organization needs a paid Spacelift plan (C271) |
+| `test_scenarios:run` and the test-scenario calls | In the live API resource metadata and `flowctl` `96bdd03303a6`, absent from the docs; `flowctl flow test` is off unless `FLOWCTL_ENABLE_TEST_SCENARIOS` is set |
 | `--ui-entrypoint` and `-v` in `flowctl` | Docs differ from source *(unverified)* (C233) |
 | Organization-wide custom apps through `flowctl` | CLI always sends a project *(unverified)* (C229) |
 | Kubernetes-hosted agents for self-hosted | Chart exists, guide says EC2 only *(unverified)* (C235) |
@@ -1476,14 +1536,15 @@ shown in any source. The same Deploy actions also exist as the MIT
 | Behaviour of the Data Tables, Forms, Group and Concurrency Group blocks | Named in the definition reference and templates; no behaviour page *(unverified)* (C241) |
 | Agent pool token rotation and the credentials Deploy blocks use | Not documented *(unverified)* (C242) |
 
-## Versions at the research baseline
+## Versions read (baseline 2026-10-28; flowctl and Bruno re-read 2026-11-04)
 
 | Component | Version or commit | Licence |
 |---|---|---|
 | docs.spacelift.io `flows/` | read 2026-10-28 | none stated |
 | Introspection snapshot | `b3255fe38f5e` | |
 | `@slflows/sdk` | 0.14.0 (npm), tarball SHA-256 `2fa0135a6886f40a20933af123d0db02fdc6a7d2c3001e2fe44fc209835e85d3` | none declared |
-| flowctl (`@useflows/flowctl`) | 0.7.0, `3e7d42dabb01` | MIT |
+| flowctl (`@useflows/flowctl`) | 0.7.0, `3e7d42dabb01`; `96bdd03303a6` (`main`, committed 2026-11-02, read 2026-11-04) for section 10.1's test-scenario paths | MIT |
+| spacelift-api-bruno, `Spacelift/Flows/` | `7cad4574954b`; `d4d77d9333d9` (`main`, committed 2026-11-02, read 2026-11-04) | MIT ([01](01-spacelift-landscape.md)) |
 | terraform-provider-flows | v0.7.0, `9d1a7ad4d937` | MIT |
 | spacelift-helm-charts (`spacelift-flows` 0.4.0, `spacelift-flows-agent` 0.3.0) | `4e02e1d22e73` | MIT |
 | terraform-aws-eks-spacelift-flows-selfhosted | `b7d32fa51c7e` (after v1.1.0) | none |
@@ -1582,6 +1643,12 @@ Packages and source:
 - [fc-bundle]: <https://github.com/spacelift-io/flowctl/blob/3e7d42dabb01/src/commands/version.ts#L347-L466>
 - [fc-build]: <https://github.com/spacelift-io/flowctl/blob/3e7d42dabb01/src/build.ts>
 - [fc-shared]: <https://github.com/spacelift-io/flowctl/blob/3e7d42dabb01/src/shared.ts>
+- [fc-pkg-main]: <https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/package.json>
+- [fc-api-main]: <https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/src/api.ts>
+- [fc-auth-main]: <https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/src/auth.ts#L13-L17>
+- [fc-flow-main]: <https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/src/commands/flow.ts>
+- [bruno-flows]: <https://github.com/spacelift-io/spacelift-api-bruno/tree/7cad4574954b569df083b2a809b68371fc385e6d/Spacelift/Flows>
+- [bruno-flows-main]: <https://github.com/spacelift-io/spacelift-api-bruno/tree/d4d77d9333d99f69aa7fdaa96865864d9ec13b39/Spacelift/Flows>
 - [prov-readme]: <https://github.com/spacelift-io/terraform-provider-flows/blob/9d1a7ad4d937/README.md>
 - [prov-docs]: <https://github.com/spacelift-io/terraform-provider-flows/tree/9d1a7ad4d937/docs>
 - [prov-client]: <https://github.com/spacelift-io/terraform-provider-flows/blob/9d1a7ad4d937/internal/provider/client.go>
@@ -1651,6 +1718,10 @@ Live captures, read 2026-10-28: the OAuth metadata URLs in section 9.3 and
 `@useflows/flowctl`, and the GitHub repository listings of `spacelift-io`
 and `spacelift-flows-apps`.
 
+Live captures, read 2026-11-04: the protected-resource and authorization
+server metadata of sections 9.3 and 10.4, and the `/flows` page of a trial
+Deploy account, `https://<account>.app.spacelift.io/flows`, in section 10.5.
+
 [home]: https://docs.spacelift.io/
 [intro]: https://docs.spacelift.io/flows/introduction
 [llms-flows]: https://docs.spacelift.io/llms-flows.txt
@@ -1718,6 +1789,12 @@ and `spacelift-flows-apps`.
 [fc-bundle]: https://github.com/spacelift-io/flowctl/blob/3e7d42dabb01/src/commands/version.ts#L347-L466
 [fc-build]: https://github.com/spacelift-io/flowctl/blob/3e7d42dabb01/src/build.ts
 [fc-shared]: https://github.com/spacelift-io/flowctl/blob/3e7d42dabb01/src/shared.ts
+[fc-pkg-main]: https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/package.json
+[fc-api-main]: https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/src/api.ts
+[fc-auth-main]: https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/src/auth.ts#L13-L17
+[fc-flow-main]: https://github.com/spacelift-io/flowctl/blob/96bdd03303a60fca5c208c8a167faa80af40021d/src/commands/flow.ts
+[bruno-flows]: https://github.com/spacelift-io/spacelift-api-bruno/tree/7cad4574954b569df083b2a809b68371fc385e6d/Spacelift/Flows
+[bruno-flows-main]: https://github.com/spacelift-io/spacelift-api-bruno/tree/d4d77d9333d99f69aa7fdaa96865864d9ec13b39/Spacelift/Flows
 [prov-readme]: https://github.com/spacelift-io/terraform-provider-flows/blob/9d1a7ad4d937/README.md
 [prov-docs]: https://github.com/spacelift-io/terraform-provider-flows/tree/9d1a7ad4d937/docs
 [prov-client]: https://github.com/spacelift-io/terraform-provider-flows/blob/9d1a7ad4d937/internal/provider/client.go

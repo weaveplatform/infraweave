@@ -135,7 +135,7 @@ OTLP as the only export, the exporter's series served at
 ### Flows: decision 0018
 
 Flows in the infraweave account, endpoint addresses and MCP, the API Request
-block, where Flows and its agents run, the REST Flows API, app images and
+block, where Flows and its agents run, REST Flows operations in the one served document, app images and
 declarative widgets.
 
 ### Intelligence: decision 0019
