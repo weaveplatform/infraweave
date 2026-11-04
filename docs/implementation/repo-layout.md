@@ -42,7 +42,7 @@ infraweave/
 │   │   ├── secrets.go             secrets generate-kek, rewrap, rotate (P2b)
 │   │   ├── auth.go                auth hash-password for the break-glass login (P3)
 │   │   ├── version.go             platform/buildinfo
-│   │   └── agent.go               registers agent/cli: launcher (P8), hidden runner (P9), vcs-agent (P19b),
+│   │   └── agent.go               registers agent/cli: launcher (P8), hidden runner (P8 stub, P9), vcs-agent (P19b),
 │   │                              flows-agent (P18d); imports no internal/app
 │   ├── infraweave-agent/          optional slim build: registers the same agent/cli commands; links only internal/agent
 │   └── infraweavectl/             the CLI over pkg/sdk; a client, not a process mode (P3b, P24b)
@@ -51,6 +51,7 @@ infraweave/
 │   ├── src/worker/                worker protocol fragments (P8)
 │   ├── src/flows/                 Flows API fragments under /flows/v1/ (P18c)
 │   ├── src/operator/              operator API fragments: organizations, tiers, grants, billing, queue (P3b)
+│   ├── src/registry/              registry protocol description for contract tests; its routes are hand-written (P17)
 │   ├── proto/flows/app/v1/        the versioned App and Host gRPC services of Flows apps (P18d)
 │   ├── deploy.openapi.yaml        bundled by make bundle; committed; drift-checked
 │   ├── oapi-server-<spec>.yaml    oapi-codegen server config; output internal/platform/gen/<spec>
@@ -67,7 +68,7 @@ infraweave/
 │   │   ├── domains.go             construct domains in the declared graph's order; late-bind the six back edges
 │   │   │                          and the operation dispatcher
 │   │   ├── router.go              chi router, middleware, strict servers composed by embedding
-│   │   ├── discovery.go           /.well-known/terraform.json from domain contributions (P11, P17)
+│   │   ├── discovery.go           /.well-known/terraform.json from domain contributions (P17)
 │   │   └── modes.go               which domain parts (Routes, Consumers, Cron) each process mode starts
 │   ├── devtools/                  libraries behind tools/; never linked into cmd/
 │   │   ├── specref/               reference generation, scaffold, inventory, parity       ← internal/specref
@@ -78,12 +79,14 @@ infraweave/
 │   ├── kernel/                    value types shared by domain APIs; parsing only, no I/O
 │   │   ├── ids.go                 ULID, Slug, UUID (Flows)
 │   │   ├── organization.go        OrganizationID; root, the installation's top node, is no value here
-│   │   ├── account.go space.go    AccountID, SpaceID, the account's top space addressed by its slug
+│   │   ├── account.go space.go    AccountID (P3), SpaceID (P4), the account's top space addressed by its slug
 │   │   ├── principal.go           member, API key, organization key, run, operator, worker, stack, Flows project
-│   │   ├── labels.go              labels and autoattach: matching
+│   │   ├── feature.go             Feature: catalogue names as a type (P3b)
+│   │   ├── actions.go             AllowedActions: the list every returned resource carries (P4)
+│   │   ├── labels.go              labels and autoattach: matching (P5)
 │   │   ├── run.go                 RunState (22 values), RunType, StackState, RunPriority wire names
-│   │   ├── vendor.go              VendorKind
-│   │   ├── audit.go               AuditEntry
+│   │   ├── vendor.go              VendorKind (P5)
+│   │   ├── audit.go               AuditEntry (P18b)
 │   │   ├── page.go                Cursor and Page of decision 0003
 │   │   ├── search/                SearchInput predicate, order and cursor types (P5)
 │   │   └── vcsroutes/             provider API route tables shared by vcs and agent/vcsagent (P19b)
@@ -117,7 +120,7 @@ infraweave/
 │   │   │   ├── client/            outbound HTTP with retries; agent and adapters use it
 │   │   │   ├── serve/             listener lifecycle and drain for the API and admin listeners; agents use it
 │   │   │   ├── dispatch/          runs one REST operation in process as the caller; bound by internal/app for
-│   │   │   │                      flows (P18c) and intelligence (P25)
+│   │   │   │                      flows (P18d) and intelligence (P25)
 │   │   │   ├── console/           the console's build under dist/, embedded; index.html fallback, cache headers,
 │   │   │   │                      CSP (P24c)
 │   │   │   └── strict/            principal and problem mapping, merge-patch and If-Match for strict handlers (P5)
@@ -176,7 +179,7 @@ infraweave/
 │   │   └── internal/
 │   │       ├── core/              machine lifecycle gates queuegate schedule handover timers
 │   │       │                      promote replan forceapply dependencies port
-│   │       └── adapters/          http (Runs tag, log streaming); pg (runs, transitions, receipts,
+│   │       └── adapters/          http (Runs tag, log streaming); pg (runs, transitions, receipts, flags,
 │   │                              assignments, stack_run_locks, stack_run_state, stack_outputs)
 │   ├── workers/                   hexagon: pools, workers, credentials, worker protocol endpoints, pool samples (P8, P14)
 │   │   └── api/ assembly/ internal/{core/{pool,worker,credential,drain,waiter,sample,port},adapters/{http,protocol,pg}}/
@@ -184,7 +187,7 @@ infraweave/
 │   │   └── api/ assembly/ internal/{vendors,http,pg}/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
 │   │   └── api/ assembly/ internal/{state,backend,http,pg}/
-│   ├── vcs/                       hexagon: integrations, webhooks, routing, feedback (P12, P19, P19b)
+│   ├── vcs/                       hexagon: integrations, webhooks, routing, feedback (P9, P12, P19, P19b)
 │   │   └── api/ assembly/ internal/{core/{integration,intake,normalize,route,feedback,pullrequest,port},
 │   │                              adapters/{http,github,gitlab,bitbucketcloud,bitbucketdc,azuredevops,rawgit,agentgateway,pg}}/
 │   ├── policies/                  flat: policies, attachments, inputs, combination, samples, simulation (P13, P13b)
@@ -214,6 +217,7 @@ infraweave/
 │   │   └── operator/              GENERATED operator API client (P3b)
 │   ├── sdk/                       decision 0001's SDK over pkg/client/<spec>: token exchange, idempotency keys,
 │   │                              retries, iterators, typed problem errors; every Go client uses it (P1c)
+│   ├── flows/app/v1/              GENERATED App and Host gRPC stubs; the one pkg/ package the agent imports (P18d)
 │   └── flows/appsdk/              the Go SDK for Flows apps, with apptest (P18d)
 ├── test/
 │   ├── acceptance/                godog features, steps and the harness; ubuntu only
@@ -274,6 +278,12 @@ with no behaviour change.
 | `internal/buildinfo` | `internal/platform/buildinfo` | `LDFLAGS` paths in `Makefile` |
 | `internal/server/gen/deploy` | `internal/platform/gen/deploy` | regenerated by `make generate`, not moved by hand |
 | `internal/server/problem` | `internal/platform/httpkit/problem` | every domain's HTTP adapter imports it |
+| `internal/server/{ratelimit,idempotency}` | `internal/platform/httpkit/middleware` | with recovery and the `404` and `405` problem handlers from `internal/server` |
+| `internal/server/pagination` | `internal/platform/httpkit/page` | encodes `internal/kernel`'s cursor and page |
+| `internal/server` listener and drain | `internal/platform/httpkit/serve` | the agent process modes share it from P8 |
+| `internal/server` `GET /livez` | `internal/platform/observe` | |
+| `internal/server` routing and `operations.go` | `internal/app/router.go`, `internal/app/operations.go` | `deployServer` composition and its assertion |
+| `internal/app/config.go` | `internal/app/config` | keys, flags and strictness unchanged |
 | `internal/specref` | `internal/devtools/specref` | `tools/specref` import path |
 | `internal/openapibundle` | `internal/devtools/openapibundle` | `tools/openapi-bundle` import path |
 | `internal/stubgen` | `internal/devtools/stubgen` | `tools/stubgen` import path; `make generate` stub input path |
@@ -447,8 +457,9 @@ only refuses more.
 | `constructors` (rule 4) | everything except `**/internal/app/**` and `**/cmd/**` | deny | `$m/internal/<domain>/assembly` for each of the 19 domains |
 | `core-not-adapters` (rule 5) | `**/internal/*/internal/core/**` | deny | `$m/internal/<domain>/internal/adapters` for each of the 8 hexagon domains |
 | `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 19 domain roots, `$m/internal/agent`, `$m/internal/app` |
-| `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal` and `github.com/jackc/pgx`; allow `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}$` |
+| `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave/agent.go`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/pkg/flows/app/v1$`, `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}$` |
 | `devtools` (rule 8) | everything except `**/tools/**` and `**/internal/devtools/**` | deny | `$m/internal/devtools` |
+| `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
 
 Rule 2 is the declared graph below: one rule per domain, which allows
 `$m/internal/platform/`, `kernel` and `iac`, its own tree and the `api/`
@@ -472,10 +483,10 @@ and `flows`.
 The 19 domains in construction order, which `internal/app/domains.go`
 follows and in which the migration streams run
 ([0004](../research/decisions/0004-repository-architecture.md)). Each domain
-imports the `api/` packages its row names, all of them above it, so the
-graph is acyclic; its tables may reference only those domains' tables. A
-back edge is the reverse of an edge, set after construction; it adds no
-import and no foreign key.
+imports the `api/` packages its row names, all of them earlier in the
+order, so the graph is acyclic; its tables may reference only those
+domains' tables. A back edge is a call to a domain constructed later, set
+after construction; it adds no import and no foreign key.
 
 | Domain | Imports the `api/` of | Back edges bound in `internal/app` |
 |---|---|---|
@@ -489,14 +500,14 @@ import and no foreign key.
 | `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |
 | `state` | features, access, stacks, runs | |
 | `cloud` | features, access, stacks | |
-| `registry` | features, access, workers, runs | |
+| `registry` | features, access, workers, configuration, policies, runs, cloud | |
 | `vcs` | features, access, stacks, runs, registry, policies | |
 | `schedules` | features, access, stacks, runs | |
-| `events` | features, access, stacks, runs, policies, vcs | |
+| `events` | features, access, workers, stacks, runs, policies, vcs | |
 | `templates` | features, access, stacks, runs | |
 | `resources` | features, access, stacks, runs, state, workers | |
-| `intelligence` | features, access, runs, policies, cloud, workers | `platform/httpkit/dispatch` for the `query` and `mutate` tools |
-| `flows` | features, access, runs, templates | `platform/httpkit/dispatch` for the API Request block |
+| `intelligence` | features, access, workers, stacks, policies, runs, cloud | `platform/httpkit/dispatch` for the `query` and `mutate` tools |
+| `flows` | features, access, stacks, runs, templates | `platform/httpkit/dispatch` for the API Request block |
 | `expressions` | none; `internal/app` hands it every domain's `Surfaces()` | |
 
 Intent operations and scan runs reach worker pools through `runsapi`, so
