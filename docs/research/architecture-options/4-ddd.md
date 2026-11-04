@@ -166,6 +166,8 @@ What changes at the root and why:
 
 ## Full package tree
 
+### Context status
+
 Context status at P1 and the phase that completes each:
 
 | Context | Package root | Status at P1 | Created or completed by |
@@ -230,6 +232,10 @@ producer's published language because decisions 0015 and 0018 require one event 
 for Deploy and Flows with no bridge: a Flows trigger block reads a Deploy event's
 document as the producer wrote it, so Flows is conformist to every producer's kind
 schema instead of translating through an anticorruption layer.
+
+### The tree
+
+The complete tree at the end of P27:
 
 ```text
 internal/
@@ -584,11 +590,68 @@ internal/
 │   └── interfaces/{rest,consumers}/         one consumer subscribed to every published event
 │
 ├── templates/                               CONTEXT: templates, versions, deployments, blueprints (P21)
-├── inventory/                               CONTEXT: managed entities, resources, scans, search (P22)
+│   ├── api/                                 Templates, events.go (TemplateDeploymentChanged), surfaces.go:
+│   │                                        the template body surface for the expressions editor
+│   ├── domain/
+│   │   ├── template/                        Template aggregate with TemplateVersion: state, raw body, inputs,
+│   │   │                                    published and deprecated
+│   │   ├── deployment/                      Deployment aggregate: pinned version, inputs, state, scheduled delete
+│   │   ├── blueprint/                       blueprints, the form templates replace
+│   │   └── events.go
+│   ├── application/{versions,deploy,update,remove}/   deploy renders the body's ${{ }} text templates
+│   │                                        with kernel/expr, then calls stackconfig/api.Stacks.CreateFromTemplate
+│   │                                        and orchestration/api.Runs.Trigger
+│   ├── infrastructure/persistence/{postgres,memory,persistencetest}/   migrations/0001_templates.sql
+│   └── interfaces/
+│       ├── rest/                            strict slice: templates, versions, deployments, blueprints
+│       └── consumers/                       RunStateChanged, StackDeleted update the deployment's state
+│
+├── inventory/                               CONTEXT: managed entities, entity changes, scans, search (P22)
+│   ├── api/                                 Entities, Search (the one search contract and its suggestions twin)
+│   ├── domain/
+│   │   ├── entity/                          ManagedEntity: creator and updater runs, drift time, vendor
+│   │   │                                    metadata, the three groupings; values kept as checksums only
+│   │   ├── change/                          EntityChange by phase (DRIFT, PLAN, APPLY), the 16 change types,
+│   │   │                                    six results, attribute before and after; Delta counters
+│   │   ├── ansible/                         hosts, tasks and task executions with their seven statuses
+│   │   ├── scan/                            Scan, provider configuration, scope filters and their limits;
+│   │   │                                    ScanRun with seven states, failures, discovered resources
+│   │   ├── search/                          predicates, constraints, ordering, suggestions; field vocabulary
+│   │   │                                    per entity
+│   │   └── savedfilter/                     per view, private or account-public, a personal default
+│   ├── application/{record,scans,search,filters,dashboard}/   record takes RunFinished's managed-entity
+│   │                                        report; scans hand scan runs to a worker pool; dashboard serves the
+│   │                                        metrics and DORA series within space read access
+│   ├── infrastructure/persistence/{postgres,memory,persistencetest}/
+│   └── interfaces/
+│       ├── rest/                            strict slice: resources, entity changes, scans, saved filters,
+│       │                                    dashboard
+│       └── consumers/                       RunFinished from orchestration and state
+│
 ├── intelligence/                            CONTEXT: AI integrations, Infra Assistant, Intent, MCP (P25)
-│   ├── api/ domain/{integration,conversation,intent}/ application/
-│   ├── infrastructure/{providers,persistence}/   provider boundary (decision 0019)
-│   └── interfaces/{rest,mcp}/
+│   ├── api/                                 AIIntegrations, Conversations
+│   ├── domain/
+│   │   ├── integration/                     AIIntegration: provider, models, sealed key, validation on save
+│   │   ├── conversation/                    provider-neutral history, versioned; run summaries
+│   │   ├── budget/                          ai-budget metering against the features limit
+│   │   └── intent/                          IntentProject, locks, operations and their review states,
+│   │                                        dependencies, eject
+│   ├── application/
+│   │   ├── assistant/                       chat turns, confirmation of destructive tool calls
+│   │   ├── summaries/                       Summarize and Explain over masked, truncated phase logs
+│   │   ├── intent/                          lifecycle operations through governance's Evaluator.Intent;
+│   │   │                                    PENDING operations run on the project's worker pool through
+│   │   │                                    the run path (decision 0019)
+│   │   └── tools/                           discover, query, mutate, provider, intent, navigate, page_context,
+│   │                                        search_docs: one tool layer for every surface, run as the caller
+│   ├── infrastructure/
+│   │   ├── providers/{anthropic,openai,google,bedrock}/   the Provider interface of decision 0019
+│   │   └── persistence/{postgres,memory,persistencetest}/
+│   └── interfaces/
+│       ├── rest/                            strict slice: AI integrations, conversations, Intent projects
+│       ├── chat/                            the text/event-stream chat transport
+│       └── mcp/                             /mcp, Streamable HTTP, the mcp:read and mcp:write scopes
+│
 ├── expressions/                             CONTEXT (generic subdomain): the editor endpoints, no tables (P9)
 │   ├── api/                                 ExpressionSurfaces: the contract each surface owner implements
 │   ├── application/editor/                  check, complete, evaluate over kernel/expr with the typed context
@@ -646,9 +709,6 @@ pkg/
     ├── app/v1/                              buf-generated App and Host stubs
     └── appsdk/                              appsdk.Serve, typed blocks and schemas from Go types, apptest/
 ```
-
-Templates, inventory and intelligence have the same four folders as the contexts drawn
-in full; the walkthrough for templates lists its packages.
 
 ## Deep dives
 

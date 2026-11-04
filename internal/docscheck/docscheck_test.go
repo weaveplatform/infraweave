@@ -48,8 +48,9 @@ const (
 )
 
 // option is an architecture option's outline. H3s outside the nested
-// sections may differ between options.
-const option = "# Option\n\n## Summary\n\n### Rules\n\n## Deep dives\n\n### Runs\n\n## Walkthroughs\n\n### A push\n"
+// sections, and those before the tree, may differ between options.
+const option = "# Option\n\n## Summary\n\n### Rules\n\n## Full package tree\n\n### Status\n\n### The tree\n\n" +
+	"## Deep dives\n\n### Runs\n\n## Walkthroughs\n\n### A push\n"
 
 // plan is an implementation plan with two phases; the registers name both.
 const plan = "# Plan\n\n## Build status\n\n| P0 | done |\n\n## P0: Reference\n\nDecisions: [0001](../research/decisions/0001-one.md)\n\n" +
@@ -88,7 +89,7 @@ func tree() fstest.MapFS {
 		"internal/x/testdata/fixture.md":            file("docs/missing.md\n"),
 		"docs/research/architecture-options/1-a.md": file(option),
 		"docs/research/architecture-options/2-b.md": file(
-			option + "\n```\n## Not a heading\n```\n",
+			strings.Replace(option, "### Status", "### Domain status", 1) + "\n```\n## Not a heading\n```\n",
 		),
 		"docs/implementation/plan.md":                file(plan),
 		"docs/data/schema/common.schema.json":        file(commonSchema),
@@ -297,6 +298,16 @@ func TestUnitCheckFindings(t *testing.T) {
 				)
 			},
 			want:  `outline departs from 1-a.md: has "## Walk-throughs" where it has "## Walkthroughs"`,
+			where: "docs/research/architecture-options/2-b.md:17",
+		},
+		{
+			name: "option without its tree heading",
+			edit: func(m fstest.MapFS) {
+				m["docs/research/architecture-options/2-b.md"] = file(
+					strings.Replace(option, "### The tree\n\n", "", 1),
+				)
+			},
+			want:  `has "## Deep dives" where it has "### The tree"`,
 			where: "docs/research/architecture-options/2-b.md:11",
 		},
 		{
@@ -315,7 +326,7 @@ func TestUnitCheckFindings(t *testing.T) {
 				m["docs/research/architecture-options/2-b.md"] = file(option + "\n## Numbers\n")
 			},
 			want:  `has "## Numbers" where it has "(end)"`,
-			where: "docs/research/architecture-options/2-b.md:15",
+			where: "docs/research/architecture-options/2-b.md:21",
 		},
 		{
 			name: "phase without exit criteria",

@@ -238,6 +238,8 @@ internal/<domain>/
     └── pg/                    flat only: the store
 ```
 
+### The tree
+
 The complete tree at the end of P27:
 
 ```text
