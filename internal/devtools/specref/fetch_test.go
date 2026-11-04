@@ -198,7 +198,7 @@ func TestAccFetch(t *testing.T) {
 		src.Terraform.Resources["spacelift_stack"].Description != "A stack." {
 		t.Errorf("sources = %+v %+v", src.Bruno, src.TerraformOps)
 	}
-	if _, err := GenerateDir(context.Background(), dir); err != nil {
+	if _, err := Deploy.GenerateDir(context.Background(), dir); err != nil {
 		t.Fatalf("a fresh fetch must generate: %v", err)
 	}
 }

@@ -16,7 +16,7 @@ for why infraweave is REST-first.
 | Piece | What |
 |---|---|
 | `internal/devtools/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
-| `tools/specref` | `fetch` (network and terraform); `generate`, `check`, `scaffold`, `inventory` and `parity` (offline) |
+| `tools/specref` | `fetch` (network and terraform); `generate`, `check`, `scaffold`, `inventory` and `parity` (offline). `--product` picks the Spacelift product, `deploy` by default, and with it the default `--dir` and parity `--baseline` |
 | `api/reference/spacelift/` | Pinned snapshots, `sources.lock.yaml`, the hand-curated `rest-mapping.yaml`, and the generated spec and `coverage.md` |
 | `docs/research/` | Research reports in `reference/` (landscape, mapping rules, provider), decision records in `decisions/`; see its [README](docs/research/README.md) |
 

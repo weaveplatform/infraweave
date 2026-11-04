@@ -131,7 +131,7 @@ and lint is clean.
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
 | P1b Domain layout and depguard | In progress | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72). Done: [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename. Not started: [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
-| P1d Flows specification reference | Not started | |
+| P1d Flows specification reference | In progress | Done: task 1, the product seam. Not started: tasks 2 to 5 |
 | P2 PostgreSQL, migrations and operability | Not started | |
 | P2b Object storage and secrets at rest | Not started | |
 | P2c Work queue, cron, outbox and the event model | Not started | |

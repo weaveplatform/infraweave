@@ -69,13 +69,13 @@ func golden(t *testing.T, name string, got []byte) {
 
 func TestUnitGenerateGolden(t *testing.T) {
 	dir := writeFixtureDir(t)
-	g, err := GenerateDir(context.Background(), dir)
+	g, err := Deploy.GenerateDir(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	golden(t, FileSpec, g.Spec)
 	golden(t, FileCoverage, g.Coverage)
-	if err := CheckDir(context.Background(), dir); err != nil {
+	if err := Deploy.CheckDir(context.Background(), dir); err != nil {
 		t.Errorf("check right after generate: %v", err)
 	}
 }
@@ -219,10 +219,10 @@ func TestUnitGenerateSemantics(t *testing.T) {
 
 func TestUnitCheckDirDrift(t *testing.T) {
 	dir := writeFixtureDir(t)
-	if err := CheckDir(context.Background(), dir); !errors.Is(err, ErrDrift) {
+	if err := Deploy.CheckDir(context.Background(), dir); !errors.Is(err, ErrDrift) {
 		t.Fatalf("missing outputs: err = %v, want ErrDrift", err)
 	}
-	if _, err := GenerateDir(context.Background(), dir); err != nil {
+	if _, err := Deploy.GenerateDir(context.Background(), dir); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(
@@ -232,7 +232,7 @@ func TestUnitCheckDirDrift(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	err := CheckDir(context.Background(), dir)
+	err := Deploy.CheckDir(context.Background(), dir)
 	if !errors.Is(err, ErrDrift) || !strings.Contains(err.Error(), FileCoverage) {
 		t.Fatalf("err = %v, want drift in %s", err, FileCoverage)
 	}
@@ -269,10 +269,10 @@ func TestUnitReadSourcesErrors(t *testing.T) {
 			if _, err := ReadSources(dir); err == nil {
 				t.Fatal("want error")
 			}
-			if _, err := GenerateDir(context.Background(), dir); err == nil {
+			if _, err := Deploy.GenerateDir(context.Background(), dir); err == nil {
 				t.Fatal("GenerateDir: want error")
 			}
-			if err := CheckDir(context.Background(), dir); err == nil || errors.Is(err, ErrDrift) {
+			if err := Deploy.CheckDir(context.Background(), dir); err == nil || errors.Is(err, ErrDrift) {
 				t.Fatalf("CheckDir: err = %v, want a read error", err)
 			}
 		})
@@ -280,7 +280,7 @@ func TestUnitReadSourcesErrors(t *testing.T) {
 	if _, err := ReadSources(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Error("missing dir: want error")
 	}
-	if err := CheckDir(context.Background(), filepath.Join(t.TempDir(), "missing")); err == nil {
+	if err := Deploy.CheckDir(context.Background(), filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Error("CheckDir missing dir: want error")
 	}
 	if err := writeFiles(

@@ -413,15 +413,15 @@ func tagDescription(ref ymap, tag string) string {
 	return ""
 }
 
-// ScaffoldFile scaffolds tag from the reference in refDir into the fragment
-// out, referencing what the other fragments in out's directory define. It
-// refuses to replace an existing fragment unless force is set, because a
-// scaffolded fragment is curated by hand afterwards.
-func ScaffoldFile(refDir, tag, out string, force bool) (*Scaffolded, error) {
+// ScaffoldFile scaffolds tag from the reference document at spec, any
+// product's, into the fragment out, referencing what the other fragments in
+// out's directory define. It refuses to replace an existing fragment unless
+// force is set, because a scaffolded fragment is curated by hand afterwards.
+func ScaffoldFile(spec, tag, out string, force bool) (*Scaffolded, error) {
 	if _, err := os.Stat(out); err == nil && !force {
 		return nil, fmt.Errorf("%w: %s", ErrFragmentExists, out)
 	}
-	ref, err := os.ReadFile(filepath.Join(refDir, FileSpec))
+	ref, err := os.ReadFile(spec)
 	if err != nil {
 		return nil, fmt.Errorf("specref: %w", err)
 	}

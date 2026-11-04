@@ -107,7 +107,7 @@ func (s *referenceSteps) committedReference() error {
 }
 
 func (s *referenceSteps) upToDate(ctx context.Context) error {
-	return specref.CheckDir(ctx, referenceDir)
+	return specref.Deploy.CheckDir(ctx, referenceDir)
 }
 
 func (s *referenceSteps) validates(ctx context.Context) error {
