@@ -133,6 +133,7 @@ and lint is clean.
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
 | P1b Domain layout and depguard | Not started | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72): [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
+| P1d Flows specification reference | Not started | |
 | P2 PostgreSQL, migrations and operability | Not started | |
 | P2b Object storage and secrets at rest | Not started | |
 | P2c Work queue, cron, outbox and the event model | Not started | |
@@ -200,6 +201,7 @@ flowchart LR
   P0[P0 Reference] --> P1[P1 Served skeleton]
   P1 --> P1b[P1b Domain layout]
   P1b --> P1c[P1c Harness and SDK]
+  P1b --> P1d[P1d Flows reference]
   P1c --> P2[P2 PostgreSQL]
   P2 --> P2c[P2c Queue, outbox and events]
   P2c --> P2b[P2b Objects and secrets]
@@ -233,6 +235,7 @@ flowchart LR
   P18 --> P18b[P18b Audit and observability]
   P18 --> P18c[P18c Flows engine]
   P4b --> P18c
+  P1d --> P18c
   P18c --> P18d[P18d Flows apps and agents]
   P21 --> P18d
   P12 --> P19[P19 Other VCS providers]
@@ -283,6 +286,7 @@ the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter.
 - P2c comes before P2b, because object storage registers `blob.delete` and
   `blob.expire` on the queue and `secrets rotate` enqueues `secrets.reseal`.
   P2c also fixes the event envelope that P18 and the Flows engine share.
+- P1d runs beside P1c once P1b lands; nothing waits on it before P18c.
 - P3b runs beside P4. P4b follows P5, because stack role bindings bind a
   stack. P3b's authorization server is ready long before `/flows/mcp`
   (P18c, through P4b) and `/mcp` (P25) use it.
@@ -315,6 +319,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | Change | Why |
 |---|---|
 | P1b and P1c inserted after P1 | Decision [0004](../research/decisions/0004-repository-architecture.md) moves today's packages into the domain layout and enables depguard; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines the harness, the test-name split and the parity outcomes. Doing both before persistence lands every later phase in its final package and inside a working test loop, as `CLAUDE.md`'s correctness-loop rule requires |
+| P1d inserted after P1b | Decision [0018](../research/decisions/0018-flows-runtime.md)'s Flows reference needs only `specref` and the renamed served document; built straight after the layout moves, it holds the Flows clients' operations as a parity list from the start, and the weekly refresh reports upstream Flows changes long before P18c scaffolds from it |
 | `pkg/sdk` lands in P1c | Decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md) makes the SDK the base of every Go client, and decision [0016](../research/decisions/0016-testing-and-acceptance.md)'s steps drive the API through it, so every scenario from the first one also tests the SDK |
 | P2 split into P2, P2c and P2b | P3 seals signing keys and idempotency bodies ([0006](../research/decisions/0006-authentication-and-tokens.md), [0005](../research/decisions/0005-persistence-postgresql.md)), so object storage and the keyring ([0013](../research/decisions/0013-secrets-at-rest.md)) come first, and they run their jobs on the queue |
 | The work queue, cron, outbox and event envelope move from P7 to P2c | `blob.expire` and `blob.delete` ([0005](../research/decisions/0005-persistence-postgresql.md)), `authn.keys.rotate` and `authn.sessions.expire` ([0006](../research/decisions/0006-authentication-and-tokens.md)) and `idempotency.purge` are queue jobs and periodic tasks ([0011](../research/decisions/0011-persistent-work-queue.md)), needed long before runs. The one event model of [0015](../research/decisions/0015-events-notifications-webhooks-audit.md) and [0018](../research/decisions/0018-flows-runtime.md) is fixed with the outbox, so Deploy and Flows emit the same envelope. P7 keeps the run state machine and `run.schedule` |
@@ -603,8 +608,8 @@ passing success, denial and failure scenarios.
    joins the test in the phase that adds it. Records DV-114.
 5. CI: split the acceptance job into `accept-core`, `accept-runs` and
    `accept-integrations`, add `parity` and a scheduled `nightly`, and list
-   every required job, `generated` included, in the `Quality gate` job's
-   `needs`.
+   every job it adds in the `Quality gate` job's `needs`, beside the
+   `generated` job P1d adds there.
 6. `test/fixtures/captures/` layout with `TestUnitCaptureRedaction` and an
    empty `TestAccCaptures` replayer, ready for P28.
 7. `pkg/sdk` over `pkg/client/api` ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)): one client for every
@@ -630,6 +635,69 @@ passing success, denial and failure scenarios.
   that names Spacelift fails it.
 - `make gate` passes at 95% in total and 90% per package; CI fails a run in
   which any scenario was skipped.
+
+## P1d: Flows specification reference
+
+Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md); report [02](../research/reference/02-graphql-to-rest-mapping.md#flows-rpc-to-rest)'s Flows: RPC to REST.
+
+**Depends on:** P1b, for the package moves and the `deploy` to `api` rename of
+[#73](https://github.com/weaveplatform/infraweave/issues/73).
+
+The Flows reference exists long before any Flows operation is served, so
+the Flows families are scaffolded from it when P18c starts, and an upstream
+change to `flowctl` or the Flows provider shows up in the weekly refresh
+rather than in the middle of the Flows phases. It needs only `specref` and
+the renamed served document, not the acceptance harness, so it runs beside
+P1c.
+
+**Tasks**
+1. The product seam in `internal/devtools/specref`: one reference per
+   Spacelift product, each with its own fetch, sources, build, entries in
+   its own `sources.lock.yaml`, document title and report text. The Deploy
+   reference, `api/reference/spacelift/`, regenerates byte for byte, and
+   `specref scaffold` reads either product's tags, so
+   `make verify-reference` and the golden files under
+   `internal/devtools/specref/testdata/golden/` show no diff.
+2. The Flows reference, `api/reference/spacelift-flows/`, beside
+   `api/reference/spacelift/`
+   ([02](../research/reference/02-graphql-to-rest-mapping.md#flows-rpc-to-rest)):
+   `specref fetch` pins the `terraform-provider-flows` Go structs (read
+   with `go/ast`) and `flowctl`'s `src/api.ts` (path literals and interface
+   types) in `sources.lock.yaml`, and validates the 46 published templates
+   and a live registry manifest against the overlay `schemas.yaml`
+   (`FlowDefinition`, `RegistryManifest`, `AppVersions`); `specref
+   inventory` writes the `@slflows/sdk` identifiers to the register
+   `docs/data/flows-sdk-inventory.json`, which feeds no REST operation. The
+   hand-written `rest-mapping.yaml` maps every RPC path by the verb rules
+   and overrides, or excludes it with a reason, and `specref generate`
+   writes `flows.openapi.yaml`, each operation marked `x-rpc`, a list of
+   `{path, client}` with `client` `provider` or `flowctl`
+   (`/cli/flows/export` and `/provider/flows/export_definition` share one
+   operation), and `coverage.md`, failing on an unmapped or stale RPC path.
+3. Parity: `TestUnitFlowsParity` compares the Flows reference with the
+   served `api/api.openapi.yaml`. `api/parity-baseline.flows.json` accepts
+   every Flows reference operation as missing, since none is served before
+   P18c, which shrinks it; the five test-scenario operations stay accepted
+   until PD-16 is decided. `make parity-baseline` rewrites both baselines.
+4. Product-scoped capabilities: each record of
+   [capabilities.json](../data/capabilities.json) gains `product` (`deploy`
+   or `flows`), the `Flows `-prefixed tags join as `flows` records, and
+   docscheck checks each reference's tags against its own product's records.
+5. CI: `openapi-spec-update.yml` also moves the `terraform-provider-flows`
+   commit, the `flowctl` version and `@slflows/sdk`; `make reference-fetch`,
+   `make reference`, `make reference-inventory` and `make verify-reference`
+   cover both products; and the `Quality gate` job lists `generated` in its
+   `needs`, so drift in generated code blocks a merge.
+
+**Exit criteria**
+- `make verify-reference` regenerates the Deploy reference byte for byte.
+- Every `/provider/...` and `/cli/...` RPC path of the pinned sources is
+  mapped in `rest-mapping.yaml` or excluded with its reason.
+- The 46 published templates validate against `schemas.yaml`.
+- `TestUnitFlowsParity` passes against `api/parity-baseline.flows.json`.
+- docscheck fails on a Flows reference tag with no `flows` record, and on a
+  Deploy reference tag with no `deploy` record.
+- `make gate` passes at 95% in total and 90% per package.
 
 ## P2: PostgreSQL, migrations and operability
 
@@ -2136,7 +2204,7 @@ own records, and the metrics and traces operators run infraweave with.
 
 Decisions: [0018](../research/decisions/0018-flows-runtime.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0024](../research/decisions/0024-expression-language.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
 
-**Depends on:** P18, P4b, P10.
+**Depends on:** P18, P4b, P10, P1d.
 
 Flows, built on Deploy's events and belonging to the account: projects,
 flows, blocks, events, invocations and timers on the work queue, with
@@ -2159,28 +2227,9 @@ expression in CEL.
    `flows_projects.account_id` referencing `access`' accounts. The
    `templates` edge lands here if P21 has landed, and with P21 otherwise
    ([declared graph](repo-layout.md#declared-graph)).
-3. The Flows reference, `api/reference/spacelift-flows/`, beside
-   `api/reference/spacelift/`
-   ([02](../research/reference/02-graphql-to-rest-mapping.md#flows-rpc-to-rest)):
-   `specref fetch` pins the `terraform-provider-flows` Go structs (read
-   with `go/ast`) and `flowctl`'s `src/api.ts` (path literals and interface
-   types) in `sources.lock.yaml`, and validates the 46 published templates
-   and a live registry manifest against the overlay `schemas.yaml`
-   (`FlowDefinition`, `RegistryManifest`, `AppVersions`); `specref
-   inventory` writes the `@slflows/sdk` identifiers to the register
-   `docs/data/flows-sdk-inventory.json`, which feeds no REST operation. The
-   hand-written `rest-mapping.yaml` maps every RPC path by the verb rules
-   and overrides, and `specref generate` writes `flows.openapi.yaml`, each
-   operation marked `x-rpc`, a list of `{path, client}` with `client`
-   `provider` or `flowctl` (`/cli/flows/export` and
-   `/provider/flows/export_definition` share one operation), and
-   `coverage.md`, failing on an unmapped or stale RPC path. The five
-   test-scenario operations are accepted as missing in
-   `api/parity-baseline.flows.json` until PD-16 is decided.
-   Each record of [capabilities.json](../data/capabilities.json) gains
-   `product` (`deploy` or `flows`), the `Flows `-prefixed tags join as
-   `flows` records, and docscheck checks each reference's tags against its
-   own product's records. `make verify-reference` covers both references.
+3. The Flows reference, `api/reference/spacelift-flows/`, comes from
+   [P1d](#p1d-flows-specification-reference); the Flows families are
+   scaffolded from its tags.
 4. The Flows operations in the served document: `api/src/api/` fragments
    under `/api/v1/flows/...`, tagged `Flows Projects`, `Flows Apps`,
    `Flows Data Tables` and the other `Flows `-prefixed tags, bundled into
@@ -2194,8 +2243,11 @@ expression in CEL.
    OIDC, audit and OTLP export) are designed from the docs and decision
    0018's data model and carry `x-upstream: none`. The four project roles,
    and the account admin in place of Spacelift Flows' organization admin,
-   are enforced in the handlers. Test: `TestUnitFlowsParity` against
-   `api/parity-baseline.flows.json`. Records DV-069.
+   are enforced in the handlers. Each operation that lands leaves
+   `api/parity-baseline.flows.json` in the same pull request, so
+   `TestUnitFlowsParity` holds the baseline to what is still missing; the
+   five test-scenario operations stay in it until PD-16 is decided.
+   Records DV-069.
 5. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
    `flows.lifecycle` and `flows.invocation.status` jobs, effects committed
    with the delivery, schedules through the cron ticker, limits and

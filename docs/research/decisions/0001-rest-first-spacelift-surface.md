@@ -297,7 +297,7 @@ Planned:
   and `TestUnitDeployParityChecks` become `TestUnitAPIParity` and
   `TestUnitAPIParityChecks`, and `api/parity-baseline.json` becomes
   `api/parity-baseline.deploy.json`.
-- From P18c, `TestUnitFlowsParity` (`api/parity_test.go`) holds the Flows
+- From P1d, `TestUnitFlowsParity` (`api/parity_test.go`) holds the Flows
   reference, `api/reference/spacelift-flows/flows.openapi.yaml`, to the
   served document and `api/parity-baseline.flows.json` by the same rules.
 - `pkg/sdk` unit tests against a chi test server cover the token exchange and

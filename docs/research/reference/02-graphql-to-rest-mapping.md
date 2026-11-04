@@ -192,7 +192,7 @@ through a list or a scalar.
 
 ## Flows: RPC to REST
 
-From P18c (decision [0018](../decisions/0018-flows-runtime.md#api-and-clients)),
+From P1d (decision [0018](../decisions/0018-flows-runtime.md#api-and-clients)),
 `specref` projects Flows onto REST as this section describes.
 Spacelift Flows has no GraphQL API and no published specification. Its
 first-party clients call a private RPC interface: `POST <base>/cli/...` from

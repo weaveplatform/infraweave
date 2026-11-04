@@ -59,11 +59,11 @@ infraweave/
 │   ├── oapi-client-<spec>.yaml    oapi-codegen client config; output pkg/client/<spec> or internal/agent/wire
 │   ├── doc.go api_test.go         embeds of the bundles and the spec checks
 │   ├── parity-baseline.*.json     accepted parity gaps per reference: .deploy.json (TestUnitAPIParity),
-│   │                              .flows.json (TestUnitFlowsParity, P18c)
+│   │                              .flows.json (TestUnitFlowsParity, P1d)
 │   └── reference/
 │       ├── spacelift/             the Spacelift specification reference and its snapshots; generated
 │       ├── spacelift-flows/       the Flows reference: provider and flowctl RPC paths projected to REST
-│       │                          by rest-mapping.yaml into flows.openapi.yaml and coverage.md; generated (P18c)
+│       │                          by rest-mapping.yaml into flows.openapi.yaml and coverage.md; generated (P1d)
 │       └── provider-parity.yaml   Terraform provider renames, type changes and omissions (P24)
 ├── internal/
 │   ├── app/                       composition root: serve, scheduler, all, migrate

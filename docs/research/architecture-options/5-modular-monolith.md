@@ -133,7 +133,7 @@ infraweave/
 │   ├── src/operator/           (P3b) the operator API: organizations, tiers, organization tiers, grants, billing
 │   ├── proto/flows/app/v1/     (Flows) the `App` and `Host` gRPC services, package infraweave.flows.app.v1
 │   ├── reference/spacelift/    unchanged
-│   └── reference/spacelift-flows/  (Flows) the Flows reference: provider and flowctl RPC paths projected to REST
+│   └── reference/spacelift-flows/  (P1d) the Flows reference: provider and flowctl RPC paths projected to REST
 ├── web/
 │   └── console/                (P24c) the console: React 19, TypeScript strict, Vite; orval client and
 │                               TanStack Query hooks generated from the served bundle and committed
@@ -1904,7 +1904,7 @@ stacks stream. About 20 new files and 6 edited.
 | `api` (`api/doc.go`, `api/deploy_test.go`) | `api` (`api/doc.go`, `api/api_test.go`) | embeds stay, reading `api.openapi.yaml`; the `TestUnitDeploy…` tests become `TestUnitAPI…`; a `Worker` embed joins at P8 |
 | `api/src/deploy` | `api/src/api` | grows one `paths-<family>.yaml` per family, Deploy and Flows |
 | `api/deploy.openapi.yaml` | `api/api.openapi.yaml` | the bundle of `api/src/api` |
-| `api/parity-baseline.json` | `api/parity-baseline.deploy.json` | read by `TestUnitAPIParity`; `api/parity-baseline.flows.json` joins it (Flows) |
+| `api/parity-baseline.json` | `api/parity-baseline.deploy.json` | read by `TestUnitAPIParity`; `api/parity-baseline.flows.json` joins it (P1d) |
 | `api/reference/spacelift` | `api/reference/spacelift` | unchanged |
 | `internal/buildinfo` | `internal/platform/buildinfo` | `-ldflags` paths in the `Makefile` change |
 | `internal/docscheck` | `internal/devtools/docscheck` | `make docs-check` path changes |
