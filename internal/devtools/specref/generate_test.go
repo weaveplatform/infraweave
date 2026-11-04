@@ -61,7 +61,7 @@ func golden(t *testing.T, name string, got []byte) {
 	}
 	if !bytes.Equal(want, got) {
 		t.Errorf(
-			"%s differs from golden; run go test ./internal/specref -update and review the diff",
+			"%s differs from golden; run go test ./internal/devtools/specref -update and review the diff",
 			name,
 		)
 	}

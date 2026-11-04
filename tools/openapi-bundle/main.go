@@ -1,6 +1,6 @@
 // Command openapi-bundle merges api/src/<service>/*.yaml fragments into
 // api/<service>.openapi.yaml (make bundle). Logic lives in
-// internal/openapibundle.
+// internal/devtools/openapibundle.
 package main
 
 import (

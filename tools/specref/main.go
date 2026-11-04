@@ -5,7 +5,7 @@
 // into a served-API fragment, inventory writes or checks the GraphQL
 // inventory register and report 29, which summarizes it, and parity reports
 // the served API's operations against the reference and rewrites the parity
-// baseline. Logic lives in internal/specref.
+// baseline. Logic lives in internal/devtools/specref.
 package main
 
 import (

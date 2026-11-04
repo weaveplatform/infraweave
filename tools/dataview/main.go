@@ -1,5 +1,5 @@
 // Command dataview writes docs/implementation/tiers.md from the docs/data
-// registers (make generate). Logic lives in internal/dataview.
+// registers (make generate). Logic lives in internal/devtools/dataview.
 package main
 
 import (

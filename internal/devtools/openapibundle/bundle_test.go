@@ -33,7 +33,7 @@ func TestUnitBundleGolden(t *testing.T) {
 	}
 	if !bytes.Equal(want, got) {
 		t.Errorf(
-			"bundle differs from %s; run go test ./internal/openapibundle -update and review the diff",
+			"bundle differs from %s; run go test ./internal/devtools/openapibundle -update and review the diff",
 			path,
 		)
 	}

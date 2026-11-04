@@ -1,5 +1,5 @@
 // Command stubgen writes unimplemented.gen.go next to a generated strict
-// server (make generate). Logic lives in internal/stubgen.
+// server (make generate). Logic lives in internal/devtools/stubgen.
 package main
 
 import (
