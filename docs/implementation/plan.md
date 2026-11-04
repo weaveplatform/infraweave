@@ -808,11 +808,13 @@ organizations it holds, their accounts and their members.
    which only operator principals reach. `internal/kernel`
    `organization.go`, `account.go` and `principal.go`, whose principal names
    its organization, its account and, for a person, its member.
-2. `internal/access/internal/core/token`: JWT signing with go-jose, the
+2. `internal/access/internal/core/token`: JWTs with go-jose, the
    `api-token` ES256 key, `next`, `active`, `retiring` and `retired`
-   states and the daily `authn.keys.rotate` task; `local` and `kms`
-   backends. Tests: `TestUnitTokenClaims`, `TestUnitKeyRotation` in
-   virtual time.
+   states and the daily `authn.keys.rotate` task.
+   `internal/platform/crypt/signer` signs with a local key or a KMS
+   signing key from the providers of `crypt/kek`
+   ([0006](../research/decisions/0006-authentication-and-tokens.md)).
+   Tests: `TestUnitTokenClaims`, `TestUnitKeyRotation` in virtual time.
 3. `internal/access/internal/core/apikey`: `iwk_` secrets hashed with
    SHA-256, `POST /auth/token` exchange (`apiKeyUser`), reset, disable,
    delete, `last_used_at`; OIDC API keys verified against the issuer's JWKS
@@ -845,6 +847,11 @@ organizations it holds, their accounts and their members.
 6. Remove the "auth not enforced" note from `README.md`; `bearerAuth` is now
    enforced by the middleware on every route except health, discovery and
    login callbacks.
+7. The [domain wiring](#p1b-domain-layout-and-depguard) of `access`, a
+   hexagon, so it also takes a `core-not-adapters` entry; it is the first
+   domain in `domains.go` and the migration order. Its `features` edge lands with
+   P3b and its `policiesapi.Evaluator` back edge with P13b
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - Every operation listed above is served and passes its success and failure
@@ -941,9 +948,14 @@ use.
    `organization_accounts.feature`, `organization_limits.feature`. Records
    DV-109.
 6. The operator API: `api/src/operator/` bundled to
-   `api/operator.openapi.yaml`, outside the parity surface, for the
-   installation-level actions only: organizations, tiers, the billing
-   switch, organization tiers, grants and the queue's dead jobs. Creating
+   `api/operator.openapi.yaml`, generated into
+   `internal/platform/gen/operator` and `pkg/client/operator`, outside the
+   parity surface, for the installation-level actions only: organizations,
+   tiers, the billing switch, organization tiers, grants and the queue's
+   dead jobs. As for `deploy`, each domain serves its own operations:
+   `access` organizations, their first account and break-glass
+   credentials, whose tables `features` cannot reference, and `features`
+   the rest. Creating
    an organization creates its first account, whose slug may be the
    organization's; the account starts unclaimed until an organization admin
    claims it (`accounts.claimed_at`, a second claim answers `409`, decision
@@ -973,6 +985,12 @@ use.
    which account admins maintain. Tests: `TestUnitPKCE`,
    `TestUnitRefreshRotation`, `TestUnitRedirectURIs`. Feature:
    `auth_oauth_server.feature`. Records DV-113.
+9. The [domain wiring](#p1b-domain-layout-and-depguard) of `features`,
+   which imports no domain and goes first in `domains.go` and the
+   migration order, ahead of `access`; its tables carry organization and
+   account IDs without foreign keys. `access`' edge to `features` lands
+   here: `access` checks its features and limits through `featuresapi`
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - The operations of tasks 1 to 8 are served and pass their success and
@@ -1076,8 +1094,12 @@ caller can do something.
    `managedUserUserRoleBindings`, `managedUserGroupUserRoleBindings`,
    `stackRoleBindings`. Legacy `SpaceAccessRule` inputs stored as bindings
    with `origin = access_rule`. An API key's `admin` reads whether it holds
-   `space-admin` on the account's top space (DV-013). Feature:
-   `authz_bindings.feature`.
+   `space-admin` on the account's top space (DV-013). `access` sits below
+   `stacks` in the [declared graph](repo-layout.md#declared-graph), so a
+   stack binding holds the stack's ID without a foreign key, `stacks`
+   removes a deleted stack's bindings through `accessapi`, and the stack
+   binding operations and `stacksWithAccessToSpace`, which name stacks,
+   are `stacks`' over `accessapi`. Feature: `authz_bindings.feature`.
 3. Grant views with the explaining evaluator: `usersWithAccessToSpace`,
    `userGroupsWithAccessToSpace`, `apiKeysWithAccessToSpace`,
    `apiKeySessionsWithAccessToSpace`, `userSessionsWithAccessToSpace`,
@@ -1129,6 +1151,13 @@ update semantics, input strictness and search every later family reuses.
 6. Stack reads that later phases fill answer from empty data until then:
    `stackRuns`, `stackRunsInRange`, `stackProposedRuns`, `stackTasks` and
    `stackRun` return empty pages or `404`.
+7. The [domain wiring](#p1b-domain-layout-and-depguard) of `vendors` and
+   `stacks`, in that order after `access` in `domains.go` and the migration
+   order. `vendors` imports `features` and `access`; `stacks` imports
+   `features`, `access` and `vendors`, and its tables reference `access`'
+   spaces. The `stacks` edge to `workers` lands with P8, and `stacks`'
+   `runsapi.StackStatus` back edge with P7
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - The Stacks operations of task 1 and the Version Catalog operations of
@@ -1183,6 +1212,13 @@ environment, and the expression engine every later surface uses.
    `expressions_editor.feature` against a stack, which later phases extend,
    and the interpolation scenario of `expressions_deploy.feature`. Records
    DV-103.
+6. The [domain wiring](#p1b-domain-layout-and-depguard) of
+   `configuration` and `expressions`. `configuration` follows `stacks` in
+   `domains.go` and the migration order and imports `features`, `access`
+   and `stacks`; its attachments and stack elements reference `stacks`.
+   `expressions` has no `api/` and no migration stream, imports no domain
+   and is constructed last, from every domain's `Surfaces()`
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - Contexts and the stack configuration operations meet decision 0016's
@@ -1205,7 +1241,12 @@ queued; nothing executes them until P8.
 **Tasks**
 1. `internal/runs` (hexagon) with its migration stream: `runs`,
    `run_state_transitions`, `stack_run_locks`, `stack_run_state`,
-   `stack_outputs`. `internal/kernel/run.go` holds the 22 `RunState`
+   `stack_outputs`, and the stack-by-run-state read view over `stacks` and
+   `stack_run_state`, the one sanctioned read across two schemas, which
+   `runsapi.StackStatus` serves to stack reads and to stack lists filtered
+   or sorted by state
+   ([0004](../research/decisions/0004-repository-architecture.md#constraints)).
+   `internal/kernel/run.go` holds the 22 `RunState`
    values (`PENDING` absent, `UNKNOWN` never assigned), `RunType`,
    `StackState` and `RunPriority`.
 2. `internal/runs/internal/core/machine`: the edges of the
@@ -1224,9 +1265,19 @@ queued; nothing executes them until P8.
    no-ops until P13 and P16), the seven priority levels.
 5. Read and queue operations: `run`, `runStack`, `searchRuns`,
    `searchRunsSuggestions`, `runCancel`, `runPrioritySet`, and the stack
-   run lists left empty by P5. Feature: `runs_queue.feature` (a blocking
+   run lists left empty by P5, which `runs`' partial serves, since `stacks`
+   imports no `runs` package. Feature: `runs_queue.feature` (a blocking
    run takes the lock, a second waits, cancel releases it). A run's
    `allowedActions` include only the transitions its state allows.
+6. The [domain wiring](#p1b-domain-layout-and-depguard) of `runs`, a
+   hexagon, after `configuration` in `domains.go` and the migration order:
+   its edges to `features`, `access`, `stacks`, `configuration` and
+   `vendors`, with `runs` and `stack_run_locks` referencing `stacks`. Its
+   `workers` edge lands with P8 and its `policies` edge with P13. `stacks`
+   reads run state through `runsapi.StackStatus`, a back edge that
+   `internal/app` sets after construction (`SetStackStatus`), adding no
+   import and no foreign key
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - `runs_queue.feature` passes on two `infraweave all` instances; one
@@ -1266,7 +1317,8 @@ container runs a stub runner until P9.
    `internal/workers/internal/adapters/protocol` serves `register`, `poll`,
    `deregister`, `runs/{run}/spec`, `reports`, `upload-urls`, `log-chunks`,
    `artifacts` and `workspace`. Held polls woken by `infraweave_runs`; the
-   claim with `FOR UPDATE SKIP LOCKED` in `runs/internal/core/schedule`.
+   claim with `FOR UPDATE SKIP LOCKED` in
+   `internal/runs/internal/core/schedule`.
    Tests: `TestUnitWorkerRegistration` (foreign chain, reset serial,
    replayed `jti`, skewed `iat`), `TestAccRunClaim` (50 concurrent pollers,
    one claim per run). Records DV-008, DV-024, DV-027.
@@ -1278,8 +1330,8 @@ container runs a stub runner until P9.
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
    cycle), `executor/docker` (the launcher's own binary bind-mounted
    read-only as the container's root process, UID 1983) and `agenttest`.
-   `infraweave launcher` and the hidden `infraweave runner` in
-   `cmd/infraweave`.
+   `internal/agent/cli` holds `infraweave launcher` and the hidden
+   `infraweave runner` stub, which `cmd/infraweave/agent.go` registers.
 5. Liveness: a worker unseen for `worker.offline_after` (3 minutes) is
    `OFFLINE` and receives no new work; `worker.reap` fails a run whose
    worker stays offline past `run.lost_after` (60 minutes) as a lost run
@@ -1293,6 +1345,15 @@ container runs a stub runner until P9.
    ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
    [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)). Tests: `TestUnitWorkerPoolSample` in virtual time,
    and a retention case.
+7. The [domain wiring](#p1b-domain-layout-and-depguard) of `workers`, a
+   hexagon, after `access` in `domains.go` and the migration order: its
+   edges to `features` and `access`, and the edges waiting on it, `stacks`
+   to `workers` (a stack's worker pool references `worker_pools`) and
+   `runs` to `workers` (`runs`' `run_assignments` references `workers`).
+   The protocol claims and reports through `runsapi.Scheduler` and
+   `runsapi.Reports`, back edges that `internal/app` sets after
+   construction (`SetScheduler`, `SetReports`), adding no import and no
+   foreign key ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - `worker_protocol.feature` (`@postgres`, `@objectstore`): a launcher
@@ -1332,6 +1393,12 @@ workspace.
 4. The runner's `infraweave_backend.tf` with `TF_HTTP_USERNAME` and
    `TF_HTTP_PASSWORD`, and lock release in the terminal transition.
    Records DV-032 to DV-035.
+5. The [domain wiring](#p1b-domain-layout-and-depguard) of `state`, after
+   `runs` in `domains.go` and the migration order: its edges to
+   `features`, `access`, `stacks` and `runs`, with `state_workspaces`
+   referencing `stacks`. `runs` reads `stateapi.Versions` through a back
+   edge bound by its first use at handover, P16's output references
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - `state_backend.feature` (`@terraform`, `@tofu`): init, plan and apply
@@ -1370,9 +1437,10 @@ through the backend.
    `TestUnitMaskOverlaps`, `TestUnitMaskMinimum` (the 4-byte rule, DV-051).
    Feature: `secrets_run_delivery.feature`.
 4. Sources: `internal/vcs` skeleton with the `Source` interface and the
-   `rawgit` provider (public HTTPS clone), served in acceptance by Gitea as a
-   plain Git host; `uploadLocalWorkspace` and `runProposeLocalWorkspace` for
-   local preview.
+   `rawgit` provider (public HTTPS clone) in
+   `internal/vcs/internal/adapters/rawgit`, served in acceptance by Gitea as
+   a plain Git host; `uploadLocalWorkspace` and `runProposeLocalWorkspace`
+   for local preview.
 5. Run operations: `runTrigger`, `runConfirm`, `runDiscard`, `runLogs`,
    `runLogsDownloadURL`, `runChangesV2`, `runChangesV3`, plus
    `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns` with
@@ -1384,6 +1452,13 @@ through the backend.
    `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so the provider's
    `infraweave_current_stack` and `infraweave_current_space` have their
    data.
+7. The [domain wiring](#p1b-domain-layout-and-depguard) of `vcs`, a
+   hexagon, after `state` in `domains.go` and the migration order: its
+   edges to `features`, `access`, `stacks` and `runs`. Its `policies` edge
+   lands with P13 and its `registry` edge with P17. The handover asks
+   `vcsapi.Sources` for the source archive URL, a back edge that
+   `internal/app` sets after construction (`SetSources`), adding no import
+   and no foreign key ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - `runs_terraform.feature` and `runs_tofu.feature` (`@postgres`,
@@ -1408,7 +1483,8 @@ that depend on them.
 
 **Tasks**
 1. Run types: proposed, tracked, task, destroy and testing paths in
-   `runs/internal/core/lifecycle`; `taskCreate` with `skipInitialization`;
+   `internal/runs/internal/core/lifecycle`; `taskCreate` with
+   `skipInitialization`;
    `proposeWithOverrides`; `runTriggerBatch`; `stackTasks`.
 2. Actions: `runRetry`, `runStop`, `runKill` (signals through the poll),
    `runTargetedReplan` with `PREPARING_REPLAN` and T44, `runPromote`,
@@ -1420,8 +1496,12 @@ that depend on them.
    `sensitive`; `runWorkerMetrics`, `runCpuProfileDownloadURL` from
    `run-observability`.
 5. Workflow files: `.infraweave/workflow.yml` command templates rendered
-   by the runner at initialization through `internal/platform/expr`, with every
-   interpolated value shell-quoted. Tests: `TestUnitWorkflowQuoting`, and
+   by the runner in `internal/agent/exec` at initialization through
+   `internal/platform/expr`, with every interpolated value shell-quoted.
+   `vendors` contributes the templates' editor surface through
+   `Surfaces()`, from each `internal/iac` vendor's workflow keys
+   ([option 5](../research/architecture-options/5-modular-monolith.md#expressions)).
+   Tests: `TestUnitWorkflowQuoting`, and
    the hostile workspace scenario of `expressions_deploy.feature`. Records
    DV-104.
 6. Feature: `runs_lifecycle.feature` (proposed, tracked with confirm,
@@ -1483,7 +1563,7 @@ acknowledged, default push behaviour creating tracked and proposed runs,
 checks, pull request comments and deployments.
 
 **Tasks**
-1. `internal/vcs` (hexagon): `vcs_integrations` with sealed credentials and
+1. `internal/vcs`, wired in P9: `vcs_integrations` with sealed credentials and
    webhook secrets, one default per provider, space reach, detaching on
    delete. Operations: `githubIntegration`, `githubIntegrationUpdate`,
    `githubEnterpriseIntegrationCreate`, `githubEnterpriseIntegration`,
@@ -1540,8 +1620,9 @@ state points, with receipts committed in the transition they justify.
    Tests: `TestUnitRegoEngines`, `TestUnitRemovedBuiltins`,
    `TestUnitPolicyTimeout`.
 2. `internal/policies` (flat domain): `policies`, attachments and
-   auto-attachment by label, `run_policy_receipts`, `run_flags`.
-   Operations: `policies`, `policy`, `policyCreatev2`, `policyUpdatev2`,
+   auto-attachment by label; `run_policy_receipts` and `run_flags` are in
+   `runs`' stream, since a run transition commits them. Operations:
+   `policies`, `policy`, `policyCreatev2`, `policyUpdatev2`,
    `policyDelete`, `policyAttach`, `policyDetach`, `policyAttachedStack`,
    `attachablePoliciesInSpace`, `autoattachmentForLabels`, `searchPolicies`,
    `searchPoliciesSuggestions`, `searchSpacePolicies`,
@@ -1552,16 +1633,25 @@ state points, with receipts committed in the transition they justify.
    matching report 09 section 4, with the reference's `spacelift.*` input
    keys named `infraweave.*`, `GET /.well-known/policy-contract.json`,
    combination rules. Tests: `TestUnitPolicyContract`,
-   `TestUnitCombination`. `POST /policies/check` compiles a body
+   `TestUnitCombination`. `POST /policies/check`, served by `expressions`
+   over the surface `policies` lists in `Surfaces()`, compiles a body
    with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
-4. Evaluation points in `runs/internal/core/gates`: approval on `QUEUED`,
-   `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
+4. Evaluation points in `internal/runs/internal/core/gates`: approval on
+   `QUEUED`, `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
    `PLANNING` and each targeted replan; push in `vcs.evaluate_event`;
    trigger through the durable `policy.trigger` job. `runReview`,
    `runPolicyReceiptSample`.
 5. Features: `policy_plan.feature`, `policy_approval.feature`,
    `policy_push.feature`, `policy_trigger.feature`, against a real Terraform
    run.
+6. The [domain wiring](#p1b-domain-layout-and-depguard) of `policies`,
+   after `configuration` and before `runs` in `domains.go` and the
+   migration order: its edges to `features`, `access` and `stacks`, with
+   stack attachments referencing `stacks`, and the edges waiting on it,
+   `runs` to `policies` (`run_policy_receipts` references `policies`) and
+   `vcs` to `policies` (push policies through `policiesapi.Evaluator`).
+   `policies` imports none of its callers
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
@@ -1580,15 +1670,19 @@ The policy types outside the run workflow, the `LOGIN_POLICIES` scheme, and
 the tooling around evaluation: samples, captures, simulation and templates.
 
 **Tasks**
-1. Login policies through `access/internal/core/login`: authorization per
-   account, after the organization has authenticated the member. The
-   account's `LOGIN` policies, evaluated on its top space, admit or refuse
+1. Login policies through `internal/access/internal/core/login`:
+   authorization per account, after the organization has authenticated the
+   member. The account's `LOGIN` policies, evaluated on its top space, admit or refuse
    the member and compute its roles when it enters the account, at session
    creation and API key exchange; `session_grants`, `deny_message`
    aggregation, revocation on change; `authorizationScheme` and
    `accountUpdateAuthorizationScheme`. The accounts that admit a member are
    the entries of its account switcher, which is empty when none does.
-   Feature: `policy_login.feature`, `authz_login_policy.feature`.
+   `access` evaluates them through `policiesapi.Evaluator`, a back edge
+   that `internal/app` sets after construction (`SetEvaluator`), adding no
+   import and no foreign key
+   ([declared graph](repo-layout.md#declared-graph)). Feature:
+   `policy_login.feature`, `authz_login_policy.feature`.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
    `Deprecation` headers. Feature: `platform_deprecation.feature`.
 3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
