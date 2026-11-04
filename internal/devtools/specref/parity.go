@@ -37,6 +37,11 @@ type ParityOperation struct {
 	Method      string // upper case, as a route prints it
 	Path        string
 	Tag         string // the first tag, or Untagged
+	// Designed marks a served operation with x-upstream: none, designed by
+	// infraweave where no upstream client reaches. It is never matched with
+	// a reference operation, so it is infraweave-only even on a reference
+	// route.
+	Designed bool
 }
 
 // Route is "METHOD /path", the form the report and the baseline print.
@@ -130,6 +135,7 @@ func ParityOperations(spec []byte) ([]ParityOperation, error) {
 			if ts := tags(op); len(ts) > 0 {
 				o.Tag = ts[0]
 			}
+			o.Designed = op["x-upstream"] == "none"
 			out = append(out, o)
 		}
 	}
@@ -145,8 +151,14 @@ func ParityOperations(spec []byte) ([]ParityOperation, error) {
 // its operationId at its route, and moved when the served document has its
 // operationId at another route, or its route under an operationId the
 // reference does not use. A served operation no reference operation matches
-// is infraweave-only.
+// is infraweave-only, as is one marked x-upstream: none.
 func CompareParity(reference, served []byte) (*ParityReport, error) {
+	return compareParity(reference, served, nil)
+}
+
+// compareParity is CompareParity over the served operations whose tag owns
+// accepts, or all of them when owns is nil.
+func compareParity(reference, served []byte, owns func(tag string) bool) (*ParityReport, error) {
 	refOps, err := ParityOperations(reference)
 	if err != nil {
 		return nil, fmt.Errorf("reference: %w", err)
@@ -155,6 +167,9 @@ func CompareParity(reference, served []byte) (*ParityReport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("served: %w", err)
 	}
+	if owns != nil {
+		servedOps = slices.DeleteFunc(servedOps, func(o ParityOperation) bool { return !owns(o.Tag) })
+	}
 	refIDs := map[string]bool{}
 	for _, o := range refOps {
 		refIDs[o.OperationID] = true
@@ -162,6 +177,9 @@ func CompareParity(reference, served []byte) (*ParityReport, error) {
 	byID := map[string]ParityOperation{}
 	byRoute := map[string]ParityOperation{}
 	for _, o := range servedOps {
+		if o.Designed {
+			continue
+		}
 		byID[o.OperationID] = o
 		// A served operation that keeps a reference operationId is matched
 		// by it, wherever it is routed; only a renamed one is matched by
@@ -273,12 +291,16 @@ func (r *ParityReport) Text() string {
 	return b.String()
 }
 
-// ParityBaseline is api/parity-baseline.deploy.json: the reference operations
-// accepted as not served unchanged. Missing holds operationIds by reference
-// tag; Moved holds each deliberate divergence with the reason for it.
+// ParityBaseline is a product's api/parity-baseline.<product>.json: the
+// reference operations accepted as not served unchanged. Missing holds
+// operationIds by reference tag; Moved holds each deliberate divergence with
+// the reason for it. Reasons optionally says why a missing operation is
+// accepted, by operationId; a rewrite keeps a reason while its operation
+// stays missing.
 type ParityBaseline struct {
 	Missing map[string][]string `json:"missing"`
 	Moved   []BaselineMove      `json:"moved"`
+	Reasons map[string]string   `json:"reasons,omitempty"`
 }
 
 // BaselineMove records one moved operation: the reference's operationId and
@@ -338,6 +360,12 @@ func (r *ParityReport) Baseline(prev *ParityBaseline) *ParityBaseline {
 	for _, t := range r.Tags {
 		for _, o := range t.Missing {
 			b.Missing[t.Tag] = append(b.Missing[t.Tag], o.OperationID)
+			if reason := prev.reason(o.OperationID); reason != "" {
+				if b.Reasons == nil {
+					b.Reasons = map[string]string{}
+				}
+				b.Reasons[o.OperationID] = reason
+			}
 		}
 		for _, mv := range t.Moved {
 			m := BaselineMove{
@@ -357,6 +385,13 @@ func (r *ParityReport) Baseline(prev *ParityBaseline) *ParityBaseline {
 		}
 	}
 	return b
+}
+
+func (b *ParityBaseline) reason(id string) string {
+	if b == nil {
+		return ""
+	}
+	return b.Reasons[id]
 }
 
 // JSON encodes the baseline as the committed file holds it.
@@ -454,6 +489,12 @@ func (r *ParityReport) Diff(b *ParityBaseline) ParityDiff {
 			}
 		}
 	}
+	for _, id := range sortedKeys(b.Reasons) {
+		if _, ok := missingTag[id]; !ok {
+			d.Improvements = append(d.Improvements, fmt.Sprintf(
+				"%s has a reason, and the baseline does not list it as missing", id))
+		}
+	}
 	for _, m := range b.Moved {
 		out, ok := outcomes[m.OperationID]
 		switch {
@@ -507,9 +548,11 @@ func (d ParityDiff) Text() string {
 	return b.String()
 }
 
-// ParityFiles names the inputs of a parity run.
+// ParityFiles names the inputs of a parity run. Product scopes the served
+// operations to its own tags; the zero Product compares them all.
 type ParityFiles struct {
 	Reference, Served, Baseline string
+	Product                     Product
 }
 
 // ParityResult is a parity run: the report, the baseline it was checked
@@ -530,7 +573,7 @@ func ParityCheck(f ParityFiles) (*ParityResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("specref: %w", err)
 	}
-	rep, err := CompareParity(ref, served)
+	rep, err := f.Product.Parity(ref, served)
 	if err != nil {
 		return nil, err
 	}

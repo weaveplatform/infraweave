@@ -268,18 +268,19 @@ func TestUnitFlowsMappingParse(t *testing.T) {
 	if _, err := ParseFlowsMapping([]byte(flowsMappingFixture)); err != nil {
 		t.Fatal(err)
 	}
-	base := "tags: {T: t}\nresources:\n  r: {collection: rs, id: rId, tag: T}\n"
+	base := "tags: {Flows T: t}\nresources:\n  r: {collection: rs, id: rId, tag: Flows T}\n"
 	for name, tc := range map[string]struct{ yaml, want string }{
 		"unknown key":    {"nope: 1\n", "field nope not found"},
-		"no collection":  {"tags: {T: t}\nresources: {r: {id: x, tag: T}}\n", "needs collection and id"},
-		"undescribed":    {"tags: {}\nresources: {r: {collection: rs, id: x, tag: T}}\n", "which tags does not describe"},
-		"bad parent":     {base + "  s: {collection: ss, id: k, parent: nope, tag: T}\n", "unknown parent nope"},
+		"unprefixed tag": {"tags: {T: t}\n", `tag "T" does not start with "Flows "`},
+		"no collection":  {"tags: {Flows T: t}\nresources: {r: {id: x, tag: Flows T}}\n", "needs collection and id"},
+		"undescribed":    {"tags: {}\nresources: {r: {collection: rs, id: x, tag: Flows T}}\n", "which tags does not describe"},
+		"bad parent":     {base + "  s: {collection: ss, id: k, parent: nope, tag: Flows T}\n", "unknown parent nope"},
 		"bad noun":       {base + "nouns: {x: nope}\n", "names unknown resource nope"},
 		"no operationId": {base + "rpcs: {/a/b/get: {}}\n", "has no operationId"},
 		"half override":  {base + "rpcs: {/a/b/get: {operationId: o, method: GET}}\n", "needs both method and path"},
 		"no resource":    {base + "rpcs: {/a/b/get: {operationId: o, method: GET, path: /x}}\n", "needs its resource"},
 		"bad resource":   {base + "rpcs: {/a/b/get: {operationId: o, resource: nope}}\n", "names unknown resource"},
-		"bad tag":        {base + "rpcs: {/a/b/get: {operationId: o, tag: U}}\n", `has tag "U"`},
+		"bad tag":        {base + "rpcs: {/a/b/get: {operationId: o, tag: Flows U}}\n", `has tag "Flows U"`},
 		"both":           {base + "rpcs: {/a/b/get: {operationId: o}}\nexclude: {/a/b/get: why}\n", "both mapped and excluded"},
 		"no reason":      {base + "exclude: {/a/b/get: ' '}\n", "needs a reason"},
 	} {

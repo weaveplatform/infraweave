@@ -55,6 +55,11 @@ func ParseFlowsMapping(data []byte) (*FlowsMapping, error) {
 		return nil, fmt.Errorf("%s: %w", FileMapping, err)
 	}
 	var errs []error
+	for _, tag := range sortedKeys(m.Tags) {
+		if !flowsTag(tag) {
+			errs = append(errs, fmt.Errorf("%w: tag %q does not start with %q", ErrFlowsMapping, tag, FlowsTagPrefix))
+		}
+	}
 	for name, r := range m.Resources {
 		if r.Collection == "" || r.ID == "" {
 			errs = append(errs, fmt.Errorf("%w: resource %s needs collection and id", ErrFlowsMapping, name))

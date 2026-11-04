@@ -30,9 +30,9 @@
 // identifier register.
 //
 // For any product, ScaffoldFile copies one reference tag into a
-// served-API fragment with decision 0003's conventions, and CompareParity and
-// ParityCheck compare the served document with the reference against the
-// accepted baseline.
+// served-API fragment with decision 0003's conventions, and Product.Parity
+// and ParityCheck compare the served operations under the product's own tags
+// with its reference against the accepted baseline.
 //
 // # Input and output
 //

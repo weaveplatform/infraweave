@@ -34,6 +34,9 @@ type Product struct {
 	Register string
 	Report   string
 
+	// owns says which served operations, by first tag, belong to the
+	// product, since one served document holds every product.
+	owns      func(tag string) bool
 	generate  func(ctx context.Context, dir string) (*Generated, error)
 	pins      func(lock []byte) (map[string]string, error)
 	inventory func(dir string, out InventoryOutputs, check bool) error
@@ -49,6 +52,7 @@ var Deploy = Product{
 	Baseline: "api/parity-baseline.deploy.json",
 	Register: "docs/data/graphql-inventory.json",
 	Report:   "docs/research/reference/29-data-model-inventory.md",
+	owns:     func(tag string) bool { return !flowsTag(tag) },
 	generate: func(ctx context.Context, dir string) (*Generated, error) {
 		src, err := ReadSources(dir)
 		if err != nil {
@@ -74,6 +78,7 @@ var Flows = Product{
 	Spec:     FileFlowsSpec,
 	Baseline: "api/parity-baseline.flows.json",
 	Register: "docs/data/flows-sdk-inventory.json",
+	owns:     flowsTag,
 	generate: func(ctx context.Context, dir string) (*Generated, error) {
 		src, err := ReadFlowsSources(dir)
 		if err != nil {
@@ -85,6 +90,13 @@ var Flows = Product{
 	inventory: flowsInventory,
 }
 
+// FlowsTagPrefix opens every Flows tag, so that no Flows tag collides with
+// Deploy's own Flows tag, which holds the operations linking a Deploy
+// account to Flows.
+const FlowsTagPrefix = "Flows "
+
+func flowsTag(tag string) bool { return strings.HasPrefix(tag, FlowsTagPrefix) }
+
 // Products lists every product with a reference, in a fixed order.
 func Products() []Product { return []Product{Deploy, Flows} }
 
@@ -92,6 +104,14 @@ func Products() []Product { return []Product{Deploy, Flows} }
 // with check fails with ErrDrift when the committed inventory is stale.
 func (p Product) Inventory(dir string, out InventoryOutputs, check bool) error {
 	return p.inventory(dir, out, check)
+}
+
+// Parity compares the served document with the product's reference over
+// the served operations whose first tag is the product's, so another
+// product's operations are not reported infraweave-only. The zero Product
+// compares every served operation, as CompareParity does.
+func (p Product) Parity(reference, served []byte) (*ParityReport, error) {
+	return compareParity(reference, served, p.owns)
 }
 
 // ProductNamed is the product called name.
