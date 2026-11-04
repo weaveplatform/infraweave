@@ -462,8 +462,9 @@ internal/
 │           ├── http/                     strict partial for the Runs tag; run log, run state and stack run
 │           │                             streams over platform/httpkit/sse (P9)
 │           └── pg/                       runs, run_state_transitions, run_reviews, run_comments,
-│                                         run_policy_receipts, run_dependencies, run_external_dependencies,
-│                                         run_assignments, stack_run_locks, stack_run_state, stack_outputs
+│                                         run_policy_receipts, run_flags, run_dependencies,
+│                                         run_external_dependencies, run_assignments, stack_run_locks,
+│                                         stack_run_state, stack_outputs
 │
 ├── workers/                              pools, workers, credentials, the worker protocol endpoints (P8, P14)
 │   ├── api/                              Pools: Get, ForStack; Workers: Busy, Drain; events: WorkerChanged
@@ -617,8 +618,10 @@ first three are runs-owned and come from `runsapi.StackStatus`; only
 joins across two domains, which the store answers with a read of
 `runs`' `stack_run_state` view granted to the stacks schema (see the
 friction list). Configuration elements and contexts are a separate domain
-because they attach to stacks, registry modules and contexts alike, through polymorphic
-owners ([28, section 12.1](../reference/28-data-model.md#121-shapes-that-recur)):
+because they attach to stacks and contexts alike, through polymorphic
+owners ([28, section 12.1](../reference/28-data-model.md#121-shapes-that-recur));
+a registry module's elements and attachments are `registry`'s rows, since
+`registry` sits below `configuration`, `policies` and `cloud`.
 `configuration` subscribes to `StackUpdated` to recompute auto-attachments,
 and `runs` calls `configurationapi.Environment.Resolve` at handover to get
 the precedence order of [report 13](../reference/13-configuration.md#5-contexts).
@@ -968,6 +971,7 @@ internal/registry/
         │                 providers.v1 versions and download; lenient version parsing
         ├── http/         strict partial for Modules and Providers tags
         └── pg/           modules, module_versions, module_version_consumers, module_shares,
+                          module configuration elements and attachments,
                           terraform_providers, provider_versions, provider_version_platforms, gpg_keys
 ```
 
@@ -1587,11 +1591,13 @@ linters:
             - pkg: $m/internal/app
         agent-isolation:                    # rule 7: an allow list, so a new platform package is refused
           list-mode: lax                    # the longer match wins, so each allow beats the deny
-          files: ["**/internal/agent/**", "**/cmd/infraweave-agent/**"]
+          files: ["**/internal/agent/**", "**/cmd/infraweave/agent.go", "**/cmd/infraweave-agent/**"]
           deny:
             - pkg: $m/internal
+            - pkg: $m/pkg
             - pkg: github.com/jackc/pgx
           allow:
+            - $m/pkg/flows/app/v1$
             - $m/internal/agent/
             - $m/internal/kernel$
             - $m/internal/kernel/
@@ -1644,14 +1650,14 @@ above it:
 | `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |
 | `state` | features, access, stacks, runs | |
 | `cloud` | features, access, stacks | |
-| `registry` | features, access, workers, runs | |
+| `registry` | features, access, workers, configuration, policies, runs, cloud | |
 | `vcs` | features, access, stacks, runs, registry, policies | |
 | `schedules` | features, access, stacks, runs | |
-| `events` | features, access, stacks, runs, policies, vcs | |
+| `events` | features, access, workers, stacks, runs, policies, vcs | |
 | `templates` | features, access, stacks, runs | |
 | `resources` | features, access, stacks, runs, state, workers | |
-| `intelligence` | features, access, runs, policies, cloud, workers | `platform/httpkit/dispatch` for the `query` and `mutate` tools |
-| `flows` | features, access, runs, templates | `platform/httpkit/dispatch` for the API Request block |
+| `intelligence` | features, access, workers, stacks, policies, runs, cloud | `platform/httpkit/dispatch` for the `query` and `mutate` tools |
+| `flows` | features, access, stacks, runs, templates | `platform/httpkit/dispatch` for the API Request block |
 | `expressions` | none; `internal/app` hands it every domain's `Surfaces()` | |
 
 A back edge is the reverse of an edge in the table, used after
@@ -1879,9 +1885,9 @@ new files and 5 edited.
    `RunStateChanged` to compute deployment state.
 8. `internal/app/domains.go`, `router.go` (embed the partial),
    `config/config.go` (Settings field).
-9. `.golangci.yml`: the `graph-templates` rule (allowing `stacks/api`,
-   `runs/api` and `access/api`), and one entry each in
-   `constructors`, `shared-below-domains` and `agent-isolation`.
+9. `.golangci.yml`: the `graph-templates` rule (allowing `features/api`,
+   `access/api`, `stacks/api` and `runs/api`), and one entry each in
+   `constructors` and `shared-below-domains`.
 10. `docs/data/features.json`, and
     `internal/features/internal/catalogue/catalogue.gen.go` from it: the
     `templates` and `blueprints` capabilities at Business; the coverage test fails until

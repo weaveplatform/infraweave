@@ -847,7 +847,7 @@ organizations it holds, their accounts and their members.
 6. Remove the "auth not enforced" note from `README.md`; `bearerAuth` is now
    enforced by the middleware on every route except health, discovery and
    login callbacks.
-7. The [domain wiring](#p1b-domain-layout-and-depguard) of `access`, a
+7. The [domain wiring](#adding-a-domain) of `access`, a
    hexagon, so it also takes a `core-not-adapters` entry; it is the first
    domain in `domains.go` and the migration order. Its `features` edge lands with
    P3b and its `policiesapi.Evaluator` back edge with P13b
@@ -985,7 +985,7 @@ use.
    which account admins maintain. Tests: `TestUnitPKCE`,
    `TestUnitRefreshRotation`, `TestUnitRedirectURIs`. Feature:
    `auth_oauth_server.feature`. Records DV-113.
-9. The [domain wiring](#p1b-domain-layout-and-depguard) of `features`,
+9. The [domain wiring](#adding-a-domain) of `features`,
    which imports no domain and goes first in `domains.go` and the
    migration order, ahead of `access`; its tables carry organization and
    account IDs without foreign keys. `access`' edge to `features` lands
@@ -1151,11 +1151,12 @@ update semantics, input strictness and search every later family reuses.
 6. Stack reads that later phases fill answer from empty data until then:
    `stackRuns`, `stackRunsInRange`, `stackProposedRuns`, `stackTasks` and
    `stackRun` return empty pages or `404`.
-7. The [domain wiring](#p1b-domain-layout-and-depguard) of `vendors` and
+7. The [domain wiring](#adding-a-domain) of `vendors` and
    `stacks`, in that order after `access` in `domains.go` and the migration
    order. `vendors` imports `features` and `access`; `stacks` imports
    `features`, `access` and `vendors`, and its tables reference `access`'
-   spaces. The `stacks` edge to `workers` lands with P8, and `stacks`'
+   spaces; a stack holds its VCS integration's ID without a foreign key,
+   since `vcs` sits above `stacks`. The `stacks` edge to `workers` lands with P8, and `stacks`'
    `runsapi.StackStatus` back edge with P7
    ([declared graph](repo-layout.md#declared-graph)).
 
@@ -1212,7 +1213,7 @@ environment, and the expression engine every later surface uses.
    `expressions_editor.feature` against a stack, which later phases extend,
    and the interpolation scenario of `expressions_deploy.feature`. Records
    DV-103.
-6. The [domain wiring](#p1b-domain-layout-and-depguard) of
+6. The [domain wiring](#adding-a-domain) of
    `configuration` and `expressions`. `configuration` follows `stacks` in
    `domains.go` and the migration order and imports `features`, `access`
    and `stacks`; its attachments and stack elements reference `stacks`.
@@ -1269,7 +1270,7 @@ queued; nothing executes them until P8.
    imports no `runs` package. Feature: `runs_queue.feature` (a blocking
    run takes the lock, a second waits, cancel releases it). A run's
    `allowedActions` include only the transitions its state allows.
-6. The [domain wiring](#p1b-domain-layout-and-depguard) of `runs`, a
+6. The [domain wiring](#adding-a-domain) of `runs`, a
    hexagon, after `configuration` in `domains.go` and the migration order:
    its edges to `features`, `access`, `stacks`, `configuration` and
    `vendors`, with `runs` and `stack_run_locks` referencing `stacks`. Its
@@ -1345,7 +1346,7 @@ container runs a stub runner until P9.
    ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
    [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)). Tests: `TestUnitWorkerPoolSample` in virtual time,
    and a retention case.
-7. The [domain wiring](#p1b-domain-layout-and-depguard) of `workers`, a
+7. The [domain wiring](#adding-a-domain) of `workers`, a
    hexagon, after `access` in `domains.go` and the migration order: its
    edges to `features` and `access`, and the edges waiting on it, `stacks`
    to `workers` (a stack's worker pool references `worker_pools`) and
@@ -1391,9 +1392,13 @@ workspace.
    sealing into `states`, client-encrypted bodies, no new version for an
    identical body, `state.indexed` enqueued. Reading streams and unseals.
 4. The runner's `infraweave_backend.tf` with `TF_HTTP_USERNAME` and
-   `TF_HTTP_PASSWORD`, and lock release in the terminal transition.
+   `TF_HTTP_PASSWORD`. `state` releases the locks a run still holds when
+   `runs` emits that run's terminal event, since a run transition writes
+   only `runs`' tables, and `runsapi.StateAccess` refuses a lock to a run
+   that is no longer active
+   ([0004](../research/decisions/0004-repository-architecture.md#constraints)).
    Records DV-032 to DV-035.
-5. The [domain wiring](#p1b-domain-layout-and-depguard) of `state`, after
+5. The [domain wiring](#adding-a-domain) of `state`, after
    `runs` in `domains.go` and the migration order: its edges to
    `features`, `access`, `stacks` and `runs`, with `state_workspaces`
    referencing `stacks`. `runs` reads `stateapi.Versions` through a back
@@ -1452,7 +1457,7 @@ through the backend.
    `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so the provider's
    `infraweave_current_stack` and `infraweave_current_space` have their
    data.
-7. The [domain wiring](#p1b-domain-layout-and-depguard) of `vcs`, a
+7. The [domain wiring](#adding-a-domain) of `vcs`, a
    hexagon, after `state` in `domains.go` and the migration order: its
    edges to `features`, `access`, `stacks` and `runs`. Its `policies` edge
    lands with P13 and its `registry` edge with P17. The handover asks
@@ -1644,12 +1649,13 @@ state points, with receipts committed in the transition they justify.
 5. Features: `policy_plan.feature`, `policy_approval.feature`,
    `policy_push.feature`, `policy_trigger.feature`, against a real Terraform
    run.
-6. The [domain wiring](#p1b-domain-layout-and-depguard) of `policies`,
+6. The [domain wiring](#adding-a-domain) of `policies`,
    after `configuration` and before `runs` in `domains.go` and the
    migration order: its edges to `features`, `access` and `stacks`, with
    stack attachments referencing `stacks`, and the edges waiting on it,
    `runs` to `policies` (`run_policy_receipts` references `policies`) and
-   `vcs` to `policies` (push policies through `policiesapi.Evaluator`).
+   `vcs` to `policies` (push policies through `policiesapi.Evaluator`),
+   and `registry`'s and `intelligence`'s if P17 or P25 has landed.
    `policies` imports none of its callers
    ([declared graph](repo-layout.md#declared-graph)).
 
@@ -1776,7 +1782,7 @@ run and the discovery document cloud providers verify it against.
    the legacy
    `stackIntegrationAwsCreate` and `stackIntegrationAwsDelete` served and
    deprecated. STS fake in `internal/cloud/internal/aws/awsfake`.
-3. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `cloud`'s
+3. Wiring ([domain wiring](#adding-a-domain)): `cloud`'s
    graph rule and shared-rule entries, its place after `state` in
    `domains.go` and the migration order, and its edges to `features`,
    `access` and `stacks`, with foreign keys from attachments to stacks.
@@ -1822,7 +1828,7 @@ with output references and external dependencies.
    `stackScheduledDelete`, `stackScheduledDeleteCreate`,
    `stackScheduledDeleteUpdate`, `stackScheduledDeleteDelete`. Records
    DV-090.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+2. Wiring ([domain wiring](#adding-a-domain)):
    `schedules`' graph rule and shared-rule entries, its place after `vcs`
    in `domains.go` and the migration order, and its edges to `features`,
    `access`, `stacks` and `runs`, with foreign keys to stacks; scheduled
@@ -1843,7 +1849,9 @@ with output references and external dependencies.
    `stackDependenciesDeleteReference`,
    `stackDependenciesDeleteReferences`. An output reference may carry an
    expression over `value` and `outputs`, evaluated in `serve` at the
-   downstream run's handover; its scenario joins
+   downstream run's handover, which reads the upstream outputs through
+   `stateapi.Versions`, a back edge that `internal/app` sets after
+   construction (`SetVersions`); its scenario joins
    `expressions_deploy.feature`. Records DV-107.
 5. `internal/runs/internal/core/dependencies`: dependent runs, skipping on
    unchanged outputs, `SKIPPED` on upstream failure; external dependencies
@@ -1883,10 +1891,16 @@ Terraform module registry protocol and `terraform login`.
    `moduleAttachableVcsIntegrations`, `moduleAttachableWorkerPools`,
    `modulePolicyAttachment`, `moduleAttachableAwsIntegrations`,
    `moduleAttachableAzureIntegrations`.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `registry`'s
+2. Wiring ([domain wiring](#adding-a-domain)): `registry`'s
    graph rule and shared-rule entries, `core-not-adapters` included, its
    place after `cloud` in `domains.go` and the migration order, and its
-   edges to `features`, `access`, `workers` and `runs`. The waiting
+   edges to `features`, `access`, `workers`, `configuration`, `policies`,
+   `runs` and `cloud`. A module's configuration elements and its context,
+   policy and cloud integration attachments are `registry`'s rows, with
+   foreign keys to `modules` and to the context, policy or integration,
+   because those domains sit above `registry`; a module holds its VCS
+   integration's ID without a foreign key, as a stack does, and `vcs`
+   serves `moduleAttachableVcsIntegrations` over `registryapi`. The waiting
    `vcs`→`registry` edge lands here too: `vcs` routes tag pushes to
    `registryapi.Modules` once the push policy sets the version
    ([declared graph](repo-layout.md#declared-graph)).
@@ -1900,13 +1914,18 @@ Terraform module registry protocol and `terraform login`.
 4. Protocol in `internal/registry/internal/adapters/protocol`:
    `/.well-known/terraform.json`, `/registry/modules/v1/...` versions and
    download with signed `X-Terraform-Get`, lenient version segments, the
-   documented answers for unauthenticated callers; `api/src/registry/`
-   bundled to `api/registry.openapi.yaml`. `login.v1` (`/terraform-login`,
+   documented answers for unauthenticated callers, as hand-written chi
+   routes ([0004](../research/decisions/0004-repository-architecture.md))
+   described by `api/src/registry/` bundled to `api/registry.openapi.yaml`
+   for the contract tests ([0014](../research/decisions/0014-module-and-provider-registry.md));
+   `internal/app/discovery.go` assembles the discovery document from each
+   domain's contribution. `login.v1` (`/terraform-login`,
    `POST /terraform/token`) in `access`. Tests:
    `TestUnitVersionNumberRules`, `TestUnitVersionSegmentParse`. Records
    DV-052, DV-054, DV-055.
-5. Test cases as `TESTING` runs created through `runsapi`, including
-   negative cases.
+5. Test cases as `TESTING` runs created through `runsapi`, which carry the
+   module's configuration elements, since `runs` cannot read `registry`;
+   negative cases included.
 6. Features: `registry_protocol.feature`, `registry_modules.feature`
    (`@vcs`, `@terraform`, `@tofu`).
 
@@ -1975,11 +1994,12 @@ The Flows engine (P18c) adds its own consumer of the same fan-out.
    `worker_pool_samples` through `workers/api`. Tests:
    `TestUnitPolicySelection`, `TestUnitGroupingKey`,
    `TestUnitNotificationInputConformsToContract`.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `events`'
+2. Wiring ([domain wiring](#adding-a-domain)): `events`'
    graph rule and shared-rule entries, `core-not-adapters` included, its
    place after `schedules` in `domains.go` and the migration order, and its
-   edges to `features`, `access`, `stacks`, `runs`, `policies` and `vcs`,
-   with foreign keys from stack webhooks to stacks
+   edges to `features`, `access`, `workers`, `stacks`, `runs`, `policies`
+   and `vcs`, with foreign keys from stack webhooks to stacks;
+   `worker_usage` reads `worker_pool_samples` through `workersapi`
    ([declared graph](repo-layout.md#declared-graph)).
 3. HTTP delivery: signatures, secret headers, rule headers, timeouts, no
    redirects, retries with `retryOnFailure`, auto-disable after ten
@@ -2099,10 +2119,10 @@ expression in CEL.
    first request, sealed `flows_secrets`, named expressions, data tables
    and KV with locks; event bodies above 256 KiB in object storage under
    `flows/events/`. Records DV-065.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `flows`'
+2. Wiring ([domain wiring](#adding-a-domain)): `flows`'
    graph rule and shared-rule entries, `core-not-adapters` included, its
    place last before `expressions` in `domains.go` and the migration order,
-   and its edges to `features`, `access` and `runs`, with
+   and its edges to `features`, `access`, `stacks` and `runs`, with
    `flows_projects.account_id` referencing `access`' accounts. The
    `templates` edge lands here if P21 has landed, and with P21 otherwise
    ([declared graph](repo-layout.md#declared-graph)).
@@ -2373,7 +2393,7 @@ ServiceNow and Backstage integrations that attach to them.
    `blueprintWithGroupUpdate`, `blueprintWithGroupDelete`,
    `searchBlueprints`, `searchBlueprintsSuggestions`,
    `blueprintAttachToIntegration`, `blueprintDetachIntegration`.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+2. Wiring ([domain wiring](#adding-a-domain)):
    `templates`' graph rule and shared-rule entries, its place after
    `events` in `domains.go` and the migration order, and its edges to
    `features`, `access`, `stacks` and `runs`, with foreign keys from
@@ -2430,7 +2450,7 @@ capability gates.
    `stackSearchManagedEntitiesGroupByStacks`,
    `stackSearchManagedEntitiesGroupByTypes`, `runSearchEntityChanges`,
    `runSearchEntityChangesSuggestions`, `runResourceCreate`.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+2. Wiring ([domain wiring](#adding-a-domain)):
    `resources`' graph rule and shared-rule entries, its place after
    `templates` in `domains.go` and the migration order, and its edges to
    `features`, `access`, `stacks`, `runs`, `state` and `workers`, with
@@ -2700,13 +2720,14 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    limit (USD per 30 days), pooled across the organization's accounts,
    answering `403 limit-reached` beyond it.
    Feature: `ai_integrations.feature` (`@ai`). Records DV-071.
-2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+2. Wiring ([domain wiring](#adding-a-domain)):
    `intelligence`'s graph rule and shared-rule entries,
    `core-not-adapters` included, its place after `resources` in
    `domains.go` and the migration order, and its edges to `features`,
-   `access`, `runs`, `cloud` and `workers`, and to `policies` if P13 has
-   landed (P13 adds it otherwise); P25b's Intent attachments hold the foreign
-   keys to cloud integrations, worker pools and policies
+   `access`, `workers`, `stacks`, `runs` and `cloud`, and to `policies` if
+   P13 has landed (P13 adds it otherwise); `stackCreateFromIntent` creates
+   its stack through `stacksapi`, and P25b's Intent attachments hold the
+   foreign keys to cloud integrations, worker pools and policies
    ([declared graph](repo-layout.md#declared-graph)).
 3. Account controls: `aiEnabled`, `accountSetAiEnabled`,
    `aiTermsAccepted` and `aiTermsLatestVersion` (the reference's

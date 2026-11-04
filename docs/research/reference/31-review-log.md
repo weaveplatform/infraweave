@@ -132,8 +132,8 @@ and status are queries of the register.
 | DES-05 | [23](23-flows.md) | about 40, plus every `!expr` value and `ref(` call by script |
 | DES-07 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md) and the [implementation documents](../../implementation/plan.md) | about 250, plus the phase graph, every roadmap row and every changed file's dashes by script |
 | DES-09 | decisions [0001](../decisions/0001-rest-first-spacelift-surface.md) to [0024](../decisions/0024-expression-language.md), [30](30-open-questions.md) and the served deploy bundle | about 300, plus every served name and every reference Spacelift and root identifier by script |
-| DES-10 | decision [0004](../decisions/0004-repository-architecture.md), the [architecture options](../architecture-options/README.md), the [repository layout](../../implementation/repo-layout.md), decisions [0015](../decisions/0015-events-notifications-webhooks-audit.md) and [0016](../decisions/0016-testing-and-acceptance.md) | about 120, plus the strict-server composition compiled in a scratch module |
-| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,430 |
+| DES-10 | decision [0004](../decisions/0004-repository-architecture.md), the [architecture options](../architecture-options/README.md), the [repository layout](../../implementation/repo-layout.md), the [plan](../../implementation/plan.md), decisions [0005](../decisions/0005-persistence-postgresql.md), [0015](../decisions/0015-events-notifications-webhooks-audit.md) and [0016](../decisions/0016-testing-and-acceptance.md) | about 180, plus the strict-server composition compiled in a scratch module |
+| **All** | 28 reports, 24 records, 5 options, 5 implementation documents | about 4,490 |
 
 ## RES-02: platform API inventories, provider and clients
 
@@ -776,7 +776,11 @@ decisions 0004, 0005, 0006, 0007, 0008, 0011, 0013, 0015, 0018, 0019, 0021
 and 0024. Each finding's citations were read against the files, the
 strict-server composition was compiled with Go 1.27 in a scratch module,
 and the domain graph was rebuilt from every cross-domain `api` call the
-option 5 file names.
+option 5 file names. About 60 more claims came from reading the
+[plan](../../implementation/plan.md) against the ratified layout: three
+readers took a third of the phases each and checked every package path,
+every placement and each domain's edges against the declared graph in
+phase order, and each edge they found missing was checked for a cycle.
 
 ### Findings
 

@@ -13082,6 +13082,306 @@
           ]
         }
       ]
+    },
+    {
+      "id": "DES-10.19",
+      "severity": "missing",
+      "finding": "the plan's P1b predated the layout's placements: the listener, `/livez`, recovery and the 404 and 405 handlers had no target, the strict partials no domain-named alias, `kernel` gained files P2 and P3 own, and agent commands had a cobra file each in `cmd/infraweave`",
+      "change": "P1b names each placement, the alias and the one `cmd/infraweave/agent.go` over `internal/agent/cli`; `ids.go` lands with P2 and `principal.go` with P3",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "the listener lifecycle and the two-listener drain to `internal/platform/httpkit/serve`",
+            "re-exports its partial under its domain's name (`StacksDeploy`)",
+            "`ids.go` lands with P2 and `principal.go` with P3"
+          ],
+          "absent": [
+            "one cobra file per process mode"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.20",
+      "severity": "wrong",
+      "finding": "P1b enabled one depguard rule per domain before any domain existed, and no domain phase added its graph rule, its shared-rule entries, its place in the construction order or the edges and foreign keys that land with it",
+      "change": "An Adding a domain section states the wiring, and every phase that creates a domain carries a wiring task naming the edges that land with it and those that wait for a later phase",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "## Adding a domain",
+            "An edge to a domain that arrives later lands with that later phase."
+          ],
+          "absent": [
+            "one rule per domain listing the other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.21",
+      "severity": "missing",
+      "finding": "`TestAccSchemaDependencies`, which 0004's verification names, was in no phase, and `TestUnitDepguardFixtures` had no case for the agent's allow list or a domain without its rule entries",
+      "change": "P2 builds the schema check over keys and views; P1b's fixtures gain both cases",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "or a view's dependency in `pg_depend`",
+            "an agent package that imports a platform package outside its allow list"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.22",
+      "severity": "wrong",
+      "finding": "P8b released Terraform state locks in the run's terminal transition, a write to `state`'s tables from `runs`, which the graph allows neither as an import nor as a back edge",
+      "change": "`state` releases a finished run's locks on `runs`' terminal event, the pattern 0004 gives for effects across domains",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "`state` releases the locks a run still holds when"
+          ],
+          "absent": [
+            "lock release in the terminal transition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.23",
+      "severity": "wrong",
+      "finding": "`run_policy_receipts` and `run_flags` were listed as `policies` tables, though a run transition commits them and `policies` cannot reference `runs`",
+      "change": "Both are in `runs`' stream",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md",
+        "docs/implementation/repo-layout.md",
+        "docs/research/architecture-options/5-modular-monolith.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "`run_policy_receipts` and `run_flags` are in"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "receipts, flags,"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "run_policy_receipts, run_flags, run_dependencies,"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.24",
+      "severity": "missing",
+      "finding": "the declared graph lacked four edges the documents use: `events` reads `worker_pool_samples` through `workersapi` for `worker_usage` (0015), `stackCreateFromIntent` creates a stack, Flows imports `stacksapi`, and module attachments resolve contexts, policies and cloud integrations",
+      "change": "`events` imports `workers`, `intelligence` and `flows` import `stacks`, and `registry` imports `configuration`, `policies` and `cloud`; each edge points to a domain above, so the construction order holds",
+      "status": "folded",
+      "files": [
+        "docs/implementation/repo-layout.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "| `registry` | features, access, workers, configuration, policies, runs, cloud | |",
+            "| `events` | features, access, workers, stacks, runs, policies, vcs | |",
+            "| `intelligence` | features, access, workers, stacks, policies, runs, cloud |",
+            "| `flows` | features, access, stacks, runs, templates |"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "| `registry` | features, access, workers, configuration, policies, runs, cloud | |",
+            "| `flows` | features, access, stacks, runs, templates |"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.25",
+      "severity": "wrong",
+      "finding": "0005 gave polymorphic owners a `module_id` key in rows `configuration` owns, which needs `configuration` to import `registry`, a cycle through `runs`",
+      "change": "A registry module's configuration elements and attachments are `registry`'s rows, referencing the context, policy or integration above it; a module and a stack hold their VCS integration's ID without a foreign key",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0005-persistence-postgresql.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0005-persistence-postgresql.md",
+          "present": [
+            "a registry module's configuration elements and attachments are `registry`'s"
+          ],
+          "absent": [
+            "(`stack_id`, `module_id`, `context_id`, ...)"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "a registry module's elements and attachments are `registry`'s rows"
+          ]
+        },
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "a stack holds its VCS integration's ID without a foreign key"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.26",
+      "severity": "wrong",
+      "finding": "`agent-isolation` denied only `$m/internal`, so `pkg/sdk` and `pkg/client` passed it although rule 7 says the agent imports only `pkg/flows/app/v1` from `pkg/`; its files named a `cmd/infraweave-agent` that does not exist while `cmd/infraweave/agent.go` went unchecked; the walkthrough added an `agent-isolation` entry for a new domain",
+      "change": "The rule denies `$m/pkg`, allows `$m/pkg/flows/app/v1$` and covers `cmd/infraweave/agent.go`; the tree shows `pkg/flows/app/v1`; the walkthrough adds no agent entry",
+      "status": "folded",
+      "files": [
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "- pkg: $m/pkg\n",
+            "- $m/pkg/flows/app/v1$",
+            "\"**/cmd/infraweave/agent.go\""
+          ],
+          "absent": [
+            "`constructors`, `shared-below-domains` and `agent-isolation`."
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "GENERATED App and Host gRPC stubs; the one pkg/ package the agent imports"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.27",
+      "severity": "missing",
+      "finding": "the repository layout's depguard table had no row for rule 9, `public-packages`",
+      "change": "The row is added",
+      "status": "folded",
+      "files": [
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "| `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.28",
+      "severity": "wrong",
+      "finding": "phase marks disagreed with the plan: `vcs` is created in P9 for the handover's sources, the dispatcher is bound for Flows' API Request block in P18d, and the discovery document first lists a service in P17",
+      "change": "The tree carries P9, P18d and P17",
+      "status": "folded",
+      "files": [
+        "docs/implementation/repo-layout.md",
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "feedback (P9, P12, P19, P19b)",
+            "flows (P18d) and intelligence (P25)",
+            "from domain contributions (P17)"
+          ]
+        },
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "`internal/app/discovery.go` assembles the discovery document"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.29",
+      "severity": "missing",
+      "finding": "the layout's other placements were absent from their phases: token signing in `crypt/signer` (P3), the stack-by-run-state view (P7), the back edges, role assumption in `agent/cloudauth` (P15), the dispatcher (P18d, P25), scan and Intent jobs through `runsapi` (P22b, P25b), audit through `platform/audit` (P18, P18b) and the console in `httpkit/console` (P24c)",
+      "change": "Each phase names its placement",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "present": [
+            "`internal/platform/crypt/signer` signs with a local key",
+            "the stack-by-run-state read view",
+            "assumed on the worker by `internal/agent/cloudauth`",
+            "Serving in `internal/platform/httpkit/console`",
+            "a scan run reaches its pool through `runsapi`"
+          ],
+          "absent": [
+            "Serving in `internal/app`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.30",
+      "severity": "copied",
+      "finding": "four lines of the plan's introduction were pasted into the Open items table and ended it early",
+      "change": "The lines are removed",
+      "status": "folded",
+      "files": [
+        "docs/implementation/plan.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/plan.md",
+          "absent": [
+            "at a pinned commit | [feature catalogue]"
+          ]
+        }
+      ]
     }
   ]
 }
