@@ -12,11 +12,11 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 
 	"github.com/weaveplatform/infraweave/api"
-	"github.com/weaveplatform/infraweave/internal/openapibundle"
+	"github.com/weaveplatform/infraweave/internal/devtools/openapibundle"
 )
 
-// deploySrc is the deploy API's fragment directory, relative to this package.
-var deploySrc = filepath.Join("..", "..", "api", "src", "deploy")
+// servedSrc is the API's fragment directory, relative to this package.
+var servedSrc = filepath.Join("..", "..", "api", "src", "api")
 
 type deploySteps struct {
 	doc *openapi3.T
@@ -24,11 +24,11 @@ type deploySteps struct {
 }
 
 func (s *deploySteps) register(sc *godog.ScenarioContext) {
-	sc.Step(`^the bundled deploy API$`, s.bundled)
-	sc.Step(`^the bundle is up to date with api/src/deploy$`, s.upToDate)
-	sc.Step(`^the deploy API validates as OpenAPI 3\.0\.3$`, s.validates)
+	sc.Step(`^the bundled API$`, s.bundled)
+	sc.Step(`^the bundle is up to date with api/src/api$`, s.upToDate)
+	sc.Step(`^the API validates as OpenAPI 3\.0\.3$`, s.validates)
 	sc.Step(
-		`^every reference operation tagged "([^"]+)" is in the deploy API with the same method, path and operationId$`,
+		`^every reference operation tagged "([^"]+)" is in the API with the same method, path and operationId$`,
 		s.familyServed,
 	)
 	sc.Step(`^"GET ([^"]+)" is cursor-paginated with page schema "([^"]+)"$`, s.paginated)
@@ -41,9 +41,9 @@ func (s *deploySteps) register(sc *godog.ScenarioContext) {
 }
 
 func (s *deploySteps) bundled() error {
-	doc, err := openapi3.NewLoader().LoadFromData(api.Deploy)
+	doc, err := openapi3.NewLoader().LoadFromData(api.Served)
 	if err != nil {
-		return fmt.Errorf("load deploy API: %w", err)
+		return fmt.Errorf("load the API: %w", err)
 	}
 	ref, err := loadReference()
 	if err != nil {
@@ -54,12 +54,12 @@ func (s *deploySteps) bundled() error {
 }
 
 func (s *deploySteps) upToDate() error {
-	want, err := openapibundle.Bundle(deploySrc)
+	want, err := openapibundle.Bundle(servedSrc)
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(api.Deploy, want) {
-		return fmt.Errorf("%w: api/deploy.openapi.yaml is stale; run make bundle", errStep)
+	if !bytes.Equal(api.Served, want) {
+		return fmt.Errorf("%w: api/api.openapi.yaml is stale; run make bundle", errStep)
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func (s *deploySteps) mustOperation(method, path string) (*openapi3.Operation, e
 	if op := s.operation(method, path); op != nil {
 		return op, nil
 	}
-	return nil, fmt.Errorf("%w: no %s %s in the deploy API", errStep, method, path)
+	return nil, fmt.Errorf("%w: no %s %s in the API", errStep, method, path)
 }
 
 func paramRefs(op *openapi3.Operation) []string {

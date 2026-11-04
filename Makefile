@@ -12,7 +12,7 @@ BIN_DIR := bin
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo devel)
 COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-LDFLAGS := -s -w -X $(MODULE)/internal/buildinfo.version=$(VERSION) -X $(MODULE)/internal/buildinfo.commit=$(COMMIT) -X $(MODULE)/internal/buildinfo.buildDate=$(BUILD_DATE)
+LDFLAGS := -s -w -X $(MODULE)/internal/platform/buildinfo.version=$(VERSION) -X $(MODULE)/internal/platform/buildinfo.commit=$(COMMIT) -X $(MODULE)/internal/platform/buildinfo.buildDate=$(BUILD_DATE)
 PLATFORMS ?= linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 UNIT_PKGS = $(shell GOWORK=off $(GO) list ./... | grep -v /test/acceptance)
 
@@ -85,10 +85,10 @@ REFERENCE_DIR := api/reference/spacelift
 reference-fetch:
 	$(GO) run ./tools/specref fetch --dir $(REFERENCE_DIR)
 
-## scaffold: copy one reference tag into a deploy API fragment and rebundle (make scaffold TAG=Stacks FAMILY=stacks [FORCE=1])
+## scaffold: copy one reference tag into an API fragment and rebundle (make scaffold TAG=Stacks FAMILY=stacks [FORCE=1])
 scaffold:
 	@test -n "$(TAG)" -a -n "$(FAMILY)" || { echo "usage: make scaffold TAG=<reference tag> FAMILY=<fragment name>"; exit 1; }
-	$(GO) run ./tools/specref scaffold --dir $(REFERENCE_DIR) --tag "$(TAG)" --out api/src/deploy/paths-$(FAMILY).yaml $(if $(FORCE),--force)
+	$(GO) run ./tools/specref scaffold --dir $(REFERENCE_DIR) --tag "$(TAG)" --out api/src/api/paths-$(FAMILY).yaml $(if $(FORCE),--force)
 	$(MAKE) bundle
 
 ## bundle: merge api/src/<service>/*.yaml fragments into api/<service>.openapi.yaml
@@ -111,13 +111,13 @@ generate: bundle
 		echo "generate $$s"; \
 		$(GO) run $(OAPI_CODEGEN) -config api/oapi-server-$$s.yaml api/$$s.openapi.yaml || exit 1; \
 		$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-$$s.yaml api/$$s.openapi.yaml || exit 1; \
-		$(GO) run ./tools/stubgen internal/server/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
+		$(GO) run ./tools/stubgen internal/platform/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
 	done
 	$(GO) run ./tools/dataview docs/data $(DATA_VIEW)
 
 ## verify-generate: fail if the committed bundles, generated code or docs/data view differ from what make generate writes
 verify-generate: generate
-	@git diff --exit-code -- api/*.openapi.yaml internal/server/gen pkg/client $(DATA_VIEW) || \
+	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
 ## reference: regenerate the Spacelift OpenAPI reference and coverage report from the snapshots
@@ -136,19 +136,19 @@ verify-reference:
 	$(GO) run ./tools/specref check --dir $(REFERENCE_DIR)
 	$(GO) run ./tools/specref inventory --check --dir $(REFERENCE_DIR) --out $(INVENTORY) --register $(INVENTORY_REGISTER)
 
-PARITY := --dir $(REFERENCE_DIR) --served api/deploy.openapi.yaml --baseline api/parity-baseline.json
+PARITY := --dir $(REFERENCE_DIR) --served api/api.openapi.yaml --baseline api/parity-baseline.deploy.json
 
-## parity: print the deploy API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.json
+## parity: print the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.deploy.json
 parity:
 	$(GO) run ./tools/specref parity $(PARITY)
 
-## parity-baseline: rewrite api/parity-baseline.json to accept the current parity report, keeping recorded reasons (review the diff)
+## parity-baseline: rewrite api/parity-baseline.deploy.json to accept the current parity report, keeping recorded reasons (review the diff)
 parity-baseline:
 	$(GO) run ./tools/specref parity $(PARITY) --write-baseline
 
-## docs-check: links, report headers and decision statuses under docs/ (internal/docscheck)
+## docs-check: links, report headers and decision statuses under docs/ (internal/devtools/docscheck)
 docs-check:
-	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/docscheck
+	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/devtools/docscheck
 
 ## gate: everything CI runs, in order
 gate: docs-check vet lint test accept verify-reference verify-generate cover vuln build

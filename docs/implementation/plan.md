@@ -75,9 +75,7 @@ are the records that can move.
   `api/reference/spacelift/spacelift.openapi.yaml` is the parity oracle for
   Deploy and `api/reference/spacelift-flows/flows.openapi.yaml` for Flows; the
   served documents are `api/api.openapi.yaml`, which holds Deploy and Flows
-  under `/api/v1`, and the operator API's `api/operator.openapi.yaml`.
-  Until [#73](https://github.com/weaveplatform/infraweave/issues/73) lands,
-  the served document is `api/deploy.openapi.yaml`. Each difference is
+  under `/api/v1`, and the operator API's `api/operator.openapi.yaml`. Each difference is
   recorded in `x-infraweave-divergence` and in the
   [deviations register](../data/deviations.json).
 - **infraweave's own clients.** `pkg/sdk` wraps the generated
@@ -131,7 +129,7 @@ and lint is clean.
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
-| P1b Domain layout and depguard | Not started | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72): [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
+| P1b Domain layout and depguard | In progress | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72). Done: [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename. Not started: [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P1d Flows specification reference | Not started | |
 | P2 PostgreSQL, migrations and operability | Not started | |
@@ -371,12 +369,12 @@ collection and the Terraform provider, with a coverage report that accounts for
 every field ([#5](https://github.com/weaveplatform/infraweave/issues/5)).
 
 **Tasks**
-1. `internal/specref` and `tools/specref`: `fetch`, `generate` and `check`
+1. `internal/devtools/specref` and `tools/specref`: `fetch`, `generate` and `check`
    over the snapshots in `api/reference/spacelift/` (`introspection.json`,
    `bruno.json`, `terraform-schema.json`, `terraform-operations.json`,
    `sources.lock.yaml`), producing `spacelift.openapi.yaml`,
    `rest-mapping.yaml` and `coverage.md`. Tests: the golden spec in
-   `internal/specref/testdata/golden/`.
+   `internal/devtools/specref/testdata/golden/`.
 2. `make reference-fetch`, `make reference` and `make verify-reference`, and
    the weekly `openapi-spec-update.yml` refresh.
 3. `specref inventory`, which generates the register
@@ -401,31 +399,32 @@ Decisions: [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [
 **Depends on:** P0.
 
 infraweave serves its own REST API: fragments scaffolded from the reference,
-bundled into `api/deploy.openapi.yaml` and generated into a strict chi server
+bundled into `api/api.openapi.yaml` and generated into a strict chi server
 in which every operation answers `501` until a family implements it (epic
 [#8](https://github.com/weaveplatform/infraweave/issues/8)). Its packages
-sit under `internal/server/...`; P1b moves them.
+sit where P1b places them; the paths below are those.
 
 **Tasks**
-1. Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) `internal/openapibundle` and `tools/openapi-bundle` bundle
-   `api/src/deploy/*.yaml`; [#12](https://github.com/weaveplatform/infraweave/issues/12) `specref scaffold` and `make scaffold`
-   seed `api/src/deploy/paths-stacks.yaml` (69 Stacks and 3 Runs
+1. Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) `internal/devtools/openapibundle` and `tools/openapi-bundle` bundle
+   `api/src/api/*.yaml`; [#12](https://github.com/weaveplatform/infraweave/issues/12) `specref scaffold` and `make scaffold`
+   seed `api/src/api/paths-stacks.yaml` (69 Stacks and 3 Runs
    operations); [#13](https://github.com/weaveplatform/infraweave/issues/13) `make generate` writes the strict server and
-   `UnimplementedStrict` into `internal/server/gen/deploy` and the client
-   into `pkg/client/deploy`, with `make verify-generate`; [#10](https://github.com/weaveplatform/infraweave/issues/10) decision
-   0003 and `api/src/deploy/components-common.yaml`.
+   `UnimplementedStrict` into `internal/platform/gen/api` and the client
+   into `pkg/client/api`, with `make verify-generate`; [#10](https://github.com/weaveplatform/infraweave/issues/10) decision
+   0003 and `api/src/api/components-common.yaml`.
 2. Done: [#14](https://github.com/weaveplatform/infraweave/issues/14) `cmd/infraweave` with `serve` and `version`;
-   `internal/server` builds the chi router with request ID and recovery,
+   `internal/app` and `internal/platform/httpkit` build the chi router with request ID and recovery,
    mounts the strict handler under `/api/v1`, turns `404` and `405` into
    problem details and serves `GET /livez` on the admin listener
    (`server.admin_listen`, `:9090`), never on the API listener
    ([0017](../research/decisions/0017-observability-and-health.md#health)).
    Strict YAML config with flag over environment over file. Tests:
-   `internal/server` unit tests for `/livez`, a `501` stub, `404`, `405`
+   unit tests for `/livez`, a `501` stub, `404`, `405`
    and recovery; config precedence and unknown-key
    rejection; `served_api.feature`.
-3. Done: [#15](https://github.com/weaveplatform/infraweave/issues/15) `internal/server/ratelimit`, `internal/server/idempotency` and
-   `internal/server/pagination`: token buckets per caller and cost class
+3. Done: [#15](https://github.com/weaveplatform/infraweave/issues/15) `internal/platform/httpkit/middleware/ratelimit`,
+   `internal/platform/httpkit/middleware/idempotency` and
+   `internal/platform/httpkit/page`: token buckets per caller and cost class
    from `x-infraweave-cost`, `X-RateLimit-*` headers and `429` with
    `Retry-After`; `Idempotency-Key` replay, `409` in flight and `422` reuse;
    the `api-disabled` switch; opaque versioned cursors with
@@ -434,9 +433,9 @@ sit under `internal/server/...`; P1b moves them.
    `-race` test of concurrent reservations, limiter refill with an injected
    clock, cursor tamper cases, `served_api.feature` scenarios for `429`,
    replay and the disabled caller. Records DV-003 to DV-007.
-4. Done: [#11](https://github.com/weaveplatform/infraweave/issues/11) `specref parity` in `internal/specref` with `make parity` and
+4. Done: [#11](https://github.com/weaveplatform/infraweave/issues/11) `specref parity` in `internal/devtools/specref` with `make parity` and
    `make parity-baseline`: present, missing, moved and infraweave-only
-   operations by tag, against `api/parity-baseline.json`; the `api/` test
+   operations by tag, against `api/parity-baseline.deploy.json`; the `api/` test
    fails on a regression and on an entry that is now present.
 
 **Exit criteria**

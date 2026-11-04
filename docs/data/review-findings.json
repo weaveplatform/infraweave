@@ -224,7 +224,7 @@
           "file": "docs/research/reference/01-spacelift-landscape.md",
           "present": [
             "the API page points GraphDoc at that endpoint",
-            "`specref fetch` snapshots (`internal/specref/fetch.go`)",
+            "`specref fetch` snapshots (`internal/devtools/specref/fetch.go`)",
             "The demo account runs the current SaaS release **[I]**"
           ]
         }
@@ -819,7 +819,7 @@
         {
           "file": "docs/research/reference/05-terraform-provider.md",
           "present": [
-            "(`FetchTerraformSchema` in [`internal/specref/terraform.go`](../../../internal/specref/terraform.go))"
+            "(`FetchTerraformSchema` in [`internal/devtools/specref/terraform.go`](../../../internal/devtools/specref/terraform.go))"
           ]
         }
       ]

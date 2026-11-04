@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
-	"github.com/weaveplatform/infraweave/internal/buildinfo"
-	"github.com/weaveplatform/infraweave/internal/specref"
+	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
+	"github.com/weaveplatform/infraweave/internal/devtools/specref"
 )
 
 // Pins used when no sources.lock.yaml exists yet. Once one does, its values
@@ -202,7 +202,7 @@ func newRoot() *cobra.Command {
 	}
 	sf := scaffold.Flags()
 	sf.String("tag", "", "reference tag to scaffold, such as Stacks")
-	sf.String("out", "", "fragment to write, such as api/src/deploy/paths-stacks.yaml")
+	sf.String("out", "", "fragment to write, such as api/src/api/paths-stacks.yaml")
 	sf.Bool("force", false, "overwrite an existing fragment")
 	inventory := &cobra.Command{
 		Use:   "inventory",
@@ -285,12 +285,12 @@ func newRoot() *cobra.Command {
 	pyf := parity.Flags()
 	pyf.String(
 		"served",
-		filepath.Join("api", "deploy.openapi.yaml"),
+		filepath.Join("api", "api.openapi.yaml"),
 		"served API document to compare",
 	)
 	pyf.String(
 		"baseline",
-		filepath.Join("api", "parity-baseline.json"),
+		filepath.Join("api", "parity-baseline.deploy.json"),
 		"accepted missing and moved operations",
 	)
 	pyf.Bool(

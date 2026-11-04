@@ -1,6 +1,6 @@
 # 26: Scope and tiers
 
-Checked against: docs read 2026-10-28 (SaaS and `self-hosted/latest`, v7.1.0); spacelift.io/pricing read 2026-10-28; schema `b3255fe38f5e`; spacelift-api-bruno `7cad4574954b`; terraform-provider-spacelift v1.57.0 (`c72b9bd2f3c3`); the specification reference `api/reference/spacelift/spacelift.openapi.yaml` and `coverage.md`; infraweave's `api/deploy.openapi.yaml` at the work tree's commit; reports 01 to 25; decision [0021](../decisions/0021-capability-scope-and-supersession.md) as accepted on 2026-11-03.
+Checked against: docs read 2026-10-28 (SaaS and `self-hosted/latest`, v7.1.0); spacelift.io/pricing read 2026-10-28; schema `b3255fe38f5e`; spacelift-api-bruno `7cad4574954b`; terraform-provider-spacelift v1.57.0 (`c72b9bd2f3c3`); the specification reference `api/reference/spacelift/spacelift.openapi.yaml` and `coverage.md`; infraweave's `api/api.openapi.yaml` at the work tree's commit; reports 01 to 25; decision [0021](../decisions/0021-capability-scope-and-supersession.md) as accepted on 2026-11-03.
 
 Research baseline: **2026-10-28**.
 
@@ -49,7 +49,7 @@ markdown and keeps this report's source labels.
 | `spacelift.plan` | The lowest SaaS plan that offers the capability, in the vocabulary of section 1.3 | the cited docs notice [D] or the pricing page [C] |
 | `spacelift.tierFeatures` [I] | `BillingTierFeature` values that reports 03 and 04 pair with the operations in the row, by name | computed from those reports' tables; the pairing is an inference, as report 03 section 1.3 explains |
 | `spacelift.rootFields` | Terraform rows only: GraphQL root fields the provider calls for the resource or data source | `terraform-operations.json`, filtered to root fields of the schema [G]; where the map records no call but the provider's source makes one, the member gives the count from the source, marked [S] |
-| `infraweave.state` | infraweave's availability state (section 1.2) | computed against `api/deploy.openapi.yaml` |
+| `infraweave.state` | infraweave's availability state (section 1.2) | computed against `api/api.openapi.yaml` |
 | `infraweave.phase`, `infraweave.apiPhase` | The phase of the [implementation plan](../../implementation/plan.md) that delivers the row | the plan |
 
 ### 1.2 Availability states
@@ -64,20 +64,18 @@ markdown and keeps this report's source labels.
 
 How the states are computed:
 
-- infraweave's served surface is `api/deploy.openapi.yaml`, which P1b's
-  rename ([#73](https://github.com/weaveplatform/infraweave/issues/73))
-  makes `api/api.openapi.yaml`, which holds Flows from P18c
-  ([0018](../decisions/0018-flows-runtime.md#api-and-clients)): 72 operations,
+- infraweave's served surface is `api/api.openapi.yaml`, which holds Flows
+  from P18c ([0018](../decisions/0018-flows-runtime.md#api-and-clients)): 72 operations,
   69 under `Stacks` and 3 under `Runs`. Every one is answered by
   `UnimplementedStrict`, which returns 501
-  ([`internal/server/gen/deploy/unimplemented.gen.go`](../../../internal/server/gen/deploy/unimplemented.gen.go),
-  [`internal/stubgen/stubgen.go`](../../../internal/stubgen/stubgen.go)).
+  ([`internal/platform/gen/api/unimplemented.gen.go`](../../../internal/platform/gen/api/unimplemented.gen.go),
+  [`internal/devtools/stubgen/stubgen.go`](../../../internal/devtools/stubgen/stubgen.go)).
 - A tag is `stub` when every one of its operations in the reference has an
-  operation of the same ID in the deploy document. Runs has three of its 35
+  operation of the same ID in the served document. Runs has three of its 35
   (`runTrigger`, `proposeWithOverrides`, `taskCreate`) and stays `missing`;
   its row names them.
 - A Terraform resource or data source is `stub` when every root field it
-  calls is a deploy operation. infraweave has no Terraform provider yet
+  calls is a served operation. infraweave has no Terraform provider yet
   (P24), so `stub` here means only that the routes exist.
 - A row is `superseded` only on evidence listed in section 7.
 
@@ -523,7 +521,7 @@ rerun must fold those corrections in.
 | terraform-provider-spacelift | v1.57.0 (`c72b9bd2f3c3`) |
 | Docs mirror | read 2026-10-28; self-hosted v7.1.0 |
 | Pricing page | read 2026-10-28 |
-| infraweave deploy document | `api/deploy.openapi.yaml`, 72 operations |
+| infraweave served document | `api/api.openapi.yaml`, 72 operations |
 
 ## Sources
 
@@ -531,7 +529,7 @@ rerun must fold those corrections in.
 - [`api/reference/spacelift/introspection.json`](../../../api/reference/spacelift/introspection.json): `BillingTierFeature`, `BillingTier`, deprecations **[G]**.
 - [`api/reference/spacelift/terraform-schema.json`](../../../api/reference/spacelift/terraform-schema.json) and [`terraform-operations.json`](../../../api/reference/spacelift/terraform-operations.json): resources, data sources, provider deprecations **[S]**.
 - [`api/reference/spacelift/coverage.md`](../../../api/reference/spacelift/coverage.md) and [`rest-mapping.yaml`](../../../api/reference/spacelift/rest-mapping.yaml): excluded root fields.
-- [`api/deploy.openapi.yaml`](../../../api/deploy.openapi.yaml): infraweave's served operations.
+- [`api/api.openapi.yaml`](../../../api/api.openapi.yaml): infraweave's served operations.
 - <https://spacelift.io/pricing> **[C]**, read 2026-10-28.
 - <https://docs.spacelift.io/product/fedramp> **[D]**
 - <https://docs.spacelift.io/self-hosted>, <https://docs.spacelift.io/concepts/identity-access-management/admin>, <https://docs.spacelift.io/concepts/run/task> **[D]**

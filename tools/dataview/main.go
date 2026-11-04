@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/weaveplatform/infraweave/internal/dataview"
+	"github.com/weaveplatform/infraweave/internal/devtools/dataview"
 )
 
 func main() {

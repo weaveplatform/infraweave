@@ -23,7 +23,7 @@ building infraweave's provider and its parity tests need this report.
 |---|---|
 | **[D]** | A docs.spacelift.io page, read 2026-10-28 |
 | **[G]** | The introspection snapshot `b3255fe38f5e` |
-| **[S]** | terraform-provider-spacelift source at `c72b9bd2f3c3`, or this repository's committed snapshots and `internal/specref` code |
+| **[S]** | terraform-provider-spacelift source at `c72b9bd2f3c3`, or this repository's committed snapshots and `internal/devtools/specref` code |
 | **[I]** | Inferred; the sentence says from what |
 
 ## 1. What is extracted
@@ -35,7 +35,7 @@ building infraweave's provider and its parity tests need this report.
 
 Loading a provider's schema never configures the provider, so no Spacelift
 credentials are involved **[S]** (`FetchTerraformSchema` in
-[`internal/specref/terraform.go`](../../../internal/specref/terraform.go)).
+[`internal/devtools/specref/terraform.go`](../../../internal/devtools/specref/terraform.go)).
 
 The provider declares its operations as struct tags, for example
 `graphql:"stackCreate(input: $input)"`. Tags that name a nested selection
@@ -80,7 +80,7 @@ candidates:
 
 The input objects are tried in the order above, and within each, the candidates
 in this order **[S]** (`matchField` and `inputNamespaces` in
-[`internal/specref/enrich.go`](../../../internal/specref/enrich.go)). The `id`
+[`internal/devtools/specref/enrich.go`](../../../internal/devtools/specref/enrich.go)). The `id`
 attribute and computed-only attributes are skipped.
 
 Where the provider names a field differently, the `terraform:` section of

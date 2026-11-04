@@ -6,12 +6,13 @@ Status: Accepted
 
 infraweave is one Go module that serves Spacelift's feature set behind a
 REST API ([0001](0001-rest-first-spacelift-surface.md)). Today it holds a
-served skeleton: the bundled `deploy` OpenAPI document, a generated strict
-chi server whose operations answer 501 through `UnimplementedStrict`, a
-generated client in `pkg/client/deploy`, problem details in
-`internal/server/problem`, and the tooling that builds the Spacelift
-reference (`internal/specref`, `internal/openapibundle`, `internal/stubgen`,
-`internal/docscheck`). `cmd/` has no binary yet.
+served skeleton: the bundled `api` OpenAPI document, a generated strict chi
+server in `internal/platform/gen/api` whose operations answer 501 through
+`UnimplementedStrict`, a generated client in `pkg/client/api`, problem
+details in `internal/platform/httpkit/problem`, the `serve` process mode
+composed in `internal/app`, and the tooling that builds the Spacelift
+reference (`internal/devtools/specref`, `internal/devtools/openapibundle`,
+`internal/devtools/stubgen`, `internal/devtools/docscheck`).
 
 The scope ([report 26](../reference/26-scope-and-tiers.md#14-provisional-phase-spine))
 grows that skeleton into some twenty business domains: identity, spaces,

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/weaveplatform/infraweave/internal/stubgen"
+	"github.com/weaveplatform/infraweave/internal/devtools/stubgen"
 )
 
 func main() {

@@ -13,5 +13,5 @@ exclude:
     # Maintainer tools (specref): thin cobra shims over internal/.
     - ^tools/
     # oapi-codegen and stubgen output; the generators are tested instead.
-    - ^internal/server/gen/
+    - ^internal/platform/gen/
     - ^pkg/client/
