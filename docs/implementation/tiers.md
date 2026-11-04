@@ -122,7 +122,7 @@ Counts of the reference rows each phase owns. Superseded counts the rows no phas
 | P17b | 2 | 1 | 0 | 1 |
 | P18 | 4 | 3 | 2 | 2 |
 | P18b | 1 | 1 | 0 | 1 |
-| P18c | 1 | 0 | 0 | 0 |
+| P18c | 6 | 0 | 0 | 0 |
 | P19 | 0 | 3 | 5 | 1 |
 | P19b | 4 | 3 | 4 | 1 |
 | P20b | 3 | 2 | 2 | 0 |
@@ -134,4 +134,4 @@ Counts of the reference rows each phase owns. Superseded counts the rows no phas
 | P25b | 1 | 0 | 0 | 0 |
 | P27 | 2 | 0 | 0 | 0 |
 | Superseded | 0 | 4 | 4 | 0 |
-| Total | 53 | 56 | 62 | 31 |
+| Total | 58 | 56 | 62 | 31 |

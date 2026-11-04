@@ -1,13 +1,17 @@
 package docscheck
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/weaveplatform/infraweave/internal/devtools/specref"
 )
 
 // TestUnitDocs is the check make docs-check runs over this repository.
@@ -25,6 +29,9 @@ func file(s string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(s)} }
 
 const goodReport = "# 01: A report\n\nChecked against: v1\n\nResearch baseline: **2026-10-28**.\n\n## Sources\n\n- <https://example.com>\n"
 
+// referenceAPI is the Deploy reference spec, where the fixtures put spec.
+const referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
+
 // spec is a reference spec with two tags; the capabilities register must
 // hold both.
 const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack management.\n  - name: Runs\n"
@@ -40,8 +47,8 @@ const (
 	features = `{"$schema": "schema/features.schema.json", "records": [
   {"id": "stacks", "phase": "P0", "notes": "` + "`P42`" + ` is a name"}]}`
 	capabilities = `{"$schema": "schema/capabilities.schema.json", "records": [
-  {"id": "tag:Stacks", "spacelift": {"notes": "P99 in report 26"}, "infraweave": {"phase": "P0"}},
-  {"id": "tag:Runs", "infraweave": {"phase": "P1a", "also": "P0"}},
+  {"id": "tag:Stacks", "product": "deploy", "spacelift": {"notes": "P99 in report 26"}, "infraweave": {"phase": "P0"}},
+  {"id": "tag:Runs", "product": "deploy", "infraweave": {"phase": "P1a", "also": "P0"}},
   {"id": "operation:x", "infraweave": {"phase": "P1a"}}]}`
 	supersessions = `{"$schema": "schema/supersessions.schema.json", "records": [
   {"id": "SUP-01", "replacementPhase": "P0, P1a"}]}`
@@ -249,7 +256,7 @@ func TestUnitCheckFindings(t *testing.T) {
 					spec + "  - name: Spaces\n",
 				)
 			},
-			want:  `has no record tag:Spaces for tag "Spaces" of api/reference/spacelift/spacelift.openapi.yaml`,
+			want:  `has no deploy record tag:Spaces for tag "Spaces" of api/reference/spacelift/spacelift.openapi.yaml`,
 			where: "docs/data/capabilities.json:1",
 		},
 		{
@@ -259,7 +266,7 @@ func TestUnitCheckFindings(t *testing.T) {
 					strings.Replace(spec, "  - name: Runs\n", "", 1),
 				)
 			},
-			want:  "record tag:Runs names a tag api/reference/spacelift/spacelift.openapi.yaml does not have",
+			want:  "deploy record tag:Runs names a tag api/reference/spacelift/spacelift.openapi.yaml does not have",
 			where: "docs/data/capabilities.json:3",
 		},
 		{
@@ -626,5 +633,132 @@ func TestUnitSlug(t *testing.T) {
 		if got := slug(h); got != want {
 			t.Errorf("slug(%q) = %q, want %q", h, got, want)
 		}
+	}
+}
+
+// flowsAPI is the Flows reference spec, which the capabilities fixture's
+// flows records must match.
+const flowsAPI = "api/reference/spacelift-flows/flows.openapi.yaml"
+
+// TestUnitCheckProductTags proves each reference's tags are held to its own
+// product's records: a Flows tag needs a flows record, a Deploy tag a deploy
+// one, and a flows record names a Flows tag.
+func TestUnitCheckProductTags(t *testing.T) {
+	flowsRecord := `{"id": "tag:Flows Projects", "product": "flows", "infraweave": {"phase": "P0"}}`
+	withFlows := func(m fstest.MapFS, records ...string) {
+		caps := capabilities
+		for _, r := range records {
+			caps = strings.Replace(caps, `"records": [`, `"records": [`+"\n  "+r+",", 1)
+		}
+		m[capsReg] = file(caps)
+		m[referenceAPI] = file(spec)
+		m[flowsAPI] = file("openapi: 3.0.3\ntags:\n  - name: Flows Projects\n")
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(m fstest.MapFS)
+		want []string
+	}{
+		{"both products placed", func(m fstest.MapFS) { withFlows(m, flowsRecord) }, nil},
+		{"flows tag with no flows record", func(m fstest.MapFS) { withFlows(m) }, []string{
+			`docs/data/capabilities.json:1: has no flows record tag:Flows Projects for tag "Flows Projects" of ` + flowsAPI,
+		}},
+		{"flows tag with a deploy record", func(m fstest.MapFS) {
+			withFlows(m, strings.Replace(flowsRecord, `"flows"`, `"deploy"`, 1))
+		}, []string{
+			`docs/data/capabilities.json:1: has no flows record tag:Flows Projects for tag "Flows Projects" of ` + flowsAPI,
+			"docs/data/capabilities.json:2: deploy record tag:Flows Projects names a tag " + referenceAPI + " does not have",
+		}},
+		{"deploy tag with only a flows record", func(m fstest.MapFS) {
+			withFlows(m, flowsRecord)
+			m[capsReg] = file(strings.Replace(string(m[capsReg].Data),
+				`"tag:Runs", "product": "deploy"`, `"tag:Runs", "product": "flows"`, 1))
+		}, []string{
+			`docs/data/capabilities.json:1: has no deploy record tag:Runs for tag "Runs" of ` + referenceAPI,
+			"docs/data/capabilities.json:4: flows record tag:Runs names a tag " + flowsAPI + " does not have",
+		}},
+		{"tag record without a product", func(m fstest.MapFS) {
+			withFlows(m, flowsRecord)
+			m[capsReg] = file(strings.Replace(string(m[capsReg].Data), `"tag:Runs", "product": "deploy", `, `"tag:Runs", `, 1))
+		}, []string{
+			`docs/data/capabilities.json:1: has no deploy record tag:Runs for tag "Runs" of ` + referenceAPI,
+		}},
+		{"unreadable flows spec", func(m fstest.MapFS) {
+			withFlows(m, flowsRecord)
+			m[flowsAPI] = file("tags: {")
+		}, []string{flowsAPI + ":1: cannot read its tags"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := tree()
+			tc.edit(m)
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, f := range found {
+				got = append(got, f.String())
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("findings = %q, want %q", got, tc.want)
+			}
+			for i := range got {
+				if !strings.HasPrefix(got[i], tc.want[i]) {
+					t.Errorf("finding %d = %q, want %q", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+// TestUnitCapabilitiesSchemaProduct proves the committed capabilities schema
+// requires product and accepts only the products specref knows.
+func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
+	schema, err := os.ReadFile("../../../docs/data/schema/capabilities.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	common, err := os.ReadFile("../../../docs/data/schema/common.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, product := range map[string]string{"no product": "", "unknown product": `"product": "space", `} {
+		t.Run(name, func(t *testing.T) {
+			m := tree()
+			m["docs/data/schema/capabilities.schema.json"] = &fstest.MapFile{Data: schema}
+			m["docs/data/schema/common.schema.json"] = &fstest.MapFile{Data: common}
+			m[capsReg] = file(`{"$schema": "schema/capabilities.schema.json", "records": [
+  {"id": "operation:x", "kind": "operation", ` + product + `"infraweave": {"feature": "x", "lowestTier": "Free", "phase": "P0"}}]}`)
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(found) == 0 || !strings.Contains(found[0].String(), capsReg) {
+				t.Errorf("findings = %v", found)
+			}
+		})
+	}
+	var s struct {
+		Properties struct {
+			Records struct {
+				Items struct {
+					Properties struct {
+						Product struct {
+							Enum []string `json:"enum"`
+						} `json:"product"`
+					} `json:"properties"`
+				} `json:"items"`
+			} `json:"records"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(schema, &s); err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, p := range specref.Products() {
+		names = append(names, p.Name)
+	}
+	if got := s.Properties.Records.Items.Properties.Product.Enum; !slices.Equal(got, names) {
+		t.Errorf("schema products %q, specref products %q", got, names)
 	}
 }

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "capabilities.schema.json",
   "title": "Every capability of the Spacelift reference, with infraweave's plan for it",
-  "description": "One record per tag of api/reference/spacelift/spacelift.openapi.yaml, per untagged operation, per resource and data source of terraform-provider-spacelift v1.57.0, and per BillingTierFeature value. spacelift holds report 26's research: the cells are markdown, and the labels [D], [G], [B], [S], [RN], [C] and [I] are report 26's source labels. infraweave holds the capability roadmap's columns: the feature that gates the row, its lowest seeded tier, the phases of docs/implementation/plan.md that build it and its availability state.",
+  "description": "One record per tag of each Spacelift product's reference (Deploy's api/reference/spacelift/spacelift.openapi.yaml, Flows' api/reference/spacelift-flows/flows.openapi.yaml), named with its product; per untagged operation, per resource and data source of terraform-provider-spacelift v1.57.0, and per BillingTierFeature value. spacelift holds report 26's research: the cells are markdown, and the labels [D], [G], [B], [S], [RN], [C] and [I] are report 26's source labels. infraweave holds the capability roadmap's columns: the feature that gates the row, its lowest seeded tier, the phases of docs/implementation/plan.md that build it and its availability state.",
   "x-id-pattern": "tag:[A-Z][A-Za-z ]*[A-Za-z]|operation:[a-z][A-Za-z]*|resource:spacelift_[a-z0-9_]+|data-source:spacelift_[a-z0-9_]+|tier-feature:[A-Z][A-Z_]*[A-Z]",
   "type": "object",
   "required": ["$schema", "records"],
@@ -99,11 +99,15 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "kind", "infraweave"],
+        "required": ["id", "kind", "product", "infraweave"],
         "additionalProperties": false,
         "properties": {
           "id": {"type": "string"},
           "kind": {"enum": ["tag", "operation", "resource", "data-source", "tier-feature"]},
+          "product": {
+            "description": "The Spacelift product whose reference or provider the row comes from; docscheck holds each reference's tags to its own product's tag records.",
+            "enum": ["deploy", "flows"]
+          },
           "ops": {
             "description": "Tags: the operations the reference files under the tag.",
             "type": "integer",
