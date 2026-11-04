@@ -1,12 +1,13 @@
 // Command specref maintains the Spacelift API references, one per product
-// (--product, default deploy, in api/reference/spacelift): fetch refreshes
-// the pinned upstream snapshots,
-// generate derives the OpenAPI spec and coverage report from them, check
-// fails when the committed output is stale, scaffold copies a reference tag
-// into a served-API fragment, inventory writes or checks the GraphQL
-// inventory register and report 29, which summarizes it, and parity reports
-// the served API's operations against the reference and rewrites the parity
-// baseline. Logic lives in internal/devtools/specref.
+// (--product: deploy, the default, in api/reference/spacelift, or flows in
+// api/reference/spacelift-flows): fetch refreshes the pinned upstream
+// snapshots, generate derives the OpenAPI spec and coverage report from
+// them, check fails when the committed output is stale, scaffold copies a
+// reference tag into a served-API fragment, inventory writes or checks the
+// product's inventory register (and, for Deploy, report 29, which
+// summarizes it), and parity reports the served API's operations against
+// the reference and rewrites the parity baseline. Logic lives in
+// internal/devtools/specref.
 package main
 
 import (
@@ -37,6 +38,15 @@ const (
 	defaultBrunoRef        = "7cad4574954b569df083b2a809b68371fc385e6d"
 	defaultProviderRepo    = "spacelift-io/terraform-provider-spacelift"
 	defaultProviderVersion = "1.57.0"
+
+	defaultFlowsProviderRepo = "spacelift-io/terraform-provider-flows"
+	defaultFlowsProviderRef  = "861f72a3bac4c8b6de4caacc55cb8f37513fceae"
+	defaultFlowctlRepo       = "spacelift-io/flowctl"
+	defaultFlowctlRef        = "96bdd03303a60fca5c208c8a167faa80af40021d"
+	defaultSDKPackage        = "@slflows/sdk"
+	defaultSDKVersion        = "0.14.0"
+	defaultTemplates         = "https://docs.spacelift.io/flows/templates.json"
+	defaultRegistry          = "https://registry.useflows.com/core"
 )
 
 // config is every setting, from flag > SPECREF_* environment > --config file.
@@ -50,6 +60,16 @@ type config struct {
 	ProviderRepo    string `mapstructure:"provider-repo"`
 	ProviderVersion string `mapstructure:"provider-version"`
 	Terraform       string `mapstructure:"terraform"`
+	// Flows fetch settings.
+	FlowsProviderRepo string `mapstructure:"flows-provider-repo"`
+	FlowsProviderRef  string `mapstructure:"flows-provider-ref"`
+	FlowctlRepo       string `mapstructure:"flowctl-repo"`
+	FlowctlRef        string `mapstructure:"flowctl-ref"`
+	SDKPackage        string `mapstructure:"sdk-package"`
+	SDKVersion        string `mapstructure:"sdk-version"`
+	NPM               string `mapstructure:"npm"`
+	Templates         string `mapstructure:"templates"`
+	Registry          string `mapstructure:"registry"`
 	Timeout         string `mapstructure:"timeout"`
 	Tag             string `mapstructure:"tag"`
 	Out             string `mapstructure:"out"`
@@ -104,17 +124,28 @@ func newRoot() *cobra.Command {
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
 			defer cancel()
+			fetcher := &specref.Fetcher{
+				Client:    &http.Client{Timeout: 2 * time.Minute},
+				UserAgent: "infraweave-specref/" + buildinfo.Version() + " (+https://github.com/weaveplatform/infraweave)",
+				Retries:   3,
+				Backoff:   2 * time.Second,
+			}
+			if c.Product == specref.Flows.Name {
+				return specref.FetchFlows(ctx, specref.FlowsFetchOptions{
+					Dir: c.Dir, Codeload: c.Codeload, NPM: c.NPM,
+					ProviderRepo: c.FlowsProviderRepo, ProviderRef: c.FlowsProviderRef,
+					FlowctlRepo: c.FlowctlRepo, FlowctlRef: c.FlowctlRef,
+					SDKPackage: c.SDKPackage, SDKVersion: c.SDKVersion,
+					Templates: c.Templates, Registry: c.Registry,
+					Fetcher: fetcher, Now: time.Now,
+				})
+			}
 			return specref.Fetch(ctx, specref.FetchOptions{
 				Dir: c.Dir, Endpoint: c.Endpoint, Codeload: c.Codeload,
 				BrunoRepo: c.BrunoRepo, BrunoRef: c.BrunoRef,
 				ProviderRepo: c.ProviderRepo, ProviderVersion: c.ProviderVersion,
 				Terraform: c.Terraform, Run: specref.ExecRunner, Now: time.Now,
-				Fetcher: &specref.Fetcher{
-					Client:    &http.Client{Timeout: 2 * time.Minute},
-					UserAgent: "infraweave-specref/" + buildinfo.Version() + " (+https://github.com/weaveplatform/infraweave)",
-					Retries:   3,
-					Backoff:   2 * time.Second,
-				},
+				Fetcher: fetcher,
 			})
 		},
 	}
@@ -130,6 +161,15 @@ func newRoot() *cobra.Command {
 		"terraform-provider-spacelift release, without the v",
 	)
 	f.String("terraform", "terraform", "terraform binary used to read the provider schema")
+	f.String("flows-provider-repo", defaultFlowsProviderRepo, "terraform-provider-flows repository (flows)")
+	f.String("flows-provider-ref", defaultFlowsProviderRef, "terraform-provider-flows commit SHA (flows)")
+	f.String("flowctl-repo", defaultFlowctlRepo, "flowctl repository (flows)")
+	f.String("flowctl-ref", defaultFlowctlRef, "flowctl commit SHA (flows)")
+	f.String("sdk-package", defaultSDKPackage, "the Flows app SDK's npm package (flows)")
+	f.String("sdk-version", defaultSDKVersion, "the Flows app SDK's version (flows)")
+	f.String("npm", "https://registry.npmjs.org", "npm registry serving the SDK tarball (flows)")
+	f.String("templates", defaultTemplates, "the flow template index to validate (flows)")
+	f.String("registry", defaultRegistry, "an app registry manifest to validate (flows)")
 	f.String("timeout", "10m", "overall fetch timeout")
 
 	generate := &cobra.Command{
@@ -211,30 +251,27 @@ func newRoot() *cobra.Command {
 	sf.Bool("force", false, "overwrite an existing fragment")
 	inventory := &cobra.Command{
 		Use:   "inventory",
-		Short: "Write the GraphQL inventory register and report 29 from the introspection snapshot",
+		Short: "Write the product's inventory register (and Deploy's report 29) from its snapshots",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			c, err := decode(v)
 			if err != nil {
 				return err
 			}
-			out := specref.InventoryOutputs{Report: c.Out, Register: c.Register}
-			if c.Check {
-				return specref.CheckInventory(c.Dir, out)
+			p, err := specref.ProductNamed(c.Product)
+			if err != nil {
+				return err
 			}
-			return specref.InventoryFile(c.Dir, out)
+			out := specref.InventoryOutputs{Report: c.Out, Register: c.Register}
+			return p.Inventory(c.Dir, out, c.Check)
 		},
 	}
 	inf := inventory.Flags()
-	inf.String(
-		"out",
-		filepath.Join("docs", "research", "reference", "29-data-model-inventory.md"),
-		"report to write",
-	)
+	inf.String("out", "", "report to write (default the product's, such as "+specref.Deploy.Report+")")
 	inf.String(
 		"register",
-		filepath.Join("docs", "data", "graphql-inventory.json"),
-		"register to write",
+		"",
+		"register to write (default the product's, such as "+specref.Deploy.Register+")",
 	)
 	inf.Bool("check", false, "fail if the report or register is stale instead of writing them")
 	parity := &cobra.Command{
@@ -347,6 +384,8 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command, cfgFile string) error {
 	// fill exactly what nobody set explicitly.
 	v.SetDefault("dir", filepath.FromSlash(p.Dir))
 	v.SetDefault("baseline", filepath.FromSlash(p.Baseline))
+	v.SetDefault("register", filepath.FromSlash(p.Register))
+	v.SetDefault("out", filepath.FromSlash(p.Report))
 	pins, err := p.Pins(v.GetString("dir"))
 	if err != nil {
 		return err

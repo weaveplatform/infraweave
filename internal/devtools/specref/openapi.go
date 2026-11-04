@@ -126,9 +126,16 @@ func (b *builder) addCommon() {
 			Description: "A JWT from POST /auth/token (upstream: the apiKeyUser mutation).",
 		},
 	}
-	b.doc.Components.Schemas[problemSchema] = &openapi3.SchemaRef{Value: &openapi3.Schema{
+	addProblemComponents(b.doc, "GraphQL reports failures as HTTP 200 with an errors array")
+}
+
+// addProblemComponents adds the RFC 9457 problem schema and the Problem and
+// NotFound responses every reference document refers to. upstream says how
+// the projected API reports a failure instead.
+func addProblemComponents(doc *openapi3.T, upstream string) {
+	doc.Components.Schemas[problemSchema] = &openapi3.SchemaRef{Value: &openapi3.Schema{
 		Type:        &openapi3.Types{openapi3.TypeObject},
-		Description: "An RFC 9457 problem detail. GraphQL reports failures as HTTP 200 with an errors array; REST uses the status code and this body.",
+		Description: "An RFC 9457 problem detail. " + upstream + "; REST uses the status code and this body.",
 		Properties: openapi3.Schemas{
 			"type":     openapi3.NewStringSchema().NewRef(),
 			"title":    openapi3.NewStringSchema().NewRef(),
@@ -139,14 +146,14 @@ func (b *builder) addCommon() {
 		Required: []string{"title", "status"},
 	}}
 	desc := "The request failed; the body says why."
-	b.doc.Components.Responses[problemSchema] = &openapi3.ResponseRef{Value: &openapi3.Response{
+	doc.Components.Responses[problemSchema] = &openapi3.ResponseRef{Value: &openapi3.Response{
 		Description: &desc,
 		Content: openapi3.Content{
 			problemMedia: openapi3.NewMediaType().WithSchemaRef(componentRef(problemSchema)),
 		},
 	}}
 	notFound := "No such resource, or the caller may not see it."
-	b.doc.Components.Responses["NotFound"] = &openapi3.ResponseRef{Value: &openapi3.Response{
+	doc.Components.Responses["NotFound"] = &openapi3.ResponseRef{Value: &openapi3.Response{
 		Description: &notFound,
 		Content: openapi3.Content{
 			problemMedia: openapi3.NewMediaType().WithSchemaRef(componentRef(problemSchema)),

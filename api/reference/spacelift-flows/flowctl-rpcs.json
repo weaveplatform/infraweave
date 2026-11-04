@@ -1,0 +1,527 @@
+{
+  "rpcs": [
+    {
+      "path": "/cli/apps/create_app",
+      "request": {
+        "type": "object",
+        "properties": {
+          "blockStyle": {
+            "type": "object",
+            "properties": {
+              "color": {
+                "type": "string"
+              },
+              "iconUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "color",
+              "iconUrl"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "blockStyle",
+          "description",
+          "name",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "object",
+            "properties": {
+              "id": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/cli/apps/create_version",
+      "request": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "customAppId": {
+            "type": "string"
+          },
+          "uiCode": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "customAppId",
+          "uiCode",
+          "version"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "appVersion": {
+            "type": "object",
+            "properties": {
+              "id": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/cli/apps/get_version",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "appVersion": {}
+        }
+      }
+    },
+    {
+      "path": "/cli/apps/list_apps",
+      "request": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "apps": {}
+        }
+      }
+    },
+    {
+      "path": "/cli/apps/list_versions",
+      "request": {
+        "type": "object",
+        "properties": {
+          "customAppId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customAppId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "versions": {}
+        }
+      }
+    },
+    {
+      "path": "/cli/apps/update_version",
+      "request": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "uiCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/cli/flows/cancel_test_scenario_run",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/cli/flows/export",
+      "request": {
+        "type": "object",
+        "properties": {
+          "flowId": {
+            "type": "string"
+          },
+          "omitAppSchemas": {
+            "type": "boolean"
+          },
+          "omitIds": {
+            "type": "boolean"
+          },
+          "omitLayout": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "path": "/cli/flows/get_test_scenario_run",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "assertions": {
+            "type": "array",
+            "items": {
+              "ref": "TestScenarioRunAssertion"
+            }
+          },
+          "run": {
+            "ref": "TestScenarioRun"
+          }
+        },
+        "required": [
+          "assertions",
+          "run"
+        ]
+      }
+    },
+    {
+      "path": "/cli/flows/list_flows",
+      "request": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "flows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/cli/flows/list_test_scenarios",
+      "request": {
+        "type": "object",
+        "properties": {
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "ref": "TestScenario"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/cli/flows/start_test_scenario_run",
+      "request": {
+        "type": "object",
+        "properties": {
+          "scenarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenarioId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "path": "/cli/flows/start_test_scenario_run_batch",
+      "request": {
+        "type": "object",
+        "properties": {
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                },
+                "scenarioId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason",
+                "scenarioId"
+              ]
+            }
+          }
+        },
+        "required": [
+          "runIds",
+          "skipped"
+        ]
+      }
+    },
+    {
+      "path": "/cli/projects",
+      "request": {
+        "type": "object"
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          }
+        }
+      },
+      "unenveloped": true
+    }
+  ],
+  "types": {
+    "ExportOptions": {
+      "type": "object",
+      "properties": {
+        "omitAppSchemas": {
+          "type": "boolean"
+        },
+        "omitIds": {
+          "type": "boolean"
+        },
+        "omitLayout": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TestScenario": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "TestScenarioRun": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string",
+          "nullable": true
+        },
+        "id": {
+          "type": "string"
+        },
+        "scenarioId": {
+          "type": "string"
+        },
+        "status": {
+          "ref": "TestScenarioRunStatus"
+        }
+      },
+      "required": [
+        "error",
+        "id",
+        "scenarioId",
+        "status"
+      ]
+    },
+    "TestScenarioRunAssertion": {
+      "type": "object",
+      "properties": {
+        "assertionId": {
+          "type": "string"
+        },
+        "blockName": {
+          "type": "string",
+          "nullable": true
+        },
+        "detail": {
+          "type": "string",
+          "nullable": true
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "output",
+            "input",
+            "noEvents"
+          ]
+        },
+        "outputKey": {
+          "type": "string",
+          "nullable": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "assertionId",
+        "blockName",
+        "detail",
+        "kind",
+        "outputKey",
+        "status"
+      ]
+    },
+    "TestScenarioRunStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "pending",
+        "running",
+        "passed",
+        "failed",
+        "canceled"
+      ]
+    }
+  }
+}

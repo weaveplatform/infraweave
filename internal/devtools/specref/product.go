@@ -29,9 +29,14 @@ type Product struct {
 	// Baseline is the parity baseline that accepts the reference operations
 	// the served document does not serve unchanged.
 	Baseline string
+	// Register and Report are the inventory's outputs, relative to the
+	// repository root; a product without an inventory report has no Report.
+	Register string
+	Report   string
 
-	generate func(ctx context.Context, dir string) (*Generated, error)
-	pins     func(lock []byte) (map[string]string, error)
+	generate  func(ctx context.Context, dir string) (*Generated, error)
+	pins      func(lock []byte) (map[string]string, error)
+	inventory func(dir string, out InventoryOutputs, check bool) error
 }
 
 // Deploy is Spacelift's IaC orchestration product, projected from its
@@ -42,6 +47,8 @@ var Deploy = Product{
 	Dir:      "api/reference/spacelift",
 	Spec:     FileSpec,
 	Baseline: "api/parity-baseline.deploy.json",
+	Register: "docs/data/graphql-inventory.json",
+	Report:   "docs/research/reference/29-data-model-inventory.md",
 	generate: func(ctx context.Context, dir string) (*Generated, error) {
 		src, err := ReadSources(dir)
 		if err != nil {
@@ -50,10 +57,42 @@ var Deploy = Product{
 		return Generate(ctx, src)
 	},
 	pins: deployPins,
+	inventory: func(dir string, out InventoryOutputs, check bool) error {
+		if check {
+			return CheckInventory(dir, out)
+		}
+		return InventoryFile(dir, out)
+	},
+}
+
+// Flows is Spacelift's workflow product, projected from the RPC paths its
+// clients terraform-provider-flows and flowctl call (report 02, "Flows: RPC
+// to REST").
+var Flows = Product{
+	Name:     "flows",
+	Dir:      "api/reference/spacelift-flows",
+	Spec:     FileFlowsSpec,
+	Baseline: "api/parity-baseline.flows.json",
+	Register: "docs/data/flows-sdk-inventory.json",
+	generate: func(ctx context.Context, dir string) (*Generated, error) {
+		src, err := ReadFlowsSources(dir)
+		if err != nil {
+			return nil, err
+		}
+		return GenerateFlows(ctx, src)
+	},
+	pins:      flowsPins,
+	inventory: flowsInventory,
 }
 
 // Products lists every product with a reference, in a fixed order.
-func Products() []Product { return []Product{Deploy} }
+func Products() []Product { return []Product{Deploy, Flows} }
+
+// Inventory writes the product's inventory from the snapshots in dir, or
+// with check fails with ErrDrift when the committed inventory is stale.
+func (p Product) Inventory(dir string, out InventoryOutputs, check bool) error {
+	return p.inventory(dir, out, check)
+}
 
 // ProductNamed is the product called name.
 func ProductNamed(name string) (Product, error) {
@@ -149,4 +188,28 @@ func deployPins(data []byte) (map[string]string, error) {
 		"provider-repo":    lock.Provider.Repository,
 		"provider-version": strings.TrimPrefix(lock.Provider.Ref, "v"),
 	}, nil
+}
+
+func flowsPins(data []byte) (map[string]string, error) {
+	var lock FlowsLock
+	if err := yaml.Unmarshal(data, &lock); err != nil {
+		return nil, fmt.Errorf("decode lock: %w", err)
+	}
+	pins := map[string]string{
+		"flows-provider-repo": lock.Provider.Repository,
+		"flows-provider-ref":  lock.Provider.Ref,
+		"flowctl-repo":        lock.Flowctl.Repository,
+		"flowctl-ref":         lock.Flowctl.Ref,
+		"sdk-package":         lock.SDK.Package,
+		"sdk-version":         lock.SDK.Version,
+		"templates":           lock.Templates.Index,
+		"registry":            lock.Registry.Manifest,
+	}
+	// A pin the lock lacks leaves the flag's own default in place.
+	for k, v := range pins {
+		if v == "" {
+			delete(pins, k)
+		}
+	}
+	return pins, nil
 }

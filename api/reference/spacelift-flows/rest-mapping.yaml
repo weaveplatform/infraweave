@@ -1,0 +1,176 @@
+# Projects Spacelift Flows' RPC paths onto REST (docs/research/reference/
+# 02-graphql-to-rest-mapping.md, "Flows: RPC to REST"). `specref generate
+# --product flows` reads it with the snapshots; every RPC path a snapshot
+# names needs an entry under rpcs or exclude, and an entry no snapshot names
+# fails generation.
+#
+# The verb opening an RPC path's last segment gives the method and route,
+# the noun after it (or the family, for a bare verb) the resource through
+# nouns, and the request's keys the parent and the path parameters. An entry
+# with method and path is an override. Entries sharing an operationId are one
+# operation answering several RPC paths, which must agree on the route.
+#
+# operationIds start with a verb (createFlow); the Deploy reference's are
+# GraphQL field names (stackCreate), so the two never collide in the one
+# served document.
+
+tags:
+  Flows Projects: Flows projects, their secrets and the agent pools attached to them.
+  Flows Flows: Flows, their YAML definitions, change plans and block lifecycle confirmation.
+  Flows Apps: Custom apps, app versions, and app installations in a project.
+  Flows Data Tables: Data tables, their columns and their attachment to flows.
+  Flows Test Scenarios: Test scenarios of a flow and their runs.
+
+# Each resource: its collection's path segment, its path parameter, the other
+# request keys that name it, the resource an item stays nested under, and
+# its tag.
+resources:
+  project: {collection: projects, id: projectId, tag: Flows Projects}
+  secret: {collection: secrets, id: key, parent: project, tag: Flows Projects}
+  agentPool: {collection: agent-pools, id: agentPoolId, tag: Flows Projects}
+  flow: {collection: flows, id: flowId, tag: Flows Flows}
+  block: {collection: blocks, id: blockId, keys: [entityId], tag: Flows Flows}
+  app: {collection: apps, id: appId, keys: [customAppId], tag: Flows Apps}
+  appVersion: {collection: app-versions, id: appVersionId, tag: Flows Apps}
+  appInstallation: {collection: app-installations, id: appInstallationId, tag: Flows Apps}
+  dataTable: {collection: data-tables, id: dataTableId, tag: Flows Data Tables}
+  dataTableColumn: {collection: data-table-columns, id: dataTableColumnId, tag: Flows Data Tables}
+  testScenario: {collection: test-scenarios, id: testScenarioId, keys: [scenarioId], tag: Flows Test Scenarios}
+  testScenarioRun: {collection: test-scenario-runs, id: testScenarioRunId, tag: Flows Test Scenarios}
+
+# RPC nouns, singular, and families of bare verbs, to resources.
+nouns:
+  project: project
+  secret: secret
+  agent_pool: agentPool
+  flow: flow
+  app: app
+  version: appVersion
+  installation: appInstallation
+  datatable: dataTable
+  datatable_column: dataTableColumn
+  test_scenario: testScenario
+  test_scenario_run: testScenarioRun
+
+rpcs:
+  # Projects
+  /provider/projects/list: {operationId: listProjects}
+  /cli/projects: {operationId: listProjects, method: GET, path: /flows/projects, resource: project}
+  /provider/projects/get: {operationId: getProject}
+  /provider/organization/create_secret: {operationId: createSecret}
+  /provider/organization/read_secret: {operationId: getSecret}
+  /provider/organization/update_secret: {operationId: updateSecret}
+  /provider/organization/delete_secret: {operationId: deleteSecret}
+  /provider/agent_pools/get_project_attachment:
+    operationId: getProjectAgentPool
+    method: GET
+    path: /flows/projects/{projectId}/agent-pools/{agentPoolId}
+    resource: agentPool
+  /provider/agent_pools/attach_to_project: {operationId: attachAgentPoolToProject}
+  /provider/agent_pools/detach_from_project: {operationId: detachAgentPoolFromProject}
+
+  # Flows
+  /cli/flows/list_flows: {operationId: listFlows}
+  /provider/flows/create: {operationId: createFlow}
+  /provider/flows/get: {operationId: getFlow}
+  /provider/flows/update: {operationId: updateFlow}
+  /provider/flows/delete: {operationId: deleteFlow}
+  /provider/flows/apply_config:
+    operationId: applyFlowDefinition
+    method: PUT
+    path: /flows/flows/{flowId}/definition
+    resource: flow
+  /provider/flows/export_definition:
+    operationId: getFlowDefinition
+    method: GET
+    path: /flows/flows/{flowId}/definition
+    resource: flow
+  /cli/flows/export:
+    operationId: getFlowDefinition
+    method: GET
+    path: /flows/flows/{flowId}/definition
+    resource: flow
+  /provider/flows/plan_changes:
+    operationId: planFlowChanges
+    method: POST
+    path: /flows/flows/{flowId}/plan
+    resource: flow
+  /provider/flows/get_entity_lifecycle_status:
+    operationId: getBlockLifecycleStatus
+    method: GET
+    path: /flows/blocks/{blockId}/lifecycle-status
+    resource: block
+  /provider/flows/confirm_entity_lifecycle:
+    operationId: confirmBlockLifecycle
+    method: POST
+    path: /flows/blocks/{blockId}/confirm
+    resource: block
+
+  # Apps
+  /cli/apps/list_apps: {operationId: listApps}
+  /cli/apps/create_app: {operationId: createApp}
+  /cli/apps/list_versions: {operationId: listAppVersions}
+  /cli/apps/create_version: {operationId: createAppVersion}
+  /cli/apps/get_version: {operationId: getAppVersion}
+  /cli/apps/update_version: {operationId: updateAppVersion}
+  /provider/apps/get_version_id:
+    operationId: findAppVersion
+    method: GET
+    path: /flows/app-versions
+    resource: appVersion
+  /provider/apps/create_installation: {operationId: createAppInstallation}
+  /provider/apps/get_installation: {operationId: getAppInstallation}
+  /provider/apps/delete_installation: {operationId: deleteAppInstallation}
+  /provider/apps/confirm_installation: {operationId: confirmAppInstallation}
+  /provider/apps/get_installation_status:
+    operationId: getAppInstallationStatus
+    method: GET
+    path: /flows/app-installations/{appInstallationId}/status
+    resource: appInstallation
+  /provider/apps/get_installation_config_field:
+    operationId: getAppInstallationConfigField
+    method: GET
+    path: /flows/app-installations/{appInstallationId}/config-fields/{key}
+    resource: appInstallation
+  /provider/apps/update_installation_config:
+    operationId: updateAppInstallationConfig
+    method: PATCH
+    path: /flows/app-installations/{appInstallationId}/config
+    resource: appInstallation
+  /provider/apps/update_installation_metadata:
+    operationId: updateAppInstallationMetadata
+    method: PATCH
+    path: /flows/app-installations/{appInstallationId}/metadata
+    resource: appInstallation
+  /provider/apps/update_installation_version:
+    operationId: updateAppInstallationVersion
+    method: PATCH
+    path: /flows/app-installations/{appInstallationId}/version
+    resource: appInstallation
+
+  # Data tables
+  /provider/datatables/create: {operationId: createDataTable}
+  /provider/datatables/get: {operationId: getDataTable}
+  /provider/datatables/update: {operationId: updateDataTable}
+  /provider/datatables/delete: {operationId: deleteDataTable}
+  /provider/datatables/create_datatable_column: {operationId: createDataTableColumn}
+  /provider/datatables/get_datatable_column: {operationId: getDataTableColumn}
+  /provider/datatables/update_datatable_column: {operationId: updateDataTableColumn}
+  /provider/datatables/delete_datatable_column: {operationId: deleteDataTableColumn}
+  /provider/datatables/attach_to_flow: {operationId: attachDataTableToFlow}
+  /provider/datatables/detach_from_flow: {operationId: detachDataTableFromFlow}
+
+  # Test scenarios
+  /cli/flows/list_test_scenarios: {operationId: listTestScenarios}
+  /cli/flows/start_test_scenario_run: {operationId: startTestScenarioRun}
+  /cli/flows/start_test_scenario_run_batch: {operationId: startTestScenarioRuns}
+  /cli/flows/get_test_scenario_run: {operationId: getTestScenarioRun}
+  /cli/flows/cancel_test_scenario_run: {operationId: cancelTestScenarioRun}
+
+# RPC paths with no REST operation, each with its reason.
+exclude: {}
+
+# String properties that carry YAML, by name, to the schemas.yaml schema
+# the YAML follows.
+yaml:
+  definition: FlowDefinition

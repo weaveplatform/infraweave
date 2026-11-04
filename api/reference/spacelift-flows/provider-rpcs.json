@@ -1,0 +1,1301 @@
+{
+  "rpcs": [
+    {
+      "path": "/provider/agent_pools/attach_to_project",
+      "request": {
+        "type": "object",
+        "properties": {
+          "agentPoolId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentPoolId",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "attachment": {
+            "ref": "ProjectAgentPoolAttachment"
+          }
+        },
+        "required": [
+          "attachment"
+        ]
+      }
+    },
+    {
+      "path": "/provider/agent_pools/detach_from_project",
+      "request": {
+        "type": "object",
+        "properties": {
+          "agentPoolId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentPoolId",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/agent_pools/get_project_attachment",
+      "request": {
+        "type": "object",
+        "properties": {
+          "agentPoolId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentPoolId",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "attachment": {
+            "ref": "ProjectAgentPoolAttachment"
+          }
+        },
+        "required": [
+          "attachment"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/confirm_installation",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/apps/create_installation",
+      "request": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "ref": "AppInstallationApp"
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "styleOverride": {
+            "ref": "AppInstallationStyleOverride",
+            "nullable": true
+          }
+        },
+        "required": [
+          "app",
+          "name",
+          "projectId",
+          "styleOverride"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "draft",
+          "id"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/delete_installation",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/apps/get_installation",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "ref": "AppInstallationApp"
+          },
+          "configFields": {
+            "type": "object",
+            "values": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "styleOverride": {
+            "ref": "AppInstallationStyleOverride",
+            "nullable": true
+          }
+        },
+        "required": [
+          "app",
+          "configFields",
+          "name",
+          "status",
+          "styleOverride"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/get_installation_config_field",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "value"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/get_installation_status",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/get_version_id",
+      "request": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "registry": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/update_installation_config",
+      "request": {
+        "type": "object",
+        "properties": {
+          "configFields": {
+            "type": "object",
+            "values": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "configFields",
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "draft"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/update_installation_metadata",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "styleOverride": {
+            "ref": "AppInstallationStyleOverride",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "styleOverride"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "draft"
+        ]
+      }
+    },
+    {
+      "path": "/provider/apps/update_installation_version",
+      "request": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "ref": "AppInstallationApp"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app",
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "draft"
+        ]
+      }
+    },
+    {
+      "path": "/provider/datatables/attach_to_flow",
+      "request": {
+        "type": "object",
+        "properties": {
+          "dataTableId": {
+            "type": "string"
+          },
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataTableId",
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/datatables/create",
+      "request": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "dataTable": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "dataTable"
+        ]
+      }
+    },
+    {
+      "path": "/provider/datatables/create_datatable_column",
+      "request": {
+        "type": "object",
+        "properties": {
+          "dataTableId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "refTableId": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataTableId",
+          "name",
+          "type"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "column": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "column"
+        ]
+      }
+    },
+    {
+      "path": "/provider/datatables/delete",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/datatables/delete_datatable_column",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/datatables/detach_from_flow",
+      "request": {
+        "type": "object",
+        "properties": {
+          "dataTableId": {
+            "type": "string"
+          },
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataTableId",
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/datatables/get",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "dataTable": {
+            "type": "object",
+            "properties": {
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "refTableId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type"
+                  ]
+                }
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "columns",
+              "id",
+              "name"
+            ]
+          }
+        },
+        "required": [
+          "dataTable"
+        ]
+      }
+    },
+    {
+      "path": "/provider/datatables/get_datatable_column",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "column": {
+            "type": "object",
+            "properties": {
+              "dataTableId": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "refTableId": {
+                "type": "string",
+                "nullable": true
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "dataTableId",
+              "id",
+              "name",
+              "type"
+            ]
+          }
+        },
+        "required": [
+          "column"
+        ]
+      }
+    },
+    {
+      "path": "/provider/datatables/update",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "dataTable": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "required": [
+          "dataTable"
+        ]
+      }
+    },
+    {
+      "path": "/provider/datatables/update_datatable_column",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "column": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "required": [
+          "column"
+        ]
+      }
+    },
+    {
+      "path": "/provider/flows/apply_config",
+      "request": {
+        "type": "object",
+        "properties": {
+          "appInstallationMapping": {
+            "type": "object",
+            "values": {
+              "type": "string"
+            }
+          },
+          "definition": {
+            "type": "string"
+          },
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "definition",
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/flows/confirm_entity_lifecycle",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/flows/create",
+      "request": {
+        "type": "object",
+        "properties": {
+          "eventLimit": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "flow": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "flow"
+        ]
+      }
+    },
+    {
+      "path": "/provider/flows/delete",
+      "request": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/flows/export_definition",
+      "request": {
+        "type": "object",
+        "properties": {
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "definition": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "definition"
+        ]
+      }
+    },
+    {
+      "path": "/provider/flows/get",
+      "request": {
+        "type": "object",
+        "properties": {
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "blocks": {
+            "type": "object",
+            "values": {
+              "ref": "GetFlowBlock"
+            }
+          },
+          "eventLimit": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "active",
+          "blocks",
+          "eventLimit",
+          "name"
+        ]
+      }
+    },
+    {
+      "path": "/provider/flows/get_entity_lifecycle_status",
+      "request": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entityId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "path": "/provider/flows/plan_changes",
+      "request": {
+        "type": "object",
+        "properties": {
+          "appInstallationMapping": {
+            "type": "object",
+            "values": {
+              "type": "string"
+            }
+          },
+          "definition": {
+            "type": "string"
+          },
+          "flowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "definition",
+          "flowId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "object",
+            "properties": {
+              "operations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "operations"
+            ]
+          },
+          "readablePlan": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "plan"
+        ]
+      }
+    },
+    {
+      "path": "/provider/flows/update",
+      "request": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "eventLimit": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/organization/create_secret",
+      "request": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "projectId",
+          "value"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "key",
+              "updatedAt"
+            ]
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      }
+    },
+    {
+      "path": "/provider/organization/delete_secret",
+      "request": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object"
+      }
+    },
+    {
+      "path": "/provider/organization/read_secret",
+      "request": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "projectId"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "key",
+              "updatedAt"
+            ]
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      }
+    },
+    {
+      "path": "/provider/organization/update_secret",
+      "request": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "projectId",
+          "value"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "key",
+              "updatedAt"
+            ]
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      }
+    },
+    {
+      "path": "/provider/projects/get",
+      "request": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "projectId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "ref": "Project"
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    },
+    {
+      "path": "/provider/projects/list",
+      "request": {
+        "type": "object"
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "ref": "Project"
+            }
+          }
+        },
+        "required": [
+          "projects"
+        ]
+      }
+    }
+  ],
+  "types": {
+    "AppInstallationApp": {
+      "type": "object",
+      "properties": {
+        "custom": {
+          "type": "boolean"
+        },
+        "versionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "custom",
+        "versionId"
+      ]
+    },
+    "AppInstallationStyleOverride": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "iconUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "color",
+        "iconUrl"
+      ]
+    },
+    "GetFlowBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "Project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "isPersonalSandbox": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "isPersonalSandbox",
+        "name"
+      ]
+    },
+    "ProjectAgentPoolAttachment": {
+      "type": "object",
+      "properties": {
+        "agentPoolId": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agentPoolId",
+        "projectId"
+      ]
+    }
+  }
+}

@@ -385,7 +385,8 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   captured ([23 section 10.5](../reference/23-flows.md#105-web-ui-api), C271).
   A served Flows operation that no public client reaches (invocations and
   event trees, retry and re-emit, members, teams, service accounts and API
-  keys, agent pools, registry subscriptions, OIDC, audit and OTLP export) is
+  keys, agent pools beyond attaching one to a project, registry
+  subscriptions, OIDC, audit and OTLP export) is
   designed by infraweave from the docs and the data model above, and
   carries `x-upstream: none`. Each record of `docs/data/capabilities.json`
   names its `product` (`deploy` or `flows`), and docscheck holds each

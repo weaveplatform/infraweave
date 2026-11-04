@@ -1,0 +1,75 @@
+{
+  "$schema": "schema/flows-sdk-inventory.schema.json",
+  "package": "@o/sdk",
+  "version": "1.2.3",
+  "records": [
+    {
+      "id": "AppSchema",
+      "kind": "interface",
+      "exported": true,
+      "members": [
+        {
+          "name": "name",
+          "optional": true
+        },
+        {
+          "name": "blocks"
+        },
+        {
+          "name": "onSync",
+          "optional": true
+        },
+        {
+          "name": "quoted"
+        },
+        {
+          "name": "generic"
+        }
+      ]
+    },
+    {
+      "id": "KVPair",
+      "kind": "interface",
+      "members": [
+        {
+          "name": "key"
+        },
+        {
+          "name": "value",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "Shape",
+      "kind": "type"
+    },
+    {
+      "id": "Status",
+      "kind": "type",
+      "exported": true
+    },
+    {
+      "id": "defineApp",
+      "kind": "function",
+      "exported": true
+    },
+    {
+      "id": "kv",
+      "kind": "const",
+      "exported": true,
+      "members": [
+        {
+          "name": "get"
+        },
+        {
+          "name": "list"
+        }
+      ]
+    },
+    {
+      "id": "plain",
+      "kind": "const"
+    }
+  ]
+}

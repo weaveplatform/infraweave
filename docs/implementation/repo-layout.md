@@ -64,6 +64,8 @@ infraweave/
 │       ├── spacelift/             the Spacelift specification reference and its snapshots; generated
 │       ├── spacelift-flows/       the Flows reference: provider and flowctl RPC paths projected to REST
 │       │                          by rest-mapping.yaml into flows.openapi.yaml and coverage.md; generated (P1d)
+│       │                          from the snapshots provider-rpcs.json, flowctl-rpcs.json and
+│       │                          sdk-identifiers.json, with the hand-written schemas.yaml for flow YAML
 │       └── provider-parity.yaml   Terraform provider renames, type changes and omissions (P24)
 ├── internal/
 │   ├── app/                       composition root: serve, scheduler, all, migrate

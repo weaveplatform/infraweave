@@ -1,0 +1,1276 @@
+[
+  {
+    "id": "AppBlock",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name",
+        "optional": true
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "category",
+        "optional": true
+      },
+      {
+        "name": "config",
+        "optional": true
+      },
+      {
+        "name": "onInternalMessage",
+        "optional": true
+      },
+      {
+        "name": "inputs",
+        "optional": true
+      },
+      {
+        "name": "outputs",
+        "optional": true
+      },
+      {
+        "name": "signals",
+        "optional": true
+      },
+      {
+        "name": "onSync",
+        "optional": true
+      },
+      {
+        "name": "onDrain",
+        "optional": true
+      },
+      {
+        "name": "draftCustomStatusDescription",
+        "optional": true
+      },
+      {
+        "name": "http",
+        "optional": true
+      },
+      {
+        "name": "ui",
+        "optional": true
+      },
+      {
+        "name": "schedules",
+        "optional": true
+      },
+      {
+        "name": "onTimer",
+        "optional": true
+      },
+      {
+        "name": "autoconfirm",
+        "optional": true
+      },
+      {
+        "name": "entrypoint",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppBlockComponentInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name",
+        "optional": true
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "config",
+        "optional": true
+      },
+      {
+        "name": "onEvent"
+      }
+    ]
+  },
+  {
+    "id": "AppBlockComponentOutput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "order",
+        "optional": true
+      },
+      {
+        "name": "name",
+        "optional": true
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "default",
+        "optional": true
+      },
+      {
+        "name": "possiblePrimaryParents",
+        "optional": true
+      },
+      {
+        "name": "secondary",
+        "optional": true
+      },
+      {
+        "name": "type",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppBlockConfigField",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "type"
+      },
+      {
+        "name": "fixed",
+        "optional": true
+      },
+      {
+        "name": "required"
+      },
+      {
+        "name": "default",
+        "optional": true
+      },
+      {
+        "name": "fieldKey",
+        "optional": true
+      },
+      {
+        "name": "sensitive",
+        "optional": true
+      },
+      {
+        "name": "suggestValues",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppBlockHTTPComponent",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "onRequest"
+      }
+    ]
+  },
+  {
+    "id": "AppBlockInputConfigField",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "type"
+      },
+      {
+        "name": "required"
+      },
+      {
+        "name": "default",
+        "optional": true
+      },
+      {
+        "name": "sensitive",
+        "optional": true
+      },
+      {
+        "name": "populateFrom",
+        "optional": true
+      },
+      {
+        "name": "suggestValues",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppBlockSchedule",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "customizable",
+        "optional": true
+      },
+      {
+        "name": "definition"
+      },
+      {
+        "name": "onTrigger"
+      }
+    ]
+  },
+  {
+    "id": "AppBlockSignal",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "description"
+      },
+      {
+        "name": "sensitive",
+        "optional": true
+      },
+      {
+        "name": "sensitivity",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppBlockUIComponent",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "onRequest"
+      },
+      {
+        "name": "views",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppConfigField",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "type"
+      },
+      {
+        "name": "fixed",
+        "optional": true
+      },
+      {
+        "name": "required"
+      },
+      {
+        "name": "default",
+        "optional": true
+      },
+      {
+        "name": "sensitive",
+        "optional": true
+      },
+      {
+        "name": "populateFrom",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppContext",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "config"
+      },
+      {
+        "name": "status"
+      },
+      {
+        "name": "prompts"
+      },
+      {
+        "name": "http"
+      },
+      {
+        "name": "installationUrl"
+      },
+      {
+        "name": "signals"
+      }
+    ]
+  },
+  {
+    "id": "AppHTTPComponent",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "onRequest"
+      }
+    ]
+  },
+  {
+    "id": "AppHTTPEndpoint",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "url"
+      }
+    ]
+  },
+  {
+    "id": "AppInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "app"
+      }
+    ]
+  },
+  {
+    "id": "AppLifecycleCallbackOutput",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "AppLifecycleStatus",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "AppNonSchedulableLifecycleCallbackOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "newStatus"
+      }
+    ]
+  },
+  {
+    "id": "AppOnCreateOutput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "ok",
+        "optional": true
+      },
+      {
+        "name": "redirect",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppOnHTTPRequestInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "request"
+      }
+    ]
+  },
+  {
+    "id": "AppOnInternalMessageInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "message"
+      }
+    ]
+  },
+  {
+    "id": "AppOnTimerInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "timer"
+      }
+    ]
+  },
+  {
+    "id": "AppOnTriggerInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "schedule"
+      }
+    ]
+  },
+  {
+    "id": "AppOnUIRequestInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "request"
+      }
+    ]
+  },
+  {
+    "id": "AppSchedulableLifecycleCallbackOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "newStatus"
+      },
+      {
+        "name": "nextScheduleDelay",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppSchedule",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "customizable",
+        "optional": true
+      },
+      {
+        "name": "definition"
+      },
+      {
+        "name": "onTrigger"
+      }
+    ]
+  },
+  {
+    "id": "AppSchema",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name",
+        "optional": true
+      },
+      {
+        "name": "installationInstructions",
+        "optional": true
+      },
+      {
+        "name": "config",
+        "optional": true
+      },
+      {
+        "name": "signals",
+        "optional": true
+      },
+      {
+        "name": "onSync",
+        "optional": true
+      },
+      {
+        "name": "onDrain",
+        "optional": true
+      },
+      {
+        "name": "draftCustomStatusDescription",
+        "optional": true
+      },
+      {
+        "name": "onInternalMessage",
+        "optional": true
+      },
+      {
+        "name": "blocks"
+      },
+      {
+        "name": "http",
+        "optional": true
+      },
+      {
+        "name": "ui",
+        "optional": true
+      },
+      {
+        "name": "schedules",
+        "optional": true
+      },
+      {
+        "name": "onTimer",
+        "optional": true
+      },
+      {
+        "name": "autoconfirm",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppSignal",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "description"
+      },
+      {
+        "name": "sensitive",
+        "optional": true
+      },
+      {
+        "name": "sensitivity",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "AppUIComponent",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "onRequest"
+      }
+    ]
+  },
+  {
+    "id": "BaseLifecycleCallbackOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "outputUpdates",
+        "optional": true
+      },
+      {
+        "name": "signalUpdates",
+        "optional": true
+      },
+      {
+        "name": "customStatusDescription",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "CreatePendingEventOptions",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "event",
+        "optional": true
+      },
+      {
+        "name": "outputKey",
+        "optional": true
+      },
+      {
+        "name": "parentEventId",
+        "optional": true
+      },
+      {
+        "name": "secondaryParentEventIds",
+        "optional": true
+      },
+      {
+        "name": "statusDescription"
+      }
+    ]
+  },
+  {
+    "id": "EmitOptions",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "outputKey",
+        "optional": true
+      },
+      {
+        "name": "parentEventId",
+        "optional": true
+      },
+      {
+        "name": "secondaryParentEventIds",
+        "optional": true
+      },
+      {
+        "name": "echo",
+        "optional": true
+      },
+      {
+        "name": "complete",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "EntityContext",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "name"
+      },
+      {
+        "name": "description"
+      },
+      {
+        "name": "config"
+      },
+      {
+        "name": "lifecycle"
+      },
+      {
+        "name": "http"
+      },
+      {
+        "name": "outputs"
+      }
+    ]
+  },
+  {
+    "id": "EntityHTTPEndpoint",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "url"
+      }
+    ]
+  },
+  {
+    "id": "EntityInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "block"
+      }
+    ]
+  },
+  {
+    "id": "EntityLifecycleCallbackOutput",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "EntityLifecycleComponent",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "status"
+      },
+      {
+        "name": "signals"
+      }
+    ]
+  },
+  {
+    "id": "EntityLifecycleStatus",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "EntityNonSchedulableLifecycleCallbackOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "newStatus"
+      }
+    ]
+  },
+  {
+    "id": "EntityOnHTTPRequestInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "request"
+      }
+    ]
+  },
+  {
+    "id": "EntityOnInternalMessageInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "message"
+      }
+    ]
+  },
+  {
+    "id": "EntityOnTimerInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "timer"
+      }
+    ]
+  },
+  {
+    "id": "EntityOnTriggerInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "schedule"
+      }
+    ]
+  },
+  {
+    "id": "EntityOnUIRequestInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "request"
+      }
+    ]
+  },
+  {
+    "id": "EntityOutput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "modified",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "EntitySchedulableLifecycleCallbackOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "newStatus"
+      },
+      {
+        "name": "nextScheduleDelay",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "EntityView",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "label"
+      },
+      {
+        "name": "type"
+      }
+    ]
+  },
+  {
+    "id": "EntityViewType",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "EventContext",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "inputConfig"
+      },
+      {
+        "name": "echo",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "EventInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "event"
+      }
+    ]
+  },
+  {
+    "id": "HTTPRequest",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "requestId"
+      },
+      {
+        "name": "path"
+      },
+      {
+        "name": "method"
+      },
+      {
+        "name": "headers"
+      },
+      {
+        "name": "query"
+      },
+      {
+        "name": "params"
+      },
+      {
+        "name": "rawBody"
+      },
+      {
+        "name": "body"
+      }
+    ]
+  },
+  {
+    "id": "InvocationMetadata",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "invocationId"
+      },
+      {
+        "name": "timestamp"
+      }
+    ]
+  },
+  {
+    "id": "JsonSchema",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "type",
+        "optional": true
+      },
+      {
+        "name": "const",
+        "optional": true
+      },
+      {
+        "name": "title",
+        "optional": true
+      },
+      {
+        "name": "properties",
+        "optional": true
+      },
+      {
+        "name": "items",
+        "optional": true
+      },
+      {
+        "name": "required",
+        "optional": true
+      },
+      {
+        "name": "enum",
+        "optional": true
+      },
+      {
+        "name": "anyOf",
+        "optional": true
+      },
+      {
+        "name": "oneOf",
+        "optional": true
+      },
+      {
+        "name": "description",
+        "optional": true
+      },
+      {
+        "name": "sensitive",
+        "optional": true
+      },
+      {
+        "name": "additionalProperties",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "JsonSchemaType",
+    "kind": "type"
+  },
+  {
+    "id": "KVListInput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "keyPrefix"
+      },
+      {
+        "name": "startingKey",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "KVListOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "pairs"
+      },
+      {
+        "name": "nextStartingKey",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "KVPair",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "key"
+      },
+      {
+        "name": "value",
+        "optional": true
+      },
+      {
+        "name": "updatedAt",
+        "optional": true
+      },
+      {
+        "name": "ttl",
+        "optional": true
+      },
+      {
+        "name": "lock",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "ListBlocksInput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "typeIds",
+        "optional": true
+      },
+      {
+        "name": "statuses",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "ListBlocksOutput",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "PopulateFrom",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "blockKey"
+      },
+      {
+        "name": "outputProperty"
+      }
+    ]
+  },
+  {
+    "id": "PromptOptions",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "redirect"
+      }
+    ]
+  },
+  {
+    "id": "ScheduleDefinition",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "SimpleType",
+    "kind": "type"
+  },
+  {
+    "id": "SimpleTypeArray",
+    "kind": "type"
+  },
+  {
+    "id": "SuggestValuesInput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "app"
+      },
+      {
+        "name": "block"
+      },
+      {
+        "name": "searchPhrase",
+        "optional": true
+      },
+      {
+        "name": "staticInputConfig",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "SuggestValuesOutput",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "suggestedValues"
+      },
+      {
+        "name": "message",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "SuggestedValue",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "label"
+      },
+      {
+        "name": "value"
+      }
+    ]
+  },
+  {
+    "id": "Type",
+    "kind": "type",
+    "exported": true
+  },
+  {
+    "id": "UIRequest",
+    "kind": "interface",
+    "exported": true,
+    "members": [
+      {
+        "name": "type"
+      },
+      {
+        "name": "payload",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "UpdatePendingEventOptions",
+    "kind": "interface",
+    "members": [
+      {
+        "name": "event",
+        "optional": true
+      },
+      {
+        "name": "outputKey",
+        "optional": true
+      },
+      {
+        "name": "parentEventId",
+        "optional": true
+      },
+      {
+        "name": "secondaryParentEventIds",
+        "optional": true
+      },
+      {
+        "name": "statusDescription",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": "blocks",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "list"
+      }
+    ]
+  },
+  {
+    "id": "defineApp",
+    "kind": "function",
+    "exported": true
+  },
+  {
+    "id": "events",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "emit"
+      },
+      {
+        "name": "createPending"
+      },
+      {
+        "name": "updatePending"
+      },
+      {
+        "name": "cancelPending"
+      },
+      {
+        "name": "completePending"
+      }
+    ]
+  },
+  {
+    "id": "getInvocationMetadata",
+    "kind": "const",
+    "exported": true
+  },
+  {
+    "id": "http",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "respond"
+      }
+    ]
+  },
+  {
+    "id": "kv",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "block"
+      },
+      {
+        "name": "app"
+      }
+    ]
+  },
+  {
+    "id": "lifecycle",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "sync"
+      },
+      {
+        "name": "proceed"
+      },
+      {
+        "name": "prompt"
+      }
+    ]
+  },
+  {
+    "id": "messaging",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "sendToBlocks"
+      },
+      {
+        "name": "sendToApp"
+      }
+    ]
+  },
+  {
+    "id": "timers",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "set"
+      },
+      {
+        "name": "unset"
+      },
+      {
+        "name": "block"
+      },
+      {
+        "name": "app"
+      }
+    ]
+  },
+  {
+    "id": "ui",
+    "kind": "const",
+    "exported": true,
+    "members": [
+      {
+        "name": "widget"
+      }
+    ]
+  }
+]
