@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 	"github.com/weaveplatform/infraweave/internal/devtools/openapibundle"
+	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 )
 
 // config is every setting, from flag > OPENAPI_BUNDLE_* environment >

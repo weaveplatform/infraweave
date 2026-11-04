@@ -1,0 +1,10 @@
+internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/internal/platform/sql
+internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/pkg/sdk
+internal/platform/x/x.go shared-below-domains github.com/weaveplatform/infraweave/internal/stacks
+internal/runs/internal/core/core.go core-not-adapters github.com/weaveplatform/infraweave/internal/runs/internal/adapters
+internal/stacks/api/api.go api-packages github.com/weaveplatform/infraweave/internal/platform/outboxutil
+internal/stacks/docs/docs.go devtools github.com/weaveplatform/infraweave/internal/devtools/specref
+internal/stacks/leak/leak.go compiler github.com/weaveplatform/infraweave/internal/runs/internal/adapters
+internal/stacks/stacks_test.go forbidigo time.Sleep
+internal/stacks/wire/wire.go constructors github.com/weaveplatform/infraweave/internal/runs/assembly
+pkg/y/y.go public-packages github.com/weaveplatform/infraweave/internal/kernel

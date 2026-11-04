@@ -397,8 +397,19 @@ func (c *checker) productTags(reg *register, product, specPath string) error {
 	}
 	for _, rec := range reg.records {
 		id, _ := rec["id"].(string)
-		if name, ok := strings.CutPrefix(id, tagPrefix); ok && rec["product"] == product && !inSpec[name] {
-			c.add(reg.path, reg.line(id), "%s record %s names a tag %s does not have", product, id, specPath)
+		if name, ok := strings.CutPrefix(
+			id,
+			tagPrefix,
+		); ok && rec["product"] == product &&
+			!inSpec[name] {
+			c.add(
+				reg.path,
+				reg.line(id),
+				"%s record %s names a tag %s does not have",
+				product,
+				id,
+				specPath,
+			)
 		}
 	}
 	return nil

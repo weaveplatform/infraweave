@@ -122,7 +122,7 @@ func ReadFlowsSources(dir string) (*FlowsSources, error) {
 	if data, err = read(FileFlowsOverlay); err != nil {
 		return nil, err
 	}
-	if src.Overlay, err = ParseFlowsOverlay(data); err != nil {
+	if src.Overlay, err = ParseFlowsOverlay(context.Background(), data); err != nil {
 		return nil, err
 	}
 	return src, nil
@@ -130,7 +130,7 @@ func ReadFlowsSources(dir string) (*FlowsSources, error) {
 
 // ParseFlowsOverlay loads schemas.yaml, a map of schema name to OpenAPI 3.0
 // schema, and validates it as the components of a document.
-func ParseFlowsOverlay(data []byte) (openapi3.Schemas, error) {
+func ParseFlowsOverlay(ctx context.Context, data []byte) (openapi3.Schemas, error) {
 	var schemas map[string]any
 	if err := strictYAML(data, &schemas); err != nil {
 		return nil, fmt.Errorf("%s: %w", FileFlowsOverlay, err)
@@ -148,7 +148,7 @@ func ParseFlowsOverlay(data []byte) (openapi3.Schemas, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load %s: %w", FileFlowsOverlay, err)
 	}
-	if err := doc.Validate(context.Background()); err != nil {
+	if err := doc.Validate(ctx); err != nil {
 		return nil, fmt.Errorf("validate %s: %w", FileFlowsOverlay, err)
 	}
 	return doc.Components.Schemas, nil
@@ -258,12 +258,18 @@ func planFlows(src *FlowsSources) ([]*flowsOperation, *FlowsReport, error) {
 	}
 	for p := range m.RPCs {
 		if !named[p] {
-			errs = append(errs, fmt.Errorf("%w: %s is mapped but no client calls it", ErrFlowsMapping, p))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: %s is mapped but no client calls it", ErrFlowsMapping, p),
+			)
 		}
 	}
 	for p := range m.Exclude {
 		if !named[p] {
-			errs = append(errs, fmt.Errorf("%w: %s is excluded but no client calls it", ErrFlowsMapping, p))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: %s is excluded but no client calls it", ErrFlowsMapping, p),
+			)
 		}
 	}
 	if len(errs) > 0 {
@@ -282,7 +288,12 @@ func planFlows(src *FlowsSources) ([]*flowsOperation, *FlowsReport, error) {
 	return ops, rep, nil
 }
 
-func addFlowsRPC(m *FlowsMapping, byID map[string]*flowsOperation, e FlowsRPCEntry, r flowsRPC) error {
+func addFlowsRPC(
+	m *FlowsMapping,
+	byID map[string]*flowsOperation,
+	e FlowsRPCEntry,
+	r flowsRPC,
+) error {
 	route, err := m.route(r.Path, r.Request)
 	if err != nil {
 		return err
@@ -366,7 +377,10 @@ func buildFlowsDoc(src *FlowsSources, ops []*flowsOperation) (*openapi3.T, error
 		},
 		Security: openapi3.SecurityRequirements{{"bearerAuth": []string{}}},
 	}
-	addProblemComponents(doc, "The Flows RPC interface reports a failure in its envelope's error string")
+	addProblemComponents(
+		doc,
+		"The Flows RPC interface reports a failure in its envelope's error string",
+	)
 	doc.Components.SecuritySchemes["bearerAuth"] = &openapi3.SecuritySchemeRef{
 		Value: &openapi3.SecurityScheme{
 			Type: "http", Scheme: "bearer",
@@ -415,7 +429,11 @@ func addFlowsSchemas(doc *openapi3.T, src *FlowsSources) error {
 				a, _ := json.Marshal(prev)
 				b, _ := json.Marshal(s)
 				if string(a) != string(b) {
-					return fmt.Errorf("%w: both clients declare a different %s", ErrFlowsSource, name)
+					return fmt.Errorf(
+						"%w: both clients declare a different %s",
+						ErrFlowsSource,
+						name,
+					)
 				}
 			}
 			shapes[name] = s
@@ -426,7 +444,11 @@ func addFlowsSchemas(doc *openapi3.T, src *FlowsSources) error {
 	}
 	for name, s := range src.Overlay {
 		if _, ok := doc.Components.Schemas[name]; ok {
-			return fmt.Errorf("%w: %s names both a client type and an overlay schema", ErrFlowsMapping, name)
+			return fmt.Errorf(
+				"%w: %s names both a client type and an overlay schema",
+				ErrFlowsMapping,
+				name,
+			)
 		}
 		doc.Components.Schemas[name] = s
 	}
@@ -518,8 +540,12 @@ func flowsResponses(o *openapi3.Operation, op *flowsOperation, response *Shape) 
 	code := op.route.Code
 	switch {
 	case response.isEmpty() && code != http.StatusCreated:
-		o.Responses.Set(fmt.Sprint(http.StatusNoContent),
-			&openapi3.ResponseRef{Value: openapi3.NewResponse().WithDescription("Done; nothing to return.")})
+		o.Responses.Set(
+			fmt.Sprint(http.StatusNoContent),
+			&openapi3.ResponseRef{
+				Value: openapi3.NewResponse().WithDescription("Done; nothing to return."),
+			},
+		)
 	default:
 		desc := "The result."
 		if code == 0 {
@@ -528,14 +554,19 @@ func flowsResponses(o *openapi3.Operation, op *flowsOperation, response *Shape) 
 		if code == http.StatusCreated {
 			desc = "Created."
 		}
-		o.Responses.Set(fmt.Sprint(code), &openapi3.ResponseRef{Value: openapi3.NewResponse().
-			WithDescription(desc).
-			WithContent(openapi3.Content{jsonMedia: openapi3.NewMediaType().WithSchemaRef(response.schema())})})
+		o.Responses.Set(fmt.Sprint(code), &openapi3.ResponseRef{
+			Value: openapi3.NewResponse().
+				WithDescription(desc).
+				WithContent(openapi3.Content{jsonMedia: openapi3.NewMediaType().WithSchemaRef(response.schema())}),
+		})
 	}
 	if len(op.route.Bind) > 0 {
 		o.Responses.Set("404", &openapi3.ResponseRef{Ref: "#/components/responses/NotFound"})
 	}
-	o.Responses.Set("default", &openapi3.ResponseRef{Ref: "#/components/responses/" + problemSchema})
+	o.Responses.Set(
+		"default",
+		&openapi3.ResponseRef{Ref: "#/components/responses/" + problemSchema},
+	)
 }
 
 func contains(list []string, s string) bool {
@@ -564,8 +595,14 @@ func (r *FlowsReport) Summary() string {
 	for _, n := range r.Clients {
 		total += n
 	}
-	return fmt.Sprintf("%d RPC paths (%d provider, %d flowctl): %d operations, %d excluded",
-		total, r.Clients[clientProvider], r.Clients[clientFlowctl], len(r.Operations), len(r.Excluded))
+	return fmt.Sprintf(
+		"%d RPC paths (%d provider, %d flowctl): %d operations, %d excluded",
+		total,
+		r.Clients[clientProvider],
+		r.Clients[clientFlowctl],
+		len(r.Operations),
+		len(r.Excluded),
+	)
 }
 
 // Markdown renders coverage.md.
@@ -573,7 +610,12 @@ func (r *FlowsReport) Markdown() string {
 	var b strings.Builder
 	b.WriteString("# Spacelift Flows reference coverage\n\n")
 	b.WriteString("Generated by `specref generate --product flows`; do not edit.\n\n")
-	fmt.Fprintf(&b, "- terraform-provider-flows: `%s` at `%s`\n", r.Lock.Provider.Repository, r.Lock.Provider.Ref)
+	fmt.Fprintf(
+		&b,
+		"- terraform-provider-flows: `%s` at `%s`\n",
+		r.Lock.Provider.Repository,
+		r.Lock.Provider.Ref,
+	)
 	fmt.Fprintf(&b, "- flowctl: `%s` at `%s`\n", r.Lock.Flowctl.Repository, r.Lock.Flowctl.Ref)
 	fmt.Fprintf(&b, "- %s\n\n", r.Summary())
 	b.WriteString("## Operations\n\n")
@@ -587,7 +629,14 @@ func (r *FlowsReport) Markdown() string {
 		if op.override {
 			route += " (override)"
 		}
-		fmt.Fprintf(&b, "| `%s` | %s | %s | %s |\n", op.id, route, op.tag, strings.Join(paths, "<br>"))
+		fmt.Fprintf(
+			&b,
+			"| `%s` | %s | %s | %s |\n",
+			op.id,
+			route,
+			op.tag,
+			strings.Join(paths, "<br>"),
+		)
 	}
 	b.WriteString("\n## Excluded\n\n")
 	if len(r.Excluded) == 0 {
@@ -602,7 +651,9 @@ func (r *FlowsReport) Markdown() string {
 	if len(r.Unenveloped) == 0 {
 		b.WriteString("None.\n")
 	} else {
-		b.WriteString("The client reads these responses from the top level of the body, not from `data`.\n\n")
+		b.WriteString(
+			"The client reads these responses from the top level of the body, not from `data`.\n\n",
+		)
 		for _, p := range r.Unenveloped {
 			fmt.Fprintf(&b, "- `%s`\n", p)
 		}
@@ -612,7 +663,9 @@ func (r *FlowsReport) Markdown() string {
 		b.WriteString("None.\n")
 		return b.String()
 	}
-	b.WriteString("The client reads these without declaring a type, so the reference types them as any value.\n\n")
+	b.WriteString(
+		"The client reads these without declaring a type, so the reference types them as any value.\n\n",
+	)
 	b.WriteString("| Operation | Properties |\n|---|---|\n")
 	for _, id := range sortedKeys(r.Untyped) {
 		fmt.Fprintf(&b, "| `%s` | %s |\n", id, codeList(r.Untyped[id]))

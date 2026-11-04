@@ -57,24 +57,49 @@ func ParseFlowsMapping(data []byte) (*FlowsMapping, error) {
 	var errs []error
 	for _, tag := range sortedKeys(m.Tags) {
 		if !flowsTag(tag) {
-			errs = append(errs, fmt.Errorf("%w: tag %q does not start with %q", ErrFlowsMapping, tag, FlowsTagPrefix))
+			errs = append(
+				errs,
+				fmt.Errorf(
+					"%w: tag %q does not start with %q",
+					ErrFlowsMapping,
+					tag,
+					FlowsTagPrefix,
+				),
+			)
 		}
 	}
 	for name, r := range m.Resources {
 		if r.Collection == "" || r.ID == "" {
-			errs = append(errs, fmt.Errorf("%w: resource %s needs collection and id", ErrFlowsMapping, name))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: resource %s needs collection and id", ErrFlowsMapping, name),
+			)
 		}
 		if _, ok := m.Tags[r.Tag]; !ok {
-			errs = append(errs, fmt.Errorf("%w: resource %s has tag %q, which tags does not describe",
-				ErrFlowsMapping, name, r.Tag))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: resource %s has tag %q, which tags does not describe",
+					ErrFlowsMapping, name, r.Tag),
+			)
 		}
 		if _, ok := m.Resources[r.Parent]; r.Parent != "" && !ok {
-			errs = append(errs, fmt.Errorf("%w: resource %s has unknown parent %s", ErrFlowsMapping, name, r.Parent))
+			errs = append(
+				errs,
+				fmt.Errorf(
+					"%w: resource %s has unknown parent %s",
+					ErrFlowsMapping,
+					name,
+					r.Parent,
+				),
+			)
 		}
 	}
 	for noun, r := range m.Nouns {
 		if _, ok := m.Resources[r]; !ok {
-			errs = append(errs, fmt.Errorf("%w: noun %s names unknown resource %s", ErrFlowsMapping, noun, r))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: noun %s names unknown resource %s", ErrFlowsMapping, noun, r),
+			)
 		}
 	}
 	for p, e := range m.RPCs {
@@ -82,18 +107,38 @@ func ParseFlowsMapping(data []byte) (*FlowsMapping, error) {
 		case e.OperationID == "":
 			errs = append(errs, fmt.Errorf("%w: %s has no operationId", ErrFlowsMapping, p))
 		case (e.Method == "") != (e.Path == ""):
-			errs = append(errs, fmt.Errorf("%w: %s needs both method and path to override", ErrFlowsMapping, p))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: %s needs both method and path to override", ErrFlowsMapping, p),
+			)
 		case e.Path != "" && e.Resource == "":
-			errs = append(errs, fmt.Errorf("%w: override %s needs its resource", ErrFlowsMapping, p))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: override %s needs its resource", ErrFlowsMapping, p),
+			)
 		}
 		if _, ok := m.Resources[e.Resource]; e.Resource != "" && !ok {
-			errs = append(errs, fmt.Errorf("%w: %s names unknown resource %s", ErrFlowsMapping, p, e.Resource))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: %s names unknown resource %s", ErrFlowsMapping, p, e.Resource),
+			)
 		}
 		if _, ok := m.Tags[e.Tag]; e.Tag != "" && !ok {
-			errs = append(errs, fmt.Errorf("%w: %s has tag %q, which tags does not describe", ErrFlowsMapping, p, e.Tag))
+			errs = append(
+				errs,
+				fmt.Errorf(
+					"%w: %s has tag %q, which tags does not describe",
+					ErrFlowsMapping,
+					p,
+					e.Tag,
+				),
+			)
 		}
 		if _, ok := m.Exclude[p]; ok {
-			errs = append(errs, fmt.Errorf("%w: %s is both mapped and excluded", ErrFlowsMapping, p))
+			errs = append(
+				errs,
+				fmt.Errorf("%w: %s is both mapped and excluded", ErrFlowsMapping, p),
+			)
 		}
 	}
 	for p, reason := range m.Exclude {
@@ -134,7 +179,11 @@ func (m *FlowsMapping) route(rpcPath string, req *Shape) (*FlowsRoute, error) {
 	}
 	parts := strings.Split(strings.TrimPrefix(rpcPath, "/"), "/")
 	if len(parts) < 3 {
-		return nil, fmt.Errorf("%w: %s has no verb; give it method and path", ErrFlowsMapping, rpcPath)
+		return nil, fmt.Errorf(
+			"%w: %s has no verb; give it method and path",
+			ErrFlowsMapping,
+			rpcPath,
+		)
 	}
 	family, segment := parts[len(parts)-2], parts[len(parts)-1]
 	verb, noun := splitVerb(segment)
@@ -261,8 +310,11 @@ func (m *FlowsMapping) parentFromKeys(resource string, req *Shape) (string, erro
 	case 1:
 		return found[0], nil
 	}
-	return "", fmt.Errorf("%w: the request names %s, so the parent is ambiguous; give it method and path",
-		ErrFlowsMapping, strings.Join(found, " and "))
+	return "", fmt.Errorf(
+		"%w: the request names %s, so the parent is ambiguous; give it method and path",
+		ErrFlowsMapping,
+		strings.Join(found, " and "),
+	)
 }
 
 // collectionPath nests a collection under its parent's item, dropping the

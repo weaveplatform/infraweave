@@ -113,7 +113,7 @@ func (s *deploySteps) mustOperation(method, path string) (*openapi3.Operation, e
 }
 
 func paramRefs(op *openapi3.Operation) []string {
-	var out []string
+	out := make([]string, 0, len(op.Parameters))
 	for _, p := range op.Parameters {
 		out = append(out, p.Ref)
 	}

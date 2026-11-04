@@ -28,7 +28,16 @@ func TestUnitAPIStubAnswers501(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/v1/stacks")
+	req, err := http.NewRequestWithContext(
+		t.Context(),
+		http.MethodGet,
+		srv.URL+"/api/v1/stacks",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}

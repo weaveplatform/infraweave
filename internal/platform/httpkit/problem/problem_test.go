@@ -33,7 +33,11 @@ func TestUnitResponseErrorNotImplemented(t *testing.T) {
 		"wrapped: %w",
 		&NotImplementedError{OperationID: "stacks", Route: "GET /stacks"},
 	)
-	ResponseError(rec, httptest.NewRequest(http.MethodGet, "/stacks", nil), err)
+	ResponseError(
+		rec,
+		httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/stacks", nil),
+		err,
+	)
 	p := decode(t, rec)
 	if rec.Code != http.StatusNotImplemented || p.Title != "Not Implemented" ||
 		p.Detail != "stacks (GET /stacks) is not implemented yet" {
@@ -45,7 +49,7 @@ func TestUnitResponseErrorInternal(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ResponseError(
 		rec,
-		httptest.NewRequest(http.MethodGet, "/", nil),
+		httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil),
 		errors.New("database password is hunter2"),
 	)
 	p := decode(t, rec)
@@ -58,7 +62,7 @@ func TestUnitRequestError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	RequestError(
 		rec,
-		httptest.NewRequest(http.MethodPost, "/", nil),
+		httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil),
 		errors.New("can't decode body"),
 	)
 	if p := decode(t, rec); rec.Code != http.StatusBadRequest || p.Detail != "can't decode body" {
@@ -69,7 +73,7 @@ func TestUnitRequestError(t *testing.T) {
 func TestUnitResponseErrorProblem(t *testing.T) {
 	rec := httptest.NewRecorder()
 	err := fmt.Errorf("list: %w", InvalidCursor.Error("The cursor belongs to another list."))
-	ResponseError(rec, httptest.NewRequest(http.MethodGet, "/", nil), err)
+	ResponseError(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), err)
 	p := decode(t, rec)
 	if rec.Code != http.StatusBadRequest || p.Type != TypePrefix+"invalid-cursor" ||
 		p.Title != "Invalid cursor" || p.Detail != "The cursor belongs to another list." {

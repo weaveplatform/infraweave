@@ -35,7 +35,10 @@ func TestUnitFlowsProviderExtract(t *testing.T) {
 		t.Errorf("paths (-want +got):\n%s", d)
 	}
 	create := byPath["/provider/widgets/create"].Request
-	if d := cmp.Diff([]string{"Untagged", "name", "projectId", "style", "tags"}, create.Required); d != "" {
+	if d := cmp.Diff(
+		[]string{"Untagged", "name", "projectId", "style", "tags"},
+		create.Required,
+	); d != "" {
 		t.Errorf("required: omitempty fields are optional (-want +got):\n%s", d)
 	}
 	for name, want := range map[string]Shape{
@@ -61,7 +64,8 @@ func TestUnitFlowsProviderExtract(t *testing.T) {
 			t.Errorf("%s is %q, want %q", name, got[name].Type, want)
 		}
 	}
-	if got["created"].Format != "date-time" || !got["reset"].Nullable || got["parts"].Items.Ref != "Part" {
+	if got["created"].Format != "date-time" || !got["reset"].Nullable ||
+		got["parts"].Items.Ref != "Part" {
 		t.Errorf("response = %+v", got)
 	}
 	if !byPath["/provider/widgets/delete"].Response.isEmpty() {
@@ -137,13 +141,16 @@ func TestUnitFlowctlExtract(t *testing.T) {
 		t.Fatalf("rpcs = %v", sortedKeys(byPath))
 	}
 	projects := byPath["/cli/projects"]
-	if !projects.Unenveloped || projects.Response.Properties["projects"].Items.Properties["name"].Type != "string" {
+	if !projects.Unenveloped ||
+		projects.Response.Properties["projects"].Items.Properties["name"].Type != "string" {
 		t.Errorf("projects = %+v", projects)
 	}
 	create := byPath["/cli/widgets/create_widget"]
 	style := create.Request.Properties["style"]
-	if create.Request.Properties["name"].Type != "string" || style.Properties["size"].Type != "number" ||
-		style.Properties["round"].Type != "boolean" || style.Properties["label"].Type != "string" {
+	if create.Request.Properties["name"].Type != "string" ||
+		style.Properties["size"].Type != "number" ||
+		style.Properties["round"].Type != "boolean" ||
+		style.Properties["label"].Type != "string" {
 		t.Errorf("create request = %+v", create.Request)
 	}
 	if create.Response.Properties["widget"].Properties["id"].Type != "" {
@@ -154,7 +161,10 @@ func TestUnitFlowctlExtract(t *testing.T) {
 		t.Errorf("the two update calls merge, required where both send it: %+v (%s)", update, d)
 	}
 	export := byPath["/cli/flows/export"].Request
-	if d := cmp.Diff([]string{"flowId", "omitIds", "omitLayout"}, sortedKeys(export.Properties)); d != "" {
+	if d := cmp.Diff(
+		[]string{"flowId", "omitIds", "omitLayout"},
+		sortedKeys(export.Properties),
+	); d != "" {
 		t.Errorf("...options spreads ExportOptions (-want +got):\n%s", d)
 	}
 	if byPath["/cli/flows/export"].Response.Properties["data"].Type != "string" {
@@ -173,7 +183,10 @@ func TestUnitFlowctlExtract(t *testing.T) {
 		r.Properties["scores"].Items.Type != "number" || contains(r.Required, "quoted-key") {
 		t.Errorf("Run = %+v", r)
 	}
-	if d := cmp.Diff([]string{"queued", "passed", "failed"}, snap.Types["RunStatus"].Enum); d != "" {
+	if d := cmp.Diff(
+		[]string{"queued", "passed", "failed"},
+		snap.Types["RunStatus"].Enum,
+	); d != "" {
 		t.Errorf("RunStatus (-want +got):\n%s", d)
 	}
 }
@@ -238,14 +251,26 @@ func TestUnitSDKIdentifiers(t *testing.T) {
 	}
 	want := []SDKIdentifier{
 		{Name: "AppSchema", Kind: "interface", Exported: true, Members: []SDKMember{
-			{Name: "name", Optional: true}, {Name: "blocks"}, {Name: "onSync", Optional: true},
-			{Name: "quoted"}, {Name: "generic"},
+			{Name: "name", Optional: true},
+			{Name: "blocks"},
+			{Name: "onSync", Optional: true},
+			{Name: "quoted"},
+			{Name: "generic"},
 		}},
-		{Name: "KVPair", Kind: "interface", Members: []SDKMember{{Name: "key"}, {Name: "value", Optional: true}}},
+		{
+			Name:    "KVPair",
+			Kind:    "interface",
+			Members: []SDKMember{{Name: "key"}, {Name: "value", Optional: true}},
+		},
 		{Name: "Shape", Kind: "type"},
 		{Name: "Status", Kind: "type", Exported: true},
 		{Name: "defineApp", Kind: "function", Exported: true},
-		{Name: "kv", Kind: "const", Exported: true, Members: []SDKMember{{Name: "get"}, {Name: "list"}}},
+		{
+			Name:     "kv",
+			Kind:     "const",
+			Exported: true,
+			Members:  []SDKMember{{Name: "get"}, {Name: "list"}},
+		},
 		{Name: "plain", Kind: "const"},
 	}
 	if d := cmp.Diff(want, ids); d != "" {
@@ -371,7 +396,9 @@ func TestUnitFlowsGenerateGolden(t *testing.T) {
 	}
 	export := doc.Paths.Value("/flows/flows/{flowId}/definition").Get
 	rpcs, _ := json.Marshal(export.Extensions["x-rpc"])
-	if string(rpcs) != `[{"client":"flowctl","path":"/cli/flows/export"},{"client":"provider","path":"/provider/flows/export_definition"}]` {
+	if string(
+		rpcs,
+	) != `[{"client":"flowctl","path":"/cli/flows/export"},{"client":"provider","path":"/provider/flows/export_definition"}]` {
 		t.Errorf("x-rpc = %s", rpcs)
 	}
 	def := export.Responses.Status(200).Value.Content.Get(jsonMedia).Schema.Value.Properties["definition"].Value
@@ -384,10 +411,17 @@ func TestUnitFlowsGenerateGolden(t *testing.T) {
 		t.Errorf("update = %+v", update)
 	}
 	find := doc.Paths.Value("/flows/widgets").Get
-	if len(find.Parameters) != 1 || find.Parameters[0].Value.In != "query" || !find.Parameters[0].Value.Required {
+	if len(find.Parameters) != 1 || find.Parameters[0].Value.In != "query" ||
+		!find.Parameters[0].Value.Required {
 		t.Errorf("find = %+v", find.Parameters)
 	}
-	if err := Flows.CheckDir(context.Background(), writeFlowsFixtureDirWith(t, FileFlowsSpec, "stale")); !errors.Is(err, ErrDrift) {
+	if err := Flows.CheckDir(
+		context.Background(),
+		writeFlowsFixtureDirWith(t, FileFlowsSpec, "stale"),
+	); !errors.Is(
+		err,
+		ErrDrift,
+	) {
 		t.Errorf("stale spec: %v", err)
 	}
 }
@@ -447,7 +481,11 @@ func TestUnitFlowsGenerateErrors(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := writeFlowsFixtureDir(t)
-			if err := os.WriteFile(filepath.Join(dir, tc.file), []byte(tc.content), filePerm); err != nil {
+			if err := os.WriteFile(
+				filepath.Join(dir, tc.file),
+				[]byte(tc.content),
+				filePerm,
+			); err != nil {
 				t.Fatal(err)
 			}
 			_, err := Flows.Generate(context.Background(), dir)
@@ -465,7 +503,10 @@ func TestUnitFlowsGenerateErrors(t *testing.T) {
 			t.Errorf("missing %s: want an error", name)
 		}
 	}
-	if _, err := Flows.Generate(context.Background(), filepath.Join(t.TempDir(), "missing")); err == nil {
+	if _, err := Flows.Generate(
+		context.Background(),
+		filepath.Join(t.TempDir(), "missing"),
+	); err == nil {
 		t.Error("missing directory: want an error")
 	}
 }
@@ -476,7 +517,10 @@ func TestUnitFlowsTypeClash(t *testing.T) {
 		Flowctl:  &RPCSnapshot{Types: map[string]*Shape{"T": {Type: "number"}}},
 		Mapping:  &FlowsMapping{},
 	}
-	if err := addFlowsSchemas(&openapi3.T{Components: &openapi3.Components{Schemas: openapi3.Schemas{}}}, src); err == nil ||
+	if err := addFlowsSchemas(
+		&openapi3.T{Components: &openapi3.Components{Schemas: openapi3.Schemas{}}},
+		src,
+	); err == nil ||
 		!strings.Contains(err.Error(), "both clients declare a different T") {
 		t.Errorf("err = %v", err)
 	}
@@ -510,7 +554,7 @@ func TestUnitFlowsShapes(t *testing.T) {
 }
 
 func TestUnitValidateFlowDefinition(t *testing.T) {
-	overlay, err := ParseFlowsOverlay([]byte(flowsOverlayFixture))
+	overlay, err := ParseFlowsOverlay(t.Context(), []byte(flowsOverlayFixture))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -615,13 +659,21 @@ func TestUnitFlowsPins(t *testing.T) {
 	if d := cmp.Diff(want, pins); d != "" {
 		t.Errorf("pins (-want +got):\n%s", d)
 	}
-	if err := os.WriteFile(filepath.Join(dir, FileLock), []byte("provider: {ref: x}\n"), filePerm); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, FileLock),
+		[]byte("provider: {ref: x}\n"),
+		filePerm,
+	); err != nil {
 		t.Fatal(err)
 	}
 	if pins, err = Flows.Pins(dir); err != nil || len(pins) != 1 {
 		t.Errorf("a pin the lock lacks keeps the flag default: %v %v", pins, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, FileLock), []byte("provider: [\n"), filePerm); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, FileLock),
+		[]byte("provider: [\n"),
+		filePerm,
+	); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Flows.Pins(dir); err == nil {

@@ -180,7 +180,7 @@ func (p Product) outputs(g *Generated) map[string][]byte {
 func (p Product) Pins(dir string) (map[string]string, error) {
 	root, err := os.OpenRoot(dir)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no lock yet means no pins, as documented
 	}
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", dir, err)
@@ -188,7 +188,7 @@ func (p Product) Pins(dir string) (map[string]string, error) {
 	defer root.Close()
 	data, err := root.ReadFile(FileLock)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no lock yet means no pins, as documented
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read lock: %w", err)

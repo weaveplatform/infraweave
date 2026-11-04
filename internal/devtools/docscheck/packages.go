@@ -50,7 +50,8 @@ func (c *checker) packageDoc(dir string) error {
 	isPackage := false
 	for _, e := range entries {
 		n := e.Name()
-		isPackage = isPackage || !e.IsDir() && path.Ext(n) == ".go" && !strings.HasSuffix(n, "_test.go")
+		isPackage = isPackage ||
+			!e.IsDir() && path.Ext(n) == ".go" && !strings.HasSuffix(n, "_test.go")
 	}
 	if !isPackage {
 		return nil

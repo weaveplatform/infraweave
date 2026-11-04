@@ -175,6 +175,11 @@ jobs:
           version: ${{ steps.lintver.outputs.version }}
           args: --config=.golangci.yml --new=false --fix=false
 
+      # The fixtures prove each depguard rule and the time.Sleep ban fire;
+      # the action above put golangci-lint on PATH.
+      - name: Lint fixtures
+        run: make lint-fixtures
+
   vuln:
     name: 'govulncheck'
     runs-on: ubuntu-latest

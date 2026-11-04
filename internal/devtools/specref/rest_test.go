@@ -14,7 +14,7 @@ func TestUnitBuildPlanRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	type row struct{ ID, Method, Path, Style string }
-	var got []row
+	got := make([]row, 0, len(p.Routes))
 	for _, r := range p.Routes {
 		got = append(got, row{r.OperationID, r.Method, r.Path, r.Style})
 	}

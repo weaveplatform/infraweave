@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -109,7 +110,12 @@ func TestUnitRoutePath(t *testing.T) {
 }
 
 func send(h http.Handler, method, target, remote, key string) *httptest.ResponseRecorder {
-	r := httptest.NewRequest(method, target, strings.NewReader("{}"))
+	r := httptest.NewRequestWithContext(
+		context.Background(),
+		method,
+		target,
+		strings.NewReader("{}"),
+	)
 	r.RemoteAddr = remote
 	if key != "" {
 		r.Header.Set(idempotency.Header, key)

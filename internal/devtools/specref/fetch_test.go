@@ -57,7 +57,9 @@ func newUpstream(t *testing.T, failures int32) *upstream {
 		})
 	})
 	r.Post("/graphql", func(w http.ResponseWriter, req *http.Request) {
-		var body struct{ Query string }
+		var body struct {
+			Query string `json:"query"`
+		}
 		if json.NewDecoder(req.Body).Decode(&body) != nil ||
 			!strings.Contains(body.Query, "__schema") {
 			http.Error(w, "not an introspection query", http.StatusBadRequest)
@@ -132,16 +134,23 @@ func TestAccFetcherFailures(t *testing.T) {
 	if _, err := f.Get(context.Background(), "::bad url"); err == nil {
 		t.Error("bad url: want error")
 	}
-	u := newUpstream(t, 100)
+	// The first 503 starts an hour's backoff; cancelling then must end it.
+	hit := make(chan struct{}, 1)
+	busy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		select {
+		case hit <- struct{}{}:
+		default:
+		}
+		http.Error(w, "busy", http.StatusServiceUnavailable)
+	}))
+	defer busy.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	slow := &Fetcher{Client: http.DefaultClient, Retries: 3, Backoff: time.Hour}
 	go func() {
-		for u.hits.Load() == 0 {
-			time.Sleep(time.Millisecond)
-		}
+		<-hit
 		cancel()
 	}()
-	if _, err := slow.Get(ctx, u.srv.URL+"/x"); !errors.Is(err, context.Canceled) {
+	if _, err := slow.Get(ctx, busy.URL+"/x"); !errors.Is(err, context.Canceled) {
 		t.Errorf("cancel during backoff: err = %v", err)
 	}
 	truncated := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

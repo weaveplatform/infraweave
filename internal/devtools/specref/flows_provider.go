@@ -165,8 +165,11 @@ func (s *providerSource) call(n *ast.CallExpr) (providerCall, bool, error) {
 		ok = false
 	}
 	if !ok {
-		return providerCall{}, false, fmt.Errorf("%w: %s: the path is not a string literal or constant",
-			ErrFlowsSource, pos)
+		return providerCall{}, false, fmt.Errorf(
+			"%w: %s: the path is not a string literal or constant",
+			ErrFlowsSource,
+			pos,
+		)
 	}
 	return providerCall{path: p, req: idx.Indices[0], res: idx.Indices[1], pos: pos}, true, nil
 }

@@ -13142,7 +13142,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "or a view's dependency in `pg_depend`",
-            "an agent package that imports a platform package outside its allow list"
+            "an agent package that imports `internal/platform/sql`"
           ]
         }
       ]

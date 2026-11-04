@@ -17,12 +17,8 @@ binaries (`infraweave` and `infraweavectl`), an optional slim
 under `web/console/`, and developer commands under `tools/`. Builds run with `GOWORK=off`, so a local `go.work` never hides a
 dependency missing from `go.mod`.
 
-Today's tree holds the served skeleton and the reference tooling in their
-pre-0004 places (`internal/server/...`, `internal/specref` and so on). The move
-into this layout, the depguard rules and the path changes in `Makefile`,
-`.golangci.yml` and `.testcoverage.yml` are
-[P1b](plan.md#p1b-domain-layout-and-depguard). Until P1b lands, new code goes
-where this guide places it, not beside today's packages.
+The tree follows this layout, and the [depguard rules](#depguard-rules)
+hold it there: `make lint` fails on an import they forbid.
 
 ## Annotated tree
 
@@ -230,6 +226,7 @@ infraweave/
 │   │   ├── features/              <area>_<topic>.feature, tagged with dependencies and @op:<operationId>
 │   │   ├── images.go              every container image, pinned by digest
 │   │   └── out/<scenario>/        logs and database dump of a failed scenario; CI artefact, not committed
+│   ├── depguard/                  a module of its own breaking each depguard rule once; make lint-fixtures
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
 │   │   └── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
 │   └── terraform/<resource>/      provider acceptance configurations, translated from Spacelift's (P24)
@@ -474,17 +471,19 @@ only refuses more.
 | `core-not-adapters` (rule 5) | `**/internal/*/internal/core/**` | deny | `$m/internal/<domain>/internal/adapters` for each of the 8 hexagon domains |
 | `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 19 domain roots, `$m/internal/agent`, `$m/internal/app` |
 | `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave/agent.go`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/pkg/flows/app/v1$`, `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}$` |
-| `devtools` (rule 8) | everything except `**/tools/**` and `**/internal/devtools/**` | deny | `$m/internal/devtools` |
+| `devtools` (rule 8) | everything except `**/tools/**`, `**/internal/devtools/**`, and the tests of `api/` and `test/acceptance/`, which check the committed documents with `specref` | deny | `$m/internal/devtools` |
 | `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
 
 Rule 2 is the declared graph below: one rule per domain, which allows
 `$m/internal/platform/`, `kernel` and `iac`, its own tree and the `api/`
 packages its row names, and denies the rest of `$m/internal`. The compiler
 stops imports of another domain's `internal/`, and `constructors` stops
-imports of its `assembly/`. A new domain adds its graph rule, one entry to
-`constructors` and `shared-below-domains`, and one to `core-not-adapters` if
-it is a hexagon; `TestUnitDepguardFixtures` fails on a domain directory that
-lacks any of them. `agent-isolation` allows rather than denies, so it needs
+imports of its `assembly/`. depguard rejects a rule with an empty list, so
+`constructors` and `shared-below-domains` name all 19 domains and
+`core-not-adapters` all 8 hexagons before the domains exist; a deny entry
+for a package that does not exist yet refuses nothing. A new domain adds its
+graph rule, and `TestUnitDepguardFixtures` fails on a domain directory that
+lacks it or that the shared rules do not name. `agent-isolation` allows rather than denies, so it needs
 no entry, and a new platform package stays out of the agent until the rule
 names it. `internal/agent` may import only `internal/kernel`, `internal/iac`,
 `pkg/flows/app/v1` and seven `platform` packages from outside its own tree:
@@ -493,6 +492,14 @@ traces and answers its probes), `rego`, `httpkit/client`, `seal` (the runner
 seals workspaces) and `expr` (the runner renders workflow command templates). The 8 hexagons
 are `runs`, `vcs`, `workers`, `access`, `registry`, `events`, `intelligence`
 and `flows`.
+
+`make lint-fixtures` proves each shared rule fires. It lints `test/depguard`,
+a module of its own with the repository's path, using the repository's
+`.golangci.yml`, so the fixtures cannot drift from the rules. Its packages
+break each rule once, and break the compiler's `internal` rule and the
+`time.Sleep` ban; the target fails unless the findings, reduced to file,
+rule and import, are exactly `test/depguard/expected.txt`. Deleting any rule,
+or dropping the `$` from `$m/internal/platform/outbox$`, fails it.
 
 ### Declared graph
 

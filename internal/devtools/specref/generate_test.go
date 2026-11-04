@@ -272,7 +272,11 @@ func TestUnitReadSourcesErrors(t *testing.T) {
 			if _, err := Deploy.GenerateDir(context.Background(), dir); err == nil {
 				t.Fatal("GenerateDir: want error")
 			}
-			if err := Deploy.CheckDir(context.Background(), dir); err == nil || errors.Is(err, ErrDrift) {
+			if err := Deploy.CheckDir(
+				context.Background(),
+				dir,
+			); err == nil ||
+				errors.Is(err, ErrDrift) {
 				t.Fatalf("CheckDir: err = %v, want a read error", err)
 			}
 		})
@@ -280,7 +284,10 @@ func TestUnitReadSourcesErrors(t *testing.T) {
 	if _, err := ReadSources(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Error("missing dir: want error")
 	}
-	if err := Deploy.CheckDir(context.Background(), filepath.Join(t.TempDir(), "missing")); err == nil {
+	if err := Deploy.CheckDir(
+		context.Background(),
+		filepath.Join(t.TempDir(), "missing"),
+	); err == nil {
 		t.Error("CheckDir missing dir: want error")
 	}
 	if err := writeFiles(

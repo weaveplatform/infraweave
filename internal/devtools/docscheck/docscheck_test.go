@@ -106,7 +106,12 @@ func tree() fstest.MapFS {
 		"internal/x/testdata/fixture.md":            file("docs/missing.md\n"),
 		"docs/research/architecture-options/1-a.md": file(option),
 		"docs/research/architecture-options/2-b.md": file(
-			strings.Replace(option, "### Status", "### Domain status", 1) + "\n```\n## Not a heading\n```\n",
+			strings.Replace(
+				option,
+				"### Status",
+				"### Domain status",
+				1,
+			) + "\n```\n## Not a heading\n```\n",
 		),
 		"docs/implementation/plan.md":                file(plan),
 		"docs/data/schema/common.schema.json":        file(commonSchema),
@@ -479,7 +484,9 @@ func TestUnitCheckFindings(t *testing.T) {
 		{
 			name: "doc.go without a section",
 			edit: func(m fstest.MapFS) {
-				m["internal/x/doc.go"] = file(strings.Replace(pkgDoc("x"), "// # Dependencies\n", "", 1))
+				m["internal/x/doc.go"] = file(
+					strings.Replace(pkgDoc("x"), "// # Dependencies\n", "", 1),
+				)
 			},
 			want:  `package comment has no "# Dependencies" section`,
 			where: "internal/x/doc.go:1",
@@ -586,7 +593,7 @@ func TestUnitCheckSortsFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []string
+	got := make([]string, 0, len(found))
 	for _, f := range found {
 		got = append(got, fmt.Sprintf("%s:%d", f.Path, f.Line))
 	}
@@ -695,7 +702,7 @@ func TestUnitCheckProductTags(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var got []string
+			got := make([]string, 0, len(found))
 			for _, f := range found {
 				got = append(got, f.String())
 			}
@@ -754,7 +761,7 @@ func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
 	if err := json.Unmarshal(schema, &s); err != nil {
 		t.Fatal(err)
 	}
-	var names []string
+	names := make([]string, 0, len(specref.Products()))
 	for _, p := range specref.Products() {
 		names = append(names, p.Name)
 	}

@@ -57,18 +57,11 @@ func tsLex(src string) ([]tsToken, error) {
 			line += strings.Count(text, "\n")
 			i = j + 1
 		case c == '_' || c == '$' || unicode.IsLetter(rune(c)):
-			j := i
-			for j < len(src) && (src[j] == '_' || src[j] == '$' || unicode.IsLetter(rune(src[j])) ||
-				unicode.IsDigit(rune(src[j]))) {
-				j++
-			}
+			j := scanWhile(src, i, isTSIdentByte)
 			out = append(out, tsToken{kind: 'i', text: src[i:j], line: line})
 			i = j
 		case unicode.IsDigit(rune(c)):
-			j := i
-			for j < len(src) && (unicode.IsDigit(rune(src[j])) || src[j] == '.') {
-				j++
-			}
+			j := scanWhile(src, i, isTSNumberByte)
 			out = append(out, tsToken{kind: 'n', text: src[i:j], line: line})
 			i = j
 		default:
@@ -85,6 +78,20 @@ func tsLex(src string) ([]tsToken, error) {
 	}
 	return out, nil
 }
+
+// scanWhile returns the end of the run of bytes from i that keep accepts.
+func scanWhile(src string, i int, keep func(byte) bool) int {
+	for i < len(src) && keep(src[i]) {
+		i++
+	}
+	return i
+}
+
+func isTSIdentByte(c byte) bool {
+	return c == '_' || c == '$' || unicode.IsLetter(rune(c)) || unicode.IsDigit(rune(c))
+}
+
+func isTSNumberByte(c byte) bool { return unicode.IsDigit(rune(c)) || c == '.' }
 
 // tsParser walks a token stream. Its methods report a parse error as
 // ErrFlowsSource with the line.
@@ -122,7 +129,12 @@ func (p *tsParser) accept(text string) bool {
 }
 
 func (p *tsParser) errorf(format string, args ...any) error {
-	return fmt.Errorf("%w: line %d: %s", ErrFlowsSource, p.peek().line, fmt.Sprintf(format, args...))
+	return fmt.Errorf(
+		"%w: line %d: %s",
+		ErrFlowsSource,
+		p.peek().line,
+		fmt.Sprintf(format, args...),
+	)
 }
 
 func (p *tsParser) expect(text string) error {
@@ -180,7 +192,7 @@ func unionShape(members []*Shape) (*Shape, error) {
 	enum := &Shape{Type: "string"}
 	for _, m := range members {
 		if m.Type != "string" || len(m.Enum) != 1 {
-			return nil, fmt.Errorf("a union of %s and %s is not a string enum",
+			return nil, fmt.Errorf("%w: a union of %s and %s is not a string enum", ErrFlowsSource,
 				members[0].describe(), m.describe())
 		}
 		enum.Enum = append(enum.Enum, m.Enum[0])
@@ -236,7 +248,7 @@ func (p *tsParser) primary() (*Shape, error) {
 	case "any", "unknown":
 		return &Shape{}, nil
 	case "null", "undefined":
-		return nil, nil
+		return nil, nil //nolint:nilnil // a nil shape is how a union learns it is nullable
 	case "Array":
 		args, err := p.typeArgs(1)
 		if err != nil {

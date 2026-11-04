@@ -366,7 +366,15 @@ func TestUnitScaffoldFile(t *testing.T) {
 	if err != nil || !bytes.Equal(first, s.YAML) {
 		t.Fatalf("fragment not written: %v", err)
 	}
-	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "Stacks", out, false); !errors.Is(err, ErrFragmentExists) {
+	if _, err := ScaffoldFile(
+		filepath.Join(refDir, FileSpec),
+		"Stacks",
+		out,
+		false,
+	); !errors.Is(
+		err,
+		ErrFragmentExists,
+	) {
 		t.Errorf("overwrite without force: %v", err)
 	}
 	// With force, the fragment being replaced doesn't count as existing, so
