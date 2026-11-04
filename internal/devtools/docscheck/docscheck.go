@@ -14,6 +14,8 @@ import (
 	"unicode"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/weaveplatform/infraweave/internal/devtools/specref"
 )
 
 const (
@@ -30,7 +32,6 @@ const (
 	tagPrefix    = "tag:"
 	openReport   = reportsDir + "/30-open-questions.md"
 	openRegister = "docs/data/open-questions.json"
-	referenceAPI = "api/reference/spacelift/spacelift.openapi.yaml"
 	unverified   = "*(unverified)*"
 )
 
@@ -342,21 +343,33 @@ func (c *checker) reg(p string) *register {
 	return nil
 }
 
-// tags checks that the capabilities register holds a tag: record for every
-// tag of the reference spec and none for a tag the spec lacks, so a tag the
-// weekly reference update adds or renames cannot go unplaced. Without the
-// register there is no scope to check, and without the spec no tags.
+// tags checks, for each Spacelift product, that the capabilities register
+// holds a tag: record of that product for every tag of the product's
+// reference spec, and none for a tag the spec lacks, so a tag the weekly
+// reference update adds or renames cannot go unplaced. The products come
+// from specref, so a new product is checked without a change here. Without
+// the register there is no scope to check, and without a product's spec no
+// tags of it.
 func (c *checker) tags() error {
 	reg := c.reg(capsReg)
 	if reg == nil {
 		return nil
 	}
-	b, err := fs.ReadFile(c.repo, referenceAPI)
+	for _, p := range specref.Products() {
+		if err := c.productTags(reg, p.Name, path.Join(p.Dir, p.Spec)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *checker) productTags(reg *register, product, specPath string) error {
+	b, err := fs.ReadFile(c.repo, specPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("read %s: %w", referenceAPI, err)
+		return fmt.Errorf("read %s: %w", specPath, err)
 	}
 	var spec struct {
 		Tags []struct {
@@ -364,34 +377,28 @@ func (c *checker) tags() error {
 		} `yaml:"tags"`
 	}
 	if err := yaml.Unmarshal(b, &spec); err != nil {
-		c.add(referenceAPI, 1, "cannot read its tags: %v", err)
+		c.add(specPath, 1, "cannot read its tags: %v", err)
 		return nil
+	}
+	records := map[string]bool{}
+	for _, rec := range reg.records {
+		id, _ := rec["id"].(string)
+		if name, ok := strings.CutPrefix(id, tagPrefix); ok && rec["product"] == product {
+			records[name] = true
+		}
 	}
 	inSpec := map[string]bool{}
 	for _, t := range spec.Tags {
 		inSpec[t.Name] = true
-		if !reg.ids[tagPrefix+t.Name] {
-			c.add(
-				reg.path,
-				1,
-				"has no record %s%s for tag %q of %s",
-				tagPrefix,
-				t.Name,
-				t.Name,
-				referenceAPI,
-			)
+		if !records[t.Name] {
+			c.add(reg.path, 1, "has no %s record %s%s for tag %q of %s",
+				product, tagPrefix, t.Name, t.Name, specPath)
 		}
 	}
 	for _, rec := range reg.records {
 		id, _ := rec["id"].(string)
-		if name, ok := strings.CutPrefix(id, tagPrefix); ok && !inSpec[name] {
-			c.add(
-				reg.path,
-				reg.line(id),
-				"record %s names a tag %s does not have",
-				id,
-				referenceAPI,
-			)
+		if name, ok := strings.CutPrefix(id, tagPrefix); ok && rec["product"] == product && !inSpec[name] {
+			c.add(reg.path, reg.line(id), "%s record %s names a tag %s does not have", product, id, specPath)
 		}
 	}
 	return nil

@@ -3,7 +3,8 @@
 This is the feature catalogue's view of the plan: every feature of
 infraweave, with its kind, the lowest seeded tier that holds it and the
 phase of the [implementation plan](plan.md) that builds it. Every one of
-the 53 tags of the Spacelift reference and its 8 untagged operations, each
+the 53 tags of the Spacelift (Deploy) reference and its 8 untagged
+operations, each of the 5 tags of the Flows reference, each
 of the 56 resources and 62 data sources of the Terraform provider, each
 gated option and each of the 31 `BillingTierFeature` values maps to a
 feature. Flows, the console and every IaC vendor are features like any
@@ -109,7 +110,7 @@ default. It turns entitlement enforcement on, and the operator API sets it
 ## Summary by phase
 
 [tiers.md](tiers.md#summary-by-phase) counts the reference rows each phase
-owns. The phases that own no row (P0 to P2c, P7, P8b, P13b, P18d, P20, P24,
+owns, both products' tags together in its Tags column. The phases that own no row (P0 to P2c, P7, P8b, P13b, P18d, P20, P24,
 P24b, P24c and P28) build foundations, behaviour behind other rows, features
 the reference has no row for, or the provider and clients. Superseded counts
 the Terraform rows that no phase builds; the two superseded
@@ -119,14 +120,18 @@ catalogue.
 ## Reference rows
 
 [capabilities.json](../data/capabilities.json) holds one record per row of
-the reference, and the record's id says which kind of row it is:
+the references, and the record's id says which kind of row it is. Each
+record names its `product`: `flows` for the tags of the Flows reference,
+`deploy` for every other row, including the Deploy-side `Flows` tag that
+links a Deploy account to Flows.
 
-- `tag:<Tag>`: one per tag of `api/reference/spacelift/spacelift.openapi.yaml`,
-  in the reference's order. `ops` is the tag's operation count in the
-  reference. Where a tag holds operations of more than one feature,
-  `feature` names each and `lowestTier` names the tier of each finer one.
-  `make docs-check` fails when a tag of the reference has no record, or a
-  record no tag.
+- `tag:<Tag>`: one per tag of `api/reference/spacelift/spacelift.openapi.yaml`
+  (`deploy`) and of `api/reference/spacelift-flows/flows.openapi.yaml`
+  (`flows`, every tag starting `Flows `), in name order. `ops` is the tag's
+  operation count in its reference. Where a tag holds operations of more
+  than one feature, `feature` names each and `lowestTier` names the tier of
+  each finer one. `make docs-check` fails when a tag of a reference has no
+  record of its product, or a record no tag in its product's reference.
 - `operation:<graphqlField>`: the 8 reference operations that carry no tag.
 - `resource:<spacelift_x>` and `data-source:<spacelift_x>`: one per
   resource and data source of terraform-provider-spacelift v1.57.0, by its

@@ -4,6 +4,7 @@
     {
       "id": "tag:AI Integrations",
       "kind": "tag",
+      "product": "deploy",
       "ops": 5,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -22,6 +23,7 @@
     {
       "id": "tag:API Keys",
       "kind": "tag",
+      "product": "deploy",
       "ops": 8,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -40,6 +42,7 @@
     {
       "id": "tag:Account",
       "kind": "tag",
+      "product": "deploy",
       "ops": 7,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -59,6 +62,7 @@
     {
       "id": "tag:Account Settings",
       "kind": "tag",
+      "product": "deploy",
       "ops": 42,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -79,6 +83,7 @@
     {
       "id": "tag:Ansible",
       "kind": "tag",
+      "product": "deploy",
       "ops": 7,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -96,6 +101,7 @@
     {
       "id": "tag:Audit Trail",
       "kind": "tag",
+      "product": "deploy",
       "ops": 6,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -113,6 +119,7 @@
     {
       "id": "tag:Auth",
       "kind": "tag",
+      "product": "deploy",
       "ops": 6,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -131,6 +138,7 @@
     {
       "id": "tag:Billing",
       "kind": "tag",
+      "product": "deploy",
       "ops": 14,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -150,6 +158,7 @@
     {
       "id": "tag:Blob Storage",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -168,6 +177,7 @@
     {
       "id": "tag:Blueprints",
       "kind": "tag",
+      "product": "deploy",
       "ops": 15,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -186,6 +196,7 @@
     {
       "id": "tag:Cloud Integrations",
       "kind": "tag",
+      "product": "deploy",
       "ops": 27,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -205,6 +216,7 @@
     {
       "id": "tag:Contexts",
       "kind": "tag",
+      "product": "deploy",
       "ops": 13,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -222,6 +234,7 @@
     {
       "id": "tag:Debug",
       "kind": "tag",
+      "product": "deploy",
       "ops": 1,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -240,6 +253,7 @@
     {
       "id": "tag:Drift Detection",
       "kind": "tag",
+      "product": "deploy",
       "ops": 3,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -258,6 +272,7 @@
     {
       "id": "tag:External Integrations",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -276,6 +291,7 @@
     {
       "id": "tag:Feature Flags",
       "kind": "tag",
+      "product": "deploy",
       "ops": 1,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -294,6 +310,7 @@
     {
       "id": "tag:Flows",
       "kind": "tag",
+      "product": "deploy",
       "ops": 6,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -309,8 +326,102 @@
       }
     },
     {
+      "id": "tag:Flows Apps",
+      "kind": "tag",
+      "product": "flows",
+      "ops": 16,
+      "spacelift": {
+        "inventory": "[23 section 10](../research/reference/23-flows.md#10-the-flows-api)",
+        "owningReport": "[23](../research/reference/23-flows.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`flows-apps`",
+        "lowestTier": "Free",
+        "phase": "P18c",
+        "also": "P18d: the app runtime behind installations and versions",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Flows Data Tables",
+      "kind": "tag",
+      "product": "flows",
+      "ops": 10,
+      "spacelift": {
+        "inventory": "[23 section 10](../research/reference/23-flows.md#10-the-flows-api)",
+        "owningReport": "[23](../research/reference/23-flows.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`flows-data-tables`",
+        "lowestTier": "Free",
+        "phase": "P18c",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Flows Flows",
+      "kind": "tag",
+      "product": "flows",
+      "ops": 10,
+      "spacelift": {
+        "inventory": "[23 section 10](../research/reference/23-flows.md#10-the-flows-api)",
+        "owningReport": "[23](../research/reference/23-flows.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`flows-engine`",
+        "lowestTier": "Free",
+        "phase": "P18c",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Flows Projects",
+      "kind": "tag",
+      "product": "flows",
+      "ops": 9,
+      "spacelift": {
+        "inventory": "[23 section 10](../research/reference/23-flows.md#10-the-flows-api)",
+        "owningReport": "[23](../research/reference/23-flows.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`flows-engine`, `flows-agents`",
+        "lowestTier": "Free",
+        "phase": "P18c",
+        "also": "P18d: agent pools, which the project attachment operations name",
+        "state": "missing"
+      }
+    },
+    {
+      "id": "tag:Flows Test Scenarios",
+      "kind": "tag",
+      "product": "flows",
+      "ops": 5,
+      "spacelift": {
+        "inventory": "[23 section 10](../research/reference/23-flows.md#10-the-flows-api)",
+        "owningReport": "[23](../research/reference/23-flows.md)",
+        "plan": "Not stated",
+        "tierFeatures": "none"
+      },
+      "infraweave": {
+        "feature": "`flows-engine`",
+        "lowestTier": "Free",
+        "phase": "P18c",
+        "state": "missing",
+        "notes": "Accepted as missing in `api/parity-baseline.flows.json` until product decision PD-16 settles whether infraweave builds test scenarios"
+      }
+    },
+    {
       "id": "tag:Forms",
       "kind": "tag",
+      "product": "deploy",
       "ops": 3,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -330,6 +441,7 @@
     {
       "id": "tag:GPG Keys",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -347,6 +459,7 @@
     {
       "id": "tag:Infrastructure",
       "kind": "tag",
+      "product": "deploy",
       "ops": 3,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -366,6 +479,7 @@
     {
       "id": "tag:Intent",
       "kind": "tag",
+      "product": "deploy",
       "ops": 40,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -383,6 +497,7 @@
     {
       "id": "tag:Managed Users",
       "kind": "tag",
+      "product": "deploy",
       "ops": 23,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -403,6 +518,7 @@
     {
       "id": "tag:Modules",
       "kind": "tag",
+      "product": "deploy",
       "ops": 34,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -420,6 +536,7 @@
     {
       "id": "tag:Notifications",
       "kind": "tag",
+      "product": "deploy",
       "ops": 5,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -437,6 +554,7 @@
     {
       "id": "tag:OAuth",
       "kind": "tag",
+      "product": "deploy",
       "ops": 1,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -455,6 +573,7 @@
     {
       "id": "tag:OpenTofu Migration",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -472,6 +591,7 @@
     {
       "id": "tag:Origin Integration",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -490,6 +610,7 @@
     {
       "id": "tag:Personal API Keys",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -507,6 +628,7 @@
     {
       "id": "tag:Plugins",
       "kind": "tag",
+      "product": "deploy",
       "ops": 9,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -525,6 +647,7 @@
     {
       "id": "tag:Policies",
       "kind": "tag",
+      "product": "deploy",
       "ops": 21,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -543,6 +666,7 @@
     {
       "id": "tag:Repos",
       "kind": "tag",
+      "product": "deploy",
       "ops": 12,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -562,6 +686,7 @@
     {
       "id": "tag:Resources",
       "kind": "tag",
+      "product": "deploy",
       "ops": 4,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -579,6 +704,7 @@
     {
       "id": "tag:Roles",
       "kind": "tag",
+      "product": "deploy",
       "ops": 25,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -596,6 +722,7 @@
     {
       "id": "tag:Runs",
       "kind": "tag",
+      "product": "deploy",
       "ops": 35,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -616,6 +743,7 @@
     {
       "id": "tag:SSO",
       "kind": "tag",
+      "product": "deploy",
       "ops": 11,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -634,6 +762,7 @@
     {
       "id": "tag:Saved Filters",
       "kind": "tag",
+      "product": "deploy",
       "ops": 5,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -651,6 +780,7 @@
     {
       "id": "tag:Scans",
       "kind": "tag",
+      "product": "deploy",
       "ops": 17,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -669,6 +799,7 @@
     {
       "id": "tag:Search Suggestions",
       "kind": "tag",
+      "product": "deploy",
       "ops": 30,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -687,6 +818,7 @@
     {
       "id": "tag:Sessions and Security Keys",
       "kind": "tag",
+      "product": "deploy",
       "ops": 5,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -706,6 +838,7 @@
     {
       "id": "tag:Slack",
       "kind": "tag",
+      "product": "deploy",
       "ops": 7,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -724,6 +857,7 @@
     {
       "id": "tag:Spaces",
       "kind": "tag",
+      "product": "deploy",
       "ops": 22,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -742,6 +876,7 @@
     {
       "id": "tag:Stacks",
       "kind": "tag",
+      "product": "deploy",
       "ops": 69,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -762,6 +897,7 @@
     {
       "id": "tag:Templates",
       "kind": "tag",
+      "product": "deploy",
       "ops": 23,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -779,6 +915,7 @@
     {
       "id": "tag:Terraform Providers",
       "kind": "tag",
+      "product": "deploy",
       "ops": 17,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -796,6 +933,7 @@
     {
       "id": "tag:Tofu Workspaces",
       "kind": "tag",
+      "product": "deploy",
       "ops": 3,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -813,6 +951,7 @@
     {
       "id": "tag:UI State",
       "kind": "tag",
+      "product": "deploy",
       "ops": 2,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -830,6 +969,7 @@
     {
       "id": "tag:User Guide",
       "kind": "tag",
+      "product": "deploy",
       "ops": 20,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -847,6 +987,7 @@
     {
       "id": "tag:VCS Agent Pools",
       "kind": "tag",
+      "product": "deploy",
       "ops": 6,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -864,6 +1005,7 @@
     {
       "id": "tag:VCS Integrations",
       "kind": "tag",
+      "product": "deploy",
       "ops": 44,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -884,6 +1026,7 @@
     {
       "id": "tag:Version Catalog",
       "kind": "tag",
+      "product": "deploy",
       "ops": 7,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -903,6 +1046,7 @@
     {
       "id": "tag:Viewer",
       "kind": "tag",
+      "product": "deploy",
       "ops": 1,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -920,6 +1064,7 @@
     {
       "id": "tag:Webhooks",
       "kind": "tag",
+      "product": "deploy",
       "ops": 9,
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
@@ -937,6 +1082,7 @@
     {
       "id": "tag:Worker Pools",
       "kind": "tag",
+      "product": "deploy",
       "ops": 19,
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
@@ -957,6 +1103,7 @@
     {
       "id": "operation:identityFederationUnlink",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`auth`",
         "lowestTier": "Free",
@@ -966,6 +1113,7 @@
     {
       "id": "operation:openTofuMigrationQueueClean",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`opentofu-migration`",
         "lowestTier": "Free",
@@ -975,6 +1123,7 @@
     {
       "id": "operation:openTofuMigrate",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`opentofu-migration`",
         "lowestTier": "Free",
@@ -984,6 +1133,7 @@
     {
       "id": "operation:deleteOauthClientForSCIM",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`scim`",
         "lowestTier": "Enterprise",
@@ -993,6 +1143,7 @@
     {
       "id": "operation:resetOauthClientForSCIM",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`scim`",
         "lowestTier": "Enterprise",
@@ -1002,6 +1153,7 @@
     {
       "id": "operation:userSecurityKeyDeleteAll",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`mfa`",
         "lowestTier": "Enterprise",
@@ -1011,6 +1163,7 @@
     {
       "id": "operation:sessionDeleteAll",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`sessions`",
         "lowestTier": "Starter+",
@@ -1020,6 +1173,7 @@
     {
       "id": "operation:stackMigrateVendorAll",
       "kind": "operation",
+      "product": "deploy",
       "infraweave": {
         "feature": "`opentofu-migration`",
         "lowestTier": "Free",
@@ -1029,6 +1183,7 @@
     {
       "id": "resource:spacelift_ai_integration",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[22](../research/reference/22-intelligence.md)",
         "plan": "All [D]",
@@ -1046,6 +1201,7 @@
     {
       "id": "resource:spacelift_api_key",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "All; OIDC keys Enterprise [D]",
@@ -1063,6 +1219,7 @@
     {
       "id": "resource:spacelift_audit_trail_webhook",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
         "plan": "Enterprise [D]",
@@ -1080,6 +1237,7 @@
     {
       "id": "resource:spacelift_aws_integration",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -1097,6 +1255,7 @@
     {
       "id": "resource:spacelift_aws_integration_attachment",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -1114,6 +1273,7 @@
     {
       "id": "resource:spacelift_aws_role",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -1133,6 +1293,7 @@
     {
       "id": "resource:spacelift_azure_devops_integration",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -1150,6 +1311,7 @@
     {
       "id": "resource:spacelift_azure_integration",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -1168,6 +1330,7 @@
     {
       "id": "resource:spacelift_azure_integration_attachment",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -1185,6 +1348,7 @@
     {
       "id": "resource:spacelift_bitbucket_datacenter_integration",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -1202,6 +1366,7 @@
     {
       "id": "resource:spacelift_blueprint",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -1220,6 +1385,7 @@
     {
       "id": "resource:spacelift_context",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Starter+ [C]",
@@ -1237,6 +1403,7 @@
     {
       "id": "resource:spacelift_context_attachment",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Starter+ [C]",
@@ -1254,6 +1421,7 @@
     {
       "id": "resource:spacelift_default_runner_image",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
         "plan": "All",
@@ -1272,6 +1440,7 @@
     {
       "id": "resource:spacelift_drift_detection",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Starter+ [D]",
@@ -1289,6 +1458,7 @@
     {
       "id": "resource:spacelift_environment_variable",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Not stated",
@@ -1306,6 +1476,7 @@
     {
       "id": "resource:spacelift_gcp_service_account",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -1325,6 +1496,7 @@
     {
       "id": "resource:spacelift_gitlab_integration",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -1342,6 +1514,7 @@
     {
       "id": "resource:spacelift_idp_group_mapping",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Not stated",
@@ -1361,6 +1534,7 @@
     {
       "id": "resource:spacelift_module",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
         "plan": "Paid [D]",
@@ -1378,6 +1552,7 @@
     {
       "id": "resource:spacelift_mounted_file",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Not stated",
@@ -1395,6 +1570,7 @@
     {
       "id": "resource:spacelift_named_webhook",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
         "plan": "Paid [D]",
@@ -1412,6 +1588,7 @@
     {
       "id": "resource:spacelift_named_webhook_secret_header",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
         "plan": "Paid [D]",
@@ -1429,6 +1606,7 @@
     {
       "id": "resource:spacelift_plugin",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[25](../research/reference/25-other-integrations.md)",
         "plan": "Not stated",
@@ -1446,6 +1624,7 @@
     {
       "id": "resource:spacelift_plugin_template",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[25](../research/reference/25-other-integrations.md)",
         "plan": "Not stated",
@@ -1463,6 +1642,7 @@
     {
       "id": "resource:spacelift_policy",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[09](../research/reference/09-policies.md)",
         "plan": "Paid [D]",
@@ -1480,6 +1660,7 @@
     {
       "id": "resource:spacelift_policy_attachment",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[09](../research/reference/09-policies.md)",
         "plan": "Paid [D]",
@@ -1497,6 +1678,7 @@
     {
       "id": "resource:spacelift_repo",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Not stated",
@@ -1514,6 +1696,7 @@
     {
       "id": "resource:spacelift_repo_file",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Not stated",
@@ -1532,6 +1715,7 @@
     {
       "id": "resource:spacelift_role",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Not stated",
@@ -1549,6 +1733,7 @@
     {
       "id": "resource:spacelift_role_attachment",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Not stated",
@@ -1566,6 +1751,7 @@
     {
       "id": "resource:spacelift_run",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[08](../research/reference/08-run-lifecycle.md)",
         "plan": "All",
@@ -1583,6 +1769,7 @@
     {
       "id": "resource:spacelift_saved_filter",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
         "plan": "UI support",
@@ -1600,6 +1787,7 @@
     {
       "id": "resource:spacelift_scheduled_delete_stack",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Business [D]",
@@ -1617,6 +1805,7 @@
     {
       "id": "resource:spacelift_scheduled_run",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Business [D]",
@@ -1634,6 +1823,7 @@
     {
       "id": "resource:spacelift_scheduled_task",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Business [D]",
@@ -1651,6 +1841,7 @@
     {
       "id": "resource:spacelift_security_email",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
         "plan": "All",
@@ -1668,6 +1859,7 @@
     {
       "id": "resource:spacelift_space",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Starter+ [C]",
@@ -1685,6 +1877,7 @@
     {
       "id": "resource:spacelift_stack",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md)",
         "plan": "All",
@@ -1703,6 +1896,7 @@
     {
       "id": "resource:spacelift_stack_activator",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md)",
         "plan": "All",
@@ -1720,6 +1914,7 @@
     {
       "id": "resource:spacelift_stack_aws_role",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -1739,6 +1934,7 @@
     {
       "id": "resource:spacelift_stack_dependency",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Starter+ [C]",
@@ -1756,6 +1952,7 @@
     {
       "id": "resource:spacelift_stack_dependency_reference",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Starter+ [C]",
@@ -1773,6 +1970,7 @@
     {
       "id": "resource:spacelift_stack_destructor",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md)",
         "plan": "All",
@@ -1792,6 +1990,7 @@
     {
       "id": "resource:spacelift_stack_gcp_service_account",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -1811,6 +2010,7 @@
     {
       "id": "resource:spacelift_task",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[08](../research/reference/08-run-lifecycle.md)",
         "plan": "Paid [D]",
@@ -1828,6 +2028,7 @@
     {
       "id": "resource:spacelift_template",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -1845,6 +2046,7 @@
     {
       "id": "resource:spacelift_template_deployment",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -1862,6 +2064,7 @@
     {
       "id": "resource:spacelift_template_version",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -1879,6 +2082,7 @@
     {
       "id": "resource:spacelift_terraform_provider",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
         "plan": "Business [D]",
@@ -1896,6 +2100,7 @@
     {
       "id": "resource:spacelift_user",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "All; Free holds 2 users [C]",
@@ -1914,6 +2119,7 @@
     {
       "id": "resource:spacelift_vcs_agent_pool",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Enterprise [D]",
@@ -1931,6 +2137,7 @@
     {
       "id": "resource:spacelift_version",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
         "plan": "Paid [D]",
@@ -1948,6 +2155,7 @@
     {
       "id": "resource:spacelift_webhook",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
         "plan": "Paid [D]",
@@ -1965,6 +2173,7 @@
     {
       "id": "resource:spacelift_worker_pool",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
         "plan": "Starter+ [D]",
@@ -1982,6 +2191,7 @@
     {
       "id": "resource:spacelift_worker_pool_recycle",
       "kind": "resource",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
         "plan": "Starter+ [D]",
@@ -1999,6 +2209,7 @@
     {
       "id": "data-source:spacelift_account",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[04](../research/reference/04-platform-api-inventory.md)",
         "plan": "All",
@@ -2017,6 +2228,7 @@
     {
       "id": "data-source:spacelift_ai_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[22](../research/reference/22-intelligence.md)",
         "plan": "All [D]",
@@ -2034,6 +2246,7 @@
     {
       "id": "data-source:spacelift_ai_integrations",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[22](../research/reference/22-intelligence.md)",
         "plan": "All [D]",
@@ -2051,6 +2264,7 @@
     {
       "id": "data-source:spacelift_aws_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2068,6 +2282,7 @@
     {
       "id": "data-source:spacelift_aws_integration_attachment",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2085,6 +2300,7 @@
     {
       "id": "data-source:spacelift_aws_integration_attachment_external_id",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2102,6 +2318,7 @@
     {
       "id": "data-source:spacelift_aws_integrations",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2119,6 +2336,7 @@
     {
       "id": "data-source:spacelift_aws_role",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -2138,6 +2356,7 @@
     {
       "id": "data-source:spacelift_azure_devops_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -2155,6 +2374,7 @@
     {
       "id": "data-source:spacelift_azure_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2173,6 +2393,7 @@
     {
       "id": "data-source:spacelift_azure_integration_attachment",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2190,6 +2411,7 @@
     {
       "id": "data-source:spacelift_azure_integrations",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Starter+ [C]",
@@ -2207,6 +2429,7 @@
     {
       "id": "data-source:spacelift_bitbucket_cloud_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -2224,6 +2447,7 @@
     {
       "id": "data-source:spacelift_bitbucket_datacenter_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -2241,6 +2465,7 @@
     {
       "id": "data-source:spacelift_context",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Starter+ [C]",
@@ -2258,6 +2483,7 @@
     {
       "id": "data-source:spacelift_context_attachment",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Starter+ [C]",
@@ -2275,6 +2501,7 @@
     {
       "id": "data-source:spacelift_contexts",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Starter+ [C]",
@@ -2292,6 +2519,7 @@
     {
       "id": "data-source:spacelift_current_space",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "All",
@@ -2310,6 +2538,7 @@
     {
       "id": "data-source:spacelift_current_stack",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md), [05](../research/reference/05-terraform-provider.md)",
         "plan": "All",
@@ -2328,6 +2557,7 @@
     {
       "id": "data-source:spacelift_drift_detection",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Starter+ [D]",
@@ -2346,6 +2576,7 @@
     {
       "id": "data-source:spacelift_environment_variable",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Not stated",
@@ -2363,6 +2594,7 @@
     {
       "id": "data-source:spacelift_gcp_service_account",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -2382,6 +2614,7 @@
     {
       "id": "data-source:spacelift_github_enterprise_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -2399,6 +2632,7 @@
     {
       "id": "data-source:spacelift_gitlab_integration",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -2416,6 +2650,7 @@
     {
       "id": "data-source:spacelift_gitlab_webhook_endpoint",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All",
@@ -2433,6 +2668,7 @@
     {
       "id": "data-source:spacelift_idp_group_mapping",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Not stated",
@@ -2451,6 +2687,7 @@
     {
       "id": "data-source:spacelift_ips",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[04](../research/reference/04-platform-api-inventory.md), [10](../research/reference/10-workers-and-execution.md)",
         "plan": "All",
@@ -2470,6 +2707,7 @@
     {
       "id": "data-source:spacelift_module",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
         "plan": "Paid [D]",
@@ -2487,6 +2725,7 @@
     {
       "id": "data-source:spacelift_modules",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[15](../research/reference/15-module-and-provider-registry.md)",
         "plan": "Paid [D]",
@@ -2504,6 +2743,7 @@
     {
       "id": "data-source:spacelift_mounted_file",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[13](../research/reference/13-configuration.md)",
         "plan": "Not stated",
@@ -2521,6 +2761,7 @@
     {
       "id": "data-source:spacelift_named_webhook",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
         "plan": "Paid [D]",
@@ -2538,6 +2779,7 @@
     {
       "id": "data-source:spacelift_plugin",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[25](../research/reference/25-other-integrations.md)",
         "plan": "Not stated",
@@ -2555,6 +2797,7 @@
     {
       "id": "data-source:spacelift_plugin_template",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[25](../research/reference/25-other-integrations.md)",
         "plan": "Not stated",
@@ -2572,6 +2815,7 @@
     {
       "id": "data-source:spacelift_policies",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[09](../research/reference/09-policies.md)",
         "plan": "Paid [D]",
@@ -2589,6 +2833,7 @@
     {
       "id": "data-source:spacelift_policy",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[09](../research/reference/09-policies.md)",
         "plan": "Paid [D]",
@@ -2606,6 +2851,7 @@
     {
       "id": "data-source:spacelift_repo",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Not stated",
@@ -2623,6 +2869,7 @@
     {
       "id": "data-source:spacelift_repos",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Not stated",
@@ -2640,6 +2887,7 @@
     {
       "id": "data-source:spacelift_role",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Not stated",
@@ -2657,6 +2905,7 @@
     {
       "id": "data-source:spacelift_role_actions",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Not stated",
@@ -2675,6 +2924,7 @@
     {
       "id": "data-source:spacelift_saved_filter",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
         "plan": "UI support",
@@ -2692,6 +2942,7 @@
     {
       "id": "data-source:spacelift_saved_filters",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[21](../research/reference/21-resources-scans-search.md)",
         "plan": "UI support",
@@ -2709,6 +2960,7 @@
     {
       "id": "data-source:spacelift_scheduled_delete_stack",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Business [D]",
@@ -2726,6 +2978,7 @@
     {
       "id": "data-source:spacelift_scheduled_run",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Business [D]",
@@ -2743,6 +2996,7 @@
     {
       "id": "data-source:spacelift_scheduled_task",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "Business [D]",
@@ -2760,6 +3014,7 @@
     {
       "id": "data-source:spacelift_space",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Starter+ [C]",
@@ -2777,6 +3032,7 @@
     {
       "id": "data-source:spacelift_space_by_path",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Starter+ [C]",
@@ -2794,6 +3050,7 @@
     {
       "id": "data-source:spacelift_spaces",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "Starter+ [C]",
@@ -2811,6 +3068,7 @@
     {
       "id": "data-source:spacelift_stack",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md)",
         "plan": "All",
@@ -2828,6 +3086,7 @@
     {
       "id": "data-source:spacelift_stack_aws_role",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -2847,6 +3106,7 @@
     {
       "id": "data-source:spacelift_stack_gcp_service_account",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[12](../research/reference/12-cloud-integrations-and-oidc.md)",
         "plan": "Not stated",
@@ -2866,6 +3126,7 @@
     {
       "id": "data-source:spacelift_stack_outputs",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md), [18](../research/reference/18-scheduling-drift-dependencies.md)",
         "plan": "All",
@@ -2884,6 +3145,7 @@
     {
       "id": "data-source:spacelift_stacks",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[07](../research/reference/07-stack-model.md)",
         "plan": "All",
@@ -2901,6 +3163,7 @@
     {
       "id": "data-source:spacelift_template",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -2918,6 +3181,7 @@
     {
       "id": "data-source:spacelift_template_deployment",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -2935,6 +3199,7 @@
     {
       "id": "data-source:spacelift_template_version",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[17](../research/reference/17-blueprints-and-templates.md)",
         "plan": "Business [D]",
@@ -2952,6 +3217,7 @@
     {
       "id": "data-source:spacelift_tool_versions",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[20](../research/reference/20-vendors.md)",
         "plan": "All",
@@ -2970,6 +3236,7 @@
     {
       "id": "data-source:spacelift_user",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)",
         "plan": "All; Free holds 2 users [C]",
@@ -2988,6 +3255,7 @@
     {
       "id": "data-source:spacelift_vcs_agent_pool",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Enterprise [D]",
@@ -3005,6 +3273,7 @@
     {
       "id": "data-source:spacelift_vcs_agent_pools",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "Enterprise [D]",
@@ -3022,6 +3291,7 @@
     {
       "id": "data-source:spacelift_webhook",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[19](../research/reference/19-events-notifications-audit.md)",
         "plan": "Paid [D]",
@@ -3039,6 +3309,7 @@
     {
       "id": "data-source:spacelift_worker_pool",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
         "plan": "Starter+ [D]",
@@ -3056,6 +3327,7 @@
     {
       "id": "data-source:spacelift_worker_pools",
       "kind": "data-source",
+      "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
         "plan": "Starter+ [D]",
@@ -3073,6 +3345,7 @@
     {
       "id": "tier-feature:ACCESS_POLICIES",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 1,
       "spacelift": {
         "meaning": "Per-stack and per-module access policies (`ACCESS` policy type) [I] from the name",
@@ -3090,6 +3363,7 @@
     {
       "id": "tier-feature:ADDITIONAL_PUBLIC_WORKER",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 2,
       "spacelift": {
         "meaning": "Public worker capacity above the plan default [I] from the name",
@@ -3107,6 +3381,7 @@
     {
       "id": "tier-feature:ADVANCED_SCHEDULING",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 3,
       "spacelift": {
         "meaning": "Scheduled runs, tasks and deletes [I] from the operations gated",
@@ -3124,6 +3399,7 @@
     {
       "id": "tier-feature:AGGREGATED_VCS_CHECKS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 4,
       "spacelift": {
         "meaning": "`AGGREGATED` commit checks on a VCS integration",
@@ -3141,6 +3417,7 @@
     {
       "id": "tier-feature:API_KEYS_OIDC",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 5,
       "spacelift": {
         "meaning": "OIDC-based API keys",
@@ -3157,6 +3434,7 @@
     {
       "id": "tier-feature:AUDITING",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 6,
       "spacelift": {
         "meaning": "The audit trail, including audit webhooks [G]",
@@ -3174,6 +3452,7 @@
     {
       "id": "tier-feature:AUDIT_WEBHOOKS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 7,
       "spacelift": {
         "meaning": "Audit webhooks; deprecated in favour of `AUDITING` [G] (deprecated [G])",
@@ -3191,6 +3470,7 @@
     {
       "id": "tier-feature:BLUEPRINTS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 8,
       "spacelift": {
         "meaning": "Blueprints, and templates by shared naming [I]",
@@ -3208,6 +3488,7 @@
     {
       "id": "tier-feature:CAN_UPDATE_SSO_SAML",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 9,
       "spacelift": {
         "meaning": "Changing SAML settings after setup [I] from the name",
@@ -3224,6 +3505,7 @@
     {
       "id": "tier-feature:CLOUD_CREDENTIAL_GENERATION",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 10,
       "spacelift": {
         "meaning": "Cloud credentials generated by Spacelift for runs [I] from the name",
@@ -3241,6 +3523,7 @@
     {
       "id": "tier-feature:CUSTOM_SSO_SAML",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 11,
       "spacelift": {
         "meaning": "SAML single sign-on",
@@ -3257,6 +3540,7 @@
     {
       "id": "tier-feature:DRIFT_DETECTION",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 12,
       "spacelift": {
         "meaning": "Drift detection",
@@ -3274,6 +3558,7 @@
     {
       "id": "tier-feature:MFA",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 13,
       "spacelift": {
         "meaning": "Enforced multi-factor authentication",
@@ -3290,6 +3575,7 @@
     {
       "id": "tier-feature:MULTIPLE_VCS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 14,
       "spacelift": {
         "meaning": "More than one integration per VCS provider [I] from the name",
@@ -3307,6 +3593,7 @@
     {
       "id": "tier-feature:NOTIFICATION_POLICIES",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 15,
       "spacelift": {
         "meaning": "Notification policies and the inbox",
@@ -3323,6 +3610,7 @@
     {
       "id": "tier-feature:PRIVATE_MODULE_SHARING",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 16,
       "spacelift": {
         "meaning": "Sharing private modules with other accounts [I] from the name",
@@ -3340,6 +3628,7 @@
     {
       "id": "tier-feature:PRIVATE_VCS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 17,
       "spacelift": {
         "meaning": "VCS agent pools for VCS systems the internet cannot reach",
@@ -3357,6 +3646,7 @@
     {
       "id": "tier-feature:PRIVATE_WORKERS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 18,
       "spacelift": {
         "meaning": "Private worker pools",
@@ -3374,6 +3664,7 @@
     {
       "id": "tier-feature:RUN_STATE_CHANGE_WEBHOOKS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 19,
       "spacelift": {
         "meaning": "Stack, module and named webhooks",
@@ -3391,6 +3682,7 @@
     {
       "id": "tier-feature:TARGETED_REPLAN",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 20,
       "spacelift": {
         "meaning": "Targeted replan of an unconfirmed run",
@@ -3407,6 +3699,7 @@
     {
       "id": "tier-feature:TERRAFORM_PROVIDER_VERSIONS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 21,
       "spacelift": {
         "meaning": "The private provider registry",
@@ -3424,6 +3717,7 @@
     {
       "id": "tier-feature:UNLIMITED_SEATS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 22,
       "spacelift": {
         "meaning": "No cap on users",
@@ -3440,6 +3734,7 @@
     {
       "id": "tier-feature:WORKFLOW_POLICIES",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 23,
       "spacelift": {
         "meaning": "Policies that drive the run workflow [I] from the name",
@@ -3457,6 +3752,7 @@
     {
       "id": "tier-feature:OIDC_FEDERATION_TOKEN_GENERATION",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 24,
       "spacelift": {
         "meaning": "The OIDC token in every run, and the subject template",
@@ -3473,6 +3769,7 @@
     {
       "id": "tier-feature:RUN_IGNORED_TRIGGERS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 25,
       "spacelift": {
         "meaning": "The ignored-runs list and warnings",
@@ -3489,6 +3786,7 @@
     {
       "id": "tier-feature:ACCOUNT_AI_CONTROL",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 26,
       "spacelift": {
         "meaning": "Account switches for Spacelift Intelligence and Infra Assistant [I] from the operations gated",
@@ -3505,6 +3803,7 @@
     {
       "id": "tier-feature:SPACELIFT_INTELLIGENCE",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 27,
       "spacelift": {
         "meaning": "Spacelift Intelligence: AI integrations and Intent [I] from the operations gated",
@@ -3522,6 +3821,7 @@
     {
       "id": "tier-feature:SERVICE_NOW_INTEGRATION",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 28,
       "spacelift": {
         "meaning": "The ServiceNow external integration",
@@ -3538,6 +3838,7 @@
     {
       "id": "tier-feature:BACKSTAGE_INTEGRATION",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 29,
       "spacelift": {
         "meaning": "The Backstage plugins [I] from the name",
@@ -3554,6 +3855,7 @@
     {
       "id": "tier-feature:SCIM",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 30,
       "spacelift": {
         "meaning": "SCIM v2 provisioning APIs [G]",
@@ -3570,6 +3872,7 @@
     {
       "id": "tier-feature:SCANS",
       "kind": "tier-feature",
+      "product": "deploy",
       "number": 31,
       "spacelift": {
         "meaning": "Scans [G]",

@@ -14,9 +14,11 @@
 //     and docs/research/decisions/README.md lists it with that status;
 //   - every docs/….md path named in the repository's source, configuration
 //     and documentation exists;
-//   - every tag of the Spacelift reference spec has a tag: record in
-//     docs/data/capabilities.json, and every tag: record is a tag of the
-//     spec, so the scope accounts for every area of the API;
+//   - every tag of each Spacelift product's reference spec (specref's
+//     Products: Deploy and Flows) has a tag: record of that product in
+//     docs/data/capabilities.json, and every tag: record is a tag of its
+//     product's spec, so the scope accounts for every area of both APIs;
+//   - every report that marks a claim *(unverified)* is listed by
 //     a record of docs/data/open-questions.json, the register of open
 //     questions, which in turn makes the report cite that record's id;
 //   - every numbered architecture option has the same outline as the first,
@@ -39,14 +41,15 @@
 //
 // Check reads the repository through the fs.FS it is given: every markdown
 // file under docs/, GLOSSARY.md, the registers and schemas under docs/data,
-// the Spacelift reference spec, the source and configuration files it scans
-// for docs/ paths, and the doc.go of every Go package under internal/ and
-// pkg/. It writes nothing and touches no network; it
-// returns the findings, sorted by path and line.
+// each Spacelift product's reference spec, the source and configuration
+// files it scans for docs/ paths, and the doc.go of every Go package under
+// internal/ and pkg/. It writes nothing and touches no network; it returns
+// the findings, sorted by path and line.
 //
 // # Dependencies
 //
-// It imports jsonschema/v6 to validate the registers and yaml.v3 to read the
-// reference spec's tags. make docs-check runs its TestUnitDocs over
-// the repository root; no command imports it.
+// It imports jsonschema/v6 to validate the registers, yaml.v3 to read the
+// reference specs' tags, and internal/devtools/specref for the list of
+// products and where each one's spec lives. make docs-check runs its
+// TestUnitDocs over the repository root; no command imports it.
 package docscheck
