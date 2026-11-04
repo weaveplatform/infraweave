@@ -83,8 +83,8 @@ Dependency rules:
    import no domain, no `internal/agent/...` and no `internal/app/...`.
 7. `internal/agent/...` imports only `internal/kernel/...`,
    `internal/iac/...`,
-   `internal/platform/{buildinfo,rego,httpkit/client,seal,expr}` and its own
-   tree. It never imports a domain (not even an `api/` package),
+   `internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}`,
+   `pkg/flows/app/v1` and its own tree. It never imports a domain (not even an `api/` package),
    `internal/platform/{sql,tx,outbox,audit,queue,objectstore,crypt}` or a
    database driver.
 8. `internal/devtools/...` is imported only by `tools/...` and its own tests.
@@ -301,7 +301,9 @@ internal/
 │   │                                     segments (AES-256-GCM, random nonces, index and last flag in AAD) and
 │   │                                     the pool envelope (ECDH P-256, HKDF-SHA256, AES-256-GCM) (P2)
 │   ├── crypt/                            decision 0013's keyring over seal: data keys, DeriveKey, rotation (P2)
-│   │   └── kek/                          KEK providers: local, awskms, gcpkms, azurekv, vault
+│   │   ├── kek/                          KEK providers: local, awskms, gcpkms, azurekv, vault
+│   │   └── signer/                       token signing with a local key or the same KMS providers'
+│   │                                     signing keys (decision 0006) (P3)
 │   ├── expr/                             decision 0024's language: CEL through cel-go, `${{ }}` text templates,
 │   │   │                                 the function library, cost and time limits, compiled-program cache,
 │   │   │                                 JSON Schema type provider, fixed now and seed, shell quoting (P9)
@@ -318,6 +320,11 @@ internal/
 │   │   ├── console/                      the console's build embedded through embed.FS, index.html fallback,
 │   │   │                                 cache headers, CSP with a per-response style nonce (P24c)
 │   │   ├── client/                       outbound HTTP with retries, used by agent and adapters
+│   │   ├── serve/                        listener lifecycle and drain for the API and admin listeners, used by
+│   │   │                                 every process mode
+│   │   ├── dispatch/                     Caller: runs one REST operation by operationId in process, as the
+│   │   │                                 calling principal, through the composed router; bound by
+│   │   │                                 internal/app for flows and intelligence (P18c, P25)
 │   │   └── strict/                       helpers for strict handlers: principal, problem mapping
 │   ├── gen/
 │   │   ├── deploy/                       server.gen.go, unimplemented.gen.go, features.gen.go (operation to
@@ -353,6 +360,8 @@ internal/
 │   ├── initpolicy/                       worker-side initialization policy over platform/rego (P14)
 │   ├── mask/                             log masking of decision 0013: literal values, ::add-mask, patterns (P9)
 │   ├── tools/                            binary download, verification and caching per version (P9)
+│   ├── cloudauth/                        assumes a cloud integration's role on the worker with the run's OIDC
+│   │                                     token, when the integration says so (P15)
 │   ├── vcsagent/                         `vcs-agent`: long-polls /vcs-agent/v1 on serve (decision 0012) (P19)
 │   ├── flowsagent/                       `flows-agent` (decision 0018) (Flows)
 │   │   ├── conn/                         dials /flows/agent/v1/connect on serve; hello, task, call, reply,
@@ -842,7 +851,7 @@ wire protocol is still versioned (`/worker/v1`), because customers upgrade
 launchers later than servers.
 
 The launcher process mode imports nothing from `workers`: rule 7 keeps the agent tree
-to the generated client, `internal/iac` and five named platform packages. The private
+to the generated client, `internal/iac` and seven named platform packages. The private
 pool's encryption of run state to the pool key
 ([report 10, sections 1.1](../reference/10-workers-and-execution.md#11-public-and-private-pools-compared)
 and [2.3](../reference/10-workers-and-execution.md#23-credentials))
@@ -1274,7 +1283,7 @@ domain that owns it:
 | Blueprint and template bodies | `templates` | `serve` for a synchronous create; `scheduler` for a queued deployment change |
 | Output references and environment interpolation | `runs/internal/core/handover`, over `configurationapi.Environment` and `stateapi.Versions` | `serve`, at the run's handover |
 | Notification text | `events/internal/core/delivery` | `scheduler`, in the delivery job |
-| Workflow command templates | `agent/exec` | `runner`, at initialization, with only the fixed run parameters in scope |
+| Workflow command templates | rendered by `agent/exec`; the editor surface is contributed by `vendors`, from each `iac` vendor's workflow keys | `runner`, at initialization, with only the fixed run parameters in scope |
 
 Each owner contributes its surfaces through `assembly.Surfaces()`: a name
 and an `Env` built from its own schemas (core blocks' and apps' `Describe`
@@ -1385,7 +1394,8 @@ and the process modes pick from it:
 // internal/app/modes.go
 //
 // part is what every domain contributes. A process mode starts only the
-// parts it needs: serve mounts routes and never consumes the queue, so a
+// parts it needs: serve mounts routes and consumes no queue except the
+// Flows agent tasks its sockets deliver (decision 0018), so a
 // burst of webhook processing cannot starve API latency; scheduler consumes
 // queues and fires cron and serves only the readiness port.
 type part interface {
@@ -1410,15 +1420,20 @@ func Scheduler(ctx context.Context, cfg config.Settings) error {
 }
 ```
 
-Wiring order at the end of P27, from `domains.go`: features, access,
-stacks, configuration, vendors, workers, policies, runs, state, vcs, cloud,
-schedules, registry, events, templates, resources, intelligence, flows,
-expressions. A domain's `Deps` takes only `api` values of domains built
-before it, plus late-bound interfaces for the three back edges that the
-dependency order cannot satisfy: `stacks` reads `runsapi.StackStatus`,
-`runs` reads `vcsapi.Sources` and `cloudapi.Credentials` at handover. Those
-are set with `SetX` calls after construction, so they add no edge to the
-declared graph and no foreign key. The same order registers the migration
+Wiring order at the end of P27, from `domains.go`, is the declared graph's
+order (see [Tests and enforcement](#tests-and-enforcement)): features,
+access, workers, vendors, stacks, configuration, policies, runs, state,
+cloud, registry, vcs, schedules, events, templates, resources,
+intelligence, flows, expressions. A domain's `Deps` takes only `api` values
+of domains built before it, plus late-bound interfaces for the six back
+edges that the order cannot satisfy: `stacks` reads `runsapi.StackStatus`;
+`runs` reads `vcsapi.Sources`, `cloudapi.Credentials` and
+`stateapi.Versions` at handover; `workers` claims and reports through
+`runsapi.Scheduler` and `runsapi.Reports`; `access` evaluates `LOGIN`
+policies through `policiesapi.Evaluator`. Those are set with `SetX` calls
+after construction, so they add no edge to the declared graph and no
+foreign key. The same step binds `platform/httpkit/dispatch` to the
+composed router for `flows` and `intelligence`. The same order registers the migration
 streams, so a stream always runs after the streams of the domains it
 imports. The function stays a linear list of about 270 lines.
 
@@ -1430,7 +1445,7 @@ The agent process modes are wired outside `internal/app`: their cobra
 commands live in `internal/agent/cli`, and `cmd/infraweave/agent.go` is the
 only place where the agent path meets the rest of the binary. That is what
 makes `cmd/infraweave-agent` a short `main.go`: it registers the same four
-commands and links nothing outside `internal/agent`, its five platform
+commands and links nothing outside `internal/agent`, its seven platform
 packages, `internal/kernel`, `internal/iac` and `pkg/flows/app/v1`.
 
 ### Generated code
@@ -1458,16 +1473,18 @@ embedding:
 // deployServer implements deploy.StrictServerInterface. Each domain's
 // partial sits at depth one and the 501 stubs at depth two, so an
 // implemented operation shadows its stub, and two domains implementing the
-// same operation make the method ambiguous and the assignment below fails
-// to compile. internal/app cannot import a domain's internal/.../http
-// package, so each assembly/ package re-exports its partial as an alias:
-// type DeployAPI = http.DeployAPI.
+// same operation make the method ambiguous, so the assertion below fails to
+// compile; without it the ambiguity would pass.
+// internal/app cannot import a domain's internal/.../http package,
+// so each assembly/ package re-exports its partial as an alias, named after
+// its domain because an embedded field takes its type's name:
+// type StacksDeploy = http.DeployAPI.
 type deployServer struct {
-	*stacksassembly.DeployAPI
-	*runsassembly.DeployAPI
-	*accessassembly.DeployAPI
-	*policiesassembly.DeployAPI    // (P13)
-	*expressionsassembly.DeployAPI // (P9)
+	*stacksassembly.StacksDeploy
+	*runsassembly.RunsDeploy
+	*accessassembly.AccessDeploy
+	*policiesassembly.PoliciesDeploy       // (P13)
+	*expressionsassembly.ExpressionsDeploy // (P9)
 	stubs
 }
 
@@ -1498,7 +1515,8 @@ drift.
 | Expression tables | `platform/expr`: the function library, rendering rules, shell quoting, cost limits, the same `now` and seed giving the same result |
 | Catalogue coverage | `features/internal/catalogue`: every operation of every served document and every gated field names a catalogue entry |
 | App contract | `pkg/flows/appsdk/apptest` runs a fixture app; `TestUnitAppContractCompatible` runs `buf breaking` against the last release |
-| Schema graph | `TestAccSchemaDependencies`: each stream applied in registration order, foreign keys checked against the per-domain depguard rules |
+| Schema graph | `TestAccSchemaDependencies`: each stream applied in registration order, foreign keys and views checked against the per-domain depguard rules |
+| Rule entries | `TestUnitDepguardFixtures`: every domain directory has its graph rule and its `constructors` and `shared-below-domains` entries |
 | Acceptance | `test/acceptance/`: the binary in `all` mode plus a `launcher` and a `flows-agent`, real PostgreSQL, the object store drivers' emulators, a real OpenTofu run |
 | FIPS | the unit and acceptance suites again under `GODEBUG=fips140=only`, a blocking job |
 | Console | `web/console/`: `tsc --strict`, ESLint with typescript-eslint's strict configuration, Vitest at 95% in total and 90% per directory, Playwright journeys against a real `infraweave all` |
@@ -1536,9 +1554,10 @@ linters:
             - $m/internal/stacks/api$
             - $m/internal/configuration/api$
             - $m/internal/workers/api$
+            - $m/internal/vendors/api$
             - $m/internal/policies/api$
-            - $m/internal/state/api$
-        # ... 19 graph rules, one per domain; TestAccSchemaDependencies reads the same rules
+        # ... 19 graph rules, one per domain, as the declared graph below lists;
+        # TestAccSchemaDependencies reads the same rules
         api-packages:                       # rule 3
           list-mode: strict
           files: ["**/internal/*/api/**"]
@@ -1564,18 +1583,25 @@ linters:
             # ... 19 domain roots, then:
             - pkg: $m/internal/agent
             - pkg: $m/internal/app
-        agent-isolation:                    # rule 7
+        agent-isolation:                    # rule 7: an allow list, so a new platform package is refused
+          list-mode: lax                    # the longer match wins, so each allow beats the deny
           files: ["**/internal/agent/**", "**/cmd/infraweave-agent/**"]
           deny:
-            - pkg: $m/internal/platform/sql
-            - pkg: $m/internal/platform/tx
-            - pkg: $m/internal/platform/outbox
-            - pkg: $m/internal/platform/audit
-            - pkg: $m/internal/platform/queue
-            - pkg: $m/internal/platform/objectstore
-            - pkg: $m/internal/platform/crypt
+            - pkg: $m/internal
             - pkg: github.com/jackc/pgx
-            # plus the 19 domain roots and internal/app
+          allow:
+            - $m/internal/agent/
+            - $m/internal/kernel$
+            - $m/internal/kernel/
+            - $m/internal/iac$
+            - $m/internal/iac/
+            - $m/internal/platform/buildinfo$
+            - $m/internal/platform/observe$
+            - $m/internal/platform/rego$
+            - $m/internal/platform/httpkit/client$
+            - $m/internal/platform/httpkit/serve$
+            - $m/internal/platform/seal$
+            - $m/internal/platform/expr$
         devtools:                           # rule 8
           files: ["$all", "!**/tools/**", "!**/internal/devtools/**"]
           deny:
@@ -1593,10 +1619,43 @@ input of the schema check: code and schema read one list and cannot
 disagree. In total there are 26 rules and about 270 entries, the `$` and
 `/` pairs included; a new domain
 adds its graph rule (about 8 entries), one entry to `constructors`, one to
-`shared-below-domains`, one to `agent-isolation` and, if it is a hexagon,
-one to `core-not-adapters`. A domain whose tables land without a graph rule
-fails `TestAccSchemaDependencies`, because its stream has no place in the
-declared graph.
+`shared-below-domains` and, if it is a hexagon, one to `core-not-adapters`.
+`agent-isolation` needs no entry, because it allows rather than denies. A
+domain directory that lacks any of its entries fails
+`TestUnitDepguardFixtures`, and a domain whose tables land without a graph
+rule fails `TestAccSchemaDependencies`, because its stream has no place in
+the declared graph.
+
+The declared graph at the end of P27, in construction order; each domain
+imports the `api/` packages of the domains its row names, and only domains
+above it:
+
+| Domain | Imports the `api/` of | Back edges bound in `internal/app` |
+| --- | --- | --- |
+| `features` | none | |
+| `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
+| `workers` | features, access | `runsapi.Scheduler`, `runsapi.Reports` for the worker protocol |
+| `vendors` | features, access | |
+| `stacks` | features, access, workers, vendors | `runsapi.StackStatus` |
+| `configuration` | features, access, stacks | |
+| `policies` | features, access, stacks | |
+| `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |
+| `state` | features, access, stacks, runs | |
+| `cloud` | features, access, stacks | |
+| `registry` | features, access, workers, runs | |
+| `vcs` | features, access, stacks, runs, registry, policies | |
+| `schedules` | features, access, stacks, runs | |
+| `events` | features, access, stacks, runs, policies, vcs | |
+| `templates` | features, access, stacks, runs | |
+| `resources` | features, access, stacks, runs, state, workers | |
+| `intelligence` | features, access, runs, policies, cloud, workers | `platform/httpkit/dispatch` for the `query` and `mutate` tools |
+| `flows` | features, access, runs, templates | `platform/httpkit/dispatch` for the API Request block |
+| `expressions` | none; `internal/app` hands it every domain's `Surfaces()` | |
+
+A back edge is the reverse of an edge in the table, used after
+construction; it adds no import and no foreign key. Intent operations and
+scan runs reach worker pools through `runsapi`, so `intelligence` and
+`resources` import `runs` rather than `workers`' protocol.
 
 Coverage:
 
@@ -1886,7 +1945,7 @@ Placement choices settled in this file:
 - **Domain internals sit under a nested `internal/`**, so the compiler
   enforces the main boundary and depguard handles only the rest.
 - **The agent tree is outside every domain**, imports no persistence, and
-  shares only `internal/kernel`, `internal/iac` and five platform packages
+  shares only `internal/kernel`, `internal/iac` and seven platform packages
   (`buildinfo`, `rego`, `httpkit/client`, `seal`, `expr`) with the server,
   so `cmd/infraweave-agent` is a short `main.go`.
 - **Vendor knowledge is a pure library**, used by stacks for validation, by
@@ -1920,7 +1979,8 @@ Where this layout rubs against the system:
 
 - **Stack reads cross into runs.** Stack state, blocker and run lock are
   runs data; a stack list filtered or sorted by state needs a read view
-  across two schemas, the one sanctioned cross-domain read.
+  across two schemas, the one sanctioned cross-domain read. The view lives
+  in the `runs` stream and is served through `runsapi.StackStatus`.
 - **Run creation reads the stack row inside its transaction**
   (`LockForRun`), a cross-domain transaction that couples `runs` to the
   stacks schema's locking.
@@ -1928,21 +1988,24 @@ Where this layout rubs against the system:
   handover, timers, promotion and dependencies: about a fifth of the
   hand-written code, and the domain most phases (P7, P9, P10, P13, P16)
   touch.
-- **Back edges need late binding.** `stacks` reads `runsapi`, and `runs`
-  reads `vcsapi` and `cloudapi`, so `domains.go` sets three dependencies
-  after construction.
+- **Back edges need late binding.** `stacks` reads `runsapi`; `runs` reads
+  `vcsapi`, `cloudapi` and `stateapi`; `workers` reads `runsapi`; `access`
+  reads `policiesapi`. `domains.go` sets six dependencies after
+  construction, and binds the operation dispatcher for `flows` and
+  `intelligence`.
 - **One binary carries server code to worker hosts.** The agent packages do
   not import it, but the linked binary contains it; `cmd/infraweave-agent`
   is the slim build for hosts whose image size or review demands it, and
   rule 7 covers its `main.go` too.
 - **The declared graph is lint data with a schema test behind it.** One
-  graph rule per domain is about 150 of the 230 depguard entries, and
+  graph rule per domain is about 150 of the 270 depguard entries, and
   every new import edge between domains is a reviewed edit to
   `.golangci.yml`. Foreign keys make the graph harder to bend later: a
   domain that must reference a table against the import direction has to
   move the table, or the code, rather than add a key.
-- **The agent's platform list grows with each shared format.** Sealing and
-  expressions joined `buildinfo`, `rego` and `httpkit/client`; each new
+- **The agent's platform list grows with each shared format.** Sealing,
+  expressions, observability and the admin listener joined `buildinfo`,
+  `rego` and `httpkit/client`; each new
   package the runner, launcher or Flows agent needs is a rule 7 edit, and a
   package that later gains a store or a key would have to split first.
 - **`features` is imported by every domain that counts something.** A

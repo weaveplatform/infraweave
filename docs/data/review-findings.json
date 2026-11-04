@@ -8771,21 +8771,19 @@
       "id": "ARC-01.22",
       "finding": "Option 5 friction: the agent \"shares only `internal/iac`\" with the server; rule 7 also allows kernel and three platform packages",
       "change": "Corrected",
-      "status": "folded",
+      "status": "superseded",
       "files": [
         "docs/research/architecture-options/5-modular-monolith.md"
       ],
       "evidence": [
         {
           "file": "docs/research/architecture-options/5-modular-monolith.md",
-          "present": [
-            "shares only `internal/kernel`, `internal/iac` and five platform packages"
-          ],
           "absent": [
             "shares only `internal/iac`"
           ]
         }
-      ]
+      ],
+      "by": "DES-10.4 turns rule 7 into an allow list of seven platform packages, adding `observe` and `httpkit/serve` for the agents' logs, traces and probes."
     },
     {
       "id": "ARC-01.23",
@@ -10904,7 +10902,7 @@
       "severity": "wrong",
       "finding": "0004 let `internal/agent` import three `platform` packages; the runner also seals workspaces (0013) and renders workflow command templates (0024)",
       "change": "Five, adding `platform/seal` (formats, no keys) and `platform/expr`",
-      "status": "folded",
+      "status": "superseded",
       "files": [
         "docs/research/decisions/0004-repository-architecture.md"
       ],
@@ -10912,12 +10910,12 @@
         {
           "file": "docs/research/decisions/0004-repository-architecture.md",
           "present": [
-            "five named `platform` packages, among them `platform/seal`, because the runner seals workspaces",
             "and `platform/expr`, because it renders workflow command templates",
             "the sealed formats (`platform/seal`)"
           ]
         }
-      ]
+      ],
+      "by": "DES-10.4 turns rule 7 into an allow list of seven platform packages, adding `observe` and `httpkit/serve` for the agents' logs, traces and probes."
     },
     {
       "id": "DES-07.27",
@@ -10944,21 +10942,20 @@
       "severity": "wrong",
       "finding": "0004's rationale counted 20 criteria with option 5 Good on 16; the comparison now rates 24, Good on 19, with depguard burden Fair",
       "change": "Counts and the Fair rating stated",
-      "status": "folded",
+      "status": "superseded",
       "files": [
         "docs/research/decisions/0004-repository-architecture.md"
       ],
+      "by": "DES-10.13 re-rates strict-server fit, extractability and shared hotspots to Fair for option 5, so 0004 now counts Good on 16 of the 24 criteria.",
       "evidence": [
         {
           "file": "docs/research/decisions/0004-repository-architecture.md",
           "present": [
             "rates all five options on 24 criteria",
-            "Option 5 rates Good on 19 and Poor on none",
             "Its depguard burden rates Fair"
           ],
           "absent": [
-            "20 criteria",
-            "Good on 16"
+            "20 criteria"
           ]
         }
       ]
@@ -11595,16 +11592,16 @@
       "severity": "wrong",
       "finding": "the layout made `pkg/client/deploy` the clients' import, kept `flows-runtime`, `@flows-runtime`, MinIO, `platform/features`, `platform/events`, `tfe` and \"no foreign key crosses a domain boundary\" (0004 allows keys along the import direction)",
       "change": "Rewritten from 0001, 0004, 0016, 0018, 0021, 0023 and 0024, with `pkg/sdk`, `pkg/flows/appsdk`, `web/console/`, `api/proto/flows/app/v1/` and the operator API",
-      "status": "folded",
+      "status": "superseded",
       "files": [
         "docs/implementation/repo-layout.md"
       ],
+      "by": "DES-10.15 moves the console's embedded build to `internal/platform/httpkit/console`, where `embed.FS` can reach the Vite output, so the layout no longer says `internal/app` embeds it.",
       "evidence": [
         {
           "file": "docs/implementation/repo-layout.md",
           "present": [
             "the Go SDK for Flows apps, with apptest (P18d)",
-            "the console: React and TypeScript, built by Vite, embedded by internal/app (P24c)",
             "GENERATED operator API client (P3b)"
           ],
           "absent": [
@@ -12592,6 +12589,496 @@
             "makes the session lifetime an organization setting, so the capture records Spacelift's value and nothing waits on it",
             "serves infraweave's own authorization server, whose clients discover its paths from the metadata",
             "makes Flows part of the infraweave account, so no link operation exists to mirror"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.1",
+      "severity": "wrong",
+      "finding": "the strict server composed by embedding did not compile: every `assembly` package re-exported its partial as `DeployAPI`, and two embedded fields of that name collide (`DeployAPI redeclared`, reproduced with Go 1.27); only the interface assertion catches an operation with two owners",
+      "change": "Each partial is re-exported under its domain's name, and the assertion is stated as the check",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "re-exports its partial under a name of its own"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "*stacksassembly.StacksDeploy",
+            "named after\n// its domain because an embedded field takes its type's name"
+          ],
+          "absent": [
+            "*stacksassembly.DeployAPI"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "alias of the domain's strict partial named after the domain"
+          ],
+          "absent": [
+            "DeployAPI alias"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.2",
+      "severity": "wrong",
+      "finding": "the declared graph named three back edges but held three more cycles (runs and state, runs and workers, access and policies), built `stacks` before `workers` and `vcs` before `registry`, which they import",
+      "change": "The graph is written out per domain with six back edges and a construction order that satisfies every edge",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md",
+        "docs/research/architecture-options/README.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "### Declared graph",
+            "| `runs` | features, access, stacks, configuration, workers, vendors, policies |"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "late-bound interfaces for the six back"
+          ],
+          "absent": [
+            "three back edges"
+          ]
+        },
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "`access` evaluates `LOGIN` policies through"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/README.md",
+          "present": [
+            "Six back edges (stacks to runs; runs to vcs, cloud and state; workers to runs; access to policies)"
+          ],
+          "absent": [
+            "Three back edges"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.3",
+      "severity": "wrong",
+      "finding": "the audit write had three homes: 0015 named `internal/audit`, 0004 mapped it into `internal/events`, and option 5 put it in `platform/audit`, the only place every domain's transaction can call without a cycle",
+      "change": "0004 and 0015 name `platform/audit` for the write and `events` for the trail's search and shipper",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/decisions/0015-events-notifications-webhooks-audit.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "the audit write in `internal/platform/audit`, called in the change's own transaction"
+          ]
+        },
+        {
+          "file": "docs/research/decisions/0015-events-notifications-webhooks-audit.md",
+          "present": [
+            "writes audit entries through `internal/platform/audit`"
+          ],
+          "absent": [
+            "audit trail lives in `internal/audit`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.4",
+      "severity": "wrong",
+      "finding": "rule 7 said the agent imports only named packages, but its depguard rule was a deny list, so the generated servers, cron, events and any new platform package stayed importable; the named list also left out `platform/observe` and the admin listener, which every agent process mode needs for its logs, traces and probes (0017)",
+      "change": "`agent-isolation` denies `$m/internal` and allows seven named platform packages, `observe` and `httpkit/serve` among them; `pkg/flows/app/v1` joins rule 7",
+      "status": "folded",
+      "files": [
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md",
+        "docs/research/decisions/0004-repository-architecture.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "agent-isolation:                    # rule 7: an allow list"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "lax: deny, then allow"
+          ]
+        },
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "seven named `platform` packages, among them `platform/observe` and `platform/httpkit/serve`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.5",
+      "severity": "wrong",
+      "finding": "0004 and the comparison said `serve` consumes no queue, while 0018 has the replica holding a Flows agent's socket claim that pool's `flows.agent_task` jobs",
+      "change": "`serve` consumes no queue except the Flows agent tasks its sockets deliver",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/research/architecture-options/README.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "It consumes no queue except the `flows.agent_task` jobs"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/README.md",
+          "present": [
+            "`serve` consumes no queue except the Flows agent tasks its sockets deliver"
+          ],
+          "absent": [
+            "`serve` never consumes queues"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.6",
+      "severity": "wrong",
+      "finding": "0004 said depguard reports only new issues, but `make lint` and the quality gate pass `--new=false`",
+      "change": "The constraint is replaced by `TestUnitDepguardFixtures`, which fails on a domain directory without its rule entries",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "**Every domain carries its rule entries.**"
+          ],
+          "absent": [
+            "depguard reports only new issues"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.7",
+      "severity": "wrong",
+      "finding": "option 5's depguard entries were about 230 in two places and about 270 in two others",
+      "change": "About 270 throughout",
+      "status": "folded",
+      "files": [
+        "docs/research/architecture-options/README.md",
+        "docs/research/architecture-options/5-modular-monolith.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/architecture-options/README.md",
+          "present": [
+            "26 depguard rules and about 270 entries"
+          ],
+          "absent": [
+            "about 230 entries"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "about 150 of the 270 depguard entries"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.8",
+      "severity": "missing",
+      "finding": "Flows' API Request block and Intelligence's `query` and `mutate` tools call any REST operation, but no layout said how a domain reaches every other domain's operations without importing them",
+      "change": "`platform/httpkit/dispatch` runs an operation in process as the caller through the composed router, bound by `internal/app`",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "**Operations called in process.**"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "Caller: runs one REST operation by operationId in process"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "runs one REST operation in process as the caller"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.9",
+      "severity": "missing",
+      "finding": "Intent operations and scan runs execute on worker pools, but no option named the path that hands them to a worker",
+      "change": "Both reach worker pools through `runsapi`, so workers claim every job through one path",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "**Worker work that is not a stack run.**"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "Intent operations and scan runs reach worker pools through `runsapi`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.10",
+      "severity": "missing",
+      "finding": "token signing through a KMS key (0006) and assuming a cloud role on the worker (P15) had no package",
+      "change": "`platform/crypt/signer` and `agent/cloudauth`",
+      "status": "folded",
+      "files": [
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "signer/",
+            "cloudauth/"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "signer/",
+            "cloudauth/"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.11",
+      "severity": "missing",
+      "finding": "option 5 made `agent/exec` the owner of the workflow command template surface, but the agent contributes no `Surfaces()`",
+      "change": "`vendors` contributes the editor surface from each `iac` vendor's workflow keys; the runner renders",
+      "status": "folded",
+      "files": [
+        "docs/research/architecture-options/5-modular-monolith.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/architecture-options/5-modular-monolith.md",
+          "present": [
+            "the editor surface is contributed by `vendors`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.12",
+      "severity": "missing",
+      "finding": "the stack-by-run-state read view had no owning stream, and `TestAccSchemaDependencies` read only `pg_constraint`, so the view escaped the graph",
+      "change": "The view lives in the `runs` stream behind `runsapi.StackStatus`, and the schema check reads views from `pg_depend`",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/5-modular-monolith.md",
+        "docs/implementation/repo-layout.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "Views count as references"
+          ]
+        },
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "which lives in the\n  `runs` stream and is served through `runsapi.StackStatus`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.13",
+      "severity": "wrong",
+      "finding": "the comparison rated option 5 Good on strict-server fit, extractability and shared hotspots, although it reads stack state from `runs` through a back edge, binds a domain to the database through keys, the `jobs` table and the fan-out transaction, and keeps six hotspot files",
+      "change": "All three Fair; option 5 is Good on 16 and still leads the roadmap table",
+      "status": "folded",
+      "files": [
+        "docs/research/architecture-options/README.md",
+        "docs/research/decisions/0004-repository-architecture.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/architecture-options/README.md",
+          "present": [
+            "| Extractability of a domain into a separate service | Poor | Poor | Poor | Good | Fair |",
+            "| Good | 9 | 13 | 6 | 10 | 16 |"
+          ]
+        },
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "Option 5 rates Good on 16 and Poor on none"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.14",
+      "severity": "wrong",
+      "finding": "0004's case against DDD counted the outbox before the first run and eventually consistent stack state and checks, which the plan's P2c and option 5's own outbox-driven checks share",
+      "change": "The rationale weighs DDD as drawn and its strongest variant, and keeps only the differences that hold",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "Its strongest variant keeps tactical patterns to the rule-heavy"
+          ],
+          "absent": [
+            "needs the outbox and event bus before the first"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.15",
+      "severity": "wrong",
+      "finding": "the layout and option 5 disagreed: the console embedded by `internal/app` (which `embed.FS` cannot reach from `web/console`), an `api/` package for `expressions`, which no domain calls, and agent commands in four `cmd/infraweave` files rather than `internal/agent/cli`",
+      "change": "The layout follows option 5 on all three, and 0004 names `platform/httpkit/console`",
+      "status": "folded",
+      "files": [
+        "docs/implementation/repo-layout.md",
+        "docs/research/decisions/0004-repository-architecture.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/implementation/repo-layout.md",
+          "present": [
+            "built by Vite into platform/httpkit/console/dist (P24c)",
+            "no api/: no domain calls it",
+            "registers agent/cli: launcher (P8)"
+          ],
+          "absent": [
+            "runner.go              hidden runner"
+          ]
+        },
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "its build output is embedded by `internal/platform/httpkit/console`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.16",
+      "severity": "wrong",
+      "finding": "0016's coverage exclusions named generated server code and `pkg/client` only, while the layout also generates `internal/agent/wire` and `pkg/flows/app`",
+      "change": "The exclusions list every generated path",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0016-testing-and-acceptance.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0016-testing-and-acceptance.md",
+          "present": [
+            "the worker protocol client in\n  `internal/agent/wire/`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.17",
+      "severity": "wrong",
+      "finding": "0004 and the comparison let `runs` split into sub-domains, which would move a transition's writes across `api/` calls and lose its one transaction",
+      "change": "`runs` stays one domain; only parts outside the transition may move out",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md",
+        "docs/research/architecture-options/README.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "concentrates work and stays one domain"
+          ]
+        },
+        {
+          "file": "docs/research/architecture-options/README.md",
+          "present": [
+            "Lifecycle and every table a transition writes stay in"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DES-10.18",
+      "severity": "missing",
+      "finding": "0004 did not weigh Spacelift's two workflow concepts (Flows and custom workflows) or the three clouds against the options",
+      "change": "The rationale records that neither separates options 4 and 5",
+      "status": "folded",
+      "files": [
+        "docs/research/decisions/0004-repository-architecture.md"
+      ],
+      "evidence": [
+        {
+          "file": "docs/research/decisions/0004-repository-architecture.md",
+          "present": [
+            "**Spacelift's workflow concepts and the three clouds do not separate the"
           ]
         }
       ]
