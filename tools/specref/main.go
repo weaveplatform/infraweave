@@ -1,5 +1,6 @@
-// Command specref maintains the Spacelift API reference in
-// api/reference/spacelift: fetch refreshes the pinned upstream snapshots,
+// Command specref maintains the Spacelift API references, one per product
+// (--product, default deploy, in api/reference/spacelift): fetch refreshes
+// the pinned upstream snapshots,
 // generate derives the OpenAPI spec and coverage report from them, check
 // fails when the committed output is stale, scaffold copies a reference tag
 // into a served-API fragment, inventory writes or checks the GraphQL
@@ -22,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 	"github.com/weaveplatform/infraweave/internal/devtools/specref"
@@ -41,6 +41,7 @@ const (
 
 // config is every setting, from flag > SPECREF_* environment > --config file.
 type config struct {
+	Product         string `mapstructure:"product"`
 	Dir             string `mapstructure:"dir"`
 	Endpoint        string `mapstructure:"endpoint"`
 	Codeload        string `mapstructure:"codeload"`
@@ -84,7 +85,9 @@ func newRoot() *cobra.Command {
 	}
 	pf := root.PersistentFlags()
 	pf.StringVar(&cfgFile, "config", "", "YAML config file (unknown keys are rejected)")
-	pf.String("dir", filepath.Join("api", "reference", "spacelift"), "reference directory")
+	pf.String("product", specref.Deploy.Name, "Spacelift product whose reference to work on")
+	pf.String("dir", "", "reference directory (default the product's, such as "+
+		specref.Deploy.Dir+")")
 
 	fetch := &cobra.Command{
 		Use:   "fetch",
@@ -131,28 +134,22 @@ func newRoot() *cobra.Command {
 
 	generate := &cobra.Command{
 		Use:   "generate",
-		Short: "Write spacelift.openapi.yaml and coverage.md from the snapshots",
+		Short: "Write the product's OpenAPI reference and coverage.md from the snapshots",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			c, err := decode(v)
 			if err != nil {
 				return err
 			}
-			g, err := specref.GenerateDir(cmd.Context(), c.Dir)
+			p, err := specref.ProductNamed(c.Product)
 			if err != nil {
 				return err
 			}
-			routed := 0
-			for _, n := range g.Report.Styles {
-				routed += n
+			g, err := p.GenerateDir(cmd.Context(), c.Dir)
+			if err != nil {
+				return err
 			}
-			cmd.Printf(
-				"%d routes (+%d field routes), %d excluded, %d RPC-shaped\n",
-				routed,
-				g.Report.FieldRoutes,
-				len(g.Report.Excluded),
-				len(g.Report.RPC),
-			)
+			cmd.Println(g.Summary)
 			return nil
 		},
 	}
@@ -165,7 +162,11 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return specref.CheckDir(cmd.Context(), c.Dir)
+			p, err := specref.ProductNamed(c.Product)
+			if err != nil {
+				return err
+			}
+			return p.CheckDir(cmd.Context(), c.Dir)
 		},
 	}
 	scaffold := &cobra.Command{
@@ -181,7 +182,11 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s, err := specref.ScaffoldFile(c.Dir, c.Tag, c.Out, c.Force)
+			p, err := specref.ProductNamed(c.Product)
+			if err != nil {
+				return err
+			}
+			s, err := specref.ScaffoldFile(filepath.Join(c.Dir, p.Spec), c.Tag, c.Out, c.Force)
 			if err != nil {
 				return err
 			}
@@ -246,8 +251,12 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			p, err := specref.ProductNamed(c.Product)
+			if err != nil {
+				return err
+			}
 			files := specref.ParityFiles{
-				Reference: filepath.Join(c.Dir, specref.FileSpec),
+				Reference: filepath.Join(c.Dir, p.Spec),
 				Served:    c.Served,
 				Baseline:  c.Baseline,
 			}
@@ -290,8 +299,9 @@ func newRoot() *cobra.Command {
 	)
 	pyf.String(
 		"baseline",
-		filepath.Join("api", "parity-baseline.deploy.json"),
-		"accepted missing and moved operations",
+		"",
+		"accepted missing and moved operations (default the product's, such as "+
+			specref.Deploy.Baseline+")",
 	)
 	pyf.Bool(
 		"write-baseline",
@@ -328,44 +338,23 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command, cfgFile string) error {
 			return fmt.Errorf("read config: %w", err)
 		}
 	}
-	lock, err := readLock(v.GetString("dir"))
+	p, err := specref.ProductNamed(v.GetString("product"))
 	if err != nil {
 		return err
 	}
-	if lock != nil {
-		// Viper ranks SetDefault under a changed flag, env and the config
-		// file but above an unchanged flag's own default, so the lock fills
-		// exactly what nobody set explicitly.
-		v.SetDefault("endpoint", lock.Introspection.Endpoint)
-		v.SetDefault("bruno-repo", lock.Bruno.Repository)
-		v.SetDefault("bruno-ref", lock.Bruno.Ref)
-		v.SetDefault("provider-repo", lock.Provider.Repository)
-		v.SetDefault("provider-version", strings.TrimPrefix(lock.Provider.Ref, "v"))
+	// Viper ranks SetDefault under a changed flag, env and the config file
+	// but above an unchanged flag's own default, so the product and its lock
+	// fill exactly what nobody set explicitly.
+	v.SetDefault("dir", filepath.FromSlash(p.Dir))
+	v.SetDefault("baseline", filepath.FromSlash(p.Baseline))
+	pins, err := p.Pins(v.GetString("dir"))
+	if err != nil {
+		return err
+	}
+	for key, value := range pins {
+		v.SetDefault(key, value)
 	}
 	return nil
-}
-
-func readLock(dir string) (*specref.Lock, error) {
-	root, err := os.OpenRoot(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil //nolint:nilnil // no reference directory yet: no pins
-	}
-	if err != nil {
-		return nil, fmt.Errorf("open %s: %w", dir, err)
-	}
-	defer root.Close()
-	data, err := root.ReadFile(specref.FileLock)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil //nolint:nilnil // first fetch: no pins yet
-	}
-	if err != nil {
-		return nil, fmt.Errorf("read lock: %w", err)
-	}
-	var lock specref.Lock
-	if err := yaml.Unmarshal(data, &lock); err != nil {
-		return nil, fmt.Errorf("decode lock: %w", err)
-	}
-	return &lock, nil
 }
 
 // decode applies the layered settings strictly: a config file key that

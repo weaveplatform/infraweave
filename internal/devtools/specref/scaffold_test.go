@@ -358,7 +358,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 	write("README.md", "ignored")
 	out := filepath.Join(svc, "paths-stacks.yaml")
 
-	s, err := ScaffoldFile(refDir, "Stacks", out, false)
+	s, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "Stacks", out, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,12 +366,12 @@ func TestUnitScaffoldFile(t *testing.T) {
 	if err != nil || !bytes.Equal(first, s.YAML) {
 		t.Fatalf("fragment not written: %v", err)
 	}
-	if _, err := ScaffoldFile(refDir, "Stacks", out, false); !errors.Is(err, ErrFragmentExists) {
+	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "Stacks", out, false); !errors.Is(err, ErrFragmentExists) {
 		t.Errorf("overwrite without force: %v", err)
 	}
 	// With force, the fragment being replaced doesn't count as existing, so
 	// the result is byte-identical rather than empty.
-	if _, err := ScaffoldFile(refDir, "Stacks", out, true); err != nil {
+	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "Stacks", out, true); err != nil {
 		t.Fatal(err)
 	}
 	second, err := os.ReadFile(out)
@@ -380,7 +380,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 	}
 
 	if _, err := ScaffoldFile(
-		t.TempDir(),
+		filepath.Join(t.TempDir(), FileSpec),
 		"Stacks",
 		filepath.Join(t.TempDir(), "p.yaml"),
 		false,
@@ -388,7 +388,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 		t.Error("missing reference: want error")
 	}
 	if _, err := ScaffoldFile(
-		refDir,
+		filepath.Join(refDir, FileSpec),
 		"Gadgets",
 		filepath.Join(svc, "paths-g.yaml"),
 		false,
@@ -399,7 +399,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 		t.Errorf("unknown tag: %v", err)
 	}
 	if _, err := ScaffoldFile(
-		refDir,
+		filepath.Join(refDir, FileSpec),
 		"Stacks",
 		filepath.Join(svc, "missing", "p.yaml"),
 		false,
@@ -408,7 +408,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 	}
 	write("paths-bad.yaml", "paths: [\n")
 	if _, err := ScaffoldFile(
-		refDir,
+		filepath.Join(refDir, FileSpec),
 		"Stacks",
 		out,
 		true,
@@ -431,7 +431,7 @@ func TestUnitScaffoldFileUnwritable(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeCommon(t, svc)
-	if _, err := ScaffoldFile(refDir, "W", out, true); err == nil {
+	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "W", out, true); err == nil {
 		t.Error("unwritable fragment: want error")
 	}
 }

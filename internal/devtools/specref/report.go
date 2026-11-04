@@ -59,6 +59,17 @@ func (b *builder) report() *Report {
 	return rep
 }
 
+// Summary is the line specref generate prints: how many root fields became
+// routes, field routes, exclusions and RPC-shaped routes.
+func (r *Report) Summary() string {
+	routed := 0
+	for _, n := range r.Styles {
+		routed += n
+	}
+	return fmt.Sprintf("%d routes (+%d field routes), %d excluded, %d RPC-shaped",
+		routed, r.FieldRoutes, len(r.Excluded), len(r.RPC))
+}
+
 // Markdown renders the report committed as coverage.md.
 func (r *Report) Markdown() string {
 	var b strings.Builder

@@ -11,7 +11,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -86,7 +85,7 @@ func (l *Lock) pins() *Lock {
 	return &p
 }
 
-// ReadSources loads a reference directory.
+// ReadSources loads the Deploy reference directory.
 func ReadSources(dir string) (*Sources, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
@@ -141,15 +140,18 @@ func strictYAML(data []byte, v any) error {
 	return nil
 }
 
-// Generated is the output of one generation.
+// Generated is the output of one generation: the document, the coverage
+// report committed beside it, and the one line specref generate prints.
 type Generated struct {
 	Spec     []byte
 	Coverage []byte
-	Report   *Report
+	Summary  string
+	// Report is the Deploy reference's coverage in detail.
+	Report *Report
 }
 
-// Generate derives the spec and coverage report from loaded sources and
-// validates the spec as OpenAPI before returning it.
+// Generate derives the Deploy spec and coverage report from loaded sources
+// and validates the spec as OpenAPI before returning it.
 func Generate(ctx context.Context, src *Sources) (*Generated, error) {
 	plan, err := BuildPlan(src.Schema, src.Mapping)
 	if err != nil {
@@ -188,49 +190,12 @@ func Generate(ctx context.Context, src *Sources) (*Generated, error) {
 	if err := enc.Encode(tree); err != nil {
 		return nil, fmt.Errorf("encode spec yaml: %w", err)
 	}
-	return &Generated{Spec: out.Bytes(), Coverage: []byte(rep.Markdown()), Report: rep}, nil
-}
-
-// GenerateDir regenerates a reference directory in place.
-func GenerateDir(ctx context.Context, dir string) (*Generated, error) {
-	src, err := ReadSources(dir)
-	if err != nil {
-		return nil, err
-	}
-	g, err := Generate(ctx, src)
-	if err != nil {
-		return nil, err
-	}
-	return g, writeFiles(dir, map[string][]byte{FileSpec: g.Spec, FileCoverage: g.Coverage})
-}
-
-// CheckDir fails with ErrDrift when the committed spec or report is not
-// what the committed sources generate.
-func CheckDir(ctx context.Context, dir string) error {
-	src, err := ReadSources(dir)
-	if err != nil {
-		return err
-	}
-	g, err := Generate(ctx, src)
-	if err != nil {
-		return err
-	}
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return fmt.Errorf("open reference dir: %w", err)
-	}
-	defer root.Close()
-	var drift []string
-	for name, want := range map[string][]byte{FileSpec: g.Spec, FileCoverage: g.Coverage} {
-		got, err := root.ReadFile(name)
-		if err != nil || !bytes.Equal(got, want) {
-			drift = append(drift, name)
-		}
-	}
-	if len(drift) > 0 {
-		return fmt.Errorf("%w: %s (run specref generate)", ErrDrift, strings.Join(drift, ", "))
-	}
-	return nil
+	return &Generated{
+		Spec:     out.Bytes(),
+		Coverage: []byte(rep.Markdown()),
+		Summary:  rep.Summary(),
+		Report:   rep,
+	}, nil
 }
 
 // dropInvalidExamples removes request examples their schema rejects and
