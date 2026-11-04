@@ -1763,8 +1763,10 @@ run and the discovery document cloud providers verify it against.
    token with `bound_claims` on `spacePath`). Records DV-016.
 2. `internal/cloud` (flat domain): AWS integrations and attachments with the
    fixed external ID and `RoleSessionName` formats, the role trust check
-   with decision 0022's matched text, credentials assumed by the server or
-   on the worker. Operations: `awsIntegrations`, `awsIntegration`,
+   with decision 0022's matched text, and credentials either assumed by the
+   server and handed over through `cloudapi.Credentials` or, when the
+   integration says so, assumed on the worker by `internal/agent/cloudauth`
+   with the run's OIDC token. Operations: `awsIntegrations`, `awsIntegration`,
    `awsIntegrationByName`, `awsIntegrationCreate`, `awsIntegrationUpdate`,
    `awsIntegrationDelete`, `awsIntegrationAttach`, `awsIntegrationDetach`,
    `awsIntegrationAttachmentUpdate`, `awsIntegrationAttachedStack`,
@@ -1773,8 +1775,15 @@ run and the discovery document cloud providers verify it against.
    `installationAwsAccountId` (the reference's `spaceliftAwsAccountId`);
    the legacy
    `stackIntegrationAwsCreate` and `stackIntegrationAwsDelete` served and
-   deprecated. STS fake in `awsfake`.
-3. Azure and GCP: `azureIntegrations`, `azureIntegration`,
+   deprecated. STS fake in `internal/cloud/internal/aws/awsfake`.
+3. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `cloud`'s
+   graph rule and shared-rule entries, its place after `state` in
+   `domains.go` and the migration order, and its edges to `features`,
+   `access` and `stacks`, with foreign keys from attachments to stacks.
+   `internal/app` binds the `cloudapi.Credentials` back edge after
+   construction for `runs` to read at handover
+   ([declared graph](repo-layout.md#declared-graph)).
+4. Azure and GCP: `azureIntegrations`, `azureIntegration`,
    `azureIntegrationByName`, `azureIntegrationCreate`,
    `azureIntegrationUpdate`, `azureIntegrationDelete`,
    `azureIntegrationAttach`, `azureIntegrationDetach`,
@@ -1784,7 +1793,7 @@ run and the discovery document cloud providers verify it against.
    the Entra applications created through the operator-registered
    application in `cloud.azure`, or `installation-unsupported` without one;
    GCP through the OIDC token only. `integrationsCount`.
-4. Feature: `cloud_integrations.feature` (`@postgres`, `@tofu`, `@oidc`) with
+5. Feature: `cloud_integrations.feature` (`@postgres`, `@tofu`, `@oidc`) with
    read and write attachments and the external ID suffix per run type.
 
 **Exit criteria**
@@ -1813,13 +1822,19 @@ with output references and external dependencies.
    `stackScheduledDelete`, `stackScheduledDeleteCreate`,
    `stackScheduledDeleteUpdate`, `stackScheduledDeleteDelete`. Records
    DV-090.
-2. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+   `schedules`' graph rule and shared-rule entries, its place after `vcs`
+   in `domains.go` and the migration order, and its edges to `features`,
+   `access`, `stacks` and `runs`, with foreign keys to stacks; scheduled
+   and drift runs start through `runsapi.Runs`
+   ([declared graph](repo-layout.md#declared-graph)).
+3. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
    private pools, each pool's drift run limits enforced in the claim,
    reconcile. Operations:
    `stackIntegrationDriftDetectionCreate`,
    `stackIntegrationDriftDetectionUpdate`,
    `stackIntegrationDriftDetectionDelete`.
-3. `internal/stacks/internal/dependency`: the dependency DAG with cycle
+4. `internal/stacks/internal/dependency`: the dependency DAG with cycle
    rejection and references to outputs. Operations: `stackDependency`,
    `stackDependencyCreate`, `stackDependencyUpdate`,
    `stackDependencyDelete`, `stackDependenciesCreateInBatch`,
@@ -1830,10 +1845,10 @@ with output references and external dependencies.
    expression over `value` and `outputs`, evaluated in `serve` at the
    downstream run's handover; its scenario joins
    `expressions_deploy.feature`. Records DV-107.
-4. `internal/runs/internal/core/dependencies`: dependent runs, skipping on
+5. `internal/runs/internal/core/dependencies`: dependent runs, skipping on
    unchanged outputs, `SKIPPED` on upstream failure; external dependencies
    with `runExternalDependencyMarkAsCompleted`.
-5. Features: `scheduler_scheduled_runs.feature`,
+6. Features: `scheduler_scheduled_runs.feature`,
    `scheduler_missed_firings.feature`, `drift_detection.feature`,
    `stacks_dependencies.feature`.
 
@@ -1868,14 +1883,21 @@ Terraform module registry protocol and `terraform login`.
    `moduleAttachableVcsIntegrations`, `moduleAttachableWorkerPools`,
    `modulePolicyAttachment`, `moduleAttachableAwsIntegrations`,
    `moduleAttachableAzureIntegrations`.
-2. Sharing: `moduleShare`, `sharedModulesV2`, reads through shared spaces.
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `registry`'s
+   graph rule and shared-rule entries, `core-not-adapters` included, its
+   place after `cloud` in `domains.go` and the migration order, and its
+   edges to `features`, `access`, `workers` and `runs`. The waiting
+   `vcs`→`registry` edge lands here too: `vcs` routes tag pushes to
+   `registryapi.Modules` once the push policy sets the version
+   ([declared graph](repo-layout.md#declared-graph)).
+3. Sharing: `moduleShare`, `sharedModulesV2`, reads through shared spaces.
    A share is the one exception to account isolation, and only between
    accounts of the same organization: a share naming an account of another
    organization answers `422 validation-failed`. It exposes the module's
    fields and version downloads only, needs `module-sharing` in both
    accounts' entitlement, and its revocation hides the module while runs in
    flight finish. Records DV-112.
-3. Protocol in `internal/registry/internal/adapters/protocol`:
+4. Protocol in `internal/registry/internal/adapters/protocol`:
    `/.well-known/terraform.json`, `/registry/modules/v1/...` versions and
    download with signed `X-Terraform-Get`, lenient version segments, the
    documented answers for unauthenticated callers; `api/src/registry/`
@@ -1883,8 +1905,9 @@ Terraform module registry protocol and `terraform login`.
    `POST /terraform/token`) in `access`. Tests:
    `TestUnitVersionNumberRules`, `TestUnitVersionSegmentParse`. Records
    DV-052, DV-054, DV-055.
-4. Test cases as `TESTING` runs, including negative cases.
-5. Features: `registry_protocol.feature`, `registry_modules.feature`
+5. Test cases as `TESTING` runs created through `runsapi`, including
+   negative cases.
+6. Features: `registry_protocol.feature`, `registry_modules.feature`
    (`@vcs`, `@terraform`, `@tofu`).
 
 **Exit criteria**
@@ -1938,8 +1961,11 @@ Decisions: [0015](../research/decisions/0015-events-notifications-webhooks-audit
 
 The fan-out of every event to the inbox, notification policy routes,
 webhooks, Slack and pull request comments, and the server-sent-event
-streams that observers read. `internal/events` holds only these sinks;
-the Flows engine (P18c) adds its own consumer of the same fan-out.
+streams that observers read. `internal/events` holds these sinks and the
+audit trail's search and shipper (P18b); every domain writes its audit
+entries through `internal/platform/audit` in the change's own transaction
+([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)).
+The Flows engine (P18c) adds its own consumer of the same fan-out.
 
 **Tasks**
 1. `internal/events` (hexagon): `events.fanout` and `events.deliver` with
@@ -1949,7 +1975,13 @@ the Flows engine (P18c) adds its own consumer of the same fan-out.
    `worker_pool_samples` through `workers/api`. Tests:
    `TestUnitPolicySelection`, `TestUnitGroupingKey`,
    `TestUnitNotificationInputConformsToContract`.
-2. HTTP delivery: signatures, secret headers, rule headers, timeouts, no
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `events`'
+   graph rule and shared-rule entries, `core-not-adapters` included, its
+   place after `schedules` in `domains.go` and the migration order, and its
+   edges to `features`, `access`, `stacks`, `runs`, `policies` and `vcs`,
+   with foreign keys from stack webhooks to stacks
+   ([declared graph](repo-layout.md#declared-graph)).
+3. HTTP delivery: signatures, secret headers, rule headers, timeouts, no
    redirects, retries with `retryOnFailure`, auto-disable after ten
    failures, the egress guard, delivery bodies in `deliveries`. Operations:
    `namedWebhooksIntegrationCreate`, `namedWebhooksIntegration`,
@@ -1966,10 +1998,10 @@ the Flows engine (P18c) adds its own consumer of the same fan-out.
    `TestUnitAutoDisable`. The SHA-1 header is left out with
    `events.webhooks.fips: true` and under `fips140=only`. Records DV-056
    to DV-058.
-3. Inbox: `searchNotifications`, `searchNotificationsSuggestions`,
+4. Inbox: `searchNotifications`, `searchNotificationsSuggestions`,
    `notificationCount`, `dismissNotifications`,
    `dismissNotificationGroup`, `dismissAllNotifications`.
-4. Slack and Teams: `slackAppConfig`, `slackAppConfigSet`,
+5. Slack and Teams: `slackAppConfig`, `slackAppConfigSet`,
    `slackAppConfigDelete`, `slackAppManifest`, `slackIntegration`,
    `slackOauthRedirect`, message editing per run with
    `last_state_version`; Slack chi fake. Slack channel access rules on
@@ -1978,16 +2010,16 @@ the Flows engine (P18c) adds its own consumer of the same fan-out.
    `managedUserGroupIntegrationUpdate`,
    `managedUserGroupIntegrationDelete`. Pull request comments from
    notification policy `pull_request` rules through P12's `Comments`.
-5. Notification text: every string a notification policy returns, and
+6. Notification text: every string a notification policy returns, and
    every default message, is a text template over `event` and
    `logs(phase)` ([0024](../research/decisions/0024-expression-language.md)), rendered in the delivery job. Tests:
    `TestUnitMessageTemplates`. The option `notification-policies` gates
    policy `type: NOTIFICATION`. Records DV-097.
-6. Streams ([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)): run logs, run state and worker pool queue
+7. Streams ([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)): run logs, run state and worker pool queue
    streams with `Last-Event-ID` resume, `reset` past retention, the
    per-identity limit and `end` on shutdown, woken by `infraweave_events`
    and `infraweave_logs`; polling stays. Records DV-095.
-7. Features: `events_webhooks.feature`, `events_notifications.feature`,
+8. Features: `events_webhooks.feature`, `events_notifications.feature`,
    `events_slack.feature`, `events_streams.feature`, and the notification
    scenario of `expressions_deploy.feature`.
 
@@ -2009,10 +2041,13 @@ The audit trail with its ordered webhook, usage reporting from infraweave's
 own records, and the metrics and traces operators run infraweave with.
 
 **Tasks**
-1. Audit: `x-infraweave-audit-action` on every mutating operation and a
-   `platform/audit.Record` call in each, write-only fields as `SecretSHA`
-   under `DeriveKey("audit-secret-sha")`, retention. Operations:
-   `searchAuditTrailEntries`, `searchAuditTrailEntriesSuggestions`,
+1. Audit: `x-infraweave-audit-action` on every mutating operation and an
+   `internal/platform/audit` `Record` call in each, in the change's own
+   transaction, write-only fields as `SecretSHA` under
+   `DeriveKey("audit-secret-sha")`; the trail's search, retention and
+   ordered shipper in `internal/events/internal/core/audit`
+   ([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)).
+   Operations: `searchAuditTrailEntries`, `searchAuditTrailEntriesSuggestions`,
    `auditTrailSetWebhook` (with `webhook-verification-failed`),
    `auditTrailWebhook`, `auditTrailDeleteWebhook`,
    `auditTrailWebhookSetHeaders`, `auditTrailWebhookDeleteHeaders`,
@@ -2064,7 +2099,14 @@ expression in CEL.
    first request, sealed `flows_secrets`, named expressions, data tables
    and KV with locks; event bodies above 256 KiB in object storage under
    `flows/events/`. Records DV-065.
-2. `api/src/flows/` bundled to `api/flows.openapi.yaml` under `/flows/v1/`,
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)): `flows`'
+   graph rule and shared-rule entries, `core-not-adapters` included, its
+   place last before `expressions` in `domains.go` and the migration order,
+   and its edges to `features`, `access` and `runs`, with
+   `flows_projects.account_id` referencing `access`' accounts. The
+   `templates` edge lands here if P21 has landed, and with P21 otherwise
+   ([declared graph](repo-layout.md#declared-graph)).
+3. `api/src/flows/` bundled to `api/flows.openapi.yaml` under `/flows/v1/`,
    generated into `internal/platform/gen/flows` and `pkg/client/flows`,
    which `pkg/sdk` wraps; the Flows API operations from report 23 and
    `api/reference/flows-clients.yaml`, each carrying the feature
@@ -2073,13 +2115,13 @@ expression in CEL.
    account admin in place of Spacelift Flows' organization admin, enforced
    in the handlers. Test:
    `TestUnitFlowsClientParity`. Records DV-069.
-3. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
+4. The engine on the `flows` logical queue: `flows.deliver`, `flows.timer`,
    `flows.lifecycle` and `flows.invocation.status` jobs, effects committed
    with the delivery, schedules through the cron ticker, limits and
    retention. Tests: `TestUnitFlowsDelivery`,
    `TestUnitFlowsInvocationStatus`, `TestUnitFlowsLimits`,
    `TestUnitFlowsDefinitionParse`.
-4. One event model: a fan-out consumer inside `internal/flows` treats
+5. One event model: a fan-out consumer inside `internal/flows` treats
    every enabled Deploy trigger block whose filter matches as a target and
    inserts the root `flow_events` row in the fan-out's transaction, so
    `events` never imports `flows`; `flows.event` feeds the
@@ -2088,7 +2130,7 @@ expression in CEL.
    customization and Transform are CEL, checked at save with the
    expression endpoints of P6. Feature: `expressions_flows.feature`.
    Records DV-096 and DV-103.
-5. Core blocks in Go in the `scheduler` process mode, with Transform's
+6. Core blocks in Go in the `scheduler` process mode, with Transform's
    steps form and no Script block; HTTP Endpoint blocks, forms at
    `/flows/forms/<block>`, and the flow and platform Flows MCP servers at
    `/flows/mcp/<flow>` and `/flows/mcp` (DV-066), authorized by P3b's
@@ -2096,7 +2138,7 @@ expression in CEL.
    `flowsIntegration`, `flowsProjects`, `flowsInstances`,
    `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
    `flowsProjectRoleBindingDelete`.
-6. Feature: `flows_engine.feature` (`@postgres`, `@flows-agent`: fan-out
+7. Feature: `flows_engine.feature` (`@postgres`, `@flows-agent`: fan-out
    and merge, echo, pending events, Sleep across a restart, manual retry
    and re-emit, limits, retention).
 
@@ -2121,16 +2163,20 @@ App blocks run in containers on Flows agents, apps are OCI images built on
 the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
 
 **Tasks**
-1. The `App` and `Host` gRPC services in `api/proto/flows/app/v1/`, with
-   `buf breaking` against the last release in CI
-   (`TestUnitAppContractCompatible`); `pkg/flows/appsdk` with
+1. The `App` and `Host` gRPC services in `api/proto/flows/app/v1/`,
+   generated into `pkg/flows/app/v1`, with `buf breaking` against the last
+   release in CI (`TestUnitAppContractCompatible`); `pkg/flows/appsdk` with
    `appsdk.Serve`, schemas from Go types, KV, locks, timers, messages and
    widgets, and `appsdk/apptest`.
 2. The agent gateway in `internal/flows/internal/adapters/gateway`:
    WebSocket at `wss://<host>/flows/agent/v1/connect` on every `serve`
    replica, `flows.agent_task` jobs partitioned by pool and claimed up to
-   each agent's capacity; agent pools with SHA-256 hashed tokens, rotation
-   and the default pool. `internal/agent/flowsagent` and
+   each agent's capacity, the one queue `serve` consumes
+   ([0004](../research/decisions/0004-repository-architecture.md#process-topology-one-binary-several-process-modes));
+   agent pools with SHA-256 hashed tokens, rotation and the default pool.
+   `internal/agent/flowsagent`, which calls apps through `pkg/flows/app/v1`,
+   the one package outside `internal/` on the agent's allow list
+   ([0004](../research/decisions/0004-repository-architecture.md)), and
    `infraweave flows-agent` with the `docker` (gVisor when configured),
    `kubernetes` and `process` executors and their isolation rules. Feature:
    `flows_agents.feature` (two `serve` replicas, an agent killed mid-task,
@@ -2144,8 +2190,12 @@ the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
    a registry served by a chi test server. Records DV-098 and DV-099.
 4. Deploy blocks: trigger blocks on decision 0015's kinds, Trigger Run,
    Trigger Task, Confirm Run, Review Run, Deploy Template, Deploy Blueprint
-   and the API Request kind that calls a REST operation by `operationId`,
-   each acting with the Deploy role bindings of its Flows project. Feature:
+   and the API Request kind that calls a REST operation by `operationId`
+   through `internal/platform/httpkit/dispatch`, which `internal/app` binds
+   to the composed router after construction, so the call passes the
+   middleware, authorization and feature gate of an external request
+   ([0004](../research/decisions/0004-repository-architecture.md)); each
+   block acts with the Deploy role bindings of its Flows project. Feature:
    `flows_deploy.feature` (`@tofu`). Records DV-067 and DV-068.
 
 **Exit criteria**
@@ -2186,10 +2236,10 @@ event, and more than one integration per provider.
    `azureDevOpsRepoIntegration`, `azureDevOpsRepoIntegrationUpdate`,
    `azureDevOpsRepoIntegrationDelete`, `azureDevOpsRepoIntegrationTest`,
    `azureDevOpsWebhooksEndpoint`.
-4. Each provider's `routes.go` allowlist, `verify_test.go`, `parse_test.go`
-   and chi fake with fault modes; space-level and multiple integrations per
-   provider. Feature: `vcs_providers.feature` (each provider's recorded
-   payloads drive a run and a check).
+4. Each provider's `verify_test.go`, `parse_test.go` and chi fake with
+   fault modes; space-level and multiple integrations per provider.
+   Feature: `vcs_providers.feature` (each provider's recorded payloads
+   drive a run and a check).
 
 **Exit criteria**
 - VCS Integrations meets decision 0016's evidence rule.
@@ -2212,10 +2262,11 @@ VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
    on `infraweave_vcs_agent`, `private://` addressing. Operations:
    `vcsAgentPools`, `vcsAgentPool`, `vcsAgentPoolCreate`,
    `vcsAgentPoolUpdate`, `vcsAgentPoolDelete`, `vcsAgentPoolReset`.
-2. `internal/agent/vcsagent` and `infraweave vcs-agent` with the allowlist
-   compiled from `internal/kernel/vcsroutes`, `--validation` and
-   `--allowed-projects`. Test: `allowlist_test.go`. Feature:
-   `vcs_agent.feature`. Records DV-045, DV-046.
+2. `internal/kernel/vcsroutes`, each provider's API route table, which
+   `vcs` and the agent share; `internal/agent/vcsagent` and
+   `infraweave vcs-agent` with the allowlist compiled from it,
+   `--validation` and `--allowed-projects`. Test: `allowlist_test.go`.
+   Feature: `vcs_agent.feature`. Records DV-045, DV-046.
 3. `BLOB` provider: `blobStorageIntegrationCreate`,
    `blobStorageIntegration`, `blobStorageIntegrationUpdate`,
    `blobStorageIntegrationDelete`, with `x-infraweave-basis: schema-only`.
@@ -2322,7 +2373,15 @@ ServiceNow and Backstage integrations that attach to them.
    `blueprintWithGroupUpdate`, `blueprintWithGroupDelete`,
    `searchBlueprints`, `searchBlueprintsSuggestions`,
    `blueprintAttachToIntegration`, `blueprintDetachIntegration`.
-2. Templates: `templateCreate`, `template`, `templateUpdate`,
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+   `templates`' graph rule and shared-rule entries, its place after
+   `events` in `domains.go` and the migration order, and its edges to
+   `features`, `access`, `stacks` and `runs`, with foreign keys from
+   deployments to the stacks they create. The `flows`→`templates` edge of
+   P18d's Deploy Template and Deploy Blueprint blocks lands here if P18c
+   has landed, and with P18c otherwise
+   ([declared graph](repo-layout.md#declared-graph)).
+3. Templates: `templateCreate`, `template`, `templateUpdate`,
    `templateDelete`, `templateVersionCreate`, `templateVersionUpdate`,
    `templateVersionDelete`, `templateVersionDeprecate`,
    `templateVersionParseTemplate`, `templateCompatibleVersions`,
@@ -2330,16 +2389,16 @@ ServiceNow and Backstage integrations that attach to them.
    `templateSearchTemplateVersions`,
    `templateSearchTemplateVersionsSuggestions`, `searchTemplates`,
    `searchTemplatesSuggestions`.
-3. Deployments that create stacks with dependencies:
+4. Deployments that create stacks with dependencies:
    `templateDeploymentCreate`, `templateDeployment`,
    `templateDeploymentUpdate`, `templateDeploymentDelete`,
    `templateDeploymentRollback`, `templateDeploymentSearchChangeHistory`,
    `searchTemplateDeployments`.
-4. External integrations: `externalIntegrations`, `externalIntegration`,
+5. External integrations: `externalIntegrations`, `externalIntegration`,
    `externalIntegrationCreate`, `externalIntegrationDelete`,
    `attachableExternalIntegrationInSpace`; the Backstage key with its seat
    exemption.
-5. Features: `templates_blueprints.feature`, `templates_versions.feature`,
+6. Features: `templates_blueprints.feature`, `templates_versions.feature`,
    `templates_deployments.feature`, `external_integrations.feature`.
 
 **Exit criteria**
@@ -2371,17 +2430,23 @@ capability gates.
    `stackSearchManagedEntitiesGroupByStacks`,
    `stackSearchManagedEntitiesGroupByTypes`, `runSearchEntityChanges`,
    `runSearchEntityChangesSuggestions`, `runResourceCreate`.
-2. `metrics` and `metricsRange` (Spaces tag) for the console's overview,
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+   `resources`' graph rule and shared-rule entries, its place after
+   `templates` in `domains.go` and the migration order, and its edges to
+   `features`, `access`, `stacks`, `runs`, `state` and `workers`, with
+   foreign keys from managed entities to stacks and runs
+   ([declared graph](repo-layout.md#declared-graph)).
+3. `metrics` and `metricsRange` (Spaces tag) for the console's overview,
    answering `AccountMetrics` (the reference's `SpaceliftMetrics`). Every
    Search Suggestions operation lands with the search it completes, in
    that search's phase.
-3. Saved filters and UI state: `savedFilters`, `savedFilter`,
+4. Saved filters and UI state: `savedFilters`, `savedFilter`,
    `savedFilterCreate`, `savedFilterUpdate`, `savedFilterDelete`,
    `uiConfigGet`, `uiConfigStore`.
-4. Forms and user guides: `genericFormsList`, `completeGenericForm`,
+5. Forms and user guides: `genericFormsList`, `completeGenericForm`,
    `isGenericFormCompleted`, and the 20 User Guide operations from a guide
    catalogue the operator can extend.
-5. Features: `resources_view.feature`, `search_generic.feature`,
+6. Features: `resources_view.feature`, `search_generic.feature`,
    `console_support.feature`.
 
 **Exit criteria**
@@ -2408,7 +2473,9 @@ entities.
    `scanSearchRuns`, `scanSearchRunsSuggestions`, `scanRunSearchFailures`,
    `scanRunSearchFailuresSuggestions`, `scanRunSearchResources`,
    `scanRunSearchResourcesSuggestions`, `scanProviderSchemas`.
-2. Discovery-type pools and scan execution through the launcher.
+2. Discovery-type pools; a scan run reaches its pool through `runsapi`,
+   so workers claim it on the same path as every other job and the
+   launcher executes it ([declared graph](repo-layout.md#declared-graph)).
 3. Feature: `resources_scans.feature`.
 
 **Exit criteria**
@@ -2571,12 +2638,15 @@ of its own.
    orval generates the TypeScript client and hooks from the served bundles;
    they are committed, regenerated by `make generate` and checked by
    `make verify-generate`.
-2. Serving in `internal/app`: the build embedded through `embed.FS` with a
-   committed marker file, answered at `/`; `index.html` for console routes
-   only, never under a prefix another handler owns; immutable caching for
-   hashed assets and `no-cache` for `index.html`; the Content Security
-   Policy with a per-response style nonce; the placeholder page when the
-   console was not built. Tests: Go unit tests for each.
+2. Serving in `internal/platform/httpkit/console`: Vite writes the build
+   to its `dist/`, embedded through `embed.FS` with a committed marker
+   file, since `//go:embed` reads only below its own package's directory
+   and so cannot reach `web/console`; `internal/app/router.go` mounts it
+   at `/` after every other route. `index.html` for console routes only,
+   never under a prefix another handler owns; immutable caching for hashed
+   assets and `no-cache` for `index.html`; the Content Security Policy
+   with a per-response style nonce; the placeholder page when `dist/` holds
+   no `index.html`. Tests: Go unit tests for each.
 3. Surfaces: every operation family the inventory lists, with controls
    shown, hidden or disabled from `allowedActions` alone and refusals shown
    from their problem response; the account switcher, which lists the
@@ -2619,7 +2689,8 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
 
 **Tasks**
 1. `internal/intelligence` (hexagon) with the `Provider` interface and the
-   Anthropic, OpenAI, Google and Bedrock adapters, each with a chi fake.
+   Anthropic, OpenAI, Google and Bedrock adapters in
+   `internal/intelligence/internal/adapters/providers`, each with a chi fake.
    Operations: `aiIntegrations`, `aiIntegration`, `aiIntegrationCreate`,
    `aiIntegrationUpdate`, `aiIntegrationDelete`, `aiIntegrationToggle`,
    `availableAIProviders`, `availableAIModels`. Tests:
@@ -2629,16 +2700,28 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    limit (USD per 30 days), pooled across the organization's accounts,
    answering `403 limit-reached` beyond it.
    Feature: `ai_integrations.feature` (`@ai`). Records DV-071.
-2. Account controls: `aiEnabled`, `accountSetAiEnabled`,
+2. Wiring ([domain wiring](#p1b-domain-layout-and-depguard)):
+   `intelligence`'s graph rule and shared-rule entries,
+   `core-not-adapters` included, its place after `resources` in
+   `domains.go` and the migration order, and its edges to `features`,
+   `access`, `runs`, `cloud` and `workers`, and to `policies` if P13 has
+   landed (P13 adds it otherwise); P25b's Intent attachments hold the foreign
+   keys to cloud integrations, worker pools and policies
+   ([declared graph](repo-layout.md#declared-graph)).
+3. Account controls: `aiEnabled`, `accountSetAiEnabled`,
    `aiTermsAccepted` and `aiTermsLatestVersion` (the reference's
    `spaceliftIntelligence*` names), `infraAssistantEnabled`,
    `accountSetInfraAssistantEnabled`, `infraAssistantBuildModeEnabled`,
    `accountSetInfraAssistantBuildModeEnabled`,
    `accountRequestInfraAssistantEnabling`.
-3. Infra Assistant over one tool layer, streamed over SSE, with
-   confirmation of destructive calls; run summaries with masked logs.
+4. Infra Assistant over one tool layer, streamed over SSE, with
+   confirmation of destructive calls; run summaries with masked logs. The
+   `query` and `mutate` tools run a REST operation by `operationId` as the
+   calling member through `internal/platform/httpkit/dispatch`, which
+   `internal/app` binds to the composed router after construction
+   ([0004](../research/decisions/0004-repository-architecture.md)).
    Feature: `ai_assistant.feature`. Records DV-072, DV-073.
-4. The hosted `/mcp` server with its protected-resource metadata naming
+5. The hosted `/mcp` server with its protected-resource metadata naming
    P3b's OAuth authorization server, `mcp:read` and `mcp:write` narrowed by
    the member's permissions, and `tools` narrowing. Feature:
    `mcp_server.feature` (`@oidc`, an MCP client that registers and
@@ -2684,7 +2767,10 @@ policies, locks, review and export to a stack.
    `searchIntentResources`, `searchIntentResourcesSuggestions`,
    `searchIntentResourcesOperations`,
    `searchIntentResourcesOperationsSuggestions`, `stackCreateFromIntent`.
-   Provider signatures verified on the worker (DV-074).
+   An Intent operation reaches the project's worker pool through
+   `runsapi`, so workers claim it on the same path as every other job
+   ([declared graph](repo-layout.md#declared-graph)); provider signatures
+   are verified on the worker (DV-074).
 3. Conversations: `intentChatConversations`, `intentChatConversation`,
    `intentChatConversationCreate`, `intentChatConversationUpdate`,
    `intentChatConversationDelete`, `intentChatConversationTranscript`;
