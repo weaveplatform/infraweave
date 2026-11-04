@@ -202,6 +202,8 @@ Ring status today and at the end of the roadmap:
 | `devtool` | `specref`, `openapibundle`, `stubgen`, `docscheck` | stable |
 | `pkg/sdk`, `cmd/infraweavectl`, `web/console` | absent | P24, P24b, P24c |
 
+### The tree
+
 ```text
 internal/
 ├── entity/                                  RING 1: pure rules, no I/O

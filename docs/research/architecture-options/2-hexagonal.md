@@ -207,6 +207,8 @@ Status of each area at P1 and the phase that completes it:
 | `core/flows`, `adapter/driving/gateway` (Flows), `worker/core/flowsagent` | absent | Flows |
 | `adapter/driving/http/console` | absent | P24c |
 
+### The tree
+
 ```text
 internal/
   app/                                     composition root; the only package that sees everything

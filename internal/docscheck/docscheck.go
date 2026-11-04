@@ -523,9 +523,15 @@ var optionName = regexp.MustCompile(`^` + optionsDir + `/\d+-[^/]+\.md$`)
 
 // nested names the H2 sections whose H3s are part of the outline too: the
 // comparison weighs the options domain by domain and walkthrough by
-// walkthrough, so each option must cover the same ones. Other sections may
-// add H3s that only one option needs.
-var nested = map[string]bool{"Deep dives": true, "Walkthroughs": true}
+// walkthrough, so each option must cover the same ones. A section that names
+// a heading contributes only that H3: every option draws its whole tree under
+// "The tree", so the trees can be read side by side, and may put tables of
+// its own before it. Other sections may add H3s that only one option needs.
+var nested = map[string]string{
+	"Deep dives":        "",
+	"Walkthroughs":      "",
+	"Full package tree": "### The tree",
+}
 
 type outlineHeading struct {
 	line int
@@ -544,8 +550,10 @@ func outline(d *doc) []outlineHeading {
 		case strings.HasPrefix(l, "## "):
 			section = strings.TrimSpace(l[3:])
 			out = append(out, outlineHeading{i + 1, l})
-		case strings.HasPrefix(l, "### ") && nested[section]:
-			out = append(out, outlineHeading{i + 1, l})
+		case strings.HasPrefix(l, "### "):
+			if only, ok := nested[section]; ok && (only == "" || l == only) {
+				out = append(out, outlineHeading{i + 1, l})
+			}
 		}
 	}
 	return out
