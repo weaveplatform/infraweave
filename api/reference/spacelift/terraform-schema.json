@@ -1947,7 +1947,7 @@
       }
     },
     "spacelift_repo_file": {
-      "description": "`spacelift_repo_file` represents a single file in a [Spacelift repo](repo.md). Changing the contents, mode or encryption of the file commits a new revision, which triggers a tracked run on every stack the repo is attached to. Changing only the commit metadata does not.",
+      "description": "`spacelift_repo_file` represents a single file in a [Spacelift repo](repo.md). Changing the contents, mode or encryption of the file creates a new commit, which triggers a tracked run on every stack the repo is attached to. Changing only the commit metadata does not.",
       "attributes": {
         "author_email": {
           "type": "string",
@@ -1963,6 +1963,11 @@
           "type": "string",
           "description": "Message recorded on the next commit that changes the file. Changing it on its own does not commit. Defaults to `Managed by Terraform`.",
           "optional": true
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "SHA of the commit that last changed the file",
+          "computed": true
         },
         "content": {
           "type": "string",
@@ -1996,8 +2001,9 @@
         },
         "revision_sha": {
           "type": "string",
-          "description": "SHA of the revision that last changed the file",
-          "computed": true
+          "description": "SHA of the commit that last changed the file",
+          "computed": true,
+          "deprecated": true
         },
         "size_bytes": {
           "type": "number",
@@ -2040,11 +2046,16 @@
       }
     },
     "spacelift_role_attachment": {
-      "description": "`spacelift_role_attachment` represents a Spacelift role attachment between an API key and a role within a specific space, an IdP Group Mapping and a role within a specific space, a stack and a role within a specific space, or a user and a role within a specific space. Exactly one of `api_key_id`, `idp_group_mapping_id`, `stack_id`, or `user_id` must be set.",
+      "description": "`spacelift_role_attachment` represents a Spacelift role attachment between an API key and a role within a specific space, a Flows project and a role within a specific space, an IdP Group Mapping and a role within a specific space, a stack and a role within a specific space, or a user and a role within a specific space. Exactly one of `api_key_id`, `flows_project_id`, `idp_group_mapping_id`, `stack_id`, or `user_id` must be set.",
       "attributes": {
         "api_key_id": {
           "type": "string",
           "description": "ID of the API key (ULID format) to attach to the role. For example: `01F8Z5K4Y3D1G2H3J4K5L6M7N8`.",
+          "optional": true
+        },
+        "flows_project_id": {
+          "type": "string",
+          "description": "ID of the Flows project (UUID format) to attach to the role. For example: `0f8fad5b-d9cb-469f-a165-70867728950e`.",
           "optional": true
         },
         "id": {
@@ -2059,7 +2070,7 @@
         },
         "role_id": {
           "type": "string",
-          "description": "ID of the role (ULID format) to attach to the API key, IdP Group, stack, or user. For example: `01F8Z5K4Y3D1G2H3J4K5L6M7N8`.",
+          "description": "ID of the role (ULID format) to attach to the API key, Flows project, IdP Group, stack, or user. For example: `01F8Z5K4Y3D1G2H3J4K5L6M7N8`.",
           "required": true
         },
         "space_id": {

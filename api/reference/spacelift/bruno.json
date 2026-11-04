@@ -213,7 +213,7 @@
     {
       "path": "Danger Zone",
       "name": "⚠ Danger Zone",
-      "docs": "# ⚠ DANGER ZONE\n\n**Requests you cannot take back.**\n\nSome destroy something outright:\n\n- **Session Delete All** — ends every session in the account\n- **Saml Delete** — removes the SSO configuration\n- **Account Confirm Delete** — finishes deleting the account\n- **Delete Run Logs** — erases a run's logs before retention would\n\nThe rest overwrite account-wide settings with whatever is in the request body:\n\n- **Update GitLab Integration** — replaces the host every GitLab stack builds from\n- **Slack App Config Set** — replaces secrets Spacelift will not show you again\n- **Migrate Vendor For All Stacks** — moves every stack to another vendor\n- **Billing Subscription Update Tier** — changes what you are charged\n- **Account Set Personal Api Keys Enabled** — can disable every personal key at once\n\nPutting any of them back needs values you may no longer have.\n\nTo send one, set `CONFIRM_DESTRUCTIVE` in your environment to that request's exact\nname. It arms that request and no other, and everything else here stays refused —\nincluding during a run of the whole collection. Clear it when you are done.\n\nReading is unaffected, and the create and read requests these belong with are\nstill under **Advanced → SSO**, **VCS Integrations**, **Audit Trail**, **Runs** and the rest."
+      "docs": "# ⚠ DANGER ZONE\n\n**Requests you cannot take back.**\n\nSome destroy something outright:\n\n- **Session Delete All** — ends every session in the account\n- **Saml Delete** — removes the SSO configuration\n- **Account Confirm Delete** — finishes deleting the account\n- **Delete Run Logs** — erases a run's logs before retention would\n- **Revoke Personal API Key** — revokes a personal key for good; it can only be deleted after\n\nThe rest overwrite account-wide settings with whatever is in the request body:\n\n- **Update GitLab Integration** — replaces the host every GitLab stack builds from\n- **Slack App Config Set** — replaces secrets Spacelift will not show you again\n- **Migrate Vendor For All Stacks** — moves every stack to another vendor\n- **Billing Subscription Update Tier** — changes what you are charged\n- **Account Set Personal Api Keys Enabled** — can disable every personal key at once\n\nPutting any of them back needs values you may no longer have.\n\nTo send one, set `CONFIRM_DESTRUCTIVE` in your environment to that request's exact\nname. It arms that request and no other, and everything else here stays refused —\nincluding during a run of the whole collection. Clear it when you are done.\n\nReading is unaffected, and the create and read requests these belong with are\nstill under **Advanced → SSO**, **VCS Integrations**, **Audit Trail**, **Runs** and the rest."
     },
     {
       "path": "Drift Detection",
@@ -268,7 +268,7 @@
     {
       "path": "Personal API Keys",
       "name": "Personal API Keys",
-      "docs": "API keys scoped to you rather than to the account, for personal tooling.\nCreated, then enabled or disabled.\n\nWhether users may create them at all is an account setting: read it with\n**Advanced → Account Settings → Personal Api Keys Enabled**. Changing it is\n**Account Set Personal Api Keys Enabled**, in **Danger Zone**."
+      "docs": "API keys scoped to you rather than to the account, for personal tooling.\nEach user creates their own.\n\nA root admin can revoke one with **Revoke Personal API Key**, in **Danger Zone**.\nNothing turns a revoked key back on; its owner can only delete it with **API Keys\n→ Delete API Key** and create another.\n\nWhether users may create them at all is an account setting: read it with\n**Advanced → Account Settings → Personal Api Keys Enabled**. Changing it is\n**Account Set Personal Api Keys Enabled**, in **Danger Zone**."
     },
     {
       "path": "Plugins",
@@ -333,7 +333,7 @@
     {
       "path": "Scans",
       "name": "Scans",
-      "docs": "Security and compliance scans over your infrastructure.\n\n1. **Create Scan** — the scan definition\n2. **Trigger Scan Run** — execute it\n3. **Get Scan Run** — read the results\n\n**List Scan Provider Schemas** tells you which providers can be scanned and what\neach one accepts — anything absent there cannot be scanned.\n\n⚠ `ScanProviderConfigInput.version` is typed as a plain `String` but only accepts\nparticular values. Take them from **List Scan Provider Schemas**; anything else is\nrejected when the scan runs."
+      "docs": "Security and compliance scans over your infrastructure.\n\n1. **Create Scan** — the scan definition\n2. **Trigger Scan Run** — execute it\n3. **Get Scan Run** — read the results\n\n**List Scan Provider Schemas** tells you which providers can be scanned and what\neach one accepts — anything absent there cannot be scanned.\n\n**Ignore Scan Resources** leaves resources out of every run of a scan, past and\nfuture; **Unignore Scan Resources** brings them back. Both take resource\n`identityHash` values, from **Search Scan Run Resources** and **Search Scan Ignored\nResources** respectively.\n\n⚠ `ScanProviderConfigInput.version` is typed as a plain `String` but only accepts\nparticular values. Take them from **List Scan Provider Schemas**; anything else is\nrejected when the scan runs."
     },
     {
       "path": "Spaces",
@@ -2798,6 +2798,18 @@
       }
     },
     {
+      "path": "Advanced/Slack/Is Gov Slack Available.bru",
+      "folder": "Advanced",
+      "subfolder": "Slack",
+      "name": "Is Gov Slack Available",
+      "operation": "query",
+      "rootFields": [
+        "isGovSlackAvailable"
+      ],
+      "docs": "ℹ **ADVANCED** — Account-level Slack or GitHub app configuration.\n\nIndicates whether connecting to GovSlack workspaces is supported in this environment.",
+      "variables": {}
+    },
+    {
       "path": "Advanced/Slack/Slack App Config.bru",
       "folder": "Advanced",
       "subfolder": "Slack",
@@ -2931,7 +2943,7 @@
       "rootFields": [
         "userGuideCertificationList"
       ],
-      "docs": "ℹ **ADVANCED** — Drives the in-app onboarding wizard.\n\nList all certificates for the account",
+      "docs": "ℹ **ADVANCED** — Drives the in-app onboarding wizard.\n\nList the calling user's certificates",
       "variables": {}
     },
     {
@@ -4721,6 +4733,19 @@
       "variables": {}
     },
     {
+      "path": "Danger Zone/Revoke Personal API Key.bru",
+      "folder": "Danger Zone",
+      "name": "Revoke Personal API Key",
+      "operation": "mutation",
+      "rootFields": [
+        "personalApiKeyDisable"
+      ],
+      "docs": "Revoke a personal API key. Root admins only. The owner can only delete it afterwards.",
+      "variables": {
+        "id": "{{?API Key ID}}"
+      }
+    },
+    {
       "path": "Danger Zone/Saml Delete.bru",
       "folder": "Danger Zone",
       "name": "Saml Delete",
@@ -5069,6 +5094,19 @@
       ],
       "docs": "Returns the Flows integration for the current account, if linked.",
       "variables": {}
+    },
+    {
+      "path": "Flows/Get Project Role Binding.bru",
+      "folder": "Flows",
+      "name": "Get Project Role Binding",
+      "operation": "query",
+      "rootFields": [
+        "flowsProjectRoleBinding"
+      ],
+      "docs": "Returns a single Flows project role binding by its ID, or null if it does\nnot exist. Requires admin access to the binding's space.",
+      "variables": {
+        "id": "FLOWS_PROJECT_ROLE_BINDING_ID_HERE"
+      }
     },
     {
       "path": "Flows/List Flows Instances.bru",
@@ -5855,32 +5893,6 @@
           "name": "example-personal-key",
           "description": "Created via the API"
         }
-      }
-    },
-    {
-      "path": "Personal API Keys/Disable Personal API Key.bru",
-      "folder": "Personal API Keys",
-      "name": "Disable Personal API Key",
-      "operation": "mutation",
-      "rootFields": [
-        "personalApiKeyDisable"
-      ],
-      "docs": "Disable a personal API key you own. Tokens already issued stop working.",
-      "variables": {
-        "id": "API_KEY_ID_HERE"
-      }
-    },
-    {
-      "path": "Personal API Keys/Enable Personal API Key.bru",
-      "folder": "Personal API Keys",
-      "name": "Enable Personal API Key",
-      "operation": "mutation",
-      "rootFields": [
-        "personalApiKeyEnable"
-      ],
-      "docs": "Re-enable a personal API key you own.",
-      "variables": {
-        "id": "API_KEY_ID_HERE"
       }
     },
     {
@@ -7504,6 +7516,22 @@
       }
     },
     {
+      "path": "Scans/Ignore Scan Resources.bru",
+      "folder": "Scans",
+      "name": "Ignore Scan Resources",
+      "operation": "mutation",
+      "rootFields": [
+        "scanResourcesIgnore"
+      ],
+      "docs": "Ignore resources in every run of a Scan, past and future, by their\nidentityHash. Resources that are already ignored are left as they are.",
+      "variables": {
+        "scan": "SCAN_ID_HERE",
+        "identityHashes": [
+          "IDENTITY_HASH_HERE"
+        ]
+      }
+    },
+    {
       "path": "Scans/List Scan Provider Schemas.bru",
       "folder": "Scans",
       "name": "List Scan Provider Schemas",
@@ -7514,6 +7542,38 @@
       "docs": "Providers a Scan can target, with the versions and resource types available\nfor each. Anything absent here cannot be scanned. Pass a provider to get just\nthat one.",
       "variables": {
         "provider": "AWS"
+      }
+    },
+    {
+      "path": "Scans/Search Scan Ignored Resources.bru",
+      "folder": "Scans",
+      "name": "Search Scan Ignored Resources",
+      "operation": "query",
+      "rootFields": [
+        "scan"
+      ],
+      "docs": "Details of a single Scan.",
+      "variables": {
+        "id": "SCAN_ID_HERE",
+        "input": {
+          "first": 50
+        }
+      }
+    },
+    {
+      "path": "Scans/Search Scan Run Resources.bru",
+      "folder": "Scans",
+      "name": "Search Scan Run Resources",
+      "operation": "query",
+      "rootFields": [
+        "scanRun"
+      ],
+      "docs": "Details of a single ScanRun.",
+      "variables": {
+        "id": "SCAN_RUN_ID_HERE",
+        "input": {
+          "first": 50
+        }
       }
     },
     {
@@ -7571,6 +7631,22 @@
       "docs": "Queue a new run of an existing Scan.",
       "variables": {
         "scan": "SCAN_ID_HERE"
+      }
+    },
+    {
+      "path": "Scans/Unignore Scan Resources.bru",
+      "folder": "Scans",
+      "name": "Unignore Scan Resources",
+      "operation": "mutation",
+      "rootFields": [
+        "scanResourcesUnignore"
+      ],
+      "docs": "Stop ignoring resources of a Scan, by their identityHash.",
+      "variables": {
+        "scan": "SCAN_ID_HERE",
+        "identityHashes": [
+          "IDENTITY_HASH_HERE"
+        ]
       }
     },
     {
