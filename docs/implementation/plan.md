@@ -117,10 +117,6 @@ and invents no answer.
 | Item | State | What the plan does meanwhile |
 |---|---|---|
 | Where the provider's checks run | Decision [0001](../research/decisions/0001-rest-first-spacelift-surface.md) places the provider's source in `weaveplatform/terraform-provider-infraweave`; decision [0016](../research/decisions/0016-testing-and-acceptance.md) defines `provider-parity` and `TestAccProvider` against a live `infraweave all` and lists the job in this repository's CI | P24 builds the provider in its own repository over `pkg/sdk`, and keeps `api/reference/provider-parity.yaml` and the `test/terraform/` configurations in this repository, which builds the provider at a pinned commit |
-[feature catalogue](../data/features.json), which the
-[capability roadmap](capability-roadmap.md) explains, and every deliberate difference
-from Spacelift is in the [deviations register](../data/deviations.json),
-which [deviations.md](deviations.md) explains. Research
 
 ## Build status
 
@@ -132,7 +128,7 @@ and lint is clean.
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
-| P1b Domain layout and depguard | Not started | |
+| P1b Domain layout and depguard | Not started | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72): [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P2 PostgreSQL, migrations and operability | Not started | |
 | P2b Object storage and secrets at rest | Not started | |
@@ -181,7 +177,7 @@ and lint is clean.
 
 | Milestone | Reached after | Demonstrable outcome |
 |---|---|---|
-| M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog and every step drives it through `pkg/sdk`; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces the domain layout |
+| M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog and every step drives it through `pkg/sdk`; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces decision 0004's shared rules over the whole tree |
 | M2 Authorized API on PostgreSQL | P5 | An operator creates an organization with its first account, and an organization admin adds a second account whose data the first cannot see; an API key exchanges for a token that works in its own account only; spaces and roles decide every route; a feature in `features.disabled` answers `403 feature-disabled`; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
 | M3 First run | P9 | `runs_terraform.feature` and `runs_tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into the object store, masks a secret in its log and reaches `FINISHED` |
 | M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against Gitea: a push opens a proposed run, a plan policy warns, the check and the pull request comment appear, and an approval policy holds a tracked run until a review |
@@ -333,6 +329,27 @@ assigns a domain to another phase, this plan's assignment holds.
 | P28 added | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) replays captures as fixtures, and report [30](../research/reference/30-open-questions.md) lists 269 of them; qualification closes the loop once an authorized account is available |
 | Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. [capabilities.json](../data/capabilities.json) is the assignment |
 
+## Adding a domain
+
+The phase that creates a domain wires it into the
+[declared graph](repo-layout.md#declared-graph) in the same pull request:
+
+- `.golangci.yml` gains its `graph-<domain>` rule and its entries in
+  `constructors` and `shared-below-domains`, and in `core-not-adapters` for a
+  hexagon; `agent-isolation` needs none.
+- `internal/app/domains.go` constructs it at its place in the construction
+  order, its migration stream registers at the same place, and
+  `internal/app/router.go` embeds its `<Domain>Deploy` alias.
+- Each import edge whose other end already exists lands with it, and so does
+  any foreign key along that edge, which follows the import direction with
+  `ON DELETE RESTRICT`. An edge to a domain that arrives later lands with that
+  later phase.
+- A back edge is bound in `internal/app` by the phase in which both of its
+  ends exist.
+
+`TestUnitDepguardFixtures` fails on a domain directory without its rule
+entries, and `TestAccSchemaDependencies` on a key or view against the graph.
+
 ## P0: Specification reference
 
 Decisions: [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0002](../research/decisions/0002-reference-sources-and-licensing.md).
@@ -434,38 +451,65 @@ later phase pays for a move, and depguard starts enforcing the boundaries
 with a clean run over the whole tree.
 
 **Tasks**
-1. Move per option 5's [package mapping](../research/architecture-options/5-modular-monolith.md#package-mapping):
+1. Move per option 5's [package mapping](../research/architecture-options/5-modular-monolith.md#package-mapping)
+   and the [repo layout](repo-layout.md#where-todays-packages-go):
    `internal/buildinfo` to `internal/platform/buildinfo`,
    `internal/server/problem` to `internal/platform/httpkit/problem`,
    `internal/server/{ratelimit,idempotency,pagination}` to
-   `internal/platform/httpkit/{middleware,page}`, `internal/server` routing to
-   `internal/app/router.go`, `internal/specref`, `internal/openapibundle`,
-   `internal/stubgen` and `internal/docscheck` to `internal/devtools/...`.
-   Update the `Makefile` (`LDFLAGS`, `generate`, `verify-generate`,
-   `docs-check`), `.testcoverage.yml` and the `tools/` imports.
+   `internal/platform/httpkit/{middleware,page}`, `internal/specref`,
+   `internal/openapibundle`, `internal/stubgen`, `internal/docscheck` and
+   `internal/dataview` to `internal/devtools/...`. The rest of
+   `internal/server` splits four ways: the listener lifecycle and the
+   two-listener drain to `internal/platform/httpkit/serve`, which the agent
+   process modes share from P8; `GET /livez` to `internal/platform/observe`;
+   recovery and the `404` and `405` problem handlers to
+   `internal/platform/httpkit/middleware`; routing to
+   `internal/app/router.go`. Update the `Makefile` (`LDFLAGS`, `generate`,
+   `verify-generate`, `docs-check`), `.testcoverage.yml` and the `tools/`
+   imports.
 2. Regenerate the strict server into `internal/platform/gen/deploy` by
    changing `api/oapi-server-deploy.yaml`'s output; stubgen reads the new
    path. `internal/app/router.go` composes a `deployServer` struct that
    embeds each domain's partial and `UnimplementedStrict` one level deeper,
-   with `var _ deploy.StrictServerInterface = deployServer{}`.
-3. Create `internal/kernel` with `ids.go` (ULID and slug), `page.go`
-   (decision 0003's cursor and page) and `principal.go`; create the empty
-   `internal/app/{config,modes.go,platform.go,domains.go}` and one cobra file
-   per process mode in `cmd/infraweave` (`serve`, `version`; the others land with
-   their phases).
-4. `.golangci.yml`: enable depguard with option 5's rules
-   ([tests and enforcement](../research/architecture-options/5-modular-monolith.md#tests-and-enforcement)): `api-packages`,
+   with `var _ deploy.StrictServerInterface = deployServer{}`. An embedded
+   field takes its type's name, so each domain's `assembly/` package
+   re-exports its partial under its domain's name (`StacksDeploy`); no
+   domain exists yet, so the struct holds only the stubs.
+3. Create `internal/kernel` with `page.go` (decision 0003's cursor and page,
+   which `httpkit/page` encodes); `ids.go` lands with P2 and `principal.go`
+   with P3. `internal/app/config.go` becomes the package `internal/app/config`
+   with its keys, flags and strictness unchanged, and `internal/app/modes.go`
+   holds `app.Serve`; `platform.go` lands with P2 and `domains.go` with the
+   first domain. The server process modes are cobra files in
+   `cmd/infraweave` (`serve`, `version`; the others land with their phases).
+   From P8, the agent process modes' commands live in `internal/agent/cli`
+   and register through the one `cmd/infraweave/agent.go`, which imports no
+   `internal/app` ([repo layout](repo-layout.md#annotated-tree)).
+4. `.golangci.yml`: enable depguard with the shared rules of option 5's
+   [tests and enforcement](../research/architecture-options/5-modular-monolith.md#tests-and-enforcement)
+   and the [repo layout](repo-layout.md#depguard-rules): `api-packages`,
    `constructors`, `core-not-adapters`, `shared-below-domains`,
-   `agent-isolation`, `devtools`, one rule per domain listing the other
-   domains' `api/` packages it may import, and the `pkg/` rule of decision 0004 that
-   nothing under `pkg/` imports `internal/`. Add forbidigo for `time.Sleep` in
-   `_test.go` files ([0016](../research/decisions/0016-testing-and-acceptance.md)).
+   `agent-isolation`, `devtools` and `public-packages`, the `pkg/` rule of
+   decision 0004 that nothing under `pkg/` imports `internal/`.
+   `agent-isolation` is an allow list: outside its own tree, `internal/agent`
+   imports only `internal/kernel`, `internal/iac`, `pkg/flows/app/v1` and the
+   platform packages `buildinfo`, `observe`, `rego`, `httpkit/client`,
+   `httpkit/serve`, `seal` and `expr`. No domain exists yet, so no
+   `graph-<domain>` rule and no domain entry lands here; each domain's phase
+   adds its own ([adding a domain](#adding-a-domain)). Add forbidigo for
+   `time.Sleep` in `_test.go` files
+   ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 5. `internal/app/depguard_test.go` (`TestUnitDepguardFixtures`): a fixture
    domain that imports another domain's `internal/` and `assembly/` packages,
    a fixture domain that imports a sibling of an allowed `api/` package
-   (`internal/stacks/apiutil`), and a platform package that imports a
-   domain, each fail `make lint`; and every allow entry in `.golangci.yml`
-   ends in `$` or `/` ([repo layout](repo-layout.md#depguard-rules)).
+   (`internal/stacks/apiutil`), a platform package that imports a domain,
+   and an agent package that imports a platform package outside its allow
+   list (`internal/platform/sql`), each fail `make lint`; every allow entry
+   in `.golangci.yml` ends in `$` or `/`
+   ([repo layout](repo-layout.md#depguard-rules)); and every domain
+   directory under `internal/` has its graph rule and its entries in
+   `constructors` and `shared-below-domains`, and in `core-not-adapters` for
+   a hexagon.
 
 **Exit criteria**
 - `GOWORK=off go list ./...` shows no package under `internal/server`, and
@@ -573,7 +617,9 @@ needs from its first database connection.
    `database.read_url`, statement and idle timeouts; `internal/platform/tx`
    with `InTx`, retries on `40001` and `40P01`, and the lock order.
    `internal/platform/sql/notify`: one `LISTEN` connection per replica with
-   reconnect. Tests: `internal/platform/sql/sqltest` gives each case a
+   reconnect. `internal/kernel/ids.go`: decision 0005's ULIDs, monotonic
+   within a millisecond, in `uuid` columns and as 26-character text on the
+   wire, and slugs. Tests: `internal/platform/sql/sqltest` gives each case a
    database from the `iw_template` template; `TestAccTxRetry`,
    `TestAccNotifyReconnect`.
 2. `database.iam_auth`
@@ -590,10 +636,22 @@ needs from its first database connection.
    `NNNNN_snake_case.sql`, `schema_migrations` and `schema_state`, the
    advisory lock, `-- infraweave:no-transaction` and
    `-- infraweave:compatible-from`, refusal on checksum mismatch, a too-old
-   binary or a skipped major. `infraweave migrate up` and
-   `infraweave migrate status`; `database.migrate: auto | check`. Tests:
-   `TestUnitMigrationNames`, `TestAccMigrateConcurrent` (two replicas apply
-   once), `TestAccMigrateRefusals`.
+   binary or a skipped major. `internal/app/platform.go` opens the pool and
+   migrates every stream in the
+   [declared graph](repo-layout.md#declared-graph)'s construction order.
+   `infraweave migrate up` and `infraweave migrate status`;
+   `database.migrate: auto | check`. Tests: `TestUnitMigrationNames`,
+   `TestAccMigrateConcurrent` (two replicas apply once),
+   `TestAccMigrateRefusals`.
+   `TestAccSchemaDependencies`
+   ([0004](../research/decisions/0004-repository-architecture.md#verification))
+   applies each stream in registration order to a fresh database and reads
+   the `graph-<domain>` rules from `.golangci.yml`. It fails when a foreign
+   key in `pg_constraint`, or a view's dependency in `pg_depend`, goes from
+   one domain to a domain it may not import, when a cross-domain key
+   cascades or sets null on delete, when the graph has a cycle, and when a
+   stream registers before one it depends on. Fixture streams and rules
+   prove each failure.
 4. Move decision 0003's stores to PostgreSQL in
    `internal/platform/httpkit/middleware`: `idempotency_keys` (body sealed
    from P2b; plaintext behind the store interface until then),
