@@ -33,10 +33,12 @@ Files without a directory are in `api/reference/spacelift/`.
   template it validated. `specref fetch` writes nothing unless every source
   succeeds, and accepts only a full 40-hex commit for a repository pinned by
   commit and an exact semantic version for the Deploy provider.
-- **Refreshes.** A weekly `openapi-spec-update.yml` compares the pins with the
-  newest upstream commits. When one is newer, it regenerates on a runner and
-  opens a PR, so upstream changes arrive as reviewable diffs through the
-  quality gate.
+- **Refreshes.** A weekly `openapi-spec-update.yml` compares each product's
+  pins with the newest upstream versions: the Bruno head and the latest
+  provider release for Deploy; the heads of the Flows provider and flowctl
+  and the latest SDK for Flows. When one is newer, it re-fetches that
+  product, regenerates both references on a runner and opens one PR, so
+  upstream changes arrive as reviewable diffs through the quality gate.
 
 ## Rationale
 

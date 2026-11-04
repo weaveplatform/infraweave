@@ -1,19 +1,26 @@
 name: OpenAPI specification update
 
-# Weekly: compare the upstream commits pinned in sources.lock.yaml with the
-# newest ones (head of spacelift-api-bruno, latest terraform-provider-spacelift
-# release). Only when one is newer does the runner re-fetch at the new pins,
-# regenerate the reference and raise one PR from the org App, so the quality
-# gate (and its acceptance features) judges the drift like any other change.
+# Weekly: compare the upstream versions each product's sources.lock.yaml
+# pins with the newest ones. Deploy: the head of spacelift-api-bruno and the
+# latest terraform-provider-spacelift release. Flows: the heads of
+# terraform-provider-flows and flowctl, and the latest @slflows/sdk. Only a
+# product whose pins moved is re-fetched at the new pins; then both
+# references regenerate and one PR is raised from the org App, so the
+# quality gate (and its acceptance features) judges the drift like any
+# other change.
 #
-# The live GraphQL schema has no commit of its own; it is re-introspected
-# whenever a pin moves. Run the workflow by hand with `force` to pick up a
-# schema change that arrived without a new Bruno commit or provider release.
+# The live GraphQL schema, the Flows templates and the app registry have no
+# version of their own; they are re-read whenever their product's pins move.
+# Run the workflow by hand with `force` to re-fetch both products anyway.
 #
-# Generation can fail on genuine upstream change: a new operation colliding
-# with an existing route, or more RPC-shaped mutations than rpcBudget allows.
-# The PR is still opened with the snapshots, and the failing gate names what
-# rest-mapping.yaml needs.
+# The Flows fetch validates every published template and the registry
+# against schemas.yaml and fails the run on a mismatch, since an upstream
+# change to the flow YAML model needs the overlay updated by hand.
+# Generation can fail on genuine upstream change too: a new operation
+# colliding with an existing route, an RPC path rest-mapping.yaml does not
+# map, or more RPC-shaped mutations than rpcBudget allows. The PR is still
+# opened with the snapshots, and the failing gate names what the mapping
+# needs.
 on:
   schedule:
     - cron: '41 4 * * 1'
@@ -35,8 +42,8 @@ env:
   GOWORK: 'off'
   BRANCH: reference/openapi-spec-update
   LOCK: api/reference/spacelift/sources.lock.yaml
+  FLOWS_LOCK: api/reference/spacelift-flows/sources.lock.yaml
   INVENTORY: docs/research/reference/29-data-model-inventory.md
-  INVENTORY_REGISTER: docs/data/graphql-inventory.json
 
 jobs:
   check:
@@ -44,8 +51,13 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       newer: ${{ steps.compare.outputs.newer }}
+      deploy: ${{ steps.compare.outputs.deploy }}
+      flows: ${{ steps.compare.outputs.flows }}
       bruno: ${{ steps.compare.outputs.bruno }}
       provider: ${{ steps.compare.outputs.provider }}
+      flows_provider: ${{ steps.compare.outputs.flows_provider }}
+      flowctl: ${{ steps.compare.outputs.flowctl }}
+      sdk: ${{ steps.compare.outputs.sdk }}
       summary: ${{ steps.compare.outputs.summary }}
     steps:
       - name: Harden Runner
@@ -65,36 +77,68 @@ jobs:
           FORCE: ${{ inputs.force || false }}
         run: |
           set -euo pipefail
+          summary=""
+          # ahead is a normal new commit; diverged means upstream rewrote
+          # history past our pin, which still needs a fresh reference.
+          moved_commit() { # repo pinned head label
+            local status
+            status=$(gh api "repos/$1/compare/$2...$3" -q .status)
+            if [ "$status" = ahead ] || [ "$status" = diverged ]; then
+              summary+="- $4: \`${2:0:12}\` → \`${3:0:12}\` (${status})"$'\n'
+              return 0
+            fi
+            return 1
+          }
+          # Versions compare with sort -V, so a re-tagged older release never
+          # looks like an update.
+          moved_version() { # pinned latest label
+            local top
+            top=$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)
+            if [ "$2" != "$1" ] && [ "$top" = "$2" ]; then
+              summary+="- $3: \`$1\` → \`$2\`"$'\n'
+              return 0
+            fi
+            return 1
+          }
+
           pinned_bruno=$(yq -r '.bruno.ref' "$LOCK")
           pinned_provider=$(yq -r '.provider.ref' "$LOCK")
           bruno=$(gh api repos/spacelift-io/spacelift-api-bruno/commits/main -q .sha)
           provider=$(gh api repos/spacelift-io/terraform-provider-spacelift/releases/latest -q .tag_name)
+          deploy=false
+          if moved_commit spacelift-io/spacelift-api-bruno "$pinned_bruno" "$bruno" spacelift-api-bruno; then deploy=true; fi
+          if moved_version "${pinned_provider#v}" "${provider#v}" terraform-provider-spacelift; then deploy=true; fi
 
+          pinned_flows_provider=$(yq -r '.provider.ref' "$FLOWS_LOCK")
+          pinned_flowctl=$(yq -r '.flowctl.ref' "$FLOWS_LOCK")
+          sdk_package=$(yq -r '.sdk.package' "$FLOWS_LOCK")
+          pinned_sdk=$(yq -r '.sdk.version' "$FLOWS_LOCK")
+          flows_provider=$(gh api repos/spacelift-io/terraform-provider-flows/commits/main -q .sha)
+          flowctl=$(gh api repos/spacelift-io/flowctl/commits/main -q .sha)
+          sdk=$(curl -fsSL "https://registry.npmjs.org/${sdk_package/\//%2F}/latest" | jq -r .version)
+          flows=false
+          if moved_commit spacelift-io/terraform-provider-flows "$pinned_flows_provider" "$flows_provider" terraform-provider-flows; then flows=true; fi
+          if moved_commit spacelift-io/flowctl "$pinned_flowctl" "$flowctl" flowctl; then flows=true; fi
+          if moved_version "$pinned_sdk" "$sdk" "$sdk_package"; then flows=true; fi
+
+          if [ "$FORCE" = true ]; then
+            [ "$deploy" = true ] || summary+="- forced run: Deploy pins unchanged, re-introspecting the live schema"$'\n'
+            [ "$flows" = true ] || summary+="- forced run: Flows pins unchanged, re-reading the templates and the registry"$'\n'
+            deploy=true
+            flows=true
+          fi
           newer=false
-          summary=""
-          # "ahead" is a normal new commit; "diverged" means upstream rewrote
-          # history past our pin, which still needs a fresh reference.
-          status=$(gh api "repos/spacelift-io/spacelift-api-bruno/compare/${pinned_bruno}...${bruno}" -q .status)
-          if [ "$status" = ahead ] || [ "$status" = diverged ]; then
-            newer=true
-            summary+="- spacelift-api-bruno: \`${pinned_bruno:0:12}\` → \`${bruno:0:12}\` (${status})"$'\n'
-          fi
-          # Tags compare as versions so a re-tagged older release never
-          # looks like an update.
-          top=$(printf '%s\n%s\n' "${pinned_provider#v}" "${provider#v}" | sort -V | tail -1)
-          if [ "${provider#v}" != "${pinned_provider#v}" ] && [ "$top" = "${provider#v}" ]; then
-            newer=true
-            summary+="- terraform-provider-spacelift: \`${pinned_provider}\` → \`${provider}\`"$'\n'
-          fi
-          if [ "$FORCE" = true ] && [ "$newer" = false ]; then
-            newer=true
-            summary+="- forced run: pins unchanged, re-introspecting the live schema"$'\n'
-          fi
+          if [ "$deploy" = true ] || [ "$flows" = true ]; then newer=true; fi
 
           {
             echo "newer=$newer"
+            echo "deploy=$deploy"
+            echo "flows=$flows"
             echo "bruno=$bruno"
             echo "provider=${provider#v}"
+            echo "flows_provider=$flows_provider"
+            echo "flowctl=$flowctl"
+            echo "sdk=$sdk"
             echo "summary<<EOF"
             printf '%s' "$summary"
             echo "EOF"
@@ -102,7 +146,7 @@ jobs:
           if [ "$newer" = true ]; then
             { echo "### Upstream moved"; printf '%s' "$summary"; } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### Pinned commits are current" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Pinned versions are current for both products" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   update:
@@ -137,17 +181,29 @@ jobs:
       # terraform reads the provider schema; the wrapper would mix its own
       # output into the JSON that specref parses.
       - name: Set up Terraform
+        if: needs.check.outputs.deploy == 'true'
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
 
       # The pins come from the check job rather than being re-read, so the
       # PR describes exactly the commits that were fetched.
-      - name: Fetch upstream at the new pins
+      - name: Fetch Deploy at the new pins
+        if: needs.check.outputs.deploy == 'true'
         env:
           BRUNO: ${{ needs.check.outputs.bruno }}
           PROVIDER: ${{ needs.check.outputs.provider }}
-        run: go run ./tools/specref fetch --bruno-ref "$BRUNO" --provider-version "$PROVIDER"
+        run: go run ./tools/specref fetch --product deploy --bruno-ref "$BRUNO" --provider-version "$PROVIDER"
+
+      - name: Fetch Flows at the new pins
+        if: needs.check.outputs.flows == 'true'
+        env:
+          FLOWS_PROVIDER: ${{ needs.check.outputs.flows_provider }}
+          FLOWCTL: ${{ needs.check.outputs.flowctl }}
+          SDK: ${{ needs.check.outputs.sdk }}
+        run: >-
+          go run ./tools/specref fetch --product flows
+          --flows-provider-ref "$FLOWS_PROVIDER" --flowctl-ref "$FLOWCTL" --sdk-version "$SDK"
 
       - name: Regenerate the specification
         id: generate
@@ -167,20 +223,20 @@ jobs:
         run: |
           set -euo pipefail
           # fetchedAt changes on every run, and report 29's header carries it;
-          # the spec is versioned by schema digest, so a forced run against an
-          # unchanged upstream changes nothing else and needs no PR.
-          others=$(git status --porcelain -- . ":(exclude)$LOCK" ":(exclude)$INVENTORY")
-          pins=$(git diff -U0 -- "$LOCK" | grep -E '^[-+] ' | grep -v fetchedAt || true)
+          # each spec is versioned by its sources' digests, so a forced run
+          # against an unchanged upstream changes nothing else and needs no PR.
+          others=$(git status --porcelain -- . ":(exclude)$LOCK" ":(exclude)$FLOWS_LOCK" ":(exclude)$INVENTORY")
+          pins=$(git diff -U0 -- "$LOCK" "$FLOWS_LOCK" | grep -E '^[-+] ' | grep -v fetchedAt || true)
           if [ -z "$others" ] && [ -z "$pins" ]; then
             echo "upstream unchanged"
             exit 0
           fi
-          title="feat(reference): update the Spacelift OpenAPI specification from upstream"
-          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review `api/reference/spacelift/coverage.md` for new, excluded and RPC-shaped operations. A new tag also needs a `tag:` record in `docs/data/capabilities.json`, which `make docs-check` enforces.\n' "$SUMMARY" "$RESULT")
+          title="feat(reference): update the Spacelift OpenAPI specifications from upstream"
+          body=$(printf 'Raised by openapi-spec-update.yml.\n\n%s\nGeneration: **%s**. Review the `coverage.md` of both products (`api/reference/spacelift/`, `api/reference/spacelift-flows/`) for new, excluded and RPC-shaped operations. A new tag also needs a `tag:` record of its product in `docs/data/capabilities.json`, which `make docs-check` enforces, and a new Flows operation an entry in `api/parity-baseline.flows.json` (`make parity-baseline`).\n' "$SUMMARY" "$RESULT")
           git config user.name "weaveplatform-release-please[bot]"
           git config user.email "weaveplatform-release-please[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A api/reference/spacelift "$INVENTORY" "$INVENTORY_REGISTER"
+          git add -A api/reference/spacelift api/reference/spacelift-flows "$INVENTORY" docs/data/graphql-inventory.json docs/data/flows-sdk-inventory.json
           git commit -qm "$title"
           git push --force -u origin "$BRANCH"
           pr=$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')

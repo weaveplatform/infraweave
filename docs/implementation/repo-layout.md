@@ -538,7 +538,7 @@ Generated files are committed and drift-checked; nobody edits them by hand.
 | Output | Source | Regenerate | Verify |
 |---|---|---|---|
 | `api/<spec>.openapi.yaml` | `api/src/<spec>/*.yaml` | `make bundle` (part of `make generate`) | `make verify-generate` |
-| `api/src/api/paths-<family>.yaml` (first draft) | a reference tag, Deploy or Flows | `make scaffold TAG=<tag> FAMILY=<family>`, then edited by hand | reviewed; the bundle is verified |
+| `api/src/api/paths-<family>.yaml` (first draft) | a reference tag, Deploy or Flows | `make scaffold [PRODUCT=flows] TAG=<tag> FAMILY=<family>`, then edited by hand | reviewed; the bundle is verified |
 | `internal/platform/gen/<spec>/server.gen.go` | the bundle, `api/oapi-server-<spec>.yaml` | `make generate` | `make verify-generate` |
 | `internal/platform/gen/<spec>/unimplemented.gen.go` | the generated server | `make generate` (stubgen) | `make verify-generate` |
 | `pkg/client/<spec>`, `internal/agent/wire` | the bundle, `api/oapi-client-<spec>.yaml` | `make generate` | `make verify-generate` |

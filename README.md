@@ -136,16 +136,16 @@ phase.
 | `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
-| `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
+| `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag (Deploy's, or Flows' with `PRODUCT=flows`) into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
 | `make parity` | Prints, for Deploy and then Flows, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.<product>.json` |
 | `make parity-baseline` | Rewrites both `api/parity-baseline.<product>.json` to accept the current parity report, keeping each recorded reason; review the diff |
 | `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
 | `make generate` | Bundles, then generates each strict chi server (`internal/platform/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |
 | `make verify-generate` | Fails if the committed bundles or generated code are stale |
-| `make reference-fetch` | Refreshes the Spacelift snapshots at the lock's pins (needs network and `terraform`) |
-| `make reference` | Regenerates the spec and `coverage.md` from the snapshots |
-| `make reference-inventory` | Regenerates the GraphQL inventory register (`docs/data/graphql-inventory.json`) and report 29, which summarises it (`docs/research/reference/29-data-model-inventory.md`), from the introspection snapshot |
-| `make verify-reference` | Fails if the committed reference, report 29 or the GraphQL inventory register is not exactly what the snapshots generate |
+| `make reference-fetch` | Refreshes each product's snapshots at its lock's pins (needs network, and `terraform` for Deploy); `PRODUCTS=flows` narrows it to one |
+| `make reference` | Regenerates each product's spec and `coverage.md` from its snapshots |
+| `make reference-inventory` | Regenerates the GraphQL inventory register (`docs/data/graphql-inventory.json`) and report 29, which summarises it (`docs/research/reference/29-data-model-inventory.md`), from the introspection snapshot, and the Flows SDK register (`docs/data/flows-sdk-inventory.json`) from the SDK's identifiers |
+| `make verify-reference` | Fails if either committed reference, report 29 or either inventory register is not exactly what the snapshots generate |
 | `make cover` | Merges every `cover/*` directory and enforces `.testcoverage.yml` (≥95% total, ≥90% per package) |
 | `make lint` / `make fmt` | golangci-lint with `.golangci.yml` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |
