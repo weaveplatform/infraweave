@@ -15,8 +15,8 @@ for why infraweave is REST-first.
 
 | Piece | What |
 |---|---|
-| `internal/devtools/specref` | Parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema; maps root fields to REST routes; builds and validates the OpenAPI 3.0.3 document |
-| `tools/specref` | `fetch` (network and terraform); `generate`, `check`, `scaffold`, `inventory` and `parity` (offline). `--product` picks the Spacelift product, `deploy` by default, and with it the default `--dir` and parity `--baseline` |
+| `internal/devtools/specref` | Builds one REST reference per Spacelift product. Deploy: parses the GraphQL introspection snapshot, the spacelift-api-bruno collection and the Terraform provider schema and maps root fields to REST routes. Flows: reads the RPC calls of `terraform-provider-flows` and `flowctl` and maps RPC paths to REST routes. Builds and validates each OpenAPI 3.0.3 document |
+| `tools/specref` | `fetch` (network; terraform for Deploy); `generate`, `check`, `scaffold`, `inventory` and `parity` (offline). `--product` picks the Spacelift product, `deploy` by default or `flows`, and with it the default `--dir`, parity `--baseline` and inventory outputs |
 | `api/reference/spacelift/` | Pinned snapshots, `sources.lock.yaml`, the hand-curated `rest-mapping.yaml`, and the generated spec and `coverage.md` |
 | `docs/research/` | Research reports in `reference/` (landscape, mapping rules, provider), decision records in `decisions/`; see its [README](docs/research/README.md) |
 

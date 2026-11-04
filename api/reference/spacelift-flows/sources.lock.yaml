@@ -1,0 +1,65 @@
+# Written by `specref fetch --product flows`; pins every upstream input of this directory.
+provider:
+  repository: spacelift-io/terraform-provider-flows
+  ref: 861f72a3bac4c8b6de4caacc55cb8f37513fceae
+  sha256: ff3953820aa41dd2c5016eb49047660292f28482422811a53c870aba88d60caf
+flowctl:
+  repository: spacelift-io/flowctl
+  ref: 96bdd03303a60fca5c208c8a167faa80af40021d
+  sha256: a80fe8474eb5171ca8622a04a4aa04847041d5343abb4e98013cfaa276a84142
+sdk:
+  package: '@slflows/sdk'
+  version: 0.14.0
+  sha256: 2fa0135a6886f40a20933af123d0db02fdc6a7d2c3001e2fe44fc209835e85d3
+templates:
+  index: https://docs.spacelift.io/flows/templates.json
+  flows:
+    ai-agent-tool-approvals: d4b074de5366c34b6db8d55e4bfab216054345dff1ebeca28104a7adc25053d3
+    ai-postgres-mcp: 54f09cac7719255200ae1a4fdd378f8ed75b6b702276a71dee934e1264f75dbe
+    ai-zendesk-responder: b100928130583fe3d63d6854191499de413fc214d9d15bf08ecbebc7fdba1e3e
+    anthropic-ai-agent: ff6c62c19a7fd71425c55c83ffa095363ad5d1a028f979473bca4fe90ea88df9
+    aws-organizations-account-creator-form: 5e7d200c3450a0e98cfe40952d862a637122229efb8444032eb71cf1579fec2a
+    certificate-expiry-monitoring: 44ac1180eccd12b0043b1ee761b3dadcd39885b8adfcb7fc42d70750f05737a3
+    cloudflare-autorag: 9c7d7782cf45b8a5e634f0b942a5ea41e1e3c5fff5bbe3fac429a937af8aa104
+    compliance-scan-reporter: de19bc144e24609f5f0662ce71c28127353429af51a4577fcec43a49e2deb078
+    database-backup-verification: e2ab17ac682964c276c67846a360d25dc983df3c6a6ab8e0a9a663ea932b579c
+    datadog-monitor-escalation: c170e19f246e947085a308bb52645600ec1ef073858a199dd3e749668e37e8db
+    explode-pattern: 0cd9526accfda7981f4a43b74f8d4cc6233ec4e7bbd4701ef8ece58b7a16ed1d
+    github-deployment-correlation: 5771df29efdc8f16d6186c47804b27f5d3f94afdf8563cc93d7ff0b6484fa37c
+    honeycomb-triggers-into-clickup-tasks: a2a048a0fc01ee9addc49c85653d3a1ee43ee8f042dfd6e417755840ad10441b
+    incident-enrichment: a6b8a5ca1a65384aec9025961ec5c90a7d9e7e28853de1480f3b9b0b584a27c2
+    k8s-ephemeral-environment: d8f012d8eef9b4bf9a862714ba788cd51182df03b821ff01c6ed722ec59f5cfc
+    kubernetes-deployment-scaling: 2a7fb7f5fe11c18c60206672ec96bb41bd32bcd6680c9f353cee1ec800c9509b
+    kubernetes-namespace-provisioning: fcc0d003a5d1ee756ab5a13db04439e212252cbe22d989154e7eea030c781653
+    mongodb-form: cbdf4d8918faaede0a6475b86babb0ca16ae323fbc1667a03cdee0138b4fbca1
+    openai-ai-agent-approvals: b29cb15c9ca84d9fe81caf874f5b7ac2bf2f2828b32aaaea5c59e79d80bd1489
+    pagerduty-mcp: 5e3f5e0284d42483d11456911074259134dd369626ebc12cd4f3bfd353aaa2bb
+    pagerduty-slackbot: 6df6835f62bf003629b752f2616128fd6926457fb1eef8bd993d11fd9b747dc4
+    parallel-fetching: e09e6e25c7860b2870c98b25259aa44d33a5ed6169b593663db69ce30d2c722b
+    postgres-form: a8d17480dbbc295b636fff2f4d1e8d7af0cac80bb6ea2a29edaff18152ca9964
+    rundeck-jobs: 511a010d7d170165bb8b2909db9cf03cd02acb2d7cb0826177aa04b1389b1c71
+    s3-webhook-archiver: 165f51cb014bbf4b7d791e0520ba1af19fc610f57949e07e64a5f131c41afda0
+    secret-rotation-orchestrator: 965d946f48d952aadd3e6e58c779ca474268d2ae141bf8c907e49748d3c17b03
+    self-service-backstage-spacelift-template: 06005c4c1eb6af6ba4966b2cfa63daee838c4e6d7d42d72fde9d225789063c91
+    self-service-environment-vending: e813e2e2f64e01a09ad45e127c21387ccd07d3e1921314f1d359af6cee5c7165
+    self-service-forms-s3: e3835441035f4affc3116220ee7209de9e9d1e1e1d18a06e116c83dfeb9ab093
+    self-service-jira-s3: 8bfd1fcf616d59d4a0108b1265dea18f75d8f537010a515ab0c901383f660f24
+    self-service-jira-spacelift-template: b1578745c60039c5e2a6451567b4ddcf3f69503043a8aad7582679b9fe13df73
+    self-service-linear-s3: 9e25966a7540876aff63e521cfad6a2644723dee3c07dd5296746a2fb06899ab
+    self-service-servicenow-spacelift-template: 3544078d85e6387dc7fe4ff3e99eae747b3ee8fd669435b5a44d361af38297ee
+    servicenow-provisioning: a8e104ac338b908beb581671768b8f8c23eec04e2df2f91e0fb31b483daaee2a
+    simple-slackbot: 813088c9cdf97c1d81e7b4ace21c1081f703ef310d290fb4228cba7d7b3a9dc2
+    simple-ssh: b577d733e3032910a567cd7c192a7de392722e5a6eea15d3dabe3e424c315292
+    simple-teams-bot: 92b2247a42790ce774df972412881904d62f651a5f3613cd4d621ac6abd7af0e
+    simple-webhook-handler: 7be4dcc32a32d22a03cb9979f35774de3a253f83263aea18d4978e941a39be82
+    spacelift-change-auto-approval: 7b370eb0f7c43548097648eecacd4adf04e2a3a88228ae1fbc4dac055320e191
+    spacelift-drift-detection-jira-slack: b2f3abd1133e1c694ef5976cbf74dda5e644f10a44ee48843d9670d405b44a1f
+    spacelift-drift-detection-servicenow: bd3ff436891125e138a4c9d94b8db061e194c51399eb49687dcbe5632e919212
+    spacelift-staged-batch-rollout: 411cb9c8ef5eb207d106554d594e98d20f4510a6a4b6a80e86994990f587e187
+    spacelift-unconfirmed-runs-slack: 002fddeef2b11bc428337cdc715fa7e7874c623c015a83c9adcaead2ca80ecc9
+    subroutines-simple: ddc1e5401d7edc63f9c68eb02e8fe9e6fb088f42b90c0b944d6640f783bc34f9
+    temporary-elevated-access: ab5d2e7b99d7c47843a37fcbc2283465c21724c5046c0fa5422516ab1625e556
+    variables-simple: 0dc5dc2dd4000d63b50ed82e78016e6153a9f59fc543e50bd539bc871515edd7
+registry:
+  manifest: https://registry.useflows.com/core
+fetchedAt: "2026-11-04T15:25:48Z"

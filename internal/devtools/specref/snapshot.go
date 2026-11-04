@@ -179,23 +179,33 @@ func Generate(ctx context.Context, src *Sources) (*Generated, error) {
 			return nil, fmt.Errorf("encode spec: %w", err)
 		}
 	}
+	spec, err := specYAML(raw, specHeader)
+	if err != nil {
+		return nil, err
+	}
+	return &Generated{
+		Spec:     spec,
+		Coverage: []byte(rep.Markdown()),
+		Summary:  rep.Summary(),
+		Report:   rep,
+	}, nil
+}
+
+// specYAML renders a document's JSON as the committed YAML: the header
+// line, then keys in sorted order with two-space indents.
+func specYAML(raw []byte, header string) ([]byte, error) {
 	var tree any
 	if err := json.Unmarshal(raw, &tree); err != nil {
 		return nil, fmt.Errorf("decode spec: %w", err)
 	}
 	var out bytes.Buffer
-	out.WriteString(specHeader)
+	out.WriteString(header)
 	enc := yaml.NewEncoder(&out)
 	enc.SetIndent(2)
 	if err := enc.Encode(tree); err != nil {
 		return nil, fmt.Errorf("encode spec yaml: %w", err)
 	}
-	return &Generated{
-		Spec:     out.Bytes(),
-		Coverage: []byte(rep.Markdown()),
-		Summary:  rep.Summary(),
-		Report:   rep,
-	}, nil
+	return out.Bytes(), nil
 }
 
 // dropInvalidExamples removes request examples their schema rejects and

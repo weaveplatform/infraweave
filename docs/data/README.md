@@ -19,6 +19,7 @@ table, so each fact has one copy.
 | [`open-questions.json`](open-questions.json) | Report 30's open questions: product decisions (`PD-nn`), captures needed (`Cn`) and re-verify triggers (`RV-n`), each with the reports that cite it ([30](../research/reference/30-open-questions.md)) | docscheck's citations and *(unverified)* check |
 | [`review-findings.json`](review-findings.json) | Every finding of the fact-check passes, with its status and the phrases that show its change still holds ([31](../research/reference/31-review-log.md)) | docscheck's evidence check |
 | [`graphql-inventory.json`](graphql-inventory.json) | Every named type of Spacelift's GraphQL schema: fields with arguments, types, nullability, deprecation and input defaults, enum values and union members ([29](../research/reference/29-data-model-inventory.md)) | `make verify-reference` (`specref inventory --check`) |
+| [`flows-sdk-inventory.json`](flows-sdk-inventory.json) | Every declaration of the Flows app SDK `@slflows/sdk`: its name, kind, whether it is exported, and its member names; identifiers only, as the package declares no licence ([23](../research/reference/23-flows.md)) | `specref inventory --product flows --check` |
 
 ## Shape
 

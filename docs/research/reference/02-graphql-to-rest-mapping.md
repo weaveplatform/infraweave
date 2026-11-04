@@ -218,8 +218,10 @@ RPC path its `operationId`, its tag (prefixed `Flows `, such as
 `Flows Projects` or `Flows Data Tables`, so that no Flows tag collides with
 the Deploy-side `Flows` tag) and its parameters. The method and path come from
 the verb that opens the last segment of the RPC path, and the resource from
-the noun after it, or from the family (`flows`, `apps`, `datatables`) when
-the segment is a bare verb:
+the noun after it, or from the family (`projects`, `agent_pools`, `flows`,
+`apps`, `datatables`) when the segment is a bare verb. The mapping's `nouns`
+table names the resource each noun is, so `installation` is the app
+installation and `version` the app version:
 
 | Verb | REST | Example |
 |---|---|---|
@@ -231,7 +233,7 @@ the segment is a bare verb:
 | `start_<noun>` | `POST` on the `<noun>` collection | `/cli/flows/start_test_scenario_run` → `POST /api/v1/flows/test-scenarios/{testScenarioId}/runs` |
 | `start_<noun>_batch` | `POST` of a list body on the collection's `/batch` route, decision [0003](../decisions/0003-api-conventions.md)'s `expensive` batch paths | `/cli/flows/start_test_scenario_run_batch` → `POST /api/v1/flows/flows/{flowId}/test-scenario-runs/batch` |
 | `cancel_<noun>`, `confirm_<noun>` | an action `POST` on the item, as the action rule above | `/provider/apps/confirm_installation` → `POST /api/v1/flows/app-installations/{appInstallationId}/confirm` |
-| `attach_to_<parent>`, `detach_from_<parent>` | `PUT` and `DELETE` on the sub-resource | `/provider/datatables/attach_to_flow` → `PUT /api/v1/flows/flows/{flowId}/data-tables/{dataTableId}` |
+| `attach_to_<parent>`, `detach_from_<parent>` | `PUT` and `DELETE` on the sub-resource | `/provider/datatables/attach_to_flow` → `PUT /api/v1/flows/flows/{flowId}/data-tables/{dataTableId}`; `/provider/agent_pools/attach_to_project` → `PUT /api/v1/flows/projects/{projectId}/agent-pools/{agentPoolId}` |
 
 - **The parent comes from the request's keys**, not from the RPC family: a
   request that carries `projectId` nests its collection under
@@ -247,7 +249,8 @@ These are overrides, with `method` and `path` in their entry:
 
 | RPC path | REST |
 |---|---|
-| `/cli/projects` (no verb) | `GET /api/v1/flows/projects` |
+| `/cli/projects` (no verb), `/provider/projects/list` | one operation: `GET /api/v1/flows/projects` |
+| `/provider/agent_pools/get_project_attachment` | the attachment as the sub-resource that `attach_to_project` puts: `GET /api/v1/flows/projects/{projectId}/agent-pools/{agentPoolId}` |
 | `/provider/apps/get_version_id` | a query on the versions collection: `GET /api/v1/flows/app-versions` with `name`, `registry` and `version` |
 | `/provider/flows/get_entity_lifecycle_status`, `/provider/apps/get_installation_status`, `/provider/apps/get_installation_config_field` | sub-resource reads: `GET /api/v1/flows/blocks/{blockId}/lifecycle-status`, `GET /api/v1/flows/app-installations/{appInstallationId}/status`, `GET /api/v1/flows/app-installations/{appInstallationId}/config-fields/{key}` |
 | `/provider/apps/update_installation_config`, `update_installation_metadata`, `update_installation_version` | three sub-resources, not one `PATCH` on the installation: `PATCH /api/v1/flows/app-installations/{appInstallationId}/config`, `/metadata` and `/version` |
@@ -271,8 +274,9 @@ WebSocket, `/flows/mcp`, `/flows/e/...` and `/flows/forms/...`).
   (`flowctl`) and `/provider/flows/export_definition` (`provider`).
 - **Operations no client reaches.** A served Flows operation that no
   public client calls (invocations and event trees, retry and re-emit,
-  members, teams, service accounts and API keys, agent pools, registry
-  subscriptions, OIDC, audit and OTLP export) is designed by infraweave from
+  members, teams, service accounts and API keys, agent pools beyond
+  attaching one to a project, registry subscriptions, OIDC, audit and OTLP
+  export) is designed by infraweave from
   the docs and decision 0018's data model and carries `x-upstream: none`;
   parity treats it as infraweave-only.
 - **Parity.** `TestUnitFlowsParity` compares the Flows reference with the

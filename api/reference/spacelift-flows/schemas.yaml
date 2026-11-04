@@ -1,0 +1,198 @@
+# Hand-written schemas for what Spacelift Flows' clients pass as opaque YAML
+# or never send: a flow's definition, a registry manifest and an app's
+# versions file (docs/research/reference/23-flows.md sections 6.2 and 13).
+# OpenAPI 3.0 schemas, joined to flows.openapi.yaml's components.
+# `specref fetch --product flows` validates every published template and a
+# live registry against them and fails on a mismatch, so a change upstream
+# shows up in the weekly refresh. Expressions (`!expr`) are read as strings.
+#
+# The structure is closed (additionalProperties: false) where the definition
+# reference lists every property; block configuration, inputs and outputs
+# vary by block type and stay open.
+
+FlowDefinition:
+  description: A flow's YAML definition, as the canvas copies it, flowctl exports it and the provider applies it.
+  type: object
+  additionalProperties: false
+  properties:
+    appInstallations:
+      type: object
+      additionalProperties: {$ref: '#/components/schemas/FlowAppInstallation'}
+    dataTables:
+      type: object
+      additionalProperties: {$ref: '#/components/schemas/FlowDataTable'}
+    agentPools:
+      type: object
+      additionalProperties: {$ref: '#/components/schemas/FlowAgentPool'}
+    blocks:
+      type: array
+      items: {$ref: '#/components/schemas/FlowBlock'}
+    notes:
+      type: array
+      items: {$ref: '#/components/schemas/FlowNote'}
+
+FlowAppInstallation:
+  type: object
+  additionalProperties: false
+  required: [appName]
+  properties:
+    appName: {type: string}
+    appVersion: {type: string}
+    id: {type: string}
+    display: {$ref: '#/components/schemas/FlowDisplay'}
+
+FlowDisplay:
+  description: How the canvas shows an installation or a block.
+  type: object
+  properties:
+    key: {type: string}
+    color: {type: string}
+    icon: {type: string}
+
+FlowDataTable:
+  type: object
+  additionalProperties: false
+  required: [name]
+  properties:
+    id: {type: string}
+    name: {type: string}
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        columns:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, type]
+            properties:
+              name: {type: string}
+              type: {type: string, enum: [string, integer, float, boolean, datetime, json, row_ref]}
+              dataTableRef: {type: string}
+
+FlowAgentPool:
+  type: object
+  additionalProperties: false
+  required: [name]
+  properties:
+    name: {type: string}
+    id: {type: string}
+
+FlowBlock:
+  type: object
+  additionalProperties: false
+  required: [name, type]
+  properties:
+    name: {type: string}
+    description: {type: string}
+    alternativeLookupStrategy: {$ref: '#/components/schemas/FlowLookupStrategy'}
+    type: {$ref: '#/components/schemas/FlowBlockType'}
+    position: {$ref: '#/components/schemas/FlowPosition'}
+    config:
+      description: The block's configuration, by block type; app and Spacelift blocks map field names to expressions.
+      type: object
+    inputs:
+      description: Input sockets to their links and configuration, by block type.
+      type: object
+    outputs:
+      description: Output sockets to their customization, by block type.
+      type: object
+    errorHandler: {type: string}
+    dynamicOutputKeys:
+      type: array
+      items: {type: string}
+    group: {type: string}
+
+FlowLookupStrategy:
+  type: object
+  additionalProperties: false
+  properties:
+    id: {type: string}
+    name: {type: string}
+
+FlowBlockType:
+  description: One of a core block, a Spacelift block (coreBlock spacelift with its kind) or an app block.
+  type: object
+  additionalProperties: false
+  properties:
+    coreBlock: {type: string}
+    kind: {type: string}
+    appBlock:
+      type: object
+      additionalProperties: false
+      required: [block, appInstallation]
+      properties:
+        block: {type: string}
+        appInstallation: {type: string}
+        schema:
+          description: The app block's schema at export, as JSON text.
+          type: string
+
+FlowPosition:
+  description: A canvas position, written [x, y] or as an object.
+  oneOf:
+    - type: array
+      minItems: 2
+      maxItems: 2
+      items: {type: number}
+    - type: object
+      additionalProperties: false
+      required: [x, y]
+      properties:
+        x: {type: number}
+        y: {type: number}
+
+FlowNote:
+  type: object
+  additionalProperties: false
+  required: [body]
+  properties:
+    body: {type: string}
+    position: {$ref: '#/components/schemas/FlowPosition'}
+    style:
+      type: object
+      additionalProperties: false
+      properties:
+        width: {type: number}
+        height: {type: number}
+        color: {type: string}
+    alternativeLookupStrategy: {$ref: '#/components/schemas/FlowLookupStrategy'}
+
+RegistryManifest:
+  description: An app registry's manifest, served at the registry's URL.
+  type: object
+  required: [apps]
+  properties:
+    apps:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: false
+        required: [name, appMetadataUrl]
+        properties:
+          name: {type: string}
+          description: {type: string}
+          blockStyle:
+            type: object
+            additionalProperties: false
+            properties:
+              iconUrl: {type: string}
+              color: {type: string}
+          appMetadataUrl: {type: string}
+
+AppVersions:
+  description: An app's versions file, which a registry manifest's appMetadataUrl names.
+  type: object
+  required: [versions]
+  properties:
+    versions:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [version, artifactUrl, artifactChecksum]
+        properties:
+          version: {type: string}
+          artifactUrl: {type: string}
+          artifactChecksum: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
