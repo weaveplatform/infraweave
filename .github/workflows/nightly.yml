@@ -24,6 +24,12 @@ concurrency:
 
 env:
   GOWORK: 'off'
+  # Every test binary removes its own containers, and a runner's containers
+  # end with the runner. Ryuk adds nothing here, and its one reaper per
+  # go test invocation, shared by package binaries running in parallel,
+  # fails a package that starts while another's reaper is exiting: "the
+  # container name /reaper_<session> is already in use".
+  TESTCONTAINERS_RYUK_DISABLED: 'true'
 
 jobs:
   accept:
