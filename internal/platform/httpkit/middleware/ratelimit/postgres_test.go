@@ -18,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	os.Exit(sqltest.Main(m, acceptance.ImagePostgres, schema.Stream()))
+	os.Exit(sqltest.Main(m, schema.Stream()))
 }
 
 func pool(t *testing.T) *pgxpool.Pool {
