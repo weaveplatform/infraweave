@@ -37,8 +37,10 @@ func TestAccGuardedReplicas(t *testing.T) {
 	var runs atomic.Int32
 	entered, release := make(chan struct{}), make(chan struct{})
 	replica := func() *chi.Mux {
-		r := Guarded(discard(), c, Operations{"POST /things": {Cost: ratelimit.Standard}},
-			postgresGuards(ctx, &wg, c, db, discard()))
+		l := notify.NewListener(db.ConnConfig, discard())
+		g := postgresGuards(ctx, &wg, c, db, l)
+		wg.Go(func() { l.Run(ctx) })
+		r := Guarded(discard(), c, Operations{"POST /things": {Cost: ratelimit.Standard}}, g)
 		r.Post("/things", func(w http.ResponseWriter, req *http.Request) {
 			runs.Add(1)
 			if req.Header.Get(idempotency.Header) == "slow" {

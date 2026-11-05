@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -107,7 +108,15 @@ type Listener struct {
 
 	mu   sync.Mutex
 	subs map[string]map[*Subscription]struct{}
+	// listening is true from LISTEN on every channel until the connection
+	// fails, the window in which no notification is lost.
+	listening atomic.Bool
 }
+
+// Listening reports whether the listening connection is up, so a
+// notification sent now reaches the subscribers. A readiness check of a
+// process whose work waits on notifications reads it.
+func (l *Listener) Listening() bool { return l.listening.Load() }
 
 // backoff bounds the wait between reconnects: it starts at the first value
 // and doubles to the second.
@@ -210,6 +219,8 @@ func (l *Listener) session(ctx context.Context) (bool, error) {
 			return false, fmt.Errorf("listen %s: %w", ch, err)
 		}
 	}
+	l.listening.Store(true)
+	defer l.listening.Store(false)
 	l.broadcast("", Message{Resync: true})
 	for {
 		n, err := conn.WaitForNotification(ctx)

@@ -10,10 +10,10 @@ Feature: Message queue depth
   @case:success
   Scenario: Every logical queue is reported with its ready and running jobs
     Given 2 due jobs, 1 running job and 1 job due tomorrow on the "events" queue
-    And 1 running job on the "maintenance" queue
+    And 1 running job on the "deliveries" queue
     Then messageQueueStats lists the seven logical queues in order, each served by "postgres"
     And messageQueueStats reports 2 visible and 1 in flight on the "events" queue
-    And messageQueueStats reports 0 visible and 1 in flight on the "maintenance" queue
+    And messageQueueStats reports 0 visible and 1 in flight on the "deliveries" queue
     And messageQueueStats reports 0 visible and 0 in flight on the "default" queue
 
   @case:success

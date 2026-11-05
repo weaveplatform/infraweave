@@ -14,8 +14,12 @@
 // Streams registers, in the declared graph's order, registers the probe
 // checks every mode runs (databaseChecks), and serves the probes on the
 // admin listener and, in serve and all, the API on the API listener, with
-// the controls' state in PostgreSQL (postgresGuards). The scheduler's loops
-// join its mode with their phases. MigrateUp and MigrateStatus are
+// the controls' state in PostgreSQL (postgresGuards). In scheduler and all
+// it starts the scheduler role (startScheduler): the queue's workers with
+// the platform's handlers, and the cron ticker over periodic_tasks, after
+// registering queue.prune and idempotency.purge; it stops the ticker, then
+// the workers, after the HTTP drain. MessageQueueStats is the
+// installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
 // infraweave migrate up and status. Version is the line infraweave version
 // prints.
 //
@@ -26,8 +30,9 @@
 // operation table is decoded once from the spec embedded in gen/api. Run
 // connects to PostgreSQL through platform/sql and migrates it through
 // platform/sql/migrate before any listener binds, logging each file it
-// applies; the probes query it; in serve and all it holds one listening
-// connection for infraweave_invalidate. It closes the connections and the
+// applies; the probes query it; every mode holds one listening connection, shared
+// by the API's switch (infraweave_invalidate) and the workers
+// (infraweave_jobs), whose liveness the scheduler's readiness checks. It closes the connections and the
 // pools after the drain. MigrateUp and MigrateStatus write their report to
 // the given io.Writer. Requests, panics and listener events are logged
 // through the given slog.Logger. It reads no file and no environment
@@ -40,6 +45,7 @@
 // middleware/idempotency,problem} for the listeners and controls;
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
+// platform/queue and platform/cron for the scheduler role;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no
 // package under platform, kernel or agent may (repo layout, depguard rules).

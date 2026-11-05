@@ -3,8 +3,10 @@ package idempotency
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
@@ -75,5 +77,53 @@ func TestAccPostgresUnreachable(t *testing.T) {
 	}
 	if err := s.Release(ctx, k); err == nil {
 		t.Error("Release on a closed pool")
+	}
+	if _, err := s.Purge(ctx); err == nil {
+		t.Error("Purge on a closed pool")
+	}
+}
+
+// TestAccIdempotencyPurge checks that Purge removes expired keys, done or
+// in flight, and nothing else.
+func TestAccIdempotencyPurge(t *testing.T) {
+	p := pool(t)
+	s := NewPostgres(p, Defaults())
+	keys := map[string]bool{
+		"live-done":   false,
+		"live-flight": false,
+		"old-done":    true,
+		"old-flight":  true,
+	}
+	for v, expired := range keys {
+		k := Key{Caller: "c", Value: v}
+		if _, ok, err := s.Claim(t.Context(), k, "fp"); !ok || err != nil {
+			t.Fatalf("claim %s: %v %v", v, ok, err)
+		}
+		if v == "live-done" || v == "old-done" {
+			if err := s.Complete(t.Context(), k, Response{Status: 201}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if expired {
+			if _, err := p.Exec(
+				t.Context(),
+				`UPDATE idempotency_keys SET expires_at = now() - interval '1 second' WHERE key = $1`,
+				v,
+			); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	n, err := s.Purge(t.Context())
+	if err != nil || n != 2 {
+		t.Fatalf("Purge = %d, %v; want the 2 expired keys", n, err)
+	}
+	rows, err := p.Query(t.Context(), `SELECT key FROM idempotency_keys ORDER BY key`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil || !slices.Equal(left, []string{"live-done", "live-flight"}) {
+		t.Errorf("left %q, %v; want the live keys", left, err)
 	}
 }
