@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -36,9 +37,14 @@ func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, status int, detai
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
 		t.Fatalf("body is not a problem: %v: %s", err, rec.Body)
 	}
-	if p.Status != status || p.Title != http.StatusText(status) ||
+	if p.Status != status || !registered(p) ||
 		!strings.Contains(p.Detail, detail) {
-		t.Errorf("problem %+v, want status %d and a detail containing %q", p, status, detail)
+		t.Errorf(
+			"problem %+v, want a registered type of status %d and a detail containing %q",
+			p,
+			status,
+			detail,
+		)
 	}
 }
 
@@ -74,4 +80,13 @@ func TestUnitRecoverProblemAbort(t *testing.T) {
 		}
 	}()
 	serve(t, r, http.MethodGet, "/abort")
+}
+
+// registered reports whether p is exactly what its register type builds, so
+// an untyped problem, or one whose title strays from the register, fails.
+func registered(p problem.Problem) bool {
+	return slices.ContainsFunc(
+		problem.Types(),
+		func(t problem.Type) bool { return t.New(p.Detail) == p },
+	)
 }

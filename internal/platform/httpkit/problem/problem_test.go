@@ -40,7 +40,8 @@ func TestUnitResponseErrorNotImplemented(t *testing.T) {
 		err,
 	)
 	p := decode(t, rec)
-	if rec.Code != http.StatusNotImplemented || p.Title != "Not Implemented" ||
+	if rec.Code != http.StatusNotImplemented ||
+		p != NotImplemented.New("stacks (GET /stacks) is not implemented yet") ||
 		p.Detail != "stacks (GET /stacks) is not implemented yet" {
 		t.Errorf("got %d %+v", rec.Code, p)
 	}
