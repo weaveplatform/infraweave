@@ -27,6 +27,9 @@ type observeSteps struct {
 	// conn carries the request in flight; rest is the body it has not sent.
 	conn net.Conn
 	rest string
+	// retried is the answer to the request sent with the SDK's default
+	// retries, once it has one.
+	retried chan response
 }
 
 func (s *observeSteps) register(sc *godog.ScenarioContext) {
@@ -36,6 +39,23 @@ func (s *observeSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^it bound no API listener$`, s.noAPI)
 	sc.Step(`^its PostgreSQL stops answering$`, s.pause)
 	sc.Step(`^its PostgreSQL answers again$`, s.unpause)
+	sc.Step(`^its PostgreSQL stops$`, s.stopPostgres)
+	sc.Step(`^its PostgreSQL starts again$`, s.startPostgres)
+	sc.Step(
+		`^"POST ([^"]+)" with an Idempotency-Key answers a (\d+) problem "([a-z-]+)" with Retry-After$`,
+		s.postAnswers,
+	)
+	sc.Step(
+		`^"POST ([^"]+)" with an Idempotency-Key eventually answers a (\d+) problem "([a-z-]+)"$`,
+		s.postEventuallyAnswers,
+	)
+	sc.Step(
+		`^"POST ([^"]+)" with an Idempotency-Key is sent with the SDK's default retries$`,
+		s.postRetrying,
+	)
+	sc.Step(`^the server logs a (\d+) for a POST$`, s.loggedStatus)
+	sc.Step(`^the request sent with the default retries is answered a (\d+) problem "([a-z-]+)"$`,
+		s.retriedAnswer)
 	sc.Step(`^"GET ([^"]+)" on the admin listener eventually answers (\d+)$`, s.eventuallyAnswers)
 	sc.Step(
 		`^"GET ([^"]+)" on the admin listener eventually reports the check "([^"]+)" as (ok|fail)$`,
@@ -330,4 +350,96 @@ func (s *observeSteps) exits(ctx context.Context, want string) error {
 		return fmt.Errorf("%w: exited %d, want %s: %s", errStep, code, want, srv.Stdout())
 	}
 	return nil
+}
+
+func (s *observeSteps) stopPostgres(ctx context.Context) error  { return s.w.ownPG.Stop(ctx) }
+func (s *observeSteps) startPostgres(ctx context.Context) error { return s.w.ownPG.Start(ctx) }
+
+// unavailableKey is the Idempotency-Key of every POST of the unavailability
+// scenarios: a 503 stores nothing, so the same request can succeed later.
+const unavailableKey = "while-postgres-is-down"
+
+// post sends an idempotent POST through c.
+func post(ctx context.Context, c *sdk.Client, path string) response {
+	resp, err := c.Do(ctx, http.MethodPost, path, map[string]any{"name": "unavailable"},
+		sdk.Header{Name: "Idempotency-Key", Value: unavailableKey})
+	if resp == nil {
+		return response{err: err}
+	}
+	return response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
+}
+
+func (s *observeSteps) postAnswers(ctx context.Context, path, code, slug string) error {
+	resp := post(ctx, s.w.api, path)
+	if err := isProblem(resp, "POST "+path, code, slug); err != nil {
+		return err
+	}
+	if resp.header.Get("Retry-After") == "" {
+		return fmt.Errorf("%w: POST %s answered %s without Retry-After", errStep, path, code)
+	}
+	return nil
+}
+
+func (s *observeSteps) postEventuallyAnswers(ctx context.Context, path, code, slug string) error {
+	return Eventually(
+		ctx,
+		"POST "+path+" to answer "+code,
+		func(ctx context.Context) (bool, error) {
+			if err := isProblem(post(ctx, s.w.api, path), "POST "+path, code, slug); err != nil {
+				return false, err
+			}
+			return true, nil
+		},
+	)
+}
+
+// postRetrying sends the POST through a client with pkg/sdk's DefaultRetry
+// off the step's goroutine, so the scenario can bring PostgreSQL back while
+// the client waits out Retry-After.
+func (s *observeSteps) postRetrying(ctx context.Context, path string) error {
+	srv, err := s.server()
+	if err != nil {
+		return err
+	}
+	c, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.DefaultRetry))
+	if err != nil {
+		return fmt.Errorf("sdk: %w", err)
+	}
+	s.retried = make(chan response, 1)
+	ctx = context.WithoutCancel(ctx)
+	go func() { s.retried <- post(ctx, c, path) }()
+	return nil
+}
+
+// loggedStatus matches on the method alone: a guard rejects a request
+// before chi routes it, so its line has no route.
+func (s *observeSteps) loggedStatus(ctx context.Context, status int) error {
+	return Eventually(
+		ctx,
+		fmt.Sprintf("a %d for a POST", status),
+		func(context.Context) (bool, error) {
+			lines, err := s.lines()
+			if err != nil {
+				return false, err
+			}
+			for _, l := range lines {
+				if l["msg"] == "request" && l["method"] == http.MethodPost &&
+					l["status"] == float64(status) {
+					return true, nil
+				}
+			}
+			return false, nil
+		},
+	)
+}
+
+func (s *observeSteps) retriedAnswer(ctx context.Context, code, slug string) error {
+	select {
+	case resp := <-s.retried:
+		return isProblem(resp, "the retried POST", code, slug)
+	case <-time.After(waitLimit):
+		return fmt.Errorf("%w: the retried POST got no answer", errStep)
+	case <-ctx.Done():
+		return fmt.Errorf("the retried POST: %w", ctx.Err())
+	}
 }

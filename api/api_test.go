@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"regexp"
 	"slices"
@@ -120,8 +121,13 @@ func readRegister(t *testing.T, file string, v any) {
 	}
 }
 
+// exampleInstance is decision 0022's instance: the request ID, as
+// X-Request-Id accepts it, under urn:infraweave:request:.
+var exampleInstance = regexp.MustCompile(`^urn:infraweave:request:[A-Za-z0-9._-]{1,128}$`)
+
 // TestUnitAPIProblemTypes checks that every problem example in the spec
-// uses a slug the problem register lists, with its status and title, so the
+// uses a slug the problem register lists, with its status, title and an
+// instance naming a request, so the
 // register stays the one complete list of problem types. It also checks that
 // every slug decision 0003 defines has a response that uses it, since 0003's
 // components exist to carry them.
@@ -144,6 +150,12 @@ func TestUnitAPIProblemTypes(t *testing.T) {
 			t.Errorf("response %s: status %v, %s says %d", name, ex["status"], problems, p.Status)
 		case ex["title"] != p.Title:
 			t.Errorf("response %s: title %v, %s says %q", name, ex["title"], problems, p.Title)
+		case !exampleInstance.MatchString(fmt.Sprint(ex["instance"])):
+			t.Errorf(
+				"response %s: instance %v is not urn:infraweave:request:<request ID>",
+				name,
+				ex["instance"],
+			)
 		}
 		used[slug] = true
 	}

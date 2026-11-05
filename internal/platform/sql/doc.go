@@ -9,7 +9,9 @@
 // hands out the primary pool, the read pool (the primary when no replica is
 // set) and, through ConnConfig, the primary's connection settings for one
 // dedicated connection, with a fresh token under iam_auth: package notify's
-// LISTEN connection and the migration runner's.
+// LISTEN connection and the migration runner's. Unavailable marks an error
+// that says PostgreSQL cannot be reached with kernel.ErrUnavailable, so a
+// store's caller answers 503 rather than 500.
 //
 // # Input and output
 //
@@ -25,7 +27,8 @@
 //
 // # Dependencies
 //
-// It imports pgx and pgxpool; the AWS SDK's config and rds/auth, Azure's
+// It imports pgx and pgxpool; internal/kernel for ErrUnavailable; the AWS
+// SDK's config and rds/auth, Azure's
 // azidentity, and golang.org/x/oauth2/google for the IAM tokens; and the
 // standard library otherwise.
 // app/config reads its Config, internal/app opens it, and platform/tx,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
@@ -231,31 +233,44 @@ func TestUnitMiddlewareHeadersAnd429(t *testing.T) {
 	}
 }
 
-type failing struct{}
+type failing struct{ err error }
 
-var errStore = errors.New("store unavailable")
+var (
+	errStore = errors.New("store failed with secret detail")
+	// errDown is a store failure sql.Unavailable classified.
+	errDown = fmt.Errorf("%w: %w", kernel.ErrUnavailable, errStore)
+)
 
-func (failing) Take(context.Context, Key, Limit) (State, error) {
-	return State{}, errStore
+func (f failing) Take(context.Context, Key, Limit) (State, error) {
+	return State{}, f.err
 }
 
-func (failing) Disabled(context.Context, string) (bool, error) { return false, errStore }
+func (f failing) Disabled(context.Context, string) (bool, error) { return false, f.err }
 
+// TestUnitStoreFailure checks that a store failure answers 500, or 503
+// with Retry-After when the store cannot be reached, and never names it.
 func TestUnitStoreFailure(t *testing.T) {
-	for name, mw := range map[string]func(http.Handler) http.Handler{
-		"bucket": Middleware(Defaults(), failing{}, ClientAddr, byPath),
-		"switch": Disabled(failing{}, ClientAddr),
-	} {
-		t.Run(name, func(t *testing.T) {
-			rec := httptest.NewRecorder()
-			mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-				t.Error("handler ran")
-			})).ServeHTTP(rec, request("192.0.2.1:1", "/"))
-			if rec.Code != http.StatusInternalServerError ||
-				strings.Contains(rec.Body.String(), "unavailable") {
-				t.Errorf("got %d %s", rec.Code, rec.Body)
-			}
-		})
+	for _, err := range []error{errStore, errDown} {
+		for name, mw := range map[string]func(http.Handler) http.Handler{
+			"bucket": Middleware(Defaults(), failing{err}, ClientAddr, byPath),
+			"switch": Disabled(failing{err}, ClientAddr),
+		} {
+			t.Run(name, func(t *testing.T) {
+				rec := httptest.NewRecorder()
+				mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+					t.Error("handler ran")
+				})).ServeHTTP(rec, request("192.0.2.1:1", "/"))
+				want, retry := problem.InternalError, ""
+				if errors.Is(err, kernel.ErrUnavailable) {
+					want, retry = problem.ServiceUnavailable, "2"
+				}
+				wantProblem(t, rec, want)
+				if rec.Header().Get("Retry-After") != retry ||
+					strings.Contains(rec.Body.String(), "secret detail") {
+					t.Errorf("got %d %v %s", rec.Code, rec.Header(), rec.Body)
+				}
+			})
+		}
 	}
 }
 

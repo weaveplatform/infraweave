@@ -2941,7 +2941,7 @@ type Problem struct {
 	// Detail What went wrong with this request.
 	Detail *string `json:"detail,omitempty"`
 
-	// Instance A URI naming this occurrence.
+	// Instance The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
 	Instance *string `json:"instance,omitempty"`
 
 	// Status The HTTP status code, repeated for clients that lose it.

@@ -6,11 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
@@ -182,17 +187,20 @@ func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 // runPostgres starts a PostgreSQL container and returns the DSN of its
 // default database. The container is returned whenever one was created,
 // even with an error, for the caller to terminate.
-func runPostgres(ctx context.Context) (*postgres.PostgresContainer, string, error) {
+func runPostgres(
+	ctx context.Context,
+	opts ...testcontainers.ContainerCustomizer,
+) (*postgres.PostgresContainer, string, error) {
 	img, err := Postgres()
 	if err != nil {
 		return nil, "", fmt.Errorf("@postgres: %w", err)
 	}
-	c, err := postgres.Run(ctx, img,
+	c, err := postgres.Run(ctx, img, append([]testcontainers.ContainerCustomizer{
 		postgres.WithDatabase(pgDatabase),
 		postgres.WithUsername(pgUser),
 		postgres.WithPassword(pgPassword),
 		postgres.BasicWaitStrategies(),
-	)
+	}, opts...)...)
 	if err != nil {
 		return c, "", fmt.Errorf("@postgres: %w", err)
 	}
@@ -213,9 +221,24 @@ type OwnPostgres struct {
 }
 
 // OwnPostgres starts a container of the scenario's own and migrates its
-// default database. The scenario terminates it.
+// default database. The scenario terminates it. Its host port is fixed
+// rather than Docker's choice, so a Stop and Start keep the DSN a running
+// server holds.
 func (d *Dependencies) OwnPostgres(ctx context.Context) (*OwnPostgres, error) {
-	c, dsn, err := runPostgres(ctx)
+	port, err := freePort(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("@postgres: %w", err)
+	}
+	c, dsn, err := runPostgres(
+		ctx,
+		testcontainers.WithHostConfigModifier(func(hc *container.HostConfig) {
+			hc.PortBindings = network.PortMap{
+				network.MustParsePort("5432/tcp"): {
+					{HostIP: netip.MustParseAddr("127.0.0.1"), HostPort: port},
+				},
+			}
+		}),
+	)
 	if err == nil && d.Migrate != nil {
 		if err = d.Migrate(ctx, dsn); err != nil {
 			err = fmt.Errorf("@postgres: migrate: %w", err)
@@ -239,6 +262,33 @@ func (p *OwnPostgres) Pause(ctx context.Context) error {
 		_, err := cli.ContainerPause(ctx, p.c.GetContainerID(), client.ContainerPauseOptions{})
 		return err //nolint:wrapcheck // docker wraps it below
 	})
+}
+
+// Stop stops PostgreSQL as an operator or a failover does: the image stops
+// it with a fast shutdown, which ends every session with admin_shutdown,
+// and the port then refuses connections.
+func (p *OwnPostgres) Stop(ctx context.Context) error {
+	timeout := 10 * time.Second
+	return p.c.Stop(ctx, &timeout) //nolint:wrapcheck // testcontainers names the container
+}
+
+// Start starts a stopped container again on the same port.
+func (p *OwnPostgres) Start(ctx context.Context) error {
+	return p.c.Start(ctx) //nolint:wrapcheck // as Stop
+}
+
+// freePort is a loopback port nothing listens on now.
+func freePort(ctx context.Context) (string, error) {
+	ln, err := new(net.ListenConfig).Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", fmt.Errorf("free port: %w", err)
+	}
+	defer ln.Close()
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	if err != nil {
+		return "", fmt.Errorf("free port: %w", err)
+	}
+	return port, nil
 }
 
 // Unpause resumes the container's processes.

@@ -27,7 +27,10 @@ components:
           description: What went wrong with this request.
         instance:
           type: string
-          description: A URI naming this occurrence.
+          description: >-
+            The request this problem answers, as urn:infraweave:request: and
+            the request ID the X-Request-Id response header carries and the
+            server logs.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key
@@ -102,6 +105,7 @@ components:
             type: urn:infraweave:problem:rate-limited
             title: Rate limit exceeded
             status: 429
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     ApiDisabled:
       description: The operator has disabled the API for this caller.
       headers:
@@ -115,6 +119,7 @@ components:
             type: urn:infraweave:problem:api-disabled
             title: API disabled for this caller
             status: 503
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     IdempotencyConflict:
       description: >-
         A request with this Idempotency-Key is still in flight. Retry after it
@@ -127,6 +132,7 @@ components:
             type: urn:infraweave:problem:idempotency-key-in-flight
             title: Idempotency key in use
             status: 409
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     IdempotencyMismatch:
       description: This Idempotency-Key was already used with a different request.
       content:
@@ -137,6 +143,7 @@ components:
             type: urn:infraweave:problem:idempotency-key-reuse
             title: Idempotency key reused
             status: 422
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     InvalidCursor:
       description: The cursor doesn't decode, or belongs to another list.
       content:
@@ -147,6 +154,7 @@ components:
             type: urn:infraweave:problem:invalid-cursor
             title: Invalid cursor
             status: 400
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     NotFound:
       description: No such resource, or the caller may not see it.
       content:

@@ -113,7 +113,7 @@ func Middleware(
 			l := c.limit(cl)
 			st, err := store.Take(r.Context(), Key{Caller: caller(r), Class: cl}, l)
 			if err != nil {
-				problem.Internal(w)
+				problem.Failure(w, err)
 				return
 			}
 			h := w.Header()
@@ -174,7 +174,7 @@ func Disabled(sw Switch, caller CallerFunc) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			off, err := sw.Disabled(r.Context(), caller(r))
 			if err != nil {
-				problem.Internal(w)
+				problem.Failure(w, err)
 				return
 			}
 			if off {

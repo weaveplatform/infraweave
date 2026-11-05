@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
@@ -275,7 +277,11 @@ type fake struct {
 	loseRace bool
 }
 
-var errStore = errors.New("store unavailable")
+var (
+	errStore = errors.New("store failed with secret detail")
+	// errDown is a store failure sql.Unavailable classified.
+	errDown = fmt.Errorf("%w: %w", kernel.ErrUnavailable, errStore)
+)
 
 func (f *fake) Claim(ctx context.Context, k Key, fp string) (Record, bool, error) {
 	f.calls.Add(1)
@@ -313,7 +319,14 @@ func TestUnitStoreFailures(t *testing.T) {
 		wantRuns int32
 		wantLog  string
 	}{
-		"claim":     {&fake{claim: errStore}, http.StatusOK, http.StatusInternalServerError, 0, "op=claim"},
+		"claim": {&fake{claim: errStore}, http.StatusOK, http.StatusInternalServerError, 0, "op=claim"},
+		"claim, unreachable": {
+			&fake{claim: errDown},
+			http.StatusOK,
+			http.StatusServiceUnavailable,
+			0,
+			"op=claim",
+		},
 		"lost race": {&fake{loseRace: true}, http.StatusOK, http.StatusConflict, 0, ""},
 		"complete":  {&fake{complete: errStore}, http.StatusOK, http.StatusOK, 1, "op=complete"},
 		"release":   {&fake{releas: errStore}, http.StatusBadGateway, http.StatusBadGateway, 1, "op=release"},
@@ -334,7 +347,7 @@ func TestUnitStoreFailures(t *testing.T) {
 			if rec.Code != tc.wantCode || next.runs.Load() != tc.wantRuns {
 				t.Errorf("got %d after %d runs: %s", rec.Code, next.runs.Load(), rec.Body)
 			}
-			if strings.Contains(rec.Body.String(), "unavailable") {
+			if strings.Contains(rec.Body.String(), "secret detail") {
 				t.Errorf("the store's error reached the client: %s", rec.Body)
 			}
 			if !strings.Contains(logs.String(), tc.wantLog) {

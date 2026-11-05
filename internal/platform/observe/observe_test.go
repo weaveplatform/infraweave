@@ -37,6 +37,10 @@ func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, status int, detai
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
 		t.Fatalf("body is not a problem: %v: %s", err, rec.Body)
 	}
+	if want := problem.InstancePrefix + rec.Header().
+		Get(problem.RequestIDHeader); p.Instance != want {
+		t.Errorf("instance %q, want %q", p.Instance, want)
+	}
 	if p.Status != status || !registered(p) ||
 		!strings.Contains(p.Detail, detail) {
 		t.Errorf(
@@ -63,11 +67,16 @@ func TestUnitProbes(t *testing.T) {
 	wantProblem(t, serve(t, admin, http.MethodPost, "/livez"), http.StatusMethodNotAllowed, "POST")
 }
 
-// registered reports whether p is exactly what its register type builds, so
-// an untyped problem, or one whose title strays from the register, fails.
+// registered reports whether p, but for the instance wantProblem checks,
+// is exactly what its register type builds, so an untyped problem, or one
+// whose title strays from the register, fails.
 func registered(p problem.Problem) bool {
 	return slices.ContainsFunc(
 		problem.Types(),
-		func(t problem.Type) bool { return t.New(p.Detail) == p },
+		func(t problem.Type) bool {
+			want := t.New(p.Detail)
+			want.Instance = p.Instance
+			return want == p
+		},
 	)
 }

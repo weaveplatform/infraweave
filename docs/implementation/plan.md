@@ -787,8 +787,16 @@ needs from its first database connection.
    `accept-core` on the next PostgreSQL major, its beta or release
    candidate, without blocking ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 7. Problem bodies carry `instance` as `urn:infraweave:request:<id>`
-   ([0022](../research/decisions/0022-api-errors-and-update-semantics.md)); `service-unavailable` answers when the database is
-   unreachable.
+   ([0022](../research/decisions/0022-api-errors-and-update-semantics.md)),
+   read from the response's `X-Request-Id`, and so do the spec's problem
+   examples. `sql.Unavailable` marks a connection failure, a dropped or
+   timed-out connection and a shutting-down server (`57P01`–`57P03`, class
+   `08`) with `kernel.ErrUnavailable`, which the problem writer answers with
+   `503 service-unavailable` and `Retry-After: 2`; any other failure stays
+   `500`. Tests: the classifier against pgconn errors and SQLSTATEs, the
+   writer's `instance`, and `observability_health.feature` (a `POST` answers
+   `503` while the scenario's PostgreSQL is stopped and succeeds once it
+   starts; `pkg/sdk`'s `DefaultRetry` rides out the outage).
 
 **Exit criteria**
 - Store suites run on PostgreSQL 18, the floor, in `accept-core`, and

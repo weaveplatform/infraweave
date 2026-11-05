@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -62,7 +63,7 @@ func (p *Postgres) Claim(ctx context.Context, key Key, fingerprint string) (Reco
 			return Record{}, true, nil
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
-			return Record{}, false, fmt.Errorf("claim idempotency key: %w", err)
+			return Record{}, false, fmt.Errorf("claim idempotency key: %w", sql.Unavailable(err))
 		}
 		var (
 			rec    Record
@@ -75,7 +76,7 @@ func (p *Postgres) Claim(ctx context.Context, key Key, fingerprint string) (Reco
 			continue
 		}
 		if err != nil {
-			return Record{}, false, fmt.Errorf("read idempotency key: %w", err)
+			return Record{}, false, fmt.Errorf("read idempotency key: %w", sql.Unavailable(err))
 		}
 		if status != nil {
 			resp.Status = int(*status)
@@ -95,7 +96,7 @@ SET state = 'done', status = $3, content_type = $4, location = $5, body = $6,
 WHERE caller = $1 AND key = $2 AND state = 'in_flight' AND expires_at > now()`,
 		key.Caller, key.Value, resp.Status, resp.ContentType, resp.Location, resp.Body, p.ttl)
 	if err != nil {
-		return fmt.Errorf("complete idempotency key: %w", err)
+		return fmt.Errorf("complete idempotency key: %w", sql.Unavailable(err))
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotReserved
@@ -109,7 +110,7 @@ func (p *Postgres) Release(ctx context.Context, key Key) error {
 		`DELETE FROM idempotency_keys WHERE caller = $1 AND key = $2 AND state = 'in_flight'`,
 		key.Caller, key.Value)
 	if err != nil {
-		return fmt.Errorf("release idempotency key: %w", err)
+		return fmt.Errorf("release idempotency key: %w", sql.Unavailable(err))
 	}
 	return nil
 }

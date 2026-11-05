@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
@@ -49,7 +50,7 @@ func (p *Postgres) Take(ctx context.Context, key Key, l Limit) (State, error) {
 	err := tx.Q(ctx, p.db).QueryRow(ctx, takeToken, key.Caller, string(key.Class), l.Rate, l.Burst).
 		Scan(&tokens, &allowed)
 	if err != nil {
-		return State{}, fmt.Errorf("take a rate-limit token: %w", err)
+		return State{}, fmt.Errorf("take a rate-limit token: %w", sql.Unavailable(err))
 	}
 	return stateOf(l, tokens, allowed), nil
 }
@@ -106,7 +107,7 @@ SELECT caller, extract(epoch FROM until - now())::float8
 FROM api_disabled_callers
 WHERE until IS NULL OR until > now()`)
 	if err != nil {
-		return fmt.Errorf("read disabled callers: %w", err)
+		return fmt.Errorf("read disabled callers: %w", sql.Unavailable(err))
 	}
 	defer rows.Close()
 	callers := map[string]struct{}{}
@@ -117,7 +118,7 @@ WHERE until IS NULL OR until > now()`)
 			left   *float64
 		)
 		if err := rows.Scan(&caller, &left); err != nil {
-			return fmt.Errorf("read disabled callers: %w", err)
+			return fmt.Errorf("read disabled callers: %w", sql.Unavailable(err))
 		}
 		callers[caller] = struct{}{}
 		if left != nil {
@@ -127,7 +128,7 @@ WHERE until IS NULL OR until > now()`)
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("read disabled callers: %w", err)
+		return fmt.Errorf("read disabled callers: %w", sql.Unavailable(err))
 	}
 	t.callers, t.expires = callers, expires
 	return nil

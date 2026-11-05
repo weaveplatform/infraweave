@@ -11,10 +11,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
 // RequestIDHeader carries the request ID both ways (decision 0017).
-const RequestIDHeader = "X-Request-Id"
+const RequestIDHeader = problem.RequestIDHeader
 
 // validID is the X-Request-Id a client may choose; any other is replaced, so
 // a log line never carries a client's control characters or a megabyte.

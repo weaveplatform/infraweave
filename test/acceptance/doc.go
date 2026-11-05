@@ -26,7 +26,8 @@
 // # Dependencies
 //
 // godog runs the features; testcontainers-go starts PostgreSQL (images.go),
-// shared or a scenario's own (OwnPostgres, which the moby client pauses),
+// shared or a scenario's own (OwnPostgres, on a fixed port so it can stop
+// and start, and which the moby client pauses),
 // and RustFS; chi serves the in-process OIDC issuer. Every step and every
 // capture replay calls the API through pkg/sdk, never the generated client
 // beneath it (TestUnitStepsUseTheSDK).

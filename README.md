@@ -88,7 +88,12 @@ replaced by a generated one, and the response echoes it. Secrets, cookies
 and authorization headers are logged as `[redacted]`.
 Every operation answers a `501` problem until its family is implemented, and
 every error, the router's 404 and 405 included, is an
-`application/problem+json` body. Routes check no credentials yet:
+`application/problem+json` body whose `instance` is
+`urn:infraweave:request:` and the response's `X-Request-Id`
+([decision 0022](docs/research/decisions/0022-api-errors-and-update-semantics.md)).
+A request that needs PostgreSQL while it is unreachable answers
+`503 service-unavailable` with `Retry-After: 2`, which `pkg/sdk` retries;
+any other unexpected failure answers `500`. Routes check no credentials yet:
 authentication arrives with
 [decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)'s
 phase.
