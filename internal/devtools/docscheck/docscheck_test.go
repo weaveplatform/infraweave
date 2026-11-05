@@ -826,16 +826,17 @@ func TestUnitCheckSupersededOperations(t *testing.T) {
 	}
 }
 
-func TestUnitCheckSupersededEnumValues(t *testing.T) {
+func TestUnitCheckSupersededMembers(t *testing.T) {
 	const inventory = `{"$schema": "schema/graphql-inventory.schema.json", "records": [
   {"id": "PolicyType", "kind": "ENUM", "values": [{"name": "ACCESS"}, {"name": "PLAN"}]},
-  {"id": "Policy", "kind": "OBJECT", "fields": [{"name": "ACCESS"}]}]}`
-	withValues := func(m fstest.MapFS, values string) {
+  {"id": "Policy", "kind": "OBJECT", "fields": [{"name": "ACCESS"}, {"name": "body"}]}]}`
+	withMembers := func(m fstest.MapFS, member, values string) {
 		m["docs/data/schema/graphql-inventory.schema.json"] = file(anySchema)
 		m["docs/data/graphql-inventory.json"] = file(inventory)
 		m[supersReg] = file(strings.Replace(supersessions, `"SUP-01", `,
-			`"SUP-01", "enumValues": [`+values+`], `, 1))
+			`"SUP-01", "`+member+`": [`+values+`], `, 1))
 	}
+	withValues := func(m fstest.MapFS, values string) { withMembers(m, "enumValues", values) }
 	for _, tc := range []struct {
 		name string
 		edit func(m fstest.MapFS)
@@ -849,6 +850,15 @@ func TestUnitCheckSupersededEnumValues(t *testing.T) {
 		{
 			"a field, not an enum value", func(m fstest.MapFS) { withValues(m, `"Policy.ACCESS"`) },
 			[]string{"docs/data/supersessions.json:2: SUP-01 lists Policy.ACCESS, which is no enum value of docs/data/graphql-inventory.json"},
+		},
+		{"a field", func(m fstest.MapFS) { withMembers(m, "fields", `"Policy.body"`) }, nil},
+		{
+			"no such field", func(m fstest.MapFS) { withMembers(m, "fields", `"Policy.body", "Policy.legacy"`) },
+			[]string{"docs/data/supersessions.json:2: SUP-01 lists Policy.legacy, which is no field of docs/data/graphql-inventory.json"},
+		},
+		{
+			"an enum value, not a field", func(m fstest.MapFS) { withMembers(m, "fields", `"PolicyType.PLAN"`) },
+			[]string{"docs/data/supersessions.json:2: SUP-01 lists PolicyType.PLAN, which is no field of docs/data/graphql-inventory.json"},
 		},
 		{"without the inventory", func(m fstest.MapFS) {
 			withValues(m, `"PolicyType.STACK_ACCESS"`)

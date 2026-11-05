@@ -4201,9 +4201,6 @@ components:
         - STACK_AZURE_INTEGRATION_ATTACH
         - STACK_AZURE_INTEGRATION_DETACH
         - STACK_AZURE_INTEGRATION_UPDATE
-        - STACK_ROLE_BINDING_CREATE
-        - STACK_ROLE_BINDING_UPDATE
-        - STACK_ROLE_BINDING_DELETE
         - AI_INTEGRATION_CREATE
         - AI_INTEGRATION_UPDATE
         - AI_INTEGRATION_DELETE
@@ -4222,9 +4219,6 @@ components:
         STACK_GCP_INTEGRATION_DELETE: Disabled. Do not use.
         STACK_POLICY_ATTACH: Disabled. Do not use.
         STACK_POLICY_DETACH: Disabled. Do not use.
-        STACK_ROLE_BINDING_CREATE: Disabled. Do not use.
-        STACK_ROLE_BINDING_DELETE: Disabled. Do not use.
-        STACK_ROLE_BINDING_UPDATE: Disabled. Do not use.
       x-graphql-type: Action
     AnsibleEntity:
       description: Possible Ansible entity types.
@@ -4563,146 +4557,6 @@ components:
         - write
       type: object
       x-graphql-type: AzureIntegrationStackAttachment
-    BlueprintDeployment:
-      properties:
-        allowedActions:
-          description: Actions that the user can perform on this BlueprintDeployment.
-          items:
-            $ref: '#/components/schemas/Action'
-          type: array
-        blueprint:
-          $ref: '#/components/schemas/BlueprintDeploymentBlueprint'
-        blueprintVersion:
-          $ref: '#/components/schemas/BlueprintDeploymentVersion'
-        createdAt:
-          description: CreatedAt is unix timestamp (in seconds) at which the deployment was created
-          format: int32
-          type: integer
-        description:
-          description: Deployment description
-          nullable: true
-          type: string
-        id:
-          description: Deployment ID
-          type: string
-        inputs:
-          description: List of non-secret inputs used during deployment
-          items:
-            $ref: '#/components/schemas/BlueprintDeploymentInput'
-          type: array
-        name:
-          description: Deployment name
-          type: string
-        scheduledDeleteStacks:
-          description: Whether stacks will be deleted when the scheduled deletion fires (true by default)
-          nullable: true
-          type: boolean
-        scheduledDeleteTimestamp:
-          description: The scheduled deletion timestamp for this deployment (unix seconds), if any
-          format: int32
-          nullable: true
-          type: integer
-        space:
-          $ref: '#/components/schemas/SpaceRef'
-        stacks:
-          description: All stacks for this deployment
-          items:
-            $ref: '#/components/schemas/BlueprintDeploymentStack'
-          type: array
-        state:
-          $ref: '#/components/schemas/BlueprintDeploymentState'
-      required:
-        - allowedActions
-        - blueprint
-        - blueprintVersion
-        - createdAt
-        - id
-        - inputs
-        - name
-        - space
-        - stacks
-        - state
-      type: object
-      x-graphql-omitted:
-        searchChangeHistory: takes arguments; not reachable from an item route
-      x-graphql-type: BlueprintDeployment
-    BlueprintDeploymentBlueprint:
-      properties:
-        id:
-          description: Blueprint ID
-          type: string
-      required:
-        - id
-      type: object
-      x-graphql-type: BlueprintDeploymentBlueprint
-    BlueprintDeploymentInput:
-      properties:
-        checksum:
-          description: SHA256 checksum of the input value
-          type: string
-        id:
-          description: Input ID
-          type: string
-        secret:
-          description: Whether this is a secret input
-          type: boolean
-        value:
-          description: Input value
-          type: string
-      required:
-        - checksum
-        - id
-        - secret
-        - value
-      type: object
-      x-graphql-type: BlueprintDeploymentInput
-    BlueprintDeploymentStack:
-      properties:
-        id:
-          description: Stack ID
-          type: string
-        name:
-          description: Stack name
-          type: string
-        outputs:
-          description: Stack outputs
-          items:
-            $ref: '#/components/schemas/StackOutput'
-          type: array
-        state:
-          $ref: '#/components/schemas/StackState'
-      required:
-        - id
-        - name
-        - outputs
-        - state
-      type: object
-      x-graphql-type: BlueprintDeploymentStack
-    BlueprintDeploymentState:
-      enum:
-        - NONE
-        - FINISHED
-        - IN_PROGRESS
-        - FAILURE
-        - DESTROYING
-        - DESTROYING_FAILED
-        - UNCONFIRMED
-        - DISCARDED
-      type: string
-      x-graphql-type: BlueprintDeploymentState
-    BlueprintDeploymentVersion:
-      properties:
-        id:
-          description: Blueprint version ID
-          type: string
-        version:
-          description: Blueprint version number
-          nullable: true
-          type: string
-      required:
-        - id
-      type: object
-      x-graphql-type: BlueprintDeploymentVersion
     BlueprintRef:
       description: A reference to a Blueprint; fetch it with GET /blueprints/{blueprintId}.
       properties:
@@ -6376,8 +6230,6 @@ components:
             Locally (within the scope of a Stack) unique identifier of the PullRequest,
             given by GitHub.
           type: string
-        run:
-          $ref: '#/components/schemas/RunRef'
         runs:
           description: Most recent Runs on the Pull Request.
           items:
@@ -6401,12 +6253,13 @@ components:
         - headBranchURL
         - headSHA
         - id
-        - run
         - runs
         - title
         - updatedAt
         - url
       type: object
+      x-graphql-omitted:
+        run: superseded under rule S2; use runs
       x-graphql-type: PullRequest
     PulumiEntity:
       description: Possible Pulumi entity types.
@@ -6597,12 +6450,6 @@ components:
             Indicates whether the run is the most recent one its current Stack - ie. it
             is the one that has last changed the stack state.
           type: boolean
-        isPrioritized:
-          deprecated: true
-          description: |-
-            Indicates whether the run has been prioritized.
-            Equivalent to priorityPreset being high.
-          type: boolean
         needsApproval:
           description: Indicates whether the Run needs approval before it can proceed.
           type: boolean
@@ -6701,7 +6548,6 @@ components:
         - id
         - isDependedOnBy
         - isMostRecent
-        - isPrioritized
         - needsApproval
         - planPoliciesOutcomes
         - pluginLogs
@@ -6721,6 +6567,7 @@ components:
         changesV2: served by GET /runs/{runId}/changes-v2
         changesV3: served by GET /runs/{runId}/changes-v3
         cpuProfileDownloadURL: served by GET /runs/{runId}/cpu-profile-download-url
+        isPrioritized: superseded by SUP-15; use priorityPreset
         logs: served by GET /runs/{runId}/logs
         logsDownloadURL: served by GET /runs/{runId}/logs-download-url
         pluginLogsDownloadURL: served by GET /runs/{runId}/plugin-logs-download-url
@@ -8166,42 +8013,6 @@ components:
         administrative:
           description: Administrative stacks can manage other Stacks at runtime.
           type: boolean
-        afterApply:
-          deprecated: true
-          description: List of after-apply scripts.
-          items:
-            type: string
-          type: array
-        afterDestroy:
-          deprecated: true
-          description: List of after-destroy scripts.
-          items:
-            type: string
-          type: array
-        afterInit:
-          deprecated: true
-          description: List of after-init scripts.
-          items:
-            type: string
-          type: array
-        afterPerform:
-          deprecated: true
-          description: List of after-perform scripts.
-          items:
-            type: string
-          type: array
-        afterPlan:
-          deprecated: true
-          description: List of after-plan scripts.
-          items:
-            type: string
-          type: array
-        afterRun:
-          deprecated: true
-          description: List of after-run scripts.
-          items:
-            type: string
-          type: array
         allowedActions:
           description: |-
             Per-action authorization the viewer holds on this Stack, covering the
@@ -8242,36 +8053,6 @@ components:
         autoretry:
           description: Will the stack automatically retry invalidated Pull Request Runs.
           type: boolean
-        beforeApply:
-          deprecated: true
-          description: List of before-apply scripts.
-          items:
-            type: string
-          type: array
-        beforeDestroy:
-          deprecated: true
-          description: List of before-destroy scripts.
-          items:
-            type: string
-          type: array
-        beforeInit:
-          deprecated: true
-          description: List of before-init scripts.
-          items:
-            type: string
-          type: array
-        beforePerform:
-          deprecated: true
-          description: List of before-perform scripts.
-          items:
-            type: string
-          type: array
-        beforePlan:
-          deprecated: true
-          description: List of before-plan scripts.
-          items:
-            type: string
-          type: array
         blocked:
           description: Indicates whether the stack is currently blocked by a Run.
           type: boolean
@@ -8279,8 +8060,6 @@ components:
           $ref: '#/components/schemas/RunRef'
         blueprint:
           $ref: '#/components/schemas/BlueprintRef'
-        blueprintDeployment:
-          $ref: '#/components/schemas/BlueprintDeployment'
         branch:
           description: Git branch of the repo that the Stack is tracking.
           type: string
@@ -8554,12 +8333,6 @@ components:
       required:
         - additionalProjectGlobs
         - administrative
-        - afterApply
-        - afterDestroy
-        - afterInit
-        - afterPerform
-        - afterPlan
-        - afterRun
         - allowedActions
         - attachedAwsIntegrations
         - attachedAzureIntegrations
@@ -8567,11 +8340,6 @@ components:
         - attachedPolicies
         - autodeploy
         - autoretry
-        - beforeApply
-        - beforeDestroy
-        - beforeInit
-        - beforePerform
-        - beforePlan
         - blocked
         - branch
         - canRead
@@ -8624,11 +8392,23 @@ components:
         - wasMigratedFromTerraform
       type: object
       x-graphql-omitted:
+        afterApply: superseded by SUP-19; use hooks
+        afterDestroy: superseded by SUP-19; use hooks
+        afterInit: superseded by SUP-19; use hooks
+        afterPerform: superseded by SUP-19; use hooks
+        afterPlan: superseded by SUP-19; use hooks
+        afterRun: superseded by SUP-19; use hooks
         attachableAwsIntegrations: served by GET /stacks/{stackId}/attachable-aws-integrations
         attachableAzureIntegrations: served by GET /stacks/{stackId}/attachable-azure-integrations
         attachableContexts: served by GET /stacks/{stackId}/attachable-contexts
         attachablePolicies: served by GET /stacks/{stackId}/attachable-policies
         attachableWorkerPools: served by GET /stacks/{stackId}/attachable-worker-pools
+        beforeApply: superseded by SUP-19; use hooks
+        beforeDestroy: superseded by SUP-19; use hooks
+        beforeInit: superseded by SUP-19; use hooks
+        beforePerform: superseded by SUP-19; use hooks
+        beforePlan: superseded by SUP-19; use hooks
+        blueprintDeployment: superseded by SUP-09; use templateDeployment
         configElement: served by GET /stacks/{stackId}/config-element
         dependency: served by GET /stacks/{stackId}/dependency
         entity: served by GET /stacks/{stackId}/entity
@@ -9132,19 +8912,6 @@ components:
             Do not enable this together with mocked_outputs unless you fully understand the implications —
             your apply may execute against mocked values rather than real ones.
           type: boolean
-        skipReplanWhenRunAll:
-          deprecated: true
-          description: |-
-            If set to true, the apply phase will reuse the plan from the planning phase instead of
-            re-planning. Only applies when useRunAll is enabled.
-            Runs with disabled useRunAll reuse the plan by default.
-
-            WARNING: this means any mocked_outputs referenced during planning will be applied as-is.
-            Do not enable this together with mocked_outputs unless you fully understand the implications —
-            your apply may execute against mocked values rather than real ones.
-
-            DEPRECATED: use skipReplan instead, which works for both run-all and non-run-all stacks.
-          type: boolean
         terraformVersion:
           description: Terraform version to use.
           nullable: true
@@ -9169,12 +8936,13 @@ components:
         - effectiveVersions
         - kind
         - skipReplan
-        - skipReplanWhenRunAll
         - tool
         - useRunAll
         - useSmartSanitization
         - useStateManagement
       type: object
+      x-graphql-omitted:
+        skipReplanWhenRunAll: superseded under rule S2; use skipReplan
       x-graphql-type: StackConfigVendorTerragrunt
     StackConfigVendorTerragruntInput:
       properties:
@@ -9341,10 +9109,6 @@ components:
       properties:
         dependsOnStack:
           $ref: '#/components/schemas/StackDependencyDetail'
-        dependsOnStackId:
-          deprecated: true
-          description: ID of the dependency.
-          type: string
         id:
           description: Slug of the dependency. Immutable.
           type: string
@@ -9359,10 +9123,6 @@ components:
           type: array
         stack:
           $ref: '#/components/schemas/StackDependencyDetail'
-        stackId:
-          deprecated: true
-          description: ID of the stack that has a dependency.
-          type: string
         triggerAlways:
           description: |-
             When true, triggers the downstream stack on every upstream run completion,
@@ -9370,16 +9130,16 @@ components:
           type: boolean
       required:
         - dependsOnStack
-        - dependsOnStackId
         - id
         - referenceCount
         - references
         - stack
-        - stackId
         - triggerAlways
       type: object
       x-graphql-omitted:
+        dependsOnStackId: superseded under rule S2; use dependsOnStack
         reference: takes arguments; not reachable from an item route
+        stackId: superseded under rule S2; use stack
       x-graphql-type: StackDependency
     StackDependencyBatchInput:
       properties:
@@ -9839,34 +9599,6 @@ components:
         - generateCredentialsInWorker
       type: object
       x-graphql-type: StackIntegrationAws
-    StackIntegrationGcp:
-      description: |-
-        GCP integration - with that set up, a Stack gets its dedicated GCP service
-        account and each run and tasks automatically gets its temporary credentials.
-      properties:
-        activated:
-          description: |-
-            Is this integration activated. If not, serviceAccountEmail and scopes are
-            expected to be empty.
-          type: boolean
-        serviceAccountEmail:
-          description: |-
-            Email of the GCP service account created for this stack. Runs and tasks will
-            get temporary access token for this account.
-          nullable: true
-          type: string
-        tokenScopes:
-          description: |-
-            List of scopes to request when generating temporary access token for the
-            service account. It's empty when the integration is not activated.
-          items:
-            type: string
-          type: array
-      required:
-        - activated
-        - tokenScopes
-      type: object
-      x-graphql-type: StackIntegrationGcp
     StackIntegrationSlack:
       description: |-
         Slack integration - with that set up, a Stack or Module can send notifications
@@ -9906,8 +9638,6 @@ components:
           type: array
         driftDetection:
           $ref: '#/components/schemas/DriftDetectionIntegration'
-        gcp:
-          $ref: '#/components/schemas/StackIntegrationGcp'
         slack:
           $ref: '#/components/schemas/StackIntegrationSlack'
         webhooks:
@@ -9919,11 +9649,11 @@ components:
         - aws
         - awsV2
         - azure
-        - gcp
         - slack
         - webhooks
       type: object
       x-graphql-omitted:
+        gcp: superseded by SUP-10; use OIDC
         webhook: takes arguments; not reachable from an item route
       x-graphql-type: StackIntegrations
     StackLockRequest:
@@ -10694,11 +10424,6 @@ components:
     WorkerPool:
       description: WorkerPool represents a single WorkerPool.
       properties:
-        activeRuns:
-          deprecated: true
-          description: Number of runs currently being processed by this WorkerPool.
-          format: int32
-          type: integer
         allowedActions:
           description: Actions that the user can perform on this WorkerPool.
           items:
@@ -10780,11 +10505,6 @@ components:
           format: int32
           nullable: true
           type: integer
-        queuedRunsCount:
-          deprecated: true
-          description: Count of queued runs on the public worker pool workers for this account.
-          format: int32
-          type: integer
         scans:
           description: List of scans using this WorkerPool.
           items:
@@ -10830,7 +10550,6 @@ components:
           format: int32
           type: integer
       required:
-        - activeRuns
         - allowedActions
         - busyWorkers
         - config
@@ -10845,7 +10564,6 @@ components:
         - name
         - notificationCount
         - pendingRuns
-        - queuedRunsCount
         - scans
         - scansCount
         - schedulableRunsCount
@@ -10859,6 +10577,8 @@ components:
         - workersCount
       type: object
       x-graphql-omitted:
+        activeRuns: superseded under rule S2; use busyWorkers
+        queuedRunsCount: superseded under rule S2; use schedulableRunsCount
         searchIntentProjects: served by GET /worker-pools/{workerPoolId}/search-intent-projects
         searchIntentProjectsSuggestions: served by GET /worker-pools/{workerPoolId}/search-intent-projects-suggestions
         searchSchedulableRuns: served by GET /worker-pools/{workerPoolId}/search-schedulable-runs

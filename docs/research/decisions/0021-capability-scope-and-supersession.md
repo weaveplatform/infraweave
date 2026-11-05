@@ -85,7 +85,7 @@ these rules holds and no source of equal or higher rank
 
 | Rule | Condition | Examples at the baseline |
 |---|---|---|
-| S1 Retired | Spacelift removed or disabled it for every account, or the schema says it is no longer used | `ACCESS` policies (disabled 2026-05-30); `RunState.PENDING`; the `STACK_WEBHOOK_*` actions marked disabled |
+| S1 Retired | Spacelift removed or disabled it for every account, or the schema says it is no longer used | `ACCESS` policies (disabled 2026-05-30); `RunState.PENDING`; the `STACK_WEBHOOK_*` and `STACK_ROLE_BINDING_*` actions marked disabled |
 | S2 Schema-deprecated | The schema deprecates it and names a replacement that infraweave serves. For input fields, which the snapshot cannot mark (PD-15), a changelog deprecation counts | the 35 deprecated root fields of [26 section 7.1](../reference/26-scope-and-tiers.md#71-root-fields-outside-the-reference); the versioned-blueprint family; `ApiKeyInput.admin`; the flat hook fields |
 | S2a Shadowed twin | The schema holds a `V2` twin of the same operation, and the reference routes the twin in its place, so both cannot share one REST route | `bitbucketCloudIntegrationCreate`, `bitbucketCloudIntegrationUpdate`, `moduleUpdate`, `terraformProviderVersionRegisterPlatform` |
 | S3 Owner-deprecated | It has no schema element, and the source that owns it deprecates it and names a replacement: the docs for a protocol or path, a client's repository for that client | `/intent/mcp`; the MQTT worker transport; the `pulumi-spacelift` provider; the deprecated provider resources of [26 sections 7.6 and 7.7](../reference/26-scope-and-tiers.md#76-gcp-service-account-integration-replaced-by-oidc); the login policy `space_*` rules |
@@ -611,6 +611,15 @@ acceptance feature that runs work therefore runs it on a private pool.
   and the `STACK_WEBHOOK_*` actions, which the schema's deprecation flags
   alone would leave served. `make docs-check` fails when an entry is not a
   value of its enum in the GraphQL inventory.
+- **`TestUnitSupersededFields`** does the same for the properties of served
+  schemas: it fails on a field that the `fields` member of a superseded
+  record lists, or on a field the schema deprecates unless a served record
+  keeps it live. A deprecated field whose replacement infraweave serves is
+  superseded under S2 without a record of its own, and the served schema
+  names it under `x-graphql-omitted` with its replacement. `fields` carries
+  the fields of the records above and input fields, which the snapshot
+  cannot mark deprecated (PD-15). `make docs-check` fails when an entry is
+  not a field of its type in the GraphQL inventory.
 - **`TestUnitFeatureCatalogue`** (`internal/features`) fails when:
   - an operation of a served OpenAPI document has no `x-infraweave-feature`,
     or one that names anything but a capability;

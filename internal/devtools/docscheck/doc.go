@@ -22,7 +22,8 @@
 //     docs/data/supersessions.json, <product>:<operationId>, names an
 //     operation of that product's reference spec;
 //   - every enumValues entry of a superseded record, Type.VALUE, names a
-//     value of that enum in docs/data/graphql-inventory.json;
+//     value of that enum in docs/data/graphql-inventory.json, and every
+//     fields entry, Type.field, a field or input field of that type;
 //   - every report that marks a claim *(unverified)* is listed by
 //     a record of docs/data/open-questions.json, the register of open
 //     questions, which in turn makes the report cite that record's id;

@@ -83,7 +83,7 @@ func Check(repo fs.FS) ([]Finding, error) {
 	if err := c.supersededOperations(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
-	c.supersededEnumValues()
+	c.supersededMembers()
 	if err := c.mentions(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
@@ -479,36 +479,44 @@ func (c *checker) supersededOperations() error {
 	return nil
 }
 
-// supersededEnumValues checks that each enumValues entry of the
-// supersessions register, Type.VALUE, names a value of that enum in Deploy's
-// GraphQL inventory, so that TestUnitSupersededEnums never guards a value
-// upstream does not have, and a reference update that renames one is
-// noticed. Without the inventory there is nothing to check against.
-func (c *checker) supersededEnumValues() {
+// supersededMembers checks that each enumValues entry of the supersessions
+// register, Type.VALUE, names a value of that enum in Deploy's GraphQL
+// inventory, and each fields entry, Type.field, a field or input field of
+// that type, so that TestUnitSupersededEnums and TestUnitSupersededFields
+// never guard a name upstream does not have, and a reference update that
+// renames one is noticed. Without the inventory there is nothing to check
+// against.
+func (c *checker) supersededMembers() {
 	reg, inv := c.reg(supersReg), c.reg(specref.Deploy.Register)
 	if reg == nil || inv == nil {
 		return
 	}
-	values := map[string]bool{}
+	// An enum's record lists its values under values, every other kind its
+	// fields or input fields under fields.
+	known := map[string]map[string]bool{"enumValues": {}, "fields": {}}
 	for _, rec := range inv.records {
-		if rec["kind"] != "ENUM" {
-			continue
-		}
 		id, _ := rec["id"].(string)
-		vs, _ := rec["values"].([]any)
+		member, kind := "fields", "fields"
+		if rec["kind"] == "ENUM" {
+			member, kind = "values", "enumValues"
+		}
+		vs, _ := rec[member].([]any)
 		for _, v := range vs {
 			m, _ := v.(map[string]any)
 			name, _ := m["name"].(string)
-			values[id+"."+name] = true
+			known[kind][id+"."+name] = true
 		}
 	}
+	what := map[string]string{"enumValues": "enum value", "fields": "field"}
 	for _, rec := range reg.records {
 		id, _ := rec["id"].(string)
-		entries, _ := rec["enumValues"].([]any)
-		for _, e := range entries {
-			if entry, _ := e.(string); !values[entry] {
-				c.add(reg.path, reg.line(id), "%s lists %s, which is no enum value of %s",
-					id, entry, specref.Deploy.Register)
+		for _, kind := range []string{"enumValues", "fields"} {
+			entries, _ := rec[kind].([]any)
+			for _, e := range entries {
+				if entry, _ := e.(string); !known[kind][entry] {
+					c.add(reg.path, reg.line(id), "%s lists %s, which is no %s of %s",
+						id, entry, what[kind], specref.Deploy.Register)
+				}
 			}
 		}
 	}

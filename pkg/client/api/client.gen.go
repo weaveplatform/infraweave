@@ -121,9 +121,6 @@ const (
 	STACKPOLICYATTACH                        Action = "STACK_POLICY_ATTACH"
 	STACKPOLICYDETACH                        Action = "STACK_POLICY_DETACH"
 	STACKRESLUG                              Action = "STACK_RESLUG"
-	STACKROLEBINDINGCREATE                   Action = "STACK_ROLE_BINDING_CREATE"
-	STACKROLEBINDINGDELETE                   Action = "STACK_ROLE_BINDING_DELETE"
-	STACKROLEBINDINGUPDATE                   Action = "STACK_ROLE_BINDING_UPDATE"
 	STACKSCHEDULEDDELETECREATE               Action = "STACK_SCHEDULED_DELETE_CREATE"
 	STACKSCHEDULEDDELETEDELETE               Action = "STACK_SCHEDULED_DELETE_DELETE"
 	STACKSCHEDULEDDELETEUPDATE               Action = "STACK_SCHEDULED_DELETE_UPDATE"
@@ -373,12 +370,6 @@ func (e Action) Valid() bool {
 		return true
 	case STACKRESLUG:
 		return true
-	case STACKROLEBINDINGCREATE:
-		return true
-	case STACKROLEBINDINGDELETE:
-		return true
-	case STACKROLEBINDINGUPDATE:
-		return true
 	case STACKSCHEDULEDDELETECREATE:
 		return true
 	case STACKSCHEDULEDDELETEDELETE:
@@ -488,42 +479,6 @@ const (
 func (e AwsIntegrationKind) Valid() bool {
 	switch e {
 	case AwsIntegrationKindAwsIntegration:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for BlueprintDeploymentState.
-const (
-	BlueprintDeploymentStateDESTROYING       BlueprintDeploymentState = "DESTROYING"
-	BlueprintDeploymentStateDESTROYINGFAILED BlueprintDeploymentState = "DESTROYING_FAILED"
-	BlueprintDeploymentStateDISCARDED        BlueprintDeploymentState = "DISCARDED"
-	BlueprintDeploymentStateFAILURE          BlueprintDeploymentState = "FAILURE"
-	BlueprintDeploymentStateFINISHED         BlueprintDeploymentState = "FINISHED"
-	BlueprintDeploymentStateINPROGRESS       BlueprintDeploymentState = "IN_PROGRESS"
-	BlueprintDeploymentStateNONE             BlueprintDeploymentState = "NONE"
-	BlueprintDeploymentStateUNCONFIRMED      BlueprintDeploymentState = "UNCONFIRMED"
-)
-
-// Valid indicates whether the value is a known member of the BlueprintDeploymentState enum.
-func (e BlueprintDeploymentState) Valid() bool {
-	switch e {
-	case BlueprintDeploymentStateDESTROYING:
-		return true
-	case BlueprintDeploymentStateDESTROYINGFAILED:
-		return true
-	case BlueprintDeploymentStateDISCARDED:
-		return true
-	case BlueprintDeploymentStateFAILURE:
-		return true
-	case BlueprintDeploymentStateFINISHED:
-		return true
-	case BlueprintDeploymentStateINPROGRESS:
-		return true
-	case BlueprintDeploymentStateNONE:
-		return true
-	case BlueprintDeploymentStateUNCONFIRMED:
 		return true
 	default:
 		return false
@@ -2012,91 +1967,6 @@ type AzureIntegrationStackAttachment struct {
 	Write bool `json:"write"`
 }
 
-// BlueprintDeployment defines model for BlueprintDeployment.
-type BlueprintDeployment struct {
-	// AllowedActions Actions that the user can perform on this BlueprintDeployment.
-	AllowedActions   []Action                     `json:"allowedActions"`
-	Blueprint        BlueprintDeploymentBlueprint `json:"blueprint"`
-	BlueprintVersion BlueprintDeploymentVersion   `json:"blueprintVersion"`
-
-	// CreatedAt CreatedAt is unix timestamp (in seconds) at which the deployment was created
-	CreatedAt int32 `json:"createdAt"`
-
-	// Description Deployment description
-	Description *string `json:"description,omitempty"`
-
-	// Id Deployment ID
-	Id string `json:"id"`
-
-	// Inputs List of non-secret inputs used during deployment
-	Inputs []BlueprintDeploymentInput `json:"inputs"`
-
-	// Name Deployment name
-	Name string `json:"name"`
-
-	// ScheduledDeleteStacks Whether stacks will be deleted when the scheduled deletion fires (true by default)
-	ScheduledDeleteStacks *bool `json:"scheduledDeleteStacks,omitempty"`
-
-	// ScheduledDeleteTimestamp The scheduled deletion timestamp for this deployment (unix seconds), if any
-	ScheduledDeleteTimestamp *int32 `json:"scheduledDeleteTimestamp,omitempty"`
-
-	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
-	Space SpaceRef `json:"space"`
-
-	// Stacks All stacks for this deployment
-	Stacks []BlueprintDeploymentStack `json:"stacks"`
-	State  BlueprintDeploymentState   `json:"state"`
-}
-
-// BlueprintDeploymentBlueprint defines model for BlueprintDeploymentBlueprint.
-type BlueprintDeploymentBlueprint struct {
-	// Id Blueprint ID
-	Id string `json:"id"`
-}
-
-// BlueprintDeploymentInput defines model for BlueprintDeploymentInput.
-type BlueprintDeploymentInput struct {
-	// Checksum SHA256 checksum of the input value
-	Checksum string `json:"checksum"`
-
-	// Id Input ID
-	Id string `json:"id"`
-
-	// Secret Whether this is a secret input
-	Secret bool `json:"secret"`
-
-	// Value Input value
-	Value string `json:"value"`
-}
-
-// BlueprintDeploymentStack defines model for BlueprintDeploymentStack.
-type BlueprintDeploymentStack struct {
-	// Id Stack ID
-	Id string `json:"id"`
-
-	// Name Stack name
-	Name string `json:"name"`
-
-	// Outputs Stack outputs
-	Outputs []StackOutput `json:"outputs"`
-
-	// State StackState represents a discrete state of a Stack, which is also the state of
-	// its most currently running Run.
-	State StackState `json:"state"`
-}
-
-// BlueprintDeploymentState defines model for BlueprintDeploymentState.
-type BlueprintDeploymentState string
-
-// BlueprintDeploymentVersion defines model for BlueprintDeploymentVersion.
-type BlueprintDeploymentVersion struct {
-	// Id Blueprint version ID
-	Id string `json:"id"`
-
-	// Version Blueprint version number
-	Version *string `json:"version,omitempty"`
-}
-
 // BlueprintRef A reference to a Blueprint; fetch it with GET /blueprints/{blueprintId}.
 type BlueprintRef struct {
 	Id string `json:"id"`
@@ -3114,9 +2984,6 @@ type PullRequest struct {
 	// given by GitHub.
 	Id string `json:"id"`
 
-	// Run A reference to a Run; fetch it with GET /runs/{runId}.
-	Run RunRef `json:"run"`
-
 	// Runs Most recent Runs on the Pull Request.
 	Runs []RunRef `json:"runs"`
 
@@ -3270,11 +3137,6 @@ type Run struct {
 	// IsMostRecent Indicates whether the run is the most recent one its current Stack - ie. it
 	// is the one that has last changed the stack state.
 	IsMostRecent bool `json:"isMostRecent"`
-
-	// IsPrioritized Indicates whether the run has been prioritized.
-	// Equivalent to priorityPreset being high.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	IsPrioritized bool `json:"isPrioritized"`
 
 	// NeedsApproval Indicates whether the Run needs approval before it can proceed.
 	NeedsApproval bool `json:"needsApproval"`
@@ -4119,30 +3981,6 @@ type Stack struct {
 	// Administrative Administrative stacks can manage other Stacks at runtime.
 	Administrative bool `json:"administrative"`
 
-	// AfterApply List of after-apply scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	AfterApply []string `json:"afterApply"`
-
-	// AfterDestroy List of after-destroy scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	AfterDestroy []string `json:"afterDestroy"`
-
-	// AfterInit List of after-init scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	AfterInit []string `json:"afterInit"`
-
-	// AfterPerform List of after-perform scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	AfterPerform []string `json:"afterPerform"`
-
-	// AfterPlan List of after-plan scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	AfterPlan []string `json:"afterPlan"`
-
-	// AfterRun List of after-run scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	AfterRun []string `json:"afterRun"`
-
 	// AllowedActions Per-action authorization the viewer holds on this Stack, covering the
 	// granular STACK_SCHEDULED_* actions so scheduling controls can be gated on
 	// explicit role grants rather than coarse space admin/write.
@@ -4170,26 +4008,6 @@ type Stack struct {
 	// Autoretry Will the stack automatically retry invalidated Pull Request Runs.
 	Autoretry bool `json:"autoretry"`
 
-	// BeforeApply List of before-apply scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	BeforeApply []string `json:"beforeApply"`
-
-	// BeforeDestroy List of before-destroy scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	BeforeDestroy []string `json:"beforeDestroy"`
-
-	// BeforeInit List of before-init scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	BeforeInit []string `json:"beforeInit"`
-
-	// BeforePerform List of before-perform scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	BeforePerform []string `json:"beforePerform"`
-
-	// BeforePlan List of before-plan scripts.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	BeforePlan []string `json:"beforePlan"`
-
 	// Blocked Indicates whether the stack is currently blocked by a Run.
 	Blocked bool `json:"blocked"`
 
@@ -4197,8 +4015,7 @@ type Stack struct {
 	Blocker *RunRef `json:"blocker,omitempty"`
 
 	// Blueprint A reference to a Blueprint; fetch it with GET /blueprints/{blueprintId}.
-	Blueprint           *BlueprintRef        `json:"blueprint,omitempty"`
-	BlueprintDeployment *BlueprintDeployment `json:"blueprintDeployment,omitempty"`
+	Blueprint *BlueprintRef `json:"blueprint,omitempty"`
 
 	// Branch Git branch of the repo that the Stack is tracking.
 	Branch string `json:"branch"`
@@ -4760,18 +4577,6 @@ type StackConfigVendorTerragrunt struct {
 	// your apply may execute against mocked values rather than real ones.
 	SkipReplan bool `json:"skipReplan"`
 
-	// SkipReplanWhenRunAll If set to true, the apply phase will reuse the plan from the planning phase instead of
-	// re-planning. Only applies when useRunAll is enabled.
-	// Runs with disabled useRunAll reuse the plan by default.
-	//
-	// WARNING: this means any mocked_outputs referenced during planning will be applied as-is.
-	// Do not enable this together with mocked_outputs unless you fully understand the implications —
-	// your apply may execute against mocked values rather than real ones.
-	//
-	// DEPRECATED: use skipReplan instead, which works for both run-all and non-run-all stacks.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	SkipReplanWhenRunAll bool `json:"skipReplanWhenRunAll"`
-
 	// TerraformVersion Terraform version to use.
 	TerraformVersion *string `json:"terraformVersion,omitempty"`
 
@@ -4900,10 +4705,6 @@ type StackDependenciesUpdateReferencesRequest struct {
 type StackDependency struct {
 	DependsOnStack StackDependencyDetail `json:"dependsOnStack"`
 
-	// DependsOnStackId ID of the dependency.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	DependsOnStackId string `json:"dependsOnStackId"`
-
 	// Id Slug of the dependency. Immutable.
 	Id string `json:"id"`
 
@@ -4913,10 +4714,6 @@ type StackDependency struct {
 	// References Output/Input references
 	References []StackDependencyReference `json:"references"`
 	Stack      StackDependencyDetail      `json:"stack"`
-
-	// StackId ID of the stack that has a dependency.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	StackId string `json:"stackId"`
 
 	// TriggerAlways When true, triggers the downstream stack on every upstream run completion,
 	// even if none of the dependency outputs have changed.
@@ -5177,22 +4974,6 @@ type StackIntegrationAws struct {
 	Region *string `json:"region,omitempty"`
 }
 
-// StackIntegrationGcp GCP integration - with that set up, a Stack gets its dedicated GCP service
-// account and each run and tasks automatically gets its temporary credentials.
-type StackIntegrationGcp struct {
-	// Activated Is this integration activated. If not, serviceAccountEmail and scopes are
-	// expected to be empty.
-	Activated bool `json:"activated"`
-
-	// ServiceAccountEmail Email of the GCP service account created for this stack. Runs and tasks will
-	// get temporary access token for this account.
-	ServiceAccountEmail *string `json:"serviceAccountEmail,omitempty"`
-
-	// TokenScopes List of scopes to request when generating temporary access token for the
-	// service account. It's empty when the integration is not activated.
-	TokenScopes []string `json:"tokenScopes"`
-}
-
 // StackIntegrationSlack Slack integration - with that set up, a Stack or Module can send notifications
 // about various events to a number of Slack channels.
 type StackIntegrationSlack struct {
@@ -5219,10 +5000,6 @@ type StackIntegrations struct {
 
 	// DriftDetection DriftDetectionIntegration describes a Stack's drift detection configuration.
 	DriftDetection *DriftDetectionIntegration `json:"driftDetection,omitempty"`
-
-	// Gcp GCP integration - with that set up, a Stack gets its dedicated GCP service
-	// account and each run and tasks automatically gets its temporary credentials.
-	Gcp StackIntegrationGcp `json:"gcp"`
 
 	// Slack Slack integration - with that set up, a Stack or Module can send notifications
 	// about various events to a number of Slack channels.
@@ -5663,10 +5440,6 @@ type Worker struct {
 
 // WorkerPool WorkerPool represents a single WorkerPool.
 type WorkerPool struct {
-	// ActiveRuns Number of runs currently being processed by this WorkerPool.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	ActiveRuns int32 `json:"activeRuns"`
-
 	// AllowedActions Actions that the user can perform on this WorkerPool.
 	AllowedActions []Action `json:"allowedActions"`
 
@@ -5725,10 +5498,6 @@ type WorkerPool struct {
 	// the launcher's workspace initialization timeout on the pool's workers, otherwise the worker
 	// stops downloading source before this deadline is reached.
 	PreparingTimeoutSeconds *int32 `json:"preparingTimeoutSeconds,omitempty"`
-
-	// QueuedRunsCount Count of queued runs on the public worker pool workers for this account.
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	QueuedRunsCount int32 `json:"queuedRunsCount"`
 
 	// Scans List of scans using this WorkerPool.
 	Scans []WorkerPoolScanReference `json:"scans"`
