@@ -21,11 +21,11 @@ const (
 // ErrTimedOut is returned when a condition is still false at the deadline.
 var ErrTimedOut = errors.New("timed out")
 
-// eventually polls cond until it reports true, returns an error, or ctx's
+// Eventually polls cond until it reports true, returns an error, or ctx's
 // deadline (or waitLimit) passes. It is the suite's only way to wait:
 // decision 0016 forbids a fixed delay. The error names what it waited for
 // and cond's last error, so a timed-out scenario says why.
-func eventually(ctx context.Context, what string, cond func(context.Context) (bool, error)) error {
+func Eventually(ctx context.Context, what string, cond func(context.Context) (bool, error)) error {
 	ctx, cancel := context.WithTimeout(ctx, waitLimit)
 	defer cancel()
 	wait := firstPoll
@@ -54,5 +54,5 @@ func eventually(ctx context.Context, what string, cond func(context.Context) (bo
 }
 
 // errPermanent marks a condition error that no later poll can change, such
-// as a process that has exited; eventually returns it at once.
+// as a process that has exited; Eventually returns it at once.
 var errPermanent = errors.New("will not change")

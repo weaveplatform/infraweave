@@ -128,23 +128,23 @@ func TestUnitSlug(t *testing.T) {
 func TestUnitEventually(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		polls := 0
-		err := eventually(t.Context(), "the third poll", func(context.Context) (bool, error) {
+		err := Eventually(t.Context(), "the third poll", func(context.Context) (bool, error) {
 			polls++
 			return polls == 3, nil
 		})
 		if err != nil || polls != 3 {
-			t.Errorf("eventually = %v after %d polls", err, polls)
+			t.Errorf("Eventually = %v after %d polls", err, polls)
 		}
 	})
 	synctest.Test(t, func(t *testing.T) {
 		start := time.Now()
 		last := errors.New("connection refused")
-		err := eventually(t.Context(), "a dependency", func(context.Context) (bool, error) {
+		err := Eventually(t.Context(), "a dependency", func(context.Context) (bool, error) {
 			return false, last
 		})
 		if !errors.Is(err, ErrTimedOut) || !errors.Is(err, last) ||
 			err.Error() != "waiting for a dependency: timed out (last: connection refused)" {
-			t.Errorf("eventually = %v", err)
+			t.Errorf("Eventually = %v", err)
 		}
 		if elapsed := time.Since(start); elapsed < waitLimit {
 			t.Errorf("gave up after %s, before the %s limit", elapsed, waitLimit)
@@ -153,14 +153,14 @@ func TestUnitEventually(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
-		err := eventually(ctx, "nothing", func(context.Context) (bool, error) { return false, nil })
+		err := Eventually(ctx, "nothing", func(context.Context) (bool, error) { return false, nil })
 		if err == nil || err.Error() != "waiting for nothing: timed out" {
-			t.Errorf("eventually = %v", err)
+			t.Errorf("Eventually = %v", err)
 		}
 	})
 	synctest.Test(t, func(t *testing.T) {
 		polls := 0
-		err := eventually(t.Context(), "a process", func(context.Context) (bool, error) {
+		err := Eventually(t.Context(), "a process", func(context.Context) (bool, error) {
 			polls++
 			return false, errPermanent
 		})

@@ -10,9 +10,9 @@ import (
 const Name = "platform"
 
 // files are the platform stream's migrations, NNNNN_snake_case.sql beside
-// this file. With none yet, the zero embed.FS is the empty stream: the
-// //go:embed *.sql directive goes on it with the first file, since a
-// pattern that matches nothing does not compile.
+// this file.
+//
+//go:embed *.sql
 var files embed.FS
 
 // Stream is the platform stream, which internal/app registers before every

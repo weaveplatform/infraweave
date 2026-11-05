@@ -46,8 +46,9 @@ func captureEntries(t *testing.T) map[string]bool {
 	return out
 }
 
-// TestAccCaptures replays every capture's calls against infraweave serve. A
-// failure is a parity bug in infraweave, named by its capture.
+// TestAccCaptures replays every capture's calls against infraweave serve on
+// a database of its own. A failure is a parity bug in infraweave, named by
+// its capture.
 func TestAccCaptures(t *testing.T) {
 	captures, err := LoadCaptures(capturesRoot, captureEntries(t))
 	if err != nil {
@@ -57,11 +58,29 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config, err := serverConfig(nil)
+	if err := DockerReachable(t.Context()); err != nil {
+		if os.Getenv(envRequireDocker) == "1" {
+			t.Fatalf("%s=1, and no Docker daemon answers: %v", envRequireDocker, err)
+		}
+		t.Skipf("the server needs PostgreSQL: %v", err)
+	}
+	cover, _ := coverDir(t)
+	deps := &Dependencies{Migrate: func(ctx context.Context, dsn string) error {
+		return Migrate(ctx, bin, cover, dsn)
+	}}
+	t.Cleanup(func() {
+		if err := deps.Close(context.WithoutCancel(t.Context())); err != nil {
+			t.Error(err)
+		}
+	})
+	db, err := deps.Postgres(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	cover, _ := coverDir(t)
+	config, err := serverConfig(db.DSN, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	srv, err := StartServer(t.Context(), bin, t.TempDir(), cover, config)
 	if err != nil {
 		t.Fatal(err)

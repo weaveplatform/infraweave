@@ -1,3 +1,4 @@
+@postgres
 Feature: Served API
   infraweave serve answers the API on the API listener under /api/v1
   and the probes on the admin listener alone (decision 0017). Every
@@ -7,7 +8,8 @@ Feature: Served API
   Idempotency-Key on POST and PATCH, and can be switched off for one caller.
   A stubbed POST answers 501, which releases its key, so an idempotent replay
   needs an operation that succeeds: TestUnitGuardedIdempotency proves it
-  until a family serves a POST. Each scenario runs its own infraweave serve.
+  until a family serves a POST. Each scenario runs its own infraweave serve
+  on a database of its own.
 
   Scenario: The admin listener answers the liveness probe
     Given a running infraweave server

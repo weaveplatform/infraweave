@@ -42,16 +42,20 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^"([A-Z]+) ([^"]+)" is sent (\d+) times on the API listener$`, s.sendTimes)
 	sc.Step(`^the response carries Retry-After and the rate-limit headers$`, s.rateLimitHeaders)
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
+	s.registerReplicas(sc)
 }
 
-// serverConfig is a strict configuration file for one scenario's server:
-// both listeners on loopback port 0, and the settings the scenario names.
-func serverConfig(rateLimit map[string]any) ([]byte, error) {
+// serverConfig is a strict configuration file for one server: both
+// listeners on loopback port 0, the database at dsn, and the settings the
+// scenario names.
+func serverConfig(dsn string, rateLimit map[string]any) ([]byte, error) {
 	server := map[string]any{"listen": "127.0.0.1:0", "admin_listen": "127.0.0.1:0"}
 	if rateLimit != nil {
 		server["rate_limit"] = rateLimit
 	}
-	out, err := yaml.Marshal(map[string]any{"server": server})
+	out, err := yaml.Marshal(
+		map[string]any{"server": server, "database": map[string]any{"url": dsn}},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)
 	}
@@ -59,11 +63,7 @@ func serverConfig(rateLimit map[string]any) ([]byte, error) {
 }
 
 func (s *servedSteps) start(ctx context.Context, rateLimit map[string]any) error {
-	c, err := serverConfig(rateLimit)
-	if err != nil {
-		return err
-	}
-	_, err = s.w.startServer(ctx, c)
+	_, err := s.w.startServer(ctx, rateLimit)
 	return err
 }
 

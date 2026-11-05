@@ -81,7 +81,7 @@ func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, typ problem.Type)
 
 func TestUnitReplay(t *testing.T) {
 	next := &counting{status: http.StatusCreated}
-	h := handler(NewMemory(time.Hour, time.Now), next)
+	h := handler(NewMemory(Defaults(), time.Now), next)
 	create := req{
 		method: http.MethodPost,
 		target: "/things?x=1",
@@ -121,7 +121,7 @@ func TestUnitReplay(t *testing.T) {
 
 func TestUnitReuseWithAnotherRequest(t *testing.T) {
 	next := &counting{status: http.StatusCreated}
-	h := handler(NewMemory(time.Hour, time.Now), next)
+	h := handler(NewMemory(Defaults(), time.Now), next)
 	send(h, req{method: http.MethodPost, target: "/things", body: "a", keys: []string{"k"}})
 	for name, q := range map[string]req{
 		"body":   {method: http.MethodPost, target: "/things", body: "b", keys: []string{"k"}},
@@ -143,7 +143,7 @@ func TestUnitInFlight(t *testing.T) {
 		<-release
 		w.WriteHeader(http.StatusAccepted)
 	})
-	h := handler(NewMemory(time.Hour, time.Now), slow)
+	h := handler(NewMemory(Defaults(), time.Now), slow)
 	q := req{method: http.MethodPost, target: "/runs", keys: []string{"k"}}
 	// The first request runs off the test goroutine and reports its status
 	// through done rather than t.Fatal.
@@ -166,7 +166,7 @@ func TestUnitInFlight(t *testing.T) {
 
 func TestUnitServerErrorReleases(t *testing.T) {
 	next := &counting{status: http.StatusServiceUnavailable}
-	h := handler(NewMemory(time.Hour, time.Now), next)
+	h := handler(NewMemory(Defaults(), time.Now), next)
 	q := req{method: http.MethodPost, target: "/things", body: "a", keys: []string{"k"}}
 	send(h, q)
 	send(h, q)
@@ -182,7 +182,7 @@ func TestUnitServerErrorReleases(t *testing.T) {
 }
 
 func TestUnitPanicReleases(t *testing.T) {
-	store := NewMemory(time.Hour, time.Now)
+	store := NewMemory(Defaults(), time.Now)
 	boom := handler(
 		store,
 		http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }),
@@ -196,14 +196,18 @@ func TestUnitPanicReleases(t *testing.T) {
 		}()
 		send(boom, q)
 	}()
-	if _, found, _ := store.Get(t.Context(), Key{Caller: "192.0.2.1:1234", Value: "k"}); found {
+	if _, claimed, _ := store.Claim(
+		t.Context(),
+		Key{Caller: "192.0.2.1:1234", Value: "k"},
+		"fp",
+	); !claimed {
 		t.Error("the key stayed reserved after the handler panicked")
 	}
 }
 
 func TestUnitIgnoredRequests(t *testing.T) {
 	next := &counting{status: http.StatusOK}
-	h := handler(NewMemory(time.Hour, time.Now), next)
+	h := handler(NewMemory(Defaults(), time.Now), next)
 	for _, q := range []req{
 		{method: http.MethodGet, target: "/things", keys: []string{"k"}},
 		{method: http.MethodPut, target: "/things/1", keys: []string{"k"}},
@@ -222,7 +226,7 @@ func TestUnitIgnoredRequests(t *testing.T) {
 }
 
 func TestUnitRejectedBeforeTheStore(t *testing.T) {
-	store := &fake{Memory: NewMemory(time.Hour, time.Now)}
+	store := &fake{Memory: NewMemory(Defaults(), time.Now)}
 	h := handler(store, &counting{status: http.StatusOK})
 	for name, tc := range map[string]struct {
 		q    req
@@ -253,7 +257,7 @@ var errBroken = errors.New("connection reset")
 func (brokenBody) Read([]byte) (int, error) { return 0, errBroken }
 
 func TestUnitUnreadableBody(t *testing.T) {
-	h := handler(NewMemory(time.Hour, time.Now), &counting{status: http.StatusOK})
+	h := handler(NewMemory(Defaults(), time.Now), &counting{status: http.StatusOK})
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", brokenBody{})
 	r.Header.Set(Header, "k")
 	rec := httptest.NewRecorder()
@@ -265,27 +269,23 @@ func TestUnitUnreadableBody(t *testing.T) {
 // counts its calls.
 type fake struct {
 	*Memory
-	calls                          atomic.Int32
-	get, reserve, complete, releas error
-	loseRace                       bool
+	calls                   atomic.Int32
+	claim, complete, releas error
+	// loseRace answers every Claim with a request in flight.
+	loseRace bool
 }
 
 var errStore = errors.New("store unavailable")
 
-func (f *fake) Get(ctx context.Context, k Key) (Record, bool, error) {
+func (f *fake) Claim(ctx context.Context, k Key, fp string) (Record, bool, error) {
 	f.calls.Add(1)
-	if f.get != nil {
-		return Record{}, false, f.get
+	switch {
+	case f.claim != nil:
+		return Record{}, false, f.claim
+	case f.loseRace:
+		return Record{Fingerprint: fp}, false, nil
 	}
-	return f.Memory.Get(ctx, k)
-}
-
-func (f *fake) Reserve(ctx context.Context, k Key, fp string) (bool, error) {
-	f.calls.Add(1)
-	if f.reserve != nil || f.loseRace {
-		return false, f.reserve
-	}
-	return f.Memory.Reserve(ctx, k, fp)
+	return f.Memory.Claim(ctx, k, fp)
 }
 
 func (f *fake) Complete(ctx context.Context, k Key, resp Response) error {
@@ -313,14 +313,13 @@ func TestUnitStoreFailures(t *testing.T) {
 		wantRuns int32
 		wantLog  string
 	}{
-		"get":       {&fake{get: errStore}, http.StatusOK, http.StatusInternalServerError, 0, "op=get"},
-		"reserve":   {&fake{reserve: errStore}, http.StatusOK, http.StatusInternalServerError, 0, "op=reserve"},
+		"claim":     {&fake{claim: errStore}, http.StatusOK, http.StatusInternalServerError, 0, "op=claim"},
 		"lost race": {&fake{loseRace: true}, http.StatusOK, http.StatusConflict, 0, ""},
 		"complete":  {&fake{complete: errStore}, http.StatusOK, http.StatusOK, 1, "op=complete"},
 		"release":   {&fake{releas: errStore}, http.StatusBadGateway, http.StatusBadGateway, 1, "op=release"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			tc.store.Memory = NewMemory(time.Hour, time.Now)
+			tc.store.Memory = NewMemory(Defaults(), time.Now)
 			var logs bytes.Buffer
 			next := &counting{status: tc.status}
 			h := Middleware(
@@ -346,7 +345,7 @@ func TestUnitStoreFailures(t *testing.T) {
 }
 
 func TestUnitCapture(t *testing.T) {
-	store := NewMemory(time.Hour, time.Now)
+	store := NewMemory(Defaults(), time.Now)
 	q := req{method: http.MethodPost, target: "/", keys: []string{"k"}}
 	// A handler that writes nothing answers 200 with an empty body.
 	silent := handler(store, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))

@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
@@ -17,6 +20,16 @@ func local() config.Config {
 	c := config.Defaults()
 	c.Server.Listen, c.Server.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
 	return c
+}
+
+// memory is the controls' state in process memory, for tests that serve one
+// handler and need no database.
+func memory(c config.Server) Guards {
+	return Guards{
+		Switch:  ratelimit.NewCallers(c.RateLimit.DisabledCallers),
+		Buckets: ratelimit.NewMemory(time.Now),
+		Keys:    idempotency.NewMemory(c.Idempotency, time.Now),
+	}
 }
 
 func get(t *testing.T, url string) int {
@@ -35,7 +48,7 @@ func get(t *testing.T, url string) int {
 }
 
 func TestUnitStartServesBothListeners(t *testing.T) {
-	r, err := Start(t.Context(), local(), discard())
+	r, err := Start(t.Context(), local(), discard(), memory(local().Server))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,10 +64,9 @@ func TestUnitStartServesBothListeners(t *testing.T) {
 	}
 }
 
-func TestUnitServe(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if err := Serve(ctx, local(), discard()); err != nil {
+func TestUnitServeNeedsADatabase(t *testing.T) {
+	if err := Serve(t.Context(), local(), discard()); !errors.Is(err, sql.ErrConfig) ||
+		!strings.Contains(err.Error(), "database.url is required") {
 		t.Errorf("Serve: %v", err)
 	}
 }
@@ -64,7 +76,15 @@ func TestUnitServe(t *testing.T) {
 func TestUnitServeValidates(t *testing.T) {
 	c := local()
 	c.Server.Idempotency.TTL = 0
-	if r, err := Start(t.Context(), c, discard()); !errors.Is(err, serve.ErrConfig) {
+	if r, err := Start(
+		t.Context(),
+		c,
+		discard(),
+		memory(c.Server),
+	); !errors.Is(
+		err,
+		serve.ErrConfig,
+	) {
 		if r != nil {
 			_ = r.Shutdown(context.Background())
 		}

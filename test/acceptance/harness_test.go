@@ -47,7 +47,7 @@ func (h *harnessSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the shared OIDC issuer$`, h.oidc)
 	sc.Step(`^a token it mints for subject "([^"]+)" verifies against its JWKS$`, h.verifies)
 	sc.Step(`^the fixture features in "([^"]+)"$`, h.fixtureFeatures)
-	sc.Step(`^the suite runs them nested without Docker( requiring it)?$`, h.runNested)
+	sc.Step(`^the suite runs them nested( without Docker)?( requiring it)?$`, h.runNested)
 	sc.Step(`^the nested run (passes|fails)$`, h.nestedResult)
 	sc.Step(`^its output says "([^"]+)"$`, h.outputSays)
 	sc.Step(`^it left "([^"]+)" in the evidence of "([^"]+)"$`, h.leftEvidence)
@@ -76,7 +76,7 @@ func (h *harnessSteps) objectStore(ctx context.Context) (err error) {
 }
 
 func (h *harnessSteps) storeHealthy(ctx context.Context) error {
-	return eventually(ctx, "the object store's health endpoint", h.store.Healthy)
+	return Eventually(ctx, "the object store's health endpoint", h.store.Healthy)
 }
 
 func (h *harnessSteps) oidc() (err error) {
@@ -167,10 +167,11 @@ func (h *harnessSteps) fixtureFeatures(dir string) error {
 	return nil
 }
 
-// runNested runs this test binary's TestAccFeatures over the fixtures with
-// Docker out of reach. The nested run shares the built binary and writes
-// its evidence and coverage into the scenario's own directory.
-func (h *harnessSteps) runNested(ctx context.Context, requiring string) error {
+// runNested runs this test binary's TestAccFeatures over the fixtures,
+// with Docker out of reach when without is set. The nested run shares the
+// built binary and writes its evidence and coverage into the scenario's own
+// directory; with Docker it starts dependencies of its own.
+func (h *harnessSteps) runNested(ctx context.Context, without, requiring string) error {
 	bin, err := binary(ctx)
 	if err != nil {
 		return err
@@ -193,8 +194,12 @@ func (h *harnessSteps) runNested(ctx context.Context, requiring string) error {
 		envBinary+"="+bin,
 		envCucumber+"=",
 		envPartition+"=",
-		envNoDocker+"=1",
 	)
+	if without != "" {
+		cmd.Env = append(cmd.Env, envNoDocker+"=1")
+	} else {
+		cmd.Env = append(cmd.Env, envNoDocker+"=")
+	}
 	if requiring != "" {
 		cmd.Env = append(cmd.Env, envRequireDocker+"=1")
 	} else {

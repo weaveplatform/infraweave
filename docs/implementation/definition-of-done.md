@@ -24,7 +24,7 @@ until then the row is a rule reviewers apply by hand.
 | Vet | `make vet`: `go vet ./...`, run by the `unit` job on each operating system |
 | Lint | `make lint`: golangci-lint with `.golangci.yml` over the whole tree (`--new=false`), zero issues; the `lint` job pins the linter version from `.github/golangci-lint-version`. `gosec` runs inside it |
 | Import boundaries | From P1b: depguard in `.golangci.yml` with the rules in [repo-layout.md](repo-layout.md#depguard-rules); a forbidden import fails `make lint` |
-| Determinism | From P1b: forbidigo rejects `time.Sleep` in `_test.go` files; waiting goes through `acceptance.eventually` or `testing/synctest` |
+| Determinism | From P1b: forbidigo rejects `time.Sleep` in `_test.go` files; waiting goes through `acceptance.Eventually` or `testing/synctest` |
 | Unit | `make test`: unit tests with `-race -shuffle=on -count=1` on `ubuntu-latest`, `macos-latest` and `windows-latest`, coverage written to `cover/unit`. From P1c, it selects `-run '^TestUnit'` across every package |
 | Test names | From P1c: `TestUnitTestNames` fails on a top-level `Test` function that is neither `TestUnit…` nor `TestAcc…` |
 | Acceptance | `make accept`: the godog features in `test/acceptance/features` on `ubuntu-latest`, coverage written to `cover/accept`. From P1c, `TestAccFeatures` runs the built `cmd/infraweave` as a subprocess against containers started by testcontainers-go, with `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, split into the `accept-core`, `accept-runs` and `accept-integrations` jobs |

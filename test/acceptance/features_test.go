@@ -77,6 +77,13 @@ func newSuite(t *testing.T) *suite {
 	if v, ok := os.LookupEnv(envCucumber); ok {
 		s.cucumber = v
 	}
+	s.deps.Migrate = func(ctx context.Context, dsn string) error {
+		bin, err := binary(ctx)
+		if err != nil {
+			return err
+		}
+		return Migrate(ctx, bin, s.coverDir, dsn)
+	}
 	return s
 }
 
@@ -224,14 +231,18 @@ func TestAccFeatures(t *testing.T) {
 
 // world is one scenario's state, shared by its step groups.
 type world struct {
-	s      *suite
-	name   string
-	tags   []string
-	dir    string
-	server *Server
-	db     *Database
-	// api and admin call the server's two listeners through pkg/sdk.
+	s    *suite
+	name string
+	tags []string
+	dir  string
+	// servers are the scenario's infraweave processes, each a replica on
+	// the scenario's database, in the order they started.
+	servers []*Server
+	db      *Database
+	// api and admin call the first server's two listeners through pkg/sdk;
+	// apis call each server's API listener, in the order of servers.
 	api, admin *sdk.Client
+	apis       []*sdk.Client
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -257,8 +268,8 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 		if err != nil && w.dir != "" {
 			err = errors.Join(err, w.evidence(ctx))
 		}
-		if w.server != nil {
-			err = errors.Join(err, w.server.Stop(ctx))
+		for _, srv := range w.servers {
+			err = errors.Join(err, srv.Stop(ctx))
 		}
 		if w.db != nil {
 			err = errors.Join(err, w.db.Drop(ctx))
@@ -282,16 +293,22 @@ func slug(name string) string {
 }
 
 // evidence writes what decision 0016 asks of a failed scenario to
-// out/<scenario>/: the server's output and configuration and, for a
-// scenario that took a database, a dump of it.
+// out/<scenario>/: each server's output and configuration, the first's at
+// the top and each later one's in server-<n>/, and, for a scenario that
+// took a database, a dump of it.
 func (w *world) evidence(ctx context.Context) error {
 	dir := filepath.Join(w.s.out, slug(w.name))
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("evidence: %w", err)
 	}
 	var err error
-	if w.server != nil {
-		err = w.server.Evidence(dir)
+	for i, srv := range w.servers {
+		d := dir
+		if i > 0 {
+			d = filepath.Join(dir, fmt.Sprintf("server-%d", i+1))
+			err = errors.Join(err, os.MkdirAll(d, 0o750))
+		}
+		err = errors.Join(err, srv.Evidence(d))
 	}
 	if w.db != nil {
 		dump, dumpErr := w.db.Dump(ctx)
@@ -318,22 +335,50 @@ func (w *world) database(ctx context.Context) (*Database, error) {
 	return db, nil
 }
 
-// startServer runs infraweave serve with config for the scenario.
-func (w *world) startServer(ctx context.Context, config []byte) (*Server, error) {
+// errNeedsPostgres is returned when a scenario without @postgres starts a
+// server, which needs the scenario's database.
+var errNeedsPostgres = errors.New("a scenario that starts infraweave needs @postgres")
+
+// startServer runs one more infraweave serve on the scenario's database,
+// with rateLimit as its server.rate_limit when it is not nil.
+func (w *world) startServer(ctx context.Context, rateLimit map[string]any) (*Server, error) {
+	if !slices.Contains(w.tags, "@postgres") {
+		return nil, errNeedsPostgres
+	}
+	db, err := w.database(ctx)
+	if err != nil {
+		return nil, err
+	}
+	config, err := serverConfig(db.DSN, rateLimit)
+	if err != nil {
+		return nil, err
+	}
 	bin, err := binary(ctx)
 	if err != nil {
 		return nil, err
 	}
-	srv, err := StartServer(ctx, bin, w.dir, w.s.coverDir, config)
+	dir := w.dir
+	if len(w.servers) > 0 {
+		dir = filepath.Join(w.dir, fmt.Sprintf("server-%d", len(w.servers)+1))
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return nil, fmt.Errorf("server dir: %w", err)
+		}
+	}
+	srv, err := StartServer(ctx, bin, dir, w.s.coverDir, config)
 	if err != nil {
 		return nil, err
 	}
-	w.server = srv
-	if w.api, err = sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry)); err != nil {
+	w.servers = append(w.servers, srv)
+	api, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry))
+	if err != nil {
 		return nil, fmt.Errorf("sdk: %w", err)
 	}
-	if w.admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
-		return nil, fmt.Errorf("sdk: %w", err)
+	w.apis = append(w.apis, api)
+	if len(w.servers) == 1 {
+		w.api = api
+		if w.admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
+			return nil, fmt.Errorf("sdk: %w", err)
+		}
 	}
 	return srv, nil
 }

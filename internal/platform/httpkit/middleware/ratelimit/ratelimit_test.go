@@ -26,12 +26,12 @@ func ok(http.ResponseWriter, *http.Request) {}
 
 func TestUnitBucketRefillAndBurst(t *testing.T) {
 	c := newClock()
-	m := NewMemory()
+	m := NewMemory(c.now)
 	l := Limit{Rate: 2, Burst: 3}
 	k := Key{Caller: "a", Class: Standard}
 	take := func() State {
 		t.Helper()
-		st, err := m.Take(t.Context(), k, l, c.now())
+		st, err := m.Take(t.Context(), k, l)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,25 +66,25 @@ func TestUnitBucketRefillAndBurst(t *testing.T) {
 
 func TestUnitBucketsAreSeparate(t *testing.T) {
 	c := newClock()
-	m := NewMemory()
+	m := NewMemory(c.now)
 	l := Limit{Rate: 1, Burst: 1}
 	for _, k := range []Key{{"a", Standard}, {"a", Expensive}, {"b", Standard}} {
-		if st, _ := m.Take(t.Context(), k, l, c.now()); !st.Allowed {
+		if st, _ := m.Take(t.Context(), k, l); !st.Allowed {
 			t.Errorf("%+v: first request refused", k)
 		}
 	}
-	if st, _ := m.Take(t.Context(), Key{"a", Standard}, l, c.now()); st.Allowed {
+	if st, _ := m.Take(t.Context(), Key{"a", Standard}, l); st.Allowed {
 		t.Error("a's standard bucket admitted a second request")
 	}
 }
 
 func TestUnitMemorySweepsFullBuckets(t *testing.T) {
 	c := newClock()
-	m := NewMemory()
+	m := NewMemory(c.now)
 	l := Limit{Rate: 1, Burst: 10}
-	_, _ = m.Take(t.Context(), Key{"idle", Standard}, l, c.now())
+	_, _ = m.Take(t.Context(), Key{"idle", Standard}, l)
 	c.advance(sweepEvery)
-	_, _ = m.Take(t.Context(), Key{"busy", Standard}, l, c.now())
+	_, _ = m.Take(t.Context(), Key{"busy", Standard}, l)
 	if _, kept := m.buckets[Key{"idle", Standard}]; kept {
 		t.Error("a refilled bucket survived the sweep")
 	}
@@ -94,7 +94,7 @@ func TestUnitMemorySweepsFullBuckets(t *testing.T) {
 	// Within the interval nothing is scanned, however full.
 	c.advance(time.Second)
 	m.buckets[Key{"full", Standard}] = &bucket{tokens: 10, at: c.now(), full: c.now()}
-	_, _ = m.Take(t.Context(), Key{"busy", Standard}, l, c.now())
+	_, _ = m.Take(t.Context(), Key{"busy", Standard}, l)
 	if _, kept := m.buckets[Key{"full", Standard}]; !kept {
 		t.Error("swept before the interval passed")
 	}
@@ -103,8 +103,7 @@ func TestUnitMemorySweepsFullBuckets(t *testing.T) {
 // TestUnitMemoryConcurrentTake checks that concurrent requests never spend
 // one token twice: exactly the burst is admitted.
 func TestUnitMemoryConcurrentTake(t *testing.T) {
-	m := NewMemory()
-	now := newClock().now()
+	m := NewMemory(newClock().now)
 	l := Limit{Rate: 1e-9, Burst: 10}
 	var (
 		wg      sync.WaitGroup
@@ -113,7 +112,7 @@ func TestUnitMemoryConcurrentTake(t *testing.T) {
 	)
 	for range 100 {
 		wg.Go(func() {
-			st, _ := m.Take(context.Background(), Key{"a", Standard}, l, now)
+			st, _ := m.Take(context.Background(), Key{"a", Standard}, l)
 			if st.Allowed {
 				mu.Lock()
 				allowed++
@@ -192,7 +191,7 @@ func byPath(r *http.Request) Class {
 func TestUnitMiddlewareHeadersAnd429(t *testing.T) {
 	c := newClock()
 	cfg := Config{Standard: Limit{Rate: 1, Burst: 3}, Expensive: Limit{Rate: 0.5, Burst: 1}}
-	h := Middleware(cfg, NewMemory(), ClientAddr, byPath, c.now)(http.HandlerFunc(ok))
+	h := Middleware(cfg, NewMemory(c.now), ClientAddr, byPath)(http.HandlerFunc(ok))
 	serve := func(remote, path string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, request(remote, path))
@@ -236,7 +235,7 @@ type failing struct{}
 
 var errStore = errors.New("store unavailable")
 
-func (failing) Take(context.Context, Key, Limit, time.Time) (State, error) {
+func (failing) Take(context.Context, Key, Limit) (State, error) {
 	return State{}, errStore
 }
 
@@ -244,7 +243,7 @@ func (failing) Disabled(context.Context, string) (bool, error) { return false, e
 
 func TestUnitStoreFailure(t *testing.T) {
 	for name, mw := range map[string]func(http.Handler) http.Handler{
-		"bucket": Middleware(Defaults(), failing{}, ClientAddr, byPath, time.Now),
+		"bucket": Middleware(Defaults(), failing{}, ClientAddr, byPath),
 		"switch": Disabled(failing{}, ClientAddr),
 	} {
 		t.Run(name, func(t *testing.T) {

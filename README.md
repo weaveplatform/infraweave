@@ -94,6 +94,8 @@ phase.
 | `server.rate_limit.expensive.burst` | | `INFRAWEAVE_SERVER_RATE_LIMIT_EXPENSIVE_BURST` | `10` |
 | `server.rate_limit.disabled_callers` | | `INFRAWEAVE_SERVER_RATE_LIMIT_DISABLED_CALLERS` (comma-separated) | none |
 | `server.idempotency.ttl` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_TTL` | `24h` |
+| `server.idempotency.lock` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_LOCK` | `5m` |
+| `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
 
 A flag beats the environment, which beats the YAML file named by
 `--config`. The file is strict: an unknown key fails startup. On `SIGINT`
@@ -113,18 +115,21 @@ controls, whether its operation is implemented or a stub:
 - **Idempotency keys.** A `POST` or `PATCH` with an `Idempotency-Key` runs
   once. A repeat replays the first response with `Idempotency-Replayed:
   true`; a key reused for another request answers `422`, one still in
-  flight `409`. A `5xx` is not kept, so a retry runs again. Searches ignore
-  the key.
-- **The operator switch.** A caller in `server.rate_limit.disabled_callers`
-  gets `503` `api-disabled`, and other callers are unaffected. The list is
-  read at startup.
+  flight `409`. A `5xx` is not kept, so a retry runs again. A key still in
+  flight after `server.idempotency.lock`, as when its replica crashed, is
+  taken over by the next request with it. Searches ignore the key.
+- **The operator switch.** A caller in `server.rate_limit.disabled_callers`,
+  or in the `api_disabled_callers` table until its `until`, gets `503`
+  `api-disabled`, and other callers are unaffected. The list is read at
+  startup; a change to the table takes effect on every replica once
+  `NOTIFY infraweave_invalidate, 'api_disabled_callers'` announces it.
 
 Until authentication arrives the caller is the client's IP address, so
-behind a proxy every client shares the proxy's budget. Buckets and keys
-are held in process memory: each replica enforces its own budget and keeps
-its own keys, which is right for one replica only. A shared store arrives
-with [decision 0005](docs/research/decisions/0005-persistence-postgresql.md)'s
-phase.
+behind a proxy every client shares the proxy's budget. The buckets, keys
+and switch live in PostgreSQL
+([decision 0005](docs/research/decisions/0005-persistence-postgresql.md)),
+so every replica on one database enforces one budget and sees the same
+keys.
 
 ## Layout
 

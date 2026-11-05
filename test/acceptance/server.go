@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	"gopkg.in/yaml.v3"
 )
 
 // BuildBinary builds cmd/infraweave from the module at root into dir with
@@ -42,6 +44,30 @@ func BuildBinary(ctx context.Context, root, dir string) (string, error) {
 		return "", fmt.Errorf("build infraweave: %w: %s", err, out)
 	}
 	return bin, nil
+}
+
+// Migrate runs bin migrate up against the database at dsn, as an
+// operator's migration job does, writing coverage to coverDir.
+func Migrate(ctx context.Context, bin, coverDir, dsn string) error {
+	dir, err := os.MkdirTemp("", "infraweave-migrate-")
+	if err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	defer os.RemoveAll(dir)
+	config, err := yaml.Marshal(map[string]any{"database": map[string]any{"url": dsn}})
+	if err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, config, 0o600); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, bin, "migrate", "up", "--config", path)
+	cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("infraweave migrate up: %w: %s", err, out)
+	}
+	return nil
 }
 
 // Server is one infraweave serve subprocess. It binds both listeners on
@@ -99,7 +125,7 @@ func StartServer(ctx context.Context, bin, dir, coverDir string, config []byte) 
 		s.waitErr = s.cmd.Wait()
 		close(s.done)
 	}()
-	err := eventually(ctx, "infraweave to log its listeners", func(context.Context) (bool, error) {
+	err := Eventually(ctx, "infraweave to log its listeners", func(context.Context) (bool, error) {
 		if s.exited() {
 			return false, fmt.Errorf(
 				"%w %w: %w: %s",
@@ -112,7 +138,7 @@ func StartServer(ctx context.Context, bin, dir, coverDir string, config []byte) 
 		return s.listening(), nil
 	})
 	if err == nil {
-		err = eventually(
+		err = Eventually(
 			ctx,
 			"GET /livez on the admin listener",
 			func(ctx context.Context) (bool, error) {
@@ -179,7 +205,7 @@ func (s *Server) Stop(ctx context.Context) error {
 		!errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("stop infraweave: %w", err)
 	}
-	err := eventually(ctx, "infraweave to exit after SIGTERM", func(context.Context) (bool, error) {
+	err := Eventually(ctx, "infraweave to exit after SIGTERM", func(context.Context) (bool, error) {
 		return s.exited(), nil
 	})
 	if err != nil {

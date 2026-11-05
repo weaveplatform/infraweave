@@ -588,7 +588,7 @@ passing success, denial and failure scenarios.
    `@objectstore` (RustFS) and `@oidc` dependencies lazily through
    testcontainers-go, and writes logs to
    `test/acceptance/out/<scenario>/` on failure. `test/acceptance/images.go`
-   pins every image by digest. `acceptance.eventually` is the only wait.
+   pins every image by digest. `acceptance.Eventually` is the only wait.
    Feature: `acceptance_harness.feature` (skip without Docker, failure with
    `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, evidence on failure).
 3. `internal/devtools/specref`: `specref parity` decides served, served with
@@ -763,8 +763,10 @@ needs from its first database connection.
    from P2b; plaintext behind the store interface until then),
    `rate_limit_buckets` (`UNLOGGED`, one upsert per request) and
    `api_disabled_callers` with cache invalidation on `infraweave_invalidate`.
-   Tests: `api_conventions.feature` against two `serve` replicas sharing a
-   key and a bucket.
+   `serve` requires `database.url` and keeps all three there. Tests: the store
+   contracts against PostgreSQL, and `api_idempotency_replicas.feature`,
+   `api_rate_limit_replicas.feature` and `api_disabled_callers.feature`
+   against two `serve` replicas on one database.
 5. `internal/platform/observe`: `log/slog` JSON with the standard fields,
    `X-Request-Id` validation and echo, the redacting handler, the access log;
    `/readyz` and `/startupz` beside P1's `/livez` on the admin listener,

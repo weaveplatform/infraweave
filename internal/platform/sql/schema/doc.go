@@ -12,5 +12,6 @@
 // # Dependencies
 //
 // It imports platform/sql/migrate for the Stream type. internal/app
-// registers it.
+// registers it; the idempotency and ratelimit middleware read and write its
+// tables.
 package schema
