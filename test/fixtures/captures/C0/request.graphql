@@ -1,0 +1,9 @@
+# POST https://example.app.spacelift.io/graphql
+query Stack($id: ID!) {
+  stack(id: $id) {
+    id
+    name
+    state
+  }
+}
+# variables: {"id": "example-stack"}

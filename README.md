@@ -131,6 +131,7 @@ phase.
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
 | `test/acceptance/` | Gherkin features run by godog (`TestAccFeatures`) against the committed reference and the built `infraweave` binary, with PostgreSQL and the object store started by testcontainers from the digests in `images.go`; a failed scenario leaves its logs, configuration and database dump in `test/acceptance/out/<scenario>/` |
+| `test/fixtures/captures/` | Redacted exchanges with Spacelift's real API, each with the REST calls that stand for it; `TestAccCaptures` replays them and `TestUnitCaptureRedaction` refuses credentials ([layout](test/fixtures/captures/README.md)) |
 | `test/depguard/` | A module of its own that breaks each depguard rule once, for `make lint-fixtures` |
 
 ## Make targets

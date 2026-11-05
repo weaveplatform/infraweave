@@ -8,12 +8,18 @@
 // failed scenario leaves its evidence in out/<scenario>/. make accept
 // PARTITION=core|runs|integrations selects one CI partition of Partitions.
 //
+// TestAccCaptures replays the capture fixtures in test/fixtures/captures
+// (LoadCaptures, Replay) against the same binary; a failed expectation is a
+// parity bug named by its capture. TestUnitCaptureRedaction fails on a
+// fixture that Leaks a credential or a real e-mail address.
+//
 // # Input and output
 //
-// It reads features/ and the committed reference and bundle, builds and
-// runs infraweave, starts containers through the Docker daemon, and writes
-// godog's cucumber report and the subprocesses' coverage to make accept's
-// -test.gocoverdir, cover/accept.
+// It reads features/, test/fixtures/captures, the report 30 register and
+// the committed reference and bundle, builds and runs infraweave, starts
+// containers through the Docker daemon, and writes godog's cucumber report
+// and the subprocesses' coverage to make accept's -test.gocoverdir,
+// cover/accept.
 //
 // # Dependencies
 //

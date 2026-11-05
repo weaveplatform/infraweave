@@ -53,11 +53,6 @@ type suite struct {
 	dockerErr                         error
 	deps                              *Dependencies
 
-	binOnce sync.Once
-	bin     string
-	binErr  error
-	binDir  string
-
 	mu      sync.Mutex
 	skipped map[string][]string // scenario name → the tags that needed Docker
 }
@@ -69,17 +64,13 @@ func newSuite(t *testing.T) *suite {
 		out:           envOr(envOut, "out"),
 		requireDocker: os.Getenv(envRequireDocker) == "1",
 		deps:          &Dependencies{},
-		binDir:        t.TempDir(),
 		skipped:       map[string][]string{},
-		bin:           os.Getenv(envBinary),
 	}
-	// make accept passes -test.gocoverdir; the subprocesses write there too,
-	// and godog's report lands beside them for specref parity --states.
-	if f := flag.Lookup("test.gocoverdir"); f != nil && f.Value.String() != "" {
-		s.coverDir = f.Value.String()
+	var given bool
+	s.coverDir, given = coverDir(t)
+	// godog's report lands beside the coverage for specref parity --states.
+	if given {
 		s.cucumber = filepath.Join(s.coverDir, "cucumber.json")
-	} else {
-		s.coverDir = t.TempDir()
 	}
 	if v, ok := os.LookupEnv(envCucumber); ok {
 		s.cucumber = v
@@ -94,21 +85,40 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+// coverDir is where the subprocesses write coverage: make accept's
+// -test.gocoverdir, so their counters merge with the test binary's, and
+// otherwise a directory that is thrown away. given reports which.
+func coverDir(t *testing.T) (dir string, given bool) {
+	t.Helper()
+	if f := flag.Lookup("test.gocoverdir"); f != nil && f.Value.String() != "" {
+		return f.Value.String(), true
+	}
+	return t.TempDir(), false
+}
+
+// The infraweave binary every test of this test binary runs.
+var built struct {
+	once sync.Once
+	bin  string
+	err  error
+}
+
 // binary builds infraweave once per test binary, or uses the one a nesting
-// run passed down.
-func (s *suite) binary(ctx context.Context) (string, error) {
-	s.binOnce.Do(func() {
-		if s.bin != "" {
+// run passed down. The binary outlives any one test, so it goes to a
+// directory of its own that TestMain removes.
+func binary(ctx context.Context) (string, error) {
+	built.once.Do(func() {
+		if built.bin = os.Getenv(envBinary); built.bin != "" {
 			return
 		}
 		root, err := filepath.Abs(repoRoot)
 		if err != nil {
-			s.binErr = fmt.Errorf("repository root: %w", err)
+			built.err = fmt.Errorf("repository root: %w", err)
 			return
 		}
-		s.bin, s.binErr = BuildBinary(ctx, root, s.binDir)
+		built.bin, built.err = BuildBinary(ctx, root, buildDir)
 	})
-	return s.bin, s.binErr
+	return built.bin, built.err
 }
 
 // dockerTags are the scenario's tags that need a Docker daemon: every
@@ -128,6 +138,20 @@ func (s *suite) skip(name string, tags []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.skipped[name] = tags
+}
+
+// buildDir holds the built binary for the life of the test binary.
+var buildDir string
+
+func TestMain(m *testing.M) {
+	var err error
+	if buildDir, err = os.MkdirTemp("", "infraweave-build-"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	code := m.Run()
+	_ = os.RemoveAll(buildDir)
+	os.Exit(code)
 }
 
 func TestAccFeatures(t *testing.T) {
@@ -292,7 +316,7 @@ func (w *world) database(ctx context.Context) (*Database, error) {
 
 // startServer runs infraweave serve with config for the scenario.
 func (w *world) startServer(ctx context.Context, config []byte) (*Server, error) {
-	bin, err := w.s.binary(ctx)
+	bin, err := binary(ctx)
 	if err != nil {
 		return nil, err
 	}

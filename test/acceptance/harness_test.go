@@ -171,7 +171,7 @@ func (h *harnessSteps) fixtureFeatures(dir string) error {
 // Docker out of reach. The nested run shares the built binary and writes
 // its evidence and coverage into the scenario's own directory.
 func (h *harnessSteps) runNested(ctx context.Context, requiring string) error {
-	bin, err := h.w.s.binary(ctx)
+	bin, err := binary(ctx)
 	if err != nil {
 		return err
 	}
