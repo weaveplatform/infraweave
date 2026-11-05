@@ -2659,6 +2659,32 @@ type ManagedStateVersionOutput struct {
 	PageInfo PageInfo                        `json:"pageInfo"`
 }
 
+// MessageQueueStats MessageQueueStats is a point-in-time snapshot of how many messages a single
+// queue currently holds. Surfaces only the two signals that drive the
+// parallelism decision: messages ready to be picked up and messages already in
+// flight. The UI can sum them for a "current load" display.
+type MessageQueueStats struct {
+	// ClientType The kind of backend serving this queue (e.g. "postgres", "aws_sqs").
+	ClientType string `json:"clientType"`
+
+	// InFlight Messages received but not yet acked or deleted.
+	InFlight int32 `json:"inFlight"`
+
+	// QueueName Stable queue name, suitable for display (e.g. "async-jobs", "dlq").
+	QueueName string `json:"queueName"`
+
+	// Visible Messages ready to be received.
+	Visible int32 `json:"visible"`
+}
+
+// MessageQueueStatsPage One page of a cursor-paginated list (decision 0003).
+type MessageQueueStatsPage struct {
+	Items []MessageQueueStats `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // ModuleInput ModuleInput represents a single module input variable in ModuleMetadata.
 type ModuleInput struct {
 	Default     string `json:"default"`
@@ -5607,6 +5633,15 @@ type NotFound = Problem
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
 
+// MessageQueueStatsParams defines parameters for MessageQueueStats.
+type MessageQueueStatsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // StackDependencyCreateParams defines parameters for StackDependencyCreate.
 type StackDependencyCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -7148,6 +7183,15 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// MessageQueueStats Message Queue Stats
+	//
+	// MessageQueueStats returns the current size of every message queue the
+	// backend is configured to use. Only available on Self-Hosted instances and
+	// can only be fetched by admins.
+	//
+	// Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
+	MessageQueueStats(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StackDependencyCreateWithBody Create Dependency
 	//
 	// Create a new stack dependency.
@@ -8001,6 +8045,25 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// MessageQueueStats Message Queue Stats
+//
+// MessageQueueStats returns the current size of every message queue the
+// backend is configured to use. Only available on Self-Hosted instances and
+// can only be fetched by admins.
+//
+// Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
+func (c *Client) MessageQueueStats(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMessageQueueStatsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // StackDependencyCreateWithBody Create Dependency
@@ -9865,6 +9928,72 @@ func (c *Client) StateUploadUrl(ctx context.Context, params *StateUploadUrlParam
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewMessageQueueStatsRequest constructs an http.Request for the MessageQueueStats method
+func NewMessageQueueStatsRequest(server string, params *MessageQueueStatsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/message-queue-stats")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewStackDependencyCreateRequest calls the generic StackDependencyCreate builder with application/json body
@@ -14023,6 +14152,17 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// MessageQueueStatsWithResponse Message Queue Stats
+	//
+	// MessageQueueStats returns the current size of every message queue the
+	// backend is configured to use. Only available on Self-Hosted instances and
+	// can only be fetched by admins.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
+	MessageQueueStatsWithResponse(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*MessageQueueStatsResponse, error)
+
 	// StackDependencyCreateWithBodyWithResponse Create Dependency
 	//
 	// Create a new stack dependency.
@@ -14962,6 +15102,101 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrlWithResponse(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error)
+}
+
+// MessageQueueStatsResponse200Headers the declared response headers of an HTTP 200 response for MessageQueueStats
+type MessageQueueStatsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// MessageQueueStatsResponse429Headers the declared response headers of an HTTP 429 response for MessageQueueStats
+type MessageQueueStatsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// MessageQueueStatsResponse503Headers the declared response headers of an HTTP 503 response for MessageQueueStats
+type MessageQueueStatsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type MessageQueueStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *MessageQueueStatsPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *MessageQueueStatsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *MessageQueueStatsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *MessageQueueStatsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MessageQueueStatsResponse) GetJSON200() *MessageQueueStatsPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r MessageQueueStatsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r MessageQueueStatsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r MessageQueueStatsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r MessageQueueStatsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MessageQueueStatsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MessageQueueStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MessageQueueStatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MessageQueueStatsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // StackDependencyCreateResponse201Headers the declared response headers of an HTTP 201 response for StackDependencyCreate
@@ -22175,6 +22410,23 @@ func (r StateUploadUrlResponse) ContentType() string {
 	return ""
 }
 
+// MessageQueueStatsWithResponse Message Queue Stats
+//
+// MessageQueueStats returns the current size of every message queue the
+// backend is configured to use. Only available on Self-Hosted instances and
+// can only be fetched by admins.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
+func (c *ClientWithResponses) MessageQueueStatsWithResponse(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*MessageQueueStatsResponse, error) {
+	rsp, err := c.MessageQueueStats(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMessageQueueStatsResponse(rsp)
+}
+
 // StackDependencyCreateWithBodyWithResponse Create Dependency
 //
 // Create a new stack dependency.
@@ -23719,6 +23971,128 @@ func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParseStateUploadUrlResponse(rsp)
+}
+
+// ParseMessageQueueStatsResponse parses an HTTP response from a MessageQueueStatsWithResponse call
+func ParseMessageQueueStatsResponse(rsp *http.Response) (*MessageQueueStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MessageQueueStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MessageQueueStatsPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers MessageQueueStatsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers MessageQueueStatsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers MessageQueueStatsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
 }
 
 // ParseStackDependencyCreateResponse parses an HTTP response from a StackDependencyCreateWithResponse call

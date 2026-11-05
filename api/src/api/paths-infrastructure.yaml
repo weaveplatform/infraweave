@@ -1,0 +1,91 @@
+# Scaffolded by `specref scaffold --tag Infrastructure` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    MessageQueueStats:
+      description: |-
+        MessageQueueStats is a point-in-time snapshot of how many messages a single
+        queue currently holds. Surfaces only the two signals that drive the
+        parallelism decision: messages ready to be picked up and messages already in
+        flight. The UI can sum them for a "current load" display.
+      properties:
+        clientType:
+          description: The kind of backend serving this queue (e.g. "postgres", "aws_sqs").
+          type: string
+        inFlight:
+          description: Messages received but not yet acked or deleted.
+          format: int32
+          type: integer
+        queueName:
+          description: Stable queue name, suitable for display (e.g. "async-jobs", "dlq").
+          type: string
+        visible:
+          description: Messages ready to be received.
+          format: int32
+          type: integer
+      required:
+        - clientType
+        - inFlight
+        - queueName
+        - visible
+      type: object
+      x-graphql-type: MessageQueueStats
+    MessageQueueStatsPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MessageQueueStats'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+paths:
+  /message-queue-stats:
+    get:
+      description: |-
+        MessageQueueStats returns the current size of every message queue the
+        backend is configured to use. Only available on Self-Hosted instances and
+        can only be fetched by admins.
+      operationId: messageQueueStats
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageQueueStatsPage'
+          description: The messageQueueStats result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Message Queue Stats
+      tags:
+        - Infrastructure
+      x-bruno: Advanced/Infrastructure/Message Queue Stats.bru
+      x-graphql:
+        field: messageQueueStats
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read

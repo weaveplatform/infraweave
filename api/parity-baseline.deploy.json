@@ -216,7 +216,6 @@
     ],
     "Infrastructure": [
       "installationId",
-      "messageQueueStats",
       "policyRuntime"
     ],
     "Intent": [

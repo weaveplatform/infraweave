@@ -61,6 +61,7 @@ func TestUnitServerListeners(t *testing.T) {
 				c.Server,
 				m,
 				memory(c.Server),
+				nil,
 				observe.NewHealth(time.Now),
 			)
 			r, err := serve.Start(t.Context(), c.Server.Config, discard(), api, admin)
