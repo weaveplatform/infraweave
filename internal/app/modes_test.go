@@ -5,10 +5,12 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
 func local() config.Config {
@@ -70,5 +72,26 @@ func TestUnitServeValidates(t *testing.T) {
 	}
 	if err := Serve(t.Context(), c, discard()); !errors.Is(err, serve.ErrConfig) {
 		t.Errorf("Serve: %v", err)
+	}
+}
+
+// TestUnitServeDatabase checks that a bad database setting, or a server that
+// does not answer, stops the mode before either listener binds.
+func TestUnitServeDatabase(t *testing.T) {
+	c := local()
+	c.Database.MaxConns = 0
+	if err := Serve(t.Context(), c, discard()); !errors.Is(err, sql.ErrConfig) {
+		t.Errorf("invalid setting: %v", err)
+	}
+	// Port 1 refuses at once, so this needs no server.
+	c = local()
+	c.Database.URL = "postgres://u:p@127.0.0.1:1/x?sslmode=disable&connect_timeout=2"
+	if err := Serve(
+		t.Context(),
+		c,
+		discard(),
+	); err == nil ||
+		!strings.Contains(err.Error(), "database.url") {
+		t.Errorf("unreachable server: %v", err)
 	}
 }

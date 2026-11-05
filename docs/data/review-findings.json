@@ -11215,7 +11215,7 @@
           "present": [
             "The object store emulators, the `fips-only` job and the scheduled cloud job land in P2b",
             "for `s3` on RustFS, `gcs` on fake-gcs-server and `azureblob` on Azurite",
-            "6. CI: `postgres-next` runs `storetest`"
+            "6. CI: `postgres-next` runs the `sqltest` suites"
           ]
         },
         {

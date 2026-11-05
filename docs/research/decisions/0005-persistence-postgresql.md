@@ -67,8 +67,8 @@ Every stateful feature needs a store, and several records wait on this one:
 - **Driver.** `github.com/jackc/pgx/v5` with `pgxpool`, used natively rather
   than through `database/sql`, so `LISTEN`, `COPY` and batch pipelining are
   available.
-- **SQL.** SQL is hand-written beside the store code in `internal/store` and
-  its per-family subpackages. Rows are mapped with `pgx.CollectRows` and
+- **SQL.** SQL is hand-written beside the store code, in each domain's `pg`
+  package; `internal/platform/sql` opens the pools they share. Rows are mapped with `pgx.CollectRows` and
   `pgx.RowToStructByName`. There is no ORM and no query builder.
 - **Connections.**
 
@@ -136,7 +136,7 @@ in the same database, in the `flows` PostgreSQL schema that
   applies them in that order, so a stream may refer to tables of the streams
   registered before it, along the foreign-key rule of
   [0004](0004-repository-architecture.md).
-  The runner is infraweave's own, in `internal/store/migrations`, about two
+  The runner is infraweave's own, in `internal/platform/sql/migrate`, about two
   hundred lines.
 - **Forward only.** There are no down migrations. A bad migration is corrected
   by a later one, or by restoring a backup.
@@ -183,8 +183,10 @@ in the same database, in the `flows` PostgreSQL schema that
 
 ### Transactions
 
-- **`store.InTx`.** `store.InTx(ctx, opts, fn)` runs `fn` in a transaction at
-  `READ COMMITTED` unless `opts` asks for `SERIALIZABLE`.
+- **`tx.Do`.** `tx.Do(ctx, db, opts, fn)` in `internal/platform/tx` runs `fn`
+  in a transaction at `READ COMMITTED` unless `opts` asks for `SERIALIZABLE`.
+  A `tx.Do` inside another joins the outer transaction, which owns the commit
+  and the retries.
 - **Retries.** A transaction that fails with SQLSTATE `40001`
   (serialization failure) or `40P01` (deadlock) is retried up to three times,
   with 10 to 100 ms of jittered delay. So `fn` must have no effect outside the
@@ -478,14 +480,15 @@ sees the same keys, buckets and switches.
 ## Verification
 
 - **Store contract suites.**
-  - `internal/store/storetest` holds one suite per store family.
+  - Each domain's `pg` store tests hold its suite, on a database of their own
+    from `internal/platform/sql/sqltest`.
   - They run against PostgreSQL in testcontainers-go
     (`github.com/testcontainers/testcontainers-go/modules/postgres`), on the
     floor as a blocking job and on the next major as a non-blocking one
     ([0016](0016-testing-and-acceptance.md#ci)).
   - They cover transactions, retries on injected `40001`, lock ordering under
     concurrent writers, and keyset pagination.
-- **Migration runner.** `internal/store/migrations` tests:
+- **Migration runner.** `internal/platform/sql/migrate` tests:
   - an empty database migrates every stream to its newest version, in
     registration order;
   - a gap in a stream's numbering fails, and two streams may reuse a number;

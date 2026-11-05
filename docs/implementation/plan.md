@@ -130,9 +130,9 @@ and lint is clean.
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
 | P1b Domain layout and depguard | Done | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72). Done: [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard, the fixtures that prove each rule fires and the `time.Sleep` ban |
-| P1c Test harness, SDK and parity tooling | Not started | **M1** |
+| P1c Test harness, SDK and parity tooling | Done | **M1**. Epic [#94](https://github.com/weaveplatform/infraweave/issues/94) |
 | P1d Flows specification reference | Done | Epic [#82](https://github.com/weaveplatform/infraweave/issues/82). Done: [#83](https://github.com/weaveplatform/infraweave/issues/83) the product seam, [#84](https://github.com/weaveplatform/infraweave/issues/84) the Flows reference, [#85](https://github.com/weaveplatform/infraweave/issues/85) Flows parity, [#86](https://github.com/weaveplatform/infraweave/issues/86) product-scoped capabilities, [#87](https://github.com/weaveplatform/infraweave/issues/87) CI for both references |
-| P2 PostgreSQL, migrations and operability | Not started | |
+| P2 PostgreSQL, migrations and operability | In progress | Epic [#114](https://github.com/weaveplatform/infraweave/issues/114). Done: [#115](https://github.com/weaveplatform/infraweave/issues/115) the pools, transactions, `LISTEN` fan-out, ULIDs and `sqltest` |
 | P2b Object storage and secrets at rest | Not started | |
 | P2c Work queue, cron, outbox and the event model | Not started | |
 | P3 Identity and tokens | Not started | |
@@ -720,7 +720,7 @@ needs from its first database connection.
 **Tasks**
 1. `internal/platform/sql`: `pgxpool` from `database.url`, the optional
    `database.read_url`, statement and idle timeouts; `internal/platform/tx`
-   with `InTx`, retries on `40001` and `40P01`, and the lock order.
+   with `tx.Do`, retries on `40001` and `40P01`, and the lock order.
    `internal/platform/sql/notify`: one `LISTEN` connection per replica with
    reconnect. `internal/kernel/ids.go`: decision 0005's ULIDs, monotonic
    within a millisecond, in `uuid` columns and as 26-character text on the
@@ -773,7 +773,7 @@ needs from its first database connection.
    `TestUnitServerListeners`, `observability_health.feature` (readiness
    fails while PostgreSQL is stopped and recovers). Records DV-009 and
    DV-062.
-6. CI: `postgres-next` runs `storetest`, `queuetest` once P2c lands and
+6. CI: `postgres-next` runs the `sqltest` suites, `queuetest` once P2c lands and
    `accept-core` on the next PostgreSQL major, its beta or release
    candidate, without blocking ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 7. Problem bodies carry `instance` as `urn:infraweave:request:<id>`

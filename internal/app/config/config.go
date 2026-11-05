@@ -12,11 +12,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
 // Config is every setting, keyed as in the YAML file.
 type Config struct {
-	Server Server `mapstructure:"server"`
+	Server   Server     `mapstructure:"server"`
+	Database sql.Config `mapstructure:"database"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -31,11 +33,14 @@ type Server struct {
 
 // Defaults are the settings an empty configuration means.
 func Defaults() Config {
-	return Config{Server: Server{
-		Config:      serve.Defaults(),
-		RateLimit:   ratelimit.Defaults(),
-		Idempotency: idempotency.Defaults(),
-	}}
+	return Config{
+		Server: Server{
+			Config:      serve.Defaults(),
+			RateLimit:   ratelimit.Defaults(),
+			Idempotency: idempotency.Defaults(),
+		},
+		Database: sql.Defaults(),
+	}
 }
 
 // Validate rejects a setting the server could not start with, so a typo fails
@@ -106,7 +111,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 	if err := v.UnmarshalExact(&c); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
-	if err := c.Server.Validate(); err != nil {
+	if err := errors.Join(c.Server.Validate(), c.Database.Validate()); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 	return &c, nil

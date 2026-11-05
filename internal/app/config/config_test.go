@@ -82,6 +82,30 @@ server:
 	}
 }
 
+// The connection string has no flag, so it never shows in a process listing;
+// the environment sets it over the file.
+func TestUnitLoadDatabase(t *testing.T) {
+	file := writeFile(t, `
+database:
+  url: postgres://file@db.example/infraweave
+  max_conns: 5
+  statement_timeout: 10s
+`)
+	const url = "postgres://env@db.example/infraweave"
+	t.Setenv("INFRAWEAVE_DATABASE_URL", url)
+	t.Setenv("INFRAWEAVE_DATABASE_IDLE_IN_TRANSACTION_TIMEOUT", "2m")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Defaults().Database
+	want.URL, want.MaxConns = url, 5
+	want.StatementTimeout, want.IdleInTransactionTimeout = 10*time.Second, 2*time.Minute
+	if c.Database != want {
+		t.Errorf("got %+v, want %+v", c.Database, want)
+	}
+}
+
 func TestUnitLoadPrecedence(t *testing.T) {
 	file := writeFile(t, `
 server:
@@ -140,6 +164,14 @@ func TestUnitLoadRejects(t *testing.T) {
 			"server.idempotency.ttl",
 		},
 		{"not YAML", "server: [\n", nil, "read config"},
+		{"unknown database key", "database:\n  host: db\n", nil, "host"},
+		{"no database connections", "database:\n  max_conns: 0\n", nil, "database.max_conns"},
+		{
+			"replica without a primary",
+			"database:\n  read_url: postgres://db/x\n",
+			nil,
+			"needs database.url",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

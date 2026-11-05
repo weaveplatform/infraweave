@@ -9,7 +9,8 @@
 // Operations put the operator switch, the rate limits and idempotency keys in
 // front of each route, with each operation's cost class read from the
 // embedded spec's x-infraweave-cost. Start and Serve run the API and the
-// probes on their two listeners. Version is the line infraweave version
+// probes on their two listeners; Serve also opens PostgreSQL when
+// database.url is set. Version is the line infraweave version
 // prints.
 //
 // # Input and output
@@ -17,7 +18,9 @@
 // Start and Serve bind the API and admin listeners through httpkit/serve and
 // answer HTTP on them until the context ends; Serve then drains in-flight
 // requests. The operation table is decoded once from the spec embedded in
-// gen/api. Panics and listener events are logged through the given
+// gen/api. Serve connects to PostgreSQL through platform/sql before either
+// listener binds and closes the pools after the drain. Panics and listener
+// events are logged through the given
 // slog.Logger. It reads no file and no environment variable itself: config
 // does that before it is called.
 //
@@ -26,7 +29,8 @@
 // It imports app/config for the settings; platform/gen/api for the strict
 // server; platform/httpkit/{serve,middleware,middleware/ratelimit,
 // middleware/idempotency,problem} for the listeners and controls;
-// platform/observe for the probes; platform/buildinfo for the version;
+// platform/observe for the probes; platform/sql for the database;
+// platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no
 // package under platform, kernel or agent may (repo layout, depguard rules).
 package app
