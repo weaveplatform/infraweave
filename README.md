@@ -126,7 +126,7 @@ phase.
 | `pkg/` | Public, importable packages |
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
-| `test/acceptance/` | Gherkin features run by godog against the committed reference (excluded from `make test`) |
+| `test/acceptance/` | Gherkin features run by godog against the committed reference and the served API (`TestAccFeatures`) |
 | `test/depguard/` | A module of its own that breaks each depguard rule once, for `make lint-fixtures` |
 
 ## Make targets
@@ -135,8 +135,8 @@ phase.
 |---|---|
 | `make gate` | Everything CI runs: docs-check, vet, lint, lint-fixtures, test, accept, verify-reference, verify-generate, cover, vuln, build |
 | `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
-| `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
-| `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
+| `make test` | Every `TestUnit…` test in the module, with `-race -shuffle=on`, coverage to `cover/unit` |
+| `make accept` | Every `TestAcc…` test: the Gherkin features (godog) and the suites beside the code, such as specref's fetcher tests; coverage to `cover/accept`. `TestUnitTestNames` fails on a test named neither way ([decision 0016](docs/research/decisions/0016-testing-and-acceptance.md#test-kinds)) |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag (Deploy's, or Flows' with `PRODUCT=flows`) into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
 | `make parity` | Prints, for Deploy and then Flows, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.<product>.json` |
 | `make parity-baseline` | Rewrites both `api/parity-baseline.<product>.json` to accept the current parity report, keeping each recorded reason; review the diff |

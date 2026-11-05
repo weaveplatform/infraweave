@@ -14,7 +14,6 @@ COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w -X $(MODULE)/internal/platform/buildinfo.version=$(VERSION) -X $(MODULE)/internal/platform/buildinfo.commit=$(COMMIT) -X $(MODULE)/internal/platform/buildinfo.buildDate=$(BUILD_DATE)
 PLATFORMS ?= linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
-UNIT_PKGS = $(shell GOWORK=off $(GO) list ./... | grep -v /test/acceptance)
 
 ## help: list targets
 help:
@@ -55,10 +54,10 @@ lint-fixtures:
 vet:
 	$(GO) vet ./...
 
-## test: unit tests (race, shuffle); coverage to cover/unit
+## test: every TestUnit test (race, shuffle); coverage to cover/unit
 test:
 	@rm -rf $(COVER_DIR)/unit && mkdir -p $(COVER_DIR)/unit
-	$(GO) test -race -shuffle=on -count=1 -cover -coverpkg=$(MODULE)/... $(UNIT_PKGS) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/unit
+	$(GO) test -race -shuffle=on -count=1 -run '^TestUnit' -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/unit
 
 ## cover: merge every cover/* directory and enforce .testcoverage.yml (>=95% total, >=90% per package)
 cover:
@@ -87,12 +86,12 @@ build:
 		done; \
 	done
 
-## accept: Gherkin acceptance features (godog); coverage to cover/accept
+## accept: every TestAcc test, the godog features and the suites beside the code; coverage to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
-	$(GO) test -count=1 -covermode=atomic -cover -coverpkg=$(MODULE)/... ./test/acceptance/... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
+	$(GO) test -count=1 -run '^TestAcc' -covermode=atomic -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
 
 # PRODUCTS are the Spacelift products with a reference; specref --product
 # picks each one's reference directory, inventory outputs and parity
