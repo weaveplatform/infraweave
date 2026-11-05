@@ -1,0 +1,6 @@
+# Provider plugins and local state stay out of the repository; the lock
+# file is committed so every apply resolves the same provider versions.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
