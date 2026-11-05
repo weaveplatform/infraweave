@@ -2563,6 +2563,7 @@
         "plan": "Starter+ [D]",
         "tierFeatures": "none",
         "rootFields": "1 [S]",
+        "calls": ["stack"],
         "notes": "The operation map records no call; the read reuses the resource's `stack` query [S] [`data_drift_detection.go`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/data_drift_detection.go#L54-L62)"
       },
       "infraweave": {

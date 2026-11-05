@@ -11,53 +11,104 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// parityReference is a reference with two tags and an untagged operation.
+// parityReference is a reference with five tags and an untagged operation.
 const parityReference = `openapi: 3.0.3
 paths:
   /stacks:
-    get: {operationId: stacks, tags: [Stacks]}
-    post: {operationId: stackCreate, tags: [Stacks]}
+    parameters: [{name: search, in: query}]
+    get:
+      operationId: stacks
+      tags: [Stacks]
+      x-graphql: {field: stacks, type: Query}
+    post: {operationId: stackCreate, tags: [Stacks], x-graphql: {field: stackCreate, type: Mutation}}
   /stacks/{id}:
-    get: {operationId: stack, tags: [Stacks]}
+    get: {operationId: stack, tags: [Stacks], x-graphql: {field: stack, type: Query}}
     delete: {operationId: stackDelete, tags: [Stacks]}
   /stack/{id}/lock:
     post: {operationId: stackLock, tags: [Stacks]}
+  /stacks/{id}/outputs:
+    get: {operationId: stackOutputs, tags: [Stacks], x-graphql: {field: outputs, type: Stack}}
   /contexts:
     get: {operationId: contexts, tags: [Contexts]}
+  /account/spacelift-thing:
+    get: {operationId: spaceliftThing, tags: [Account]}
+  /policies/{id}/simulate:
+    post: {operationId: policySimulate, tags: [Policies]}
   /sessions:
     delete: {operationId: sessionDeleteAll}
 `
 
-// parityServed covers every outcome against parityReference: stacks and
-// stackCreate present, stack present under a renamed path parameter,
-// stackDelete renamed at its route, stackLock at another route, contexts and
-// sessionDeleteAll missing, and two infraweave-only operations, one untagged.
+// parityServed covers every outcome against parityReference with
+// parityRegisters: stacks, stackCreate and stack served, with the
+// conventions' parameters and a renamed path parameter; stackDelete and
+// stackLock served with a recorded divergence; spaceliftThing renamed;
+// stackOutputs, contexts and sessionDeleteAll missing; policySimulate
+// superseded; and two infraweave-only operations.
 const parityServed = `openapi: 3.0.3
+components:
+  parameters:
+    Cursor: {name: cursor, in: query}
+    Limit: {name: limit, in: query}
 paths:
   /stacks:
-    parameters: []
+    parameters: [{name: search, in: query}]
     summary: path-level members are not operations
-    get: {operationId: stacks, tags: [Stacks]}
-    post: {operationId: stackCreate, tags: [Stacks]}
+    get:
+      operationId: stacks
+      tags: [Stacks]
+      parameters: [{$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}]
+      x-infraweave-divergence: [cursor-pagination, rate-limit]
+    post:
+      operationId: stackCreate
+      tags: [Stacks]
+      parameters: [{name: Idempotency-Key, in: header}]
+      x-infraweave-divergence: [idempotency-key, rate-limit]
   /stacks/{stackId}:
     get: {operationId: stack, tags: [Stacks]}
-    delete: {operationId: stackRemove, tags: [Stacks]}
+    delete: {operationId: stackDelete, tags: [Stacks], x-infraweave-divergence: [soft-delete]}
   /stacks/{stackId}/lock:
-    post: {operationId: stackLock, tags: [Stacks]}
+    post: {operationId: stackLock, tags: [Stacks], x-infraweave-divergence: [path, rate-limit]}
+  /account/thing:
+    get: {operationId: thing, tags: [Account]}
   /organizations:
     get: {operationId: organizations, tags: [Organization]}
   /livez:
     get: {operationId: livez}
 `
 
-func compareFixture(t *testing.T) *ParityReport {
+const (
+	parityRenames = `{"records": [
+  {"kind": "identifier", "reference": "spaceliftThing", "infraweave": "thing"},
+  {"kind": "identifier", "reference": "/spacelift-thing", "infraweave": "/thing"},
+  {"kind": "identifier", "reference": "/spacelift", "infraweave": "/infraweave"},
+  {"kind": "identifier", "reference": "stacks", "infraweave": "x", "schema": "Stack"},
+  {"kind": "identifier", "reference": "spacelift_*", "infraweave": "infraweave_*"},
+  {"kind": "concept", "reference": "root", "infraweave": "top"}]}`
+	paritySupersessions = `{"records": [
+  {"id": "SUP-98", "treatment": "superseded", "operations": ["flows:stacks"]},
+  {"id": "SUP-99", "treatment": "superseded", "operations": ["deploy:policySimulate"]},
+  {"id": "DEP-01", "treatment": "served"}]}`
+)
+
+func parityRegisters(t *testing.T) *ParityRegisters {
 	t.Helper()
-	r, err := CompareParity([]byte(parityReference), []byte(parityServed))
+	reg, err := ReadParityRegisters([]byte(parityRenames), []byte(paritySupersessions), "deploy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reg
+}
+
+func compare(t *testing.T, served string) *ParityReport {
+	t.Helper()
+	r, err := compareParity([]byte(parityReference), []byte(served), nil, parityRegisters(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return r
 }
+
+func compareFixture(t *testing.T) *ParityReport { t.Helper(); return compare(t, parityServed) }
 
 func ids(ops []ParityOperation) []string {
 	out := make([]string, 0, len(ops))
@@ -67,109 +118,204 @@ func ids(ops []ParityOperation) []string {
 	return out
 }
 
-func tagParity(t *testing.T, r *ParityReport, tag string) TagParity {
-	t.Helper()
-	for _, tp := range r.Tags {
-		if tp.Tag == tag {
-			return tp
+// outcomes maps each reference operationId of r to its outcome.
+func outcomes(r *ParityReport) map[string]Outcome {
+	out := map[string]Outcome{}
+	for _, t := range r.Tags {
+		for _, op := range t.Operations {
+			out[op.Reference.OperationID] = op.Outcome
 		}
 	}
-	t.Fatalf("no tag %q in the report", tag)
-	return TagParity{}
+	return out
 }
 
 func TestUnitParityCompare(t *testing.T) {
 	r := compareFixture(t)
+	want := map[string]Outcome{
+		"stacks":           OutcomeServed,
+		"stackCreate":      OutcomeServed,
+		"stack":            OutcomeServed,
+		"stackDelete":      OutcomeDivergent,
+		"stackLock":        OutcomeDivergent,
+		"spaceliftThing":   OutcomeDivergent,
+		"stackOutputs":     OutcomeMissing,
+		"contexts":         OutcomeMissing,
+		"sessionDeleteAll": OutcomeMissing,
+		"policySimulate":   OutcomeSuperseded,
+	}
+	if d := cmp.Diff(want, outcomes(r)); d != "" {
+		t.Errorf("outcomes (-want +got):\n%s", d)
+	}
+	if len(r.Failures) != 0 {
+		t.Errorf("failures: %q", r.Failures)
+	}
 	tags := make([]string, 0, len(r.Tags))
+	only := make([]string, 0, len(r.Tags))
 	for _, tp := range r.Tags {
 		tags = append(tags, tp.Tag)
+		only = append(only, ids(tp.Only)...)
 	}
-	if want := []string{"Contexts", "Organization", "Stacks", Untagged}; !slices.Equal(tags, want) {
-		t.Errorf("tags %q, want %q", tags, want)
+	wantTags := []string{"Account", "Contexts", OrganizationTag, "Policies", "Stacks", Untagged}
+	if !slices.Equal(tags, wantTags) {
+		t.Errorf("tags %q, want %q", tags, wantTags)
 	}
-	stacks := tagParity(t, r, "Stacks")
-	if got, want := ids(
-		stacks.Present,
-	), []string{
-		"stack",
-		"stackCreate",
-		"stacks",
-	}; !slices.Equal(
-		got,
-		want,
-	) {
-		t.Errorf("present %q, want %q", got, want)
+	if !slices.Equal(only, []string{"organizations", "livez"}) {
+		t.Errorf("infraweave-only %q", only)
 	}
-	wantMoved := []MovedOperation{
-		{
-			Reference: ParityOperation{"stackDelete", "DELETE", "/stacks/{id}", "Stacks", false},
-			Served: ParityOperation{
-				"stackRemove",
-				"DELETE",
-				"/stacks/{stackId}",
-				"Stacks",
-				false,
-			},
-		},
-		{
-			Reference: ParityOperation{"stackLock", "POST", "/stack/{id}/lock", "Stacks", false},
-			Served: ParityOperation{
-				"stackLock",
-				"POST",
-				"/stacks/{stackId}/lock",
-				"Stacks",
-				false,
-			},
-		},
+	thing, _ := r.Operation("spaceliftThing")
+	if d := cmp.Diff([]string{DivergenceOperationID, DivergencePath}, thing.Differences); d != "" {
+		t.Errorf("rename differences (-want +got):\n%s", d)
 	}
-	if diff := cmp.Diff(wantMoved, stacks.Moved); diff != "" {
-		t.Errorf("moved (-want +got):\n%s", diff)
+	sup, _ := r.Operation("policySimulate")
+	if sup.Supersession != "SUP-99" || sup.Served != nil {
+		t.Errorf("policySimulate = %+v", sup)
 	}
-	if len(stacks.Missing) != 0 || len(stacks.Only) != 0 || stacks.Reference() != 5 {
-		t.Errorf("Stacks: %+v", stacks)
+	if _, ok := r.Operation("absent"); ok {
+		t.Error("found an operation the reference lacks")
 	}
-	if got := ids(tagParity(t, r, "Contexts").Missing); !slices.Equal(got, []string{"contexts"}) {
-		t.Errorf("Contexts missing %q", got)
-	}
-	untagged := tagParity(t, r, Untagged)
-	if !slices.Equal(ids(untagged.Missing), []string{"sessionDeleteAll"}) ||
-		!slices.Equal(ids(untagged.Only), []string{"livez"}) {
-		t.Errorf("untagged: %+v", untagged)
-	}
-	org := tagParity(t, r, "Organization")
-	if org.Reference() != 0 || !slices.Equal(ids(org.Only), []string{"organizations"}) {
-		t.Errorf("Organization: %+v", org)
-	}
-	want := ParityCounts{Reference: 7, Present: 3, Moved: 2, Missing: 2, Only: 2}
-	if got := r.Counts(); got != want {
-		t.Errorf("counts %+v, want %+v", got, want)
+	c := r.Counts()
+	wantCounts := ParityCounts{Reference: 10, Only: 2, By: map[Outcome]int{
+		OutcomeServed: 3, OutcomeDivergent: 3, OutcomeSuperseded: 1, OutcomeMissing: 3,
+	}}
+	if d := cmp.Diff(wantCounts, c); d != "" {
+		t.Errorf("counts (-want +got):\n%s", d)
 	}
 }
 
-// TestUnitParityMatchPriority checks that an operationId match wins over a
-// route match: a served operation that keeps one reference operationId at
-// another reference operation's route is that operationId moved, and leaves
-// the route's own operation missing.
-func TestUnitParityMatchPriority(t *testing.T) {
-	served := `paths:
-  /stacks/{id}:
-    get: {operationId: stacks, tags: [Stacks]}
-`
-	r, err := CompareParity([]byte(parityReference), []byte(served))
-	if err != nil {
-		t.Fatal(err)
+// TestUnitParityFailures proves each of decision 0016's failure rules over
+// an edit of the served fixture.
+func TestUnitParityFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name, old, new string
+		outcome        map[string]Outcome
+		want           []string
+	}{
+		{
+			name: "unrecorded path",
+			old:  "x-infraweave-divergence: [path, rate-limit]",
+			new:  "x-infraweave-divergence: [rate-limit]",
+			want: []string{"Stacks: stackLock (POST /stack/{id}/lock) is served as stackLock " +
+				"(POST /stacks/{stackId}/lock), and differs in path without recording it in x-infraweave-divergence"},
+		},
+		{
+			name: "unrecorded method",
+			old:  "delete: {operationId: stackDelete",
+			new:  "post: {operationId: stackDelete",
+			want: []string{"Stacks: stackDelete (DELETE /stacks/{id}) is served as stackDelete " +
+				"(POST /stacks/{stackId}), and differs in method without recording it in x-infraweave-divergence"},
+		},
+		{
+			name: "dropped parameter",
+			old:  "    parameters: [{name: search, in: query}]\n    summary",
+			new:  "    summary",
+			want: []string{
+				"Stacks: stackCreate (POST /stacks) is served as stackCreate (POST /stacks), " +
+					"and differs in parameter:search without recording it in x-infraweave-divergence",
+				"Stacks: stacks (GET /stacks) is served as stacks (GET /stacks), " +
+					"and differs in parameter:search without recording it in x-infraweave-divergence",
+			},
+		},
+		{
+			name: "parameter made required",
+			old:  "parameters: [{$ref: '#/components/parameters/Cursor'}",
+			new:  "parameters: [{name: search, in: query, required: true}, {$ref: '#/components/parameters/Cursor'}",
+			want: []string{"Stacks: stacks (GET /stacks) is served as stacks (GET /stacks), " +
+				"and differs in parameter:search without recording it in x-infraweave-divergence"},
+		},
+		{
+			name: "convention parameter without its convention",
+			old:  "x-infraweave-divergence: [cursor-pagination, rate-limit]",
+			new:  "x-infraweave-divergence: [rate-limit]",
+			want: []string{"Stacks: stacks (GET /stacks) is served as stacks (GET /stacks), " +
+				"and differs in parameter:cursor, parameter:limit without recording it in x-infraweave-divergence"},
+		},
+		{
+			name: "recorded parameter",
+			old: "parameters: [{$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}]\n" +
+				"      x-infraweave-divergence: [cursor-pagination, rate-limit]",
+			new: "parameters: [{name: search, in: query, required: true}, {$ref: '#/components/parameters/Cursor'}, " +
+				"{$ref: '#/components/parameters/Limit'}]\n" +
+				"      x-infraweave-divergence: [cursor-pagination, rate-limit, parameter:search]",
+			outcome: map[string]Outcome{"stacks": OutcomeDivergent},
+		},
+		{
+			name: "stale record",
+			old:  "get: {operationId: stack, tags: [Stacks]}",
+			new:  "get: {operationId: stack, tags: [Stacks], x-infraweave-divergence: [path, parameter:x]}",
+			want: []string{"Stacks: stack (GET /stacks/{id}) is served as stack (GET /stacks/{stackId}), " +
+				"and its x-infraweave-divergence records path, parameter:x, which it does not differ in"},
+		},
+		{
+			name: "renamed beyond the rename table",
+			old:  "/account/thing:",
+			new:  "/accounts/thing:",
+			want: []string{"Account: spaceliftThing (GET /account/spacelift-thing) is served as thing " +
+				"(GET /accounts/thing), and differs in path without recording it in x-infraweave-divergence"},
+		},
+		{
+			name:    "renamed operation served under its reference name",
+			old:     "operationId: thing,",
+			new:     "operationId: spaceliftThing,",
+			outcome: map[string]Outcome{"spaceliftThing": OutcomeDivergent},
+		},
+		{
+			name: "served superseded operation",
+			old:  "  /livez:\n",
+			new:  "  /policies/{policyId}/simulate:\n    post: {operationId: policySimulate, tags: [Policies]}\n  /livez:\n",
+			want: []string{"Policies: policySimulate (POST /policies/{id}/simulate) is superseded by SUP-99, " +
+				"and is served as policySimulate (POST /policies/{policyId}/simulate)"},
+			outcome: map[string]Outcome{"policySimulate": OutcomeSuperseded},
+		},
+		{
+			name:    "served operation removed",
+			old:     "    get: {operationId: stack, tags: [Stacks]}\n",
+			new:     "",
+			outcome: map[string]Outcome{"stack": OutcomeMissing},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(parityServed, tc.old) {
+				t.Fatalf("the fixture lacks %q", tc.old)
+			}
+			r := compare(t, strings.Replace(parityServed, tc.old, tc.new, 1))
+			if d := cmp.Diff(tc.want, r.Failures); d != "" {
+				t.Errorf("failures (-want +got):\n%s", d)
+			}
+			got := outcomes(r)
+			for id, o := range tc.outcome {
+				if got[id] != o {
+					t.Errorf("%s is %s, want %s", id, got[id], o)
+				}
+			}
+			if len(tc.want) > 0 && !strings.Contains(r.Text(), "failure: "+tc.want[0]+"\n") {
+				t.Errorf("text lacks the failure:\n%s", r.Text())
+			}
+		})
 	}
-	stacks := tagParity(t, r, "Stacks")
-	if len(stacks.Moved) != 1 || stacks.Moved[0].Reference.OperationID != "stacks" {
-		t.Errorf("moved %+v, want stacks", stacks.Moved)
+}
+
+func TestUnitParityRenamePath(t *testing.T) {
+	reg := parityRegisters(t)
+	for in, want := range map[string]string{
+		"/account/spacelift-thing":       "/account/thing",
+		"/spacelift/x":                   "/infraweave/x",
+		"/spacelift":                     "/infraweave",
+		"/spacelift-intelligence":        "/spacelift-intelligence",
+		"/a/spacelift-thing/b/spacelift": "/a/thing/b/infraweave",
+		"/stacks":                        "/stacks",
+	} {
+		if got := reg.renamePath(in); got != want {
+			t.Errorf("renamePath(%q) = %q, want %q", in, got, want)
+		}
 	}
-	if !slices.Contains(ids(stacks.Missing), "stack") {
-		t.Errorf("missing %q lacks stack", ids(stacks.Missing))
+	if reg.renameID("stacks") != "stacks" {
+		t.Error("a rename scoped to a schema renamed an operationId")
 	}
 }
 
 func TestUnitParityText(t *testing.T) {
-	golden(t, "parity.txt", []byte(compareFixture(t).Text()))
+	r := compareFixture(t)
+	golden(t, "parity.txt", []byte(r.Text()+r.Listing()))
 }
 
 func TestUnitParityBaselineRoundTrip(t *testing.T) {
@@ -183,54 +329,17 @@ func TestUnitParityBaselineRoundTrip(t *testing.T) {
 	if diff := cmp.Diff(b, back); diff != "" {
 		t.Errorf("round trip (-wrote +read):\n%s", diff)
 	}
-	// Written afresh, every move lacks a reason, so the check refuses it.
-	d := r.Diff(b)
-	if len(d.Improvements) != 0 || len(d.Regressions) != 2 {
-		t.Fatalf("diff %+v", d)
+	if d := r.Diff(b); !d.Clean() || d.Text() != "The baseline accepts the report exactly.\n" {
+		t.Errorf("the written baseline: %s", d.Text())
 	}
-	for _, s := range d.Regressions {
-		if !strings.HasSuffix(s, "the baseline gives no reason for the move") {
-			t.Errorf("regression %q", s)
-		}
+	b.Reasons = map[string]string{"contexts": "Waits on <PD-99> & more."}
+	if !strings.Contains(string(b.JSON()), "<PD-99> & more") {
+		t.Error("the baseline escapes a reason")
 	}
-	b.Moved[0].Reason = "Routes use the plural collection & its ID."
-	b.Moved[1].Reason = "   "
-	d = r.Diff(b)
-	if len(d.Regressions) != 1 || !strings.Contains(d.Regressions[0], "stackLock") {
-		t.Errorf("a blank reason passes: %+v", d)
-	}
-	b.Moved[1].Reason = "Locks sit under the plural collection."
-	if d := r.Diff(b); !d.Clean() {
-		t.Errorf("a baseline with reasons fails: %s", d.Text())
-	}
-	if !strings.Contains(string(b.JSON()), "collection & its") {
-		t.Error("the baseline escapes a reason's ampersand")
-	}
-	// Rewriting keeps each reason whose move is unchanged.
-	again := r.Baseline(b)
-	if diff := cmp.Diff(b, again); diff != "" {
-		t.Errorf("rewrite lost a reason (-had +rewrote):\n%s", diff)
-	}
-}
-
-// accepted is the baseline that accepts compareFixture exactly.
-func accepted(t *testing.T) *ParityBaseline {
-	t.Helper()
-	b := compareFixture(t).Baseline(nil)
-	for i := range b.Moved {
-		b.Moved[i].Reason = "deliberate"
-	}
-	return b
 }
 
 func TestUnitParityDiff(t *testing.T) {
 	r := compareFixture(t)
-	if d := r.Diff(
-		accepted(t),
-	); !d.Clean() ||
-		d.Text() != "The baseline accepts the report exactly.\n" {
-		t.Fatalf("accepted baseline: %s", d.Text())
-	}
 	cases := []struct {
 		name         string
 		edit         func(b *ParityBaseline)
@@ -245,33 +354,22 @@ func TestUnitParityDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "move not recorded",
-			edit: func(b *ParityBaseline) { b.Moved = b.Moved[1:] },
-			regressions: []string{
-				"Stacks: stackDelete (DELETE /stacks/{id}) is served as stackRemove (DELETE /stacks/{stackId}), " +
-					"and the baseline does not record the move",
-			},
+			name:         "served operation listed as missing",
+			edit:         func(b *ParityBaseline) { b.Missing["Stacks"] = append(b.Missing["Stacks"], "stacks") },
+			improvements: []string{"Stacks: stacks is listed as missing, and is served now"},
 		},
 		{
-			name: "move recorded to another route",
-			edit: func(b *ParityBaseline) { b.Moved[1].ServedRoute = "POST /locks" },
-			regressions: []string{
-				"Stacks: stackLock (POST /stack/{id}/lock) is served as stackLock (POST /stacks/{stackId}/lock), " +
-					"and the baseline records it as stackLock (POST /stack/{id}/lock) served as stackLock (POST /locks)",
-			},
-		},
-		{
-			name: "present operation listed as missing",
-			edit: func(b *ParityBaseline) { b.Missing["Stacks"] = []string{"stacks"} },
+			name: "divergent operation listed as missing",
+			edit: func(b *ParityBaseline) { b.Missing["Stacks"] = append(b.Missing["Stacks"], "stackLock") },
 			improvements: []string{
-				"Stacks: stacks is listed as missing, and is present now",
+				"Stacks: stackLock is listed as missing, and is served with divergence now",
 			},
 		},
 		{
-			name: "moved operation listed as missing",
-			edit: func(b *ParityBaseline) { b.Missing["Stacks"] = []string{"stackLock"} },
+			name: "superseded operation listed as missing",
+			edit: func(b *ParityBaseline) { b.Missing["Policies"] = []string{"policySimulate"} },
 			improvements: []string{
-				"Stacks: stackLock is listed as missing, and is moved now",
+				"Policies: policySimulate is listed as missing, and is superseded now",
 			},
 		},
 		{
@@ -292,34 +390,16 @@ func TestUnitParityDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "move entry the reference lacks",
-			edit: func(b *ParityBaseline) {
-				b.Moved = append(b.Moved, BaselineMove{OperationID: "gone", Reason: "x"})
+			name: "reason without a missing entry",
+			edit: func(b *ParityBaseline) { b.Reasons = map[string]string{"stacks": "Stale."} },
+			improvements: []string{
+				"stacks has a reason, and the baseline does not list it as missing",
 			},
-			improvements: []string{"gone is listed as moved, and the reference no longer has it"},
-		},
-		{
-			name: "move entry for a present operation",
-			edit: func(b *ParityBaseline) {
-				b.Moved = append(b.Moved, BaselineMove{OperationID: "stacks", Reason: "x"})
-			},
-			improvements: []string{"Stacks: stacks is listed as moved, and is present now"},
-		},
-		{
-			name: "move entry for a missing operation",
-			edit: func(b *ParityBaseline) {
-				delete(b.Missing, "Contexts")
-				b.Moved = append(b.Moved, BaselineMove{OperationID: "contexts", Reason: "x"})
-			},
-			regressions: []string{
-				"Contexts: contexts (GET /contexts) is missing, and the baseline does not list it",
-			},
-			improvements: []string{"Contexts: contexts is listed as moved, and is missing now"},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			b := accepted(t)
+			b := r.Baseline(nil)
 			tc.edit(b)
 			d := r.Diff(b)
 			if diff := cmp.Diff(tc.regressions, d.Regressions); diff != "" {
@@ -343,6 +423,25 @@ func TestUnitParityDiff(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestUnitParityReasons proves a missing operation's reason survives a
+// rewrite while it stays missing and goes when it is served.
+func TestUnitParityReasons(t *testing.T) {
+	r := compareFixture(t)
+	prev := r.Baseline(nil)
+	if prev.Reasons != nil || strings.Contains(string(prev.JSON()), "reasons") {
+		t.Errorf("a baseline without reasons writes none: %s", prev.JSON())
+	}
+	prev.Reasons = map[string]string{"contexts": "Waits on PD-99.", "stacks": "Stale."}
+	next := r.Baseline(prev)
+	if d := cmp.Diff(map[string]string{"contexts": "Waits on PD-99."}, next.Reasons); d != "" {
+		t.Errorf("reasons (-want +got):\n%s", d)
+	}
+	back, err := ReadParityBaseline(next.JSON())
+	if err != nil || back.Reasons["contexts"] != "Waits on PD-99." {
+		t.Errorf("round trip: %+v %v", back, err)
 	}
 }
 
@@ -372,14 +471,30 @@ func TestUnitParityErrors(t *testing.T) {
 	}
 	for name, data := range map[string]string{
 		"not JSON":              "{",
-		"unknown member":        `{"missing": {}, "moved": [], "extra": 1}`,
-		"listed twice":          `{"missing": {"A": ["a"], "B": ["a"]}, "moved": []}`,
-		"missing and moved":     `{"missing": {"A": ["a"]}, "moved": [{"operationId": "a"}]}`,
+		"unknown member":        `{"missing": {}, "moved": []}`,
+		"listed twice":          `{"missing": {"A": ["a"], "B": ["a"]}}`,
 		"wrong type of missing": `{"missing": []}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := ReadParityBaseline([]byte(data)); !errors.Is(err, ErrBaseline) {
 				t.Errorf("error %v, want ErrBaseline", err)
+			}
+		})
+	}
+	for name, tc := range map[string][2]string{
+		"renames not JSON":       {"{", "{}"},
+		"supersessions not JSON": {"{}", "{"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ReadParityRegisters(
+				[]byte(tc[0]),
+				[]byte(tc[1]),
+				"deploy",
+			); !errors.Is(
+				err,
+				ErrRegister,
+			) {
+				t.Errorf("error %v, want ErrRegister", err)
 			}
 		})
 	}
@@ -389,14 +504,20 @@ func parityFiles(t *testing.T) ParityFiles {
 	t.Helper()
 	dir := t.TempDir()
 	f := ParityFiles{
-		Reference: filepath.Join(dir, "reference.yaml"),
-		Served:    filepath.Join(dir, "served.yaml"),
-		Baseline:  filepath.Join(dir, "baseline.json"),
+		Reference:     filepath.Join(dir, "reference.yaml"),
+		Served:        filepath.Join(dir, "served.yaml"),
+		Baseline:      filepath.Join(dir, "baseline.json"),
+		Renames:       filepath.Join(dir, "renames.json"),
+		Supersessions: filepath.Join(dir, "supersessions.json"),
+		Product:       Deploy,
 	}
-	for p, data := range map[string]string{f.Reference: parityReference, f.Served: parityServed} {
-		if err := os.WriteFile(p, []byte(data), filePerm); err != nil {
-			t.Fatal(err)
-		}
+	for p, data := range map[string]string{
+		f.Reference:     parityReference,
+		f.Served:        parityServed,
+		f.Renames:       parityRenames,
+		f.Supersessions: paritySupersessions,
+	} {
+		writeFile(t, p, data)
 	}
 	return f
 }
@@ -407,25 +528,23 @@ func TestUnitParityFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// With no baseline file yet, every gap is a regression.
-	if len(res.Diff.Regressions) != 4 || len(res.Baseline.Missing) != 0 {
+	// With no baseline file yet, every missing operation is a regression.
+	if len(res.Diff.Regressions) != 3 || len(res.Baseline.Missing) != 0 || res.Passed() {
 		t.Errorf("without a baseline: %+v", res.Diff)
 	}
-	b, err := WriteParityBaseline(f)
-	if err != nil {
+	if _, err := WriteParityBaseline(f); err != nil {
 		t.Fatal(err)
 	}
-	b.Moved[0].Reason = "deliberate"
-	b.Moved[1].Reason = "deliberate"
-	if err := os.WriteFile(f.Baseline, b.JSON(), filePerm); err != nil {
-		t.Fatal(err)
-	}
-	if res, err = ParityCheck(f); err != nil || !res.Diff.Clean() {
+	if res, err = ParityCheck(f); err != nil || !res.Passed() {
 		t.Fatalf("after writing the baseline: %v %+v", err, res)
 	}
-	// Rewriting keeps the reasons on disk.
-	if b, err = WriteParityBaseline(f); err != nil || b.Moved[0].Reason != "deliberate" {
-		t.Errorf("rewrite: %v %+v", err, b)
+	// Without the registers, the rename is missing and the supersession
+	// served nowhere is missing too.
+	f.Renames, f.Supersessions = "", ""
+	if res, err = ParityCheck(f); err != nil || res.Passed() ||
+		outcomes(res.Report)["spaceliftThing"] != OutcomeMissing ||
+		outcomes(res.Report)["policySimulate"] != OutcomeMissing {
+		t.Errorf("without registers: %v %+v", err, res)
 	}
 }
 
@@ -433,6 +552,9 @@ func TestUnitParityFilesErrors(t *testing.T) {
 	for name, edit := range map[string]func(f *ParityFiles){
 		"no reference":       func(f *ParityFiles) { f.Reference += ".absent" },
 		"no served document": func(f *ParityFiles) { f.Served += ".absent" },
+		"no renames":         func(f *ParityFiles) { f.Renames += ".absent" },
+		"no supersessions":   func(f *ParityFiles) { f.Supersessions += ".absent" },
+		"invalid renames":    func(f *ParityFiles) { writeFile(t, f.Renames, "{") },
 		"invalid served":     func(f *ParityFiles) { f.Served = f.Baseline; writeFile(t, f.Baseline, "paths: [") },
 		"baseline a directory": func(f *ParityFiles) {
 			f.Baseline = filepath.Dir(f.Baseline)
@@ -477,21 +599,17 @@ paths:
   /sessions:
     delete: {operationId: sessionDeleteAll, x-upstream: none}
 `
-	r, err := CompareParity([]byte(parityReference), []byte(served))
-	if err != nil {
-		t.Fatal(err)
+	r := compare(t, served)
+	got := outcomes(r)
+	if got["contexts"] != OutcomeMissing || got["sessionDeleteAll"] != OutcomeMissing {
+		t.Errorf("outcomes %v", got)
 	}
-	contexts := tagParity(t, r, "Contexts")
-	if d := cmp.Diff([]string{"contexts"}, ids(contexts.Missing)); d != "" {
-		t.Errorf("missing (-want +got):\n%s", d)
+	var only []ParityOperation
+	for _, tp := range r.Tags {
+		only = append(only, tp.Only...)
 	}
-	if len(contexts.Only) != 1 || !contexts.Only[0].Designed || len(contexts.Moved) != 0 {
-		t.Errorf("contexts = %+v", contexts)
-	}
-	untagged := tagParity(t, r, Untagged)
-	if d := cmp.Diff([]string{"sessionDeleteAll"}, ids(untagged.Missing)); d != "" ||
-		len(untagged.Only) != 1 || len(untagged.Present) != 0 {
-		t.Errorf("a designed operation keeping a reference operationId: %+v", untagged)
+	if len(only) != 2 || !only[0].Designed || !only[1].Designed {
+		t.Errorf("infraweave-only %+v", only)
 	}
 }
 
@@ -518,56 +636,32 @@ paths:
     get: {operationId: livez}
 `
 	for _, tc := range []struct {
-		p             Product
-		present, only []string
+		p            Product
+		served, only []string
 	}{
 		{Flows, []string{"listProjects"}, []string{"listMembers"}},
 		{Deploy, nil, []string{"flowsIntegration", "livez", "stacks"}},
 		{Product{}, []string{"listProjects"}, []string{"flowsIntegration", "listMembers", "livez", "stacks"}},
 	} {
-		r, err := tc.p.Parity([]byte(reference), []byte(served))
+		r, err := tc.p.Parity([]byte(reference), []byte(served), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var present, only []string
+		var got, only []string
 		for _, tp := range r.Tags {
-			present = append(present, ids(tp.Present)...)
+			for _, op := range tp.Operations {
+				if op.Outcome == OutcomeServed {
+					got = append(got, op.Reference.OperationID)
+				}
+			}
 			only = append(only, ids(tp.Only)...)
 		}
 		slices.Sort(only)
-		if d := cmp.Diff(tc.present, present); d != "" {
-			t.Errorf("%q present (-want +got):\n%s", tc.p.Name, d)
+		if d := cmp.Diff(tc.served, got); d != "" {
+			t.Errorf("%q served (-want +got):\n%s", tc.p.Name, d)
 		}
 		if d := cmp.Diff(tc.only, only); d != "" {
 			t.Errorf("%q infraweave-only (-want +got):\n%s", tc.p.Name, d)
 		}
-	}
-}
-
-// TestUnitParityReasons proves a missing operation's reason survives a
-// rewrite while it stays missing, goes when it is served, and is an
-// improvement when the baseline gives a reason for an operation it does not
-// list as missing.
-func TestUnitParityReasons(t *testing.T) {
-	r := compareFixture(t)
-	prev := r.Baseline(nil)
-	if prev.Reasons != nil || strings.Contains(string(prev.JSON()), "reasons") {
-		t.Errorf("a baseline without reasons writes none: %s", prev.JSON())
-	}
-	prev.Reasons = map[string]string{"contexts": "Waits on PD-99.", "stacks": "Stale."}
-	if d := r.Diff(prev); !slices.Equal(d.Improvements,
-		[]string{"stacks has a reason, and the baseline does not list it as missing"}) {
-		t.Errorf("improvements = %q", d.Improvements)
-	}
-	next := r.Baseline(prev)
-	if d := cmp.Diff(map[string]string{"contexts": "Waits on PD-99."}, next.Reasons); d != "" {
-		t.Errorf("reasons (-want +got):\n%s", d)
-	}
-	back, err := ReadParityBaseline(next.JSON())
-	if err != nil || back.Reasons["contexts"] != "Waits on PD-99." {
-		t.Errorf("round trip: %+v %v", back, err)
-	}
-	if d := r.Diff(next); len(d.Improvements) != 0 {
-		t.Errorf("the rewritten baseline still has improvements: %s", d.Text())
 	}
 }

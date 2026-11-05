@@ -33,6 +33,10 @@ type Product struct {
 	// repository root; a product without an inventory report has no Report.
 	Register string
 	Report   string
+	// TerraformCalls is the file in Dir that maps each Terraform resource
+	// and data source of the capabilities register to the root fields it
+	// calls; a product with no provider records has none.
+	TerraformCalls string
 
 	// owns says which served operations, by first tag, belong to the
 	// product, since one served document holds every product.
@@ -52,7 +56,10 @@ var Deploy = Product{
 	Baseline: "api/parity-baseline.deploy.json",
 	Register: "docs/data/graphql-inventory.json",
 	Report:   "docs/research/reference/29-data-model-inventory.md",
-	owns:     func(tag string) bool { return !flowsTag(tag) },
+	// The capabilities register's resource and data-source records are
+	// Deploy's provider, terraform-provider-spacelift.
+	TerraformCalls: FileTerraformOps,
+	owns:           func(tag string) bool { return !flowsTag(tag) },
 	generate: func(ctx context.Context, dir string) (*Generated, error) {
 		src, err := ReadSources(dir)
 		if err != nil {
@@ -106,12 +113,12 @@ func (p Product) Inventory(dir string, out InventoryOutputs, check bool) error {
 	return p.inventory(dir, out, check)
 }
 
-// Parity compares the served document with the product's reference over
-// the served operations whose first tag is the product's, so another
-// product's operations are not reported infraweave-only. The zero Product
-// compares every served operation, as CompareParity does.
-func (p Product) Parity(reference, served []byte) (*ParityReport, error) {
-	return compareParity(reference, served, p.owns)
+// Parity decides the outcome of each of the product's reference operations
+// over the served operations whose first tag is the product's, so another
+// product's operations are not reported infraweave-only, with the registers
+// reg (nil for none). The zero Product compares every served operation.
+func (p Product) Parity(reference, served []byte, reg *ParityRegisters) (*ParityReport, error) {
+	return compareParity(reference, served, p.owns, reg)
 }
 
 // ProductNamed is the product called name.

@@ -62,10 +62,12 @@ A phase is complete when:
 3. Every operation the phase claims as implemented meets decision 0016's
    evidence rule: it is served in `api/api.openapi.yaml` (or its spec), it
    answers something other than 501, and at least three passing scenarios name
-   it with `@op:<operationId>`: one success path, one 403 denial under
-   [0007](../research/decisions/0007-authorization-spaces-and-roles.md), and
-   one failure path. A Terraform resource or data source is implemented only
-   when the operations it calls are and its provider scenario passes.
+   it with `@op:<operationId>`: one success path (`@case:success`), one 403
+   denial under
+   [0007](../research/decisions/0007-authorization-spaces-and-roles.md)
+   (`@case:denial`), and one failure path (`@case:failure`). A Terraform
+   resource or data source is implemented only when the operations it calls
+   are and its provider scenario, tagged `@provider:<record id>`, passes.
 4. The parity report shrinks by the operations the phase serves, and no
    operation it serves is reported missing.
 5. Report 26's state cells change only through the state check, never by hand

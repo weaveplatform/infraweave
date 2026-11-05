@@ -154,9 +154,13 @@ verify-reference:
 		$(GO) run ./tools/specref inventory --check --product $$p || exit 1; \
 	done
 
-## parity: print, for each product, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from api/parity-baseline.<product>.json
+## parity: print, for each product, every reference operation's outcome (served, served with divergence, superseded, missing) and the infraweave-only ones by tag, and how they differ from api/parity-baseline.<product>.json
 parity:
-	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p || exit 1; done
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p --list || exit 1; done
+
+## verify-parity: fail when a served operation diverges unrecorded or is superseded, a baseline is stale, or capabilities.json claims a state cover/accept/cucumber.json does not show
+verify-parity:
+	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p --states --check || exit 1; done
 
 ## parity-baseline: rewrite each api/parity-baseline.<product>.json to accept the current parity report, keeping recorded reasons (review the diff)
 parity-baseline:
@@ -167,6 +171,6 @@ docs-check:
 	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/devtools/docscheck
 
 ## gate: everything CI runs, in order
-gate: docs-check vet lint lint-fixtures test accept verify-reference verify-generate cover vuln build
+gate: docs-check vet lint lint-fixtures test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint lint-fixtures vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint lint-fixtures vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

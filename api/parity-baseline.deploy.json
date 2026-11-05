@@ -765,6 +765,5 @@
       "stackMigrateVendorAll",
       "userSecurityKeyDeleteAll"
     ]
-  },
-  "moved": []
+  }
 }

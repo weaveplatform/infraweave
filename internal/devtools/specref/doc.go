@@ -30,9 +30,17 @@
 // identifier register.
 //
 // For any product, ScaffoldFile copies one reference tag into a
-// served-API fragment with decision 0003's conventions, and Product.Parity
-// and ParityCheck compare the served operations under the product's own tags
-// with its reference against the accepted baseline.
+// served-API fragment with decision 0003's conventions. Product.Parity and
+// ParityCheck decide decision 0016's outcome for each reference operation
+// over the served operations under the product's own tags: served, served
+// with divergence, superseded or missing. They match renamed operations
+// through the rename table and superseded ones through the supersession
+// register (ReadParityRegisters), and report each unrecorded or stale
+// x-infraweave-divergence and each served superseded operation as a failure.
+// The missing list is checked against the accepted baseline.
+// ParityReport.States computes each capabilities record's state from the
+// outcomes and godog's cucumber report (ReadCucumber), by the three-scenario
+// evidence rule, and StateClaims lists the records that claim more.
 //
 // # Input and output
 //
@@ -53,8 +61,11 @@
 // and writes: the document and coverage report (GenerateDir), a fragment
 // under api/src/api (ScaffoldFile), report 29 and
 // docs/data/graphql-inventory.json or docs/data/flows-sdk-inventory.json
-// (Product.Inventory), and the parity baseline (WriteParityBaseline). The
-// check functions write nothing.
+// (Product.Inventory), and the parity baseline (WriteParityBaseline). Parity
+// reads docs/data/renames.json and docs/data/supersessions.json, and its
+// states read docs/data/capabilities.json, cover/accept/cucumber.json and
+// the reference's terraform-operations.json; the check functions write
+// nothing.
 //
 // # Dependencies
 //

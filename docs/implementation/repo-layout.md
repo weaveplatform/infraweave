@@ -440,8 +440,10 @@ option 5's
   domain or concern (`runs_terraform.feature`, `events_webhooks.feature`,
   `authz_spaces.feature`). A scenario carries dependency tags (`@postgres`,
   `@objectstore`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@ai`,
-  `@kubernetes`, `@flows-agent`) and one `@op:<operationId>` tag per
-  operation it exercises.
+  `@kubernetes`, `@flows-agent`), one `@op:<operationId>` tag per
+  operation it exercises, and `@case:success`, `@case:denial` or
+  `@case:failure` for the kind of path it proves; a Terraform provider
+  scenario also carries `@provider:<capability record id>`.
 - **Capture fixtures** hold `meta.yaml`, `request.graphql`, `response.json` and
   `expect.yaml` per capture
   ([0016](../research/decisions/0016-testing-and-acceptance.md#capture-fixtures)).
