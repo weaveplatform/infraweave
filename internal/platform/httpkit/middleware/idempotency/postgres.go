@@ -115,4 +115,15 @@ func (p *Postgres) Release(ctx context.Context, key Key) error {
 	return nil
 }
 
+// Purge deletes the keys whose time to live has passed, which Claim
+// would treat as absent anyway, and returns how many it deleted. The
+// idempotency.purge periodic task runs it (decision 0005).
+func (p *Postgres) Purge(ctx context.Context) (int64, error) {
+	tag, err := tx.Q(ctx, p.db).Exec(ctx, `DELETE FROM idempotency_keys WHERE expires_at <= now()`)
+	if err != nil {
+		return 0, fmt.Errorf("purge idempotency keys: %w", sql.Unavailable(err))
+	}
+	return tag.RowsAffected(), nil
+}
+
 var _ Store = (*Postgres)(nil)

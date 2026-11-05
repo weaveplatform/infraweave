@@ -86,6 +86,9 @@ func TestAccNotifyReconnect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if l.Listening() {
+		t.Error("listening before Run")
+	}
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() { defer close(done); l.Run(ctx) }()
@@ -93,6 +96,9 @@ func TestAccNotifyReconnect(t *testing.T) {
 
 	expect(t, sub, notify.Message{Resync: true})
 	expect(t, other, notify.Message{Resync: true})
+	if !l.Listening() {
+		t.Error("not listening after the first Resync")
+	}
 	if err := notify.Notify(t.Context(), pool, notify.Invalidate, "a"); err != nil {
 		t.Fatal(err)
 	}
@@ -148,6 +154,12 @@ func TestAccNotifyReconnect(t *testing.T) {
 	}
 	expect(t, sub, notify.Message{Payload: "c"})
 	quiet(t, other)
+
+	cancel()
+	<-done
+	if l.Listening() {
+		t.Error("listening after Run returned")
+	}
 }
 
 // A subscriber that falls more than a buffer behind loses payloads but

@@ -79,8 +79,14 @@ Bundling fails when any of these happens:
 `GET /livez` while the process serves HTTP, `GET /startupz` once the schema
 is at this binary's version, and `GET /readyz` while PostgreSQL answers and
 shutdown has not begun. Add `?verbose` for the checks as JSON.
-`infraweave scheduler` serves only the admin listener, and `infraweave all`
-runs both in one process. Every process mode logs JSON lines to stdout with
+`infraweave scheduler` serves only the admin listener and runs the work
+queue: the workers of each logical queue and the scheduler ticker, which
+fires periodic tasks such as `queue.prune` once across every instance
+([decision 0011](docs/research/decisions/0011-persistent-work-queue.md)).
+Its `GET /readyz` also fails while its listening connection to PostgreSQL
+is down. `infraweave all` runs both in one process; on shutdown the HTTP
+drain comes first, then the ticker stops, then the workers finish or hand
+their jobs back within `queue.shutdown_grace`. Every process mode logs JSON lines to stdout with
 `time`, `level`, `msg`, `service`, `mode`, `version` and, inside a request,
 `request_id`, and logs one `request` line per API request. A valid
 `X-Request-Id` (1 to 128 of `A-Z a-z 0-9 . _ -`) is kept, any other is

@@ -46,6 +46,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the problem names the request in its instance$`, s.namesRequest)
 	s.registerReplicas(sc)
 	s.registerQueueStats(sc)
+	(&queueSteps{s: s}).register(sc)
 }
 
 // serverConfig is a strict configuration file for one server: both

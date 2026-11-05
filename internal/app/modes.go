@@ -77,13 +77,24 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	}()
 	health := observe.NewHealth(time.Now)
 	databaseChecks(health, db)
+	// One listening connection per process; every subscriber subscribes
+	// before it runs, so none misses the first Resync.
+	l := notify.NewListener(db.ConnConfig, log)
 	var g Guards
 	if m.API {
-		g = postgresGuards(background, &wg, c.Server, db, log)
+		g = postgresGuards(background, &wg, c.Server, db, l)
 	}
+	stopScheduler := func() {}
+	if m.Scheduler {
+		if stopScheduler, err = startScheduler(ctx, c, db, l, log, health); err != nil {
+			return err
+		}
+	}
+	wg.Go(func() { l.Run(background) })
 	api, admin := handlers(log, c.Server, m, g, queue.New(db.Primary()), health)
-	//nolint:wrapcheck // serve's errors name the listener
-	return serve.Run(ctx, c.Server.Config, log, api, admin, health.Stop)
+	err = serve.Run(ctx, c.Server.Config, log, api, admin, health.Stop)
+	stopScheduler()
+	return err //nolint:wrapcheck // serve's errors name the listener
 }
 
 // databaseChecks are P2's probe checks, which every mode runs: the
@@ -126,18 +137,16 @@ func handlers(
 // postgresGuards keeps the controls' state in db, shared by every replica
 // (decision 0005). The disabled callers are both lists, the configuration's
 // and api_disabled_callers; the table's copy follows infraweave_invalidate
-// through a listener that runs, with wg, until ctx ends.
+// through l, in a watcher that runs, with wg, until ctx ends.
 func postgresGuards(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	c config.Server,
 	db *sql.DB,
-	log *slog.Logger,
+	l *notify.Listener,
 ) Guards {
-	l := notify.NewListener(db.ConnConfig, log)
 	sub, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
 	table := ratelimit.NewTable(db.Primary(), time.Now)
-	wg.Go(func() { l.Run(ctx) })
 	wg.Go(func() { table.Watch(ctx, sub) })
 	return Guards{
 		Switch:  ratelimit.Switches{ratelimit.NewCallers(c.RateLimit.DisabledCallers), table},

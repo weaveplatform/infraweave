@@ -87,11 +87,15 @@ func TestAccServeDatabase(t *testing.T) {
 	if sessions(t, observer, "true") == 0 {
 		t.Fatal("serve listens without a database connection")
 	}
-	for _, probe := range []string{"/startupz", "/readyz"} {
-		if !answers(t, "http://"+c.Server.AdminListen+probe) {
-			t.Errorf("%s fails against a migrated database", probe)
-		}
+	if !answers(t, "http://"+c.Server.AdminListen+"/startupz") {
+		t.Error("/startupz fails against a migrated database")
 	}
+	// Readiness also waits for the scheduler's listening connection.
+	until(
+		t,
+		"/readyz to pass",
+		func() bool { return answers(t, "http://"+c.Server.AdminListen+"/readyz") },
+	)
 	cancel()
 	select {
 	case err := <-done:

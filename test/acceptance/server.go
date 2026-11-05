@@ -232,6 +232,9 @@ func (s *Server) Stop(ctx context.Context) error {
 // Stdout is what the process has logged so far, one JSON object per line.
 func (s *Server) Stdout() []byte { return s.stdout.Bytes() }
 
+// Pid is the process's ID, which it names itself by on the jobs it claims.
+func (s *Server) Pid() int { return s.cmd.Process.Pid }
+
 // Signal sends sig to the process.
 func (s *Server) Signal(sig os.Signal) error {
 	if err := s.cmd.Process.Signal(sig); err != nil {
