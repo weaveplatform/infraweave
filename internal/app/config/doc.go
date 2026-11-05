@@ -3,7 +3,8 @@
 // Config holds every setting, keyed as in the YAML file; Server holds the
 // listener settings of httpkit/serve, squashed to server.listen,
 // server.admin_listen and server.shutdown, beside decision 0003's
-// server.rate_limit and server.idempotency. Defaults are what an empty
+// server.rate_limit and server.idempotency; Database holds decision 0005's
+// database.* settings of platform/sql. Defaults are what an empty
 // configuration means, Validate rejects a setting the server could not start
 // with, ServeFlags declares the serve process mode's flags, and Load decodes
 // them.
@@ -22,6 +23,6 @@
 // # Dependencies
 //
 // It imports viper and pflag for the decoding, and the setting and default
-// types of platform/httpkit/serve, middleware/ratelimit and
-// middleware/idempotency. internal/app and cmd/ import it.
+// types of platform/httpkit/serve, middleware/ratelimit,
+// middleware/idempotency and platform/sql. internal/app and cmd/ import it.
 package config

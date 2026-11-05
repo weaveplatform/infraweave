@@ -16,6 +16,10 @@ exclude:
     # whose remaining statements are failures of Docker, the build or a
     # container that no scenario can stage.
     - ^test/
+    # The PostgreSQL test harness, for the same reason: every database test
+    # runs it, and what no test reaches is Docker or a container failing and
+    # Main's teardown after m.Run has written the profile.
+    - ^internal/platform/sql/sqltest/
     # oapi-codegen and stubgen output; the generators are tested instead.
     - ^internal/platform/gen/
     - ^pkg/client/
