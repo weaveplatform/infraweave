@@ -455,11 +455,6 @@ func TestAccOutboxFanout(t *testing.T) {
 		"the notifications consumer",
 		func() bool { return len(notifications.deliveries()) == 1 },
 	)
-	eventually(
-		t,
-		"the failing consumer's first attempt",
-		func() bool { return failures.Load() >= 1 },
-	)
 
 	got := notifications.deliveries()[0]
 	if got.ev.ID != stored.ID || got.ev.Account != account || got.ev.Kind != "run.finished" ||
@@ -483,9 +478,14 @@ func TestAccOutboxFanout(t *testing.T) {
 		state, _, _ := h.job(t, outbox.ConsumeKind.Name, key+"notifications")
 		return state == "succeeded"
 	})
-	state, attempt, lastError := h.job(t, outbox.ConsumeKind.Name, key+"webhooks")
-	if state != "pending" || attempt < 1 || !strings.Contains(lastError, "answered 500") {
-		t.Errorf("failing consumer's job: %s, attempt %d, last error %q", state, attempt, lastError)
+	// A claim counts the attempt before the handler runs, so only a
+	// pending job with its last error has had its failure recorded.
+	eventually(t, "the failing consumer's job to await its retry", func() bool {
+		state, attempt, lastError := h.job(t, outbox.ConsumeKind.Name, key+"webhooks")
+		return state == "pending" && attempt >= 1 && strings.Contains(lastError, "answered 500")
+	})
+	if failures.Load() < 1 {
+		t.Error("the failing consumer never ran")
 	}
 	if n := h.count(
 		t,
@@ -595,14 +595,11 @@ func TestAccOutboxDeadJobs(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, "the unknown consumer's first attempt", func() bool {
-		_, attempt, _ := h.job(t, outbox.ConsumeKind.Name, "unknown")
-		return attempt >= 1
+	eventually(t, "the unknown consumer's job to await its retry", func() bool {
+		state, attempt, lastError := h.job(t, outbox.ConsumeKind.Name, "unknown")
+		return state == "pending" && attempt >= 1 &&
+			strings.Contains(lastError, `"billing" is not subscribed`)
 	})
-	if state, _, lastError := h.job(t, outbox.ConsumeKind.Name, "unknown"); state != "pending" ||
-		!strings.Contains(lastError, `"billing" is not subscribed`) {
-		t.Errorf("unknown consumer's job: %s, %q", state, lastError)
-	}
 }
 
 // TestAccOutboxPrune checks that Prune deletes the events fanned out longer
