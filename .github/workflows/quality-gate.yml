@@ -102,6 +102,8 @@ jobs:
       - name: Acceptance partition ${{ matrix.partition }}
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          # TEMPORARY, reverted before merge: hide Docker from accept-core.
+          INFRAWEAVE_ACCEPT_NO_DOCKER: ${{ matrix.partition == 'core' && '1' || '' }}
         run: make accept PARTITION=${{ matrix.partition }}
 
       - name: Upload failed-scenario evidence
