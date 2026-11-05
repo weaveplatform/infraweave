@@ -4,8 +4,9 @@
 // back and reruns fn, up to MaxRetries more times after 10 to 100 ms of
 // jitter; any other error, or a panic, rolls back once. A Do inside another
 // joins the outer transaction, so a store method composes into a caller's
-// unit of work. Q returns the context's transaction or the given pool, and
-// AfterCommit defers work such as a notification until the commit succeeds.
+// unit of work. Q returns the context's transaction or the given pool, In
+// reports whether there is one, and AfterCommit defers work such as a
+// notification until the commit succeeds.
 //
 // # Input and output
 //

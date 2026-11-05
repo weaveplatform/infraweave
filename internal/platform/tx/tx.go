@@ -129,6 +129,14 @@ func Q(ctx context.Context, db Querier) Querier {
 	return db
 }
 
+// In reports whether ctx carries a transaction, for a call whose guarantee
+// rests on joining its caller's, such as an enqueue that must commit or
+// roll back with the change that asks for it.
+func In(ctx context.Context) bool {
+	_, ok := ctx.Value(ctxKey{}).(*unit)
+	return ok
+}
+
 // AfterCommit runs f once the transaction on ctx commits, and never when
 // it rolls back; a retried attempt drops what its failed attempts
 // registered. With no transaction on ctx there is nothing to wait for, and

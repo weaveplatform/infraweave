@@ -56,6 +56,7 @@ Two lessons from that report shape the design:
 | `queue` | `text` | Logical queue (table below) |
 | `kind` | `text` | Code constant `<area>.<verb>`, such as `vcs.process_delivery` |
 | `payload` | `jsonb` | At most 64 KiB. Carries IDs, never secrets. Anything larger goes to the `inbox` store and the payload carries its key |
+| `account_id` | `uuid`, nullable | The account whose entitlement the claim checks (below); null for installation work such as pruning |
 | `unique_key` | `text`, nullable | Deduplication key within the kind |
 | `ordering_key` | `text`, nullable | FIFO group |
 | `priority` | `smallint` | 0 (first) to 9, default 5 |
@@ -100,12 +101,16 @@ has no counterpart, because workers report over HTTP straight to the API
 
 ### Enqueueing
 
-- **Calls.** `queue.EnqueueTx(ctx, tx, job)` enqueues inside the caller's
-  transaction. `queue.Enqueue(ctx, job)` is for callers without one. A job
-  names its kind, payload and, optionally, `unique_key`, `ordering_key`,
-  `priority`, `run_at` and `max_attempts`.
+- **Calls.** `queue.EnqueueTx(ctx, kind, payload, opts...)` enqueues inside
+  the transaction that `tx.Do` put on `ctx`, and refuses to run without one.
+  `queue.Enqueue` is for callers with no change to commit alongside the job.
+  A kind is a value declared once by the package that owns it: its name, its
+  logical queue, its duplicate policy and its `max_attempts`, so a replica
+  that only enqueues a kind applies the same policy as one that runs it.
+  Options set the account, `unique_key`, `ordering_key`, `priority`, `run_at`
+  and `max_attempts`.
 - **Wake-up.** The enqueue issues `pg_notify('infraweave_jobs', queue)` in the
-  same transaction. PostgreSQL delivers it only at commit, so idle workers wake
+  same statement as the insert. PostgreSQL delivers it only at commit, so idle workers wake
   exactly when the job becomes visible, and never for a rolled-back job.
 - **Duplicates.** A duplicate `(kind, unique_key)` resolves by the kind's
   registered policy:
@@ -189,7 +194,7 @@ once by three rules.
    ([0008](0008-run-execution-and-worker-protocol.md)).
 2. **Database effects commit with the completion.**
    - **`CompleteTx`.** A handler whose effect is database writes calls
-     `queue.CompleteTx(ctx, tx, job)`. That marks the job `succeeded`, fenced
+     `queue.CompleteTx(ctx, job)` inside its own transaction. That marks the job `succeeded`, fenced
      by `generation`, in the same transaction as its writes. A lapsed lease
      makes the transaction fail and roll back, so the writes happen exactly
      once.

@@ -133,10 +133,12 @@ func TestAccMigrateCommands(t *testing.T) {
 			"  pending  00001_create_widgets") {
 		t.Fatalf("status before up: %v\n%s", err, out)
 	}
-	if out, err := run(
-		up,
-	); err != nil ||
-		out != "applied platform 00001_api_controls\napplied widgets 00001_create_widgets\n" {
+	// The platform stream grows with each phase, so only its first file and
+	// its place before the fixture stream are fixed.
+	if out, err := run(up); err != nil ||
+		!strings.HasPrefix(out, "applied platform 00001_api_controls\n") ||
+		!strings.HasSuffix(out, "\napplied widgets 00001_create_widgets\n") ||
+		strings.Count(out, "applied ") != strings.Count(out, "\n") {
 		t.Fatalf("up: %v\n%s", err, out)
 	}
 	if out, err := run(up); err != nil || out != "the schema is up to date\n" {

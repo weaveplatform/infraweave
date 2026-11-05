@@ -21,9 +21,10 @@ var unavailableCodes = map[string]bool{"57P01": true, "57P02": true, "57P03": tr
 // cannot be reached, so the request that hit it answers 503 and is retried:
 // a connection that could not be made, a dropped or timed-out connection,
 // a pool acquire that timed out, or a server shutting down. Any other
-// error, a failed query included, is returned as it is.
+// error, a failed query included, is returned as it is, and so is one
+// already marked, so a caller may classify what a store returned.
 func Unavailable(err error) error {
-	if err == nil || !unreachable(err) {
+	if err == nil || errors.Is(err, kernel.ErrUnavailable) || !unreachable(err) {
 		return err
 	}
 	return fmt.Errorf("%w: %w", kernel.ErrUnavailable, err)
