@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -35,7 +36,13 @@ type Job struct {
 	Attempt     int
 	MaxAttempts int
 	Generation  int64
+
+	// done is set once CompleteTx's transaction commits, so the worker
+	// records nothing more; it is shared by every copy of the Job.
+	done *atomic.Bool
 }
+
+func (j Job) completed() bool { return j.done != nil && j.done.Load() }
 
 // claim takes up to $4 due pending jobs of queue $1 whose kinds are in $2,
 // without waiting on rows another claim holds. A job with an ordering key
@@ -73,7 +80,7 @@ func (q *Queue) Claim(
 		return nil, fmt.Errorf("claim from %s: %w", queue, sql.Unavailable(err))
 	}
 	jobs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Job, error) {
-		var j Job
+		j := Job{done: new(atomic.Bool)}
 		err := r.Scan(&j.ID, &j.Kind, &j.Queue, &j.Payload, &j.Account, &j.Attempt, &j.MaxAttempts,
 			&j.Generation)
 		return j, err //nolint:wrapcheck // wrapped below
@@ -128,12 +135,30 @@ func (q *Queue) CompleteTx(ctx context.Context, j Job) error {
 	if !tx.In(ctx) {
 		return ErrNoTransaction
 	}
-	return q.Complete(ctx, j)
+	if err := q.Complete(ctx, j); err != nil {
+		return err
+	}
+	tx.AfterCommit(ctx, func(context.Context) {
+		if j.done != nil {
+			j.done.Store(true)
+		}
+	})
+	return nil
 }
 
 // Fail records j's failed attempt: the job is retried after Backoff, or is
 // dead once it has made MaxAttempts attempts. It reports whether j is dead.
 func (q *Queue) Fail(ctx context.Context, j Job, cause error) (dead bool, err error) {
+	return q.FailAfter(ctx, j, cause, Backoff(j.Attempt))
+}
+
+// FailAfter is Fail with the retry delay a kind chose.
+func (q *Queue) FailAfter(
+	ctx context.Context,
+	j Job,
+	cause error,
+	delay time.Duration,
+) (dead bool, err error) {
 	dead = j.Attempt >= j.MaxAttempts
 	if dead {
 		return true, q.Kill(ctx, j, cause)
@@ -143,7 +168,7 @@ func (q *Queue) Fail(ctx context.Context, j Job, cause error) (dead bool, err er
 		"fail",
 		j,
 		"state = 'pending', run_at = now() + $3 * interval '1 microsecond', last_error = $4"+released,
-		Backoff(j.Attempt).Microseconds(),
+		delay.Microseconds(),
 		lastError(cause),
 	)
 }

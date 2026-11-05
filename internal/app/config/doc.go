@@ -5,7 +5,8 @@
 // server.admin_listen and server.shutdown, beside decision 0003's
 // server.rate_limit and server.idempotency; Database holds decision 0005's
 // database.* settings of platform/sql; Log holds decision 0017's log.*
-// settings of platform/observe. Defaults are what an empty configuration
+// settings of platform/observe; Queue holds decision 0011's queue.*
+// settings of platform/queue. Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags
 // those of a mode that serves only the admin listener, FileFlag only
@@ -26,5 +27,6 @@
 //
 // It imports viper and pflag for the decoding, and the setting and default
 // types of platform/httpkit/serve, middleware/ratelimit,
-// middleware/idempotency, platform/sql and platform/observe. internal/app and cmd/ import it.
+// middleware/idempotency, platform/sql, platform/observe and
+// platform/queue. internal/app and cmd/ import it.
 package config

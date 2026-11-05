@@ -145,12 +145,13 @@ has no counterpart, because workers report over HTTP straight to the API
 
 ### Handlers, timeouts and outcomes
 
-- **Registration.** A kind is registered with
-  `queue.Register(kind, handler, opts)`. The options give the queue, duplicate
-  policy, `max_attempts` (default 5), timeout (default 5 minutes, at most 15
-  minutes, Spacelift's 900-second processing bound) and retry delay. Each kind
-  may override any default; a timeout above 15 minutes fails registration, so
-  the process does not start.
+- **Registration.** A replica that runs a kind registers it with
+  `queue.Register(kind, handler, opts)`. The kind carries its queue,
+  duplicate policy and `max_attempts` (default 5), which enqueueing needs
+  too; the options give the timeout (default 5 minutes, at most 15 minutes,
+  Spacelift's 900-second processing bound), the feature that gates it and the
+  retry delay. Each kind may override any default; a timeout above 15
+  minutes fails registration, so the process does not start.
 - **Unregistered kinds.** A job of a kind no handler is registered for stays
   `pending`. This happens during a rolling upgrade, when an older replica sees
   a newer kind. Claims filter on the kinds the replica knows.

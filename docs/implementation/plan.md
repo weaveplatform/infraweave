@@ -877,7 +877,7 @@ writes it.
    `Enqueue` with `pg_notify('infraweave_jobs', ...)`, `Coalesce` and `Ignore`
    duplicates, ordering keys, leases with `generation` fencing,
    `CompleteTx`, `Snooze`, `Permanent`, backoff with full jitter, the
-   `dead` state, pruning; the six logical queues with per-replica worker
+   `dead` state, pruning; the seven logical queues with per-replica worker
    counts. Tests: `internal/platform/queue/queuetest` (`TestAccQueue...`
    for every case decision 0011 lists).
 2. `internal/platform/cron`: the five-field grammar, time zones, next-fire

@@ -1,7 +1,9 @@
 package queue
 
 import (
+	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -125,6 +127,86 @@ func TestUnitUnreachable(t *testing.T) {
 	} {
 		if err := f(); !errors.Is(err, kernel.ErrUnavailable) {
 			t.Errorf("%s: %v, want kernel.ErrUnavailable", name, err)
+		}
+	}
+}
+
+func TestUnitRegister(t *testing.T) {
+	r := NewRegistry()
+	ok := Kind{Name: "test.ok", Queue: Events, Policy: Ignore}
+	h := func(context.Context, Job) error { return nil }
+	if err := r.Register(ok, h, HandlerOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.kinds[ok.Name].timeout; got != DefaultTimeout {
+		t.Errorf("default timeout %s", got)
+	}
+	for name, tc := range map[string]struct {
+		kind Kind
+		h    Handler
+		o    HandlerOptions
+	}{
+		"twice":        {ok, h, HandlerOptions{}},
+		"invalid kind": {Kind{Name: "a.b"}, h, HandlerOptions{}},
+		"no handler":   {Kind{Name: "a.b", Queue: Default, Policy: Ignore}, nil, HandlerOptions{}},
+		"too long":     {Kind{Name: "a.c", Queue: Default, Policy: Ignore}, h, HandlerOptions{Timeout: MaxTimeout + 1}},
+		"negative":     {Kind{Name: "a.d", Queue: Default, Policy: Ignore}, h, HandlerOptions{Timeout: -1}},
+	} {
+		if err := r.Register(tc.kind, tc.h, tc.o); !errors.Is(err, ErrRegister) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if err := r.Register(Kind{Name: "a.max", Queue: Default, Policy: Ignore}, h,
+		HandlerOptions{Timeout: MaxTimeout}); err != nil {
+		t.Errorf("the longest timeout: %v", err)
+	}
+	if got := r.on(Default); !slices.Equal(got, []string{"a.max"}) {
+		t.Errorf("default's kinds %v", got)
+	}
+	if got := r.on(Flows); len(got) != 0 {
+		t.Errorf("flows' kinds %v", got)
+	}
+}
+
+func TestUnitResults(t *testing.T) {
+	cause := errors.New("bad payload")
+	if err := Permanent(cause); !errors.Is(err, cause) || err.Error() != "bad payload" {
+		t.Errorf("Permanent: %v", err)
+	}
+	if err := Snooze(time.Minute); err.Error() != "snoozed for 1m0s" {
+		t.Errorf("Snooze: %v", err)
+	}
+	if ok, err := (AllowAll{}).Allowed(
+		t.Context(),
+		kernel.NewULID(),
+		"webhooks",
+	); !ok ||
+		err != nil {
+		t.Errorf("AllowAll: %v %v", ok, err)
+	}
+}
+
+func TestUnitConfig(t *testing.T) {
+	d := Defaults()
+	if err := d.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	want := map[Name]int{
+		Default: 8, Events: 8, VCSInbox: 4, Deliveries: 8, Scheduler: 2, Flows: 8, Maintenance: 1,
+	}
+	for _, n := range Queues {
+		if d.Workers(n) != want[n] {
+			t.Errorf("%s: %d workers", n, d.Workers(n))
+		}
+	}
+	bad := Config{ShutdownGrace: -1, Queues: PerQueue{VCSInbox: QueueConfig{Workers: -1}}}
+	err := bad.Validate()
+	for _, key := range []string{
+		"queue.lease", "queue.poll_interval", "queue.scheduler_tick", "queue.completed_retention",
+		"queue.dead_retention", "queue.shutdown_grace", "queue.queues.vcs-inbox.workers",
+	} {
+		if !errors.Is(err, ErrConfig) || !strings.Contains(err.Error(), key) {
+			t.Errorf("%s not reported: %v", key, err)
 		}
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
@@ -21,6 +22,7 @@ type Config struct {
 	Server   Server            `mapstructure:"server"`
 	Database sql.Config        `mapstructure:"database"`
 	Log      observe.LogConfig `mapstructure:"log"`
+	Queue    queue.Config      `mapstructure:"queue"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -43,6 +45,7 @@ func Defaults() Config {
 		},
 		Database: sql.Defaults(),
 		Log:      observe.LogDefaults(),
+		Queue:    queue.Defaults(),
 	}
 }
 
@@ -126,7 +129,9 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		}
 	}
 	v.SetEnvPrefix("INFRAWEAVE")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	// A queue's name may hold a hyphen, as vcs-inbox does, which no
+	// environment variable name can.
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 	bindEnv(v, reflect.TypeFor[Config](), "")
 	if file, _ := fs.GetString(ConfigFlag); file != "" {
@@ -146,6 +151,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Server.Validate(),
 		c.Database.Validate(),
 		c.Log.Validate(),
+		c.Queue.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
