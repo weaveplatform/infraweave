@@ -76,7 +76,7 @@ func TestAccOpenDatabase(t *testing.T) {
 	db.Close()
 	if !strings.Contains(
 		logs.String(),
-		"msg=migrated stream=widgets version=1 name=create_widgets",
+		"msg=migrated stream=widgets migration=1 name=create_widgets",
 	) {
 		t.Errorf("logs: %s", logs.String())
 	}
