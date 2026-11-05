@@ -422,7 +422,7 @@ sit where P1b places them; the paths below are those.
    Strict YAML config with flag over environment over file. Tests:
    unit tests for `/livez`, a `501` stub, `404`, `405`
    and recovery; config precedence and unknown-key
-   rejection; `served_api.feature`.
+   rejection; `api_served.feature`.
 3. Done: [#15](https://github.com/weaveplatform/infraweave/issues/15) `internal/platform/httpkit/middleware/ratelimit`,
    `internal/platform/httpkit/middleware/idempotency` and
    `internal/platform/httpkit/page`: token buckets per caller and cost class
@@ -432,7 +432,7 @@ sit where P1b places them; the paths below are those.
    `invalid-cursor`. In-memory stores behind interfaces until P2; settings
    under `server.rate_limit` and `server.idempotency`. Tests: a
    `-race` test of concurrent reservations, limiter refill with an injected
-   clock, cursor tamper cases, `served_api.feature` scenarios for `429`,
+   clock, cursor tamper cases, `api_served.feature` scenarios for `429`,
    replay and the disabled caller. Records DV-003 to DV-007.
 4. Done: [#11](https://github.com/weaveplatform/infraweave/issues/11) `specref parity` in `internal/devtools/specref` with `make parity` and
    `make parity-baseline`: present, missing, moved and infraweave-only
@@ -630,7 +630,7 @@ passing success, denial and failure scenarios.
    differ from the problem registry.
 
 **Exit criteria**
-- `served_api.feature`, `spec_reference.feature` and `deploy_spec.feature`
+- `api_served.feature`, `reference_spec.feature` and `api_bundle.feature`
   run against the subprocess binary, and its coverage reaches the merged
   profile.
 - `make verify-parity` reports the 72 scaffolded operations served and every

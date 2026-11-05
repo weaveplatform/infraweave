@@ -1,15 +1,12 @@
-// Package acceptance runs the Gherkin features in features/ with godog.
 package acceptance
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
-	"testing"
 
 	"github.com/cucumber/godog"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -20,27 +17,6 @@ import (
 
 // referenceDir is the committed reference, relative to this package.
 var referenceDir = filepath.Join("..", "..", "api", "reference", "spacelift")
-
-var errStep = errors.New("step failed")
-
-func TestAccFeatures(t *testing.T) {
-	suite := godog.TestSuite{
-		ScenarioInitializer: func(sc *godog.ScenarioContext) {
-			(&referenceSteps{}).register(sc)
-			(&deploySteps{}).register(sc)
-			(&servedSteps{}).register(sc)
-		},
-		Options: &godog.Options{
-			Format:   "pretty",
-			Paths:    []string{"features"},
-			TestingT: t,
-			Strict:   true,
-		},
-	}
-	if suite.Run() != 0 {
-		t.Fatal("acceptance features failed")
-	}
-}
 
 type referenceSteps struct {
 	src *specref.Sources

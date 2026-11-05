@@ -11,6 +11,8 @@
 *.out
 /cover/
 golangci-lint-report.sarif
+# A failed acceptance scenario's evidence; CI uploads it as an artefact
+/test/acceptance/out/
 
 # Workspaces stay local: CI builds with GOWORK=off
 go.work
