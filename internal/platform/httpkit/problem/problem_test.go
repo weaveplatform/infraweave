@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -84,9 +85,37 @@ func TestUnitResponseErrorProblem(t *testing.T) {
 	}
 }
 
-// TestUnitTypesMatchRegister keeps the types the server writes in step with
-// the problem register, the list clients branch on.
-func TestUnitTypesMatchRegister(t *testing.T) {
+// registryDiff names each difference between the declared types and the
+// register's records: a slug only one side has, or a status or title that
+// differs.
+func registryDiff(types, records []Type) []string {
+	declared := map[string]Type{}
+	for _, t := range types {
+		declared[t.Slug] = t
+	}
+	var out []string
+	for _, r := range records {
+		t, ok := declared[r.Slug]
+		switch {
+		case !ok:
+			out = append(out, r.Slug+": in the register, not declared")
+		case t != r:
+			out = append(out, fmt.Sprintf("%s: declared %+v, register has %+v", r.Slug, t, r))
+		}
+		delete(declared, r.Slug)
+	}
+	for _, t := range types {
+		if _, ok := declared[t.Slug]; ok {
+			out = append(out, t.Slug+": declared, not in the register")
+		}
+	}
+	return out
+}
+
+// TestUnitProblemRegistry holds Types to the problem register, the one
+// complete list of slugs (decision 0022), in both directions, so the server
+// and every client that branches on Types agree with it.
+func TestUnitProblemRegistry(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "docs", "data", "problems.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -101,16 +130,32 @@ func TestUnitTypesMatchRegister(t *testing.T) {
 	if err := json.Unmarshal(b, &reg); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]Type{}
+	records := make([]Type, 0, len(reg.Records))
 	for _, r := range reg.Records {
-		want[r.ID] = Type{r.ID, r.Status, r.Title}
+		records = append(records, Type{r.ID, r.Status, r.Title})
 	}
-	for _, typ := range []Type{
-		InvalidRequest, InvalidCursor, IdempotencyKeyInFlight, PayloadTooLarge,
-		IdempotencyKeyReuse, RateLimited, APIDisabled,
-	} {
-		if want[typ.Slug] != typ {
-			t.Errorf("%+v, register has %+v", typ, want[typ.Slug])
-		}
+	types := Types()
+	for _, d := range registryDiff(types, records) {
+		t.Error(d)
+	}
+	if !slices.IsSortedFunc(types, func(a, b Type) int { return strings.Compare(a.Slug, b.Slug) }) {
+		t.Error("Types is not ordered by slug")
+	}
+
+	got := registryDiff(
+		[]Type{
+			NotFound,
+			{"teapot", http.StatusTeapot, "teapot"},
+			{"forbidden", http.StatusForbidden, "nope"},
+		},
+		[]Type{NotFound, Forbidden, Unauthenticated},
+	)
+	want := []string{
+		`forbidden: declared {Slug:forbidden Status:403 Title:nope}, register has {Slug:forbidden Status:403 Title:unauthorized: permission denied}`,
+		"unauthenticated: in the register, not declared",
+		"teapot: declared, not in the register",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }

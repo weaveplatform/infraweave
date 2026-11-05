@@ -89,7 +89,7 @@ Rules that apply to every problem:
   ([0012](0012-vcs-integration-model.md)). The worker API
   ([0008](0008-run-execution-and-worker-protocol.md)) uses this register.
 
-`internal/problem` holds the slug registry as Go constants. The problem
+`internal/platform/httpkit/problem` holds the slug registry as Go values, listed by `problem.Types()`. The problem
 register is the source, and a test checks that the two agree. A
 handler returns a typed error (`problem.NotFound(...)`,
 `problem.InvalidState(state)`), and one chi middleware renders it; any other
@@ -227,7 +227,7 @@ every request against the bundled spec before the handler (giving
 
 ## Verification
 
-- `internal/problem/problem_test.go` (`TestUnitProblemRegistry`): every slug in the problem register has a
+- `internal/platform/httpkit/problem/problem_test.go` (`TestUnitProblemRegistry`): every slug in the problem register has a
   constant with the same status and title, and every constant is in the register.
 - `api/api_test.go` (`TestUnitAPIProblemTypes`): every problem example in
   the bundled spec uses a slug from the problem register with its status and title.
