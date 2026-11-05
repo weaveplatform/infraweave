@@ -288,6 +288,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	(&deploySteps{}).register(sc)
 	(&servedSteps{w: w}).register(sc)
 	(&observeSteps{w: w}).register(sc)
+	(&startupSteps{w: w}).register(sc)
 	(&harnessSteps{w: w}).register(sc)
 }
 
