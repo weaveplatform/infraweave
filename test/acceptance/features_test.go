@@ -57,6 +57,7 @@ type suite struct {
 
 	mu      sync.Mutex
 	skipped map[string][]string // scenario name → the tags that needed Docker
+	ran     int                 // scenarios selected, skipped ones included
 }
 
 func newSuite(t *testing.T) *suite {
@@ -197,6 +198,9 @@ func TestAccFeatures(t *testing.T) {
 			Concurrency: runtime.GOMAXPROCS(0),
 		},
 	}.Run()
+	if s.ran == 0 {
+		fmt.Printf("acceptance: partition %q has no scenarios yet\n", os.Getenv(envPartition))
+	}
 	if len(s.skipped) > 0 {
 		names := slices.Sorted(func(yield func(string) bool) {
 			for n := range s.skipped {
@@ -237,6 +241,9 @@ type world struct {
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	w := &world{s: s}
 	sc.Before(func(ctx context.Context, p *godog.Scenario) (context.Context, error) {
+		s.mu.Lock()
+		s.ran++
+		s.mu.Unlock()
 		w.name = p.Name
 		for _, t := range p.Tags {
 			w.tags = append(w.tags, t.Name)
