@@ -56,7 +56,13 @@ acceptance results do not show.
 One document holds Deploy and, from P18c, Flows under `/api/v1/flows/`
 ([decision 0018](docs/research/decisions/0018-flows-runtime.md#api-and-clients)).
 `make generate` turns it into the strict server in
-`internal/platform/gen/api` and the client in `pkg/client/api`.
+`internal/platform/gen/api` and the client in `pkg/client/api`. Go programs
+call the API through `pkg/sdk`, which wraps that client with the API's
+conventions: a bearer token, an `Idempotency-Key` on every `POST` and
+`PATCH`, retries on `429` and on `503` with `Retry-After`, iterators over
+`nextCursor`, and a typed error per problem slug
+([decision 0001](docs/research/decisions/0001-rest-first-spacelift-surface.md#sdk-pkgsdk)).
+Every acceptance step drives the server through it.
 
 Bundling fails when any of these happens:
 
@@ -127,7 +133,7 @@ phase.
 | `api/` | OpenAPI documents, embedded for tests and tools by `api/doc.go` |
 | `cmd/<binary>/` | Entry points: thin shims over `internal/`, such as `cmd/infraweave`, one cobra file per process mode over `internal/app`; excluded from the coverage gate |
 | `internal/` | Project-only packages, placed as [the repo layout](docs/implementation/repo-layout.md) says: the composition root in `internal/app`, shared value types in `internal/kernel`, infrastructure in `internal/platform` (`internal/platform/buildinfo` carries the version stamped in by `make build`), and the libraries behind `tools/` in `internal/devtools` |
-| `pkg/` | Public, importable packages |
+| `pkg/` | Public, importable packages: the generated client `pkg/client/api` and the SDK over it, `pkg/sdk` |
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
 | `test/acceptance/` | Gherkin features run by godog (`TestAccFeatures`) against the committed reference and the built `infraweave` binary, with PostgreSQL and the object store started by testcontainers from the digests in `images.go`; a failed scenario leaves its logs, configuration and database dump in `test/acceptance/out/<scenario>/` |

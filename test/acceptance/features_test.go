@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
 // The environment the suite reads. make accept sets PARTITION; CI sets
@@ -204,6 +206,8 @@ type world struct {
 	dir    string
 	server *Server
 	db     *Database
+	// api and admin call the server's two listeners through pkg/sdk.
+	api, admin *sdk.Client
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -301,5 +305,11 @@ func (w *world) startServer(ctx context.Context, config []byte) (*Server, error)
 		return nil, err
 	}
 	w.server = srv
+	if w.api, err = sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry)); err != nil {
+		return nil, fmt.Errorf("sdk: %w", err)
+	}
+	if w.admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
+		return nil, fmt.Errorf("sdk: %w", err)
+	}
 	return srv, nil
 }
