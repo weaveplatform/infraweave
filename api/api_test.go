@@ -318,7 +318,9 @@ func renameTable(t *testing.T) []renamed {
 			owner:      rec.Schema,
 			reference:  rec.Reference,
 			infraweave: rec.Infraweave,
-			pattern:    regexp.MustCompile("^" + strings.ReplaceAll(regexp.QuoteMeta(rec.Reference), `\*`, ".*") + "$"),
+			pattern: regexp.MustCompile(
+				"^" + strings.ReplaceAll(regexp.QuoteMeta(rec.Reference), `\*`, ".*") + "$",
+			),
 		})
 	}
 	if len(rows) == 0 {
@@ -429,7 +431,12 @@ func TestUnitServedNames(t *testing.T) {
 	rows := renameTable(t)
 	for _, r := range rows {
 		if strings.Contains(strings.ToLower(r.infraweave), "spacelift") {
-			t.Errorf("%s renames %s to %s, which contains spacelift", renames, r.reference, r.infraweave)
+			t.Errorf(
+				"%s renames %s to %s, which contains spacelift",
+				renames,
+				r.reference,
+				r.infraweave,
+			)
 		}
 	}
 	t.Run("served", func(t *testing.T) {
@@ -455,7 +462,10 @@ func TestUnitServedNames(t *testing.T) {
 			t.Errorf("spacelift check found %q, want %q", got, want)
 		}
 		if len(renameViolations(names, rows)) != 1 {
-			t.Errorf("rename check found %q, want spaceliftAwsAccountId", renameViolations(names, rows))
+			t.Errorf(
+				"rename check found %q, want spaceliftAwsAccountId",
+				renameViolations(names, rows),
+			)
 		}
 	})
 }

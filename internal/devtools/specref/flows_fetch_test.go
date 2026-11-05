@@ -58,7 +58,10 @@ func newFlowsUpstream(t *testing.T) *flowsUpstream {
 			_, _ = w.Write(b)
 			return
 		}
-		_, _ = io.WriteString(w, `{"apps": {"a": {"appMetadataUrl": "`+u.srv.URL+`/registry/a/versions.json"}}}`)
+		_, _ = io.WriteString(
+			w,
+			`{"apps": {"a": {"appMetadataUrl": "`+u.srv.URL+`/registry/a/versions.json"}}}`,
+		)
 	})
 	r.Get("/registry/a/versions.json", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(u.bodies["versions"])
@@ -81,7 +84,11 @@ func mustJSON(t *testing.T, v any) []byte {
 func flowsFetchDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, FileFlowsOverlay), []byte(flowsOverlayFixture), filePerm); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, FileFlowsOverlay),
+		[]byte(flowsOverlayFixture),
+		filePerm,
+	); err != nil {
 		t.Fatal(err)
 	}
 	return dir
@@ -111,7 +118,11 @@ func TestAccFlowsFetch(t *testing.T) {
 	if err := FetchFlows(context.Background(), flowsFetchOptions(u, dir)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, FileMapping), []byte(flowsMappingFixture), filePerm); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, FileMapping),
+		[]byte(flowsMappingFixture),
+		filePerm,
+	); err != nil {
 		t.Fatal(err)
 	}
 	src, err := ReadFlowsSources(dir)
@@ -119,8 +130,11 @@ func TestAccFlowsFetch(t *testing.T) {
 		t.Fatal(err)
 	}
 	l := src.Lock
-	if l.FetchedAt != "2026-11-04T07:00:00Z" || l.Provider.Ref != "1111111111111111111111111111111111111111" ||
-		len(l.Flowctl.SHA256) != 64 || l.SDK.Version != "1.2.3" || len(l.Templates.Flows) != 2 ||
+	if l.FetchedAt != "2026-11-04T07:00:00Z" ||
+		l.Provider.Ref != "1111111111111111111111111111111111111111" ||
+		len(l.Flowctl.SHA256) != 64 ||
+		l.SDK.Version != "1.2.3" ||
+		len(l.Templates.Flows) != 2 ||
 		l.Registry.Manifest != u.srv.URL+"/registry/core" {
 		t.Errorf("lock = %+v", l)
 	}
@@ -130,7 +144,11 @@ func TestAccFlowsFetch(t *testing.T) {
 	if _, err := Flows.GenerateDir(context.Background(), dir); err != nil {
 		t.Fatalf("a fresh fetch must generate: %v", err)
 	}
-	if err := Flows.Inventory(dir, InventoryOutputs{Register: filepath.Join(t.TempDir(), "r.json")}, false); err != nil {
+	if err := Flows.Inventory(
+		dir,
+		InventoryOutputs{Register: filepath.Join(t.TempDir(), "r.json")},
+		false,
+	); err != nil {
 		t.Errorf("a fresh fetch must inventory: %v", err)
 	}
 }

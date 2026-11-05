@@ -80,7 +80,7 @@ func tagParity(t *testing.T, r *ParityReport, tag string) TagParity {
 
 func TestUnitParityCompare(t *testing.T) {
 	r := compareFixture(t)
-	var tags []string
+	tags := make([]string, 0, len(r.Tags))
 	for _, tp := range r.Tags {
 		tags = append(tags, tp.Tag)
 	}
@@ -103,11 +103,23 @@ func TestUnitParityCompare(t *testing.T) {
 	wantMoved := []MovedOperation{
 		{
 			Reference: ParityOperation{"stackDelete", "DELETE", "/stacks/{id}", "Stacks", false},
-			Served:    ParityOperation{"stackRemove", "DELETE", "/stacks/{stackId}", "Stacks", false},
+			Served: ParityOperation{
+				"stackRemove",
+				"DELETE",
+				"/stacks/{stackId}",
+				"Stacks",
+				false,
+			},
 		},
 		{
 			Reference: ParityOperation{"stackLock", "POST", "/stack/{id}/lock", "Stacks", false},
-			Served:    ParityOperation{"stackLock", "POST", "/stacks/{stackId}/lock", "Stacks", false},
+			Served: ParityOperation{
+				"stackLock",
+				"POST",
+				"/stacks/{stackId}/lock",
+				"Stacks",
+				false,
+			},
 		},
 	}
 	if diff := cmp.Diff(wantMoved, stacks.Moved); diff != "" {

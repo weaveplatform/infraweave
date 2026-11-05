@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 	"github.com/weaveplatform/infraweave/internal/devtools/specref"
+	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 )
 
 // Pins used when no sources.lock.yaml exists yet. Once one does, its values
@@ -70,15 +70,15 @@ type config struct {
 	NPM               string `mapstructure:"npm"`
 	Templates         string `mapstructure:"templates"`
 	Registry          string `mapstructure:"registry"`
-	Timeout         string `mapstructure:"timeout"`
-	Tag             string `mapstructure:"tag"`
-	Out             string `mapstructure:"out"`
-	Register        string `mapstructure:"register"`
-	Served          string `mapstructure:"served"`
-	Baseline        string `mapstructure:"baseline"`
-	Force           bool   `mapstructure:"force"`
-	Check           bool   `mapstructure:"check"`
-	WriteBaseline   bool   `mapstructure:"write-baseline"`
+	Timeout           string `mapstructure:"timeout"`
+	Tag               string `mapstructure:"tag"`
+	Out               string `mapstructure:"out"`
+	Register          string `mapstructure:"register"`
+	Served            string `mapstructure:"served"`
+	Baseline          string `mapstructure:"baseline"`
+	Force             bool   `mapstructure:"force"`
+	Check             bool   `mapstructure:"check"`
+	WriteBaseline     bool   `mapstructure:"write-baseline"`
 }
 
 func main() {
@@ -161,8 +161,16 @@ func newRoot() *cobra.Command {
 		"terraform-provider-spacelift release, without the v",
 	)
 	f.String("terraform", "terraform", "terraform binary used to read the provider schema")
-	f.String("flows-provider-repo", defaultFlowsProviderRepo, "terraform-provider-flows repository (flows)")
-	f.String("flows-provider-ref", defaultFlowsProviderRef, "terraform-provider-flows commit SHA (flows)")
+	f.String(
+		"flows-provider-repo",
+		defaultFlowsProviderRepo,
+		"terraform-provider-flows repository (flows)",
+	)
+	f.String(
+		"flows-provider-ref",
+		defaultFlowsProviderRef,
+		"terraform-provider-flows commit SHA (flows)",
+	)
 	f.String("flowctl-repo", defaultFlowctlRepo, "flowctl repository (flows)")
 	f.String("flowctl-ref", defaultFlowctlRef, "flowctl commit SHA (flows)")
 	f.String("sdk-package", defaultSDKPackage, "the Flows app SDK's npm package (flows)")
@@ -267,7 +275,11 @@ func newRoot() *cobra.Command {
 		},
 	}
 	inf := inventory.Flags()
-	inf.String("out", "", "report to write (default the product's, such as "+specref.Deploy.Report+")")
+	inf.String(
+		"out",
+		"",
+		"report to write (default the product's, such as "+specref.Deploy.Report+")",
+	)
 	inf.String(
 		"register",
 		"",

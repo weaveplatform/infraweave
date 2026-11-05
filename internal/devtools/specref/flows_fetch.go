@@ -61,7 +61,7 @@ func FetchFlows(ctx context.Context, o FlowsFetchOptions) error {
 			return fmt.Errorf("%w: %s ref %q", ErrBadCommit, name, ref)
 		}
 	}
-	overlay, err := readOverlay(o.Dir)
+	overlay, err := readOverlay(ctx, o.Dir)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,9 @@ func FetchFlows(ctx context.Context, o FlowsFetchOptions) error {
 	}
 	lock.Registry = LockRegistry{Manifest: o.Registry}
 	var lockBuf bytes.Buffer
-	lockBuf.WriteString("# Written by `specref fetch --product flows`; pins every upstream input of this directory.\n")
+	lockBuf.WriteString(
+		"# Written by `specref fetch --product flows`; pins every upstream input of this directory.\n",
+	)
 	enc := yaml.NewEncoder(&lockBuf)
 	enc.SetIndent(2)
 	if err := enc.Encode(lock); err != nil {
@@ -88,7 +90,7 @@ func FetchFlows(ctx context.Context, o FlowsFetchOptions) error {
 	return writeFiles(o.Dir, files)
 }
 
-func readOverlay(dir string) (openapi3.Schemas, error) {
+func readOverlay(ctx context.Context, dir string) (openapi3.Schemas, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, fmt.Errorf("open reference dir: %w", err)
@@ -98,11 +100,19 @@ func readOverlay(dir string) (openapi3.Schemas, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", FileFlowsOverlay, err)
 	}
-	return ParseFlowsOverlay(data)
+	return ParseFlowsOverlay(ctx, data)
 }
 
-func fetchFlowsClients(ctx context.Context, o FlowsFetchOptions, lock *FlowsLock, files map[string][]byte) error {
-	providerTGZ, err := o.Fetcher.Get(ctx, fmt.Sprintf("%s/%s/tar.gz/%s", o.Codeload, o.ProviderRepo, o.ProviderRef))
+func fetchFlowsClients(
+	ctx context.Context,
+	o FlowsFetchOptions,
+	lock *FlowsLock,
+	files map[string][]byte,
+) error {
+	providerTGZ, err := o.Fetcher.Get(
+		ctx,
+		fmt.Sprintf("%s/%s/tar.gz/%s", o.Codeload, o.ProviderRepo, o.ProviderRef),
+	)
 	if err != nil {
 		return err
 	}
@@ -110,7 +120,10 @@ func fetchFlowsClients(ctx context.Context, o FlowsFetchOptions, lock *FlowsLock
 	if err != nil {
 		return err
 	}
-	flowctlTGZ, err := o.Fetcher.Get(ctx, fmt.Sprintf("%s/%s/tar.gz/%s", o.Codeload, o.FlowctlRepo, o.FlowctlRef))
+	flowctlTGZ, err := o.Fetcher.Get(
+		ctx,
+		fmt.Sprintf("%s/%s/tar.gz/%s", o.Codeload, o.FlowctlRepo, o.FlowctlRef),
+	)
 	if err != nil {
 		return err
 	}
@@ -123,7 +136,10 @@ func fetchFlowsClients(ctx context.Context, o FlowsFetchOptions, lock *FlowsLock
 		return err
 	}
 	base := o.SDKPackage[strings.LastIndex(o.SDKPackage, "/")+1:]
-	sdkTGZ, err := o.Fetcher.Get(ctx, fmt.Sprintf("%s/%s/-/%s-%s.tgz", o.NPM, o.SDKPackage, base, o.SDKVersion))
+	sdkTGZ, err := o.Fetcher.Get(
+		ctx,
+		fmt.Sprintf("%s/%s/-/%s-%s.tgz", o.NPM, o.SDKPackage, base, o.SDKVersion),
+	)
 	if err != nil {
 		return err
 	}
@@ -140,8 +156,16 @@ func fetchFlowsClients(ctx context.Context, o FlowsFetchOptions, lock *FlowsLock
 			return err
 		}
 	}
-	lock.Provider = LockRepo{Repository: o.ProviderRepo, Ref: o.ProviderRef, SHA256: digest(providerTGZ)}
-	lock.Flowctl = LockRepo{Repository: o.FlowctlRepo, Ref: o.FlowctlRef, SHA256: digest(flowctlTGZ)}
+	lock.Provider = LockRepo{
+		Repository: o.ProviderRepo,
+		Ref:        o.ProviderRef,
+		SHA256:     digest(providerTGZ),
+	}
+	lock.Flowctl = LockRepo{
+		Repository: o.FlowctlRepo,
+		Ref:        o.FlowctlRef,
+		SHA256:     digest(flowctlTGZ),
+	}
 	lock.SDK = LockPackage{Package: o.SDKPackage, Version: o.SDKVersion, SHA256: digest(sdkTGZ)}
 	return nil
 }
@@ -170,7 +194,11 @@ type flowTemplate struct {
 	Flow string `json:"flow"`
 }
 
-func fetchTemplates(ctx context.Context, o FlowsFetchOptions, overlay openapi3.Schemas) (LockTemplates, error) {
+func fetchTemplates(
+	ctx context.Context,
+	o FlowsFetchOptions,
+	overlay openapi3.Schemas,
+) (LockTemplates, error) {
 	out := LockTemplates{Index: o.Templates, Flows: map[string]string{}}
 	data, err := o.Fetcher.Get(ctx, o.Templates)
 	if err != nil {
@@ -226,7 +254,13 @@ func fetchRegistry(ctx context.Context, o FlowsFetchOptions, overlay openapi3.Sc
 		return fmt.Errorf("registry URL: %w", err)
 	}
 	if u, err := url.Parse(versions); err != nil || u.Host != reg.Host || u.Scheme != reg.Scheme {
-		return fmt.Errorf("%w: app %s's versions file %q is not on %s", ErrFlowsFetch, keys[0], versions, reg.Host)
+		return fmt.Errorf(
+			"%w: app %s's versions file %q is not on %s",
+			ErrFlowsFetch,
+			keys[0],
+			versions,
+			reg.Host,
+		)
 	}
 	if data, err = o.Fetcher.Get(ctx, versions); err != nil {
 		return err
@@ -293,7 +327,7 @@ func yamlValue(n *yaml.Node) (any, error) {
 	switch n.Kind {
 	case yaml.DocumentNode:
 		if len(n.Content) == 0 {
-			return nil, nil
+			return nil, nil //nolint:nilnil // an empty document is JSON null
 		}
 		return yamlValue(n.Content[0])
 	case yaml.MappingNode:

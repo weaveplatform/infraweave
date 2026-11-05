@@ -127,12 +127,13 @@ phase.
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
 | `test/acceptance/` | Gherkin features run by godog against the committed reference (excluded from `make test`) |
+| `test/depguard/` | A module of its own that breaks each depguard rule once, for `make lint-fixtures` |
 
 ## Make targets
 
 | Target | What |
 |---|---|
-| `make gate` | Everything CI runs: docs-check, vet, lint, test, accept, verify-reference, verify-generate, cover, vuln, build |
+| `make gate` | Everything CI runs: docs-check, vet, lint, lint-fixtures, test, accept, verify-reference, verify-generate, cover, vuln, build |
 | `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
 | `make test` | Unit tests with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Gherkin acceptance features (godog), coverage to `cover/accept` |
@@ -147,7 +148,8 @@ phase.
 | `make reference-inventory` | Regenerates the GraphQL inventory register (`docs/data/graphql-inventory.json`) and report 29, which summarises it (`docs/research/reference/29-data-model-inventory.md`), from the introspection snapshot, and the Flows SDK register (`docs/data/flows-sdk-inventory.json`) from the SDK's identifiers |
 | `make verify-reference` | Fails if either committed reference, report 29 or either inventory register is not exactly what the snapshots generate |
 | `make cover` | Merges every `cover/*` directory and enforces `.testcoverage.yml` (≥95% total, ≥90% per package) |
-| `make lint` / `make fmt` | golangci-lint with `.golangci.yml` |
+| `make lint` / `make fmt` | golangci-lint with `.golangci.yml` over the whole tree, including depguard's [import rules](docs/implementation/repo-layout.md#depguard-rules) and the `time.Sleep` ban in tests |
+| `make lint-fixtures` | Lints the `test/depguard` module, whose packages break each import rule once, and fails unless the findings are exactly `test/depguard/expected.txt` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |
 
 ## Dependencies stay at latest

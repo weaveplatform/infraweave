@@ -65,7 +65,11 @@ func TestUnitProductPins(t *testing.T) {
 	if !reflect.DeepEqual(pins, want) {
 		t.Errorf("pins %v, want %v", pins, want)
 	}
-	if err := os.WriteFile(filepath.Join(dir, FileLock), []byte("bruno: [\n"), filePerm); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, FileLock),
+		[]byte("bruno: [\n"),
+		filePerm,
+	); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Deploy.Pins(dir); err == nil {

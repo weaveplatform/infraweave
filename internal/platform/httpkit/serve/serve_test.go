@@ -96,7 +96,7 @@ func TestUnitStartServesBothListeners(t *testing.T) {
 }
 
 func TestUnitStartErrors(t *testing.T) {
-	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	busy, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,6 +131,10 @@ func TestUnitRunDrains(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
+	// net/http closes the listeners before it runs the shutdown hooks, so
+	// once this fires new connections are refused.
+	shuttingDown := make(chan struct{})
+	r.api.RegisterOnShutdown(func() { close(shuttingDown) })
 	done := make(chan error, 1)
 	go func() { done <- r.wait(ctx, discard()) }()
 
@@ -155,14 +159,14 @@ func TestUnitRunDrains(t *testing.T) {
 	}()
 	<-entered
 	cancel()
-	// Shutdown has begun once new connections are refused.
-	for {
-		c, err := net.DialTimeout("tcp", r.APIAddr(), time.Second)
-		if err != nil {
-			break
-		}
+	<-shuttingDown
+	if c, err := (&net.Dialer{Timeout: time.Second}).DialContext(
+		t.Context(),
+		"tcp",
+		r.APIAddr(),
+	); err == nil {
 		_ = c.Close()
-		time.Sleep(10 * time.Millisecond)
+		t.Error("a new connection was accepted during shutdown")
 	}
 	close(release)
 	if b := <-body; b != "done" {
@@ -228,7 +232,16 @@ func TestUnitRun(t *testing.T) {
 	}
 	c := local()
 	c.Listen = "nowhere"
-	if err := Run(t.Context(), c, discard(), text("api"), text("admin")); !errors.Is(err, ErrConfig) {
+	if err := Run(
+		t.Context(),
+		c,
+		discard(),
+		text("api"),
+		text("admin"),
+	); !errors.Is(
+		err,
+		ErrConfig,
+	) {
 		t.Errorf("Run with a bad listener: %v", err)
 	}
 }

@@ -18,15 +18,6 @@ issues:
   # Don’t dedupe by line; every instance matters.
   uniq-by-line: false
 
-  # Only fail on new issues introduced by new PR's.
-  new: true
-
-  # Define the “base” for “new” issues as the merge-base against main.
-  new-from-merge-base: main
-
-  # Also catch anything in new or modified files, even outside the diff hunk.
-  whole-files: true
-
   # Automatically apply any fixable issues (like gofmt/goimports).
   fix: true
 
@@ -64,9 +55,189 @@ linters:
     # API/Terraform specific
     - musttag        # enforce field tags in (un)marshaled structs
     - tagliatelle    # checks struct tags (important for JSON/XML APIs)
+    - forbidigo      # forbids time.Sleep in tests (decision 0016)
+    - depguard       # the modular-monolith import rules (decision 0004)
 
   # 3) Per-linter configuration
   settings:
+    # decision 0004's shared dependency rules (repo-layout.md, "depguard
+    # rules"). depguard matches entries as string prefixes, so an allow entry
+    # ends in $ (that package) or / (the packages below it); deny entries stay
+    # bare. internal/app's TestUnitDepguardFixtures holds the file to that and
+    # to the domains under internal/; make lint-fixtures proves each rule fires.
+    depguard:
+      rules:
+        api-packages:
+          list-mode: strict
+          files:
+            - "**/internal/*/api/**"
+          allow:
+            - $gostd
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/outbox$
+        constructors:
+          files:
+            - $all
+            - "!**/internal/app/**"
+            - "!**/cmd/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal/features/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/access/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/workers/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/vendors/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/stacks/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/configuration/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/policies/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/runs/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/state/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/cloud/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/registry/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/vcs/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/schedules/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/events/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/templates/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/resources/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/intelligence/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/flows/assembly
+              desc: only internal/app constructs a domain
+            - pkg: github.com/weaveplatform/infraweave/internal/expressions/assembly
+              desc: only internal/app constructs a domain
+        core-not-adapters:
+          files:
+            - "**/internal/*/internal/core/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal/runs/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/vcs/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/workers/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/access/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/registry/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/events/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/intelligence/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+            - pkg: github.com/weaveplatform/infraweave/internal/flows/internal/adapters
+              desc: a hexagon's core reaches adapters through its ports
+        shared-below-domains:
+          files:
+            - "**/internal/platform/**"
+            - "**/internal/kernel/**"
+            - "**/internal/iac/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal/features
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/access
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/workers
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/vendors
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/stacks
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/configuration
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/policies
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/runs
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/state
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/cloud
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/registry
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/vcs
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/schedules
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/events
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/templates
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/resources
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/intelligence
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/flows
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/expressions
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/agent
+              desc: shared packages sit below the domains
+            - pkg: github.com/weaveplatform/infraweave/internal/app
+              desc: shared packages sit below the domains
+        agent-isolation:
+          list-mode: lax
+          files:
+            - "**/internal/agent/**"
+            - "**/cmd/infraweave/agent.go"
+            - "**/cmd/infraweave-agent/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: the agent imports only its allow list
+            - pkg: github.com/weaveplatform/infraweave/pkg
+              desc: the agent imports only its allow list
+            - pkg: github.com/jackc/pgx
+              desc: the agent imports only its allow list
+          allow:
+            - github.com/weaveplatform/infraweave/pkg/flows/app/v1$
+            - github.com/weaveplatform/infraweave/internal/agent/
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/iac$
+            - github.com/weaveplatform/infraweave/internal/iac/
+            - github.com/weaveplatform/infraweave/internal/platform/buildinfo$
+            - github.com/weaveplatform/infraweave/internal/platform/observe$
+            - github.com/weaveplatform/infraweave/internal/platform/rego$
+            - github.com/weaveplatform/infraweave/internal/platform/httpkit/client$
+            - github.com/weaveplatform/infraweave/internal/platform/httpkit/serve$
+            - github.com/weaveplatform/infraweave/internal/platform/seal$
+            - github.com/weaveplatform/infraweave/internal/platform/expr$
+        devtools:
+          files:
+            - $all
+            - "!**/tools/**"
+            - "!**/internal/devtools/**"
+            # the parity and reference tests check the committed documents
+            # against specref
+            - "!**/api/*_test.go"
+            - "!**/test/acceptance/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal/devtools
+              desc: only tools/ and internal/devtools build on the developer tooling
+        public-packages:
+          files:
+            - "**/pkg/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: pkg/ is public and cannot expose internal/
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^time\.Sleep$
+          msg: tests wait on a channel or an injected clock (decision 0016)
     nakedret:
       max-func-lines: 40
 
@@ -87,13 +258,22 @@ linters:
 
     # fine-grained rules to drop issues by path, linter, text, or source
     rules:
-      # in test files, silence these noisy checks
+      # in test files, silence these noisy checks; tests make throwaway
+      # errors and return stub errors as they come
       - path: _test\.go
         linters:
           - gocyclo
           - errcheck
           - dupl
           - gosec
+          - err113
+          - wrapcheck
+
+      # entry points hand the error they get to cobra or log.Fatal, which
+      # print it; wrapping it again says nothing more
+      - path: ^(cmd|tools)/
+        linters:
+          - wrapcheck
 
       # only run “forbidigo” on tests (silence everywhere else)
       - path-except: _test\.go
@@ -116,18 +296,13 @@ linters:
           - lll
         source: "^//go:generate "
 
-    # exclude entire files from reporting (still analyzed)
+    # exclude entire files from reporting (still analyzed); anchored, since
+    # an unanchored "tools/" would also match internal/devtools/
     paths:
       - ".*\\.gen\\.go$"          # Generated Go files
-      - ".*_test\\.go$"           # Test files (already handled with more specific rules)
-      - "examples/.*"             # Example code for documentation
-      - "tools/.*"                # Build/helper tools
-      - "scripts/.*"              # Scripts for development
-      - "docs/.*\\.go$"           # Documentation generators
-
-    # Never exclude these critical paths, even if they match patterns above
-    paths-except:
-      - "internal/.*\\.go$"       # Core provider logic
+      - "^examples/"             # Example code for documentation
+      - "^scripts/"              # Scripts for development
+      - "^docs/.*\\.go$"           # Documentation generators
 
 formatters:
   # Only run the formatters you actually want to auto‐fix in CI

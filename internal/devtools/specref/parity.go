@@ -168,7 +168,10 @@ func compareParity(reference, served []byte, owns func(tag string) bool) (*Parit
 		return nil, fmt.Errorf("served: %w", err)
 	}
 	if owns != nil {
-		servedOps = slices.DeleteFunc(servedOps, func(o ParityOperation) bool { return !owns(o.Tag) })
+		servedOps = slices.DeleteFunc(
+			servedOps,
+			func(o ParityOperation) bool { return !owns(o.Tag) },
+		)
 	}
 	refIDs := map[string]bool{}
 	for _, o := range refOps {

@@ -36,6 +36,21 @@ fmt:
 lint:
 	$(GOLANGCI_LINT) run --config .golangci.yml --new=false --fix=false ./...
 
+# The compiler's internal/ rule stops type-checking, and golangci-lint then
+# reports nothing else, so the package that breaks it is linted on its own.
+DEPGUARD_FIXTURES := test/depguard
+FIXTURE_LINT = $(GOLANGCI_LINT) run --config $(CURDIR)/.golangci.yml --fix=false --issues-exit-code=0 \
+	--show-stats=false --output.text.path=stdout --output.text.colors=false \
+	--output.text.print-issued-lines=false --output.sarif.path=/dev/null
+
+## lint-fixtures: prove each depguard rule and the time.Sleep ban fire, on the test/depguard module
+lint-fixtures:
+	@cd $(DEPGUARD_FIXTURES) && { \
+		$(FIXTURE_LINT) $$($(GO) list -e ./... | grep -v '/leak$$' | sed 's|^$(MODULE)|.|'); \
+		$(FIXTURE_LINT) ./internal/stacks/leak; \
+	} 2>&1 | grep -v '^level=' | sed -E -f normalize.sed | sort | diff -u expected.txt - \
+		&& echo "lint-fixtures: every rule fired as expected.txt says"
+
 ## vet: go vet
 vet:
 	$(GO) vet ./...
@@ -153,6 +168,6 @@ docs-check:
 	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/devtools/docscheck
 
 ## gate: everything CI runs, in order
-gate: docs-check vet lint test accept verify-reference verify-generate cover vuln build
+gate: docs-check vet lint lint-fixtures test accept verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint lint-fixtures vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference parity parity-baseline cover vuln build gate

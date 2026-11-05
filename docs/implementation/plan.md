@@ -129,7 +129,7 @@ and lint is clean.
 |---|---|---|
 | P0 Specification reference | Done | [#5](https://github.com/weaveplatform/infraweave/issues/5): the Spacelift reference spec, its coverage report, the Bruno and Terraform provider enrichment and `make verify-reference` |
 | P1 Served API skeleton | Done | Epic [#8](https://github.com/weaveplatform/infraweave/issues/8). Done: [#9](https://github.com/weaveplatform/infraweave/issues/9) bundling, [#10](https://github.com/weaveplatform/infraweave/issues/10) decision 0003 and the convention components, [#12](https://github.com/weaveplatform/infraweave/issues/12) scaffolding with Stacks seeded, [#13](https://github.com/weaveplatform/infraweave/issues/13) the strict chi server, client and 501 stubs, [#14](https://github.com/weaveplatform/infraweave/issues/14) `infraweave serve`, [#11](https://github.com/weaveplatform/infraweave/issues/11) the parity report, [#15](https://github.com/weaveplatform/infraweave/issues/15) rate limits and idempotency |
-| P1b Domain layout and depguard | In progress | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72). Done: [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename. Not started: [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard |
+| P1b Domain layout and depguard | Done | Epic [#72](https://github.com/weaveplatform/infraweave/issues/72). Done: [#73](https://github.com/weaveplatform/infraweave/issues/73) the moves and the `deploy` to `api` rename, [#74](https://github.com/weaveplatform/infraweave/issues/74) depguard, the fixtures that prove each rule fires and the `time.Sleep` ban |
 | P1c Test harness, SDK and parity tooling | Not started | **M1** |
 | P1d Flows specification reference | Done | Epic [#82](https://github.com/weaveplatform/infraweave/issues/82). Done: [#83](https://github.com/weaveplatform/infraweave/issues/83) the product seam, [#84](https://github.com/weaveplatform/infraweave/issues/84) the Flows reference, [#85](https://github.com/weaveplatform/infraweave/issues/85) Flows parity, [#86](https://github.com/weaveplatform/infraweave/issues/86) product-scoped capabilities, [#87](https://github.com/weaveplatform/infraweave/issues/87) CI for both references |
 | P2 PostgreSQL, migrations and operability | Not started | |
@@ -341,9 +341,10 @@ assigns a domain to another phase, this plan's assignment holds.
 The phase that creates a domain wires it into the
 [declared graph](repo-layout.md#declared-graph) in the same pull request:
 
-- `.golangci.yml` gains its `graph-<domain>` rule and its entries in
+- `.golangci.yml` gains its `graph-<domain>` rule. Its entries in
   `constructors` and `shared-below-domains`, and in `core-not-adapters` for a
-  hexagon; `agent-isolation` needs none.
+  hexagon, are there from P1b, and `agent-isolation` needs none; a domain
+  outside the 19 adds those entries too.
 - `internal/app/domains.go` constructs it at its place in the construction
   order, its migration stream registers at the same place, and
   `internal/app/router.go` embeds its `<Domain>Deploy` alias.
@@ -523,18 +524,26 @@ with a clean run over the whole tree.
    imports only `internal/kernel`, `internal/iac`, `pkg/flows/app/v1` and the
    platform packages `buildinfo`, `observe`, `rego`, `httpkit/client`,
    `httpkit/serve`, `seal` and `expr`. No domain exists yet, so no
-   `graph-<domain>` rule and no domain entry lands here; each domain's phase
-   adds its own ([adding a domain](#adding-a-domain)). Add forbidigo for
-   `time.Sleep` in `_test.go` files
-   ([0016](../research/decisions/0016-testing-and-acceptance.md)).
-5. `internal/app/depguard_test.go` (`TestUnitDepguardFixtures`): a fixture
-   domain that imports another domain's `internal/` and `assembly/` packages,
-   a fixture domain that imports a sibling of an allowed `api/` package
-   (`internal/stacks/apiutil`), a platform package that imports a domain,
-   and an agent package that imports a platform package outside its allow
-   list (`internal/platform/sql`), each fail `make lint`; every allow entry
-   in `.golangci.yml` ends in `$` or `/`
-   ([repo layout](repo-layout.md#depguard-rules)); and every domain
+   `graph-<domain>` rule lands here; each domain's phase adds its own
+   ([adding a domain](#adding-a-domain)). depguard rejects a rule with an
+   empty list, so `constructors` and `shared-below-domains` name all 19
+   domains and `core-not-adapters` all 8 hexagons from the start. Add
+   forbidigo for `time.Sleep` in `_test.go` files
+   ([0016](../research/decisions/0016-testing-and-acceptance.md)), and lint
+   the whole tree, tests, `cmd/` and `tools/` included.
+5. `make lint-fixtures` lints `test/depguard`, a module of its own, with the
+   repository's `.golangci.yml`: a domain that imports another domain's
+   `internal/` and `assembly/` packages, an `api/` package that imports a
+   sibling of an allowed package (`internal/platform/outboxutil`), a
+   hexagon's core that imports its adapters, a platform package that
+   imports a domain, an agent package that imports `internal/platform/sql`
+   and `pkg/sdk`, a domain that imports `internal/devtools`, a `pkg/`
+   package that imports `internal/`, and a test that calls `time.Sleep`.
+   It fails unless the findings are exactly `test/depguard/expected.txt`,
+   and the blocking lint job runs it. `internal/app/depguard_test.go`
+   (`TestUnitDepguardFixtures`): the seven shared rules exist, every allow
+   entry in `.golangci.yml` ends in `$` or `/` and every deny entry is bare
+   ([repo layout](repo-layout.md#depguard-rules)), and every domain
    directory under `internal/` has its graph rule and its entries in
    `constructors` and `shared-below-domains`, and in `core-not-adapters` for
    a hexagon.
@@ -550,8 +559,8 @@ with a clean run over the whole tree.
   and `docs/data/README.md` name `api/api.openapi.yaml`, `api/src/api`,
   `pkg/client/api`, `api/parity-baseline.deploy.json` and the `TestUnitAPI…`
   tests wherever they describe the code as it stands.
-- depguard runs clean over the whole tree, and each fixture violation fails
-  `make lint`.
+- depguard runs clean over the whole tree, and `make lint-fixtures` reports
+  each fixture violation and nothing else.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P1c: Test harness, SDK and parity tooling

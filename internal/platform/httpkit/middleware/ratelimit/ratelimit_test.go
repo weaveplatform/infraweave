@@ -148,7 +148,7 @@ func TestUnitValidate(t *testing.T) {
 }
 
 func TestUnitClientAddr(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	for addr, want := range map[string]string{
 		"192.0.2.1:1234":  "192.0.2.1",
 		"[2001:db8::1]:1": "2001:db8::1",
@@ -173,7 +173,7 @@ func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, typ problem.Type)
 }
 
 func request(remote, path string) *http.Request {
-	r := httptest.NewRequest(http.MethodGet, path, nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
 	r.RemoteAddr = remote
 	return r
 }
