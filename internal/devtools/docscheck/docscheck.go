@@ -83,6 +83,7 @@ func Check(repo fs.FS) ([]Finding, error) {
 	if err := c.supersededOperations(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
+	c.supersededEnumValues()
 	if err := c.mentions(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
@@ -476,6 +477,41 @@ func (c *checker) supersededOperations() error {
 		}
 	}
 	return nil
+}
+
+// supersededEnumValues checks that each enumValues entry of the
+// supersessions register, Type.VALUE, names a value of that enum in Deploy's
+// GraphQL inventory, so that TestUnitSupersededEnums never guards a value
+// upstream does not have, and a reference update that renames one is
+// noticed. Without the inventory there is nothing to check against.
+func (c *checker) supersededEnumValues() {
+	reg, inv := c.reg(supersReg), c.reg(specref.Deploy.Register)
+	if reg == nil || inv == nil {
+		return
+	}
+	values := map[string]bool{}
+	for _, rec := range inv.records {
+		if rec["kind"] != "ENUM" {
+			continue
+		}
+		id, _ := rec["id"].(string)
+		vs, _ := rec["values"].([]any)
+		for _, v := range vs {
+			m, _ := v.(map[string]any)
+			name, _ := m["name"].(string)
+			values[id+"."+name] = true
+		}
+	}
+	for _, rec := range reg.records {
+		id, _ := rec["id"].(string)
+		entries, _ := rec["enumValues"].([]any)
+		for _, e := range entries {
+			if entry, _ := e.(string); !values[entry] {
+				c.add(reg.path, reg.line(id), "%s lists %s, which is no enum value of %s",
+					id, entry, specref.Deploy.Register)
+			}
+		}
+	}
 }
 
 // unverified checks that an open-questions record lists every report that

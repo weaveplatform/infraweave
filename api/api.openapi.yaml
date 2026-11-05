@@ -4204,9 +4204,6 @@ components:
         - STACK_ROLE_BINDING_CREATE
         - STACK_ROLE_BINDING_UPDATE
         - STACK_ROLE_BINDING_DELETE
-        - STACK_WEBHOOK_CREATE
-        - STACK_WEBHOOK_UPDATE
-        - STACK_WEBHOOK_DELETE
         - AI_INTEGRATION_CREATE
         - AI_INTEGRATION_UPDATE
         - AI_INTEGRATION_DELETE
@@ -4228,9 +4225,6 @@ components:
         STACK_ROLE_BINDING_CREATE: Disabled. Do not use.
         STACK_ROLE_BINDING_DELETE: Disabled. Do not use.
         STACK_ROLE_BINDING_UPDATE: Disabled. Do not use.
-        STACK_WEBHOOK_CREATE: Disabled. Do not use.
-        STACK_WEBHOOK_DELETE: Disabled. Do not use.
-        STACK_WEBHOOK_UPDATE: Disabled. Do not use.
       x-graphql-type: Action
     AnsibleEntity:
       description: Possible Ansible entity types.
@@ -6299,7 +6293,6 @@ components:
     PolicyType:
       description: PolicyType represents a type of policy.
       enum:
-        - ACCESS
         - LOGIN
         - GIT_PUSH
         - INITIALIZATION
@@ -6311,7 +6304,6 @@ components:
         - NOTIFICATION
       type: string
       x-enum-descriptions:
-        ACCESS: Access policy - stack or module level RBAC.
         APPROVAL: Approval policy, allows approving or rejecting runs and tasks.
         GIT_PUSH: Git push policy - customizing infraweave's reaction to VCS events.
         INITIALIZATION: Initialization policy - allows blocking runs from executing.
