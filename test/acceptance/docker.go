@@ -118,6 +118,11 @@ func (o *ObjectStore) Healthy(ctx context.Context) (bool, error) {
 // it and shares it with every later scenario of the test binary, so a
 // dependency no selected scenario needs never starts.
 type Dependencies struct {
+	// Migrate brings the database at a DSN to infraweave's schema; the
+	// template is migrated with it once, so every scenario's database
+	// starts migrated. Nil leaves the template empty.
+	Migrate func(ctx context.Context, dsn string) error
+
 	pgOnce, storeOnce, oidcOnce sync.Once
 
 	pg       *Database
@@ -151,8 +156,7 @@ func (d *Dependencies) Postgres(ctx context.Context) (*Database, error) {
 	}, nil
 }
 
-// startPostgres starts the container and creates the template, which holds
-// nothing until infraweave has a schema to migrate into it.
+// startPostgres starts the container and creates and migrates the template.
 func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 	c, err := postgres.Run(ctx, ImagePostgres,
 		postgres.WithDatabase(pgDatabase),
@@ -173,6 +177,12 @@ func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 	db := &Database{c: c, name: pgDatabase, DSN: dsn}
 	if _, err := db.Query(ctx, "CREATE DATABASE "+pgTemplate); err != nil {
 		return nil, fmt.Errorf("@postgres: %w", err)
+	}
+	if d.Migrate != nil {
+		template := strings.Replace(dsn, "/"+pgDatabase+"?", "/"+pgTemplate+"?", 1)
+		if err := d.Migrate(ctx, template); err != nil {
+			return nil, fmt.Errorf("@postgres: migrate %s: %w", pgTemplate, err)
+		}
 	}
 	return db, nil
 }

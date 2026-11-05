@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
@@ -76,13 +75,22 @@ var apiOperations = sync.OnceValue(func() Operations {
 	return ops
 })
 
+// Guards hold the state of decision 0003's controls: the operator's switch,
+// the rate-limit buckets and the idempotency keys. serve keeps all three in
+// PostgreSQL, shared by every replica (postgresGuards).
+type Guards struct {
+	Switch  ratelimit.Switch
+	Buckets ratelimit.Store
+	Keys    idempotency.Store
+}
+
 // Guarded is an API listener router: request ID and recovery, then decision
 // 0003's controls in front of every route registered on it. The operator
 // switch runs first, then the rate limit, then idempotency keys, so a request
 // one rejects never reaches the next and a rejected request never reaches
 // the key store. ops names the operations its routes serve; a request no
 // operation serves, such as a 404, still draws from the standard budget.
-func Guarded(log *slog.Logger, c config.Server, ops Operations) *chi.Mux {
+func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards) *chi.Mux {
 	var r *chi.Mux
 	resolve := func(req *http.Request) (Operation, bool) {
 		pattern := r.Find(chi.NewRouteContext(), req.Method, routePath(req))
@@ -91,13 +99,13 @@ func Guarded(log *slog.Logger, c config.Server, ops Operations) *chi.Mux {
 	}
 	caller := ratelimit.ClientAddr
 	r = middleware.NewRouter(log,
-		ratelimit.Disabled(ratelimit.NewCallers(c.RateLimit.DisabledCallers), caller),
-		ratelimit.Middleware(c.RateLimit, ratelimit.NewMemory(), caller,
+		ratelimit.Disabled(g.Switch, caller),
+		ratelimit.Middleware(c.RateLimit, g.Buckets, caller,
 			func(req *http.Request) ratelimit.Class {
 				op, _ := resolve(req)
 				return op.Cost
-			}, time.Now),
-		idempotency.Middleware(idempotency.NewMemory(c.Idempotency.TTL, time.Now), caller,
+			}),
+		idempotency.Middleware(g.Keys, caller,
 			func(req *http.Request) bool {
 				op, ok := resolve(req)
 				return ok && !op.Search

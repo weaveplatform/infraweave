@@ -30,34 +30,36 @@ type Record struct {
 	Response    *Response
 }
 
-// Store holds the keys. Reserve is atomic: of any number of concurrent
-// requests reserving one key, exactly one succeeds.
+// Store holds the keys. Claim is atomic: of any number of concurrent
+// requests claiming one key, exactly one succeeds.
 type Store interface {
-	// Get returns key's record and whether there is one.
-	Get(ctx context.Context, key Key) (Record, bool, error)
-	// Reserve records key as in flight for a request with fingerprint. It
-	// reports false, changing nothing, when key already has a record.
-	Reserve(ctx context.Context, key Key, fingerprint string) (bool, error)
-	// Complete stores the response of key's request.
+	// Claim records key as in flight for a request with fingerprint and
+	// reports true, or reports false with the record that holds key. A key
+	// that has expired, or whose request has held it past the lock without
+	// finishing, is claimed afresh: its replica is taken to have crashed.
+	Claim(ctx context.Context, key Key, fingerprint string) (Record, bool, error)
+	// Complete stores the response of key's request, which keeps the key for
+	// the TTL from now.
 	Complete(ctx context.Context, key Key, resp Response) error
-	// Release forgets key, so the next request with it runs.
+	// Release forgets key while its request is in flight, so the next
+	// request with it runs; a stored response is never released.
 	Release(ctx context.Context, key Key) error
 }
 
-// ErrNotReserved is Complete's error for a key with no record.
+// ErrNotReserved is Complete's error for a key that is not in flight.
 var ErrNotReserved = errors.New("idempotency key is not reserved")
 
 // sweepEvery bounds how often Memory scans for expired keys. The scan holds
 // the lock, so it runs at most once a minute however busy the server is.
 const sweepEvery = time.Minute
 
-// Memory is a Store in process memory. Each replica keeps its own keys, so a
-// retry that reaches another replica runs again: enough for one replica, not
-// for several. A record expires ttl after it is reserved or completed;
-// expired records are dropped as Reserve passes the sweep interval.
+// Memory is a Store in process memory, for tests. Each instance keeps its
+// own keys, so two servers on two Memory stores would each run a retry the
+// other already ran. Expired records are dropped as Claim passes the sweep
+// interval.
 type Memory struct {
-	ttl time.Duration
-	now func() time.Time
+	ttl, lock time.Duration
+	now       func() time.Time
 
 	mu      sync.Mutex
 	records map[Key]entry
@@ -66,12 +68,12 @@ type Memory struct {
 
 type entry struct {
 	Record
-	expires time.Time
+	lockedUntil, expires time.Time
 }
 
-// NewMemory keeps each key for ttl by the clock now.
-func NewMemory(ttl time.Duration, now func() time.Time) *Memory {
-	return &Memory{ttl: ttl, now: now, records: map[Key]entry{}}
+// NewMemory keeps keys as c says by the clock now.
+func NewMemory(c Config, now func() time.Time) *Memory {
+	return &Memory{ttl: c.TTL, lock: c.Lock, now: now, records: map[Key]entry{}}
 }
 
 // live is key's entry unless it has expired. The caller holds m.mu.
@@ -83,37 +85,28 @@ func (m *Memory) live(key Key, now time.Time) (entry, bool) {
 	return e, true
 }
 
-// Get implements Store.
-func (m *Memory) Get(_ context.Context, key Key) (Record, bool, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	e, ok := m.live(key, m.now())
-	return e.Record, ok, nil
-}
-
-// Reserve implements Store.
-func (m *Memory) Reserve(_ context.Context, key Key, fingerprint string) (bool, error) {
+// Claim implements Store.
+func (m *Memory) Claim(_ context.Context, key Key, fingerprint string) (Record, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := m.now()
 	if now.Sub(m.swept) >= sweepEvery {
 		m.sweep(now)
 	}
-	if _, ok := m.live(key, now); ok {
-		return false, nil
+	if e, ok := m.live(key, now); ok && (e.Response != nil || now.Before(e.lockedUntil)) {
+		return e.Record, false, nil
 	}
-	m.records[key] = entry{Record{Fingerprint: fingerprint}, now.Add(m.ttl)}
-	return true, nil
+	m.records[key] = entry{Record{Fingerprint: fingerprint}, now.Add(m.lock), now.Add(m.ttl)}
+	return Record{}, true, nil
 }
 
-// Complete implements Store. The key's lifetime restarts, so a response is
-// replayable for the whole ttl however long the request took.
+// Complete implements Store.
 func (m *Memory) Complete(_ context.Context, key Key, resp Response) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := m.now()
 	e, ok := m.live(key, now)
-	if !ok {
+	if !ok || e.Response != nil {
 		return ErrNotReserved
 	}
 	e.Response, e.expires = &resp, now.Add(m.ttl)
@@ -125,7 +118,9 @@ func (m *Memory) Complete(_ context.Context, key Key, resp Response) error {
 func (m *Memory) Release(_ context.Context, key Key) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.records, key)
+	if e, ok := m.records[key]; ok && e.Response == nil {
+		delete(m.records, key)
+	}
 	return nil
 }
 

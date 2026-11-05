@@ -97,8 +97,8 @@ func TestAccServeRefusesNewerSchema(t *testing.T) {
 	exec(
 		t,
 		url,
-		"INSERT INTO schema_state (stream, compatible_from, release) VALUES ('platform', 1, 'v9.0.0') "+
-			"ON CONFLICT (stream) DO UPDATE SET compatible_from = 1, release = 'v9.0.0'",
+		"INSERT INTO schema_state (stream, compatible_from, release) VALUES ('platform', 99, 'v9.0.0') "+
+			"ON CONFLICT (stream) DO UPDATE SET compatible_from = 99, release = 'v9.0.0'",
 	)
 	for _, mode := range []string{sql.MigrateAuto, sql.MigrateCheck} {
 		c := local()
@@ -133,7 +133,10 @@ func TestAccMigrateCommands(t *testing.T) {
 			"  pending  00001_create_widgets") {
 		t.Fatalf("status before up: %v\n%s", err, out)
 	}
-	if out, err := run(up); err != nil || out != "applied widgets 00001_create_widgets\n" {
+	if out, err := run(
+		up,
+	); err != nil ||
+		out != "applied platform 00001_api_controls\napplied widgets 00001_create_widgets\n" {
 		t.Fatalf("up: %v\n%s", err, out)
 	}
 	if out, err := run(up); err != nil || out != "the schema is up to date\n" {

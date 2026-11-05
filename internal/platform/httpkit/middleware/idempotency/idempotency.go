@@ -34,20 +34,35 @@ const MaxBody = 1 << 20
 type Config struct {
 	// TTL is how long a key is kept.
 	TTL time.Duration `mapstructure:"ttl"`
+	// Lock is how long a request holds its key before another request with
+	// it may take it over, as from a replica that crashed mid-request.
+	Lock time.Duration `mapstructure:"lock"`
 }
 
-// Defaults keep a key for decision 0003's 24 hours.
-func Defaults() Config { return Config{TTL: 24 * time.Hour} }
+// Defaults keep a key for decision 0003's 24 hours. No request has a
+// deadline to derive the lock from, so it is five minutes, longer than any
+// request runs: taking over a request that is still running would run the
+// operation twice, where a lock that outlives a crashed replica only answers
+// 409 for longer.
+func Defaults() Config { return Config{TTL: 24 * time.Hour, Lock: 5 * time.Minute} }
 
-var errTTL = errors.New("ttl must be positive")
+var (
+	errTTL  = errors.New("ttl must be positive")
+	errLock = errors.New("lock must be positive")
+)
 
-// Validate rejects a TTL under which no key would outlive its request.
-// Errors name the key below server.idempotency.
+// Validate rejects a TTL under which no key would outlive its request, and a
+// lock that any running request would lose. Errors name the key below
+// server.idempotency.
 func (c Config) Validate() error {
+	var errs []error
 	if c.TTL <= 0 {
-		return fmt.Errorf("%w, got %s", errTTL, c.TTL)
+		errs = append(errs, fmt.Errorf("%w, got %s", errTTL, c.TTL))
 	}
-	return nil
+	if c.Lock <= 0 {
+		errs = append(errs, fmt.Errorf("%w, got %s", errLock, c.Lock))
+	}
+	return errors.Join(errs...)
 }
 
 // Middleware applies the key to POST and PATCH requests that applies
@@ -107,24 +122,13 @@ func (g guard) serve(
 	fp := fingerprint(r, body)
 	key := Key{Caller: caller, Value: keys[0]}
 
-	rec, found, err := g.store.Get(r.Context(), key)
+	rec, claimed, err := g.store.Claim(r.Context(), key, fp)
 	if err != nil {
-		g.fail(w, r, "get", err)
+		g.fail(w, r, "claim", err)
 		return
 	}
-	if found {
+	if !claimed {
 		answer(w, rec, fp)
-		return
-	}
-	reserved, err := g.store.Reserve(r.Context(), key, fp)
-	if err != nil {
-		g.fail(w, r, "reserve", err)
-		return
-	}
-	if !reserved {
-		// Another request took the key between Get and Reserve, so it is
-		// in flight now.
-		writeInFlight(w)
 		return
 	}
 	g.run(w, r, next, key)
@@ -188,7 +192,8 @@ func (g guard) run(w http.ResponseWriter, r *http.Request, next http.Handler, ke
 		Body:        cw.body.Bytes(),
 	})
 	if err != nil {
-		// The response has gone; the key stays in flight until it expires.
+		// The response has gone; the key stays in flight until its lock
+		// lapses.
 		g.log.ErrorContext(ctx, "idempotency store failed", "op", "complete", "error", err)
 	}
 }

@@ -285,7 +285,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | Rule | Enforcement |
 |---|---|
 | No `time.Sleep` in tests | forbidigo pattern on `_test.go` files in `.golangci.yml` |
-| Waiting on asynchronous work polls a condition with a deadline, through one helper (`acceptance.eventually`), never a fixed delay | review; the helper reports what it waited for |
+| Waiting on asynchronous work polls a condition with a deadline, through one helper (`acceptance.Eventually`), never a fixed delay | review; the helper reports what it waited for |
 | Unit tests use virtual time | `internal/clock` and `testing/synctest` |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |

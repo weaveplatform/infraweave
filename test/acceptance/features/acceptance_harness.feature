@@ -42,9 +42,11 @@ Feature: Acceptance harness
     Then the nested run fails
     And its output says "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, and no Docker daemon answers"
 
+  @postgres
   Scenario: A failed scenario leaves its evidence
     Given the fixture features in "fail"
-    When the suite runs them nested without Docker
+    When the suite runs them nested
     Then the nested run fails
     And it left "server.stderr" in the evidence of "A scenario that fails on purpose"
     And it left "config.yaml" in the evidence of "A scenario that fails on purpose"
+    And it left "pg_dump.sql" in the evidence of "A scenario that fails on purpose"

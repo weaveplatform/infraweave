@@ -22,10 +22,10 @@ type apiServer struct {
 var _ api.StrictServerInterface = apiServer{}
 
 // API is the API listener's handler: the API under BaseURL behind c's rate
-// limits and idempotency keys. It serves no probe; those are the admin
-// listener's alone, and are never rate-limited.
-func API(log *slog.Logger, c config.Server) http.Handler {
-	r := Guarded(log, c, apiOperations())
+// limits and idempotency keys, whose state g holds. It serves no probe;
+// those are the admin listener's alone, and are never rate-limited.
+func API(log *slog.Logger, c config.Server, g Guards) http.Handler {
+	r := Guarded(log, c, apiOperations(), g)
 	strict := api.NewStrictHandlerWithOptions(apiServer{}, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  problem.RequestError,
 		ResponseErrorHandlerFunc: problem.ResponseError,
