@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
@@ -15,7 +14,7 @@ import (
 // run after the request ID and recovery, so a panic in one is answered too.
 func NewRouter(log *slog.Logger, guards ...func(http.Handler) http.Handler) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, Recover(log))
+	r.Use(RequestID, Recover(log))
 	r.Use(guards...)
 	r.NotFound(NotFound)
 	r.MethodNotAllowed(MethodNotAllowed)
@@ -57,6 +56,6 @@ func answerPanic(log *slog.Logger, w http.ResponseWriter, r *http.Request) {
 		panic(v)
 	}
 	log.ErrorContext(r.Context(), "handler panicked",
-		"panic", v, "request_id", middleware.GetReqID(r.Context()))
+		"panic", v, "request_id", RequestIDFrom(r.Context()))
 	problem.Internal(w)
 }

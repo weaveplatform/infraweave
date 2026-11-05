@@ -47,6 +47,6 @@ Feature: Acceptance harness
     Given the fixture features in "fail"
     When the suite runs them nested
     Then the nested run fails
-    And it left "server.stderr" in the evidence of "A scenario that fails on purpose"
+    And it left "server.stdout" in the evidence of "A scenario that fails on purpose"
     And it left "config.yaml" in the evidence of "A scenario that fails on purpose"
     And it left "pg_dump.sql" in the evidence of "A scenario that fails on purpose"

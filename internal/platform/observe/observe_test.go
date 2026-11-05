@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
@@ -48,7 +49,7 @@ func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, status int, detai
 }
 
 func TestUnitProbes(t *testing.T) {
-	admin := Probes(discard())
+	admin := Probes(discard(), NewHealth(time.Now))
 	rec := serve(t, admin, http.MethodGet, "/livez")
 	if rec.Code != http.StatusOK || rec.Body.String() != "ok\n" {
 		t.Errorf("/livez: %d %q", rec.Code, rec.Body)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/observe"
 )
 
 // loadArgs parses args as the serve process mode does and decodes them.
@@ -164,6 +165,14 @@ func TestUnitLoadRejects(t *testing.T) {
 			"server.idempotency.ttl",
 		},
 		{"not YAML", "server: [\n", nil, "read config"},
+		{"unknown log format", "log:\n  format: xml\n", nil, "log.format"},
+		{"unknown log level", "", []string{"--log-level", "loud"}, "log.level"},
+		{
+			"negative ready delay",
+			"server:\n  shutdown:\n    ready_delay: -1s\n",
+			nil,
+			"ready_delay",
+		},
 		{"unknown database key", "database:\n  host: db\n", nil, "host"},
 		{"unknown migrate mode", "database:\n  migrate: never\n", nil, "database.migrate"},
 		{"unknown IAM provider", "database:\n  iam_auth: ibm\n", nil, "database.iam_auth"},
@@ -225,6 +234,22 @@ func TestUnitLoadUnboundFlag(t *testing.T) {
 	}
 	c, err := Load(fs)
 	if err != nil || c.Server.Listen != ":1001" || c.Database.Migrate != "check" {
+		t.Errorf("Load = %+v, %v", c, err)
+	}
+
+	// scheduler has no API listener, so no --listen.
+	fs = pflag.NewFlagSet("scheduler", pflag.ContinueOnError)
+	AdminFlags(fs)
+	if fs.Lookup("listen") != nil {
+		t.Error("AdminFlags defines --listen")
+	}
+	t.Setenv("INFRAWEAVE_LOG_FORMAT", "text")
+	if err := fs.Parse([]string{"--admin-listen", ":1002", "--log-level", "debug"}); err != nil {
+		t.Fatal(err)
+	}
+	c, err = Load(fs)
+	if err != nil || c.Server.AdminListen != ":1002" ||
+		c.Log != (observe.LogConfig{Format: "text", Level: "debug"}) {
 		t.Errorf("Load = %+v, %v", c, err)
 	}
 }

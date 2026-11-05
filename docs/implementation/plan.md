@@ -767,15 +767,22 @@ needs from its first database connection.
    contracts against PostgreSQL, and `api_idempotency_replicas.feature`,
    `api_rate_limit_replicas.feature` and `api_disabled_callers.feature`
    against two `serve` replicas on one database.
-5. `internal/platform/observe`: `log/slog` JSON with the standard fields,
-   `X-Request-Id` validation and echo, the redacting handler, the access log;
-   `/readyz` and `/startupz` beside P1's `/livez` on the admin listener,
-   with decision 0017's checks per process mode; graceful shutdown order. `infraweave scheduler`
-   and `infraweave all` process modes start with no consumers yet. Tests:
-   `TestUnitRedactHandler`, `TestUnitRequestID`,
-   `TestUnitServerListeners`, `observability_health.feature` (readiness
-   fails while PostgreSQL is stopped and recovers). Records DV-009 and
-   DV-062.
+5. `internal/platform/observe`: `log/slog` JSON to stdout with the standard
+   fields, `log.level` re-read on `SIGHUP`, the redacting handler and
+   rate-limited warnings; `httpkit/middleware`: `X-Request-Id` validation
+   and echo, and the access log on the API listener; `/readyz` and
+   `/startupz` beside P1's `/livez` on the admin listener, from a check
+   registry each process mode adds to (P2's: the configuration and the
+   schema at startup, PostgreSQL for readiness); decision 0017's shutdown
+   order, with `server.shutdown.ready_delay`. `infraweave scheduler` serves
+   only the admin listener and `infraweave all` both, with no consumers
+   yet; the acceptance harness runs `infraweave all`. Tests:
+   `TestUnitRedactHandler`, `TestUnitRequestID`, `TestUnitServerListeners`,
+   the registry with fake checks, the `SIGHUP` reload, and
+   `observability_health.feature` (readiness fails while the scenario's own
+   PostgreSQL container is paused and recovers when it resumes; the
+   shutdown sequence with a request in flight; the log fields; the
+   `scheduler` listeners). Records DV-009 and DV-062.
 6. CI: `postgres-next` runs the `sqltest` suites, `queuetest` once P2c lands and
    `accept-core` on the next PostgreSQL major, its beta or release
    candidate, without blocking ([0016](../research/decisions/0016-testing-and-acceptance.md)).

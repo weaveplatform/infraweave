@@ -81,7 +81,7 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := StartServer(t.Context(), bin, t.TempDir(), cover, config)
+	srv, err := StartServer(t.Context(), bin, t.TempDir(), cover, "all", config)
 	if err != nil {
 		t.Fatal(err)
 	}

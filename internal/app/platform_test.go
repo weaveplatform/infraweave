@@ -103,7 +103,7 @@ func TestAccServeRefusesNewerSchema(t *testing.T) {
 	for _, mode := range []string{sql.MigrateAuto, sql.MigrateCheck} {
 		c := local()
 		c.Database.URL, c.Database.Migrate = url, mode
-		err := Serve(t.Context(), c, discard())
+		err := Run(t.Context(), c, discard(), ModeServe)
 		if !errors.Is(err, migrate.ErrRefused) ||
 			!strings.Contains(err.Error(), "run release v9.0.0 or newer") {
 			t.Errorf("%s: %v", mode, err)

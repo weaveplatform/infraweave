@@ -46,7 +46,7 @@ func openDatabase(
 		statuses, err = migrate.Up(ctx, cc, buildinfo.Version(), streams)
 		for _, s := range statuses {
 			for _, f := range s.Ran {
-				log.Info("migrated", "stream", s.Stream, "version", f.Version, "name", f.Name)
+				log.Info("migrated", "stream", s.Stream, "migration", f.Version, "name", f.Name)
 			}
 		}
 	}

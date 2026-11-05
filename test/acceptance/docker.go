@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/moby/moby/client"
 	"github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -158,25 +159,12 @@ func (d *Dependencies) Postgres(ctx context.Context) (*Database, error) {
 
 // startPostgres starts the container and creates and migrates the template.
 func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
-	img, err := Postgres()
-	if err != nil {
-		return nil, fmt.Errorf("@postgres: %w", err)
-	}
-	c, err := postgres.Run(ctx, img,
-		postgres.WithDatabase(pgDatabase),
-		postgres.WithUsername(pgUser),
-		postgres.WithPassword(pgPassword),
-		postgres.BasicWaitStrategies(),
-	)
+	c, dsn, err := runPostgres(ctx)
 	if c != nil {
 		d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
 	}
 	if err != nil {
-		return nil, fmt.Errorf("@postgres: %w", err)
-	}
-	dsn, err := c.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		return nil, fmt.Errorf("@postgres: %w", err)
+		return nil, err
 	}
 	db := &Database{c: c, name: pgDatabase, DSN: dsn}
 	if _, err := db.Query(ctx, "CREATE DATABASE "+pgTemplate); err != nil {
@@ -189,6 +177,96 @@ func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 		}
 	}
 	return db, nil
+}
+
+// runPostgres starts a PostgreSQL container and returns the DSN of its
+// default database. The container is returned whenever one was created,
+// even with an error, for the caller to terminate.
+func runPostgres(ctx context.Context) (*postgres.PostgresContainer, string, error) {
+	img, err := Postgres()
+	if err != nil {
+		return nil, "", fmt.Errorf("@postgres: %w", err)
+	}
+	c, err := postgres.Run(ctx, img,
+		postgres.WithDatabase(pgDatabase),
+		postgres.WithUsername(pgUser),
+		postgres.WithPassword(pgPassword),
+		postgres.BasicWaitStrategies(),
+	)
+	if err != nil {
+		return c, "", fmt.Errorf("@postgres: %w", err)
+	}
+	dsn, err := c.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		return c, "", fmt.Errorf("@postgres: %w", err)
+	}
+	return c, dsn, nil
+}
+
+// OwnPostgres is a PostgreSQL container of one scenario's own, for a
+// scenario that takes PostgreSQL away from a running server; pausing the
+// shared container would stall every other scenario.
+type OwnPostgres struct {
+	c *postgres.PostgresContainer
+	// DSN reaches its migrated default database from the host.
+	DSN string
+}
+
+// OwnPostgres starts a container of the scenario's own and migrates its
+// default database. The scenario terminates it.
+func (d *Dependencies) OwnPostgres(ctx context.Context) (*OwnPostgres, error) {
+	c, dsn, err := runPostgres(ctx)
+	if err == nil && d.Migrate != nil {
+		if err = d.Migrate(ctx, dsn); err != nil {
+			err = fmt.Errorf("@postgres: migrate: %w", err)
+		}
+	}
+	if err != nil {
+		if c != nil {
+			err = errors.Join(err, c.Terminate(ctx))
+		}
+		return nil, err
+	}
+	return &OwnPostgres{c: c, DSN: dsn}, nil
+}
+
+// Pause freezes every process of the container, so connections stay open
+// and queries go unanswered, as a PostgreSQL that has stopped responding
+// looks to a client. Unpause resumes them on the same port, which stopping
+// and starting the container would not keep.
+func (p *OwnPostgres) Pause(ctx context.Context) error {
+	return p.docker(ctx, func(cli *testcontainers.DockerClient) error {
+		_, err := cli.ContainerPause(ctx, p.c.GetContainerID(), client.ContainerPauseOptions{})
+		return err //nolint:wrapcheck // docker wraps it below
+	})
+}
+
+// Unpause resumes the container's processes.
+func (p *OwnPostgres) Unpause(ctx context.Context) error {
+	return p.docker(ctx, func(cli *testcontainers.DockerClient) error {
+		_, err := cli.ContainerUnpause(ctx, p.c.GetContainerID(), client.ContainerUnpauseOptions{})
+		return err //nolint:wrapcheck // as Pause
+	})
+}
+
+// Terminate removes the container.
+func (p *OwnPostgres) Terminate(ctx context.Context) error {
+	return p.c.Terminate(ctx) //nolint:wrapcheck // testcontainers names the container
+}
+
+func (p *OwnPostgres) docker(
+	ctx context.Context,
+	f func(*testcontainers.DockerClient) error,
+) error {
+	cli, err := testcontainers.NewDockerClientWithOpts(ctx)
+	if err != nil {
+		return fmt.Errorf("docker: %w", err)
+	}
+	defer cli.Close()
+	if err := f(cli); err != nil {
+		return fmt.Errorf("docker: %w", err)
+	}
+	return nil
 }
 
 // ObjectStore returns the shared object store, starting it on first use.

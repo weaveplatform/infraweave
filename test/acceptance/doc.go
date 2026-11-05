@@ -1,7 +1,9 @@
 // Package acceptance runs the Gherkin features in features/ with godog
 // against the binary a user runs (decision 0016). TestAccFeatures builds
 // cmd/infraweave with coverage once, gives each scenario that needs a server
-// its own infraweave serve subprocess, and starts the dependencies a
+// its own infraweave all subprocess (or scheduler, for a scenario about that
+// mode), reading its listeners from the JSON logs on its stdout, and starts
+// the dependencies a
 // selected scenario's tags name (@postgres, @objectstore, @oidc) once, on
 // first use. Without a Docker daemon it skips the scenarios that need one,
 // unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which fails the run instead. A
@@ -23,7 +25,8 @@
 //
 // # Dependencies
 //
-// godog runs the features; testcontainers-go starts PostgreSQL (images.go)
+// godog runs the features; testcontainers-go starts PostgreSQL (images.go),
+// shared or a scenario's own (OwnPostgres, which the moby client pauses),
 // and RustFS; chi serves the in-process OIDC issuer. Every step and every
 // capture replay calls the API through pkg/sdk, never the generated client
 // beneath it (TestUnitStepsUseTheSDK).
