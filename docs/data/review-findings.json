@@ -8131,7 +8131,7 @@
         {
           "file": "docs/research/decisions/0022-api-errors-and-update-semantics.md",
           "present": [
-            "`internal/problem/problem_test.go` (`TestUnitProblemRegistry`)"
+            "`internal/platform/httpkit/problem/problem_test.go` (`TestUnitProblemRegistry`)"
           ]
         }
       ]

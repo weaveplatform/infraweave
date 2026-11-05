@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 // ContentType is the media type of every problem body.
@@ -22,33 +24,113 @@ type Type struct {
 	Title  string
 }
 
-// The problem types the server writes itself. Each must match its register
-// record, which TestUnitTypesMatchRegister checks.
+// The problem types of the register, one per slug. Types lists them all,
+// and TestUnitProblemRegistry holds them to the register in both directions.
 var (
-	InvalidRequest         = Type{"invalid-request", http.StatusBadRequest, "invalid request"}
-	InvalidCursor          = Type{"invalid-cursor", http.StatusBadRequest, "Invalid cursor"}
+	InvalidRequest  = Type{"invalid-request", http.StatusBadRequest, "invalid request"}
+	InvalidCursor   = Type{"invalid-cursor", http.StatusBadRequest, "Invalid cursor"}
+	Unauthenticated = Type{
+		"unauthenticated",
+		http.StatusUnauthorized,
+		"unauthorized: authentication required",
+	}
+	Forbidden = Type{
+		"forbidden",
+		http.StatusForbidden,
+		"unauthorized: permission denied",
+	}
+	FeatureDisabled  = Type{"feature-disabled", http.StatusForbidden, "feature disabled"}
+	FeatureNotInTier = Type{
+		"feature-not-in-tier",
+		http.StatusForbidden,
+		"feature not in tier",
+	}
+	LimitReached            = Type{"limit-reached", http.StatusForbidden, "limit reached"}
+	InstallationUnsupported = Type{
+		"installation-unsupported",
+		http.StatusForbidden,
+		"installation unsupported",
+	}
+	NotFound         = Type{"not-found", http.StatusNotFound, "not found"}
+	MethodNotAllowed = Type{
+		"method-not-allowed",
+		http.StatusMethodNotAllowed,
+		"method not allowed",
+	}
+	AlreadyExists       = Type{"already-exists", http.StatusConflict, "already exists"}
+	InvalidState        = Type{"invalid-state", http.StatusConflict, "invalid state"}
+	ResourceLocked      = Type{"resource-locked", http.StatusConflict, "resource locked"}
+	IntentProjectLocked = Type{
+		"intent-project-locked",
+		http.StatusConflict,
+		"intent project locked",
+	}
 	IdempotencyKeyInFlight = Type{
 		"idempotency-key-in-flight",
 		http.StatusConflict,
 		"Idempotency key in use",
+	}
+	PreconditionFailed = Type{
+		"precondition-failed",
+		http.StatusPreconditionFailed,
+		"precondition failed",
 	}
 	PayloadTooLarge = Type{
 		"payload-too-large",
 		http.StatusRequestEntityTooLarge,
 		"payload too large",
 	}
+	UnsupportedMediaType = Type{
+		"unsupported-media-type",
+		http.StatusUnsupportedMediaType,
+		"unsupported media type",
+	}
+	ValidationFailed = Type{
+		"validation-failed",
+		http.StatusUnprocessableEntity,
+		"validation failed",
+	}
+	WebhookVerificationFailed = Type{
+		"webhook-verification-failed",
+		http.StatusUnprocessableEntity,
+		"webhook verification failed",
+	}
 	IdempotencyKeyReuse = Type{
 		"idempotency-key-reuse",
 		http.StatusUnprocessableEntity,
 		"Idempotency key reused",
 	}
-	RateLimited = Type{"rate-limited", http.StatusTooManyRequests, "Rate limit exceeded"}
-	APIDisabled = Type{
+	RateLimited    = Type{"rate-limited", http.StatusTooManyRequests, "Rate limit exceeded"}
+	InternalError  = Type{"internal-error", http.StatusInternalServerError, "internal error"}
+	NotImplemented = Type{"not-implemented", http.StatusNotImplemented, "not implemented"}
+	UpstreamError  = Type{"upstream-error", http.StatusBadGateway, "upstream error"}
+	APIDisabled    = Type{
 		"api-disabled",
 		http.StatusServiceUnavailable,
 		"API disabled for this caller",
 	}
+	ServiceUnavailable = Type{
+		"service-unavailable",
+		http.StatusServiceUnavailable,
+		"service unavailable",
+	}
 )
+
+// Types is every problem type, ordered by slug: the list a client such as
+// pkg/sdk branches on.
+func Types() []Type {
+	types := []Type{
+		InvalidRequest, InvalidCursor, Unauthenticated, Forbidden, FeatureDisabled,
+		FeatureNotInTier, LimitReached, InstallationUnsupported, NotFound,
+		MethodNotAllowed, AlreadyExists, InvalidState, ResourceLocked,
+		IntentProjectLocked, IdempotencyKeyInFlight, PreconditionFailed,
+		PayloadTooLarge, UnsupportedMediaType, ValidationFailed,
+		WebhookVerificationFailed, IdempotencyKeyReuse, RateLimited, InternalError,
+		NotImplemented, UpstreamError, APIDisabled, ServiceUnavailable,
+	}
+	slices.SortFunc(types, func(a, b Type) int { return strings.Compare(a.Slug, b.Slug) })
+	return types
+}
 
 // New is a problem of type t.
 func (t Type) New(detail string) Problem {

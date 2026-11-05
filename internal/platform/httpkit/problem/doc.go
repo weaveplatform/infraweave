@@ -3,7 +3,8 @@
 // api/src/api/components-common.yaml), and adapts handler errors to them.
 //
 // Type is a problem type of the register docs/data/problems.json, its slug,
-// status and title; New and Type.New build a Problem, and Write sends one.
+// status and title; a variable declares each slug, and Types lists them all.
+// New and Type.New build a Problem, and Write sends one.
 // RequestError and ResponseError are the strict server's error handlers:
 // an *Error answers with the problem it carries, a NotImplementedError with a
 // 501 naming the operation, and anything else with Internal's generic 500.
@@ -12,7 +13,7 @@
 //
 // It writes the status, Content-Type application/problem+json and the JSON
 // body to the response writer it is given. It reads nothing and logs
-// nothing; a unit test holds its types to the register.
+// nothing; TestUnitProblemRegistry holds Types to the register in both directions.
 //
 // # Dependencies
 //

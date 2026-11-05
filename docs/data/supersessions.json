@@ -292,6 +292,16 @@
       "evidence": "Retirement set for 2026-12-10 (report 26 section 7.8)"
     },
     {
+      "id": "SUP-30",
+      "treatment": "superseded",
+      "interface": "The `UPDATE_BLUEPRINT_DEPLOYMENT` and `UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS` actions",
+      "kind": "Actions",
+      "rule": "S2",
+      "replacement": "`UPGRADE_BLUEPRINT_DEPLOYMENT`",
+      "replacementPhase": "P21",
+      "evidence": "Deprecated in the schema: \"Use UPGRADE_BLUEPRINT_DEPLOYMENT instead.\" (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 3.3, report 26 section 7.8)"
+    },
+    {
       "id": "DEP-01",
       "treatment": "served",
       "interface": "`stackIntegrationAwsCreate`, `stackIntegrationAwsDelete`",

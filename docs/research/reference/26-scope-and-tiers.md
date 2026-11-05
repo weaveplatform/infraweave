@@ -430,6 +430,7 @@ report 12 section 2).
 | The `pulumi-spacelift` provider | Pulumi's Terraform bridge over the Spacelift Terraform provider | Retirement and archival set for 2026-12-10 [RN] | No infraweave Pulumi provider is needed (report [06](06-spacectl-and-clients.md)) |
 | `changeLLMVendor`, `llmVendor` | none | Removed on 2026-08-21 [RN] | Absent from the schema [G] |
 | `PENDING` in `RunState` | none | "This state is no longer used", 2026-10-20 [RN] [G] | Not reachable (report [08](08-run-lifecycle.md)) |
+| The `UPDATE_BLUEPRINT_DEPLOYMENT` and `UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS` actions | `UPGRADE_BLUEPRINT_DEPLOYMENT` | Deprecated in the schema [G] | Not served; the upgrade action covers both (report [14](14-spaces-rbac-and-identity.md) section 3.3) |
 | The `feature:add_plan_pr_comment` stack label | Notification policies with `pull_request` rules | [D] <https://docs.spacelift.io/concepts/stack/stack-settings> | Report 09 section 1.2 |
 
 ## 8. Completeness check

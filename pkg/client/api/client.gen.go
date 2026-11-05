@@ -159,8 +159,6 @@ const (
 	TERRAFORMPROVIDERVERSIONREVOKE           Action = "TERRAFORM_PROVIDER_VERSION_REVOKE"
 	TERRAFORMPROVIDERVERSIONUPDATE           Action = "TERRAFORM_PROVIDER_VERSION_UPDATE"
 	TESTBLUEPRINTDEPLOYMENT                  Action = "TEST_BLUEPRINT_DEPLOYMENT"
-	UPDATEBLUEPRINTDEPLOYMENT                Action = "UPDATE_BLUEPRINT_DEPLOYMENT"
-	UPDATEBLUEPRINTDEPLOYMENTINPUTS          Action = "UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS"
 	UPDATEBLUEPRINTSVERSIONEDGROUP           Action = "UPDATE_BLUEPRINTS_VERSIONED_GROUP"
 	UPGRADEBLUEPRINTDEPLOYMENT               Action = "UPGRADE_BLUEPRINT_DEPLOYMENT"
 	WORKERDRAINSET                           Action = "WORKER_DRAIN_SET"
@@ -453,10 +451,6 @@ func (e Action) Valid() bool {
 	case TERRAFORMPROVIDERVERSIONUPDATE:
 		return true
 	case TESTBLUEPRINTDEPLOYMENT:
-		return true
-	case UPDATEBLUEPRINTDEPLOYMENT:
-		return true
-	case UPDATEBLUEPRINTDEPLOYMENTINPUTS:
 		return true
 	case UPDATEBLUEPRINTSVERSIONEDGROUP:
 		return true
@@ -933,10 +927,7 @@ const (
 	PolicyTypeLOGIN          PolicyType = "LOGIN"
 	PolicyTypeNOTIFICATION   PolicyType = "NOTIFICATION"
 	PolicyTypePLAN           PolicyType = "PLAN"
-	PolicyTypeSTACKACCESS    PolicyType = "STACK_ACCESS"
 	PolicyTypeTASK           PolicyType = "TASK"
-	PolicyTypeTASKRUN        PolicyType = "TASK_RUN"
-	PolicyTypeTERRAFORMPLAN  PolicyType = "TERRAFORM_PLAN"
 	PolicyTypeTRIGGER        PolicyType = "TRIGGER"
 )
 
@@ -959,13 +950,7 @@ func (e PolicyType) Valid() bool {
 		return true
 	case PolicyTypePLAN:
 		return true
-	case PolicyTypeSTACKACCESS:
-		return true
 	case PolicyTypeTASK:
-		return true
-	case PolicyTypeTASKRUN:
-		return true
-	case PolicyTypeTERRAFORMPLAN:
 		return true
 	case PolicyTypeTRIGGER:
 		return true
@@ -1140,7 +1125,6 @@ const (
 	RunStateFAILED          RunState = "FAILED"
 	RunStateFINISHED        RunState = "FINISHED"
 	RunStateINITIALIZING    RunState = "INITIALIZING"
-	RunStatePENDING         RunState = "PENDING"
 	RunStatePENDINGREVIEW   RunState = "PENDING_REVIEW"
 	RunStatePERFORMING      RunState = "PERFORMING"
 	RunStatePLANNING        RunState = "PLANNING"
@@ -1174,8 +1158,6 @@ func (e RunState) Valid() bool {
 	case RunStateFINISHED:
 		return true
 	case RunStateINITIALIZING:
-		return true
-	case RunStatePENDING:
 		return true
 	case RunStatePENDINGREVIEW:
 		return true

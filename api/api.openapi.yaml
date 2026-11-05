@@ -4187,8 +4187,6 @@ components:
         - CREATE_BLUEPRINT_DEPLOYMENT
         - DELETE_BLUEPRINT_DEPLOYMENT
         - UPGRADE_BLUEPRINT_DEPLOYMENT
-        - UPDATE_BLUEPRINT_DEPLOYMENT
-        - UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS
         - ROLLBACK_BLUEPRINT_DEPLOYMENT
         - TEST_BLUEPRINT_DEPLOYMENT
         - STACK_CONTEXT_ATTACH
@@ -4214,9 +4212,6 @@ components:
         - AI_INTEGRATION_DELETE
         - AI_INTEGRATION_TOGGLE
       type: string
-      x-enum-deprecated:
-        - UPDATE_BLUEPRINT_DEPLOYMENT
-        - UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS
       x-enum-descriptions:
         STACK_AWS_INTEGRATION_ATTACH: Disabled. Do not use.
         STACK_AWS_INTEGRATION_DETACH: Disabled. Do not use.
@@ -6306,22 +6301,15 @@ components:
       enum:
         - ACCESS
         - LOGIN
-        - STACK_ACCESS
         - GIT_PUSH
         - INITIALIZATION
         - INTENT
         - PLAN
         - TASK
-        - TASK_RUN
-        - TERRAFORM_PLAN
         - TRIGGER
         - APPROVAL
         - NOTIFICATION
       type: string
-      x-enum-deprecated:
-        - STACK_ACCESS
-        - TASK_RUN
-        - TERRAFORM_PLAN
       x-enum-descriptions:
         ACCESS: Access policy - stack or module level RBAC.
         APPROVAL: Approval policy, allows approving or rejecting runs and tasks.
@@ -7075,13 +7063,10 @@ components:
         - PREPARING_APPLY
         - SKIPPED
         - REPLAN_REQUESTED
-        - PENDING
         - PREPARING_REPLAN
         - READY
         - PENDING_REVIEW
       type: string
-      x-enum-deprecated:
-        - PENDING
       x-enum-descriptions:
         APPLYING: A worker is currently applying the run's changes.
         CANCELED: The run has been canceled by the user.
