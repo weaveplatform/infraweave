@@ -8180,7 +8180,7 @@
         {
           "file": "docs/research/decisions/0010-state-backend.md",
           "present": [
-            "signed with HMAC-SHA256 under `secrets.DeriveKey("
+            "signed with HMAC-SHA256 under `crypt.DeriveKey("
           ]
         }
       ]

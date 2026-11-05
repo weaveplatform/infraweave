@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
@@ -56,11 +58,19 @@ func (m Mode) String() string {
 // server.shutdown.ready_delay, and in-flight requests drain. It opens
 // PostgreSQL and brings the schema to this binary's (openDatabase) before
 // any listener binds, so a server below the version floor or a schema this
-// binary must not run on never answers. The API's controls keep their state
-// in the database (postgresGuards); the listening connection and the pools
-// close only after the drain, when no request can use them.
+// binary must not run on never answers. The keyring loads next, so a
+// replica with the wrong KEK, or none, never answers either. The API's
+// controls keep their state in the database (postgresGuards); the
+// listening connection and the pools close only after the drain, when no
+// request can use them.
 func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if err := errors.Join(c.Server.Validate(), c.Database.Validate()); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	// Every mode Run starts seals, so each needs the KEK; migrate and
+	// version never call Run.
+	provider, err := kek.New(c.Secrets.KEK)
+	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 	db, err := openDatabase(ctx, c.Database, log, Streams())
@@ -68,6 +78,10 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		return err
 	}
 	defer db.Close()
+	keys, err := crypt.Load(ctx, db.Primary(), provider)
+	if err != nil {
+		return err //nolint:wrapcheck // names the keyring and the key
+	}
 	// ctx ends when the shutdown begins; the switch keeps following
 	// invalidations until the drain is over.
 	background, stop := context.WithCancel(context.WithoutCancel(ctx))
@@ -78,6 +92,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	}()
 	health := observe.NewHealth(time.Now)
 	databaseChecks(health, db)
+	keyringCheck(health, keys)
 	// One listening connection per process; every subscriber subscribes
 	// before it runs, so none misses the first Resync.
 	l := notify.NewListener(db.ConnConfig, log)
@@ -117,6 +132,17 @@ func databaseChecks(h *observe.Health, db *sql.DB) {
 	h.Ready("postgres", func(ctx context.Context) error {
 		_, err := db.Primary().Exec(ctx, "SELECT 1")
 		return err //nolint:wrapcheck // as above
+	})
+}
+
+// keyringCheck is P2b's startup check: the keyring loaded, with an active
+// key to seal under, which it has by the time any probe answers.
+func keyringCheck(h *observe.Health, keys *crypt.Keyring) {
+	h.Startup("keyring", func(context.Context) error {
+		if keys.Active() == 0 {
+			return crypt.ErrKeyring
+		}
+		return nil
 	})
 }
 

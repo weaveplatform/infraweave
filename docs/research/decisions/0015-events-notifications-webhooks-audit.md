@@ -324,7 +324,7 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
   `remoteIP`, `identityUlid`, `ownerLogin` and `createdAt`.
 - **Sanitizing.** Every field that the spec marks `writeOnly` is replaced in
   `body` and in webhook `data` by `{"SecretSHA": "<hex HMAC-SHA256>"}`,
-  keyed by `secrets.DeriveKey("audit-secret-sha")` (decision 0013).
+  keyed by `crypt.DeriveKey("audit-secret-sha")` (decision 0013).
 - **The organization's trail.** Operations of the `Organization` and `SSO`
   tags, break-glass sign-ins ([0006](0006-authentication-and-tokens.md)) and
   the operator API's changes to an organization record entries with the

@@ -316,3 +316,46 @@ func TestUnitServerValidate(t *testing.T) {
 		})
 	}
 }
+
+// TestUnitLoadSecrets checks that INFRAWEAVE_SECRETS_KEK supplies the
+// local KEK without hiding the secrets.kek keys the file and the other
+// variables set, and that no file can set the KEK itself.
+func TestUnitLoadSecrets(t *testing.T) {
+	file := writeFile(t, `
+secrets:
+  kek:
+    provider: local
+`)
+	t.Setenv("INFRAWEAVE_SECRETS_KEK", "a2V5")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Secrets.KEK.Provider != "local" || c.Secrets.KEK.Local.Key != "a2V5" {
+		t.Errorf("secrets %+v", c.Secrets)
+	}
+
+	t.Setenv("INFRAWEAVE_SECRETS_KEK", "")
+	t.Setenv("INFRAWEAVE_SECRETS_KEK_PROVIDER", "local")
+	t.Setenv("INFRAWEAVE_SECRETS_KEK_LOCAL_KEY_FILE", "/run/secrets/kek")
+	c, err = loadArgs(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Secrets.KEK.Provider != "local" || c.Secrets.KEK.Local.KeyFile != "/run/secrets/kek" {
+		t.Errorf("secrets from the environment %+v", c.Secrets)
+	}
+
+	for name, body := range map[string]string{
+		"a key in the file": "secrets:\n  kek:\n    local:\n      key: a2V5\n",
+		"unknown provider":  "secrets:\n  kek:\n    provider: rot13\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("INFRAWEAVE_SECRETS_KEK_PROVIDER", "")
+			t.Setenv("INFRAWEAVE_SECRETS_KEK_LOCAL_KEY_FILE", "")
+			if _, err := loadArgs(t, "--config", writeFile(t, body)); err == nil {
+				t.Error("accepted")
+			}
+		})
+	}
+}

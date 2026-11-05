@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
@@ -444,6 +445,117 @@ CREATE TABLE bad (
 	if got := schemaConventionProblems(
 		t,
 		url,
+	); strings.Join(
+		got,
+		"\n",
+	) != strings.Join(
+		want,
+		"\n",
+	) {
+		t.Errorf("got:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// sealedColumns are the migrated schema's _sealed columns, each as
+// table.column(primary key columns), in the form sealedEntry gives a
+// crypt.Column.
+func sealedColumns(t *testing.T, url string) []string {
+	t.Helper()
+	conn, err := pgx.Connect(t.Context(), url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(context.Background())
+	rows, err := conn.Query(t.Context(), `
+SELECT c.relname || '.' || a.attname || '(' || coalesce((
+	SELECT string_agg(k.attname, ',' ORDER BY x.n)
+	FROM pg_index i
+	CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS x(attnum, n)
+	JOIN pg_attribute k ON k.attrelid = i.indrelid AND k.attnum = x.attnum
+	WHERE i.indrelid = c.oid AND i.indisprimary), '') || ')'
+FROM pg_attribute a
+JOIN pg_class c ON c.oid = a.attrelid
+JOIN pg_namespace s ON s.oid = c.relnamespace
+WHERE s.nspname = 'public' AND c.relkind = 'r'
+  AND a.attname LIKE '%\_sealed' AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY 1`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func sealedEntry(c crypt.Column) string {
+	return c.Table + "." + c.Name + "(" + strings.Join(c.Key, ",") + ")"
+}
+
+// sealedRegistryProblems compares the schema's _sealed columns with
+// registry: a column resealing would miss, and an entry that names no
+// column or the wrong primary key.
+func sealedRegistryProblems(schema []string, registry []crypt.Column) []string {
+	listed := map[string]bool{}
+	for _, c := range registry {
+		listed[sealedEntry(c)] = true
+	}
+	var out []string
+	for _, s := range schema {
+		if !listed[s] {
+			out = append(out, "not in crypt.Registry: "+s)
+		}
+		delete(listed, s)
+	}
+	for _, e := range slices.Sorted(maps.Keys(listed)) {
+		out = append(out, "in crypt.Registry, not in the schema: "+e)
+	}
+	return out
+}
+
+// TestAccSealedColumnRegistry holds crypt.Registry to the fully migrated
+// schema (decision 0013): every _sealed column is listed with its primary
+// key, so resealing after a rotation reaches it, and nothing else is.
+func TestAccSealedColumnRegistry(t *testing.T) {
+	if got := sealedRegistryProblems(
+		sealedColumns(t, sqltest.DSN(t)),
+		crypt.Registry(),
+	); len(
+		got,
+	) != 0 {
+		t.Errorf("sealed columns:\n%s", strings.Join(got, "\n"))
+	}
+}
+
+// TestAccSealedColumnRegistryFixtures proves the comparison fires both
+// ways and on a wrong primary key.
+func TestAccSealedColumnRegistryFixtures(t *testing.T) {
+	url := sqltest.Empty(t)
+	s := fixtureStream("a", `
+CREATE TABLE hooks (account_id uuid, id uuid, secret_sealed bytea, PRIMARY KEY (account_id, id));
+CREATE TABLE keys (id integer PRIMARY KEY, key_sealed bytea, note_sealed bytea);`)
+	cfg, err := pgx.ParseConfig(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := migrate.Up(t.Context(), cfg, "fixture", []migrate.Stream{s}); err != nil {
+		t.Fatal(err)
+	}
+	registry := []crypt.Column{
+		{Table: "hooks", Name: "secret_sealed", Key: []string{"account_id", "id"}},
+		{Table: "keys", Name: "key_sealed", Key: []string{"account_id", "id"}},
+		{Table: "gone", Name: "value_sealed", Key: []string{"id"}},
+	}
+	want := []string{
+		"not in crypt.Registry: keys.key_sealed(id)",
+		"not in crypt.Registry: keys.note_sealed(id)",
+		"in crypt.Registry, not in the schema: gone.value_sealed(id)",
+		"in crypt.Registry, not in the schema: keys.key_sealed(account_id,id)",
+	}
+	if got := sealedRegistryProblems(
+		sealedColumns(t, url),
+		registry,
 	); strings.Join(
 		got,
 		"\n",

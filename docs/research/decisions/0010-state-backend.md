@@ -185,7 +185,7 @@ version answers `204`, which Terraform reads as no state.
 
 - **`stateUploadUrl`** answers `objectId` (a ULID), `url` (`/state/v1/uploads/{token}`,
   absolute) and an empty `uploadHeaders`. The token is `(objectId, account,
-  expiry)`, signed with HMAC-SHA256 under `secrets.DeriveKey("state-upload-url")`
+  expiry)`, signed with HMAC-SHA256 under `crypt.DeriveKey("state-upload-url")`
   ([0013](0013-secrets-at-rest.md)) and valid 15 minutes. The upload seals into the `uploads` store; an upload not
   imported within a day expires through `blob.expire`.
 - **Import** (`stackCreate` with `stackObjectID`, `stackManagedStateImport`) checks, in

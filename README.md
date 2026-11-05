@@ -77,7 +77,7 @@ Bundling fails when any of these happens:
 `/api/v1`, and the probes on the admin listener only
 ([decision 0017](docs/research/decisions/0017-observability-and-health.md#health)):
 `GET /livez` while the process serves HTTP, `GET /startupz` once the schema
-is at this binary's version, and `GET /readyz` while PostgreSQL answers and
+is at this binary's version and the keyring has loaded, and `GET /readyz` while PostgreSQL answers and
 shutdown has not begun. Add `?verbose` for the checks as JSON.
 `infraweave scheduler` serves only the admin listener and runs the work
 queue: the workers of each logical queue and the scheduler ticker, which
@@ -118,11 +118,17 @@ phase.
 | `server.idempotency.ttl` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_TTL` | `24h` |
 | `server.idempotency.lock` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_LOCK` | `5m` |
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
+| `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local` |
+| `secrets.kek.local.key_file` | | `INFRAWEAVE_SECRETS_KEK_LOCAL_KEY_FILE` | a file holding the KEK, base64 of 32 bytes; or the KEK itself in `INFRAWEAVE_SECRETS_KEK` |
 | `log.format` | | `INFRAWEAVE_LOG_FORMAT` | `json` (or `text`) |
 | `log.level` | `--log-level` | `INFRAWEAVE_LOG_LEVEL` | `info` (`debug`, `warn`, `error`) |
 
 A flag beats the environment, which beats the YAML file named by
-`--config`. The file is strict: an unknown key fails startup. On `SIGINT`
+`--config`. The file is strict: an unknown key fails startup. Values are
+sealed under a keyring of data keys in PostgreSQL, each wrapped by the KEK
+([decision 0013](docs/research/decisions/0013-secrets-at-rest.md)); the
+first replica on an empty database creates the first key, and a replica
+whose KEK does not unwrap the keys refuses to start, naming the key. On `SIGINT`
 or `SIGTERM`, `/readyz` answers 503 at once; the listeners keep accepting
 for `server.shutdown.ready_delay`, so load balancers stop routing to the
 process, then stop accepting and drain in-flight requests for up to
