@@ -2,17 +2,14 @@ package acceptance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/cucumber/godog"
 	"gopkg.in/yaml.v3"
 
-	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
 // servedSteps drive an infraweave serve subprocess of the scenario's world.
@@ -26,6 +23,8 @@ type response struct {
 	status int
 	header http.Header
 	body   []byte
+	// err is the SDK's typed error of an answer of 400 or more.
+	err error
 }
 
 func (s *servedSteps) register(sc *godog.ScenarioContext) {
@@ -83,37 +82,19 @@ func (s *servedSteps) runningDisabling(ctx context.Context, caller string) error
 	return s.start(ctx, map[string]any{"disabled_callers": []string{caller}})
 }
 
-func (s *servedSteps) addr(listener string) string {
+// send drives the server through pkg/sdk, as every infraweave client
+// does. The scenario's clients send each call once, so a step sees the
+// answer it asserts on rather than the SDK's retry of it.
+func (s *servedSteps) send(ctx context.Context, method, listener, path string) (response, error) {
+	c := s.w.api
 	if listener == "admin" {
-		return s.w.server.Admin
+		c = s.w.admin
 	}
-	return s.w.server.API
-}
-
-func (s *servedSteps) send(
-	ctx context.Context,
-	method, listener, path string,
-	header http.Header,
-	body string,
-) (response, error) {
-	req, err := http.NewRequestWithContext(
-		ctx, method, "http://"+s.addr(listener)+path, strings.NewReader(body))
-	if err != nil {
-		return response{}, fmt.Errorf("build request: %w", err)
+	resp, err := c.Do(ctx, method, path, nil)
+	if resp == nil {
+		return response{}, err
 	}
-	for k, v := range header {
-		req.Header[k] = v
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return response{}, fmt.Errorf("%s %s: %w", method, path, err)
-	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return response{}, fmt.Errorf("read body: %w", err)
-	}
-	r := response{status: resp.StatusCode, header: resp.Header, body: b}
+	r := response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
 	s.sent = append(s.sent, r)
 	return r, nil
 }
@@ -126,7 +107,7 @@ func (s *servedSteps) last() response {
 }
 
 func (s *servedSteps) adminAnswers(ctx context.Context, method, path, code string) error {
-	resp, err := s.send(ctx, method, "admin", path, nil, "")
+	resp, err := s.send(ctx, method, "admin", path)
 	if err != nil {
 		return err
 	}
@@ -147,7 +128,7 @@ func (s *servedSteps) answersProblem(
 	ctx context.Context,
 	method, path, listener, code, slug string,
 ) error {
-	resp, err := s.send(ctx, method, listener, path, nil, "")
+	resp, err := s.send(ctx, method, listener, path)
 	if err != nil {
 		return err
 	}
@@ -167,19 +148,12 @@ func isProblem(resp response, what, code, slug string) error {
 			resp.body,
 		)
 	}
-	if ct := resp.header.Get("Content-Type"); ct != problem.ContentType {
-		return fmt.Errorf("%w: %s answered %s, not a problem", errStep, what, ct)
+	p, ok := sdk.AsProblem(resp.err)
+	if !ok || p.Status != resp.status {
+		return fmt.Errorf("%w: %s answered no problem with its status: %w: %s",
+			errStep, what, resp.err, resp.body)
 	}
-	var p problem.Problem
-	if err := json.Unmarshal(resp.body, &p); err != nil || p.Status != resp.status {
-		return fmt.Errorf(
-			"%w: %s body is not a problem with its status: %s",
-			errStep,
-			what,
-			resp.body,
-		)
-	}
-	if slug != "" && p.Type != problem.TypePrefix+slug {
+	if slug != "" && p.Slug() != slug {
 		return fmt.Errorf("%w: %s answered type %q, want %q", errStep, what, p.Type, slug)
 	}
 	return nil
@@ -187,7 +161,7 @@ func isProblem(resp response, what, code, slug string) error {
 
 func (s *servedSteps) sendTimes(ctx context.Context, method, path string, n int) error {
 	for i := range n {
-		resp, err := s.send(ctx, method, "API", path, nil, "")
+		resp, err := s.send(ctx, method, "API", path)
 		if err != nil {
 			return err
 		}
