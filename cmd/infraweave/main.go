@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	_ "time/tzdata" // cron resolves IANA zones from the binary, not the host (0011)
 
 	"github.com/spf13/cobra"
 )
