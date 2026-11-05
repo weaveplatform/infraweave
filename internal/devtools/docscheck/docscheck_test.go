@@ -825,3 +825,51 @@ func TestUnitCheckSupersededOperations(t *testing.T) {
 		})
 	}
 }
+
+func TestUnitCheckSupersededEnumValues(t *testing.T) {
+	const inventory = `{"$schema": "schema/graphql-inventory.schema.json", "records": [
+  {"id": "PolicyType", "kind": "ENUM", "values": [{"name": "ACCESS"}, {"name": "PLAN"}]},
+  {"id": "Policy", "kind": "OBJECT", "fields": [{"name": "ACCESS"}]}]}`
+	withValues := func(m fstest.MapFS, values string) {
+		m["docs/data/schema/graphql-inventory.schema.json"] = file(anySchema)
+		m["docs/data/graphql-inventory.json"] = file(inventory)
+		m[supersReg] = file(strings.Replace(supersessions, `"SUP-01", `,
+			`"SUP-01", "enumValues": [`+values+`], `, 1))
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(m fstest.MapFS)
+		want []string
+	}{
+		{"an enum value", func(m fstest.MapFS) { withValues(m, `"PolicyType.ACCESS"`) }, nil},
+		{
+			"no such value", func(m fstest.MapFS) { withValues(m, `"PolicyType.ACCESS", "PolicyType.STACK_ACCESS"`) },
+			[]string{"docs/data/supersessions.json:2: SUP-01 lists PolicyType.STACK_ACCESS, which is no enum value of docs/data/graphql-inventory.json"},
+		},
+		{
+			"a field, not an enum value", func(m fstest.MapFS) { withValues(m, `"Policy.ACCESS"`) },
+			[]string{"docs/data/supersessions.json:2: SUP-01 lists Policy.ACCESS, which is no enum value of docs/data/graphql-inventory.json"},
+		},
+		{"without the inventory", func(m fstest.MapFS) {
+			withValues(m, `"PolicyType.STACK_ACCESS"`)
+			delete(m, "docs/data/graphql-inventory.json")
+			delete(m, "docs/data/schema/graphql-inventory.schema.json")
+		}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := tree()
+			tc.edit(m)
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := make([]string, 0, len(found))
+			for _, f := range found {
+				got = append(got, f.String())
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("findings = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

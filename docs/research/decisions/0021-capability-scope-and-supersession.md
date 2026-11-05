@@ -604,8 +604,13 @@ acceptance feature that runs work therefore runs it on a private pool.
   The weekly update's pull request therefore cannot merge a new deprecation
   silently.
 - **`TestUnitSupersededEnums`** fails when a served enum contains a value
-  that the schema marks deprecated or no longer used, unless the value is
-  listed as live-but-deprecated in this record.
+  that the `enumValues` member of a superseded record lists, or a value
+  that the schema marks deprecated or no longer used unless the value is
+  listed as live-but-deprecated in this record. `enumValues` carries the
+  values upstream disables without deprecating, such as `PolicyType.ACCESS`
+  and the `STACK_WEBHOOK_*` actions, which the schema's deprecation flags
+  alone would leave served. `make docs-check` fails when an entry is not a
+  value of its enum in the GraphQL inventory.
 - **`TestUnitFeatureCatalogue`** (`internal/features`) fails when:
   - an operation of a served OpenAPI document has no `x-infraweave-feature`,
     or one that names anything but a capability;

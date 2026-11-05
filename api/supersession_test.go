@@ -177,13 +177,37 @@ func liveDeprecated(t *testing.T) map[string]bool {
 	return out
 }
 
-// enumViolations names each deprecated value a served component schema
-// still lists. A served schema is matched to its GraphQL enum by
-// x-graphql-type, or by its own name when it has none.
+// supersededEnumValues are the Type.VALUE names that superseded records of
+// the supersession register list in enumValues, each with its record's id.
+// They need not be deprecated upstream: ACCESS is disabled at run time while
+// the schema still offers it.
+func supersededEnumValues(t *testing.T) map[string]string {
+	t.Helper()
+	var reg struct {
+		Records []struct {
+			ID         string
+			EnumValues []string
+		}
+	}
+	readRegister(t, supersessions, &reg)
+	out := map[string]string{}
+	for _, r := range reg.Records {
+		for _, v := range r.EnumValues {
+			out[v] = r.ID
+		}
+	}
+	return out
+}
+
+// enumViolations names each superseded value, and each deprecated value not
+// kept live, that a served component schema still lists. A served schema is
+// matched to its GraphQL enum by x-graphql-type, or by its own name when it
+// has none.
 func enumViolations(
 	doc *openapi3.T,
 	deprecated map[string][]string,
 	live map[string]bool,
+	superseded map[string]string,
 ) []string {
 	var out []string
 	for name, ref := range doc.Components.Schemas {
@@ -197,8 +221,12 @@ func enumViolations(
 		}
 		for _, v := range s.Enum {
 			value, _ := v.(string)
-			if slices.Contains(deprecated[gql], value) && !live[gql+"."+value] {
-				out = append(out, name+" serves "+gql+"."+value+", which upstream deprecates")
+			dotted := gql + "." + value
+			switch id, ok := superseded[dotted]; {
+			case ok:
+				out = append(out, name+" serves "+dotted+", which "+id+" supersedes")
+			case slices.Contains(deprecated[gql], value) && !live[dotted]:
+				out = append(out, name+" serves "+dotted+", which upstream deprecates")
 			}
 		}
 	}
@@ -206,16 +234,20 @@ func enumViolations(
 	return out
 }
 
-// TestUnitSupersededEnums fails when a served enum keeps a value the schema
-// deprecates or no longer uses, unless the supersession register keeps it
-// live (decision 0021).
+// TestUnitSupersededEnums fails when a served enum keeps a value a
+// superseded record lists, or a value the schema deprecates or no longer
+// uses unless the supersession register keeps it live (decision 0021).
 func TestUnitSupersededEnums(t *testing.T) {
 	deprecated := deprecatedEnumValues(t)
 	live := liveDeprecated(t)
 	if !live["TerraformWorkflowTool.OPEN_TOFU"] {
 		t.Errorf("%s: DEP-02's TerraformWorkflowTool.OPEN_TOFU is not read as live", supersessions)
 	}
-	for _, v := range enumViolations(loadServed(t), deprecated, live) {
+	superseded := supersededEnumValues(t)
+	if superseded["PolicyType.ACCESS"] != "SUP-01" {
+		t.Errorf("%s: SUP-01's PolicyType.ACCESS is not read as superseded", supersessions)
+	}
+	for _, v := range enumViolations(loadServed(t), deprecated, live, superseded) {
 		t.Error(v)
 	}
 
@@ -233,7 +265,7 @@ components:
       x-graphql-type: TerraformWorkflowTool
     PolicyKind:
       type: string
-      enum: [PLAN, TERRAFORM_PLAN]
+      enum: [PLAN, TERRAFORM_PLAN, ACCESS]
       x-graphql-type: PolicyType
 `))
 	if err != nil {
@@ -243,8 +275,10 @@ components:
 		"RunState":              {"PENDING"},
 		"TerraformWorkflowTool": {"OPEN_TOFU"},
 		"PolicyType":            {"TERRAFORM_PLAN"},
-	}, map[string]bool{"TerraformWorkflowTool.OPEN_TOFU": true})
+	}, map[string]bool{"TerraformWorkflowTool.OPEN_TOFU": true},
+		map[string]string{"PolicyType.ACCESS": "SUP-01", "PolicyType.STACK_ACCESS": "SUP-01"})
 	want := []string{
+		"PolicyKind serves PolicyType.ACCESS, which SUP-01 supersedes",
 		"PolicyKind serves PolicyType.TERRAFORM_PLAN, which upstream deprecates",
 		"RunState serves RunState.PENDING, which upstream deprecates",
 	}

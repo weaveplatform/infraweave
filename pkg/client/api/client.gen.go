@@ -142,9 +142,6 @@ const (
 	STACKUNLOCKFORCE                         Action = "STACK_UNLOCK_FORCE"
 	STACKUPDATE                              Action = "STACK_UPDATE"
 	STACKUPLOADLOCALWORKSPACE                Action = "STACK_UPLOAD_LOCAL_WORKSPACE"
-	STACKWEBHOOKCREATE                       Action = "STACK_WEBHOOK_CREATE"
-	STACKWEBHOOKDELETE                       Action = "STACK_WEBHOOK_DELETE"
-	STACKWEBHOOKUPDATE                       Action = "STACK_WEBHOOK_UPDATE"
 	STACKWORKSPACELOCK                       Action = "STACK_WORKSPACE_LOCK"
 	STACKWORKSPACEUNLOCK                     Action = "STACK_WORKSPACE_UNLOCK"
 	TASKCREATE                               Action = "TASK_CREATE"
@@ -417,12 +414,6 @@ func (e Action) Valid() bool {
 	case STACKUPDATE:
 		return true
 	case STACKUPLOADLOCALWORKSPACE:
-		return true
-	case STACKWEBHOOKCREATE:
-		return true
-	case STACKWEBHOOKDELETE:
-		return true
-	case STACKWEBHOOKUPDATE:
 		return true
 	case STACKWORKSPACELOCK:
 		return true
@@ -919,7 +910,6 @@ func (e PolicyEngineType) Valid() bool {
 
 // Defines values for PolicyType.
 const (
-	PolicyTypeACCESS         PolicyType = "ACCESS"
 	PolicyTypeAPPROVAL       PolicyType = "APPROVAL"
 	PolicyTypeGITPUSH        PolicyType = "GIT_PUSH"
 	PolicyTypeINITIALIZATION PolicyType = "INITIALIZATION"
@@ -934,8 +924,6 @@ const (
 // Valid indicates whether the value is a known member of the PolicyType enum.
 func (e PolicyType) Valid() bool {
 	switch e {
-	case PolicyTypeACCESS:
-		return true
 	case PolicyTypeAPPROVAL:
 		return true
 	case PolicyTypeGITPUSH:

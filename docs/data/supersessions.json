@@ -9,7 +9,8 @@
       "rule": "S1",
       "replacement": "Space role bindings",
       "replacementPhase": "P4b",
-      "evidence": "Disabled for every account on 2026-05-30; `STACK_ACCESS` deprecated on 2026-10-20 (report 26 sections 7.3 and 7.4)"
+      "evidence": "Disabled for every account on 2026-05-30; `STACK_ACCESS` deprecated on 2026-10-20 (report 26 sections 7.3 and 7.4)",
+      "enumValues": ["PolicyType.ACCESS", "PolicyType.STACK_ACCESS", "BillingTierFeature.ACCESS_POLICIES"]
     },
     {
       "id": "SUP-02",
@@ -19,7 +20,8 @@
       "rule": "S1",
       "replacement": "None",
       "replacementPhase": "none",
-      "evidence": "\"No longer used\", 2026-10-20 (report 26 section 7.8)"
+      "evidence": "\"No longer used\", 2026-10-20 (report 26 section 7.8)",
+      "enumValues": ["RunState.PENDING"]
     },
     {
       "id": "SUP-03",
@@ -29,7 +31,8 @@
       "rule": "S1",
       "replacement": "None",
       "replacementPhase": "none",
-      "evidence": "\"Disabled. Do not use.\" in the schema (report [19](../research/reference/19-events-notifications-audit.md) section 7)"
+      "evidence": "\"Disabled. Do not use.\" in the schema (report [19](../research/reference/19-events-notifications-audit.md) section 7)",
+      "enumValues": ["Action.STACK_WEBHOOK_CREATE", "Action.STACK_WEBHOOK_UPDATE", "Action.STACK_WEBHOOK_DELETE"]
     },
     {
       "id": "SUP-04",
@@ -49,7 +52,8 @@
       "rule": "S2",
       "replacement": "`PLAN`",
       "replacementPhase": "P13",
-      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.3)"
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.3)",
+      "enumValues": ["PolicyType.TERRAFORM_PLAN"]
     },
     {
       "id": "SUP-06",
@@ -59,7 +63,8 @@
       "rule": "S2",
       "replacement": "`TASK`",
       "replacementPhase": "P13b",
-      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.3)"
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.3)",
+      "enumValues": ["PolicyType.TASK_RUN"]
     },
     {
       "id": "SUP-07",
@@ -179,7 +184,8 @@
       "rule": "S2",
       "replacement": "`AUDITING`",
       "replacementPhase": "P18b",
-      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)"
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)",
+      "enumValues": ["BillingTierFeature.AUDIT_WEBHOOKS"]
     },
     {
       "id": "SUP-19",
@@ -299,7 +305,8 @@
       "rule": "S2",
       "replacement": "`UPGRADE_BLUEPRINT_DEPLOYMENT`",
       "replacementPhase": "P21",
-      "evidence": "Deprecated in the schema: \"Use UPGRADE_BLUEPRINT_DEPLOYMENT instead.\" (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 3.3, report 26 section 7.8)"
+      "evidence": "Deprecated in the schema: \"Use UPGRADE_BLUEPRINT_DEPLOYMENT instead.\" (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 3.3, report 26 section 7.8)",
+      "enumValues": ["Action.UPDATE_BLUEPRINT_DEPLOYMENT", "Action.UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS"]
     },
     {
       "id": "DEP-01",
