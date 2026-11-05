@@ -1,0 +1,12 @@
+# The synthetic example. It shows the layout and is replayed like a capture,
+# but records nothing Spacelift did: its expectation is infraweave's stub.
+entry: C0
+example: true
+captured: 2026-11-05
+tier: trial
+# sha256 of api/reference/spacelift/introspection.json, the committed snapshot.
+introspection: sha256:1fc7d2c49a8e8586f96306436b5bcb098753c5661fd077a2538d82d3f9666588
+capturedBy: synthetic
+redacted:
+  - the API token in the Authorization header, which request.graphql omits
+  - the account subdomain, replaced by example
