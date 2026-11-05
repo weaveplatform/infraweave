@@ -43,6 +43,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^"([A-Z]+) ([^"]+)" is sent (\d+) times on the API listener$`, s.sendTimes)
 	sc.Step(`^the response carries Retry-After and the rate-limit headers$`, s.rateLimitHeaders)
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
+	sc.Step(`^the problem names the request in its instance$`, s.namesRequest)
 	s.registerReplicas(sc)
 }
 
@@ -205,6 +206,25 @@ func (s *servedSteps) rateLimitHeaders() error {
 func (s *servedSteps) retryAfter() error {
 	if n, err := strconv.Atoi(s.last().header.Get("Retry-After")); err != nil || n < 1 {
 		return fmt.Errorf("%w: Retry-After %q", errStep, s.last().header.Get("Retry-After"))
+	}
+	return nil
+}
+
+// namesRequest checks decision 0022's correlation: the last problem's
+// instance is urn:infraweave:request: and the X-Request-Id it was answered
+// with.
+func (s *servedSteps) namesRequest() error {
+	resp := s.last()
+	p, ok := sdk.AsProblem(resp.err)
+	id := resp.header.Get("X-Request-Id")
+	if !ok || id == "" || p.Instance != "urn:infraweave:request:"+id {
+		return fmt.Errorf(
+			"%w: instance %q, X-Request-Id %q: %s",
+			errStep,
+			p.Instance,
+			id,
+			resp.body,
+		)
 	}
 	return nil
 }

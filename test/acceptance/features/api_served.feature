@@ -8,8 +8,9 @@ Feature: Served API
   Idempotency-Key on POST and PATCH, and can be switched off for one caller.
   A stubbed POST answers 501, which releases its key, so an idempotent replay
   needs an operation that succeeds: TestUnitGuardedIdempotency proves it
-  until a family serves a POST. Each scenario runs its own infraweave serve
-  on a database of its own.
+  until a family serves a POST. Every problem names the request it answers
+  in its instance, urn:infraweave:request: and the X-Request-Id. Each
+  scenario runs its own infraweave all on a database of its own.
 
   Scenario: The admin listener answers the liveness probe
     Given a running infraweave server
@@ -19,10 +20,12 @@ Feature: Served API
   Scenario: Scaffolded operations answer 501 until a family implements them
     Given a running infraweave server
     Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
+    And the problem names the request in its instance
 
   Scenario: The router's own errors are problem details
     Given a running infraweave server
     Then "GET /api/v1/nope" on the API listener answers a 404 problem "not-found"
+    And the problem names the request in its instance
     And "PATCH /api/v1/stacks" on the API listener answers a 405 problem "method-not-allowed"
 
   Scenario: An exhausted budget answers 429, the expensive class first
@@ -30,6 +33,7 @@ Feature: Served API
     When "POST /api/v1/stacks/search" is sent 2 times on the API listener
     Then "POST /api/v1/stacks/search" on the API listener answers a 429 problem "rate-limited"
     And the response carries Retry-After and the rate-limit headers
+    And the problem names the request in its instance
     And "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
 
   Scenario: A disabled caller gets 503 api-disabled

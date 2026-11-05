@@ -16,7 +16,9 @@
 //
 // It reads the request's remote address and writes the X-RateLimit-Limit,
 // X-RateLimit-Remaining and X-RateLimit-Reset headers, and Retry-After on a
-// 429 or 503 problem. Postgres refills the platform stream's
+// 429 or 503 problem. A failing store answers 503 service-unavailable when
+// PostgreSQL cannot be reached, which Postgres and Table mark with
+// sql.Unavailable, and 500 otherwise. Postgres refills the platform stream's
 // rate_limit_buckets in one statement per request on the database clock.
 // Table keeps a copy of api_disabled_callers per replica, read on first use
 // and again after an infraweave_invalidate notification carrying
@@ -26,7 +28,8 @@
 // # Dependencies
 //
 // It imports platform/httpkit/problem for its problem bodies, platform/tx
-// for the transaction a store call joins, and platform/sql/notify for the
-// invalidations Table watches. internal/app composes it and app/config
+// for the transaction a store call joins, platform/sql to mark an
+// unreachable database, and platform/sql/notify for the invalidations Table
+// watches. internal/app composes it and app/config
 // reads its Config.
 package ratelimit

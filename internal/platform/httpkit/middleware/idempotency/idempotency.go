@@ -206,7 +206,7 @@ func (g guard) release(ctx context.Context, key Key) {
 
 func (g guard) fail(w http.ResponseWriter, r *http.Request, op string, err error) {
 	g.log.ErrorContext(r.Context(), "idempotency store failed", "op", op, "error", err)
-	problem.Internal(w)
+	problem.Failure(w, err)
 }
 
 // fingerprint is decision 0003's identity of a request: its method, its path

@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 // ContentType is the media type of every problem body.
@@ -15,6 +19,15 @@ const ContentType = "application/problem+json"
 // TypePrefix starts every problem type URI; the slugs are listed in
 // docs/research/decisions/0022-api-errors-and-update-semantics.md.
 const TypePrefix = "urn:infraweave:problem:"
+
+// InstancePrefix starts every problem's instance, which names the request it
+// answers (decision 0022, "Correlation").
+const InstancePrefix = "urn:infraweave:request:"
+
+// RequestIDHeader carries the request ID both ways (decision 0017).
+// httpkit/middleware sets it on the response before any handler runs, so
+// Write finds it there whichever handler or guard answers.
+const RequestIDHeader = "X-Request-Id"
 
 // Type is a problem type of the register, docs/data/problems.json: its slug,
 // the status it answers with and its title.
@@ -158,8 +171,13 @@ type Problem struct {
 }
 
 // Write sends p with its status. The status line and the body's status are
-// the same number, as RFC 9457 requires.
+// the same number, as RFC 9457 requires. A p without an instance gets the
+// request's, from the X-Request-Id the response already carries, so an
+// operator finds the request's log lines from the body alone.
 func Write(w http.ResponseWriter, p Problem) {
+	if id := w.Header().Get(RequestIDHeader); p.Instance == "" && id != "" {
+		p.Instance = InstancePrefix + id
+	}
 	w.Header().Set("Content-Type", ContentType)
 	w.WriteHeader(p.Status)
 	// The header is already sent; a failed write means the client has gone.
@@ -185,6 +203,29 @@ func Internal(w http.ResponseWriter) {
 	Write(w, InternalError.New("The server failed to handle the request."))
 }
 
+// UnavailableRetryAfter is the Retry-After of service-unavailable. pkg/sdk's
+// DefaultRetry tries five times, so two seconds rides out a database
+// failover or restart of about eight seconds without retrying any faster.
+const UnavailableRetryAfter = 2 * time.Second
+
+// Unavailable answers 503 service-unavailable with Retry-After, for a
+// request that failed because a dependency cannot be reached now.
+func Unavailable(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", strconv.Itoa(int(UnavailableRetryAfter/time.Second)))
+	Write(w, ServiceUnavailable.New("infraweave cannot reach a dependency it needs; retry later."))
+}
+
+// Failure answers an unexpected error: Unavailable when it is
+// kernel.ErrUnavailable, so the client retries, and Internal otherwise.
+// Neither detail names the cause.
+func Failure(w http.ResponseWriter, err error) {
+	if errors.Is(err, kernel.ErrUnavailable) {
+		Unavailable(w)
+		return
+	}
+	Internal(w)
+}
+
 // RequestError answers a request the generated handler couldn't decode
 // (a malformed body or parameter) with 400.
 func RequestError(w http.ResponseWriter, _ *http.Request, err error) {
@@ -192,8 +233,9 @@ func RequestError(w http.ResponseWriter, _ *http.Request, err error) {
 }
 
 // ResponseError answers an error a strict handler returned: its problem for
-// an *Error, 501 naming the operation for a stub, and 500 otherwise. The 500
-// detail is generic so internal errors never reach the client.
+// an *Error, 501 naming the operation for a stub, and Failure's 503 or 500
+// otherwise, whose details are generic so internal errors never reach the
+// client.
 func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 	if pe, ok := errors.AsType[*Error](err); ok {
 		Write(w, pe.Problem)
@@ -203,5 +245,5 @@ func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 		Write(w, NotImplemented.New(nie.Error()))
 		return
 	}
-	Internal(w)
+	Failure(w, err)
 }

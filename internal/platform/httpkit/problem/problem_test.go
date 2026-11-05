@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 func decode(t *testing.T, rec *httptest.ResponseRecorder) Problem {
@@ -158,5 +160,46 @@ func TestUnitProblemRegistry(t *testing.T) {
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestUnitWriteInstance checks that a problem names the request it answers
+// from the X-Request-Id on the response, and keeps an instance it was
+// given.
+func TestUnitWriteInstance(t *testing.T) {
+	rec := httptest.NewRecorder()
+	rec.Header().Set(RequestIDHeader, "req-7")
+	Write(rec, NotFound.New("gone"))
+	if p := decode(t, rec); p.Instance != "urn:infraweave:request:req-7" {
+		t.Errorf("instance %q", p.Instance)
+	}
+	rec = httptest.NewRecorder()
+	rec.Header().Set(RequestIDHeader, "req-7")
+	given := NotFound.New("gone")
+	given.Instance = "urn:infraweave:request:earlier"
+	Write(rec, given)
+	if p := decode(t, rec); p.Instance != given.Instance {
+		t.Errorf("instance %q, want the given one", p.Instance)
+	}
+	rec = httptest.NewRecorder()
+	Write(rec, NotFound.New("gone"))
+	if p := decode(t, rec); p.Instance != "" {
+		t.Errorf("instance %q outside a request", p.Instance)
+	}
+}
+
+// TestUnitResponseErrorUnavailable checks that an unreachable dependency
+// answers 503 with Retry-After and a detail that does not name it.
+func TestUnitResponseErrorUnavailable(t *testing.T) {
+	rec := httptest.NewRecorder()
+	ResponseError(
+		rec,
+		httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil),
+		fmt.Errorf("list stacks: %w: dial tcp 10.0.0.7:5432", kernel.ErrUnavailable),
+	)
+	p := decode(t, rec)
+	if rec.Code != http.StatusServiceUnavailable || p.Type != TypePrefix+"service-unavailable" ||
+		rec.Header().Get("Retry-After") != "2" || strings.Contains(p.Detail, "10.0.0.7") {
+		t.Errorf("got %d %v %+v", rec.Code, rec.Header(), p)
 	}
 }

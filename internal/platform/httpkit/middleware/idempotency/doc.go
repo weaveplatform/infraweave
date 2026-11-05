@@ -20,12 +20,13 @@
 // the store. Postgres reads and writes the platform stream's
 // idempotency_keys table, its locks and expiry on the database clock; Memory
 // keeps everything in process memory by the clock it is given. A failing
-// store is logged through the given slog.Logger and answered with a 500
-// problem.
+// store is logged through the given slog.Logger and answered by
+// problem.Failure: 503 with Retry-After when PostgreSQL cannot be reached,
+// otherwise 500. Postgres marks the first with sql.Unavailable.
 //
 // # Dependencies
 //
-// It imports platform/httpkit/problem for its 400, 409, 413, 422 and 500
-// bodies, platform/tx for the transaction a store call joins, and pgx for
-// its errors. internal/app composes it and app/config reads its Config.
+// It imports platform/httpkit/problem for its 400, 409, 413, 422, 500 and
+// 503 bodies, platform/tx for the transaction a store call joins,
+// platform/sql to mark an unreachable database, and pgx for its errors. internal/app composes it and app/config reads its Config.
 package idempotency
