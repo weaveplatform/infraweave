@@ -244,9 +244,14 @@ once by three rules.
     It adds ranges with steps and lists of ranges.
   - **Rejected forms**, with a validation error: names, `?`, `L`, `W`, `#`,
     `@` macros, a seconds or year field, values out of range, reversed
-    ranges and a zero step.
+    ranges, a step of zero or longer than the field, and a day of month
+    that none of the selected months has, such as `0 0 30 2 *`, which would
+    never fire.
   - **Day of month with day of week.** When both are restricted, a time
-    matches either one, as Vixie cron does.
+    matches either one, as Vixie cron does. A field is restricted when it
+    leaves out any of its values: `*/2` in day of month is restricted, and
+    `0-7` in day of week is not. Vixie cron instead looks at whether the
+    field starts with `*`.
   - **How strict input validation is** comes from
     [0022](0022-api-errors-and-update-semantics.md)'s answer to PD-09.
     `internal/cron` is the one parser.
