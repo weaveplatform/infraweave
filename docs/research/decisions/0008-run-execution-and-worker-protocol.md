@@ -60,7 +60,7 @@ facts shape the design.
      ([08 StackState](../reference/08-run-lifecycle.md#stackstate-and-runstate)).
      The columns live in a table the run transition owns, so the write stays
      inside the transition's transaction; decision 0004 places it;
-  5. emits a `run_updated` event with `events.Emit` in the same transaction;
+  5. emits a `run_updated` event with `outbox.Append` in the same transaction;
      decision 0015's fan-out, through the queue of
      [0011](0011-persistent-work-queue.md), reaches notifications, webhooks,
      the audit trail and the commit checks of

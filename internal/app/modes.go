@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
@@ -84,9 +85,12 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if m.API {
 		g = postgresGuards(background, &wg, c.Server, db, l)
 	}
+	// Every domain appends to and subscribes on this one outbox, and
+	// registers its event kinds, before the scheduler starts.
+	events := outbox.New(db.Primary(), queue.New(db.Primary()), outbox.NewKinds())
 	stopScheduler := func() {}
 	if m.Scheduler {
-		if stopScheduler, err = startScheduler(ctx, c, db, l, log, health); err != nil {
+		if stopScheduler, err = startScheduler(ctx, c, db, l, events, log, health); err != nil {
 			return err
 		}
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -30,6 +31,7 @@ var (
 	PurgeIdempotencyKeys = queue.Kind{
 		Name: "idempotency.purge", Queue: queue.Maintenance, Policy: queue.Ignore,
 	}
+	PruneEvents = queue.Kind{Name: "events.prune", Queue: queue.Maintenance, Policy: queue.Ignore}
 )
 
 // periodic is a periodic task: its kind, its interval and its handler.
@@ -44,6 +46,7 @@ func platformTasks(
 	c config.Config,
 	q *queue.Queue,
 	keys *idempotency.Postgres,
+	events *outbox.Outbox,
 	log *slog.Logger,
 ) []periodic {
 	return []periodic{
@@ -61,6 +64,13 @@ func platformTasks(
 			}
 			return err //nolint:wrapcheck // Purge names itself
 		}},
+		{PruneEvents, 10 * time.Minute, func(ctx context.Context, _ queue.Job) error {
+			n, err := events.Prune(ctx, c.Events.Retention)
+			if err == nil {
+				log.Debug("fanned-out events pruned", "events", n)
+			}
+			return err //nolint:wrapcheck // Prune names itself
+		}},
 	}
 }
 
@@ -69,8 +79,9 @@ func platformTasks(
 var errNotListening = errors.New("the queue's listening connection is down")
 
 // startScheduler starts the scheduler role of decision 0020: the queue's
-// workers with the platform's handlers, and the ticker over periodic_tasks,
-// after registering the platform's periodic tasks in the database. Their
+// workers with the platform's handlers and the outbox's fan-out and
+// consumption, and the ticker over periodic_tasks, after registering the
+// periodic tasks in the database. Their
 // wake-ups come through l, which the caller runs. A registration that fails
 // fails startup. The returned stop ends the ticker, then the workers, which
 // finish or hand back their jobs within queue.shutdown_grace (decision
@@ -81,6 +92,7 @@ func startScheduler(
 	c config.Config,
 	db *sql.DB,
 	l *notify.Listener,
+	events *outbox.Outbox,
 	log *slog.Logger,
 	health *observe.Health,
 ) (stop func(), err error) {
@@ -88,13 +100,17 @@ func startScheduler(
 	q := queue.New(db.Primary())
 	reg := queue.NewRegistry()
 	tasks := cron.NewPeriodicTasks(db.Primary(), q)
-	for _, t := range platformTasks(c, q, idempotency.NewPostgres(db.Primary(), c.Server.Idempotency), log) {
+	keys := idempotency.NewPostgres(db.Primary(), c.Server.Idempotency)
+	for _, t := range platformTasks(c, q, keys, events, log) {
 		if err := reg.Register(t.kind, t.handler, queue.HandlerOptions{}); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
 		if err := tasks.Ensure(ctx, t.kind, t.every); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
+	}
+	if err := events.Register(reg); err != nil {
+		return nil, fmt.Errorf("scheduler: %w", err)
 	}
 	health.Ready("queue_listener", func(context.Context) error {
 		if !l.Listening() {
