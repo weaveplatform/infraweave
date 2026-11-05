@@ -81,10 +81,10 @@ func (s *startupSteps) start(ctx context.Context, mode, dsn string) error {
 func (s *startupSteps) refused(why string) error {
 	exit, ok := errors.AsType[*exec.ExitError](s.err)
 	if !errors.Is(s.err, ErrExited) || !ok || exit.ExitCode() != 1 {
-		return fmt.Errorf("%w: infraweave did not exit 1 before listening: %v", errStep, s.err)
+		return fmt.Errorf("%w: infraweave did not exit 1 before listening: %w", errStep, s.err)
 	}
 	if !strings.Contains(s.err.Error(), why) {
-		return fmt.Errorf("%w: it exited without saying %q: %v", errStep, why, s.err)
+		return fmt.Errorf("%w: it exited without saying %q: %w", errStep, why, s.err)
 	}
 	return nil
 }
