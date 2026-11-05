@@ -94,7 +94,8 @@
       "rule": "S2",
       "replacement": "Templates, template versions and template deployments",
       "replacementPhase": "P21",
-      "evidence": "Deprecated on 2026-07-16; three members removed on 2026-10-20 (report 26 section 7.2)"
+      "evidence": "Deprecated on 2026-07-16; three members removed on 2026-10-20 (report 26 section 7.2)",
+      "fields": ["Stack.blueprintDeployment"]
     },
     {
       "id": "SUP-10",
@@ -104,7 +105,8 @@
       "rule": "S2",
       "replacement": "The OIDC federation token",
       "replacementPhase": "P15",
-      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.6)"
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.6)",
+      "fields": ["StackIntegrations.gcp"]
     },
     {
       "id": "SUP-11",
@@ -114,7 +116,8 @@
       "rule": "S2, through the changelog",
       "replacement": "A `space-admin` role binding on the account's top space",
       "replacementPhase": "P4b",
-      "evidence": "Deprecated in the changelog on 2026-07-16 (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 8.1; decision 0021). Decision 0006 rejects the field, and the key's `admin` reads the binding ([DV-013](../implementation/deviations.md#identity-and-access-decisions-0006-and-0007))"
+      "evidence": "Deprecated in the changelog on 2026-07-16 (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 8.1; decision 0021). Decision 0006 rejects the field, and the key's `admin` reads the binding ([DV-013](../implementation/deviations.md#identity-and-access-decisions-0006-and-0007))",
+      "fields": ["ApiKeyInput.admin"]
     },
     {
       "id": "SUP-12",
@@ -154,7 +157,8 @@
       "rule": "S2",
       "replacement": "`runPrioritySet`, `Run.priorityPreset`",
       "replacementPhase": "P7",
-      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)"
+      "evidence": "Deprecated on 2026-10-20 (report 26 section 7.5)",
+      "fields": ["Run.isPrioritized"]
     },
     {
       "id": "SUP-16",
@@ -195,7 +199,8 @@
       "rule": "S2",
       "replacement": "`Stack.hooks`",
       "replacementPhase": "P5",
-      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.5)"
+      "evidence": "Deprecated on 2026-07-16 (report 26 section 7.5)",
+      "fields": ["Stack.afterApply", "Stack.beforeApply", "Stack.afterInit", "Stack.beforeInit", "Stack.afterPlan", "Stack.beforePlan", "Stack.afterPerform", "Stack.beforePerform", "Stack.afterDestroy", "Stack.afterRun", "Stack.beforeDestroy"]
     },
     {
       "id": "SUP-20",
@@ -307,6 +312,17 @@
       "replacementPhase": "P21",
       "evidence": "Deprecated in the schema: \"Use UPGRADE_BLUEPRINT_DEPLOYMENT instead.\" (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 3.3, report 26 section 7.8)",
       "enumValues": ["Action.UPDATE_BLUEPRINT_DEPLOYMENT", "Action.UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS"]
+    },
+    {
+      "id": "SUP-31",
+      "treatment": "superseded",
+      "interface": "The `STACK_ROLE_BINDING_CREATE`, `STACK_ROLE_BINDING_UPDATE` and `STACK_ROLE_BINDING_DELETE` actions",
+      "kind": "Actions",
+      "rule": "S1",
+      "replacement": "None",
+      "replacementPhase": "none",
+      "evidence": "\"Disabled. Do not use.\" in the schema (report [14](../research/reference/14-spaces-rbac-and-identity.md) section 3.3, report 26 section 7.8)",
+      "enumValues": ["Action.STACK_ROLE_BINDING_CREATE", "Action.STACK_ROLE_BINDING_UPDATE", "Action.STACK_ROLE_BINDING_DELETE"]
     },
     {
       "id": "DEP-01",

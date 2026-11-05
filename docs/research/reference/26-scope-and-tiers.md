@@ -431,6 +431,7 @@ report 12 section 2).
 | `changeLLMVendor`, `llmVendor` | none | Removed on 2026-08-21 [RN] | Absent from the schema [G] |
 | `PENDING` in `RunState` | none | "This state is no longer used", 2026-10-20 [RN] [G] | Not reachable (report [08](08-run-lifecycle.md)) |
 | The `UPDATE_BLUEPRINT_DEPLOYMENT` and `UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS` actions | `UPGRADE_BLUEPRINT_DEPLOYMENT` | Deprecated in the schema [G] | Not served; the upgrade action covers both (report [14](14-spaces-rbac-and-identity.md) section 3.3) |
+| The `STACK_ROLE_BINDING_CREATE`, `STACK_ROLE_BINDING_UPDATE` and `STACK_ROLE_BINDING_DELETE` actions | none: the stack role binding operations stay, checked against their Admin fallback (report [04](04-platform-api-inventory.md)) | "Disabled. Do not use." in the schema [G] | Not served, so no custom role can hold them (report [14](14-spaces-rbac-and-identity.md) section 3.3) |
 | The `feature:add_plan_pr_comment` stack label | Notification policies with `pull_request` rules | [D] <https://docs.spacelift.io/concepts/stack/stack-settings> | Report 09 section 1.2 |
 
 ## 8. Completeness check

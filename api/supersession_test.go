@@ -154,8 +154,8 @@ func deprecatedEnumValues(t *testing.T) map[string][]string {
 	return out
 }
 
-// liveDeprecated are the Type.VALUE names that served records of the
-// supersession register keep live although upstream deprecates them.
+// liveDeprecated are the Type.VALUE and Type.field names that served records
+// of the supersession register keep live although upstream deprecates them.
 func liveDeprecated(t *testing.T) map[string]bool {
 	t.Helper()
 	var reg struct {
@@ -164,7 +164,7 @@ func liveDeprecated(t *testing.T) map[string]bool {
 		}
 	}
 	readRegister(t, supersessions, &reg)
-	dotted := regexp.MustCompile("`([A-Za-z0-9_]+\\.[A-Z0-9_]+)`")
+	dotted := regexp.MustCompile("`([A-Za-z0-9_]+\\.[A-Za-z0-9_]+)`")
 	out := map[string]bool{}
 	for _, r := range reg.Records {
 		if r.Treatment != "served" {
@@ -281,6 +281,157 @@ components:
 		"PolicyKind serves PolicyType.ACCESS, which SUP-01 supersedes",
 		"PolicyKind serves PolicyType.TERRAFORM_PLAN, which upstream deprecates",
 		"RunState serves RunState.PENDING, which upstream deprecates",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// deprecatedFields are the fields the schema snapshot marks deprecated, by
+// GraphQL type. The snapshot cannot mark an input field (PD-15), so those
+// reach the guard only through a record's fields member.
+func deprecatedFields(t *testing.T) map[string][]string {
+	t.Helper()
+	var snap struct {
+		Data struct {
+			Schema struct {
+				Types []struct {
+					Name   string
+					Fields []struct {
+						Name         string
+						IsDeprecated bool
+					}
+				}
+			} `json:"__schema"` //nolint:tagliatelle // fixed by the GraphQL specification
+		}
+	}
+	readRegister(t, "reference/spacelift/introspection.json", &snap)
+	out := map[string][]string{}
+	for _, ty := range snap.Data.Schema.Types {
+		for _, f := range ty.Fields {
+			if f.IsDeprecated {
+				out[ty.Name] = append(out[ty.Name], f.Name)
+			}
+		}
+	}
+	if len(out) == 0 {
+		t.Fatal("the schema snapshot deprecates no field")
+	}
+	return out
+}
+
+// supersededFields are the Type.field names that superseded records of the
+// supersession register list in fields, each with its record's id.
+func supersededFields(t *testing.T) map[string]string {
+	t.Helper()
+	var reg struct {
+		Records []struct {
+			ID     string
+			Fields []string
+		}
+	}
+	readRegister(t, supersessions, &reg)
+	out := map[string]string{}
+	for _, r := range reg.Records {
+		for _, f := range r.Fields {
+			out[f] = r.ID
+		}
+	}
+	return out
+}
+
+// fieldViolations names each superseded field, and each deprecated field
+// not kept live, that a served component schema still has as a property. A
+// served schema is matched to its GraphQL type by x-graphql-type, or by its
+// own name when it has none, and a property the rename register renames is
+// read under its reference name.
+func fieldViolations(
+	doc *openapi3.T,
+	deprecated map[string][]string,
+	live map[string]bool,
+	superseded map[string]string,
+	rows []renamed,
+) []string {
+	var out []string
+	for name, ref := range doc.Components.Schemas {
+		s := ref.Value
+		if s == nil {
+			continue
+		}
+		gql := name
+		if v, ok := s.Extensions["x-graphql-type"].(string); ok {
+			gql = v
+		}
+		for prop := range s.Properties {
+			field := prop
+			for _, r := range rows {
+				if r.owner == name && r.infraweave == prop {
+					field = r.reference
+				}
+			}
+			dotted := gql + "." + field
+			switch id, ok := superseded[dotted]; {
+			case ok:
+				out = append(out, name+"."+prop+" serves "+dotted+", which "+id+" supersedes")
+			case slices.Contains(deprecated[gql], field) && !live[dotted]:
+				out = append(out, name+"."+prop+" serves "+dotted+", which upstream deprecates")
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// TestUnitSupersededFields fails when a served schema keeps a field a
+// superseded record lists, or a field the schema deprecates unless the
+// supersession register keeps it live (decision 0021, rule S2 field by
+// field).
+func TestUnitSupersededFields(t *testing.T) {
+	deprecated := deprecatedFields(t)
+	live := liveDeprecated(t)
+	if !live["WebhooksIntegration.secret"] {
+		t.Errorf("%s: DEP-08's WebhooksIntegration.secret is not read as live", supersessions)
+	}
+	superseded := supersededFields(t)
+	if superseded["Stack.blueprintDeployment"] != "SUP-09" {
+		t.Errorf("%s: SUP-09's Stack.blueprintDeployment is not read as superseded", supersessions)
+	}
+	rows := renameTable(t)
+	for _, v := range fieldViolations(loadServed(t), deprecated, live, superseded, rows) {
+		t.Error(v)
+	}
+
+	doc, err := openapi3.NewLoader().LoadFromData([]byte(`openapi: 3.0.3
+info: {title: fixture, version: "1"}
+paths: {}
+components:
+  schemas:
+    Stack:
+      type: object
+      properties:
+        hooks: {type: object}
+        afterApply: {type: array, items: {type: string}}
+        renamedLegacy: {type: boolean}
+    Hook:
+      type: object
+      x-graphql-type: WebhooksIntegration
+      properties:
+        secret: {type: string}
+        oldName: {type: string}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := fieldViolations(doc, map[string][]string{
+		"Stack":               {"afterApply", "legacy"},
+		"WebhooksIntegration": {"secret", "oldName"},
+	}, map[string]bool{"WebhooksIntegration.secret": true},
+		map[string]string{"Stack.afterApply": "SUP-19", "Stack.beforeInit": "SUP-19"},
+		[]renamed{{owner: "Stack", reference: "legacy", infraweave: "renamedLegacy"}})
+	want := []string{
+		"Hook.oldName serves WebhooksIntegration.oldName, which upstream deprecates",
+		"Stack.afterApply serves Stack.afterApply, which SUP-19 supersedes",
+		"Stack.renamedLegacy serves Stack.legacy, which upstream deprecates",
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("got %q, want %q", got, want)

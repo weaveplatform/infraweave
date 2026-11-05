@@ -606,7 +606,8 @@ passing success, denial and failure scenarios.
    parity surface.
 4. `api/api_test.go`: `TestUnitFeaturePartitions` (every scenario tag
    maps to one CI partition), `TestUnitServedDeprecations`,
-   `TestUnitSupersededEnums` and `TestUnitAPIProblemTypes`; the problem
+   `TestUnitSupersededEnums`, `TestUnitSupersededFields` and
+   `TestUnitAPIProblemTypes`; the problem
    slug registry in `internal/platform/httpkit/problem` gains every slug of
    decision 0022 (`TestUnitProblemRegistry`). `TestUnitServedNames`, the
    rename-table test, fails when an operationId, schema, property, enum
