@@ -24,14 +24,13 @@ func NewRouter(log *slog.Logger, guards ...func(http.Handler) http.Handler) *chi
 
 // NotFound answers a path no route serves with a 404 problem.
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	problem.Write(w, problem.New(http.StatusNotFound, "No route serves "+r.URL.Path+"."))
+	problem.Write(w, problem.NotFound.New("No route serves "+r.URL.Path+"."))
 }
 
 // MethodNotAllowed answers a method a route does not serve with a 405
 // problem.
 func MethodNotAllowed(w http.ResponseWriter, r *http.Request) {
-	problem.Write(w, problem.New(http.StatusMethodNotAllowed,
-		r.Method+" is not served for "+r.URL.Path+"."))
+	problem.Write(w, problem.MethodNotAllowed.New(r.Method+" is not served for "+r.URL.Path+"."))
 }
 
 // Recover turns a panicking handler into a 500 problem with a generic

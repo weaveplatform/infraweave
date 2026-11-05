@@ -4,7 +4,7 @@
 //
 // Type is a problem type of the register docs/data/problems.json, its slug,
 // status and title; a variable declares each slug, and Types lists them all.
-// New and Type.New build a Problem, and Write sends one.
+// Type.New builds a Problem, and Write sends one.
 // RequestError and ResponseError are the strict server's error handlers:
 // an *Error answers with the problem it carries, a NotImplementedError with a
 // 501 naming the operation, and anything else with Internal's generic 500.

@@ -166,11 +166,6 @@ func Write(w http.ResponseWriter, p Problem) {
 	_ = json.NewEncoder(w).Encode(p)
 }
 
-// New is a problem for status with the standard reason phrase as its title.
-func New(status int, detail string) Problem {
-	return Problem{Title: http.StatusText(status), Status: status, Detail: detail}
-}
-
 // NotImplementedError is returned by the generated UnimplementedStrict for
 // every operation a family hasn't implemented yet.
 type NotImplementedError struct {
@@ -187,13 +182,13 @@ func (e *NotImplementedError) Error() string {
 // Internal answers 500 with a generic detail, for a failure whose cause must
 // not reach the client.
 func Internal(w http.ResponseWriter) {
-	Write(w, New(http.StatusInternalServerError, "The server failed to handle the request."))
+	Write(w, InternalError.New("The server failed to handle the request."))
 }
 
 // RequestError answers a request the generated handler couldn't decode
 // (a malformed body or parameter) with 400.
 func RequestError(w http.ResponseWriter, _ *http.Request, err error) {
-	Write(w, New(http.StatusBadRequest, err.Error()))
+	Write(w, InvalidRequest.New(err.Error()))
 }
 
 // ResponseError answers an error a strict handler returned: its problem for
@@ -205,7 +200,7 @@ func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 		return
 	}
 	if nie, ok := errors.AsType[*NotImplementedError](err); ok {
-		Write(w, New(http.StatusNotImplemented, nie.Error()))
+		Write(w, NotImplemented.New(nie.Error()))
 		return
 	}
 	Internal(w)

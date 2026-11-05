@@ -12,23 +12,23 @@ Feature: Served API
   Scenario: The admin listener answers the liveness probe
     Given a running infraweave server
     Then "GET /livez" on the admin listener answers 200
-    And "GET /livez" on the API listener answers a 404 problem
+    And "GET /livez" on the API listener answers a 404 problem "not-found"
 
   Scenario: Scaffolded operations answer 501 until a family implements them
     Given a running infraweave server
-    Then "GET /api/v1/stacks" on the API listener answers a 501 problem
+    Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
 
   Scenario: The router's own errors are problem details
     Given a running infraweave server
-    Then "GET /api/v1/nope" on the API listener answers a 404 problem
-    And "PATCH /api/v1/stacks" on the API listener answers a 405 problem
+    Then "GET /api/v1/nope" on the API listener answers a 404 problem "not-found"
+    And "PATCH /api/v1/stacks" on the API listener answers a 405 problem "method-not-allowed"
 
   Scenario: An exhausted budget answers 429, the expensive class first
     Given a running infraweave server whose standard burst is 4 and expensive burst is 2
     When "POST /api/v1/stacks/search" is sent 2 times on the API listener
     Then "POST /api/v1/stacks/search" on the API listener answers a 429 problem "rate-limited"
     And the response carries Retry-After and the rate-limit headers
-    And "GET /api/v1/stacks" on the API listener answers a 501 problem
+    And "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
 
   Scenario: A disabled caller gets 503 api-disabled
     Given a running infraweave server that disables the caller "127.0.0.1"
@@ -38,4 +38,4 @@ Feature: Served API
 
   Scenario: Callers the operator has not disabled are unaffected
     Given a running infraweave server that disables the caller "192.0.2.1"
-    Then "GET /api/v1/stacks" on the API listener answers a 501 problem
+    Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
