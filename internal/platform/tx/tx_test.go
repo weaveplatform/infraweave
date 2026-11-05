@@ -150,6 +150,9 @@ func TestAccTxNestedAndPanic(t *testing.T) {
 	pool := setup(t)
 	inner := errors.New("roll back")
 	err := tx.Do(t.Context(), pool, tx.Options{}, func(ctx context.Context) error {
+		if !tx.In(ctx) {
+			t.Error("In misses the transaction Do began")
+		}
 		err := tx.Do(ctx, pool, tx.Options{Serializable: true}, func(ctx context.Context) error {
 			_, err := tx.Q(ctx, pool).Exec(ctx, "INSERT INTO t VALUES (1)")
 			return err
@@ -210,6 +213,9 @@ func (f failingBeginner) BeginTx(
 type noQuerier struct{ tx.Querier }
 
 func TestUnitTxOutsideATransaction(t *testing.T) {
+	if tx.In(t.Context()) {
+		t.Error("In reports a transaction on a bare context")
+	}
 	down := errors.New("database down")
 	ran := false
 	err := tx.Do(t.Context(), failingBeginner{down}, tx.Options{}, func(context.Context) error {

@@ -42,6 +42,10 @@ func TestUnitUnavailable(t *testing.T) {
 	if Unavailable(nil) != nil {
 		t.Error("Unavailable(nil) is not nil")
 	}
+	once := Unavailable(io.EOF)
+	if twice := Unavailable(once); !errors.Is(twice, once) {
+		t.Errorf("a marked error was marked again: %v", twice)
+	}
 }
 
 // TestAccUnavailable checks the classification against a real refused
