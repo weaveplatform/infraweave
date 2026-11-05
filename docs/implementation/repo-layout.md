@@ -230,7 +230,9 @@ infraweave/
 │   ├── depguard/                  a module of its own breaking each depguard rule once; make lint-fixtures
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
 │   │   └── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
-│   └── terraform/<resource>/      provider acceptance configurations, translated from Spacelift's (P24)
+│   ├── terraform/<resource>/      provider acceptance configurations, translated from Spacelift's (P24)
+│   └── cloud/<job>/<cloud>/       Terraform for the labs scheduled cloud jobs reach through OIDC, such as
+│                                  objectstore-cloud's buckets and identities (P2b); local state, locked providers
 ├── web/console/                   the console: React and TypeScript, built by Vite into platform/httpkit/console/dist (P24c)
 │   └── src/api/                   GENERATED orval client and hooks; committed; drift-checked
 ├── tools/                         thin mains over internal/devtools; excluded from coverage
