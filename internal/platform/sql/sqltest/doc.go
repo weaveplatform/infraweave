@@ -1,8 +1,9 @@
 // Package sqltest gives each test its own PostgreSQL database (decision
-// 0016). A test package calls Main from TestMain with test/acceptance's
-// pinned image and the migration streams its tests need; the first DSN, Open
-// or Empty then starts one server for the whole binary and migrates Template
-// with those streams. Each DSN or Open creates a database copied from
+// 0016). A test package calls Main from TestMain with the migration streams
+// its tests need; the first DSN, Open or Empty then starts one server for the
+// whole binary, from test/acceptance's pinned PostgreSQL image, and migrates
+// Template with those streams. INFRAWEAVE_POSTGRES=next runs every suite on
+// the next major instead, as the postgres-next job does. Each DSN or Open creates a database copied from
 // Template, so it starts migrated, and Empty one with nothing applied, for a
 // test that applies streams itself; each is dropped when its test ends.
 // Server starts a separate server for a test that needs another major
@@ -16,10 +17,12 @@
 //
 // It starts and stops containers through testcontainers, which finds the
 // daemon through DOCKER_HOST, the Docker context or the default socket. It
-// reads RequireDocker from the environment and reports through testing.TB.
+// reads RequireDocker and INFRAWEAVE_POSTGRES from the environment and
+// reports through testing.TB.
 //
 // # Dependencies
 //
 // It imports testcontainers and its postgres module, pgx, platform/sql for
-// Open and platform/sql/migrate for Template. Only tests import it.
+// Open, platform/sql/migrate for Template and test/acceptance for the image
+// pins. Only tests import it.
 package sqltest

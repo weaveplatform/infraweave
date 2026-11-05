@@ -140,6 +140,51 @@ jobs:
 
   # A recorded capability state is a claim that the acceptance results must
   # back, so parity runs on the merged results of every partition.
+  # Decision 0016's postgres-next: the sqltest suites and accept-core on the
+  # next PostgreSQL major, its beta or release candidate until it is
+  # generally available. It reports and never blocks: gate does not need it
+  # and its coverage is not merged, so a floor raise is never a surprise
+  # and an upstream regression never stops a merge.
+  postgres-next:
+    name: postgres-next
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      # make accept runs every TestAcc of the module, so the core partition
+      # also runs the sqltest suites under internal/.
+      - name: accept-core and the sqltest suites on the next major
+        id: accept
+        env:
+          INFRAWEAVE_POSTGRES: next
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+        run: make accept PARTITION=core
+
+      - name: Report the PostgreSQL version
+        if: always()
+        env:
+          OUTCOME: ${{ steps.accept.outcome }}
+        run: |
+          img=$(sed -nE 's/^[[:space:]]*ImagePostgresNext = "([^"]+)"/\1/p' test/acceptance/images.go)
+          version=$(docker run --rm --entrypoint postgres "$img" -V)
+          line="postgres-next ran on ${version} (${img%@*}): ${OUTCOME}."
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
   parity:
     name: 'parity'
     needs: [accept]

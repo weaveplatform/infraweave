@@ -15,7 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, acceptance.ImagePostgres)) }
+func TestMain(m *testing.M) { os.Exit(sqltest.Main(m)) }
 
 func TestUnitConfigValidate(t *testing.T) {
 	ok := sql.Defaults()

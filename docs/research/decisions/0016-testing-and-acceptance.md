@@ -321,7 +321,7 @@ coverage it would contribute is not waived.
 | `console` | `ubuntu-latest` | `npm ci`, `tsc --strict`, ESLint, Vitest with its coverage thresholds and the production build in `web/console/` ([0023](0023-console.md)) | 15 min | yes |
 | `console-e2e` | `ubuntu-latest` | the Playwright journeys against a real `infraweave all` built with `-cover` ([0023](0023-console.md)) | 30 min | yes |
 | `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds | 10 min | yes |
-| `postgres-next` | `ubuntu-latest` | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)) | 20 min | no |
+| `postgres-next` | `ubuntu-latest` | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)), selected by `INFRAWEAVE_POSTGRES=next` | 20 min | no |
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
 

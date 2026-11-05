@@ -104,15 +104,30 @@ jobs:
           # prefix to the newest tag matching the pattern, at the digest of
           # its multi-platform index so the pin pulls on any host.
           # PostgreSQL keeps one pin per major: 18, the floor decision 0005
-          # names, and 17, the major below it that the floor test refuses.
+          # names, 17, the major below it that the floor test refuses, and 19,
+          # the next major the postgres-next job runs. The prefix, without its
+          # backslashes, also filters the tag listing by name, since a
+          # major's tags can be older than the 100 most recently updated.
+          tags() {
+            curl -fsS "https://hub.docker.com/v2/repositories/$1/tags?page_size=100&ordering=last_updated&name=${2//\\/}" \
+              | jq -r '.results[].name'
+          }
           pin() {
-            tag=$(curl -fsS "https://hub.docker.com/v2/repositories/$2/tags?page_size=100&ordering=last_updated" \
-              | jq -r '.results[].name' | grep -E "$3" | sort -V | tail -1)
+            tag=$(tags "$2" "${4:-}" | grep -E "$3" | sort -V | tail -1)
             digest=$(docker buildx imagetools inspect "$1:$tag" --format '{{json .Manifest}}' | jq -r .digest)
             sed -i -E "s#\"$1:${4:-}[^@\"]*@sha256:[0-9a-f]{64}\"#\"$1:$tag@$digest\"#" test/acceptance/images.go
           }
           pin postgres library/postgres '^18\.[0-9]+$' '18\.'
           pin postgres library/postgres '^17\.[0-9]+$' '17\.'
+          # The next major has no general release until it ships, so its pin
+          # takes the newest release, else release candidate, else beta.
+          next=$(tags library/postgres 19)
+          for re in '^19\.[0-9]+$' '^19rc[0-9]+$' '^19beta[0-9]+$'; do
+            if grep -qE "$re" <<<"$next"; then
+              pin postgres library/postgres "$re" 19
+              break
+            fi
+          done
           pin rustfs/rustfs rustfs/rustfs '^[0-9]+\.[0-9]+\.[0-9]+$'
           git diff --stat test/acceptance/images.go
 
