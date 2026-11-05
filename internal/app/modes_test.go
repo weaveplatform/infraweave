@@ -5,22 +5,27 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
 func local() config.Config {
 	c := config.Defaults()
 	c.Server.Listen, c.Server.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
 	c.Server.Shutdown.ReadyDelay = 0
+	c.Secrets.KEK = kek.Config{Provider: kek.Local, Local: kek.LocalConfig{Key: acceptance.KEK}}
 	return c
 }
 
@@ -100,6 +105,47 @@ func TestUnitServeNeedsADatabase(t *testing.T) {
 	if err := Run(t.Context(), local(), discard(), ModeServe); !errors.Is(err, sql.ErrConfig) ||
 		!strings.Contains(err.Error(), "database.url is required") {
 		t.Errorf("Serve: %v", err)
+	}
+}
+
+// TestUnitServeNeedsAKEK checks that a mode that seals refuses to start
+// without a KEK, or with one it cannot read, before it reaches the
+// database: port 1 would refuse the connection.
+func TestUnitServeNeedsAKEK(t *testing.T) {
+	for name, kc := range map[string]kek.Config{
+		"no provider": {},
+		"bad key":     {Provider: kek.Local, Local: kek.LocalConfig{Key: "c2hvcnQ="}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := local()
+			c.Database.URL = "postgres://u:p@127.0.0.1:1/x?sslmode=disable"
+			c.Secrets.KEK = kc
+			for _, m := range []Mode{ModeServe, ModeScheduler, ModeAll} {
+				if err := Run(
+					t.Context(),
+					c,
+					discard(),
+					m,
+				); !errors.Is(err, kek.ErrNoProvider) &&
+					!errors.Is(err, kek.ErrConfig) {
+					t.Errorf("%s: %v", m, err)
+				}
+			}
+		})
+	}
+}
+
+// TestUnitKeyringCheck checks that the startup check, the only one
+// registered here, fails on a keyring with no active key, which Load
+// never returns.
+func TestUnitKeyringCheck(t *testing.T) {
+	h := observe.NewHealth(time.Now)
+	keyringCheck(h, &crypt.Keyring{})
+	rec := httptest.NewRecorder()
+	observe.Probes(discard(), h).
+		ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/startupz", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("/startupz %d %s", rec.Code, rec.Body)
 	}
 }
 

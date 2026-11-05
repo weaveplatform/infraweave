@@ -3,12 +3,15 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
@@ -25,6 +28,7 @@ type Config struct {
 	Log      observe.LogConfig `mapstructure:"log"`
 	Queue    queue.Config      `mapstructure:"queue"`
 	Events   outbox.Config     `mapstructure:"events"`
+	Secrets  crypt.Config      `mapstructure:"secrets"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -49,6 +53,7 @@ func Defaults() Config {
 		Log:      observe.LogDefaults(),
 		Queue:    queue.Defaults(),
 		Events:   outbox.Defaults(),
+		Secrets:  crypt.Defaults(),
 	}
 }
 
@@ -135,7 +140,9 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 	// A queue's name may hold a hyphen, as vcs-inbox does, which no
 	// environment variable name can.
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
-	v.AutomaticEnv()
+	// Each key's variable is bound by name rather than through
+	// AutomaticEnv, under which INFRAWEAVE_SECRETS_KEK, the local KEK,
+	// would hide every key below secrets.kek.
 	bindEnv(v, reflect.TypeFor[Config](), "")
 	if file, _ := fs.GetString(ConfigFlag); file != "" {
 		v.SetConfigFile(file)
@@ -150,12 +157,14 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 	if err := v.UnmarshalExact(&c); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
+	c.Secrets.KEK.Local.Key = os.Getenv(kek.Env)
 	if err := errors.Join(
 		c.Server.Validate(),
 		c.Database.Validate(),
 		c.Log.Validate(),
 		c.Queue.Validate(),
 		c.Events.Validate(),
+		c.Secrets.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
@@ -163,14 +172,16 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 }
 
 // bindEnv binds the variable of every key of t, the mapstructure tags of its
-// leaf fields. AutomaticEnv alone reads a variable only for a key viper
-// already knows from a flag or the file, so a key with no flag would ignore
-// its variable whenever the file left it out. A squashed field's keys sit at
-// its parent's level.
+// leaf fields, so a key no flag or file names still reads its variable. A
+// squashed field's keys sit at its parent's level, and a field tagged "-"
+// is no key.
 func bindEnv(v *viper.Viper, t reflect.Type, prefix string) {
 	for i := range t.NumField() {
 		f := t.Field(i)
 		tag := f.Tag.Get("mapstructure")
+		if tag == "-" {
+			continue
+		}
 		if tag == ",squash" {
 			bindEnv(v, f.Type, prefix)
 			continue

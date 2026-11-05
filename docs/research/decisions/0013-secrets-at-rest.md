@@ -90,7 +90,7 @@ in Go's FIPS 140-3 mode, including its strictest setting.
 
 ### Keys
 
-- **Envelope encryption with a keyring.** `internal/secrets` holds a keyring
+- **Envelope encryption with a keyring.** `internal/platform/crypt` holds a keyring
   of data keys. Each is a random 256-bit AES key, stored in
   `encryption_keys(id int primary key, wrapped_key bytea, kek_ref text, state text, created_at, retired_at)`
   and wrapped by a key encryption key (KEK) that never enters the database.
@@ -148,17 +148,17 @@ The provider is set by `secrets.kek.provider`.
   swapping ciphertexts between rows can't move a secret to a place where it
   would be shown.
 - **The API.**
-  - `secrets.Seal(ctx, aad, plaintext)` and `secrets.Open(ctx, aad, sealed)`
+  - `crypt.Seal(ctx, aad, plaintext)` and `crypt.Open(ctx, aad, sealed)`
     seal and open one value.
   - Store code calls them through typed helpers, so a handler never sees a
     sealed value.
-  - The result is a `secrets.Value`, whose `String`, `Format`, `MarshalJSON`,
+  - The result is a `crypt.Value`, whose `String`, `Format`, `MarshalJSON`,
     `MarshalText` and `LogValue` all render `[redacted]`. Code that needs the
     bytes calls `Reveal()`, and review looks at every call.
 
 **Derived keys.** Some features need a symmetric key that is not a sealing
 key, such as an HMAC key.
-- **The call.** `secrets.DeriveKey(purpose)` returns HKDF-SHA256 of the active
+- **The call.** `crypt.DeriveKey(purpose)` returns HKDF-SHA256 of the active
   data key, with info `infraweave/<purpose>`, together with that data key's ID.
 - **Verifying.** A value made with a derived key carries the key ID.
   Verification accepts keys derived from `active` and `retiring` data keys, so
@@ -202,7 +202,7 @@ the owning record beside it.
   ever compares is hashed. A secret that infraweave must present to someone
   else is sealed.
 - **A registry of sealed columns.** Each sealed column is listed in
-  `secrets.Registry`, with its table, column and primary key columns. Resealing
+  `crypt.Registry`, with its table, column and primary key columns. Resealing
   walks the registry, and a test keeps it in step with the schema.
 
 ### Sealed objects
@@ -265,8 +265,9 @@ the owning record beside it.
     `infraweave/pool-envelope/v1 | ephemeral public key | pool public key`,
     so the key is bound to both keys and to the format version.
   - **Encryption.** AES-256-GCM through `cipher.NewGCMWithRandomNonce`.
-  - **Associated data.** The version byte, the run ID and the state version
-    the spec was issued for. The launcher rejects a spec issued for another
+  - **Associated data.** The version byte, the run ID behind its length
+    (uint16, big-endian) and the state version (uint64, big-endian) the
+    spec was issued for. The launcher rejects a spec issued for another
     run or another execution of it.
 - **Who can read a spec.** Only a holder of the pool's private key, which the
   customer keeps ([0008](0008-run-execution-and-worker-protocol.md)), can read
@@ -296,7 +297,7 @@ server never has unmasked output to leak.
 | Secret configuration elements | The value of every element with `write_only` set, as delivered in the spec. A mounted file's content is masked line by line |
 | `INFRAWEAVE_LAUNCHER_MASK_ENVS` on the launcher | The values of the named variables |
 | `::add-mask v1 v2 ...` printed by a hook or phase | Each whitespace-separated word, from that line on |
-| Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/secrets/mask` |
+| Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/agent/mask` |
 
 - **The mechanism.**
   - **Replacement.** Each match becomes five asterisks.
@@ -318,7 +319,7 @@ server never has unmasked output to leak.
 |---|---|---|
 | Rotate the KEK, or change provider | `infraweave secrets rewrap --to <provider settings>` | Unwraps each data key with the current KEK, wraps it with the new one and updates its row, one row per transaction. Values and objects are untouched. Replicas pick the change up through `infraweave_invalidate` |
 | Rotate the data key | `infraweave secrets rotate`, or `POST /operator/v1/secrets/rotate` on the operator API ([0021](0021-capability-scope-and-supersession.md)) | Inserts a new `active` key and marks the old one `retiring`. Then it enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)) |
-| Reseal | `secrets.reseal` job | Walks `secrets.Registry` with keyset pagination, 500 rows per transaction. It reseals each value whose key ID is not the active one, then marks the old key `retired` and deletes it once a final pass finds no reference |
+| Reseal | `secrets.reseal` job | Walks `crypt.Registry` with keyset pagination, 500 rows per transaction. It reseals each value whose key ID is not the active one, then marks the old key `retired` and deletes it once a final pass finds no reference |
 | Rotate a pool key | `workerPoolReset` ([0008](0008-run-execution-and-worker-protocol.md)) | New specs are sealed to the new key. Workspaces sealed to the old key can no longer be opened, so runs awaiting confirmation must be replanned |
 
 - **An annual default.** Data keys are rotated every 365 days by default
@@ -430,7 +431,8 @@ nothing about them is secret:
 
 ## Verification
 
-- **Sealing.** `internal/secrets` unit tests cover:
+- **Sealing.** The unit tests of `internal/platform/seal`, which holds the
+  formats, and `internal/platform/crypt`, which holds the keys, cover:
   - round trips of `Seal` and `Open`;
   - failure on a wrong key, a changed associated data value, a truncated value
     or an unknown version byte;
@@ -442,7 +444,7 @@ nothing about them is secret:
     the first;
   - a known-answer vector per format, so a format change shows as a test
     change;
-  - `secrets.Value`, which renders `[redacted]` through `fmt`, `slog` and
+  - `crypt.Value`, which renders `[redacted]` through `fmt`, `slog` and
     `encoding/json`.
 - **KEK providers.**
   - The `local` provider is tested in unit tests.
@@ -452,7 +454,7 @@ nothing about them is secret:
     on credentials.
 - **The registry.** `TestAccSealedColumnRegistry` migrates a fresh database and
   asserts that the set of `*_sealed` columns in `pg_catalog` equals
-  `secrets.Registry`.
+  `crypt.Registry`.
 - **Rotation.** An acceptance feature, `secrets_key_rotation.feature`:
   1. populates every sealed column;
   2. rotates the data key while two server instances run;
@@ -472,7 +474,7 @@ nothing about them is secret:
     variable, an `::add-mask` word and a well-known token. It asserts the log
     holds five asterisks for each, and that the bucket holds no plaintext copy
     of the plan.
-  - `internal/secrets/mask` has table tests for overlapping values, the
+  - `internal/agent/mask` has table tests for overlapping values, the
     4-byte minimum and the 64 KiB line cap.
 
 ## References

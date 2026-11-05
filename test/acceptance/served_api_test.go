@@ -49,8 +49,11 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	(&queueSteps{s: s}).register(sc)
 }
 
+// secrets selects the local KEK, which StartServer passes in KEK.
+var secrets = map[string]any{"kek": map[string]any{"provider": "local"}}
+
 // serverConfig is a strict configuration file for one server: both
-// listeners on loopback port 0, the database at dsn, and the server
+// listeners on loopback port 0, the database at dsn, the local KEK, and the server
 // settings the scenario names over them. The ready delay is 0 unless the
 // scenario names one, so stopping a server costs no wait.
 func serverConfig(dsn string, settings map[string]any) ([]byte, error) {
@@ -60,9 +63,11 @@ func serverConfig(dsn string, settings map[string]any) ([]byte, error) {
 		"shutdown":     map[string]any{"ready_delay": "0s"},
 	}
 	maps.Copy(server, settings)
-	out, err := yaml.Marshal(
-		map[string]any{"server": server, "database": map[string]any{"url": dsn}},
-	)
+	out, err := yaml.Marshal(map[string]any{
+		"server":   server,
+		"database": map[string]any{"url": dsn},
+		"secrets":  secrets,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)
 	}

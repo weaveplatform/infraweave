@@ -151,7 +151,7 @@ so every file URL the registry hands out is signed and short-lived.
 | `registry.download.mode` | URL | Used when |
 |---|---|---|
 | `presigned` (default) | A signed `GET` URL from the object store driver's `SignURL` (decision 0005); on `fs` it points at infraweave's own `/blobs/{token}` | Terraform clients can reach the store's endpoint |
-| `proxy` | `<base>/registry/files/<token>`, where the token names the object key and expiry and carries an HMAC-SHA256 under `secrets.DeriveKey("registry-file-url")` of decision 0013, as 0010's state upload tokens do | A store that Terraform clients cannot reach |
+| `proxy` | `<base>/registry/files/<token>`, where the token names the object key and expiry and carries an HMAC-SHA256 under `crypt.DeriveKey("registry-file-url")` of decision 0013, as 0010's state upload tokens do | A store that Terraform clients cannot reach |
 
 `registry.download.url_ttl` sets the lifetime, default 10 minutes, close to
 the roughly ten minutes Spacelift's signed URLs live. An expired or forged

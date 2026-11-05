@@ -7,7 +7,8 @@
 // database.* settings of platform/sql; Log holds decision 0017's log.*
 // settings of platform/observe; Queue holds decision 0011's queue.*
 // settings of platform/queue; Events holds decision 0015's events.*
-// settings of platform/outbox. Defaults are what an empty configuration
+// settings of platform/outbox; Secrets holds decision 0013's secrets.*
+// settings of platform/crypt, the KEK under secrets.kek. Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags
 // those of a mode that serves only the admin listener, FileFlag only
@@ -17,6 +18,9 @@
 // file named by --config, in that order of precedence. The file is strict:
 // a key infraweave does not know fails the command rather than being
 // ignored, so a misspelt setting never silently falls back to its default.
+// The one setting no file holds is the local KEK, which Load reads from
+// INFRAWEAVE_SECRETS_KEK itself: bound as the key secrets.kek, the
+// variable would hide every other key below it.
 //
 // # Input and output
 //
@@ -28,6 +32,6 @@
 //
 // It imports viper and pflag for the decoding, and the setting and default
 // types of platform/httpkit/serve, middleware/ratelimit,
-// middleware/idempotency, platform/sql, platform/observe, platform/queue
-// and platform/outbox. internal/app and cmd/ import it.
+// middleware/idempotency, platform/sql, platform/observe, platform/queue,
+// platform/outbox, platform/crypt and crypt/kek. internal/app and cmd/ import it.
 package config

@@ -11,8 +11,9 @@
 // embedded spec's x-infraweave-cost, with their state in Guards; the access
 // log runs before them. Run runs a mode: it opens PostgreSQL from
 // database.url, which it requires, applies or checks the migration streams
-// Streams registers, in the declared graph's order, registers the probe
-// checks every mode runs (databaseChecks), and serves the probes on the
+// Streams registers, in the declared graph's order, loads the keyring
+// under secrets.kek, which it requires, registers the probe checks every
+// mode runs (databaseChecks and keyringCheck), and serves the probes on the
 // admin listener and, in serve and all, the API on the API listener, with
 // the controls' state in PostgreSQL (postgresGuards). In scheduler and all
 // it starts the scheduler role (startScheduler): the queue's workers with
@@ -32,7 +33,8 @@
 // operation table is decoded once from the spec embedded in gen/api. Run
 // connects to PostgreSQL through platform/sql and migrates it through
 // platform/sql/migrate before any listener binds, logging each file it
-// applies; the probes query it; every mode holds one listening connection, shared
+// applies, then loads the keyring from encryption_keys through the KEK
+// provider; the probes query it; every mode holds one listening connection, shared
 // by the API's switch (infraweave_invalidate) and the workers
 // (infraweave_jobs), whose liveness the scheduler's readiness checks. It closes the connections and the
 // pools after the drain. MigrateUp and MigrateStatus write their report to
@@ -48,6 +50,7 @@
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
 // platform/queue, platform/cron and platform/outbox for the scheduler role;
+// platform/crypt and crypt/kek for the keyring;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no
 // package under platform, kernel or agent may (repo layout, depguard rules).

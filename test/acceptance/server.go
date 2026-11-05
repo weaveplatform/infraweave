@@ -103,11 +103,15 @@ func (l *lockedBuffer) Bytes() []byte {
 	return bytes.Clone(l.b.Bytes())
 }
 
+// KEK is the local KEK every server the harness starts runs with, in
+// INFRAWEAVE_SECRETS_KEK: a test key, which seals only test databases.
+const KEK = "hP6o+wuSeiPv+itTPyT9Ej7ptu/ap7Ll9sm5e6qab3k="
+
 // ErrExited is returned when the server exits before it is ready.
 var ErrExited = errors.New("infraweave exited")
 
 // StartServer writes config to dir/config.yaml and runs bin's process mode
-// mode, such as all, with it, writing coverage to coverDir. It returns once
+// mode, such as all, with it and KEK, writing coverage to coverDir. It returns once
 // the admin listener answers /livez, which decision 0017 puts on the admin
 // listener alone.
 func StartServer(
@@ -122,7 +126,7 @@ func StartServer(
 	s := &Server{Config: config, done: make(chan struct{})}
 	// The process outlives the step that starts it; Stop ends it.
 	s.cmd = exec.Command(bin, mode, "--config", path) //nolint:noctx // see above
-	s.cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir)
+	s.cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir, "INFRAWEAVE_SECRETS_KEK="+KEK)
 	s.cmd.Stdout, s.cmd.Stderr = &s.stdout, &s.stderr
 	if err := s.cmd.Start(); err != nil {
 		return nil, fmt.Errorf("start infraweave: %w", err)
