@@ -157,7 +157,7 @@ jobs their rows name:
 | `fips-only` (from P2b) | `make test` and every acceptance partition under `GOFIPS140=certified` and `GODEBUG=fips140=only` | 45 min |
 | `console-e2e` (from P24c) | the Playwright journeys against a real `infraweave all` | 30 min |
 | `coverage` | `make cover` over every job above except `fips-only` | 10 min |
-| `postgres-next` (from P2, not required) | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate | 20 min |
+| `postgres-next` (from P2, not required) | `make accept PARTITION=core` with `INFRAWEAVE_POSTGRES=next`: the `sqltest` suites and `accept-core` on the next PostgreSQL major, its beta or release candidate, with the version it ran in the job summary; `queuetest` from P2c. `gate` does not need it and its coverage is not merged | 20 min |
 | `nightly` (`nightly.yml`, scheduled, not required) | every partition on `main`, on the newest Terraform and OpenTofu releases once `@terraform` and `@tofu` exist; a failure opens an issue, or comments on the open one | 60 min |
 | `objectstore-cloud` (from P2b, scheduled nightly, not required) | `objectstoretest` against Amazon S3, Google Cloud Storage and Azure Blob Storage through OIDC federation, in buckets with a one-day lifecycle rule; a failure opens or updates an issue | 20 min |
 

@@ -16,6 +16,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
 // RequireDocker is the variable that turns a missing Docker daemon from a
@@ -45,14 +46,20 @@ var (
 	count   atomic.Int64
 )
 
-// Main runs m's tests with img as the shared server's image, and stops the
-// server once they finish. A test package that uses DSN or Open calls it
-// from TestMain with test/acceptance's ImagePostgres, so every suite runs
-// on the one pinned image, and with the migration streams its tests need,
-// in registration order: Template is migrated with them once, so each
-// test's database starts migrated. The server starts on the first DSN, so a
-// run of TestUnit tests starts nothing.
-func Main(m *testing.M, img string, s ...migrate.Stream) int {
+// Main runs m's tests and stops the shared server once they finish. A test
+// package that uses DSN, Open or Empty calls it from TestMain with the
+// migration streams its tests need, in registration order: Template is
+// migrated with them once, so each test's database starts migrated. The
+// server runs test/acceptance's PostgreSQL image, the floor's or, with
+// INFRAWEAVE_POSTGRES=next, the next major's, chosen here so that no suite
+// can stay on the floor in the postgres-next job. It starts on the first
+// database a test asks for, so a run of TestUnit tests starts nothing.
+func Main(m *testing.M, s ...migrate.Stream) int {
+	img, err := acceptance.Postgres()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "sqltest:", err)
+		return 1
+	}
 	image, streams = img, s
 	code := m.Run()
 	if server != nil {

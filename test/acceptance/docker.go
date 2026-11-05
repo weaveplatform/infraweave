@@ -154,7 +154,11 @@ func (d *Dependencies) Postgres(ctx context.Context) (*Database, error) {
 // startPostgres starts the container and creates the template, which holds
 // nothing until infraweave has a schema to migrate into it.
 func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
-	c, err := postgres.Run(ctx, ImagePostgres,
+	img, err := Postgres()
+	if err != nil {
+		return nil, fmt.Errorf("@postgres: %w", err)
+	}
+	c, err := postgres.Run(ctx, img,
 		postgres.WithDatabase(pgDatabase),
 		postgres.WithUsername(pgUser),
 		postgres.WithPassword(pgPassword),

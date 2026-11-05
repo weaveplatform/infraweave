@@ -15,10 +15,9 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
-	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, acceptance.ImagePostgres)) }
+func TestMain(m *testing.M) { os.Exit(sqltest.Main(m)) }
 
 // raise makes the statement fail with SQLSTATE code.
 func raise(ctx context.Context, q tx.Querier, code string) error {

@@ -15,10 +15,9 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, acceptance.ImagePostgres)) }
+func TestMain(m *testing.M) { os.Exit(sqltest.Main(m)) }
 
 // within is how long a delivery may take before the test fails.
 const within = 10 * time.Second

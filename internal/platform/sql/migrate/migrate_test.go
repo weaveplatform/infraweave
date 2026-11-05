@@ -13,10 +13,9 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, acceptance.ImagePostgres)) }
+func TestMain(m *testing.M) { os.Exit(sqltest.Main(m)) }
 
 func stream(name string, files ...string) migrate.Stream {
 	m := fstest.MapFS{}
