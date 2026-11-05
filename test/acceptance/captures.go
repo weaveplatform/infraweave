@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -20,7 +19,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
 // ExampleCapture is the synthetic capture that shows the layout. It is
@@ -211,9 +210,7 @@ func (call *CaptureCall) invalid() string {
 		return fmt.Sprintf("path %q does not start with /", call.Path)
 	case http.StatusText(call.Expect.Status) == "":
 		return fmt.Sprintf("status %d", call.Expect.Status)
-	case call.Expect.Problem != "" && !slices.ContainsFunc(problem.Types(), func(t problem.Type) bool {
-		return t.Slug == call.Expect.Problem
-	}):
+	case call.Expect.Problem != "" && !slices.Contains(sdk.Slugs(), call.Expect.Problem):
 		return fmt.Sprintf("problem %q is not in docs/data/problems.json", call.Expect.Problem)
 	}
 	for ptr := range call.Expect.Body {
@@ -224,67 +221,43 @@ func (call *CaptureCall) invalid() string {
 	return ""
 }
 
-// Replay sends call to the API at base and checks the answer against its
-// expectation.
-func Replay(ctx context.Context, base string, call CaptureCall) error {
-	var body io.Reader
-	if call.Body != nil {
-		b, err := json.Marshal(call.Body)
-		if err != nil {
-			return fmt.Errorf("replay body: %w", err)
-		}
-		body = bytes.NewReader(b)
+// Replay sends call through c, which sends each call once, and checks the
+// answer against its expectation.
+func Replay(ctx context.Context, c *sdk.Client, call CaptureCall) error {
+	headers := make([]sdk.Header, 0, len(call.Headers))
+	for _, k := range slices.Sorted(mapKeys(call.Headers)) {
+		headers = append(headers, sdk.Header{Name: k, Value: call.Headers[k]})
 	}
-	req, err := http.NewRequestWithContext(ctx, call.Method, base+call.Path, body)
-	if err != nil {
-		return fmt.Errorf("replay: %w", err)
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	for k, v := range call.Headers {
-		req.Header.Set(k, v)
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("replay: %w", err)
-	}
-	defer resp.Body.Close()
-	got, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("replay: %w", err)
+	resp, problemErr := c.Do(ctx, call.Method, call.Path, call.Body, headers...)
+	if resp == nil {
+		return fmt.Errorf("replay: %w", problemErr)
 	}
 	what := call.Method + " " + call.Path
 	want := call.Expect
-	if resp.StatusCode != want.Status {
+	if resp.Status != want.Status {
 		return fmt.Errorf(
 			"%w: %s answered %d, want %d: %s",
 			ErrParity,
 			what,
-			resp.StatusCode,
+			resp.Status,
 			want.Status,
-			got,
+			resp.Body,
 		)
 	}
-	var doc any
-	if (want.Problem != "" || len(want.Body) > 0) && json.Unmarshal(got, &doc) != nil {
-		return fmt.Errorf("%w: %s answered no JSON: %s", ErrParity, what, got)
-	}
 	if want.Problem != "" {
-		typ, _ := pointer(doc, "/type")
-		if ct := resp.Header.Get(
-			"Content-Type",
-		); ct != problem.ContentType ||
-			typ != problem.TypePrefix+want.Problem {
+		if p, ok := sdk.AsProblem(problemErr); !ok || p.Slug() != want.Problem {
 			return fmt.Errorf(
-				"%w: %s answered %s %v, want problem %q",
+				"%w: %s answered %s, want problem %q",
 				ErrParity,
 				what,
-				ct,
-				typ,
+				resp.Body,
 				want.Problem,
 			)
 		}
+	}
+	var doc any
+	if len(want.Body) > 0 && json.Unmarshal(resp.Body, &doc) != nil {
+		return fmt.Errorf("%w: %s answered no JSON: %s", ErrParity, what, resp.Body)
 	}
 	for _, ptr := range slices.Sorted(mapKeys(want.Body)) {
 		v, ok := pointer(doc, ptr)
