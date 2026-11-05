@@ -5,6 +5,9 @@ Feature: Served API
   the router's own included, is a problem detail (decision 0003). Every
   route, stubbed or not, is rate-limited per caller and cost class, honours
   Idempotency-Key on POST and PATCH, and can be switched off for one caller.
+  A stubbed POST answers 501, which releases its key, so an idempotent replay
+  needs an operation that succeeds: TestUnitGuardedIdempotency proves it
+  until a family serves a POST. Each scenario runs its own infraweave serve.
 
   Scenario: The admin listener answers the liveness probe
     Given a running infraweave server
@@ -36,13 +39,3 @@ Feature: Served API
   Scenario: Callers the operator has not disabled are unaffected
     Given a running infraweave server that disables the caller "192.0.2.1"
     Then "GET /api/v1/stacks" on the API listener answers a 501 problem
-
-  Scenario: A retried POST with an Idempotency-Key acts once
-    Given an API listener serving a test-only "POST /things" operation
-    When "POST /things" is sent with Idempotency-Key "k-1" and body '{"name":"a"}'
-    And "POST /things" is sent with Idempotency-Key "k-1" and body '{"name":"a"}'
-    Then the operation has run 1 time
-    And the last response replays the first with Idempotency-Replayed: true
-    When "POST /things" is sent with Idempotency-Key "k-1" and body '{"name":"b"}'
-    Then the last response is a 422 problem "idempotency-key-reuse"
-    And the operation has run 1 time

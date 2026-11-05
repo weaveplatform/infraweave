@@ -86,12 +86,12 @@ build:
 		done; \
 	done
 
-## accept: every TestAcc test, the godog features and the suites beside the code; coverage to cover/accept
+## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|runs|integrations for one CI partition); coverage and cucumber.json to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
-	$(GO) test -count=1 -run '^TestAcc' -covermode=atomic -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
+	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -run '^TestAcc' -covermode=atomic -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
 
 # PRODUCTS are the Spacelift products with a reference; specref --product
 # picks each one's reference directory, inventory outputs and parity

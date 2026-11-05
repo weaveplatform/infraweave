@@ -272,7 +272,7 @@ Implemented:
 
 - `make verify-reference` checks that the committed reference is exactly what
   the snapshots generate, and that it validates as OpenAPI 3.0.3.
-- `test/acceptance/features/spec_reference.feature` checks that every root
+- `test/acceptance/features/reference_spec.feature` checks that every root
   field is accounted for and that no mutation is RPC-shaped, and checks the
   core collections, ids moved from inputs into paths, and auth.
 - `make verify-generate` fails when `pkg/client` differs from what the

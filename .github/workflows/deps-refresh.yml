@@ -8,7 +8,9 @@ name: deps | Refresh
 #     with go get -u;
 #   - the golangci-lint version in .github/golangci-lint-version;
 #   - the oapi-codegen version in the Makefile, which runs it outside go.mod;
-#   - modules pinned to a branch or query in .github/deps-refresh.pins.
+#   - modules pinned to a branch or query in .github/deps-refresh.pins;
+#   - the container images the acceptance suite pins by digest in
+#     test/acceptance/images.go.
 #
 # The result goes up as one PR from the org App, so the quality gate runs on
 # it like any other change, and auto-merge.yml merges it when the gate
@@ -94,6 +96,23 @@ jobs:
           sed -i -E "s#(oapi-codegen/v2/cmd/oapi-codegen@)v[0-9.]+#\1${oapi}#" Makefile
           git status --short
 
+      - name: Move the acceptance images to their newest releases
+        run: |
+          set -euo pipefail
+          # pin <image> <Docker Hub repository> <release tag pattern> rewrites
+          # the image's pin to the newest tag matching the pattern, at the
+          # digest of its multi-platform index so the pin pulls on any host.
+          # PostgreSQL stays on 18, the major release decision 0005 names.
+          pin() {
+            tag=$(curl -fsS "https://hub.docker.com/v2/repositories/$2/tags?page_size=100&ordering=last_updated" \
+              | jq -r '.results[].name' | grep -E "$3" | sort -V | tail -1)
+            digest=$(docker buildx imagetools inspect "$1:$tag" --format '{{json .Manifest}}' | jq -r .digest)
+            sed -i -E "s#\"$1:[^@\"]+@sha256:[0-9a-f]{64}\"#\"$1:$tag@$digest\"#" test/acceptance/images.go
+          }
+          pin postgres library/postgres '^18\.[0-9]+$'
+          pin rustfs/rustfs rustfs/rustfs '^[0-9]+\.[0-9]+\.[0-9]+$'
+          git diff --stat test/acceptance/images.go
+
       - name: Open or update the refresh PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -107,10 +126,10 @@ jobs:
           git config user.email "weaveplatform-release-please[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           git add -A
-          git commit -qm "chore(deps): refresh Go, modules, tools and golangci-lint to latest"
+          git commit -qm "chore(deps): refresh Go, modules, tools, golangci-lint and images to latest"
           git push --force -u origin "$BRANCH"
           if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
             gh pr create --head "$BRANCH" \
-              --title "chore(deps): refresh Go, modules, tools and golangci-lint to latest" \
+              --title "chore(deps): refresh Go, modules, tools, golangci-lint and images to latest" \
               --body "Raised by deps-refresh.yml. Merges automatically once the quality gate passes."
           fi

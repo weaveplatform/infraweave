@@ -81,8 +81,20 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      # The runner has Docker, so a scenario skipped for want of a daemon
+      # fails the job rather than passing unseen.
       - name: Acceptance features (godog)
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
         run: make accept
+
+      - name: Upload failed-scenario evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: accept-evidence
+          path: test/acceptance/out
+          retention-days: 7
 
       - name: Upload acceptance coverage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

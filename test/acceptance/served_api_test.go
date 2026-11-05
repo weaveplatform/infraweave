@@ -1,37 +1,23 @@
 package acceptance
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"strings"
-	"sync/atomic"
 
 	"github.com/cucumber/godog"
+	"gopkg.in/yaml.v3"
 
-	"github.com/weaveplatform/infraweave/internal/app"
-	"github.com/weaveplatform/infraweave/internal/app/config"
-	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
-	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
-	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 )
 
-// servedSteps runs the server in-process on loopback ports the system
-// chooses, so scenarios never contend for a fixed port.
+// servedSteps drive an infraweave serve subprocess of the scenario's world.
 type servedSteps struct {
-	srv *serve.Running
-	// test serves a test-only operation behind the API listener's controls,
-	// for behaviour no stubbed route can show: a POST that runs.
-	test *httptest.Server
-	runs atomic.Int32
+	w *world
 	// sent holds every response of the scenario, the last one last.
 	sent []response
 }
@@ -49,7 +35,6 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 		s.runningWithBursts,
 	)
 	sc.Step(`^a running infraweave server that disables the caller "([^"]+)"$`, s.runningDisabling)
-	sc.Step(`^an API listener serving a test-only "POST ([^"]+)" operation$`, s.testOperation)
 	sc.Step(`^"([A-Z]+) ([^"]+)" on the admin listener answers (\d+)$`, s.adminAnswers)
 	sc.Step(
 		`^"([A-Z]+) ([^"]+)" on the (admin|API) listener answers a (\d+) problem(?: "([a-z-]+)")?$`,
@@ -58,85 +43,51 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^"([A-Z]+) ([^"]+)" is sent (\d+) times on the API listener$`, s.sendTimes)
 	sc.Step(`^the response carries Retry-After and the rate-limit headers$`, s.rateLimitHeaders)
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
-	sc.Step(
-		`^"POST ([^"]+)" is sent with Idempotency-Key "([^"]+)" and body '([^']*)'$`,
-		s.sendWithKey,
-	)
-	sc.Step(`^the operation has run (\d+) times?$`, s.ran)
-	sc.Step(`^the last response replays the first with Idempotency-Replayed: true$`, s.replayed)
-	sc.Step(`^the last response is a (\d+) problem "([a-z-]+)"$`, s.lastIsProblem)
-	sc.After(func(ctx context.Context, _ *godog.Scenario, err error) (context.Context, error) {
-		if s.srv != nil {
-			err = errors.Join(err, s.srv.Shutdown(ctx))
-			s.srv = nil
-		}
-		if s.test != nil {
-			s.test.Close()
-			s.test = nil
-		}
-		s.runs.Store(0)
-		s.sent = nil
-		return ctx, err
-	})
 }
 
-func discardLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
-
-func (s *servedSteps) start(ctx context.Context, c config.Config) error {
-	c.Server.Listen, c.Server.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
-	srv, err := app.Start(ctx, c, discardLog())
-	if err != nil {
-		return fmt.Errorf("start server: %w", err)
+// serverConfig is a strict configuration file for one scenario's server:
+// both listeners on loopback port 0, and the settings the scenario names.
+func serverConfig(rateLimit map[string]any) ([]byte, error) {
+	server := map[string]any{"listen": "127.0.0.1:0", "admin_listen": "127.0.0.1:0"}
+	if rateLimit != nil {
+		server["rate_limit"] = rateLimit
 	}
-	s.srv = srv
-	return nil
+	out, err := yaml.Marshal(map[string]any{"server": server})
+	if err != nil {
+		return nil, fmt.Errorf("server config: %w", err)
+	}
+	return out, nil
 }
 
-func (s *servedSteps) running(ctx context.Context) error {
-	return s.start(ctx, config.Defaults())
+func (s *servedSteps) start(ctx context.Context, rateLimit map[string]any) error {
+	c, err := serverConfig(rateLimit)
+	if err != nil {
+		return err
+	}
+	_, err = s.w.startServer(ctx, c)
+	return err
 }
+
+func (s *servedSteps) running(ctx context.Context) error { return s.start(ctx, nil) }
 
 // runningWithBursts refills too slowly to matter while a scenario runs, so
 // the bursts alone decide what is admitted.
 func (s *servedSteps) runningWithBursts(ctx context.Context, standard, expensive int) error {
-	c := config.Defaults()
-	c.Server.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: standard}
-	c.Server.RateLimit.Expensive = ratelimit.Limit{Rate: 1e-6, Burst: expensive}
-	return s.start(ctx, c)
+	return s.start(ctx, map[string]any{
+		"standard":  map[string]any{"rate": 1e-6, "burst": standard},
+		"expensive": map[string]any{"rate": 1e-6, "burst": expensive},
+	})
 }
 
 func (s *servedSteps) runningDisabling(ctx context.Context, caller string) error {
-	c := config.Defaults()
-	c.Server.RateLimit.DisabledCallers = []string{caller}
-	return s.start(ctx, c)
-}
-
-// testOperation composes the API listener's controls with the default
-// settings around a handler that numbers each run, so a replay is told
-// apart from a second run.
-func (s *servedSteps) testOperation(path string) error {
-	r := app.Guarded(discardLog(), config.Defaults().Server, app.Operations{
-		http.MethodPost + " " + path: {Cost: ratelimit.Standard},
-	})
-	r.Post(path, func(w http.ResponseWriter, _ *http.Request) {
-		n := s.runs.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Location", path+"/"+strconv.Itoa(int(n)))
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]int32{"run": n})
-	})
-	s.test = httptest.NewServer(r)
-	return nil
+	return s.start(ctx, map[string]any{"disabled_callers": []string{caller}})
 }
 
 func (s *servedSteps) addr(listener string) string {
-	switch {
-	case listener == "admin":
-		return s.srv.AdminAddr()
-	case s.test != nil:
-		return s.test.Listener.Addr().String()
+	if listener == "admin" {
+		return s.w.server.Admin
 	}
-	return s.srv.APIAddr()
+	return s.w.server.API
 }
 
 func (s *servedSteps) send(
@@ -275,42 +226,4 @@ func (s *servedSteps) retryAfter() error {
 		return fmt.Errorf("%w: Retry-After %q", errStep, s.last().header.Get("Retry-After"))
 	}
 	return nil
-}
-
-func (s *servedSteps) sendWithKey(ctx context.Context, path, key, body string) error {
-	h := http.Header{}
-	h.Set(idempotency.Header, key)
-	h.Set("Content-Type", "application/json")
-	_, err := s.send(ctx, http.MethodPost, "API", path, h, body)
-	return err
-}
-
-func (s *servedSteps) ran(n int) error {
-	if got := s.runs.Load(); int(got) != n {
-		return fmt.Errorf("%w: the operation ran %d times, want %d", errStep, got, n)
-	}
-	return nil
-}
-
-func (s *servedSteps) replayed() error {
-	if len(s.sent) < 2 {
-		return fmt.Errorf("%w: %d responses, want two to compare", errStep, len(s.sent))
-	}
-	first, last := s.sent[0], s.last()
-	switch {
-	case first.header.Get(idempotency.ReplayedHeader) != "":
-		return fmt.Errorf("%w: the first response is marked replayed", errStep)
-	case last.header.Get(idempotency.ReplayedHeader) != "true":
-		return fmt.Errorf("%w: the repeat is not marked replayed: %v", errStep, last.header)
-	case last.status != first.status || !bytes.Equal(last.body, first.body) ||
-		last.header.Get("Location") != first.header.Get("Location") ||
-		last.header.Get("Content-Type") != first.header.Get("Content-Type"):
-		return fmt.Errorf("%w: the repeat %d %s differs from the first %d %s",
-			errStep, last.status, last.body, first.status, first.body)
-	}
-	return nil
-}
-
-func (s *servedSteps) lastIsProblem(code, slug string) error {
-	return isProblem(s.last(), "the last request", code, slug)
 }

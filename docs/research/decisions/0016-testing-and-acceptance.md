@@ -12,8 +12,8 @@ can fail:
   is a parity oracle for operation coverage, shapes and client contracts
   ([01 section 12](../reference/01-spacelift-landscape.md#12-the-specification-reference-as-parity-oracle)).
   Two features already check the reference and the served bundle
-  (`test/acceptance/features/spec_reference.feature`,
-  `deploy_spec.feature`).
+  (`test/acceptance/features/reference_spec.feature`,
+  `api_bundle.feature`).
 - **The behaviour matches Spacelift.** Runs, policies, state, VCS
   feedback and event delivery are behaviours, not shapes. They only show
   against real PostgreSQL, real object storage, a real launcher and a real
@@ -161,7 +161,7 @@ counterpart in the nightly cloud job.
 ### Parity checks against the specification reference
 
 `specref` gains a `parity` subcommand, run by `make verify-parity` and by
-an acceptance scenario in `spec_reference.feature`. For every operation in
+an acceptance scenario in `reference_spec.feature`. For every operation in
 `api/reference/spacelift/spacelift.openapi.yaml`, and in the Flows reference
 `api/reference/spacelift-flows/flows.openapi.yaml`
 ([0018](0018-flows-runtime.md)), it decides one outcome:
@@ -457,7 +457,7 @@ coverage it would contribute is not waived.
 - `test/acceptance/features/runs_terraform.feature` and
   `runs_tofu.feature` carry the first real-run scenarios.
 - `make verify-parity` and the state check run in the `parity` job; the
-  existing `spec_reference.feature` and `deploy_spec.feature` keep running
+  existing `reference_spec.feature` and `api_bundle.feature` keep running
   in `accept-core`.
 - The `Quality gate` job lists every required job above in its `needs`, and
   none of the informational ones.
