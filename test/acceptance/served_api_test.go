@@ -3,6 +3,7 @@ package acceptance
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"strconv"
 
@@ -46,13 +47,16 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 }
 
 // serverConfig is a strict configuration file for one server: both
-// listeners on loopback port 0, the database at dsn, and the settings the
-// scenario names.
-func serverConfig(dsn string, rateLimit map[string]any) ([]byte, error) {
-	server := map[string]any{"listen": "127.0.0.1:0", "admin_listen": "127.0.0.1:0"}
-	if rateLimit != nil {
-		server["rate_limit"] = rateLimit
+// listeners on loopback port 0, the database at dsn, and the server
+// settings the scenario names over them. The ready delay is 0 unless the
+// scenario names one, so stopping a server costs no wait.
+func serverConfig(dsn string, settings map[string]any) ([]byte, error) {
+	server := map[string]any{
+		"listen":       "127.0.0.1:0",
+		"admin_listen": "127.0.0.1:0",
+		"shutdown":     map[string]any{"ready_delay": "0s"},
 	}
+	maps.Copy(server, settings)
 	out, err := yaml.Marshal(
 		map[string]any{"server": server, "database": map[string]any{"url": dsn}},
 	)
@@ -63,11 +67,14 @@ func serverConfig(dsn string, rateLimit map[string]any) ([]byte, error) {
 }
 
 func (s *servedSteps) start(ctx context.Context, rateLimit map[string]any) error {
-	_, err := s.w.startServer(ctx, rateLimit)
+	_, err := s.w.startServer(ctx, map[string]any{"rate_limit": rateLimit})
 	return err
 }
 
-func (s *servedSteps) running(ctx context.Context) error { return s.start(ctx, nil) }
+func (s *servedSteps) running(ctx context.Context) error {
+	_, err := s.w.startServer(ctx, nil)
+	return err
+}
 
 // runningWithBursts refills too slowly to matter while a scenario runs, so
 // the bursts alone decide what is admitted.

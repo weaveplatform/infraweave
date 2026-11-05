@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
@@ -162,7 +163,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 		t.Errorf("404: %d %v", rec.Code, rec.Header())
 	}
 	// The admin listener's probes are never limited.
-	admin := observe.Probes(discard())
+	admin := observe.Probes(discard(), observe.NewHealth(time.Now))
 	for range 5 {
 		if rec := send(admin, http.MethodGet, "/livez", me, ""); rec.Code != http.StatusOK ||
 			rec.Header().Get("X-RateLimit-Limit") != "" {

@@ -1,20 +1,24 @@
-// Package serve runs a process's two HTTP listeners: the API listener and the
-// admin listener, which carries the probes (decision 0017).
+// Package serve runs a process's HTTP listeners: the admin listener, which
+// carries the probes, and the API listener of a mode that serves the API
+// (decision 0017).
 //
-// Config is server.listen, server.admin_listen and server.shutdown.timeout,
-// with their Defaults and Validate; ErrConfig marks an invalid setting. Start
-// binds both listeners and serves the two handlers it is given, Running
-// reports their addresses and shuts them down, and Run serves until its
-// context ends and then drains in-flight requests for at most the shutdown
-// timeout. What each listener routes is the caller's: internal/app passes the
-// API and the probes, and the agent process modes will pass their own.
+// Config is server.listen, server.admin_listen and server.shutdown, with
+// their Defaults and Validate; ErrConfig marks an invalid setting. Start
+// binds the admin listener and, when it is given an API handler, the API
+// listener; Running reports their addresses and shuts them down. Run serves
+// until its context ends, then shuts down in decision 0017's order: it calls
+// the stopping function the caller gives, which makes /readyz fail, keeps
+// accepting for server.shutdown.ready_delay, and drains in-flight requests
+// for at most server.shutdown.timeout. What each listener routes is the
+// caller's: internal/app passes the API and the probes, and the agent
+// process modes will pass their own.
 //
 // # Input and output
 //
-// It opens two TCP listeners and serves HTTP on them, bounding the time a
-// client may take to send its headers. It logs "listening" with both
-// addresses and "shutting down" with the timeout, and routes net/http's own
-// errors to the given slog.Logger at error level.
+// It opens TCP listeners and serves HTTP on them, bounding the time a client
+// may take to send its headers. It logs "listening" with the bound addresses
+// and "shutting down" with the ready delay and the timeout, and routes
+// net/http's own errors to the given slog.Logger at error level.
 //
 // # Dependencies
 //

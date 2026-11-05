@@ -84,8 +84,9 @@ type Guards struct {
 	Keys    idempotency.Store
 }
 
-// Guarded is an API listener router: request ID and recovery, then decision
-// 0003's controls in front of every route registered on it. The operator
+// Guarded is an API listener router: request ID and recovery, the access
+// log, then decision 0003's controls in front of every route registered on
+// it, so a request a control rejects is logged too. The operator
 // switch runs first, then the rate limit, then idempotency keys, so a request
 // one rejects never reaches the next and a rejected request never reaches
 // the key store. ops names the operations its routes serve; a request no
@@ -99,6 +100,7 @@ func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards) *chi.M
 	}
 	caller := ratelimit.ClientAddr
 	r = middleware.NewRouter(log,
+		middleware.AccessLog(log),
 		ratelimit.Disabled(g.Switch, caller),
 		ratelimit.Middleware(c.RateLimit, g.Buckets, caller,
 			func(req *http.Request) ratelimit.Class {

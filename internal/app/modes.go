@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,37 +16,48 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 )
 
-// Start starts the serve process mode's listeners with g as the controls'
-// state: the API on the API listener and the probes on the admin listener.
-// ctx bounds only the binding of the listeners. Every setting is checked
-// before either listener binds.
-//
-// serve's errors already name the listener or setting that failed, so they
-// are returned as they are.
-func Start(
-	ctx context.Context,
-	c config.Config,
-	log *slog.Logger,
-	g Guards,
-) (*serve.Running, error) {
-	if err := c.Server.Validate(); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
-	}
-	api, probes := API(log, c.Server, g), observe.Probes(log)
-	return serve.Start(ctx, c.Server.Config, log, api, probes) //nolint:wrapcheck // see above
+// Mode is a process mode: the roles one process runs (decision 0020).
+type Mode struct {
+	// API serves the API on the API listener.
+	API bool
+	// Scheduler runs the scheduler's loops, which arrive with their phases;
+	// until then it serves only the admin listener.
+	Scheduler bool
 }
 
-// Serve runs the serve process mode until ctx is done, then drains in-flight
-// requests (serve.Run). It opens PostgreSQL and brings the schema to this
-// binary's (openDatabase) before either listener binds, so a server below
-// the version floor or a schema this binary must not run on never answers.
-// The controls keep their state in the database (postgresGuards); the
-// listening connection and the pools close only after the drain, when no
-// request can use them.
-func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
+// The process modes infraweave serve, scheduler and all run.
+var (
+	ModeServe     = Mode{API: true}
+	ModeScheduler = Mode{Scheduler: true}
+	ModeAll       = Mode{API: true, Scheduler: true}
+)
+
+// String is the mode field of every log line: serve, scheduler, or
+// serve,scheduler for all.
+func (m Mode) String() string {
+	var roles []string
+	if m.API {
+		roles = append(roles, "serve")
+	}
+	if m.Scheduler {
+		roles = append(roles, "scheduler")
+	}
+	return strings.Join(roles, ",")
+}
+
+// Run runs mode m until ctx is done, then shuts down as decision 0017 says
+// (serve.Run): /readyz fails at once, the listeners keep accepting for
+// server.shutdown.ready_delay, and in-flight requests drain. It opens
+// PostgreSQL and brings the schema to this binary's (openDatabase) before
+// any listener binds, so a server below the version floor or a schema this
+// binary must not run on never answers. The API's controls keep their state
+// in the database (postgresGuards); the listening connection and the pools
+// close only after the drain, when no request can use them.
+func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if err := errors.Join(c.Server.Validate(), c.Database.Validate()); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
@@ -53,7 +66,7 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 		return err
 	}
 	defer db.Close()
-	// ctx ends when the drain begins; the switch keeps following
+	// ctx ends when the shutdown begins; the switch keeps following
 	// invalidations until the drain is over.
 	background, stop := context.WithCancel(context.WithoutCancel(ctx))
 	var wg sync.WaitGroup
@@ -61,9 +74,50 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 		stop()
 		wg.Wait()
 	}()
-	g := postgresGuards(background, &wg, c.Server, db, log)
-	api, probes := API(log, c.Server, g), observe.Probes(log)
-	return serve.Run(ctx, c.Server.Config, log, api, probes) //nolint:wrapcheck // as Start
+	health := observe.NewHealth(time.Now)
+	databaseChecks(health, db)
+	var g Guards
+	if m.API {
+		g = postgresGuards(background, &wg, c.Server, db, log)
+	}
+	api, admin := handlers(log, c.Server, m, g, health)
+	//nolint:wrapcheck // serve's errors name the listener
+	return serve.Run(ctx, c.Server.Config, log, api, admin, health.Stop)
+}
+
+// databaseChecks are P2's probe checks, which every mode runs: the
+// configuration decoded, which it has by the time any probe answers, and
+// the schema at this binary's version, at startup; PostgreSQL answering
+// through the pool, for readiness.
+func databaseChecks(h *observe.Health, db *sql.DB) {
+	h.Startup("config", func(context.Context) error { return nil })
+	h.Startup("schema", func(ctx context.Context) error {
+		cc, err := db.ConnConfig(ctx)
+		if err != nil {
+			return err //nolint:wrapcheck // reported as the check's error
+		}
+		return migrate.Check(ctx, cc, Streams()) //nolint:wrapcheck // as above
+	})
+	h.Ready("postgres", func(ctx context.Context) error {
+		_, err := db.Primary().Exec(ctx, "SELECT 1")
+		return err //nolint:wrapcheck // as above
+	})
+}
+
+// handlers are mode m's two listeners' handlers: the API, behind the
+// controls whose state g holds, or nil when m serves no API, so serve binds
+// no API listener; and the probes, which answer from health.
+func handlers(
+	log *slog.Logger,
+	c config.Server,
+	m Mode,
+	g Guards,
+	health *observe.Health,
+) (api, admin http.Handler) {
+	if m.API {
+		api = API(log, c, g)
+	}
+	return api, observe.Probes(log, health)
 }
 
 // postgresGuards keeps the controls' state in db, shared by every replica

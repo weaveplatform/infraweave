@@ -30,8 +30,11 @@ func start(t *testing.T, c Config) (*Running, error) {
 func local() Config {
 	c := Defaults()
 	c.Listen, c.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
+	c.Shutdown.ReadyDelay = 0
 	return c
 }
+
+func nothing() {}
 
 func TestUnitValidate(t *testing.T) {
 	if err := Defaults().Validate(); err != nil {
@@ -45,6 +48,11 @@ func TestUnitValidate(t *testing.T) {
 		{"no port", func(c *Config) { c.Listen = "localhost" }, `server.listen "localhost"`},
 		{"port out of range", func(c *Config) { c.AdminListen = ":70000" }, "server.admin_listen"},
 		{"port not a number", func(c *Config) { c.Listen = ":http" }, "port must be a number"},
+		{
+			"negative ready delay",
+			func(c *Config) { c.Shutdown.ReadyDelay = -time.Second },
+			"server.shutdown.ready_delay must not be negative",
+		},
 		{
 			"no timeout",
 			func(c *Config) { c.Shutdown.Timeout = 0 },
@@ -95,6 +103,38 @@ func TestUnitStartServesBothListeners(t *testing.T) {
 	}
 }
 
+// TestUnitStartAdminOnly checks that a mode with no API binds only the
+// admin listener.
+func TestUnitStartAdminOnly(t *testing.T) {
+	busy, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer busy.Close()
+	c := local()
+	c.Listen = busy.Addr().String() // never bound, so never in the way
+	r, err := Start(t.Context(), c, discard(), nil, text("admin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, body := get(
+		t,
+		"http://"+r.AdminAddr()+"/",
+	); code != http.StatusOK ||
+		body != "admin" ||
+		r.APIAddr() != "" {
+		t.Errorf("admin listener: %d %q, API %q", code, body, r.APIAddr())
+	}
+	if err := r.Shutdown(context.Background()); err != nil {
+		t.Error(err)
+	}
+	c = local()
+	c.AdminListen = busy.Addr().String()
+	if _, err := Start(t.Context(), c, discard(), nil, text("admin")); err == nil {
+		t.Error("started on a busy admin address")
+	}
+}
+
 func TestUnitStartErrors(t *testing.T) {
 	busy, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
@@ -136,7 +176,7 @@ func TestUnitRunDrains(t *testing.T) {
 	shuttingDown := make(chan struct{})
 	r.api.RegisterOnShutdown(func() { close(shuttingDown) })
 	done := make(chan error, 1)
-	go func() { done <- r.wait(ctx, discard()) }()
+	go func() { done <- r.wait(ctx, discard(), nothing) }()
 
 	// The request runs off the test goroutine, so it reports through body
 	// rather than t.Fatal.
@@ -204,7 +244,7 @@ func TestUnitRunShutdownTimeout(t *testing.T) {
 	<-entered
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := r.wait(ctx, discard()); !errors.Is(err, context.DeadlineExceeded) {
+	if err := r.wait(ctx, discard(), nothing); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("got %v, want the shutdown deadline", err)
 	}
 }
@@ -218,6 +258,7 @@ func TestUnitRunListenerFails(t *testing.T) {
 	if err := r.wait(
 		t.Context(),
 		discard(),
+		nothing,
 	); err == nil ||
 		!strings.Contains(err.Error(), "serve") {
 		t.Errorf("got %v, want the listener's error", err)
@@ -227,7 +268,7 @@ func TestUnitRunListenerFails(t *testing.T) {
 func TestUnitRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := Run(ctx, local(), discard(), text("api"), text("admin")); err != nil {
+	if err := Run(ctx, local(), discard(), text("api"), text("admin"), nothing); err != nil {
 		t.Errorf("Run: %v", err)
 	}
 	c := local()
@@ -238,10 +279,42 @@ func TestUnitRun(t *testing.T) {
 		discard(),
 		text("api"),
 		text("admin"),
+		nothing,
 	); !errors.Is(
 		err,
 		ErrConfig,
 	) {
 		t.Errorf("Run with a bad listener: %v", err)
+	}
+}
+
+// TestUnitRunReadyDelay checks that a stop makes readiness fail at once and
+// keeps accepting for the ready delay, which a failing listener cuts short.
+func TestUnitRunReadyDelay(t *testing.T) {
+	c := local()
+	c.Shutdown.ReadyDelay = time.Hour
+	r, err := Start(t.Context(), c, discard(), text("api"), text("admin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	stopped := make(chan struct{})
+	done := make(chan error, 1)
+	go func() { done <- r.wait(ctx, discard(), func() { close(stopped) }) }()
+	cancel()
+	<-stopped
+	if code, body := get(t, "http://"+r.APIAddr()+"/"); code != http.StatusOK || body != "api" {
+		t.Errorf("API during the ready delay: %d %q", code, body)
+	}
+	_ = r.apiLn.Close()
+	if err := <-done; err == nil || !strings.Contains(err.Error(), "serve") {
+		t.Errorf("got %v, want the listener's error", err)
+	}
+
+	c.Shutdown.ReadyDelay = time.Millisecond
+	ctx, cancel = context.WithCancel(t.Context())
+	cancel()
+	if err := Run(ctx, c, discard(), text("api"), text("admin"), nothing); err != nil {
+		t.Errorf("Run after a short delay: %v", err)
 	}
 }

@@ -68,8 +68,9 @@ func until(t *testing.T, what string, cond func() bool) {
 	}
 }
 
-// TestAccServeDatabase checks that serve holds the pool while it runs and
-// closes it once it stops.
+// TestAccServeDatabase checks that a mode holds the pool while it runs,
+// passes its startup and readiness checks against it, and closes it once it
+// stops.
 func TestAccServeDatabase(t *testing.T) {
 	observer := sqltest.Open(t)
 	c := local()
@@ -77,7 +78,7 @@ func TestAccServeDatabase(t *testing.T) {
 	c.Server.AdminListen = freeAddr(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- Serve(ctx, c, discard()) }()
+	go func() { done <- Run(ctx, c, discard(), ModeAll) }()
 	// The listeners bind only after the database opens, so a probe that
 	// answers means the pool is open and cancelling stops the server, not
 	// the open.
@@ -85,6 +86,11 @@ func TestAccServeDatabase(t *testing.T) {
 	until(t, "serve to listen", func() bool { return answers(t, livez) })
 	if sessions(t, observer, "true") == 0 {
 		t.Fatal("serve listens without a database connection")
+	}
+	for _, probe := range []string{"/startupz", "/readyz"} {
+		if !answers(t, "http://"+c.Server.AdminListen+probe) {
+			t.Errorf("%s fails against a migrated database", probe)
+		}
 	}
 	cancel()
 	select {

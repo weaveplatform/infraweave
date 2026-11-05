@@ -4,9 +4,11 @@
 // listener settings of httpkit/serve, squashed to server.listen,
 // server.admin_listen and server.shutdown, beside decision 0003's
 // server.rate_limit and server.idempotency; Database holds decision 0005's
-// database.* settings of platform/sql. Defaults are what an empty
-// configuration means, Validate rejects a setting the server could not start
-// with, ServeFlags declares the serve process mode's flags, FileFlag only
+// database.* settings of platform/sql; Log holds decision 0017's log.*
+// settings of platform/observe. Defaults are what an empty configuration
+// means, Validate rejects a setting the server could not start with,
+// ServeFlags declares the flags of the modes that serve the API, AdminFlags
+// those of a mode that serves only the admin listener, FileFlag only
 // --config for commands such as migrate, and Load decodes them.
 //
 // Settings come from flags, INFRAWEAVE_* environment variables and a YAML
@@ -24,5 +26,5 @@
 //
 // It imports viper and pflag for the decoding, and the setting and default
 // types of platform/httpkit/serve, middleware/ratelimit,
-// middleware/idempotency and platform/sql. internal/app and cmd/ import it.
+// middleware/idempotency, platform/sql and platform/observe. internal/app and cmd/ import it.
 package config

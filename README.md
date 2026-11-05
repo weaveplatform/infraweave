@@ -74,8 +74,18 @@ Bundling fails when any of these happens:
 ### Running it
 
 `infraweave serve` serves the API on the API listener under
-`/api/v1`, and the liveness probe `GET /livez` on the admin listener only
-([decision 0017](docs/research/decisions/0017-observability-and-health.md#health)).
+`/api/v1`, and the probes on the admin listener only
+([decision 0017](docs/research/decisions/0017-observability-and-health.md#health)):
+`GET /livez` while the process serves HTTP, `GET /startupz` once the schema
+is at this binary's version, and `GET /readyz` while PostgreSQL answers and
+shutdown has not begun. Add `?verbose` for the checks as JSON.
+`infraweave scheduler` serves only the admin listener, and `infraweave all`
+runs both in one process. Every process mode logs JSON lines to stdout with
+`time`, `level`, `msg`, `service`, `mode`, `version` and, inside a request,
+`request_id`, and logs one `request` line per API request. A valid
+`X-Request-Id` (1 to 128 of `A-Z a-z 0-9 . _ -`) is kept, any other is
+replaced by a generated one, and the response echoes it. Secrets, cookies
+and authorization headers are logged as `[redacted]`.
 Every operation answers a `501` problem until its family is implemented, and
 every error, the router's 404 and 405 included, is an
 `application/problem+json` body. Routes check no credentials yet:
@@ -87,6 +97,7 @@ phase.
 |---|---|---|---|
 | `server.listen` | `--listen` | `INFRAWEAVE_SERVER_LISTEN` | `:8080` |
 | `server.admin_listen` | `--admin-listen` | `INFRAWEAVE_SERVER_ADMIN_LISTEN` | `:9090` |
+| `server.shutdown.ready_delay` | | `INFRAWEAVE_SERVER_SHUTDOWN_READY_DELAY` | `5s` |
 | `server.shutdown.timeout` | `--shutdown-timeout` | `INFRAWEAVE_SERVER_SHUTDOWN_TIMEOUT` | `30s` |
 | `server.rate_limit.standard.rate` | | `INFRAWEAVE_SERVER_RATE_LIMIT_STANDARD_RATE` | `10` (per second) |
 | `server.rate_limit.standard.burst` | | `INFRAWEAVE_SERVER_RATE_LIMIT_STANDARD_BURST` | `100` |
@@ -96,11 +107,16 @@ phase.
 | `server.idempotency.ttl` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_TTL` | `24h` |
 | `server.idempotency.lock` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_LOCK` | `5m` |
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
+| `log.format` | | `INFRAWEAVE_LOG_FORMAT` | `json` (or `text`) |
+| `log.level` | `--log-level` | `INFRAWEAVE_LOG_LEVEL` | `info` (`debug`, `warn`, `error`) |
 
 A flag beats the environment, which beats the YAML file named by
 `--config`. The file is strict: an unknown key fails startup. On `SIGINT`
-or `SIGTERM` the server stops accepting connections and drains in-flight
-requests for up to `server.shutdown.timeout`. `infraweave version` prints
+or `SIGTERM`, `/readyz` answers 503 at once; the listeners keep accepting
+for `server.shutdown.ready_delay`, so load balancers stop routing to the
+process, then stop accepting and drain in-flight requests for up to
+`server.shutdown.timeout`, and the process exits 0. A second signal exits 1
+at once. `SIGHUP` re-reads `log.level`, and no other setting. `infraweave version` prints
 the build's version, commit and date.
 
 Every request on the API listener applies

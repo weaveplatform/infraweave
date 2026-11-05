@@ -70,12 +70,13 @@ func Migrate(ctx context.Context, bin, coverDir, dsn string) error {
 	return nil
 }
 
-// Server is one infraweave serve subprocess. It binds both listeners on
-// loopback port 0 and reports the ports it took in its "listening" log line,
-// so concurrent scenarios never contend for a port.
+// Server is one infraweave process mode run as a subprocess. It binds its
+// listeners on loopback port 0 and reports the ports it took in its
+// "listening" log line, so concurrent scenarios never contend for a port.
 type Server struct {
 	cmd *exec.Cmd
-	// API and Admin are the listeners' host:port.
+	// API and Admin are the listeners' host:port; API is "" for a mode
+	// that serves no API.
 	API, Admin string
 	// Config is the configuration file the process was given.
 	Config         []byte
@@ -105,17 +106,22 @@ func (l *lockedBuffer) Bytes() []byte {
 // ErrExited is returned when the server exits before it is ready.
 var ErrExited = errors.New("infraweave exited")
 
-// StartServer writes config to dir/config.yaml and runs bin serve with it,
-// writing coverage to coverDir. It returns once the admin listener answers
-// /livez, which decision 0017 puts on the admin listener alone.
-func StartServer(ctx context.Context, bin, dir, coverDir string, config []byte) (*Server, error) {
+// StartServer writes config to dir/config.yaml and runs bin's process mode
+// mode, such as all, with it, writing coverage to coverDir. It returns once
+// the admin listener answers /livez, which decision 0017 puts on the admin
+// listener alone.
+func StartServer(
+	ctx context.Context,
+	bin, dir, coverDir, mode string,
+	config []byte,
+) (*Server, error) {
 	path := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(path, config, 0o600); err != nil {
 		return nil, fmt.Errorf("write config: %w", err)
 	}
 	s := &Server{Config: config, done: make(chan struct{})}
 	// The process outlives the step that starts it; Stop ends it.
-	s.cmd = exec.Command(bin, "serve", "--config", path) //nolint:noctx // see above
+	s.cmd = exec.Command(bin, mode, "--config", path) //nolint:noctx // see above
 	s.cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir)
 	s.cmd.Stdout, s.cmd.Stderr = &s.stdout, &s.stderr
 	if err := s.cmd.Start(); err != nil {
@@ -161,10 +167,10 @@ func (s *Server) exited() bool {
 	}
 }
 
-// listening reads the listeners from the JSON log line serve writes once
-// both are bound.
+// listening reads the listeners from the JSON log line the process writes
+// to stdout once they are bound.
 func (s *Server) listening() bool {
-	sc := bufio.NewScanner(bytes.NewReader(s.stderr.Bytes()))
+	sc := bufio.NewScanner(bytes.NewReader(s.stdout.Bytes()))
 	for sc.Scan() {
 		var line struct {
 			Msg   string `json:"msg"`
@@ -221,6 +227,28 @@ func (s *Server) Stop(ctx context.Context) error {
 		return fmt.Errorf("%w: %w: %s", ErrExited, exit, s.stderr.Bytes())
 	}
 	return nil
+}
+
+// Stdout is what the process has logged so far, one JSON object per line.
+func (s *Server) Stdout() []byte { return s.stdout.Bytes() }
+
+// Signal sends sig to the process.
+func (s *Server) Signal(sig os.Signal) error {
+	if err := s.cmd.Process.Signal(sig); err != nil {
+		return fmt.Errorf("signal infraweave: %w", err)
+	}
+	return nil
+}
+
+// ExitCode waits for the process to exit and returns its exit code.
+func (s *Server) ExitCode(ctx context.Context) (int, error) {
+	err := Eventually(ctx, "infraweave to exit", func(context.Context) (bool, error) {
+		return s.exited(), nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return s.cmd.ProcessState.ExitCode(), nil
 }
 
 // Evidence writes the server's output and configuration into dir.

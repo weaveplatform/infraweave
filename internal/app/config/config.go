@@ -12,13 +12,15 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
 // Config is every setting, keyed as in the YAML file.
 type Config struct {
-	Server   Server     `mapstructure:"server"`
-	Database sql.Config `mapstructure:"database"`
+	Server   Server            `mapstructure:"server"`
+	Database sql.Config        `mapstructure:"database"`
+	Log      observe.LogConfig `mapstructure:"log"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -40,6 +42,7 @@ func Defaults() Config {
 			Idempotency: idempotency.Defaults(),
 		},
 		Database: sql.Defaults(),
+		Log:      observe.LogDefaults(),
 	}
 }
 
@@ -67,9 +70,10 @@ var settingFlags = map[string]string{
 	"listen":           "server.listen",
 	"admin-listen":     "server.admin_listen",
 	"shutdown-timeout": "server.shutdown.timeout",
+	"log-level":        "log.level",
 }
 
-// ServeFlags adds the serve process mode's flags to fs.
+// ServeFlags adds the flags of the process modes that serve the API to fs.
 func ServeFlags(fs *pflag.FlagSet) {
 	d := serve.Defaults()
 	FileFlag(fs)
@@ -81,6 +85,27 @@ func ServeFlags(fs *pflag.FlagSet) {
 	)
 	fs.Duration("shutdown-timeout", d.Shutdown.Timeout,
 		"how long in-flight requests may take to finish on shutdown (server.shutdown.timeout)")
+	LogFlags(fs)
+}
+
+// AdminFlags adds the flags of a process mode that serves only the admin
+// listener, such as scheduler, to fs.
+func AdminFlags(fs *pflag.FlagSet) {
+	d := serve.Defaults()
+	FileFlag(fs)
+	fs.String(
+		"admin-listen",
+		d.AdminListen,
+		"admin listener address for the probes (server.admin_listen)",
+	)
+	fs.Duration("shutdown-timeout", d.Shutdown.Timeout,
+		"how long in-flight requests may take to finish on shutdown (server.shutdown.timeout)")
+	LogFlags(fs)
+}
+
+// LogFlags adds --log-level to fs.
+func LogFlags(fs *pflag.FlagSet) {
+	fs.String("log-level", observe.LogDefaults().Level, "debug, info, warn or error (log.level)")
 }
 
 // FileFlag adds only --config, for a command that takes its settings from
@@ -117,7 +142,11 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 	if err := v.UnmarshalExact(&c); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
-	if err := errors.Join(c.Server.Validate(), c.Database.Validate()); err != nil {
+	if err := errors.Join(
+		c.Server.Validate(),
+		c.Database.Validate(),
+		c.Log.Validate(),
+	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 	return &c, nil

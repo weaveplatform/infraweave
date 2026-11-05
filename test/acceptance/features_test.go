@@ -239,6 +239,8 @@ type world struct {
 	// the scenario's database, in the order they started.
 	servers []*Server
 	db      *Database
+	// ownPG is the scenario's own PostgreSQL container, when it has one.
+	ownPG *OwnPostgres
 	// api and admin call the first server's two listeners through pkg/sdk;
 	// apis call each server's API listener, in the order of servers.
 	api, admin *sdk.Client
@@ -274,6 +276,9 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 		if w.db != nil {
 			err = errors.Join(err, w.db.Drop(ctx))
 		}
+		if w.ownPG != nil {
+			err = errors.Join(err, w.ownPG.Terminate(ctx))
+		}
 		if w.dir != "" {
 			err = errors.Join(err, os.RemoveAll(w.dir))
 		}
@@ -282,6 +287,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	(&referenceSteps{}).register(sc)
 	(&deploySteps{}).register(sc)
 	(&servedSteps{w: w}).register(sc)
+	(&observeSteps{w: w}).register(sc)
 	(&harnessSteps{w: w}).register(sc)
 }
 
@@ -339,9 +345,9 @@ func (w *world) database(ctx context.Context) (*Database, error) {
 // server, which needs the scenario's database.
 var errNeedsPostgres = errors.New("a scenario that starts infraweave needs @postgres")
 
-// startServer runs one more infraweave serve on the scenario's database,
-// with rateLimit as its server.rate_limit when it is not nil.
-func (w *world) startServer(ctx context.Context, rateLimit map[string]any) (*Server, error) {
+// startServer runs one more infraweave all on the scenario's database, with
+// settings over serverConfig's server settings.
+func (w *world) startServer(ctx context.Context, settings map[string]any) (*Server, error) {
 	if !slices.Contains(w.tags, "@postgres") {
 		return nil, errNeedsPostgres
 	}
@@ -349,10 +355,16 @@ func (w *world) startServer(ctx context.Context, rateLimit map[string]any) (*Ser
 	if err != nil {
 		return nil, err
 	}
-	config, err := serverConfig(db.DSN, rateLimit)
+	config, err := serverConfig(db.DSN, settings)
 	if err != nil {
 		return nil, err
 	}
+	return w.launch(ctx, "all", config)
+}
+
+// launch runs one more infraweave process mode with config and gives the
+// scenario SDK clients for its listeners.
+func (w *world) launch(ctx context.Context, mode string, config []byte) (*Server, error) {
 	bin, err := binary(ctx)
 	if err != nil {
 		return nil, err
@@ -364,11 +376,19 @@ func (w *world) startServer(ctx context.Context, rateLimit map[string]any) (*Ser
 			return nil, fmt.Errorf("server dir: %w", err)
 		}
 	}
-	srv, err := StartServer(ctx, bin, dir, w.s.coverDir, config)
+	srv, err := StartServer(ctx, bin, dir, w.s.coverDir, mode, config)
 	if err != nil {
 		return nil, err
 	}
 	w.servers = append(w.servers, srv)
+	if len(w.servers) == 1 {
+		if w.admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
+			return nil, fmt.Errorf("sdk: %w", err)
+		}
+	}
+	if srv.API == "" {
+		return srv, nil
+	}
 	api, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry))
 	if err != nil {
 		return nil, fmt.Errorf("sdk: %w", err)
@@ -376,9 +396,6 @@ func (w *world) startServer(ctx context.Context, rateLimit map[string]any) (*Ser
 	w.apis = append(w.apis, api)
 	if len(w.servers) == 1 {
 		w.api = api
-		if w.admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
-			return nil, fmt.Errorf("sdk: %w", err)
-		}
 	}
 	return srv, nil
 }
