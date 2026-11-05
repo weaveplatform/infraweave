@@ -6,8 +6,8 @@
 // server.rate_limit and server.idempotency; Database holds decision 0005's
 // database.* settings of platform/sql. Defaults are what an empty
 // configuration means, Validate rejects a setting the server could not start
-// with, ServeFlags declares the serve process mode's flags, and Load decodes
-// them.
+// with, ServeFlags declares the serve process mode's flags, FileFlag only
+// --config for commands such as migrate, and Load decodes them.
 //
 // Settings come from flags, INFRAWEAVE_* environment variables and a YAML
 // file named by --config, in that order of precedence. The file is strict:
@@ -18,7 +18,7 @@
 //
 // Load reads the parsed flag set, the INFRAWEAVE_* environment variables and,
 // when --config names one, that YAML file. It writes nothing; every failure is
-// returned as an error prefixed config:, bind flags: or read config:.
+// returned as an error prefixed config: or read config:.
 //
 // # Dependencies
 //

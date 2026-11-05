@@ -19,7 +19,7 @@ func main() {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.AddCommand(serveCmd(), versionCmd())
+	root.AddCommand(serveCmd(), migrateCmd(), versionCmd())
 	// SIGTERM is how a container runtime asks the process to stop.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	err := root.ExecuteContext(ctx)

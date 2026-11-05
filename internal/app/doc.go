@@ -10,7 +10,9 @@
 // front of each route, with each operation's cost class read from the
 // embedded spec's x-infraweave-cost. Start and Serve run the API and the
 // probes on their two listeners; Serve also opens PostgreSQL when
-// database.url is set. Version is the line infraweave version
+// database.url is set, and applies or checks the migration streams Streams
+// registers, in the declared graph's order. MigrateUp and MigrateStatus are
+// infraweave migrate up and status. Version is the line infraweave version
 // prints.
 //
 // # Input and output
@@ -18,8 +20,10 @@
 // Start and Serve bind the API and admin listeners through httpkit/serve and
 // answer HTTP on them until the context ends; Serve then drains in-flight
 // requests. The operation table is decoded once from the spec embedded in
-// gen/api. Serve connects to PostgreSQL through platform/sql before either
-// listener binds and closes the pools after the drain. Panics and listener
+// gen/api. Serve connects to PostgreSQL through platform/sql and migrates it
+// through platform/sql/migrate before either listener binds, logging each
+// file it applies, and closes the pools after the drain. MigrateUp and
+// MigrateStatus write their report to the given io.Writer. Panics and listener
 // events are logged through the given
 // slog.Logger. It reads no file and no environment variable itself: config
 // does that before it is called.
@@ -29,7 +33,8 @@
 // It imports app/config for the settings; platform/gen/api for the strict
 // server; platform/httpkit/{serve,middleware,middleware/ratelimit,
 // middleware/idempotency,problem} for the listeners and controls;
-// platform/observe for the probes; platform/sql for the database;
+// platform/observe for the probes; platform/sql, sql/migrate and
+// sql/schema for the database and its streams;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no
 // package under platform, kernel or agent may (repo layout, depguard rules).

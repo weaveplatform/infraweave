@@ -106,7 +106,7 @@ Every stateful feature needs a store, and several records wait on this one:
 |---|---|
 | Identifiers | ULIDs generated in Go (`github.com/oklog/ulid/v2`, monotonic within a millisecond), stored in `uuid` columns and rendered as 26-character ULID text on the wire. Runs, worker pools and stacks carry the ULIDs that report 28 records ([28 section 1.2](../reference/28-data-model.md#12-identity-and-tenancy)) |
 | Slugs | Slug-addressed entities (stacks, modules, spaces, contexts, policies, templates, blueprints) keep a ULID key and a `slug text` with `unique (account_id, slug)`. A reslug updates one column; foreign keys reference the ULID |
-| Tenancy | Every account-scoped table carries `account_id uuid not null`, and its primary or unique keys lead with it. One installation hosts many accounts ([0007](0007-authorization-spaces-and-roles.md)) |
+| Tenancy | Every account-scoped table carries `account_id uuid not null`, and its primary or unique keys lead with it. One installation hosts many accounts ([0007](0007-authorization-spaces-and-roles.md)). A table is account-scoped unless its table comment begins `global:` and gives the reason, such as `global: the migration runner's record of applied files` |
 | Spaces | Space-scoped tables carry `space_id uuid not null` with an index. The space tree and reachability are [0007](0007-authorization-spaces-and-roles.md)'s |
 | Time | `timestamptz` only. Conversion to the Unix seconds that Spacelift's fields use happens in handlers. The database clock (`now()`) is the clock for leases, expiries and timers |
 | Enumerations | `text` with a `CHECK` constraint, not PostgreSQL enum types, so adding a value is an ordinary migration |
@@ -130,7 +130,10 @@ in the same database, in the `flows` PostgreSQL schema that
 
 - **Embedded streams.** Migrations are SQL files embedded with `embed.FS`, in
   one or more named streams. Decision 0004 places the streams: each domain
-  has one. Within a stream, files are named
+  has one, and the `platform` stream in `internal/platform/sql/schema` holds
+  the tables of platform packages, such as the shared idempotency keys. Every
+  domain's tables may reference the platform's, and the platform's reference
+  none, so it is registered first. Within a stream, files are named
   `NNNNN_snake_case.sql` (five digits, gap-free). The composition root
   registers the streams in the domains' dependency order, and the runner
   applies them in that order, so a stream may refer to tables of the streams
@@ -154,8 +157,10 @@ in the same database, in the `flows` PostgreSQL schema that
      on an applied version fails the start.
   3. Apply each pending file in its own transaction and record it in that
      transaction. A file whose first line is `-- infraweave:no-transaction` runs
-     outside a transaction, for `CREATE INDEX CONCURRENTLY`. It must be
-     re-runnable, using `IF NOT EXISTS`.
+     outside a transaction, for `CREATE INDEX CONCURRENTLY`, one statement at
+     a time, split where a line ends in a semicolon, and is recorded after
+     its last statement. It must be re-runnable, using `IF NOT EXISTS`. An
+     unknown `-- infraweave:` directive fails the start.
   4. Release the lock.
 - **Mixed versions.** Release N's migrations keep release N-1's binary working:
   columns are added before they are used, and dropped one release after their
@@ -164,9 +169,11 @@ in the same database, in the `flows` PostgreSQL schema that
   own stream.
 - **Refusing to start.** A binary refuses to start, and says why, when:
   - a stream's `compatible_from` is greater than the binary's newest
-    embedded version of that stream (the binary is too old);
-  - an applied version that the binary should know is missing from its
-    embedded set (the schema has diverged);
+    embedded version of that stream (the binary is too old). A stream the
+    binary does not register, added by a newer release, counts as version 0;
+  - the schema has diverged: a version the binary embeds is applied under
+    another file's name, or one of its files below the newest applied
+    version was never applied;
   - the upgrade would skip a major release. Each binary embeds an
     `upgrade_floor`: the newest migration of the last minor release of the
     previous major, per stream. A database where any stream's newest applied

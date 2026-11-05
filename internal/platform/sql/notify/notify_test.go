@@ -78,7 +78,7 @@ func TestAccNotifyReconnect(t *testing.T) {
 	notify.SetBackoff(t, 10*time.Millisecond, 50*time.Millisecond)
 	db := sqltest.Open(t)
 	pool := db.Primary()
-	l := notify.NewListener(db.ListenConfig(), slog.New(slog.DiscardHandler))
+	l := notify.NewListener(db.ConnConfig(), slog.New(slog.DiscardHandler))
 	sub, err := l.Subscribe(notify.Invalidate)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +156,7 @@ func TestAccNotifyReconnect(t *testing.T) {
 func TestAccNotifySlowSubscriber(t *testing.T) {
 	db := sqltest.Open(t)
 	pool := db.Primary()
-	l := start(t, db.ListenConfig(), slog.New(slog.DiscardHandler))
+	l := start(t, db.ConnConfig(), slog.New(slog.DiscardHandler))
 	sub, err := l.Subscribe(notify.Runs)
 	if err != nil {
 		t.Fatal(err)

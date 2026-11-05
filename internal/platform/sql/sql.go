@@ -26,7 +26,18 @@ type Config struct {
 	// idle_in_transaction_session_timeout,
 	// database.idle_in_transaction_timeout.
 	IdleInTransactionTimeout time.Duration `mapstructure:"idle_in_transaction_timeout"`
+	// Migrate is what a process mode does with pending migrations at start,
+	// database.migrate: MigrateAuto or MigrateCheck.
+	Migrate string `mapstructure:"migrate"`
 }
+
+// The database.migrate values: auto applies pending migrations at start;
+// check refuses to start while any are pending, for operators who run
+// infraweave migrate up as a separate job.
+const (
+	MigrateAuto  = "auto"
+	MigrateCheck = "check"
+)
 
 // Defaults are the settings an empty configuration means.
 func Defaults() Config {
@@ -34,6 +45,7 @@ func Defaults() Config {
 		MaxConns:                 20,
 		StatementTimeout:         30 * time.Second,
 		IdleInTransactionTimeout: 60 * time.Second,
+		Migrate:                  MigrateAuto,
 	}
 }
 
@@ -75,6 +87,10 @@ func (c Config) Validate() error {
 			errs = append(errs, fmt.Errorf("%w: %s must be at least 1ms, got %s",
 				ErrConfig, d.key, d.v))
 		}
+	}
+	if c.Migrate != MigrateAuto && c.Migrate != MigrateCheck {
+		errs = append(errs, fmt.Errorf("%w: database.migrate must be %s or %s, got %q",
+			ErrConfig, MigrateAuto, MigrateCheck, c.Migrate))
 	}
 	return errors.Join(errs...)
 }
@@ -138,7 +154,7 @@ func open(ctx context.Context, key, url string, c Config) (*pgxpool.Pool, error)
 
 // setSessionParams sets the per-connection timeouts in the startup
 // message, so a connection carries them from its first statement;
-// ListenConfig's copy carries them too.
+// ConnConfig's copy carries them too.
 func setSessionParams(cc *pgx.ConnConfig, c Config) {
 	cc.RuntimeParams["statement_timeout"] = strconv.FormatInt(c.StatementTimeout.Milliseconds(), 10)
 	cc.RuntimeParams["idle_in_transaction_session_timeout"] = strconv.FormatInt(
@@ -173,9 +189,10 @@ func (d *DB) Primary() *pgxpool.Pool { return d.primary }
 // a worker poll. Without database.read_url it is the primary.
 func (d *DB) Read() *pgxpool.Pool { return d.read }
 
-// ListenConfig is a copy of the primary's connection settings for a
-// connection outside the pool, such as package notify's.
-func (d *DB) ListenConfig() *pgx.ConnConfig { return d.primary.Config().ConnConfig.Copy() }
+// ConnConfig is a copy of the primary's connection settings for a
+// dedicated connection outside the pools: package notify's listener and the
+// migration runner's session, which holds its advisory lock.
+func (d *DB) ConnConfig() *pgx.ConnConfig { return d.primary.Config().ConnConfig.Copy() }
 
 // Close closes both pools.
 func (d *DB) Close() {

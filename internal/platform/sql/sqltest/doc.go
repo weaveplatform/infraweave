@@ -1,9 +1,12 @@
 // Package sqltest gives each test its own PostgreSQL database (decision
 // 0016). A test package calls Main from TestMain with test/acceptance's
-// pinned image; the first DSN or Open then starts one server for the whole
-// binary, and each call creates a database copied from Template and drops it
-// when the test ends. Server starts a separate server for a test that needs
-// another major version or stops the server.
+// pinned image and the migration streams its tests need; the first DSN, Open
+// or Empty then starts one server for the whole binary and migrates Template
+// with those streams. Each DSN or Open creates a database copied from
+// Template, so it starts migrated, and Empty one with nothing applied, for a
+// test that applies streams itself; each is dropped when its test ends.
+// Server starts a separate server for a test that needs another major
+// version or stops the server.
 //
 // Without a Docker daemon a test skips, unless RequireDocker is set to 1, as
 // CI sets it: there a missing daemon fails the test, so a database test never
@@ -17,6 +20,6 @@
 //
 // # Dependencies
 //
-// It imports testcontainers and its postgres module, pgx, and platform/sql
-// for Open. Only tests import it.
+// It imports testcontainers and its postgres module, pgx, platform/sql for
+// Open and platform/sql/migrate for Template. Only tests import it.
 package sqltest

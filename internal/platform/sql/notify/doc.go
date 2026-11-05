@@ -19,6 +19,6 @@
 // # Dependencies
 //
 // It imports pgx and pgconn, and the standard library otherwise. It takes the
-// connection settings from platform/sql's DB.ListenConfig and imports no
+// connection settings from platform/sql's DB.ConnConfig and imports no
 // infraweave package.
 package notify
