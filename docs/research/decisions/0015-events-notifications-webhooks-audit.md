@@ -302,8 +302,8 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
 ### Audit trail
 
 - **Recording.** Every mutating operation records an `AuditTrailEntry`
-  through `audit.Record(ctx, tx, entry)`, in the transaction of the
-  change, so an entry exists exactly when the change does. Failed logins
+  through `audit.Record(ctx, entry)`, in the transaction that `tx.Do` put
+  on `ctx`, so an entry exists exactly when the change does. Failed logins
   are recorded by the authentication path (decision 0006).
 - **Actions.** Each mutating operation in the served spec names its action
   in `x-infraweave-audit-action` (`<resource>.<verb>`, snake case, for
@@ -320,7 +320,9 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
 - **The organization's trail.** Operations of the `Organization` and `SSO`
   tags, break-glass sign-ins ([0006](0006-authentication-and-tokens.md)) and
   the operator API's changes to an organization record entries with the
-  organization's ID and no account. Organization admins list them through
+  organization's ID and no account, in `organization_audit_trail_entries`,
+  keyed by organization, so `audit_trail_entries` stays account-scoped.
+  Organization admins list them through
   the `Organization` tag; no account's listing or audit webhook shows them,
   because they are not that account's data.
 - **Retention.** `audit.retention`, default 30 days, Spacelift's value.
@@ -372,13 +374,15 @@ flows while the account's organization lacks it ([0018](0018-flows-runtime.md)).
 ### Storage
 
 Report 28's `webhooks` (kind `named`, `stack` or `audit`),
-`webhook_secret_headers`, `webhook_deliveries`, `audit_trail_entries`,
-`notifications`, `slack_integrations` and `stack_slack_subscriptions`
+`webhook_secret_headers`, `webhook_deliveries`, `audit_trail_entries`
+(account entries only), `notifications`, `slack_integrations` and
+`stack_slack_subscriptions`
 ([28 section 12.9](../reference/28-data-model.md#129-events)), plus:
 
 | Table | Key | Purpose |
 |---|---|---|
 | `events` | `(account, id)` | The outbox, and the replay source for streams |
+| `organization_audit_trail_entries` | `(organization, id)` | The organization's trail: entries with an organization and no account |
 | `event_deliveries` | `(event, sink, target, rule_index)` | Fan-out idempotency and delivery state |
 | `webhook_failure_counts` | `webhook` | Consecutive failures for auto-disable |
 | `slack_app_config` | `account` | The account's Slack workspace installation; the app's own credentials are configuration (`slack.*`, above) |

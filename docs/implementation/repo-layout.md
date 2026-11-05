@@ -88,7 +88,7 @@ infraweave/
 │   │   ├── labels.go              labels and autoattach: matching (P5)
 │   │   ├── run.go                 RunState (22 values), RunType, StackState, RunPriority wire names
 │   │   ├── vendor.go              VendorKind (P5)
-│   │   ├── audit.go               AuditEntry (P18b)
+│   │   ├── audit.go               AuditEntry (P2c)
 │   │   ├── page.go                Cursor and Page of decision 0003
 │   │   ├── search/                SearchInput predicate, order and cursor types (P5)
 │   │   └── vcsroutes/             provider API route tables shared by vcs and agent/vcsagent (P19b)

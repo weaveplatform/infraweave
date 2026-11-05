@@ -2192,7 +2192,9 @@ own records, and the metrics and traces operators run infraweave with.
    `internal/platform/audit` `Record` call in each, in the change's own
    transaction, write-only fields as `SecretSHA` under
    `DeriveKey("audit-secret-sha")`; the trail's search, retention and
-   ordered shipper in `internal/events/internal/core/audit`
+   ordered shipper in `internal/events/internal/core/audit`; the
+   organization's trail in `organization_audit_trail_entries`, keyed by
+   organization
    ([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)).
    Operations: `searchAuditTrailEntries`, `searchAuditTrailEntriesSuggestions`,
    `auditTrailSetWebhook` (with `webhook-verification-failed`),
