@@ -77,10 +77,11 @@ shipper. Decision 0004 owns their placement.
   only gains optional fields. The same schemas type webhook default
   payloads, stream messages, Flows trigger outputs and the expressions
   that read them ([0024](0024-expression-language.md)).
-- **Outbox.** `events.Emit(ctx, tx, ev)` inserts a row into `events` in the
-  transaction of the change, and in the same transaction enqueues an
-  `events.fanout` job on decision 0011's queue, keyed by the event's ULID,
-  and issues `pg_notify('infraweave_events', '<account>:<id>')`, which
+- **Outbox.** `outbox.Append(ctx, ev)` inserts a row into `events` in the
+  transaction on `ctx`, the change's, and refuses to run outside one. In the
+  same transaction it enqueues an `events.fanout` job on decision 0011's
+  `events` queue, keyed by the event's ULID with policy `Ignore`, and
+  issues `pg_notify('infraweave_events', '<account>:<id>')`, which
   PostgreSQL delivers at commit. An event therefore exists exactly when its
   change commits. Flows events use the same call and land in `flow_events`
   with their lineage ([0018](0018-flows-runtime.md)).
@@ -96,9 +97,15 @@ shipper. Decision 0004 owns their placement.
   report 19 rules: `policy_receipts` sits at `run_updated`, and the run type
   and change action enums are the contract's. The other kinds' documents
   are infraweave's own schemas.
-- **Fan-out.** The `events.fanout` job computes every delivery the event
-  causes and enqueues one `events.deliver` job per target, then marks the
-  event fanned out. Each delivery job carries the idempotency key
+- **Fan-out.** Consumers subscribe to kinds in code
+  (`outbox.Subscribe(kind, consumer, handler)`): the `events` domain's sinks
+  and the Flows trigger consumer. The `events.fanout` job enqueues one
+  `events.consume` job per consumer of the event's kind, keyed
+  `<event>:<consumer>` and recorded in `event_consumptions`, then marks the
+  event fanned out, all in one transaction, so a fan-out that runs twice
+  reaches no consumer twice and a failing consumer retries alone. The
+  sinks' consumer computes every delivery the event causes and enqueues one
+  `events.deliver` job per target. Each delivery job carries the idempotency key
   `(event, sink, target, rule index)`, unique in `event_deliveries`, so a
   fan-out that runs twice creates no second delivery. One slow endpoint
   never holds up another.
@@ -183,8 +190,9 @@ no capability needs a stream.
   sinks need order and enforce it themselves. The Slack sink keeps
   `last_state_version` per `(channel, run)` and drops an update older than
   the message it would edit. The audit stream is ordered (below).
-- **Retention.** An `events` row is deleted `events.retention` (default
-  72h) after it is fanned out. A row not fanned out is never deleted, and
+- **Retention.** The `events.prune` periodic task, every 10 minutes,
+  deletes an `events` row and its `event_consumptions` `events.retention`
+  (default 72h) after the row is fanned out. A row not fanned out is never deleted, and
   `infraweave.events.oldest_unfanned` reports its age
   ([0017](0017-observability-and-health.md)).
 

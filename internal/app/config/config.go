@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
@@ -23,6 +24,7 @@ type Config struct {
 	Database sql.Config        `mapstructure:"database"`
 	Log      observe.LogConfig `mapstructure:"log"`
 	Queue    queue.Config      `mapstructure:"queue"`
+	Events   outbox.Config     `mapstructure:"events"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -46,6 +48,7 @@ func Defaults() Config {
 		Database: sql.Defaults(),
 		Log:      observe.LogDefaults(),
 		Queue:    queue.Defaults(),
+		Events:   outbox.Defaults(),
 	}
 }
 
@@ -152,6 +155,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Database.Validate(),
 		c.Log.Validate(),
 		c.Queue.Validate(),
+		c.Events.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}

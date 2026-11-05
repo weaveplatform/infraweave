@@ -7951,7 +7951,7 @@
         {
           "file": "docs/research/decisions/0008-run-execution-and-worker-protocol.md",
           "present": [
-            "emits a `run_updated` event with `events.Emit` in the same transaction"
+            "emits a `run_updated` event with `outbox.Append` in the same transaction"
           ],
           "absent": [
             "run.state_changed"

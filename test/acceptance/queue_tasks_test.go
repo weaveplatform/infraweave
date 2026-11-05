@@ -16,6 +16,7 @@ import (
 var handlerLines = map[string]string{
 	"queue.prune":       "finished jobs pruned",
 	"idempotency.purge": "expired idempotency keys purged",
+	"events.prune":      "fanned-out events pruned",
 }
 
 // lockHolder names the session that holds a table lock across steps.

@@ -69,19 +69,21 @@ func runMode(t *testing.T, observer *sql.DB, m Mode) (out *lines, admin string, 
 }
 
 // TestAccSchedulerModeStarts checks that the scheduler mode registers the
-// platform's periodic tasks, runs them through its workers, and stops the
+// platform's periodic tasks and events.prune, runs them through its workers, and stops the
 // ticker before the workers; and that serve runs neither.
 func TestAccSchedulerModeStarts(t *testing.T) {
 	observer := sqltest.Open(t)
 	out, _, stop := runMode(t, observer, ModeScheduler)
 	if n := rows(t, observer, `SELECT count(*) FROM periodic_tasks
-WHERE (name, interval) IN (('queue.prune', interval '10 minutes'), ('idempotency.purge', interval '1 hour'))`); n != 2 {
-		t.Errorf("%d of the platform's periodic tasks registered, want 2", n)
+WHERE (name, interval) IN (('queue.prune', interval '10 minutes'), ('idempotency.purge', interval '1 hour'),
+    ('events.prune', interval '10 minutes'))`); n != 3 {
+		t.Errorf("%d of the platform's periodic tasks registered, want 3", n)
 	}
-	// Both are due once registered, so the first ticks run them.
-	until(t, "both tasks to run", func() bool {
+	// Each is due once registered, so the first ticks run them.
+	until(t, "the tasks to run", func() bool {
 		return rows(t, observer, `SELECT count(*) FROM jobs
-WHERE kind IN ('queue.prune', 'idempotency.purge') AND queue = 'maintenance' AND state = 'succeeded'`) == 2
+WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune') AND queue = 'maintenance'
+    AND state = 'succeeded'`) == 3
 	})
 	if n := rows(
 		t,
@@ -94,7 +96,7 @@ WHERE kind IN ('queue.prune', 'idempotency.purge') AND queue = 'maintenance' AND
 	got := out.String()
 	for _, want := range []string{
 		"queue workers started", "workers.maintenance=1", "scheduler ticker started",
-		"finished jobs pruned", "expired idempotency keys purged",
+		"finished jobs pruned", "expired idempotency keys purged", "fanned-out events pruned",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the log lacks %q:\n%s", want, got)

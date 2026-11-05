@@ -101,6 +101,9 @@ queue:
 	if err != nil {
 		t.Fatal(err)
 	}
+	if c.Events.Retention != 72*time.Hour {
+		t.Errorf("events.retention %s, want the default", c.Events.Retention)
+	}
 	if c.Queue.Lease != time.Minute || c.Queue.Workers(queue.Events) != 2 ||
 		c.Queue.Workers(queue.VCSInbox) != 6 || c.Queue.Workers(queue.Default) != 8 {
 		t.Errorf("queue settings %+v", c.Queue)
@@ -200,6 +203,7 @@ func TestUnitLoadRejects(t *testing.T) {
 		{"unknown database key", "database:\n  host: db\n", nil, "host"},
 		{"unknown queue", "queue:\n  queues:\n    iot:\n      workers: 1\n", nil, "iot"},
 		{"bad queue lease", "queue:\n  lease: 0s\n", nil, "queue.lease"},
+		{"no event retention", "events:\n  retention: 0s\n", nil, "events.retention"},
 		{"unknown migrate mode", "database:\n  migrate: never\n", nil, "database.migrate"},
 		{"unknown IAM provider", "database:\n  iam_auth: ibm\n", nil, "database.iam_auth"},
 		{

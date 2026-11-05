@@ -16,8 +16,10 @@
 // admin listener and, in serve and all, the API on the API listener, with
 // the controls' state in PostgreSQL (postgresGuards). In scheduler and all
 // it starts the scheduler role (startScheduler): the queue's workers with
-// the platform's handlers, and the cron ticker over periodic_tasks, after
-// registering queue.prune and idempotency.purge; it stops the ticker, then
+// the platform's handlers and the outbox's events.fanout and
+// events.consume, and the cron ticker over periodic_tasks, after
+// registering queue.prune, idempotency.purge and events.prune; every
+// domain appends to and subscribes on Run's one outbox. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
 // infraweave migrate up and status. Version is the line infraweave version
@@ -45,7 +47,7 @@
 // middleware/idempotency,problem} for the listeners and controls;
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
-// platform/queue and platform/cron for the scheduler role;
+// platform/queue, platform/cron and platform/outbox for the scheduler role;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no
 // package under platform, kernel or agent may (repo layout, depguard rules).
