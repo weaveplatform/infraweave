@@ -133,7 +133,9 @@ func TestUnitIAMAuth(t *testing.T) {
 					t.Errorf("connection %d password = %q, want %q", i, cc.Password, want)
 				}
 			}
-			if pc.ConnConfig.Password != "" {
+			// The pool's own settings may carry PGPASSWORD, as on runners
+			// with PostgreSQL installed, but never a token.
+			if strings.HasPrefix(pc.ConnConfig.Password, tc.mode+"-") {
 				t.Errorf("the pool kept a token: %q", pc.ConnConfig.Password)
 			}
 			tc.check(t, f)
