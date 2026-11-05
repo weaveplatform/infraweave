@@ -14,6 +14,10 @@ type UnimplementedStrict struct{}
 
 var _ StrictServerInterface = UnimplementedStrict{}
 
+func (UnimplementedStrict) MessageQueueStats(context.Context, MessageQueueStatsRequestObject) (MessageQueueStatsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "messageQueueStats", Route: "GET /message-queue-stats"}
+}
+
 func (UnimplementedStrict) StackDependencyCreate(context.Context, StackDependencyCreateRequestObject) (StackDependencyCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackDependencyCreate", Route: "POST /stack-dependencies"}
 }

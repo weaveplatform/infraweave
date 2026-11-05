@@ -53,7 +53,7 @@ func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, status int, detai
 }
 
 func TestUnitAPIRoutes(t *testing.T) {
-	api := API(discard(), config.Defaults().Server, memory(config.Defaults().Server))
+	api := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), nil)
 	cases := []struct {
 		name, method, target string
 		status               int

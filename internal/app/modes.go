@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -80,7 +81,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if m.API {
 		g = postgresGuards(background, &wg, c.Server, db, log)
 	}
-	api, admin := handlers(log, c.Server, m, g, health)
+	api, admin := handlers(log, c.Server, m, g, queue.New(db.Primary()), health)
 	//nolint:wrapcheck // serve's errors name the listener
 	return serve.Run(ctx, c.Server.Config, log, api, admin, health.Stop)
 }
@@ -105,17 +106,19 @@ func databaseChecks(h *observe.Health, db *sql.DB) {
 }
 
 // handlers are mode m's two listeners' handlers: the API, behind the
-// controls whose state g holds, or nil when m serves no API, so serve binds
-// no API listener; and the probes, which answer from health.
+// controls whose state g holds and reading queue depths from queues, or nil
+// when m serves no API, so serve binds no API listener; and the probes,
+// which answer from health.
 func handlers(
 	log *slog.Logger,
 	c config.Server,
 	m Mode,
 	g Guards,
+	queues QueueStats,
 	health *observe.Health,
 ) (api, admin http.Handler) {
 	if m.API {
-		api = API(log, c, g)
+		api = API(log, c, g, queues)
 	}
 	return api, observe.Probes(log, health)
 }
