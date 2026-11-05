@@ -573,3 +573,20 @@ func TestUnitSDKIterate(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitSDKDoHeaders(t *testing.T) {
+	var got http.Header
+	r := chi.NewRouter()
+	r.Post("/api/v1/things", func(w http.ResponseWriter, req *http.Request) {
+		got = req.Header.Clone()
+		w.WriteHeader(http.StatusCreated)
+	})
+	c := client(t, r)
+	if _, err := c.Do(t.Context(), http.MethodPost, "/api/v1/things", nil,
+		Header{IdempotencyKeyHeader, "caller-key"}, Header{"X-Test", "yes"}); err != nil {
+		t.Fatal(err)
+	}
+	if got.Get(IdempotencyKeyHeader) != "caller-key" || got.Get("X-Test") != "yes" {
+		t.Errorf("sent %v", got)
+	}
+}

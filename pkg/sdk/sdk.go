@@ -84,11 +84,20 @@ type Response struct {
 	Body   []byte
 }
 
+// Header sets one request header of a Do call.
+type Header struct{ Name, Value string }
+
 // Do sends method to path, which starts at the server's root (/api/v1/…,
 // or /livez on the admin listener), with body encoded as JSON when it is
-// not nil. It returns the answer and, for a status of 400 or more, the
-// typed error of its problem as well.
-func (c *Client) Do(ctx context.Context, method, path string, body any) (*Response, error) {
+// not nil and with headers set. It returns the answer and, for a status of
+// 400 or more, the typed error of its problem as well. A caller's
+// Idempotency-Key header replaces the one the SDK would choose.
+func (c *Client) Do(
+	ctx context.Context,
+	method, path string,
+	body any,
+	headers ...Header,
+) (*Response, error) {
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -103,6 +112,9 @@ func (c *Client) Do(ctx context.Context, method, path string, body any) (*Respon
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	for _, h := range headers {
+		req.Header.Set(h.Name, h.Value)
 	}
 	resp, err := c.send(req)
 	if err != nil {

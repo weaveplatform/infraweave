@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
 var capturesRoot = filepath.Join(repoRoot, "test", "fixtures", "captures")
@@ -69,6 +71,10 @@ func TestAccCaptures(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	api, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry))
+	if err != nil {
+		t.Fatal(err)
+	}
 	real := 0
 	for _, c := range captures {
 		if !c.Meta.Example {
@@ -76,7 +82,7 @@ func TestAccCaptures(t *testing.T) {
 		}
 		t.Run(c.ID, func(t *testing.T) {
 			for i, call := range c.Calls {
-				if err := Replay(t.Context(), "http://"+srv.API, call); err != nil {
+				if err := Replay(t.Context(), api, call); err != nil {
 					t.Errorf("%s call %d: %v", c.ID, i+1, err)
 				}
 			}
@@ -236,6 +242,14 @@ func TestUnitReplay(t *testing.T) {
 	)
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
+	client := func(base string) *sdk.Client {
+		c, err := sdk.New(base, sdk.WithRetry(sdk.NoRetry))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	api := client(srv.URL)
 	call := CaptureCall{
 		Method: http.MethodPost, Path: "/api/v1/things",
 		Headers: map[string]string{"X-Test": "yes"},
@@ -245,12 +259,15 @@ func TestUnitReplay(t *testing.T) {
 			"/items/0/a~1b": "slash", "/items/0/c~0d": "tilde",
 		}},
 	}
-	if err := Replay(t.Context(), srv.URL, call); err != nil {
+	if err := Replay(t.Context(), api, call); err != nil {
 		t.Fatalf("Replay = %v", err)
 	}
 	for name, mutate := range map[string]func(c *CaptureCall){
-		"status":         func(c *CaptureCall) { c.Expect.Status = 501 },
-		"problem":        func(c *CaptureCall) { c.Expect.Problem = "not-found" },
+		"status":  func(c *CaptureCall) { c.Expect.Status = 501 },
+		"problem": func(c *CaptureCall) { c.Expect.Problem = "not-found" },
+		"no problem": func(c *CaptureCall) {
+			*c = CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{Status: 200, Problem: "not-found"}}
+		},
 		"body value":     func(c *CaptureCall) { c.Expect.Body = map[string]any{"/status": 500} },
 		"missing field":  func(c *CaptureCall) { c.Expect.Body = map[string]any{"/nope": 1} },
 		"index range":    func(c *CaptureCall) { c.Expect.Body = map[string]any{"/items/5": 1} },
@@ -258,25 +275,27 @@ func TestUnitReplay(t *testing.T) {
 		"through scalar": func(c *CaptureCall) { c.Expect.Body = map[string]any{"/status/x": 1} },
 		"unencodable":    func(c *CaptureCall) { c.Expect.Body = map[string]any{"/status": func() {}} },
 		"not JSON answer": func(c *CaptureCall) {
-			*c = CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{Status: 200, Problem: "not-found"}}
+			*c = CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{
+				Status: 200, Body: map[string]any{"/a": 1},
+			}}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := call
 			mutate(&c)
-			if err := Replay(t.Context(), srv.URL, c); !errors.Is(err, ErrParity) {
+			if err := Replay(t.Context(), api, c); !errors.Is(err, ErrParity) {
 				t.Errorf("Replay = %v, want a parity error", err)
 			}
 		})
 	}
-	if err := Replay(t.Context(), srv.URL, CaptureCall{
+	if err := Replay(t.Context(), api, CaptureCall{
 		Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{Status: 200},
 	}); err != nil {
 		t.Errorf("a status-only expectation on a non-JSON answer: %v", err)
 	}
 	if err := Replay(
 		t.Context(),
-		"http://127.0.0.1:0",
+		client("http://127.0.0.1:0"),
 		call,
 	); err == nil ||
 		errors.Is(err, ErrParity) {
