@@ -9,11 +9,10 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
 func TestMain(m *testing.M) {
-	os.Exit(sqltest.Main(m, acceptance.ImagePostgres, schema.Stream()))
+	os.Exit(sqltest.Main(m, schema.Stream()))
 }
 
 func pool(t *testing.T) *pgxpool.Pool {
