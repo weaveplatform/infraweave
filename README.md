@@ -41,13 +41,17 @@ infraweave's own API is authored as fragments in `api/src/api/`:
 merges the fragments into `api/api.openapi.yaml`, served under `/api/v1`. The
 bundle is committed, and a unit test fails when it is stale.
 
-`make parity` compares the bundle with each product's reference by
-`operationId` and route. `api/parity-baseline.<product>.json` accepts the
-reference operations the bundle does not serve unchanged: the missing ones by
-tag, and each moved one with its reason. `TestUnitAPIParity` (Deploy) and
-`TestUnitFlowsParity` fail on a reference operation the baseline does not
-accept and on an entry the bundle no longer needs, so coverage of the
-reference only goes up.
+`make parity` decides, for each product's reference operation, decision
+0016's outcome: served, served with divergence, superseded or missing. A
+served operation that differs from the reference in method, route or
+parameters must record each difference in `x-infraweave-divergence`, and a
+superseded one must not be served. `api/parity-baseline.<product>.json` is
+the computed missing list, by tag. `TestUnitAPIParity` (Deploy) and
+`TestUnitFlowsParity` fail on a broken rule, on a missing operation the
+baseline does not list and on an entry the bundle no longer needs, so
+coverage of the reference only goes up. `make verify-parity` runs the same
+check and also fails when `docs/data/capabilities.json` claims a state the
+acceptance results do not show.
 
 One document holds Deploy and, from P18c, Flows under `/api/v1/flows/`
 ([decision 0018](docs/research/decisions/0018-flows-runtime.md#api-and-clients)).
@@ -133,12 +137,13 @@ phase.
 
 | Target | What |
 |---|---|
-| `make gate` | Everything CI runs: docs-check, vet, lint, lint-fixtures, test, accept, verify-reference, verify-generate, cover, vuln, build |
-| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
+| `make gate` | Everything CI runs: docs-check, vet, lint, lint-fixtures, test, accept, verify-parity, verify-reference, verify-generate, cover, vuln, build |
+| `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, a superseded `operations` entry that is not an operation of its product's reference, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
 | `make test` | Every `TestUnit…` test in the module, with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Every `TestAcc…` test: the Gherkin features (godog) and the suites beside the code, such as specref's fetcher tests; coverage to `cover/accept`. `TestUnitTestNames` fails on a test named neither way ([decision 0016](docs/research/decisions/0016-testing-and-acceptance.md#test-kinds)) |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag (Deploy's, or Flows' with `PRODUCT=flows`) into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
-| `make parity` | Prints, for Deploy and then Flows, the API's present, moved, missing and infraweave-only operations by reference tag, and how they differ from `api/parity-baseline.<product>.json` |
+| `make parity` | Prints, for Deploy and then Flows, each reference operation's outcome (served, served with divergence, superseded, missing) and the infraweave-only operations by tag, and how they differ from `api/parity-baseline.<product>.json` |
+| `make verify-parity` | Fails, for either product, on an unrecorded divergence, a served superseded operation, a stale baseline, or a `docs/data/capabilities.json` state that `cover/accept/cucumber.json` does not show |
 | `make parity-baseline` | Rewrites both `api/parity-baseline.<product>.json` to accept the current parity report, keeping each recorded reason; review the diff |
 | `make bundle` | Merges `api/src/<service>/` fragments into `api/<service>.openapi.yaml` |
 | `make generate` | Bundles, then generates each strict chi server (`internal/platform/gen/<service>`), Go client (`pkg/client/<service>`) and 501 stubs |

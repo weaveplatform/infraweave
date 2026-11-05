@@ -170,17 +170,37 @@ an acceptance scenario in `spec_reference.feature`. For every operation in
 |---|---|
 | served | `api/api.openapi.yaml` has the same `operationId` with the same method and path |
 | served with divergence | the same `operationId`, with each difference listed in `x-infraweave-divergence` |
-| superseded | listed in report 26 section 7, under the rule of [0021](0021-capability-scope-and-supersession.md) |
+| superseded | listed in report 26 section 7, under the rule of [0021](0021-capability-scope-and-supersession.md): the `operations` member of its record in [supersessions.json](../../data/supersessions.json) names it |
 | missing | none of the above |
 
 It fails when a served operation differs from the reference without a
 recorded divergence, when a superseded operation is served, or when an
 operation is both. "Missing" is reported, not failed: it is the backlog.
 
+A reference operation's served match has its `operationId`, or the name
+decision [0001](0001-rest-first-spacelift-surface.md)'s rename table
+([renames.json](../../data/renames.json)) gives it. The comparison covers the
+method, the route (path parameter names aside) and the query, header and
+cookie parameters, with whether each is required. A difference is recorded
+by its name in `x-infraweave-divergence`: `method`, `path` or
+`parameter:<name>`. The rename table records a rename's `operationId` and
+path itself. Decision [0003](0003-api-conventions.md)'s conventions
+(`cursor-pagination`, `idempotency-key`, `rate-limit`) record the parameters
+they add, so an operation that differs only by them is served. Any other
+recorded name, such as a response-shape change, makes the operation served
+with divergence. A recorded `method`, `path` or `parameter:` name that the
+operation does not differ in fails as stale. Operations with
+`x-upstream: none` or the `Organization` tag are infraweave-only, outside
+the parity surface.
+
 ### Behavioural coverage of operations
 
 A scenario names the operations it exercises with tags
-`@op:<operationId>`. `specref parity --states` combines the parity outcome
+`@op:<operationId>`, by the reference's `operationId` or the one
+infraweave serves, and its kind with `@case:success`, `@case:denial` or
+`@case:failure`. A Terraform provider scenario also names its record with
+`@provider:<record id>`, such as `@provider:resource:spacelift_stack`.
+`specref parity --states` combines the parity outcome
 with the last acceptance result (godog's JSON report in
 `cover/accept/cucumber.json`) and computes the state of each tag and
 Terraform record of [capabilities.json](../../data/capabilities.json):
@@ -197,10 +217,13 @@ The three-scenario evidence rule decides `implemented`:
 
 A Terraform resource or data source is `implemented` only when the
 operations it calls are and its provider scenario (below) passes. The
+operations it calls are the reference's `terraform-operations.json`, or the
+record's `calls` where the provider calls a query another file declares. The
 register's states stay hand-maintained (report 30, PD-12);
-`specref parity --states --check docs/data/capabilities.json` fails when a
-recorded state disagrees with the computed one, so the register cannot
-claim more than the tests show. The scope behind the states is
+`specref parity --states --check` fails when a recorded state claims more
+than the computed one, so the register cannot claim more than the tests
+show. A recorded `superseded` is a scope decision, not a claim the tests
+could show, so it never claims more. The scope behind the states is
 [0021](0021-capability-scope-and-supersession.md)'s.
 
 ### The Terraform provider parity oracle

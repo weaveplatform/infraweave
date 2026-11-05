@@ -18,6 +18,9 @@
 //     Products: Deploy and Flows) has a tag: record of that product in
 //     docs/data/capabilities.json, and every tag: record is a tag of its
 //     product's spec, so the scope accounts for every area of both APIs;
+//   - every operations entry of a superseded record of
+//     docs/data/supersessions.json, <product>:<operationId>, names an
+//     operation of that product's reference spec;
 //   - every report that marks a claim *(unverified)* is listed by
 //     a record of docs/data/open-questions.json, the register of open
 //     questions, which in turn makes the report cite that record's id;

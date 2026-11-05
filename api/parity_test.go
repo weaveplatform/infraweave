@@ -39,23 +39,55 @@ func (p parityProduct) baseline(t *testing.T) *specref.ParityBaseline {
 	return b
 }
 
+// registers reads decision 0001's rename table and the supersession
+// register for the product.
+func (p parityProduct) registers(t *testing.T) *specref.ParityRegisters {
+	t.Helper()
+	renames, err := os.ReadFile(filepath.Join("..", "docs", "data", "renames.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sups, err := os.ReadFile(filepath.Join("..", "docs", "data", "supersessions.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg, err := specref.ReadParityRegisters(renames, sups, p.product.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reg
+}
+
 func (p parityProduct) compare(t *testing.T, served []byte) *specref.ParityReport {
 	t.Helper()
-	r, err := p.product.Parity(p.reference, served)
+	return p.compareWith(t, served, p.registers(t))
+}
+
+func (p parityProduct) compareWith(
+	t *testing.T,
+	served []byte,
+	reg *specref.ParityRegisters,
+) *specref.ParityReport {
+	t.Helper()
+	r, err := p.product.Parity(p.reference, served, reg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return r
 }
 
-// checkParity fails when the API loses a reference operation that the
-// baseline does not accept as missing or moved, when a move has no reason,
-// and when the baseline lists an operation the comparison no longer needs,
-// so coverage of the reference can only go up and the baseline shrinks with
+// checkParity fails on a breach of decision 0016's rules (an unrecorded
+// divergence, a served superseded operation), when the API loses a
+// reference operation that the baseline does not accept as missing, and
+// when the baseline lists an operation the comparison no longer needs, so
+// coverage of the reference can only go up and the baseline shrinks with
 // it.
 func checkParity(t *testing.T, p parityProduct) {
 	t.Helper()
 	r := p.compare(t, api.Served)
+	for _, s := range r.Failures {
+		t.Errorf("parity failure: %s", s)
+	}
 	d := r.Diff(p.baseline(t))
 	for _, s := range d.Regressions {
 		t.Errorf("parity regression: %s", s)
@@ -64,8 +96,10 @@ func checkParity(t *testing.T, p parityProduct) {
 		t.Errorf("parity improvement, apply with make parity-baseline: %s", s)
 	}
 	c := r.Counts()
-	t.Logf("%d reference operations: %d present, %d moved, %d missing; %d infraweave-only",
-		c.Reference, c.Present, c.Moved, c.Missing, c.Only)
+	t.Logf("%d reference operations: %d served, %d served with divergence, %d superseded, "+
+		"%d missing; %d infraweave-only",
+		c.Reference, c.By[specref.OutcomeServed], c.By[specref.OutcomeDivergent],
+		c.By[specref.OutcomeSuperseded], c.By[specref.OutcomeMissing], c.Only)
 }
 
 // TestUnitAPIParity checks the API against the Deploy reference.
@@ -145,7 +179,8 @@ func mentions(lines []string, id string) bool {
 
 // TestUnitAPIParityChecks proves the parity test against the committed
 // documents: dropping a served operation, serving a reference operation the
-// baseline lists as missing and moving one each change its verdict.
+// baseline lists as missing, moving one and serving a superseded one each
+// change its verdict.
 func TestUnitAPIParityChecks(t *testing.T) {
 	baseline := deployParity.baseline(t)
 	t.Run("removed operation is a regression", func(t *testing.T) {
@@ -201,30 +236,47 @@ func TestUnitAPIParityChecks(t *testing.T) {
 			t.Errorf("the rewritten baseline still differs: %s", d.Text())
 		}
 	})
-	t.Run("move passes once the baseline records its reason", func(t *testing.T) {
+	t.Run("move fails until x-infraweave-divergence records it", func(t *testing.T) {
 		doc, paths := decodeServed(t)
 		p, opIDs := stacksPath(t, paths)
 		paths["/moved"+p] = paths[p]
 		delete(paths, p)
 		r := deployParity.compare(t, encode(t, doc))
-		d := r.Diff(baseline)
 		for _, id := range opIDs {
-			if !mentions(d.Regressions, id) {
-				t.Errorf("moving %s does not name %s: %q", p, id, d.Regressions)
+			if !mentions(r.Failures, id) {
+				t.Errorf("moving %s does not name %s: %q", p, id, r.Failures)
 			}
 		}
-		moved := r.Baseline(baseline)
-		if len(moved.Moved) != len(opIDs) {
-			t.Fatalf("baseline records %d moves, want %d", len(moved.Moved), len(opIDs))
+		for _, v := range paths["/moved"+p].(document) {
+			if op, ok := v.(document); ok {
+				recorded, _ := op["x-infraweave-divergence"].([]any)
+				op["x-infraweave-divergence"] = append(recorded, specref.DivergencePath)
+			}
 		}
-		if d := r.Diff(moved); d.Clean() {
-			t.Error("a move without a reason passes")
+		r = deployParity.compare(t, encode(t, doc))
+		if len(r.Failures) != 0 {
+			t.Errorf("a recorded move fails: %q", r.Failures)
 		}
-		for i := range moved.Moved {
-			moved.Moved[i].Reason = "The fixture serves the path under /moved."
+		for _, id := range opIDs {
+			if op, _ := r.Operation(id); op.Outcome != specref.OutcomeDivergent {
+				t.Errorf("%s is %s, want served with divergence", id, op.Outcome)
+			}
 		}
-		if d := r.Diff(moved); !d.Clean() {
-			t.Errorf("a move with a reason fails: %s", d.Text())
+		if d := r.Diff(baseline); !d.Clean() {
+			t.Errorf("a recorded move changes the baseline: %s", d.Text())
+		}
+	})
+	t.Run("served superseded operation fails", func(t *testing.T) {
+		_, paths := decodeServed(t)
+		_, opIDs := stacksPath(t, paths)
+		reg := deployParity.registers(t)
+		reg.Superseded[opIDs[0]] = "SUP-99"
+		r := deployParity.compareWith(t, api.Served, reg)
+		if !slices.ContainsFunc(r.Failures, func(s string) bool {
+			return strings.Contains(s, ": "+opIDs[0]+" ") &&
+				strings.Contains(s, "is superseded by SUP-99")
+		}) {
+			t.Errorf("failures = %q", r.Failures)
 		}
 	})
 }
@@ -251,7 +303,7 @@ func TestUnitFlowsParityChecks(t *testing.T) {
 		doc, paths := decodeServed(t)
 		paths["/flows/projects"] = ref["paths"].(document)["/flows/projects"]
 		d := flowsParity.compare(t, encode(t, doc)).Diff(flowsParity.baseline(t))
-		want := "Flows Projects: listProjects is listed as missing, and is present now"
+		want := "Flows Projects: listProjects is listed as missing, and is served now"
 		if len(d.Regressions) != 0 || !slices.Contains(d.Improvements, want) {
 			t.Errorf("diff = %s", d.Text())
 		}

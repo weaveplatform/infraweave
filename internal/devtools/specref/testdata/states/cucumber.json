@@ -1,0 +1,533 @@
+[
+  {
+    "uri": "features/stacks_crud.feature",
+    "id": "stacks-crud",
+    "keyword": "Feature",
+    "name": "Stacks",
+    "description": "",
+    "line": 2,
+    "tags": [
+      {
+        "name": "@postgres",
+        "line": 1
+      },
+      {
+        "name": "@op:stacks",
+        "line": 1
+      }
+    ],
+    "elements": [
+      {
+        "id": "bg",
+        "keyword": "Background",
+        "name": "",
+        "description": "",
+        "line": 3,
+        "type": "background",
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "list-stacks",
+        "keyword": "Scenario",
+        "name": "list stacks",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@case:success",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "list-stacks-without-a-role",
+        "keyword": "Scenario",
+        "name": "list stacks without a role",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@case:denial",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "list-stacks-with-a-bad-cursor",
+        "keyword": "Scenario",
+        "name": "list stacks with a bad cursor",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@case:failure",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "read-a-stack",
+        "keyword": "Scenario",
+        "name": "read a stack",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:stack",
+            "line": 2
+          },
+          {
+            "name": "@case:success",
+            "line": 2
+          },
+          {
+            "name": "@case:failure",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "read-a-stack-without-a-role",
+        "keyword": "Scenario",
+        "name": "read a stack without a role",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:stack",
+            "line": 2
+          },
+          {
+            "name": "@case:denial",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "create-a-stack",
+        "keyword": "Scenario",
+        "name": "create a stack",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:stackCreate",
+            "line": 2
+          },
+          {
+            "name": "@case:success",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "create-a-stack-without-a-role",
+        "keyword": "Scenario",
+        "name": "create a stack without a role",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:stackCreate",
+            "line": 2
+          },
+          {
+            "name": "@case:denial",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          },
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "failed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "create-a-stack-twice",
+        "keyword": "Scenario",
+        "name": "create a stack twice",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:stackCreate",
+            "line": 2
+          },
+          {
+            "name": "@case:failure",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          },
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "skipped",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "delete-a-stack",
+        "keyword": "Scenario",
+        "name": "delete a stack",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:stackDelete",
+            "line": 2
+          },
+          {
+            "name": "@case:success",
+            "line": 2
+          },
+          {
+            "name": "@case:denial",
+            "line": 2
+          },
+          {
+            "name": "@case:failure",
+            "line": 2
+          }
+        ],
+        "steps": []
+      }
+    ]
+  },
+  {
+    "uri": "features/account_ai.feature",
+    "id": "account-ai",
+    "keyword": "Feature",
+    "name": "AI",
+    "description": "",
+    "line": 1,
+    "elements": [
+      {
+        "id": "read-the-AI-switch",
+        "keyword": "Scenario",
+        "name": "read the AI switch",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:thing",
+            "line": 2
+          },
+          {
+            "name": "@case:success",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "read-the-AI-switch-without-a-role",
+        "keyword": "Scenario",
+        "name": "read the AI switch without a role",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:spaceliftThing",
+            "line": 2
+          },
+          {
+            "name": "@case:denial",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "read-the-AI-switch-unauthenticated",
+        "keyword": "Scenario",
+        "name": "read the AI switch unauthenticated",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@op:thing",
+            "line": 2
+          },
+          {
+            "name": "@case:failure",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "uri": "features/provider_stack.feature",
+    "id": "provider-stack",
+    "keyword": "Feature",
+    "name": "Provider",
+    "description": "",
+    "line": 1,
+    "tags": [
+      {
+        "name": "@terraform",
+        "line": 1
+      }
+    ],
+    "elements": [
+      {
+        "id": "apply,-import-and-destroy-a-stack",
+        "keyword": "Scenario",
+        "name": "apply, import and destroy a stack",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@provider:resource:spacelift_stack",
+            "line": 2
+          },
+          {
+            "name": "@op:stack",
+            "line": 2
+          },
+          {
+            "name": "@op:stacks",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "read-a-stack's-outputs",
+        "keyword": "Scenario",
+        "name": "read a stack's outputs",
+        "description": "",
+        "line": 3,
+        "type": "scenario",
+        "tags": [
+          {
+            "name": "@provider:data-source:spacelift_stack",
+            "line": 2
+          },
+          {
+            "name": "@op:stacks",
+            "line": 2
+          }
+        ],
+        "steps": [
+          {
+            "keyword": "When ",
+            "name": "a step",
+            "line": 5,
+            "match": {
+              "location": "steps.go:1"
+            },
+            "result": {
+              "status": "failed",
+              "duration": 1000
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

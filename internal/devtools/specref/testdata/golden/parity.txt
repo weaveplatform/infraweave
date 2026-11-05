@@ -1,11 +1,16 @@
-Parity with the reference: 7 reference operations, 3 present, 2 moved, 2 missing; 2 infraweave-only.
+Parity with the reference: 10 reference operations: 3 served, 3 served with divergence, 1 superseded, 3 missing; 2 infraweave-only.
 
-Tag           Reference  Present  Moved  Missing  Infraweave-only
-Contexts              1        0      0        1                0
-Organization          0        0      0        0                1
-Stacks                5        3      2        0                0
-untagged              1        0      0        1                1
-Total                 7        3      2        2                2
+Tag           Reference  Served  Divergent  Superseded  Missing  Infraweave-only
+Account               1       0          1           0        0                0
+Contexts              1       0          0           0        1                0
+Organization          0       0          0           0        0                1
+Policies              1       0          0           1        0                0
+Stacks                6       3          2           0        1                0
+untagged              1       0          0           0        1                1
+Total                10       3          3           1        3                2
+
+Account
+  served with divergence  spaceliftThing  GET /account/spacelift-thing, served as thing GET /account/thing: operationId, path
 
 Contexts
   missing  contexts  GET /contexts
@@ -13,12 +18,16 @@ Contexts
 Organization
   infraweave-only  organizations  GET /organizations
 
+Policies
+  superseded  policySimulate  POST /policies/{id}/simulate (SUP-99)
+
 Stacks
-  present  stack        GET /stacks/{id}
-  present  stackCreate  POST /stacks
-  present  stacks       GET /stacks
-  moved    stackDelete  DELETE /stacks/{id}, served as stackRemove DELETE /stacks/{stackId}
-  moved    stackLock    POST /stack/{id}/lock, served as stackLock POST /stacks/{stackId}/lock
+  served                  stack         GET /stacks/{id}
+  served                  stackCreate   POST /stacks
+  served                  stacks        GET /stacks
+  served with divergence  stackDelete   DELETE /stacks/{id}, served as stackDelete DELETE /stacks/{stackId}: soft-delete
+  served with divergence  stackLock     POST /stack/{id}/lock, served as stackLock POST /stacks/{stackId}/lock: path
+  missing                 stackOutputs  GET /stacks/{id}/outputs
 
 untagged
   missing          sessionDeleteAll  DELETE /sessions

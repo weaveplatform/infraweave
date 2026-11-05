@@ -3,24 +3,11 @@
     "Contexts": [
       "contexts"
     ],
+    "Stacks": [
+      "stackOutputs"
+    ],
     "untagged": [
       "sessionDeleteAll"
     ]
-  },
-  "moved": [
-    {
-      "operationId": "stackDelete",
-      "route": "DELETE /stacks/{id}",
-      "servedOperationId": "stackRemove",
-      "servedRoute": "DELETE /stacks/{stackId}",
-      "reason": ""
-    },
-    {
-      "operationId": "stackLock",
-      "route": "POST /stack/{id}/lock",
-      "servedOperationId": "stackLock",
-      "servedRoute": "POST /stacks/{stackId}/lock",
-      "reason": ""
-    }
-  ]
+  }
 }

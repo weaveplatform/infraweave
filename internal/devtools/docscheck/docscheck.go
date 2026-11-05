@@ -80,6 +80,9 @@ func Check(repo fs.FS) ([]Finding, error) {
 	if err := c.tags(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
+	if err := c.supersededOperations(); err != nil {
+		return nil, fmt.Errorf("docscheck: %w", err)
+	}
 	if err := c.mentions(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
@@ -410,6 +413,66 @@ func (c *checker) productTags(reg *register, product, specPath string) error {
 				id,
 				specPath,
 			)
+		}
+	}
+	return nil
+}
+
+// supersededOperations checks that each operations entry of the
+// supersessions register names an operation of its product's reference, so
+// that specref parity never reports superseded an operation the reference
+// does not hold, and a reference update that drops one is noticed. The specs
+// are read only when some record lists operations; a product without its
+// spec checks nothing.
+func (c *checker) supersededOperations() error {
+	reg := c.reg(supersReg)
+	if reg == nil || !slices.ContainsFunc(reg.records, func(rec map[string]any) bool {
+		return rec["operations"] != nil
+	}) {
+		return nil
+	}
+	known := map[string]map[string]bool{}
+	for _, p := range specref.Products() {
+		specPath := path.Join(p.Dir, p.Spec)
+		b, err := fs.ReadFile(c.repo, specPath)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("read %s: %w", specPath, err)
+		}
+		ops, err := specref.ParityOperations(b)
+		if err != nil {
+			c.add(specPath, 1, "cannot read its operations: %v", err)
+			continue
+		}
+		known[p.Name] = map[string]bool{}
+		for _, o := range ops {
+			known[p.Name][o.OperationID] = true
+		}
+	}
+	for _, rec := range reg.records {
+		id, _ := rec["id"].(string)
+		entries, _ := rec["operations"].([]any)
+		for _, e := range entries {
+			entry, _ := e.(string)
+			product, op, _ := strings.Cut(entry, ":")
+			ops, ok := known[product]
+			_, err := specref.ProductNamed(product)
+			switch {
+			case err != nil:
+				c.add(reg.path, reg.line(id), "%s lists %s, and %s is no product with a reference",
+					id, entry, product)
+			case ok && !ops[op]:
+				c.add(
+					reg.path,
+					reg.line(id),
+					"%s lists %s, which is no operation of the %s reference",
+					id,
+					entry,
+					product,
+				)
+			}
 		}
 	}
 	return nil

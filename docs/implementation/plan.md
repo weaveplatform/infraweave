@@ -593,11 +593,12 @@ passing success, denial and failure scenarios.
    `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, evidence on failure).
 3. `internal/devtools/specref`: `specref parity` decides served, served with
    divergence (`x-infraweave-divergence`), superseded (report 26 section 7)
-   and missing for each of the 725 reference operations, failing on an
-   unrecorded divergence or a served superseded operation; `--states`
-   computes report 26's state per tag and per Terraform row from
-   `cover/accept/cucumber.json` and the `@op:<operationId>` tags; `--check`
-   fails when report 26 claims more. `make verify-parity`. The P1 baseline
+   and missing for each of the 731 Deploy and 50 Flows reference
+   operations, failing on an unrecorded divergence or a served superseded
+   operation; `--states` computes report 26's state per tag and per
+   Terraform row from `cover/accept/cucumber.json` and the
+   `@op:<operationId>`, `@case:` and `@provider:` tags; `--check` fails when
+   a record claims more. `make verify-parity`. The P1 baseline
    file becomes the computed `missing` list. A reference name that decision
    0001's rename table renames is matched to its served name, so a renamed
    operation counts as served with divergence, never as missing. The

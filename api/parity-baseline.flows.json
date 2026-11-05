@@ -61,7 +61,6 @@
       "startTestScenarioRuns"
     ]
   },
-  "moved": [],
   "reasons": {
     "applyFlowDefinition": "P18c serves the Flows families (decision 0018); nothing Flows is served before it.",
     "attachAgentPoolToProject": "P18c serves the Flows families (decision 0018); nothing Flows is served before it.",

@@ -5,8 +5,10 @@
 // them, check fails when the committed output is stale, scaffold copies a
 // reference tag into a served-API fragment, inventory writes or checks the
 // product's inventory register (and, for Deploy, report 29, which
-// summarizes it), and parity reports the served API's operations against
-// the reference and rewrites the parity baseline. Logic lives in
+// summarizes it), and parity decides each reference operation's outcome
+// (served, served with divergence, superseded or missing), checks the
+// capabilities register's states against the acceptance results with
+// --states, and rewrites the parity baseline. Logic lives in
 // internal/devtools/specref.
 package main
 
@@ -79,7 +81,17 @@ type config struct {
 	Force             bool   `mapstructure:"force"`
 	Check             bool   `mapstructure:"check"`
 	WriteBaseline     bool   `mapstructure:"write-baseline"`
+	Renames           string `mapstructure:"renames"`
+	Supersessions     string `mapstructure:"supersessions"`
+	States            bool   `mapstructure:"states"`
+	Cucumber          string `mapstructure:"cucumber"`
+	Capabilities      string `mapstructure:"capabilities"`
+	List              bool   `mapstructure:"list"`
 }
+
+// errParity is returned by parity --check when the check fails; the report
+// above it says why.
+var errParity = errors.New("parity check failed")
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -288,14 +300,20 @@ func newRoot() *cobra.Command {
 	inf.Bool("check", false, "fail if the report or register is stale instead of writing them")
 	parity := &cobra.Command{
 		Use:   "parity",
-		Short: "Report the served API's operations against the reference, by tag",
-		Long: "Matches the served document's operations with the reference's by operationId\n" +
-			"and route, and prints each reference operation as present, moved or missing and\n" +
-			"each served operation the reference lacks as infraweave-only, then how the\n" +
-			"report differs from the baseline. Only the served operations under the\n" +
-			"product's own tags are compared. --write-baseline rewrites the baseline to\n" +
-			"accept the report, keeping the reason recorded for each unchanged move and\n" +
-			"each operation still missing.",
+		Short: "Decide each reference operation's outcome, and with --states each capability's state",
+		Long: "Matches each reference operation with the served operation that has its\n" +
+			"operationId, or the name docs/data/renames.json gives it, and decides decision\n" +
+			"0016's outcome: served, served with divergence, superseded (a superseded record\n" +
+			"of docs/data/supersessions.json lists it) or missing. A served operation that\n" +
+			"differs in method, route or parameters without recording the difference in\n" +
+			"x-infraweave-divergence fails, as does a superseded operation that is served.\n" +
+			"Only the served operations under the product's own tags are compared. It prints\n" +
+			"the counts by tag (and with --list every operation), then how the report differs\n" +
+			"from the baseline. --states computes each record's state of\n" +
+			"docs/data/capabilities.json from the acceptance results in --cucumber. --check\n" +
+			"fails on a rule broken, a baseline difference or, with --states, a record that\n" +
+			"claims more than the results show. --write-baseline rewrites the baseline to\n" +
+			"the computed missing list, keeping each recorded reason.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			c, err := decode(v)
@@ -307,10 +325,12 @@ func newRoot() *cobra.Command {
 				return err
 			}
 			files := specref.ParityFiles{
-				Reference: filepath.Join(c.Dir, p.Spec),
-				Served:    c.Served,
-				Baseline:  c.Baseline,
-				Product:   p,
+				Reference:     filepath.Join(c.Dir, p.Spec),
+				Served:        c.Served,
+				Baseline:      c.Baseline,
+				Renames:       c.Renames,
+				Supersessions: c.Supersessions,
+				Product:       p,
 			}
 			if c.WriteBaseline {
 				b, err := specref.WriteParityBaseline(files)
@@ -321,25 +341,29 @@ func newRoot() *cobra.Command {
 				for _, ids := range b.Missing {
 					missing += len(ids)
 				}
-				cmd.Printf("%s: %d missing, %d moved\n", c.Baseline, missing, len(b.Moved))
-				for _, m := range b.Moved {
-					if m.Reason == "" {
-						cmd.Printf(
-							"%s needs a reason: it is served as %s (%s)\n",
-							m.OperationID,
-							m.ServedOperationID,
-							m.ServedRoute,
-						)
-					}
-				}
+				cmd.Printf("%s: %d missing\n", c.Baseline, missing)
 				return nil
 			}
 			res, err := specref.ParityCheck(files)
 			if err != nil {
 				return err
 			}
-			cmd.Print(res.Report.Text())
+			cmd.Printf("%s:\n%s", p.Name, res.Report.Text())
+			if c.List {
+				cmd.Print(res.Report.Listing())
+			}
 			cmd.Printf("\nAgainst %s:\n%s", c.Baseline, res.Diff.Text())
+			passed := res.Passed()
+			if c.States {
+				claims, err := states(cmd, c, p, res.Report)
+				if err != nil {
+					return err
+				}
+				passed = passed && len(claims) == 0
+			}
+			if c.Check && !passed {
+				return errParity
+			}
 			return nil
 		},
 	}
@@ -352,9 +376,36 @@ func newRoot() *cobra.Command {
 	pyf.String(
 		"baseline",
 		"",
-		"accepted missing and moved operations (default the product's, such as "+
+		"accepted missing operations (default the product's, such as "+
 			specref.Deploy.Baseline+")",
 	)
+	pyf.String(
+		"renames",
+		filepath.Join("docs", "data", "renames.json"),
+		"decision 0001's rename table",
+	)
+	pyf.String(
+		"supersessions",
+		filepath.Join("docs", "data", "supersessions.json"),
+		"the supersession register, whose operations members list superseded operations",
+	)
+	pyf.Bool("states", false, "compute each capability record's state from the acceptance results")
+	pyf.String(
+		"cucumber",
+		filepath.Join("cover", "accept", "cucumber.json"),
+		"godog's cucumber JSON report of the last acceptance run; absent, nothing is evidenced",
+	)
+	pyf.String(
+		"capabilities",
+		filepath.Join("docs", "data", "capabilities.json"),
+		"the capabilities register whose states --states checks",
+	)
+	pyf.Bool(
+		"check",
+		false,
+		"fail when a rule is broken, the baseline differs or a state claims more",
+	)
+	pyf.Bool("list", false, "print every operation with its outcome")
 	pyf.Bool(
 		"write-baseline",
 		false,
@@ -362,6 +413,60 @@ func newRoot() *cobra.Command {
 	)
 	root.AddCommand(fetch, generate, check, scaffold, inventory, parity)
 	return root
+}
+
+// states prints the computed state of each of the product's capability
+// records and returns the records that claim more than it.
+func states(
+	cmd *cobra.Command,
+	c *config,
+	p specref.Product,
+	rep *specref.ParityReport,
+) ([]string, error) {
+	caps, err := os.ReadFile(c.Capabilities)
+	if err != nil {
+		return nil, fmt.Errorf("states: %w", err)
+	}
+	records, err := specref.ReadCapabilities(caps, p.Name)
+	if err != nil {
+		return nil, err
+	}
+	var scenarios []specref.Scenario
+	data, err := os.ReadFile(c.Cucumber)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		cmd.Printf("\n%s does not exist, so no scenario evidences an operation.\n", c.Cucumber)
+	case err != nil:
+		return nil, fmt.Errorf("states: %w", err)
+	default:
+		if scenarios, err = specref.ReadCucumber(data); err != nil {
+			return nil, err
+		}
+	}
+	var tf *specref.TerraformOperations
+	if p.TerraformCalls != "" {
+		data, err := os.ReadFile(filepath.Join(c.Dir, p.TerraformCalls))
+		if err != nil {
+			return nil, fmt.Errorf("states: %w", err)
+		}
+		if tf, err = specref.ReadTerraformOperations(data); err != nil {
+			return nil, err
+		}
+	}
+	st := rep.States(records, scenarios, tf)
+	claims := specref.StateClaims(st)
+	cmd.Printf("\nStates of %d %s records in %s, from %d scenarios:\n",
+		len(st), p.Name, c.Capabilities, len(scenarios))
+	if c.List {
+		cmd.Print(specref.StatesText(st))
+	}
+	for _, s := range claims {
+		cmd.Printf("claims more: %s\n", s)
+	}
+	if len(claims) == 0 {
+		cmd.Println("No record claims more than the acceptance results show.")
+	}
+	return claims, nil
 }
 
 // loadConfig layers settings flag > env > file > lock pins > defaults.

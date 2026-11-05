@@ -769,3 +769,59 @@ func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
 		t.Errorf("schema products %q, specref products %q", got, names)
 	}
 }
+
+// TestUnitCheckSupersededOperations proves each operations entry of the
+// supersessions register is held to its product's reference.
+func TestUnitCheckSupersededOperations(t *testing.T) {
+	const deploySpec = spec + "paths:\n  /stacks:\n    get: {operationId: stacks, tags: [Stacks]}\n"
+	withOps := func(m fstest.MapFS, ops string) {
+		m[referenceAPI] = file(deploySpec)
+		m[supersReg] = file(strings.Replace(supersessions, `"SUP-01", `,
+			`"SUP-01", "operations": [`+ops+`], `, 1))
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(m fstest.MapFS)
+		want []string
+	}{
+		{"a reference operation", func(m fstest.MapFS) { withOps(m, `"deploy:stacks"`) }, nil},
+		{
+			"no such operation", func(m fstest.MapFS) { withOps(m, `"deploy:stacks", "deploy:stackLock"`) },
+			[]string{"docs/data/supersessions.json:2: SUP-01 lists deploy:stackLock, which is no operation of the deploy reference"},
+		},
+		{"another product's operation", func(m fstest.MapFS) {
+			withOps(m, `"flows:stacks"`)
+			m[flowsAPI] = file("openapi: 3.0.3\npaths: {}\n")
+		}, []string{"docs/data/supersessions.json:2: SUP-01 lists flows:stacks, which is no operation of the flows reference"}},
+		{
+			"no such product", func(m fstest.MapFS) { withOps(m, `"intent:stacks"`) },
+			[]string{"docs/data/supersessions.json:2: SUP-01 lists intent:stacks, and intent is no product with a reference"},
+		},
+		{"product without its spec", func(m fstest.MapFS) { withOps(m, `"flows:listProjects"`) }, nil},
+		{"unreadable spec", func(m fstest.MapFS) {
+			withOps(m, `"deploy:stacks"`)
+			m[referenceAPI] = file(spec + "paths:\n  /stacks:\n    get: {tags: [Stacks]}\n")
+		}, []string{referenceAPI + ":1: cannot read its operations"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := tree()
+			tc.edit(m)
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := make([]string, 0, len(found))
+			for _, f := range found {
+				got = append(got, f.String())
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("findings = %q, want %q", got, tc.want)
+			}
+			for i := range got {
+				if !strings.HasPrefix(got[i], tc.want[i]) {
+					t.Errorf("finding %d = %q, want %q", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
