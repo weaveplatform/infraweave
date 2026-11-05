@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 )
 
 // loadArgs parses args as the serve process mode does and decodes them.
@@ -80,6 +81,29 @@ server:
 	t.Setenv("INFRAWEAVE_SERVER_IDEMPOTENCY_TTL", "2h")
 	if c, err := loadArgs(t); err != nil || c.Server.Idempotency.TTL != 2*time.Hour {
 		t.Errorf("the environment alone: %+v %v", c, err)
+	}
+}
+
+// TestUnitLoadQueue checks the queue section from the file and, for a queue
+// whose name holds a hyphen, from the environment.
+func TestUnitLoadQueue(t *testing.T) {
+	file := writeFile(t, `
+queue:
+  lease: 1m
+  queues:
+    events:
+      workers: 2
+    vcs-inbox:
+      workers: 1
+`)
+	t.Setenv("INFRAWEAVE_QUEUE_QUEUES_VCS_INBOX_WORKERS", "6")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Queue.Lease != time.Minute || c.Queue.Workers(queue.Events) != 2 ||
+		c.Queue.Workers(queue.VCSInbox) != 6 || c.Queue.Workers(queue.Default) != 8 {
+		t.Errorf("queue settings %+v", c.Queue)
 	}
 }
 
@@ -174,6 +198,8 @@ func TestUnitLoadRejects(t *testing.T) {
 			"ready_delay",
 		},
 		{"unknown database key", "database:\n  host: db\n", nil, "host"},
+		{"unknown queue", "queue:\n  queues:\n    iot:\n      workers: 1\n", nil, "iot"},
+		{"bad queue lease", "queue:\n  lease: 0s\n", nil, "queue.lease"},
 		{"unknown migrate mode", "database:\n  migrate: never\n", nil, "database.migrate"},
 		{"unknown IAM provider", "database:\n  iam_auth: ibm\n", nil, "database.iam_auth"},
 		{
