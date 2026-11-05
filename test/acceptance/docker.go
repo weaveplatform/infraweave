@@ -184,9 +184,9 @@ func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 	return db, nil
 }
 
-// runPostgres starts a PostgreSQL container and returns the DSN of its
-// default database. The container is returned whenever one was created,
-// even with an error, for the caller to terminate.
+// runPostgres starts a PostgreSQL container of the run's image and returns
+// the DSN of its default database. The container is returned whenever one
+// was created, even with an error, for the caller to terminate.
 func runPostgres(
 	ctx context.Context,
 	opts ...testcontainers.ContainerCustomizer,
@@ -195,6 +195,15 @@ func runPostgres(
 	if err != nil {
 		return nil, "", fmt.Errorf("@postgres: %w", err)
 	}
+	return runImage(ctx, img, opts...)
+}
+
+// runImage is runPostgres with the image img.
+func runImage(
+	ctx context.Context,
+	img string,
+	opts ...testcontainers.ContainerCustomizer,
+) (*postgres.PostgresContainer, string, error) {
 	c, err := postgres.Run(ctx, img, append([]testcontainers.ContainerCustomizer{
 		postgres.WithDatabase(pgDatabase),
 		postgres.WithUsername(pgUser),
@@ -262,6 +271,21 @@ func (p *OwnPostgres) Pause(ctx context.Context) error {
 		_, err := cli.ContainerPause(ctx, p.c.GetContainerID(), client.ContainerPauseOptions{})
 		return err //nolint:wrapcheck // docker wraps it below
 	})
+}
+
+// OldPostgres starts a container of the scenario's own running
+// ImagePostgresBelowFloor, a release infraweave refuses, whatever image the
+// run's other scenarios use. Nothing is migrated: the migration runner
+// refuses it too. The scenario terminates it.
+func (d *Dependencies) OldPostgres(ctx context.Context) (*OwnPostgres, error) {
+	c, dsn, err := runImage(ctx, ImagePostgresBelowFloor)
+	if err != nil {
+		if c != nil {
+			err = errors.Join(err, c.Terminate(ctx))
+		}
+		return nil, err
+	}
+	return &OwnPostgres{c: c, DSN: dsn}, nil
 }
 
 // Stop stops PostgreSQL as an operator or a failover does: the image stops
