@@ -181,7 +181,7 @@ func TestUnitLoadCaptures(t *testing.T) {
 		{"no calls", "C0", map[string]string{captureExpect: "calls: []\n"}, "no calls"},
 		{"bad method", "C0", map[string]string{captureExpect: strings.Replace(expect, "method: GET", "method: FETCH", 1)}, "method"},
 		{"relative path", "C0", map[string]string{captureExpect: strings.Replace(expect, "path: /api", "path: api", 1)}, "does not start with /"},
-		{"bad status", "C0", map[string]string{captureExpect: strings.Replace(expect, "status: 501\n      problem", "status: 999\n      problem", 1)}, "status 999"},
+		{"bad status", "C0", map[string]string{captureExpect: strings.Replace(expect, "status: 501", "status: 999", 1)}, "status 999"},
 		{"unregistered problem", "C0", map[string]string{captureExpect: strings.Replace(expect, "problem: not-implemented", "problem: teapot", 1)}, "teapot"},
 		{"not a pointer", "C0", map[string]string{captureExpect: strings.Replace(expect, "/title:", "title:", 1)}, "JSON Pointer"},
 		{"response not JSON", "C0", map[string]string{captureResponse: "{"}, "not JSON"},
