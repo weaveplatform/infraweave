@@ -7,7 +7,8 @@
 // DefaultPageLimit and MaxPageLimit. It holds decision 0005's identifiers:
 // ULID, generated monotonically within a millisecond, written as 26
 // characters on the wire and as a uuid in PostgreSQL, and Slug. It holds
-// ErrUnavailable, the mark of a dependency that cannot be reached now, which
+// decision 0015's AuditEntry, which every domain records through
+// platform/audit. It holds ErrUnavailable, the mark of a dependency that cannot be reached now, which
 // a store sets and the HTTP layer answers with 503. Principals, run states
 // and the other shared types join it with the phases that need them.
 //

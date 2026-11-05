@@ -11926,7 +11926,7 @@
           "file": "docs/research/decisions/0015-events-notifications-webhooks-audit.md",
           "present": [
             "**The organization's trail.**",
-            "organization's ID and no account. Organization admins list them through",
+            "organization's ID and no account, in `organization_audit_trail_entries`,",
             "no account's listing or audit webhook shows them"
           ]
         }
