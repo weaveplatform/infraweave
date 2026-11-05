@@ -102,7 +102,7 @@ func (s *Subscription) deliver(m Message) {
 // and so outside any transaction-mode pooler, and fans its notifications
 // out to subscribers.
 type Listener struct {
-	cfg *pgx.ConnConfig
+	cfg Config
 	log *slog.Logger
 
 	mu   sync.Mutex
@@ -113,13 +113,19 @@ type Listener struct {
 // and doubles to the second.
 var backoff = [2]time.Duration{100 * time.Millisecond, 5 * time.Second}
 
-// NewListener returns a listener that connects with cfg once Run starts.
-func NewListener(cfg *pgx.ConnConfig, log *slog.Logger) *Listener {
-	cfg = cfg.Copy()
-	if cfg.RuntimeParams == nil {
-		cfg.RuntimeParams = map[string]string{}
-	}
-	cfg.RuntimeParams["application_name"] = ApplicationName
+// Config returns the settings of one new connection, such as platform/sql's
+// DB.ConnConfig. The listener asks again before each reconnect, so a
+// password that is a short-lived IAM token is fresh every time.
+type Config func(ctx context.Context) (*pgx.ConnConfig, error)
+
+// Static is the Config that always returns a copy of cfg.
+func Static(cfg *pgx.ConnConfig) Config {
+	return func(context.Context) (*pgx.ConnConfig, error) { return cfg.Copy(), nil }
+}
+
+// NewListener returns a listener that connects with cfg's settings once Run
+// starts.
+func NewListener(cfg Config, log *slog.Logger) *Listener {
 	return &Listener{cfg: cfg, log: log, subs: map[string]map[*Subscription]struct{}{}}
 }
 
@@ -182,7 +188,15 @@ func (l *Listener) Run(ctx context.Context) {
 // connection fails or ctx is done. It reports whether it got as far as
 // listening.
 func (l *Listener) session(ctx context.Context) (bool, error) {
-	conn, err := pgx.ConnectConfig(ctx, l.cfg)
+	cfg, err := l.cfg(ctx)
+	if err != nil {
+		return false, fmt.Errorf("connection settings: %w", err)
+	}
+	if cfg.RuntimeParams == nil {
+		cfg.RuntimeParams = map[string]string{}
+	}
+	cfg.RuntimeParams["application_name"] = ApplicationName
+	conn, err := pgx.ConnectConfig(ctx, cfg)
 	if err != nil {
 		return false, fmt.Errorf("connect: %w", err)
 	}

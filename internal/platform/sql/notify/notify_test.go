@@ -64,7 +64,7 @@ func (r *records) Handle(_ context.Context, rec slog.Record) error {
 func (r *records) WithAttrs([]slog.Attr) slog.Handler { return r }
 func (r *records) WithGroup(string) slog.Handler      { return r }
 
-func start(t *testing.T, cfg *pgx.ConnConfig, log *slog.Logger) *notify.Listener {
+func start(t *testing.T, cfg notify.Config, log *slog.Logger) *notify.Listener {
 	t.Helper()
 	l := notify.NewListener(cfg, log)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -78,7 +78,7 @@ func TestAccNotifyReconnect(t *testing.T) {
 	notify.SetBackoff(t, 10*time.Millisecond, 50*time.Millisecond)
 	db := sqltest.Open(t)
 	pool := db.Primary()
-	l := notify.NewListener(db.ConnConfig(), slog.New(slog.DiscardHandler))
+	l := notify.NewListener(db.ConnConfig, slog.New(slog.DiscardHandler))
 	sub, err := l.Subscribe(notify.Invalidate)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +156,7 @@ func TestAccNotifyReconnect(t *testing.T) {
 func TestAccNotifySlowSubscriber(t *testing.T) {
 	db := sqltest.Open(t)
 	pool := db.Primary()
-	l := start(t, db.ConnConfig(), slog.New(slog.DiscardHandler))
+	l := start(t, db.ConnConfig, slog.New(slog.DiscardHandler))
 	sub, err := l.Subscribe(notify.Runs)
 	if err != nil {
 		t.Fatal(err)
@@ -201,29 +201,41 @@ func TestAccNotifySlowSubscriber(t *testing.T) {
 	expect(t, sub, notify.Message{Payload: "late"})
 }
 
+// TestUnitNotifyRetriesAConnection checks that Run keeps retrying, with a
+// warning each time, both a server that refuses and settings that cannot be
+// had, such as an IAM token the provider refuses.
 func TestUnitNotifyRetriesAConnection(t *testing.T) {
 	notify.SetBackoff(t, time.Millisecond, 2*time.Millisecond)
 	cfg, err := pgx.ParseConfig("postgres://u:p@127.0.0.1:1/x?sslmode=disable&connect_timeout=2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &records{msgs: make(chan string, 8)}
-	l := notify.NewListener(cfg, slog.New(h))
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan struct{})
-	go func() { defer close(done); l.Run(ctx) }()
-	for range 2 {
-		select {
-		case <-h.msgs:
-		case <-time.After(within):
-			t.Fatal("no reconnect warning")
-		}
-	}
-	cancel()
-	select {
-	case <-done:
-	case <-time.After(within):
-		t.Fatal("Run did not stop")
+	for name, settings := range map[string]notify.Config{
+		"unreachable server": notify.Static(cfg),
+		"no settings": func(context.Context) (*pgx.ConnConfig, error) {
+			return nil, errors.New("token refused")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := &records{msgs: make(chan string, 8)}
+			l := notify.NewListener(settings, slog.New(h))
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan struct{})
+			go func() { defer close(done); l.Run(ctx) }()
+			for range 2 {
+				select {
+				case <-h.msgs:
+				case <-time.After(within):
+					t.Fatal("no reconnect warning")
+				}
+			}
+			cancel()
+			select {
+			case <-done:
+			case <-time.After(within):
+				t.Fatal("Run did not stop")
+			}
+		})
 	}
 }
 
@@ -234,7 +246,7 @@ func (execerFail) Exec(context.Context, string, ...any) (pgconn.CommandTag, erro
 }
 
 func TestUnitNotifyChannels(t *testing.T) {
-	l := notify.NewListener(&pgx.ConnConfig{}, slog.New(slog.DiscardHandler))
+	l := notify.NewListener(notify.Static(&pgx.ConnConfig{}), slog.New(slog.DiscardHandler))
 	if _, err := l.Subscribe("infraweave_other"); !errors.Is(err, notify.ErrChannel) {
 		t.Errorf("Subscribe to an unknown channel: %v", err)
 	}

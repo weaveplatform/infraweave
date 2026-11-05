@@ -9,6 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -33,15 +35,15 @@ func openDatabase(
 	log *slog.Logger,
 	streams []migrate.Stream,
 ) (*sql.DB, error) {
-	db, err := sql.Open(ctx, c)
+	db, cc, err := openWithSession(ctx, c)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // sql's errors name the setting
+		return nil, err
 	}
 	if c.Migrate == sql.MigrateCheck {
-		err = migrate.Check(ctx, db.ConnConfig(), streams)
+		err = migrate.Check(ctx, cc, streams)
 	} else {
 		var statuses []migrate.Status
-		statuses, err = migrate.Up(ctx, db.ConnConfig(), buildinfo.Version(), streams)
+		statuses, err = migrate.Up(ctx, cc, buildinfo.Version(), streams)
 		for _, s := range statuses {
 			for _, f := range s.Ran {
 				log.Info("migrated", "stream", s.Stream, "version", f.Version, "name", f.Name)
@@ -63,12 +65,12 @@ func MigrateUp(ctx context.Context, c config.Config, w io.Writer) error {
 }
 
 func migrateUp(ctx context.Context, c config.Config, w io.Writer, streams []migrate.Stream) error {
-	db, err := sql.Open(ctx, c.Database)
+	db, cc, err := openWithSession(ctx, c.Database)
 	if err != nil {
-		return err //nolint:wrapcheck // as openDatabase
+		return err
 	}
 	defer db.Close()
-	statuses, err := migrate.Up(ctx, db.ConnConfig(), buildinfo.Version(), streams)
+	statuses, err := migrate.Up(ctx, cc, buildinfo.Version(), streams)
 	if err != nil {
 		return err //nolint:wrapcheck // as openDatabase
 	}
@@ -99,12 +101,12 @@ func migrateStatus(
 	w io.Writer,
 	streams []migrate.Stream,
 ) error {
-	db, err := sql.Open(ctx, c.Database)
+	db, cc, err := openWithSession(ctx, c.Database)
 	if err != nil {
-		return err //nolint:wrapcheck // as openDatabase
+		return err
 	}
 	defer db.Close()
-	statuses, err := migrate.Inspect(ctx, db.ConnConfig(), streams)
+	statuses, err := migrate.Inspect(ctx, cc, streams)
 	if statuses == nil {
 		return err //nolint:wrapcheck // as openDatabase
 	}
@@ -125,4 +127,20 @@ func migrateStatus(
 		}
 	}
 	return errors.Join(tw.Flush(), err)
+}
+
+// openWithSession opens the pools and returns the settings of the migration
+// runner's own connection, which under database.iam_auth carries a token
+// of its own.
+func openWithSession(ctx context.Context, c sql.Config) (*sql.DB, *pgx.ConnConfig, error) {
+	db, err := sql.Open(ctx, c)
+	if err != nil {
+		return nil, nil, err //nolint:wrapcheck // sql's errors name the setting
+	}
+	cc, err := db.ConnConfig(ctx)
+	if err != nil {
+		db.Close()
+		return nil, nil, err //nolint:wrapcheck // as above
+	}
+	return db, cc, nil
 }

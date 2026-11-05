@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -29,6 +30,9 @@ type Config struct {
 	// Migrate is what a process mode does with pending migrations at start,
 	// database.migrate: MigrateAuto or MigrateCheck.
 	Migrate string `mapstructure:"migrate"`
+	// IAMAuth is database.iam_auth: IAMNone, or the cloud whose IAM token
+	// is each new connection's password.
+	IAMAuth string `mapstructure:"iam_auth"`
 }
 
 // The database.migrate values: auto applies pending migrations at start;
@@ -46,6 +50,7 @@ func Defaults() Config {
 		StatementTimeout:         30 * time.Second,
 		IdleInTransactionTimeout: 60 * time.Second,
 		Migrate:                  MigrateAuto,
+		IAMAuth:                  IAMNone,
 	}
 }
 
@@ -64,8 +69,18 @@ func (c Config) Validate() error {
 			continue
 		}
 		// pgconn redacts the password from its parse errors.
-		if _, err := pgxpool.ParseConfig(u.url); err != nil {
+		pc, err := pgxpool.ParseConfig(u.url)
+		if err != nil {
 			errs = append(errs, fmt.Errorf("%w: %s: %w", ErrConfig, u.key, err))
+			continue
+		}
+		if c.IAMAuth != IAMNone && !requiresTLS(&pc.ConnConfig.Config) {
+			errs = append(errs, fmt.Errorf(
+				"%w: database.iam_auth %s sends a token as the password, so %s's sslmode must be require, verify-ca or verify-full",
+				ErrConfig,
+				c.IAMAuth,
+				u.key,
+			))
 		}
 	}
 	if c.ReadURL != "" && c.URL == "" {
@@ -88,6 +103,10 @@ func (c Config) Validate() error {
 				ErrConfig, d.key, d.v))
 		}
 	}
+	if !slices.Contains([]string{IAMNone, IAMAWS, IAMAzure, IAMGCP}, c.IAMAuth) {
+		errs = append(errs, fmt.Errorf("%w: database.iam_auth must be %s, %s, %s or %s, got %q",
+			ErrConfig, IAMNone, IAMAWS, IAMAzure, IAMGCP, c.IAMAuth))
+	}
 	if c.Migrate != MigrateAuto && c.Migrate != MigrateCheck {
 		errs = append(errs, fmt.Errorf("%w: database.migrate must be %s or %s, got %q",
 			ErrConfig, MigrateAuto, MigrateCheck, c.Migrate))
@@ -108,6 +127,8 @@ var ErrBelowFloor = errors.New("infraweave needs PostgreSQL 18 or newer")
 // database.read_url is set, a pool on the replica.
 type DB struct {
 	primary, read *pgxpool.Pool
+	iam           string
+	tokens        tokenSource
 }
 
 // Open opens the primary pool and, when configured, the read pool, and
@@ -120,13 +141,17 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	if c.URL == "" {
 		return nil, fmt.Errorf("%w: database.url is required", ErrConfig)
 	}
-	primary, err := open(ctx, "database.url", c.URL, c)
+	tokens, err := newTokenSource(ctx, c.IAMAuth)
 	if err != nil {
 		return nil, err
 	}
-	db := &DB{primary: primary, read: primary}
+	primary, err := open(ctx, "database.url", c.URL, c, tokens)
+	if err != nil {
+		return nil, err
+	}
+	db := &DB{primary: primary, read: primary, iam: c.IAMAuth, tokens: tokens}
 	if c.ReadURL != "" {
-		if db.read, err = open(ctx, "database.read_url", c.ReadURL, c); err != nil {
+		if db.read, err = open(ctx, "database.read_url", c.ReadURL, c, tokens); err != nil {
 			primary.Close()
 			return nil, err
 		}
@@ -134,13 +159,16 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	return db, nil
 }
 
-func open(ctx context.Context, key, url string, c Config) (*pgxpool.Pool, error) {
-	pc, err := pgxpool.ParseConfig(url)
+func open(
+	ctx context.Context,
+	key, url string,
+	c Config,
+	tokens tokenSource,
+) (*pgxpool.Pool, error) {
+	pc, err := poolConfig(key, url, c, tokens)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s: %w", ErrConfig, key, err)
+		return nil, err
 	}
-	pc.MaxConns = c.MaxConns
-	setSessionParams(pc.ConnConfig, c)
 	pool, err := pgxpool.NewWithConfig(ctx, pc)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", key, err)
@@ -150,6 +178,24 @@ func open(ctx context.Context, key, url string, c Config) (*pgxpool.Pool, error)
 		return nil, fmt.Errorf("%s: %w", key, err)
 	}
 	return pool, nil
+}
+
+// poolConfig is the pool's settings for url. With tokens, every new
+// connection gets a fresh token as its password: pgxpool passes BeforeConnect
+// a copy of the settings, so no token outlives its connection's start.
+func poolConfig(key, url string, c Config, tokens tokenSource) (*pgxpool.Config, error) {
+	pc, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s: %w", ErrConfig, key, err)
+	}
+	pc.MaxConns = c.MaxConns
+	setSessionParams(pc.ConnConfig, c)
+	if tokens != nil {
+		pc.BeforeConnect = func(ctx context.Context, cc *pgx.ConnConfig) error {
+			return withToken(ctx, c.IAMAuth, tokens, cc)
+		}
+	}
+	return pc, nil
 }
 
 // setSessionParams sets the per-connection timeouts in the startup
@@ -189,10 +235,20 @@ func (d *DB) Primary() *pgxpool.Pool { return d.primary }
 // a worker poll. Without database.read_url it is the primary.
 func (d *DB) Read() *pgxpool.Pool { return d.read }
 
-// ConnConfig is a copy of the primary's connection settings for a
+// ConnConfig is a copy of the primary's connection settings for one
 // dedicated connection outside the pools: package notify's listener and the
-// migration runner's session, which holds its advisory lock.
-func (d *DB) ConnConfig() *pgx.ConnConfig { return d.primary.Config().ConnConfig.Copy() }
+// migration runner's session, which holds its advisory lock. Under
+// database.iam_auth it carries a fresh token, so it is asked for again
+// before each connection rather than kept.
+func (d *DB) ConnConfig(ctx context.Context) (*pgx.ConnConfig, error) {
+	cc := d.primary.Config().ConnConfig.Copy()
+	if d.tokens != nil {
+		if err := withToken(ctx, d.iam, d.tokens, cc); err != nil {
+			return nil, err
+		}
+	}
+	return cc, nil
+}
 
 // Close closes both pools.
 func (d *DB) Close() {
