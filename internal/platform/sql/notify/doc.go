@@ -11,9 +11,10 @@
 //
 // # Input and output
 //
-// Run holds the listening connection until ctx ends, reconnecting with
-// jittered backoff from 100 ms to 5 s, and logs each failed connection as a
-// warning through the given slog.Logger. Notify runs pg_notify through the
+// Run holds the listening connection until ctx ends, asking its Config for
+// fresh settings and reconnecting with jittered backoff from 100 ms to 5 s,
+// and logs each failed connection as a warning through the given
+// slog.Logger. Notify runs pg_notify through the
 // Execer it is given. Payloads are passed through as they are.
 //
 // # Dependencies

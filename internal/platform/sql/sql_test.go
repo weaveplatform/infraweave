@@ -96,8 +96,11 @@ func TestAccOpen(t *testing.T) {
 	if db.Read() != db.Primary() {
 		t.Error("without database.read_url, Read is not the primary")
 	}
-	if got := db.ConnConfig().RuntimeParams["statement_timeout"]; got != "30000" {
-		t.Errorf("ConnConfig statement_timeout = %q", got)
+	if cc, err := db.ConnConfig(
+		t.Context(),
+	); err != nil ||
+		cc.RuntimeParams["statement_timeout"] != "30000" {
+		t.Errorf("ConnConfig = %v, %v", cc, err)
 	}
 
 	c := sql.Defaults()

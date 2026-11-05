@@ -166,6 +166,13 @@ func TestUnitLoadRejects(t *testing.T) {
 		{"not YAML", "server: [\n", nil, "read config"},
 		{"unknown database key", "database:\n  host: db\n", nil, "host"},
 		{"unknown migrate mode", "database:\n  migrate: never\n", nil, "database.migrate"},
+		{"unknown IAM provider", "database:\n  iam_auth: ibm\n", nil, "database.iam_auth"},
+		{
+			"IAM token without TLS",
+			"database:\n  url: postgres://iw@db/x?sslmode=disable\n  iam_auth: aws\n",
+			nil,
+			"database.url's sslmode",
+		},
 		{"no database connections", "database:\n  max_conns: 0\n", nil, "database.max_conns"},
 		{
 			"replica without a primary",
