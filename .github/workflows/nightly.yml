@@ -61,6 +61,22 @@ jobs:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
         run: make accept PARTITION=${{ matrix.partition }}
 
+      # go test shows a passing test's output only with -v, so the count
+      # comes from the partition's report, to the log and the job summary.
+      - name: Report the partition's scenarios
+        if: success()
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |
+          n=$(jq '[.[].elements[]?] | length' cover/accept/cucumber.json)
+          if [ "$n" -eq 0 ]; then
+            line="accept-${PARTITION} has no scenarios yet."
+          else
+            line="accept-${PARTITION} ran ${n} scenarios."
+          fi
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload failed-scenario evidence
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
