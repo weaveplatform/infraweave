@@ -617,8 +617,7 @@ passing success, denial and failure scenarios.
    joins the test in the phase that adds it. Records DV-114.
 5. CI: split the acceptance job into `accept-core`, `accept-runs` and
    `accept-integrations`, add `parity` and a scheduled `nightly`, and list
-   every job it adds in the `Quality gate` job's `needs`, beside the
-   `generated` job P1d adds there.
+   every job it adds in the `Quality gate` job's `needs`.
 6. `test/fixtures/captures/` layout with `TestUnitCaptureRedaction` and an
    empty `TestAccCaptures` replayer, ready for P28.
 7. `pkg/sdk` over `pkg/client/api` ([0001](../research/decisions/0001-rest-first-spacelift-surface.md)): one client for every

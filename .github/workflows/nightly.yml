@@ -1,0 +1,119 @@
+name: go | Nightly acceptance
+
+# Every acceptance partition on main, each night. The job is informational
+# (decision 0016): a failure opens an issue, or comments on the open one,
+# rather than blocking merges. Once @terraform and @tofu scenarios exist
+# (P9), this is where they run on the newest Terraform and OpenTofu
+# releases; until then it runs the suite as the quality gate does.
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+    inputs:
+      force-failure:
+        description: 'Fail accept-core on purpose, to exercise the issue report'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+
+jobs:
+  accept:
+    name: 'nightly accept-${{ matrix.partition }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [core, runs, integrations]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Fail on purpose
+        if: ${{ inputs.force-failure && matrix.partition == 'core' }}
+        run: |
+          echo "force-failure is set"
+          exit 1
+
+      - name: Acceptance partition ${{ matrix.partition }}
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+        run: make accept PARTITION=${{ matrix.partition }}
+
+      # go test shows a passing test's output only with -v, so the count
+      # comes from the partition's report, to the log and the job summary.
+      - name: Report the partition's scenarios
+        if: success()
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |
+          n=$(jq '[.[].elements[]?] | length' cover/accept/cucumber.json)
+          if [ "$n" -eq 0 ]; then
+            line="accept-${PARTITION} has no scenarios yet."
+          else
+            line="accept-${PARTITION} ran ${n} scenarios."
+          fi
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload failed-scenario evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-evidence-${{ matrix.partition }}
+          path: test/acceptance/out
+          retention-days: 14
+
+  # One open issue tracks a failing nightly: the first failure opens it, and
+  # each later one comments on it until a person closes it.
+  report:
+    name: 'Report a failed nightly'
+    needs: [accept]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Open or update the nightly issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          title="Nightly acceptance failed"
+          body="The nightly acceptance run failed on ${SHA}: ${RUN_URL}. Each failed partition uploads its scenarios' evidence as an artefact of the run."
+          number=$(gh issue list --state open --search "\"${title}\" in:title" --json number,title \
+            -q ".[] | select(.title == \"${title}\") | .number" | head -n 1)
+          if [ -z "$number" ]; then
+            gh issue create --title "$title" --body "$body"
+          else
+            gh issue comment "$number" --body "$body"
+          fi

@@ -6,8 +6,9 @@ row reads Done. The checks are the repository's `make gate` targets and the CI
 jobs in `.github/workflows/`; the test rules are
 [decision 0016](../research/decisions/0016-testing-and-acceptance.md)'s, and the
 package rules are [repo-layout.md](repo-layout.md)'s. `make gate` runs, in
-order: `docs-check`, `vet`, `lint`, `test`, `accept`, `verify-reference`,
-`verify-generate`, `cover`, `vuln`, `build`. A pull request runs `make gate`
+order: `docs-check`, `vet`, `lint`, `lint-fixtures`, `test`, `accept`,
+`verify-parity`, `verify-reference`, `verify-generate`, `cover`, `vuln`,
+`build`. A pull request runs `make gate`
 locally before review; CI runs the same targets as separate jobs, and the
 `Quality gate` job is the single required status check.
 
@@ -139,10 +140,12 @@ Rules that apply to every change in every phase:
 ## Acceptance budget
 
 Acceptance runs on `ubuntu-latest` only: the macOS runners have no Docker
-daemon and the Windows runners cannot run Linux containers. From
-[P1c](plan.md#p1c-test-harness-sdk-and-parity-tooling) the single `accept` job
-splits into the partitions of decision 0016, and later phases add the jobs
-their rows name:
+daemon and the Windows runners cannot run Linux containers. It runs in the
+partitions of decision 0016, each `make accept PARTITION=<partition>` with
+`INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`: `accept-core` also runs the `TestAcc`
+suites beside the code, and the other two run their scenarios alone. The
+`parity` job merges every partition's `cucumber.json`. Later phases add the
+jobs their rows name:
 
 | Job | Runs | Timeout |
 |---|---|---|
@@ -155,7 +158,7 @@ their rows name:
 | `console-e2e` (from P24c) | the Playwright journeys against a real `infraweave all` | 30 min |
 | `coverage` | `make cover` over every job above except `fips-only` | 10 min |
 | `postgres-next` (from P2, not required) | `storetest`, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate | 20 min |
-| `nightly` (scheduled, not required) | the full suite on the newest Terraform and OpenTofu releases | 60 min |
+| `nightly` (`nightly.yml`, scheduled, not required) | every partition on `main`, on the newest Terraform and OpenTofu releases once `@terraform` and `@tofu` exist; a failure opens an issue, or comments on the open one | 60 min |
 | `objectstore-cloud` (from P2b, scheduled nightly, not required) | `objectstoretest` against Amazon S3, Google Cloud Storage and Azure Blob Storage through OIDC federation, in buckets with a one-day lifecycle rule; a failure opens or updates an issue | 20 min |
 
 - **Placement.** A scenario runs in the first of `accept-runs`,

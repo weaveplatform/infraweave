@@ -2,10 +2,11 @@ name: go | Quality gate
 
 # Every pull request passes vet, blocking lint, unit tests on Linux, macOS and
 # Windows, govulncheck, a cross-compile of every cmd/* binary, and the merged
-# coverage gate (>=95% total, >=90% per package). The `gate` job is the
-# single required status check: make it required in branch protection, and
-# add jobs (acceptance against real dependencies in Docker, for example) to
-# its `needs` and to the coverage job as they appear.
+# coverage gate (>=95% total, >=90% per package), the acceptance partitions
+# of decision 0016 against real dependencies in Docker, and the parity
+# check over their results. The `gate` job is the single required status
+# check: make it required in branch protection. Every required job is in its
+# `needs` and, when it produces coverage, in the coverage job's.
 
 on:
   workflow_dispatch:
@@ -62,9 +63,24 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  # Decision 0016's partitions. A scenario runs in the first of runs,
+  # integrations and core that lists one of its tags; TestUnitFeaturePartitions
+  # fails a tag no partition lists. A partition near its timeout splits by
+  # tag into two jobs; scenarios are never dropped to fit.
   accept:
-    name: 'Acceptance (Gherkin)'
+    name: 'accept-${{ matrix.partition }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - partition: core
+            timeout: 20
+          - partition: runs
+            timeout: 30
+          - partition: integrations
+            timeout: 20
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
@@ -83,26 +99,83 @@ jobs:
 
       # The runner has Docker, so a scenario skipped for want of a daemon
       # fails the job rather than passing unseen.
-      - name: Acceptance features (godog)
+      - name: Acceptance partition ${{ matrix.partition }}
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
-        run: make accept
+        run: make accept PARTITION=${{ matrix.partition }}
+
+      # go test shows a passing test's output only with -v, so the count
+      # comes from the partition's report, to the log and the job summary.
+      - name: Report the partition's scenarios
+        if: success()
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |
+          n=$(jq '[.[].elements[]?] | length' cover/accept/cucumber.json)
+          if [ "$n" -eq 0 ]; then
+            line="accept-${PARTITION} has no scenarios yet."
+          else
+            line="accept-${PARTITION} ran ${n} scenarios."
+          fi
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload failed-scenario evidence
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: accept-evidence
+          name: accept-evidence-${{ matrix.partition }}
           path: test/acceptance/out
           retention-days: 7
 
+      # cover/accept also holds the partition's cucumber.json, which the
+      # parity job reads.
       - name: Upload acceptance coverage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: cover-accept
+          name: cover-accept-${{ matrix.partition }}
           path: cover/accept
           include-hidden-files: true
           retention-days: 7
+
+  # A recorded capability state is a claim that the acceptance results must
+  # back, so parity runs on the merged results of every partition.
+  parity:
+    name: 'parity'
+    needs: [accept]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Download every partition's results
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: cover-accept-*
+          path: partitions
+
+      - name: Merge the cucumber reports
+        run: |
+          set -euo pipefail
+          mkdir -p cover/accept
+          jq -s 'add' partitions/*/cucumber.json > cover/accept/cucumber.json
+          jq -r '"\(length) features, \([.[].elements[]?] | length) scenarios"' cover/accept/cucumber.json
+
+      - name: Parity outcomes and the state check
+        run: make verify-parity
 
   reference:
     name: 'Spacelift reference up to date'
@@ -240,6 +313,7 @@ jobs:
     name: 'Coverage gate (≥95% total, ≥90% per package)'
     needs: [unit, accept]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
@@ -268,7 +342,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, reference, generated, lint, vuln, build, coverage]
+    needs: [unit, accept, parity, reference, generated, lint, vuln, build, coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed
