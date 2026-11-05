@@ -165,6 +165,7 @@ func TestUnitLoadRejects(t *testing.T) {
 		},
 		{"not YAML", "server: [\n", nil, "read config"},
 		{"unknown database key", "database:\n  host: db\n", nil, "host"},
+		{"unknown migrate mode", "database:\n  migrate: never\n", nil, "database.migrate"},
 		{"no database connections", "database:\n  max_conns: 0\n", nil, "database.max_conns"},
 		{
 			"replica without a primary",
@@ -193,19 +194,31 @@ func TestUnitLoadMissingFile(t *testing.T) {
 	}
 }
 
-// TestUnitLoadUnboundFlag covers a settingFlags entry with no flag behind
-// it, which renaming a flag would leave.
+// TestUnitLoadUnboundFlag checks that ServeFlags defines every settingFlags
+// entry, which renaming a flag would break, and that a command with fewer
+// flags loads.
 func TestUnitLoadUnboundFlag(t *testing.T) {
-	all := pflag.NewFlagSet("serve", pflag.ContinueOnError)
-	ServeFlags(all)
 	fs := pflag.NewFlagSet("serve", pflag.ContinueOnError)
-	all.VisitAll(func(f *pflag.Flag) {
-		if f.Name != "listen" {
-			fs.AddFlag(f)
+	ServeFlags(fs)
+	for name := range settingFlags {
+		if fs.Lookup(name) == nil {
+			t.Errorf("ServeFlags does not define --%s", name)
 		}
-	})
-	if _, err := Load(fs); err == nil || !strings.Contains(err.Error(), "bind flags") {
-		t.Errorf("got %v, want a bind error", err)
+	}
+
+	// migrate takes --config only; the file and the environment still set
+	// every key.
+	fs = pflag.NewFlagSet("migrate", pflag.ContinueOnError)
+	FileFlag(fs)
+	t.Setenv("INFRAWEAVE_SERVER_LISTEN", ":1001")
+	if err := fs.Parse(
+		[]string{"--config", writeFile(t, "database:\n  migrate: check\n")},
+	); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(fs)
+	if err != nil || c.Server.Listen != ":1001" || c.Database.Migrate != "check" {
+		t.Errorf("Load = %+v, %v", c, err)
 	}
 }
 

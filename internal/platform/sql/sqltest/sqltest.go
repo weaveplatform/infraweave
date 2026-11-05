@@ -15,6 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 )
 
 // RequireDocker is the variable that turns a missing Docker daemon from a
@@ -36,6 +37,7 @@ var errNoDocker = errors.New("no Docker daemon")
 
 var (
 	image   string
+	streams []migrate.Stream
 	started sync.Once
 	server  *postgres.PostgresContainer
 	baseDSN string
@@ -46,10 +48,12 @@ var (
 // Main runs m's tests with img as the shared server's image, and stops the
 // server once they finish. A test package that uses DSN or Open calls it
 // from TestMain with test/acceptance's ImagePostgres, so every suite runs
-// on the one pinned image. The server starts on the first DSN, so a run of
-// TestUnit tests starts nothing.
-func Main(m *testing.M, img string) int {
-	image = img
+// on the one pinned image, and with the migration streams its tests need,
+// in registration order: Template is migrated with them once, so each
+// test's database starts migrated. The server starts on the first DSN, so a
+// run of TestUnit tests starts nothing.
+func Main(m *testing.M, img string, s ...migrate.Stream) int {
+	image, streams = img, s
 	code := m.Run()
 	if server != nil {
 		if err := server.Terminate(context.Background()); err != nil && code == 0 {
@@ -84,16 +88,29 @@ func required() bool { return os.Getenv(RequireDocker) == "1" }
 // Template and dropped when t ends.
 func DSN(t testing.TB) string {
 	t.Helper()
+	return newDatabase(t, " TEMPLATE "+Template)
+}
+
+// Empty returns the connection string of a new database for t with no
+// migrations applied, dropped when t ends, for a test that applies streams
+// itself.
+func Empty(t testing.TB) string {
+	t.Helper()
+	return newDatabase(t, "")
+}
+
+func newDatabase(t testing.TB, from string) string {
+	t.Helper()
 	if image == "" {
 		t.Fatal("sqltest: call sqltest.Main from TestMain")
 	}
 	ctx := t.Context()
-	started.Do(func() { server, baseDSN, failed = start(context.Background(), image) })
+	started.Do(func() { server, baseDSN, failed = start(context.Background(), image, streams) })
 	if failed != nil {
 		unavailable(t, failed, required())
 	}
 	name := fmt.Sprintf("iw_test_%d", count.Add(1))
-	if err := exec(ctx, baseDSN, "CREATE DATABASE "+name+" TEMPLATE "+Template); err != nil {
+	if err := exec(ctx, baseDSN, "CREATE DATABASE "+name+from); err != nil {
 		t.Fatalf("sqltest: %v", err)
 	}
 	t.Cleanup(func() {
@@ -132,7 +149,7 @@ func Open(t testing.TB) *sql.DB {
 // the shared server's other users must not see.
 func Server(t testing.TB, img string) (*postgres.PostgresContainer, string) {
 	t.Helper()
-	c, dsn, err := start(context.Background(), img)
+	c, dsn, err := start(context.Background(), img, nil)
 	if c != nil {
 		t.Cleanup(func() {
 			if err := c.Terminate(context.Background()); err != nil {
@@ -146,8 +163,12 @@ func Server(t testing.TB, img string) (*postgres.PostgresContainer, string) {
 	return c, dsn
 }
 
-// start starts a server from img with an empty Template.
-func start(ctx context.Context, img string) (*postgres.PostgresContainer, string, error) {
+// start starts a server from img with Template migrated with streams.
+func start(
+	ctx context.Context,
+	img string,
+	streams []migrate.Stream,
+) (*postgres.PostgresContainer, string, error) {
 	if err := reachable(ctx); err != nil {
 		return nil, "", err
 	}
@@ -166,6 +187,19 @@ func start(ctx context.Context, img string) (*postgres.PostgresContainer, string
 	}
 	if err := exec(ctx, dsn, "CREATE DATABASE "+Template); err != nil {
 		return c, "", err
+	}
+	if len(streams) > 0 {
+		tmpl, err := withDatabase(dsn, Template)
+		if err != nil {
+			return c, "", err
+		}
+		cfg, err := pgx.ParseConfig(tmpl)
+		if err != nil {
+			return c, "", fmt.Errorf("migrate %s: %w", Template, err)
+		}
+		if _, err := migrate.Up(ctx, cfg, "sqltest", streams); err != nil {
+			return c, "", fmt.Errorf("migrate %s: %w", Template, err)
+		}
 	}
 	return c, dsn, nil
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, acceptance.ImagePostgres)) }
+func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, acceptance.ImagePostgres, Streams()...)) }
 
 // sessions counts the connections to the test's database, other than the
 // observer's own, that match filter.

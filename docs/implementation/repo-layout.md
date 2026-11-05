@@ -97,9 +97,10 @@ infraweave/
 │   │   ├── sql/                   pgx pool and the store conventions of decision 0005 (P2)
 │   │   │   ├── migrate/           embedded streams, schema_migrations keyed by stream, one advisory lock
 │   │   │   ├── notify/            LISTEN and NOTIFY fan-out between replicas (P2)
+│   │   │   ├── schema/            the platform stream: the platform packages' tables, registered first (P2)
 │   │   │   ├── search/            compiles SearchInput predicates to SQL under Reachable (P5)
-│   │   │   └── sqltest/           testcontainers PostgreSQL for store and domain tests
-│   │   ├── tx/                    Tx(ctx, fn), AfterCommit; the unit of work on the context (P2)
+│   │   │   └── sqltest/           testcontainers PostgreSQL for store and domain tests, on a migrated template
+│   │   ├── tx/                    tx.Do(ctx, db, opts, fn), Q, AfterCommit; the unit of work on the context (P2)
 │   │   ├── audit/                 Record(ctx, kernel.AuditEntry) in the caller's transaction
 │   │   ├── outbox/                the event envelope and kind registry shared by Deploy and Flows; Append(ctx, Event)
 │   │   │                          in the caller's transaction; Subscribe(kind, consumer, Handler), one job per consumer (P2c)

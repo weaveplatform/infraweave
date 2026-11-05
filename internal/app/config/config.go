@@ -61,7 +61,8 @@ const ConfigFlag = "config"
 
 // settingFlags maps each setting flag to its configuration key. Only these
 // are bound to viper: --config and --help are not settings, and
-// UnmarshalExact would reject them as unknown keys.
+// UnmarshalExact would reject them as unknown keys. ServeFlags defines all
+// of them; a command with fewer, such as migrate, binds those it has.
 var settingFlags = map[string]string{
 	"listen":           "server.listen",
 	"admin-listen":     "server.admin_listen",
@@ -71,7 +72,7 @@ var settingFlags = map[string]string{
 // ServeFlags adds the serve process mode's flags to fs.
 func ServeFlags(fs *pflag.FlagSet) {
 	d := serve.Defaults()
-	fs.String(ConfigFlag, "", "YAML configuration file")
+	FileFlag(fs)
 	fs.String("listen", d.Listen, "API listener address (server.listen)")
 	fs.String(
 		"admin-listen",
@@ -82,17 +83,22 @@ func ServeFlags(fs *pflag.FlagSet) {
 		"how long in-flight requests may take to finish on shutdown (server.shutdown.timeout)")
 }
 
+// FileFlag adds only --config, for a command that takes its settings from
+// the file and the environment.
+func FileFlag(fs *pflag.FlagSet) {
+	fs.String(ConfigFlag, "", "YAML configuration file")
+}
+
 // Load decodes the settings with flag > environment > file precedence. Viper
 // ranks a changed flag above the environment and the file, and a flag left
 // at its default below both, which is that order.
 func Load(fs *pflag.FlagSet) (*Config, error) {
 	v := viper.New()
-	var bindErr error
 	for name, key := range settingFlags {
-		bindErr = errors.Join(bindErr, v.BindPFlag(key, fs.Lookup(name)))
-	}
-	if bindErr != nil {
-		return nil, fmt.Errorf("bind flags: %w", bindErr)
+		if f := fs.Lookup(name); f != nil {
+			// BindPFlag fails only on a nil flag.
+			_ = v.BindPFlag(key, f)
+		}
 	}
 	v.SetEnvPrefix("INFRAWEAVE")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

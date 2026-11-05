@@ -35,6 +35,7 @@ func TestUnitConfigValidate(t *testing.T) {
 		{"bad read url", func(c *sql.Config) { c.ReadURL = "postgres://db:x/y" }, "database.read_url"},
 		{"read url alone", func(c *sql.Config) { c.URL, c.ReadURL = "", ok.URL }, "needs database.url"},
 		{"no connections", func(c *sql.Config) { c.MaxConns = 0 }, "database.max_conns"},
+		{"unknown migrate mode", func(c *sql.Config) { c.Migrate = "never" }, "database.migrate"},
 		{"no statement timeout", func(c *sql.Config) { c.StatementTimeout = 0 }, "database.statement_timeout"},
 		{
 			"sub-millisecond idle timeout",
@@ -95,8 +96,8 @@ func TestAccOpen(t *testing.T) {
 	if db.Read() != db.Primary() {
 		t.Error("without database.read_url, Read is not the primary")
 	}
-	if got := db.ListenConfig().RuntimeParams["statement_timeout"]; got != "30000" {
-		t.Errorf("ListenConfig statement_timeout = %q", got)
+	if got := db.ConnConfig().RuntimeParams["statement_timeout"]; got != "30000" {
+		t.Errorf("ConnConfig statement_timeout = %q", got)
 	}
 
 	c := sql.Defaults()

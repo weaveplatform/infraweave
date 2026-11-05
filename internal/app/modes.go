@@ -9,7 +9,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
-	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
 // Start starts the serve process mode: the API on the API listener and the
@@ -27,18 +26,20 @@ func Start(ctx context.Context, c config.Config, log *slog.Logger) (*serve.Runni
 }
 
 // Serve runs the serve process mode until ctx is done, then drains in-flight
-// requests (serve.Run). With database.url set it opens PostgreSQL before
-// either listener binds, so a server below the version floor never answers,
-// and closes the pools only after the drain, when no request can use them.
+// requests (serve.Run). With database.url set it opens PostgreSQL and brings
+// the schema to this binary's (openDatabase) before either listener binds,
+// so a server below the version floor or a schema this binary must not run
+// on never answers, and closes the pools only after the drain, when no
+// request can use them.
 // Without it the mode serves without a database: no operation reads one yet.
 func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 	if err := errors.Join(c.Server.Validate(), c.Database.Validate()); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 	if c.Database.URL != "" {
-		db, err := sql.Open(ctx, c.Database)
+		db, err := openDatabase(ctx, c.Database, log, Streams())
 		if err != nil {
-			return err //nolint:wrapcheck // sql's errors name the setting
+			return err
 		}
 		defer db.Close()
 	}
