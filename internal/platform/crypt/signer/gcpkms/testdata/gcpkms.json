@@ -1,0 +1,21 @@
+[
+  {
+    "method": "GET",
+    "path": "/v1/projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/signing/cryptoKeyVersions/1/publicKey?%24alt=json%3Benum-encoding%3Dint",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=UTF-8"
+    },
+    "reply": "{\n  \"pem\": \"-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcGez1dAGpfgnFChcFvxwANLeEIYX\\nB3tknC4leVN8SeWsdpRNRu22Y1pR8PRkKcx6FBv7ljHMM8biTX5tuYyL6Q==\\n-----END PUBLIC KEY-----\\n\",\n  \"algorithm\": 12,\n  \"pemCrc32c\": \"572739632\",\n  \"name\": \"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/signing/cryptoKeyVersions/1\",\n  \"protectionLevel\": 1\n}\n"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/signing/cryptoKeyVersions/1:asymmetricSign?%24alt=json%3Benum-encoding%3Dint",
+    "body": "{\"digest\":{\"sha256\":\"ehAXD+kAUvLe0aOTTwc5A5vdeDjgWsQeZFCt5wSGaAw=\"},\"digestCrc32c\":\"3575361701\",\"name\":\"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/signing/cryptoKeyVersions/1\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=UTF-8"
+    },
+    "reply": "{\n  \"signature\": \"MEUCICAvoUEL0okv5/U1WjAQ+etTtDb3YFTWe7l2XriHYNoaAiEAhRW47rrffeSYmmcopX2WmJ6wcg23v0/SmAY2Bd92xJ0=\",\n  \"signatureCrc32c\": \"925076030\",\n  \"verifiedDigestCrc32c\": true,\n  \"name\": \"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/signing/cryptoKeyVersions/1\",\n  \"protectionLevel\": 1\n}\n"
+  }
+]
