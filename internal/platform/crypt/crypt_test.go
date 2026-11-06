@@ -31,9 +31,9 @@ func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, schema.Stream())) }
 
 func provider(t *testing.T, fill byte) kek.Provider {
 	t.Helper()
-	p, err := kek.New(kek.Config{Provider: kek.Local, Local: kek.LocalConfig{
+	p, err := kek.OpenLocal(kek.LocalConfig{
 		Key: base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{fill}, 32)),
-	}})
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

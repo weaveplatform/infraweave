@@ -117,10 +117,25 @@ The provider is set by `secrets.kek.provider`.
 |---|---|---|---|
 | `local` | `secrets.kek.local.key_file`, or the environment variable `INFRAWEAVE_SECRETS_KEK` (base64 of 32 bytes) | AES-256-GCM with a random nonce (`cipher.NewGCMWithRandomNonce`), with associated data `infraweave/data-key/<id>` | standard library |
 | `awskms` | `key_id` (ARN or alias), `region` | KMS `Encrypt` and `Decrypt`, with encryption context `{"infraweave":"data-key","id":"<id>"}` | `github.com/aws/aws-sdk-go-v2/service/kms` |
-| `gcpkms` | `key_name` (CryptoKey resource name) | Cloud KMS `Encrypt` and `Decrypt`, with `additional_authenticated_data` | `cloud.google.com/go/kms` |
-| `azurekv` | `vault_url`, `key_name`, `key_version` | Key Vault `wrapKey` and `unwrapKey` with `RSA-OAEP-256` | `github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys` |
-| `vault` | `address`, `mount`, `key_name`, `auth` (`token`, `kubernetes`, `approle`) | Transit `encrypt` and `decrypt` | `net/http`, calling the Transit API directly |
+| `gcpkms` | `key_name` (CryptoKey resource name) | Cloud KMS `Encrypt` and `Decrypt` over REST, with `additional_authenticated_data` `infraweave/data-key/<id>` and the CRC32C integrity fields | `cloud.google.com/go/kms` |
+| `azurekv` | `vault_url`, `key_name`, `key_version` (default: the key's current version) | Key Vault `wrapKey` and `unwrapKey` with `RSA-OAEP-256` of the data key's ID (uint32, big-endian) followed by the key, since RSA-OAEP takes no associated data; the wrapped key records the key version that unwraps it | `github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys` |
+| `vault` | `address`, `mount` (default `transit`), `key_name`, `auth.method` (`token`, `kubernetes`, `approle`) | Transit `encrypt` and `decrypt` with `associated_data` `infraweave/data-key/<id>`, on a key of an AEAD type such as the default `aes256-gcm96`. Transit's `context` binds only a derived key and is ignored on any other | `net/http`, calling the Transit API directly |
 
+- **The ID binding.** Each provider binds the data key's ID into the
+  wrapping, so a wrapped key copied to another ID fails to unwrap. A
+  wrapping that does not authenticate is a wrong KEK; a refused permission
+  or an unreachable provider is reported as itself, naming the provider and
+  the key, so the operator fixes the policy or the network, not the KEK.
+- **Credentials.** `awskms`, `gcpkms` and `azurekv` use their SDK's default
+  credential chain, which includes workload identity. `vault`'s `token`
+  method reads `auth.token_file` or `VAULT_TOKEN`; `kubernetes` logs in
+  with `auth.role` and the service account token in `auth.jwt_file`;
+  `approle` logs in with `auth.role_id` and the secret ID in
+  `auth.secret_id_file`. A login token is renewed halfway through its lease,
+  and once when Vault refuses it.
+- **`kek_ref`.** It is `<provider>:<key>`, such as
+  `awskms:alias/infraweave` or `vault:https://vault:8200/transit/kek`, so
+  `rewrap` knows what wrapped each row.
 - **Calls to the provider.** Each replica calls the KEK provider once per data
   key at start, and again only when the keyring changes. Sealing and opening
   are local AES operations, so KMS latency and quota never sit on a request
@@ -450,7 +465,8 @@ nothing about them is secret:
 - **KEK providers.**
   - The `local` provider is tested in unit tests.
   - `vault` runs against Vault in testcontainers.
-  - `awskms` runs against LocalStack's KMS in testcontainers.
+  - `awskms` runs against moto's KMS in testcontainers. LocalStack's image
+    needs a licence token to start, which no public pull request has.
   - `gcpkms` and `azurekv` use recorded HTTP fixtures, with a live test gated
     on credentials.
 - **The registry.** `TestAccSealedColumnRegistry` migrates a fresh database and

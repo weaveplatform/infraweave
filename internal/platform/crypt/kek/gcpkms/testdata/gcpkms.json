@@ -1,0 +1,42 @@
+[
+  {
+    "method": "POST",
+    "path": "/v1/projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek:encrypt?%24alt=json%3Benum-encoding%3Dint",
+    "body": "{\"additionalAuthenticatedData\":\"aW5mcmF3ZWF2ZS9kYXRhLWtleS8z\",\"additionalAuthenticatedDataCrc32c\":\"1006067220\",\"name\":\"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek\",\"plaintext\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=\",\"plaintextCrc32c\":\"1188919630\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=UTF-8"
+    },
+    "reply": "{\n  \"name\": \"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek/cryptoKeyVersions/1\",\n  \"ciphertext\": \"CiQAeh03arp/2uP1UnJB0OrlnkFVGAo0wm+XzE5WsPZnkUoTcvkSSQAxhKjImKd2NOPPvgTnZqcus779BmcgE5zY94mFnmdF6cqdkfXXbQtfEKuECVDB/1odwQX5iQwoSycrpjURrByUGRvTbjOlmPg=\",\n  \"ciphertextCrc32c\": \"1568950681\",\n  \"verifiedPlaintextCrc32c\": true,\n  \"verifiedAdditionalAuthenticatedDataCrc32c\": true,\n  \"protectionLevel\": 1\n}\n"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek:decrypt?%24alt=json%3Benum-encoding%3Dint",
+    "body": "{\"additionalAuthenticatedData\":\"aW5mcmF3ZWF2ZS9kYXRhLWtleS8z\",\"additionalAuthenticatedDataCrc32c\":\"1006067220\",\"ciphertext\":\"CiQAeh03arp/2uP1UnJB0OrlnkFVGAo0wm+XzE5WsPZnkUoTcvkSSQAxhKjImKd2NOPPvgTnZqcus779BmcgE5zY94mFnmdF6cqdkfXXbQtfEKuECVDB/1odwQX5iQwoSycrpjURrByUGRvTbjOlmPg=\",\"ciphertextCrc32c\":\"1568950681\",\"name\":\"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=UTF-8"
+    },
+    "reply": "{\n  \"plaintext\": \"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=\",\n  \"plaintextCrc32c\": \"1188919630\",\n  \"usedPrimary\": true,\n  \"protectionLevel\": 1\n}\n"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek:decrypt?%24alt=json%3Benum-encoding%3Dint",
+    "body": "{\"additionalAuthenticatedData\":\"aW5mcmF3ZWF2ZS9kYXRhLWtleS80\",\"additionalAuthenticatedDataCrc32c\":\"4013767423\",\"ciphertext\":\"CiQAeh03arp/2uP1UnJB0OrlnkFVGAo0wm+XzE5WsPZnkUoTcvkSSQAxhKjImKd2NOPPvgTnZqcus779BmcgE5zY94mFnmdF6cqdkfXXbQtfEKuECVDB/1odwQX5iQwoSycrpjURrByUGRvTbjOlmPg=\",\"ciphertextCrc32c\":\"1568950681\",\"name\":\"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek\"}",
+    "status": 400,
+    "header": {
+      "Content-Type": "application/json; charset=UTF-8"
+    },
+    "reply": "{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Decryption failed.\",\n    \"status\": \"INVALID_ARGUMENT\"\n  }\n}\n"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek:decrypt?%24alt=json%3Benum-encoding%3Dint",
+    "body": "{\"additionalAuthenticatedData\":\"aW5mcmF3ZWF2ZS9kYXRhLWtleS8z\",\"additionalAuthenticatedDataCrc32c\":\"1006067220\",\"ciphertext\":\"CiQAeh03arp/2uP1UnJB0OrlnkFVGAo0wm+XzE5WsPZnkUoTcvkSSQAxhKjImKd2NOPPvgTnZqcus779BmcgE5zY94mFnmdF6cqdkfXXbQtfEKuECVDB/1odwQX5iQwoSycrpjURrByUGRvTbjOlmPk=\",\"ciphertextCrc32c\":\"2951727770\",\"name\":\"projects/lab-project/locations/global/keyRings/infraweave-ci/cryptoKeys/kek\"}",
+    "status": 400,
+    "header": {
+      "Content-Type": "application/json; charset=UTF-8"
+    },
+    "reply": "{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Decryption failed: verify that 'name' refers to the correct CryptoKey.\",\n    \"status\": \"INVALID_ARGUMENT\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",\n        \"reason\": \"INDECIPHERABLE_CIPHERTEXT_FOR_CRYPTOKEY\",\n        \"domain\": \"cloudkms.googleapis.com\"\n      }\n    ]\n  }\n}\n"
+  }
+]

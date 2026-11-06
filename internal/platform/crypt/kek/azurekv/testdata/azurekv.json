@@ -1,0 +1,52 @@
+[
+  {
+    "method": "POST",
+    "path": "/keys/kek/wrapkey?api-version=2025-07-01",
+    "status": 401,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": "Bearer authorization=\"https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000\", resource=\"https://vault.azure.net\""
+    },
+    "reply": "{\"error\":{\"code\":\"Unauthorized\",\"message\":\"AKV10000: Request is missing a Bearer, PoP, or MTLS_POP token.\"}}"
+  },
+  {
+    "method": "POST",
+    "path": "/keys/kek/wrapkey?api-version=2025-07-01",
+    "body": "{\"alg\":\"RSA-OAEP-256\",\"value\":\"AAAAAwABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4f\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "reply": "{\"kid\":\"https://lab-vault.vault.azure.net/keys/kek/62d1ee37c7fd4c8aa0ac893711b70715\",\"value\":\"Mg_iJl9m4JNKPVAVg6p1oPtdv84_xlTV7CHn7xEmcU0CL533hmWplorUG4M-1xiw92d15bHA-GBmkwoQiIlXnNl9AT728BQv77dS8TBj-HX_ic1-oPaxVtvdWeguwlaF2iVZyjhHgX-WUnabLR95z3lU7Idxe5YJO-Xgaqa30QXfqcSvS8MZhZoG1QUUbDGvEjvR7W9aTl5kcqHjKS9fGgHWFaOgMX3jgKPvpLUg0-Hd0XrHsDbITtlwuplwIwKFeFgWgLUC8WrFTAxaiUzREA-Ce9ab7jZ3wTCSSjDzyHCKNOw11rjZrRi1rcOcB4rpOlgIEucYSYZw5MKQika92QTMT9E1JUZQDTXpxf0H5ftjWpFhG-77WY9TCzdPAORrH0h0TW5PLjydt-agcInMAi9_WzvHA0chN1ZEpZeGFpNd4pLSYHr3WRJRtVRcYQ-XHVcvmEyTqcegxTV6KqsQuHHo2U0opV2Q8GUC1toxFMNk6hd75y7haaNiQtvUGI7v\"}"
+  },
+  {
+    "method": "POST",
+    "path": "/keys/kek/62d1ee37c7fd4c8aa0ac893711b70715/unwrapkey?api-version=2025-07-01",
+    "body": "{\"alg\":\"RSA-OAEP-256\",\"value\":\"Mg_iJl9m4JNKPVAVg6p1oPtdv84_xlTV7CHn7xEmcU0CL533hmWplorUG4M-1xiw92d15bHA-GBmkwoQiIlXnNl9AT728BQv77dS8TBj-HX_ic1-oPaxVtvdWeguwlaF2iVZyjhHgX-WUnabLR95z3lU7Idxe5YJO-Xgaqa30QXfqcSvS8MZhZoG1QUUbDGvEjvR7W9aTl5kcqHjKS9fGgHWFaOgMX3jgKPvpLUg0-Hd0XrHsDbITtlwuplwIwKFeFgWgLUC8WrFTAxaiUzREA-Ce9ab7jZ3wTCSSjDzyHCKNOw11rjZrRi1rcOcB4rpOlgIEucYSYZw5MKQika92QTMT9E1JUZQDTXpxf0H5ftjWpFhG-77WY9TCzdPAORrH0h0TW5PLjydt-agcInMAi9_WzvHA0chN1ZEpZeGFpNd4pLSYHr3WRJRtVRcYQ-XHVcvmEyTqcegxTV6KqsQuHHo2U0opV2Q8GUC1toxFMNk6hd75y7haaNiQtvUGI7v\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "reply": "{\"kid\":\"https://lab-vault.vault.azure.net/keys/kek/62d1ee37c7fd4c8aa0ac893711b70715\",\"value\":\"AAAAAwABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4f\"}"
+  },
+  {
+    "method": "POST",
+    "path": "/keys/kek/62d1ee37c7fd4c8aa0ac893711b70715/unwrapkey?api-version=2025-07-01",
+    "body": "{\"alg\":\"RSA-OAEP-256\",\"value\":\"Mg_iJl9m4JNKPVAVg6p1oPtdv84_xlTV7CHn7xEmcU0CL533hmWplorUG4M-1xiw92d15bHA-GBmkwoQiIlXnNl9AT728BQv77dS8TBj-HX_ic1-oPaxVtvdWeguwlaF2iVZyjhHgX-WUnabLR95z3lU7Idxe5YJO-Xgaqa30QXfqcSvS8MZhZoG1QUUbDGvEjvR7W9aTl5kcqHjKS9fGgHWFaOgMX3jgKPvpLUg0-Hd0XrHsDbITtlwuplwIwKFeFgWgLUC8WrFTAxaiUzREA-Ce9ab7jZ3wTCSSjDzyHCKNOw11rjZrRi1rcOcB4rpOlgIEucYSYZw5MKQika92QTMT9E1JUZQDTXpxf0H5ftjWpFhG-77WY9TCzdPAORrH0h0TW5PLjydt-agcInMAi9_WzvHA0chN1ZEpZeGFpNd4pLSYHr3WRJRtVRcYQ-XHVcvmEyTqcegxTV6KqsQuHHo2U0opV2Q8GUC1toxFMNk6hd75y7haaNiQtvUGI7v\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "reply": "{\"kid\":\"https://lab-vault.vault.azure.net/keys/kek/62d1ee37c7fd4c8aa0ac893711b70715\",\"value\":\"AAAAAwABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4f\"}"
+  },
+  {
+    "method": "POST",
+    "path": "/keys/kek/62d1ee37c7fd4c8aa0ac893711b70715/unwrapkey?api-version=2025-07-01",
+    "body": "{\"alg\":\"RSA-OAEP-256\",\"value\":\"Mg_iJl9m4JNKPVAVg6p1oPtdv84_xlTV7CHn7xEmcU0CL533hmWplorUG4M-1xiw92d15bHA-GBmkwoQiIlXnNl9AT728BQv77dS8TBj-HX_ic1-oPaxVtvdWeguwlaF2iVZyjhHgX-WUnabLR95z3lU7Idxe5YJO-Xgaqa30QXfqcSvS8MZhZoG1QUUbDGvEjvR7W9aTl5kcqHjKS9fGgHWFaOgMX3jgKPvpLUg0-Hd0XrHsDbITtlwuplwIwKFeFgWgLUC8WrFTAxaiUzREA-Ce9ab7jZ3wTCSSjDzyHCKNOw11rjZrRi1rcOcB4rpOlgIEucYSYZw5MKQika92QTMT9E1JUZQDTXpxf0H5ftjWpFhG-77WY9TCzdPAORrH0h0TW5PLjydt-agcInMAi9_WzvHA0chN1ZEpZeGFpNd4pLSYHr3WRJRtVRcYQ-XHVcvmEyTqcegxTV6KqsQuHHo2U0opV2Q8GUC1toxFMNk6hd75y7haaNiQtvUGI7u\"}",
+    "status": 400,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "reply": "{\"error\":{\"code\":\"BadParameter\",\"message\":\"The parameter is incorrect.\\r\\n\"}}"
+  }
+]

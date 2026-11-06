@@ -23,6 +23,10 @@ exclude:
     # The object store contract, for the same reason: every driver's test
     # runs it, and what none reaches is a driver failing a clause.
     - ^internal/platform/objectstore/objectstoretest/
+    # The KEK provider contract and its fixture replay, for the same
+    # reason: what no provider's test reaches is a provider failing a
+    # clause, or a fixture file that does not decode.
+    - ^internal/platform/crypt/kek/kektest/
     # oapi-codegen and stubgen output; the generators are tested instead.
     - ^internal/platform/gen/
     - ^pkg/client/

@@ -4,3 +4,5 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+# A saved plan holds the lab's project and subscription IDs.
+*.tfplan

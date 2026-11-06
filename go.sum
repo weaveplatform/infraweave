@@ -10,6 +10,8 @@ cloud.google.com/go/compute/metadata v0.10.0 h1:pyKMUQSwchgkIBBJGdILqQbs/BNJXqwS
 cloud.google.com/go/compute/metadata v0.10.0/go.mod h1:rGFHRrIif570kSibjFTMbt6/4/tzgJWFGI/HVol4GIk=
 cloud.google.com/go/iam v1.15.1 h1:i6EXLKyIi0Sh72p+5+Fz0PfnzB63bkneVpaBCGrjlWs=
 cloud.google.com/go/iam v1.15.1/go.mod h1:nDJ/rfCzLKyBUY1AeiSQwOAJg/AN7zZ2QmNzRTcK2jM=
+cloud.google.com/go/kms v1.36.1 h1:jIXDoN/lxjVt/zc219tIwqAWPVWVzcLJ7s6Oq3n0Y5U=
+cloud.google.com/go/kms v1.36.1/go.mod h1:1oVAwTvmgswE8PiQeyffdNxpRLw2F0UfQlLwTrYlRNg=
 cloud.google.com/go/logging v1.21.0 h1:Grn9NZsh87BO5+CEtZFFdj5mXEAnrlPFEdHDMVo9p8Y=
 cloud.google.com/go/logging v1.21.0/go.mod h1:4foM+ucR/w1KQrJOh4tDr14iHUIt0MLh2cL8094/LZs=
 cloud.google.com/go/longrunning v1.4.0 h1:l53OXv/ZAQCvATPqdYIqxruIUa1+eeX3Ckg0EBMpZLM=
@@ -34,6 +36,10 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0 h1:Terj1CMW4+NY5CpWjSRkqL
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0/go.mod h1:7Ut2Qw9vcwpLW5Q4MBy43uSxXS7tK2yjs94OJ6j5thE=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1 h1:/Zt+cDPnpC3OVDm/JKLOs7M2DKmLRIIp3XIx9pHHiig=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1/go.mod h1:Ng3urmn6dYe8gnbCMoHHVl5APYz2txho3koEkV2o2HA=
+github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.5.0 h1:MaKvxE6D0KkjOg6Wd9M00iqP5PR0kUxCfiezes4JweM=
+github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.5.0/go.mod h1:i2h9fsTFKZorh8RdV2IcSUf/Qj98GlTkrTvUbX/s8as=
+github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 h1:nCYfgcSyHZXJI8J0IWE5MsCGlb2xp9fJiXyxWgmOFg4=
+github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0/go.mod h1:ucUjca2JtSZboY8IoUqyQyuuXvwbMBVwFOm0vdQPNhA=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.3 h1:zoPQ7KXGgzqeUmNWl+b6IwVAqsb5lROEJhqAmqXQtm0=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.3/go.mod h1:ei/sDx/dwDIUtZE3PQP1u8+qrA+CRy4q7qW+A2MbgB4=
 github.com/Azure/azure-sdk-for-go/sdk/storage/internal v0.1.0 h1:X/bTwe0qpvmvPPutc+LWo7T4cKMqDP9JHP4k+Co9ZB4=
@@ -91,6 +97,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.10 h1:3nCD0vZO
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.10/go.mod h1:KJbydA7vvlrQSceENaM/C//yI18Rt36x//hG0Bw3uW0=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.10 h1:bCz6PRKhO7ErM3F0XqLl8pbQq+r0Fra6R8PpfPnjgbo=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.10/go.mod h1:N8UvNaHipKSUnUFR07OpGdjU8B5aS/XBxgrcKURb2DQ=
+github.com/aws/aws-sdk-go-v2/service/kms v1.62.4 h1:WxK881Ln4b4AkWEhiH9FEBxgBR1N8iJvwv94mjWkVIc=
+github.com/aws/aws-sdk-go-v2/service/kms v1.62.4/go.mod h1:bR9MIdt7Yu0zYYhz8DksVPY2p/kwRON6tTnFdc7czTM=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.8 h1:0g/xXBWQEyR6Mcxo1ukBYqzeRX0bQ/ZdXrtKkIo+yT0=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.8/go.mod h1:g6EsKHPrO5GpWYKwBfenLLtjuoPRE+WDIlLPQOIixLI=
 github.com/aws/aws-sdk-go-v2/service/signin v1.12.3 h1:8cQxxirJ0d0tvmS89hYUpnVArXIKlzwRyiaSfdaokvQ=

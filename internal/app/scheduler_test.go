@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 )
@@ -43,11 +44,23 @@ func rows(t *testing.T, db *sql.DB, query string) int {
 // returns its log.
 func runMode(t *testing.T, observer *sql.DB, m Mode) (out *lines, admin string, stop func()) {
 	t.Helper()
+	return runModeWith(t, observer, m, func(*config.Config) {})
+}
+
+// runModeWith is runMode with edit's changes to the configuration.
+func runModeWith(
+	t *testing.T,
+	observer *sql.DB,
+	m Mode,
+	edit func(*config.Config),
+) (out *lines, admin string, stop func()) {
+	t.Helper()
 	c := local(t)
 	c.Database.URL = observer.Primary().Config().ConnString()
 	c.Server.AdminListen = freeAddr(t)
 	c.Queue.PollInterval = 50 * time.Millisecond
 	c.Queue.SchedulerTick = 50 * time.Millisecond
+	edit(&c)
 	out = &lines{}
 	log := slog.New(slog.NewTextHandler(out, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ctx, cancel := context.WithCancel(t.Context())

@@ -12,7 +12,6 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
-	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
@@ -75,10 +74,11 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	}
 	// Every mode Run starts seals, so each needs the KEK; migrate and
 	// version never call Run.
-	provider, err := kek.New(c.Secrets.KEK)
+	provider, closeKEK, err := openKEK(ctx, c.Secrets.KEK)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
+	defer closeKEK()
 	db, err := openDatabase(ctx, c.Database, log, Streams())
 	if err != nil {
 		return err
