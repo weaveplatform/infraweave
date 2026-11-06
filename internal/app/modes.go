@@ -139,6 +139,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		c.Server,
 		m,
 		g,
+		newDomains(db),
 		queue.New(db.Primary()),
 		serving(c.ObjectStore, db.Primary(), keys, objs),
 		health,
@@ -179,7 +180,7 @@ func keyringCheck(h *observe.Health, keys *crypt.Keyring) {
 }
 
 // handlers are mode m's two listeners' handlers: the API, behind the
-// controls whose state g holds, reading queue depths from queues and
+// controls whose state g holds, serving the operations of the domains d, reading queue depths from queues and
 // holding objects as b, or nil
 // when m serves no API, so serve binds no API listener; and the probes,
 // which answer from health.
@@ -188,12 +189,13 @@ func handlers(
 	c config.Server,
 	m Mode,
 	g Guards,
+	d Domains,
 	queues QueueStats,
 	b Blobs,
 	health *observe.Health,
 ) (api, admin http.Handler) {
 	if m.API {
-		api = API(log, c, g, queues, b)
+		api = API(log, c, g, d, queues, b)
 	}
 	return api, observe.Probes(log, health)
 }

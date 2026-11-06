@@ -1,17 +1,21 @@
 // Package app is infraweave's composition root: it builds each process mode
 // from the configuration and the platform packages, and is the one place
-// that will see every domain. cmd/infraweave holds one thin cobra file per
-// process mode over it.
+// that sees every domain. cmd/infraweave holds one thin cobra file per
+// process mode over it. Domains holds the business domains, which
+// newDomains builds in the declared graph's order on the primary pool;
+// apiServer embeds each domain's partial strict server ahead of
+// api.UnimplementedStrict.
 //
 // It composes the serve, scheduler and all process modes (Mode). API mounts
 // the generated strict server (apiServer, which embeds
-// api.UnimplementedStrict, so every operation answers 501) under BaseURL behind decision 0003's controls; Guarded and
+// api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL behind decision 0003's controls; Guarded and
 // Operations put the operator switch, the rate limits and idempotency keys in
 // front of each route, with each operation's cost class read from the
 // embedded spec's x-infraweave-cost, with their state in Guards; the access
 // log runs before them. Run runs a mode: it opens PostgreSQL from
 // database.url, which it requires, applies or checks the migration streams
-// Streams registers, in the declared graph's order, loads the keyring
+// Streams registers, in the declared graph's order, with each domain's
+// stream after the platform's, loads the keyring
 // through the KEK provider secrets.kek.provider names, which it requires
 // (openKEK), and reloads it on each change to encryption_keys, opens the
 // object store
@@ -28,7 +32,8 @@
 // and blob.delete over the full Store, and the cron ticker over
 // periodic_tasks, after registering queue.prune, idempotency.purge,
 // events.prune, blob.expire and secrets.rotate, with secrets.reseal, which
-// each rotation enqueues (secretsTasks); every
+// each rotation enqueues (secretsTasks) and which walks SealedColumns, the
+// platform's sealed columns and each domain's; every
 // domain appends to and subscribes on Run's one outbox. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
@@ -56,7 +61,9 @@
 //
 // # Dependencies
 //
-// It imports app/config for the settings; platform/gen/api for the strict
+// It imports app/config for the settings; each domain's assembly (access)
+// to build it, mount its partial and list its stream and sealed columns;
+// platform/gen/api for the strict
 // server; platform/httpkit/{serve,middleware,middleware/ratelimit,
 // middleware/idempotency,problem} for the listeners and controls;
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema

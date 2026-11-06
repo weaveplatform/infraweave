@@ -1,3 +1,4 @@
+internal/access/graph/graph.go graph-access github.com/weaveplatform/infraweave/internal/stacks/api
 internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/internal/platform/sql
 internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/pkg/sdk
 internal/platform/x/x.go shared-below-domains github.com/weaveplatform/infraweave/internal/stacks

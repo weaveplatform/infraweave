@@ -54,7 +54,7 @@ func TestUnitAPIOperations(t *testing.T) {
 			t.Errorf("%s: %+v, want %+v", key, ops[key], want)
 		}
 	}
-	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), nil, Blobs{}).(*chi.Mux)
+	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), Domains{}, nil, Blobs{}).(*chi.Mux)
 	if !ok {
 		t.Fatal("API is not a chi router")
 	}
@@ -130,7 +130,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: 3}
 	c.RateLimit.Expensive = ratelimit.Limit{Rate: 1e-6, Burst: 1}
-	api := API(discard(), c, memory(c), nil, Blobs{})
+	api := API(discard(), c, memory(c), Domains{}, nil, Blobs{})
 	const me = "192.0.2.1:1"
 
 	if rec := send(
@@ -175,7 +175,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 func TestUnitAPIDisabledCaller(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.DisabledCallers = []string{"192.0.2.1"}
-	api := API(discard(), c, memory(c), nil, Blobs{})
+	api := API(discard(), c, memory(c), Domains{}, nil, Blobs{})
 	rec := send(api, http.MethodGet, "/api/v1/stacks", "192.0.2.1:1", "")
 	wantTyped(t, rec, problem.APIDisabled)
 	if rec.Header().Get("Retry-After") == "" || rec.Header().Get("X-RateLimit-Limit") != "" {

@@ -215,6 +215,24 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/httpkit/serve$
             - github.com/weaveplatform/infraweave/internal/platform/seal$
             - github.com/weaveplatform/infraweave/internal/platform/expr$
+        # decision 0004's declared graph (repo-layout.md, "Declared graph"):
+        # one rule per domain, which allows the shared packages, the
+        # domain's own tree and the api/ of each domain its row names, and
+        # denies the rest of internal/.
+        graph-access:
+          list-mode: lax
+          files:
+            - "**/internal/access/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: access imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/access/
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
+            - github.com/weaveplatform/infraweave/internal/iac$
+            - github.com/weaveplatform/infraweave/internal/iac/
         devtools:
           files:
             - $all

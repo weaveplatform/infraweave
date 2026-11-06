@@ -91,7 +91,7 @@ func secretsTasks(
 		return err
 	}}
 	reseal = func(ctx context.Context, _ queue.Job) error {
-		n, err := crypt.Reseal(ctx, db, p)
+		n, err := crypt.Reseal(ctx, db, p, SealedColumns())
 		if err == nil {
 			log.Info("sealed values resealed under the active data key", "values", n)
 		}

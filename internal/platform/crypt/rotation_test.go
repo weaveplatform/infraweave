@@ -128,7 +128,7 @@ func TestAccRotateAndReseal(t *testing.T) {
 	if got := underKeys(t, db, k); got[1] != 7 {
 		t.Errorf("before the reseal: %v", got)
 	}
-	n, err := crypt.Reseal(t.Context(), db, p)
+	n, err := crypt.Reseal(t.Context(), db, p, crypt.Registry())
 	if err != nil || n != 7 {
 		t.Fatalf("Reseal = %d, %v", n, err)
 	}
@@ -138,7 +138,7 @@ func TestAccRotateAndReseal(t *testing.T) {
 	if states := keyStates(t, db); len(states) != 1 || states[2] != "active" {
 		t.Errorf("keys after the reseal: %v", states)
 	}
-	if n, err := crypt.Reseal(t.Context(), db, p); err != nil || n != 0 {
+	if n, err := crypt.Reseal(t.Context(), db, p, crypt.Registry()); err != nil || n != 0 {
 		t.Errorf("a second reseal: %d, %v", n, err)
 	}
 	// With the old key gone, a later rotation proceeds.
@@ -167,7 +167,7 @@ func TestAccResealInterrupted(t *testing.T) {
 		t.Fatal(err)
 	}
 	crypt.AfterResealBatch(t, func(context.Context) error { return errStop })
-	if _, err := crypt.Reseal(t.Context(), db, p); !errors.Is(err, errStop) {
+	if _, err := crypt.Reseal(t.Context(), db, p, crypt.Registry()); !errors.Is(err, errStop) {
 		t.Fatalf("Reseal: %v", err)
 	}
 	if got := underKeys(t, db, k); got[1] != 3 || got[2] != 2 {
@@ -177,7 +177,7 @@ func TestAccResealInterrupted(t *testing.T) {
 		t.Errorf("the old key after an interrupted reseal: %v", states)
 	}
 	crypt.AfterResealBatch(t, func(context.Context) error { return nil })
-	if _, err := crypt.Reseal(t.Context(), db, p); err != nil {
+	if _, err := crypt.Reseal(t.Context(), db, p, crypt.Registry()); err != nil {
 		t.Fatal(err)
 	}
 	if got := underKeys(t, db, k); got[2] != 5 || len(got) != 1 {
@@ -217,7 +217,7 @@ func TestAccResealStraggler(t *testing.T) {
 		}
 		return nil
 	})
-	if _, err := crypt.Reseal(t.Context(), db, p); err != nil {
+	if _, err := crypt.Reseal(t.Context(), db, p, crypt.Registry()); err != nil {
 		t.Fatal(err)
 	}
 	k := load(t, db, p)
@@ -246,7 +246,15 @@ func TestAccResealUnknownKey(t *testing.T) {
 	if _, err := rotate(t, db, p, 0); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := crypt.Reseal(t.Context(), db, p); !errors.Is(err, crypt.ErrUnknownKey) {
+	if _, err := crypt.Reseal(
+		t.Context(),
+		db,
+		p,
+		crypt.Registry(),
+	); !errors.Is(
+		err,
+		crypt.ErrUnknownKey,
+	) {
 		t.Errorf("Reseal: %v", err)
 	}
 	if states := keyStates(t, db); states[1] != "retiring" {
@@ -438,7 +446,7 @@ func TestAccRotationFailures(t *testing.T) {
 		"reseal on a closed pool": {
 			setup: func(_ *testing.T, db *pgxpool.Pool) { db.Close() },
 			run: func(t *testing.T, db *pgxpool.Pool) error {
-				_, err := crypt.Reseal(t.Context(), db, p)
+				_, err := crypt.Reseal(t.Context(), db, p, crypt.Registry())
 				return err
 			},
 		},
@@ -451,7 +459,7 @@ func TestAccRotationFailures(t *testing.T) {
 				refuse(t, db, "blob_objects", "UPDATE")
 			},
 			run: func(t *testing.T, db *pgxpool.Pool) error {
-				_, err := crypt.Reseal(t.Context(), db, p)
+				_, err := crypt.Reseal(t.Context(), db, p, crypt.Registry())
 				return err
 			},
 		},
@@ -463,7 +471,7 @@ func TestAccRotationFailures(t *testing.T) {
 				refuse(t, db, "encryption_keys", "UPDATE")
 			},
 			run: func(t *testing.T, db *pgxpool.Pool) error {
-				_, err := crypt.Reseal(t.Context(), db, p)
+				_, err := crypt.Reseal(t.Context(), db, p, crypt.Registry())
 				return err
 			},
 		},

@@ -11,8 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
@@ -22,7 +24,13 @@ import (
 // platform's first, since every domain's tables may reference it, then each
 // domain's after the streams of every domain it imports (decision 0004).
 func Streams() []migrate.Stream {
-	return []migrate.Stream{schema.Stream()}
+	return []migrate.Stream{schema.Stream(), accessassembly.Stream()}
+}
+
+// SealedColumns are the sealed columns of every stream Streams registers,
+// which secrets.reseal walks after a data key rotation.
+func SealedColumns() []crypt.Column {
+	return append(crypt.Registry(), accessassembly.SealedColumns()...)
 }
 
 // openDatabase opens PostgreSQL and brings its schema to this binary's:
