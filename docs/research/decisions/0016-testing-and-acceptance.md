@@ -72,7 +72,7 @@ pass:
 | Suite | Implementations it runs against | Kind |
 |---|---|---|
 | The `pg` store tests, on `internal/platform/sql/sqltest` | PostgreSQL at the version floor decision 0005 sets (blocking), and at the next major (reported, not blocking) | `TestAcc` |
-| `internal/objectstore/objectstoretest` | Every object store driver of decision 0005: `s3` on RustFS, `gcs` on fake-gcs-server, `azureblob` on Azurite, and `fs` on local disk; all blocking | `TestAcc` for the three emulators, `TestUnit` for local disk |
+| `internal/platform/objectstore/objectstoretest` | Every object store driver of decision 0005: `s3` on RustFS, `gcs` on fake-gcs-server, `azureblob` on Azurite, and `fs` on local disk; all blocking | `TestAcc` for the three emulators, `TestUnit` for local disk |
 | `internal/queue/queuetest` | the work queue of decision 0011 on PostgreSQL | `TestAcc` |
 
 Each PostgreSQL case gets its own database, created with
@@ -89,13 +89,15 @@ Azurite 3.37.0:
 | Emulator (licence) | Driver | What it supports that the contract needs | Gaps |
 |---|---|---|---|
 | [RustFS](https://github.com/rustfs/rustfs) (Apache-2.0; 1.0.0 released 2026-09-16) | `s3` | Object put, get, head and delete; multipart create, upload, complete and abort; presigned `GET` and `PUT`; SHA-256 checksum validation on `PutObject` and on multipart uploads; each checked by its s3-tests lane ([S3 compatibility matrix](https://github.com/rustfs/rustfs/blob/main/docs/architecture/s3-compatibility-matrix.md)) | Checksums on POST-form uploads do not yet pass, which infraweave does not use. AWS KMS server-side encryption and EKS Pod Identity credentials exist only on AWS |
-| [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) (BSD-2-Clause) | `gcs` | Media, multipart and resumable uploads, compose, delete, and verification of a declared MD5 or CRC32C (`fakestorage/upload.go`) | It accepts signed URLs without validating their signature or expiry ([README](https://github.com/fsouza/fake-gcs-server#using-with-signed-urls)), so the expired and altered URL cases run only against GCS. It has no IAM `signBlob`, so in CI the driver signs with a test service-account key, and the keyless path runs only against GCS |
-| [Azurite](https://github.com/Azure/Azurite) (MIT) | `azureblob` | Block blobs with Put Block and Put Block List, account and service SAS, CRC-64 transactional checksums, and OAuth bearer tokens over HTTPS (`--oauth basic`) ([support matrix](https://github.com/Azure/Azurite#support-matrix)) | User delegation SAS, which the driver signs, is implemented in Azurite's source (`ServiceHandler.getUserDelegationKey`, `BlobSASAuthenticator`) but absent from its support matrix, and issue [#2420](https://github.com/Azure/Azurite/issues/2420) reports the key call failing. At `basic`, Azurite checks a token's issuer, audience and expiry but not its signature. The delegation-SAS cases run against Azurite in CI and against Azure nightly |
+| [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) (BSD-2-Clause) | `gcs` | Media, multipart and resumable uploads, compose, delete, and verification of a declared MD5 or CRC32C (`fakestorage/upload.go`) | It accepts signed URLs without validating their signature, expiry, method or signed `Content-Length` ([README](https://github.com/fsouza/fake-gcs-server#using-with-signed-urls)), so the expired, altered, other-method and oversized URL cases run only against GCS. It has no IAM `signBlob`, so in CI the driver signs with a test service-account key, and the keyless path runs only against GCS |
+| [Azurite](https://github.com/Azure/Azurite) (MIT) | `azureblob` | Block blobs with Put Block and Put Block List, account and service SAS, CRC-64 transactional checksums, and OAuth bearer tokens over HTTPS (`--oauth basic`) ([support matrix](https://github.com/Azure/Azurite#support-matrix)) | User delegation SAS, which the driver signs, is implemented in Azurite's source (`ServiceHandler.getUserDelegationKey`, `BlobSASAuthenticator`) but absent from its support matrix, and issue [#2420](https://github.com/Azure/Azurite/issues/2420) reports the key call failing. At `basic`, Azurite checks a token's issuer, audience and expiry but not its signature. So in CI the driver signs service SAS with Azurite's account key, which Azurite verifies with the SAS's permissions and expiry, a unit test covers the delegation key's reuse, and user delegation SAS runs against Azure nightly |
 | local disk | `fs` | Everything; it is infraweave's own | none |
 
 A case the emulator cannot decide is skipped on that emulator by name, with
 the reason, and `TestUnitObjectstoreGaps` fails when a skipped case has no
-counterpart in the nightly cloud job.
+counterpart in the nightly cloud job. A case the service itself cannot
+bind, such as a SHA-256 in a Cloud Storage or Azure signed URL, is skipped
+everywhere, and the reason names where the contract checks it instead.
 
 ### Acceptance harness
 

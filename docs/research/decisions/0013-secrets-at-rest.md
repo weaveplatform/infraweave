@@ -213,8 +213,9 @@ the owning record beside it.
   ([0010](0010-state-backend.md)), are sealed whatever the bucket's own
   encryption.
 - **The content key.** Each object has its own 256-bit content key. That key
-  is sealed into `blob_objects.content_key_sealed`, with associated data
-  `blob_objects:<store>/<key>`.
+  is sealed into `blob_objects.content_key_sealed` as any sealed column is,
+  with associated data `blob_objects.content_key_sealed:<store>/<key>`, so
+  resealing after a rotation treats it like every other column.
 - **Object format.** The object is a header followed by segments:
   - **Header.** The magic bytes `IWSB` and the version byte `0x01`.
   - **Segments.** Each holds 64 KiB of plaintext, the last one possibly

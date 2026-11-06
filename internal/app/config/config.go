@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -29,6 +30,9 @@ type Config struct {
 	Queue    queue.Config      `mapstructure:"queue"`
 	Events   outbox.Config     `mapstructure:"events"`
 	Secrets  crypt.Config      `mapstructure:"secrets"`
+	// ObjectStore is decision 0005's object storage; Load checks its
+	// settings, and the process modes require its driver.
+	ObjectStore objectstore.Config `mapstructure:"objectstore"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -54,6 +58,8 @@ func Defaults() Config {
 		Queue:    queue.Defaults(),
 		Events:   outbox.Defaults(),
 		Secrets:  crypt.Defaults(),
+
+		ObjectStore: objectstore.Defaults(),
 	}
 }
 
@@ -165,6 +171,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Queue.Validate(),
 		c.Events.Validate(),
 		c.Secrets.Validate(),
+		c.ObjectStore.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}

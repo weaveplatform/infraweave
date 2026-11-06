@@ -73,7 +73,7 @@ func until(t *testing.T, what string, cond func() bool) {
 // stops.
 func TestAccServeDatabase(t *testing.T) {
 	observer := sqltest.Open(t)
-	c := local()
+	c := local(t)
 	c.Database.URL = observer.Primary().Config().ConnString()
 	c.Server.AdminListen = freeAddr(t)
 	ctx, cancel := context.WithCancel(t.Context())

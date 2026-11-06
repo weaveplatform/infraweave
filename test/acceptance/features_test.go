@@ -342,6 +342,10 @@ func (w *world) database(ctx context.Context) (*Database, error) {
 	return db, nil
 }
 
+// objects is the scenario's object storage root, which all its servers
+// share.
+func (w *world) objects() string { return filepath.Join(w.dir, "objects") }
+
 // errNeedsPostgres is returned when a scenario without @postgres starts a
 // server, which needs the scenario's database.
 var errNeedsPostgres = errors.New("a scenario that starts infraweave needs @postgres")
@@ -356,7 +360,7 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	if err != nil {
 		return nil, err
 	}
-	config, err := serverConfig(db.DSN, settings)
+	config, err := serverConfig(db.DSN, w.objects(), settings)
 	if err != nil {
 		return nil, err
 	}

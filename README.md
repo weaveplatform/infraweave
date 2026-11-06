@@ -120,6 +120,16 @@ phase.
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
 | `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local` |
 | `secrets.kek.local.key_file` | | `INFRAWEAVE_SECRETS_KEK_LOCAL_KEY_FILE` | a file holding the KEK, base64 of 32 bytes; or the KEK itself in `INFRAWEAVE_SECRETS_KEK` |
+| `objectstore.driver` | | `INFRAWEAVE_OBJECTSTORE_DRIVER` | required by `serve`, `scheduler` and `all`: `s3`, `gcs`, `azureblob` or `fs` |
+| `objectstore.s3.bucket`, `.endpoint`, `.region`, `.path_style` | | `INFRAWEAVE_OBJECTSTORE_S3_BUCKET` and so on | region `us-east-1`; credentials from the AWS SDK's default chain |
+| `objectstore.s3.encryption`, `.kms_key_id` | | `INFRAWEAVE_OBJECTSTORE_S3_ENCRYPTION`, `INFRAWEAVE_OBJECTSTORE_S3_KMS_KEY_ID` | `none` (`s3`, or `kms` with a key) |
+| `objectstore.gcs.bucket` | | `INFRAWEAVE_OBJECTSTORE_GCS_BUCKET` | Application Default Credentials |
+| `objectstore.azureblob.account_url`, `.container` | | `INFRAWEAVE_OBJECTSTORE_AZUREBLOB_ACCOUNT_URL`, `INFRAWEAVE_OBJECTSTORE_AZUREBLOB_CONTAINER` | `azidentity`'s default chain |
+| `objectstore.fs.root`, `.url` | | `INFRAWEAVE_OBJECTSTORE_FS_ROOT`, `INFRAWEAVE_OBJECTSTORE_FS_URL` | a directory every replica shares, and the API listener's public URL for signed URLs |
+| `objectstore.buckets.<store>` | | `INFRAWEAVE_OBJECTSTORE_BUCKETS_RUN_LOGS` and so on | the driver's bucket; not with `fs` |
+| `objectstore.retention.<store>` | | `INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS` and so on | `run-logs` and `run-observability` `1440h`, `run-artifacts` `720h`, `workspaces` and `policy-inputs` `168h`, `inbox` `48h`, `uploads` `24h`; `0` keeps objects |
+| `objectstore.part_size` | | `INFRAWEAVE_OBJECTSTORE_PART_SIZE` | `16777216` (16 MiB; at least 5 MiB) |
+| `objectstore.signed_url_ttl` | | `INFRAWEAVE_OBJECTSTORE_SIGNED_URL_TTL` | `15m` |
 | `log.format` | | `INFRAWEAVE_LOG_FORMAT` | `json` (or `text`) |
 | `log.level` | `--log-level` | `INFRAWEAVE_LOG_LEVEL` | `info` (`debug`, `warn`, `error`) |
 
@@ -128,7 +138,13 @@ A flag beats the environment, which beats the YAML file named by
 sealed under a keyring of data keys in PostgreSQL, each wrapped by the KEK
 ([decision 0013](docs/research/decisions/0013-secrets-at-rest.md)); the
 first replica on an empty database creates the first key, and a replica
-whose KEK does not unwrap the keys refuses to start, naming the key. On `SIGINT`
+whose KEK does not unwrap the keys refuses to start, naming the key.
+Objects live under one bucket with a prefix per store, or a store's own
+bucket, and each has a row in `blob_objects`: `infraweave` expires them
+itself and deletes them only from the `scheduler` role, so `serve`'s
+identity needs no delete permission
+([decision 0005](docs/research/decisions/0005-persistence-postgresql.md#object-storage)).
+On `SIGINT`
 or `SIGTERM`, `/readyz` answers 503 at once; the listeners keep accepting
 for `server.shutdown.ready_delay`, so load balancers stop routing to the
 process, then stop accepting and drain in-flight requests for up to

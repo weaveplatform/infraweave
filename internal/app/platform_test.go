@@ -101,7 +101,7 @@ func TestAccServeRefusesNewerSchema(t *testing.T) {
 			"ON CONFLICT (stream) DO UPDATE SET compatible_from = 99, release = 'v9.0.0'",
 	)
 	for _, mode := range []string{sql.MigrateAuto, sql.MigrateCheck} {
-		c := local()
+		c := local(t)
 		c.Database.URL, c.Database.Migrate = url, mode
 		err := Run(t.Context(), c, discard(), ModeServe)
 		if !errors.Is(err, migrate.ErrRefused) ||

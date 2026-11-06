@@ -77,7 +77,7 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config, err := serverConfig(db.DSN, nil)
+	config, err := serverConfig(db.DSN, t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

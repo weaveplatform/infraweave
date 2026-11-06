@@ -12,14 +12,20 @@
 // log runs before them. Run runs a mode: it opens PostgreSQL from
 // database.url, which it requires, applies or checks the migration streams
 // Streams registers, in the declared graph's order, loads the keyring
-// under secrets.kek, which it requires, registers the probe checks every
+// under secrets.kek, which it requires, opens the object store
+// objectstore.driver names, which it requires (openObjects), registers the
+// probe checks every
 // mode runs (databaseChecks and keyringCheck), and serves the probes on the
 // admin listener and, in serve and all, the API on the API listener, with
-// the controls' state in PostgreSQL (postgresGuards). In scheduler and all
+// the controls' state in PostgreSQL (postgresGuards). serve holds object
+// storage as Blobs (serving): blob records over objectstore.WriterOnly of
+// the store, so nothing it holds can delete an object, and the fs driver's
+// /blobs/{token} routes on the API listener. In scheduler and all
 // it starts the scheduler role (startScheduler): the queue's workers with
-// the platform's handlers and the outbox's events.fanout and
-// events.consume, and the cron ticker over periodic_tasks, after
-// registering queue.prune, idempotency.purge and events.prune; every
+// the platform's handlers, the outbox's events.fanout and events.consume
+// and blob.delete over the full Store, and the cron ticker over
+// periodic_tasks, after registering queue.prune, idempotency.purge,
+// events.prune and blob.expire; every
 // domain appends to and subscribes on Run's one outbox. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
@@ -50,7 +56,8 @@
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
 // platform/queue, platform/cron and platform/outbox for the scheduler role;
-// platform/crypt and crypt/kek for the keyring;
+// platform/crypt and crypt/kek for the keyring; platform/objectstore, its
+// drivers and objectstore/blobs for object storage;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no
 // package under platform, kernel or agent may (repo layout, depguard rules).

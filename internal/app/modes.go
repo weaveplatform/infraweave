@@ -16,6 +16,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -64,7 +66,11 @@ func (m Mode) String() string {
 // listening connection and the pools close only after the drain, when no
 // request can use them.
 func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
-	if err := errors.Join(c.Server.Validate(), c.Database.Validate()); err != nil {
+	if err := errors.Join(
+		c.Server.Validate(),
+		c.Database.Validate(),
+		c.ObjectStore.Require(),
+	); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 	// Every mode Run starts seals, so each needs the KEK; migrate and
@@ -82,6 +88,11 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if err != nil {
 		return err //nolint:wrapcheck // names the keyring and the key
 	}
+	objs, err := openObjects(ctx, c.ObjectStore, keys)
+	if err != nil {
+		return err
+	}
+	defer objs.close()
 	// ctx ends when the shutdown begins; the switch keeps following
 	// invalidations until the drain is over.
 	background, stop := context.WithCancel(context.WithoutCancel(ctx))
@@ -105,12 +116,29 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	events := outbox.New(db.Primary(), queue.New(db.Primary()), outbox.NewKinds())
 	stopScheduler := func() {}
 	if m.Scheduler {
-		if stopScheduler, err = startScheduler(ctx, c, db, l, events, log, health); err != nil {
+		if stopScheduler, err = startScheduler(
+			ctx,
+			c,
+			db,
+			l,
+			events,
+			objs.store,
+			log,
+			health,
+		); err != nil {
 			return err
 		}
 	}
 	wg.Go(func() { l.Run(background) })
-	api, admin := handlers(log, c.Server, m, g, queue.New(db.Primary()), health)
+	api, admin := handlers(
+		log,
+		c.Server,
+		m,
+		g,
+		queue.New(db.Primary()),
+		serving(c.ObjectStore, db.Primary(), keys, objs),
+		health,
+	)
 	err = serve.Run(ctx, c.Server.Config, log, api, admin, health.Stop)
 	stopScheduler()
 	return err //nolint:wrapcheck // serve's errors name the listener
@@ -147,7 +175,8 @@ func keyringCheck(h *observe.Health, keys *crypt.Keyring) {
 }
 
 // handlers are mode m's two listeners' handlers: the API, behind the
-// controls whose state g holds and reading queue depths from queues, or nil
+// controls whose state g holds, reading queue depths from queues and
+// holding objects as b, or nil
 // when m serves no API, so serve binds no API listener; and the probes,
 // which answer from health.
 func handlers(
@@ -156,10 +185,11 @@ func handlers(
 	m Mode,
 	g Guards,
 	queues QueueStats,
+	b Blobs,
 	health *observe.Health,
 ) (api, admin http.Handler) {
 	if m.API {
-		api = API(log, c, g, queues)
+		api = API(log, c, g, queues, b)
 	}
 	return api, observe.Probes(log, health)
 }
@@ -182,5 +212,16 @@ func postgresGuards(
 		Switch:  ratelimit.Switches{ratelimit.NewCallers(c.RateLimit.DisabledCallers), table},
 		Buckets: ratelimit.NewPostgres(db.Primary()),
 		Keys:    idempotency.NewPostgres(db.Primary(), c.Idempotency),
+	}
+}
+
+// serving is the API role's object storage: blob records over
+// objectstore.WriterOnly of the store, so no serve dependency holds the
+// Store, and the fs driver's routes.
+func serving(c objectstore.Config, pool queue.DB, keys *crypt.Keyring, o objects) Blobs {
+	w := objectstore.WriterOnly(o.store)
+	return Blobs{
+		Objects: blobs.New(pool, queue.New(pool), w, keys, c),
+		Routes:  o.routes,
 	}
 }

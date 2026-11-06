@@ -16,16 +16,20 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
-func local() config.Config {
+func local(t testing.TB) config.Config {
+	t.Helper()
 	c := config.Defaults()
 	c.Server.Listen, c.Server.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
 	c.Server.Shutdown.ReadyDelay = 0
 	c.Secrets.KEK = kek.Config{Provider: kek.Local, Local: kek.LocalConfig{Key: acceptance.KEK}}
+	c.ObjectStore.Driver = objectstore.DriverFS
+	c.ObjectStore.FS.Root, c.ObjectStore.FS.URL = t.TempDir(), "http://infraweave.test"
 	return c
 }
 
@@ -60,13 +64,14 @@ func get(t *testing.T, url string) int {
 func TestUnitServerListeners(t *testing.T) {
 	for _, m := range []Mode{ModeServe, ModeScheduler, ModeAll} {
 		t.Run(m.String(), func(t *testing.T) {
-			c := local()
+			c := local(t)
 			api, admin := handlers(
 				discard(),
 				c.Server,
 				m,
 				memory(c.Server),
 				nil,
+				Blobs{},
 				observe.NewHealth(time.Now),
 			)
 			r, err := serve.Start(t.Context(), c.Server.Config, discard(), api, admin)
@@ -102,7 +107,7 @@ func TestUnitServerListeners(t *testing.T) {
 }
 
 func TestUnitServeNeedsADatabase(t *testing.T) {
-	if err := Run(t.Context(), local(), discard(), ModeServe); !errors.Is(err, sql.ErrConfig) ||
+	if err := Run(t.Context(), local(t), discard(), ModeServe); !errors.Is(err, sql.ErrConfig) ||
 		!strings.Contains(err.Error(), "database.url is required") {
 		t.Errorf("Serve: %v", err)
 	}
@@ -117,7 +122,7 @@ func TestUnitServeNeedsAKEK(t *testing.T) {
 		"bad key":     {Provider: kek.Local, Local: kek.LocalConfig{Key: "c2hvcnQ="}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := local()
+			c := local(t)
 			c.Database.URL = "postgres://u:p@127.0.0.1:1/x?sslmode=disable"
 			c.Secrets.KEK = kc
 			for _, m := range []Mode{ModeServe, ModeScheduler, ModeAll} {
@@ -152,7 +157,7 @@ func TestUnitKeyringCheck(t *testing.T) {
 // TestUnitServeValidates checks that a setting only the API's controls read
 // fails before the database opens or a listener binds.
 func TestUnitServeValidates(t *testing.T) {
-	c := local()
+	c := local(t)
 	c.Server.Idempotency.TTL = 0
 	if err := Run(t.Context(), c, discard(), ModeServe); !errors.Is(err, serve.ErrConfig) {
 		t.Errorf("Run: %v", err)
@@ -162,13 +167,13 @@ func TestUnitServeValidates(t *testing.T) {
 // TestUnitServeDatabase checks that a bad database setting, or a server that
 // does not answer, stops the mode before either listener binds.
 func TestUnitServeDatabase(t *testing.T) {
-	c := local()
+	c := local(t)
 	c.Database.MaxConns = 0
 	if err := Run(t.Context(), c, discard(), ModeServe); !errors.Is(err, sql.ErrConfig) {
 		t.Errorf("invalid setting: %v", err)
 	}
 	// Port 1 refuses at once, so this needs no server.
-	c = local()
+	c = local(t)
 	c.Database.URL = "postgres://u:p@127.0.0.1:1/x?sslmode=disable&connect_timeout=2"
 	if err := Run(
 		t.Context(),

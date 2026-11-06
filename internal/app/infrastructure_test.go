@@ -50,7 +50,7 @@ func statsPage(t *testing.T, h http.Handler, query url.Values) api.MessageQueueS
 
 func TestUnitMessageQueueStats(t *testing.T) {
 	c := config.Defaults().Server
-	h := API(discard(), c, memory(c), fakeStats{stats: depths()})
+	h := API(discard(), c, memory(c), fakeStats{stats: depths()}, Blobs{})
 
 	all := statsPage(t, h, nil)
 	if all.NextCursor != nil || len(all.Items) != len(queue.Queues) {
@@ -111,7 +111,7 @@ func TestUnitMessageQueueStatsProblems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok := API(discard(), c, memory(c), fakeStats{stats: depths()})
+	ok := API(discard(), c, memory(c), fakeStats{stats: depths()}, Blobs{})
 	for _, cursor := range []string{"not base64!", other} {
 		wantTyped(
 			t,
@@ -121,10 +121,10 @@ func TestUnitMessageQueueStatsProblems(t *testing.T) {
 		)
 	}
 	down := API(discard(), c, memory(c),
-		fakeStats{err: fmt.Errorf("stats: %w", kernel.ErrUnavailable)})
+		fakeStats{err: fmt.Errorf("stats: %w", kernel.ErrUnavailable)}, Blobs{})
 	wantTyped(t, send(down, http.MethodGet, "/api/v1/message-queue-stats", "192.0.2.1:1", ""),
 		problem.ServiceUnavailable)
-	broken := API(discard(), c, memory(c), fakeStats{err: errors.New("stats: broken")})
+	broken := API(discard(), c, memory(c), fakeStats{err: errors.New("stats: broken")}, Blobs{})
 	if rec := send(
 		broken,
 		http.MethodGet,

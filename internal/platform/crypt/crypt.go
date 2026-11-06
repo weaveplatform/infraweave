@@ -191,7 +191,7 @@ func (k *Keyring) SealColumn(
 	pk []string,
 	plaintext []byte,
 ) ([]byte, error) {
-	aad, err := c.aad(pk)
+	aad, err := c.AAD(pk)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (k *Keyring) OpenColumn(
 	pk []string,
 	sealed []byte,
 ) (Value, error) {
-	aad, err := c.aad(pk)
+	aad, err := c.AAD(pk)
 	if err != nil {
 		return Value{}, err
 	}
@@ -290,8 +290,10 @@ type Column struct {
 // key columns.
 var ErrPrimaryKey = errors.New("primary key does not match the column's key")
 
-// aad is <table>.<column>:<primary key parts joined by />.
-func (c Column) aad(pk []string) ([]byte, error) {
+// AAD is the associated data of the column's value in the row whose
+// primary key parts are pk: <table>.<column>:<parts joined by />. A
+// sealed object's content key, which SealObject seals, takes it too.
+func (c Column) AAD(pk []string) ([]byte, error) {
 	if len(pk) != len(c.Key) {
 		return nil, fmt.Errorf(
 			"%w: %s.%s takes %d parts, got %d",
@@ -309,7 +311,9 @@ func (c Column) aad(pk []string) ([]byte, error) {
 // column adds it here, and resealing after a rotation walks it;
 // TestAccSealedColumnRegistry in internal/app keeps it equal to the
 // _sealed columns of the migrated schema.
-var registry = []Column{}
+var registry = []Column{
+	{Table: "blob_objects", Name: "content_key_sealed", Key: []string{"store", "key"}},
+}
 
 // Registry lists the sealed columns.
 func Registry() []Column { return slices.Clone(registry) }

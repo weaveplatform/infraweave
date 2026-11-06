@@ -359,3 +359,50 @@ secrets:
 		})
 	}
 }
+
+// TestUnitLoadObjectStore checks the objectstore keys from the file and
+// the environment, a store's hyphenated retention key among them, and
+// that Load refuses a setting objectstore refuses.
+func TestUnitLoadObjectStore(t *testing.T) {
+	file := writeFile(t, `
+objectstore:
+  driver: s3
+  s3:
+    bucket: infraweave-objects
+    region: eu-west-1
+    encryption: kms
+    kms_key_id: alias/infraweave
+  buckets:
+    states: infraweave-states
+  retention:
+    inbox: 72h
+  part_size: 33554432
+  signed_url_ttl: 5m
+`)
+	t.Setenv("INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS", "720h")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := c.ObjectStore
+	if o.Driver != "s3" || o.S3.Bucket != "infraweave-objects" ||
+		o.S3.KMSKeyID != "alias/infraweave" {
+		t.Errorf("objectstore %+v", o)
+	}
+	if o.Buckets.States != "infraweave-states" || o.PartSize != 32<<20 ||
+		o.SignedURLTTL != 5*time.Minute {
+		t.Errorf("objectstore %+v", o)
+	}
+	if o.Retention.Inbox != 72*time.Hour || o.Retention.RunLogs != 720*time.Hour ||
+		o.Retention.Uploads != 24*time.Hour {
+		t.Errorf("retention %+v", o.Retention)
+	}
+	if _, err := loadArgs(
+		t,
+		"--config",
+		writeFile(t, "objectstore:\n  driver: ftp\n"),
+	); err == nil ||
+		!strings.Contains(err.Error(), "objectstore.driver") {
+		t.Errorf("an unknown driver: %v", err)
+	}
+}

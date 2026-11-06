@@ -52,11 +52,22 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 // secrets selects the local KEK, which StartServer passes in KEK.
 var secrets = map[string]any{"kek": map[string]any{"provider": "local"}}
 
+// objectStore is the fs driver under root. Replicas of one scenario share
+// the root, as replicas share a volume. No scenario follows a signed URL
+// yet, so the URL names no listener.
+func objectStore(root string) map[string]any {
+	return map[string]any{
+		"driver": "fs",
+		"fs":     map[string]any{"root": root, "url": "http://infraweave.test"},
+	}
+}
+
 // serverConfig is a strict configuration file for one server: both
-// listeners on loopback port 0, the database at dsn, the local KEK, and the server
-// settings the scenario names over them. The ready delay is 0 unless the
-// scenario names one, so stopping a server costs no wait.
-func serverConfig(dsn string, settings map[string]any) ([]byte, error) {
+// listeners on loopback port 0, the database at dsn, the local KEK, object
+// storage under objects, and the server settings the scenario names over
+// them. The ready delay is 0 unless the scenario names one, so stopping a
+// server costs no wait.
+func serverConfig(dsn, objects string, settings map[string]any) ([]byte, error) {
 	server := map[string]any{
 		"listen":       "127.0.0.1:0",
 		"admin_listen": "127.0.0.1:0",
@@ -64,9 +75,10 @@ func serverConfig(dsn string, settings map[string]any) ([]byte, error) {
 	}
 	maps.Copy(server, settings)
 	out, err := yaml.Marshal(map[string]any{
-		"server":   server,
-		"database": map[string]any{"url": dsn},
-		"secrets":  secrets,
+		"server":      server,
+		"database":    map[string]any{"url": dsn},
+		"secrets":     secrets,
+		"objectstore": objectStore(objects),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)

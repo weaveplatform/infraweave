@@ -12,6 +12,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -47,6 +49,7 @@ func platformTasks(
 	q *queue.Queue,
 	keys *idempotency.Postgres,
 	events *outbox.Outbox,
+	reaper *blobs.Reaper,
 	log *slog.Logger,
 ) []periodic {
 	return []periodic{
@@ -71,6 +74,13 @@ func platformTasks(
 			}
 			return err //nolint:wrapcheck // Prune names itself
 		}},
+		{blobs.ExpireKind, blobs.ExpireEvery, func(ctx context.Context, _ queue.Job) error {
+			n, err := reaper.Expire(ctx, blobs.ExpireBatch)
+			if err == nil {
+				log.Debug("expired and abandoned objects marked for deletion", "objects", n)
+			}
+			return err //nolint:wrapcheck // Expire names itself
+		}},
 	}
 }
 
@@ -79,8 +89,9 @@ func platformTasks(
 var errNotListening = errors.New("the queue's listening connection is down")
 
 // startScheduler starts the scheduler role of decision 0020: the queue's
-// workers with the platform's handlers and the outbox's fan-out and
-// consumption, and the ticker over periodic_tasks, after registering the
+// workers with the platform's handlers, the outbox's fan-out and
+// consumption and blob.delete over store, the one full objectstore.Store
+// of the process, and the ticker over periodic_tasks, after registering the
 // periodic tasks in the database. Their
 // wake-ups come through l, which the caller runs. A registration that fails
 // fails startup. The returned stop ends the ticker, then the workers, which
@@ -93,6 +104,7 @@ func startScheduler(
 	db *sql.DB,
 	l *notify.Listener,
 	events *outbox.Outbox,
+	store objectstore.Store,
 	log *slog.Logger,
 	health *observe.Health,
 ) (stop func(), err error) {
@@ -101,7 +113,8 @@ func startScheduler(
 	reg := queue.NewRegistry()
 	tasks := cron.NewPeriodicTasks(db.Primary(), q)
 	keys := idempotency.NewPostgres(db.Primary(), c.Server.Idempotency)
-	for _, t := range platformTasks(c, q, keys, events, log) {
+	reaper := blobs.NewReaper(db.Primary(), q, store)
+	for _, t := range platformTasks(c, q, keys, events, reaper, log) {
 		if err := reg.Register(t.kind, t.handler, queue.HandlerOptions{}); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
@@ -109,7 +122,7 @@ func startScheduler(
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
 	}
-	if err := events.Register(reg); err != nil {
+	if err := errors.Join(events.Register(reg), reaper.Register(reg)); err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
 	}
 	health.Ready("queue_listener", func(context.Context) error {
