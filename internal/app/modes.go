@@ -117,6 +117,10 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	// registers its event kinds, before the scheduler starts.
 	events := outbox.New(db.Primary(), queue.New(db.Primary()), outbox.NewKinds())
 	domains := newDomains(c, db, keys)
+	if m.API {
+		revoked, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
+		wg.Go(func() { domains.Access.WatchSessions(background, revoked) })
+	}
 	stopScheduler := func() {}
 	if m.Scheduler {
 		if stopScheduler, err = startScheduler(

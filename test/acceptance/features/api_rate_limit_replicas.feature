@@ -3,7 +3,9 @@ Feature: One rate-limit budget across replicas
   Two infraweave serve processes on one database draw each caller's tokens
   from one bucket (decisions 0003 and 0005), so X-RateLimit-Remaining is
   right whichever replica answers, and the 429's Retry-After is the wait for
-  one token at the bucket's rate.
+  one token at the bucket's rate. Each replica's client holds a token of its
+  own from one API key, and the caller is the key, api_key:<key ID>
+  (decision 0006), so the two tokens draw on one bucket.
 
   Scenario: Requests through both replicas draw on one bucket
     Given two infraweave servers, A and B, on one database whose standard budget is 4 at 0.01 a second

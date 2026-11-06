@@ -3,17 +3,20 @@
 // that sees every domain. cmd/infraweave holds one thin cobra file per
 // process mode over it. Domains holds the business domains, which
 // newDomains builds in the declared graph's order on the primary pool and
-// the keyring, with their settings;
+// the keyring, with their settings, beside the access domain's
+// Authenticator;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //
 // It composes the serve, scheduler and all process modes (Mode). API mounts
 // the generated strict server (apiServer, which embeds
 // api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL behind decision 0003's controls; Guarded and
-// Operations put the operator switch, the rate limits and idempotency keys in
-// front of each route, with each operation's cost class read from the
-// embedded spec's x-infraweave-cost, with their state in Guards; the access
-// log runs before them. Run runs a mode: in serve and all it requires
+// Operations put authentication, then the operator switch, the rate limits
+// and idempotency keys in front of each route, with each operation's cost
+// class read from the embedded spec's x-infraweave-cost and whether it is
+// public from its empty security, with the controls' state in Guards and
+// the principal's <kind>:<actor ID> as their caller; the access log runs
+// before them. Run runs a mode: in serve and all it requires
 // server.public_url; it opens PostgreSQL from
 // database.url, which it requires, applies or checks the migration streams
 // Streams registers, in the declared graph's order, with each domain's

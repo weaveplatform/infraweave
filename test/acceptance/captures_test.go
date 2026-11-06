@@ -90,7 +90,7 @@ func TestAccCaptures(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	api, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry))
+	api, _, err := authenticated(t.Context(), db, "http://"+srv.API, home)
 	if err != nil {
 		t.Fatal(err)
 	}

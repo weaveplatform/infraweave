@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -57,6 +58,36 @@ type Principal struct {
 	OrganizationID OrganizationID
 	AccountID      AccountID
 	MemberID       MemberID
+	// SessionID is the session the credential stands for, the token's
+	// jti; zero for a credential with no session row.
+	SessionID ULID
+	// Login, Name and Teams are what the session recorded of the actor: a
+	// member's login, or an API key's ID and name, and its teams.
+	Login string
+	Name  string
+	Teams []string
+	// Admin is whether the session's actor is an account admin.
+	Admin bool
+	// Channel is the session's channel, such as UNKNOWN or WEB.
+	Channel string
+	// Scopes narrow an OAuth grant's token; empty for every other kind.
+	Scopes []string
+}
+
+// principalKey is the context key of the request's principal.
+type principalKey struct{}
+
+// WithPrincipal returns ctx carrying p, which the authentication
+// middleware sets on every request it authenticates.
+func WithPrincipal(ctx context.Context, p Principal) context.Context {
+	return context.WithValue(ctx, principalKey{}, p)
+}
+
+// PrincipalFrom returns the principal ctx carries, and false on a request
+// no credential authenticated.
+func PrincipalFrom(ctx context.Context) (Principal, bool) {
+	p, ok := ctx.Value(principalKey{}).(Principal)
+	return p, ok
 }
 
 // Caller is the principal's key for decision 0003's idempotency keys and

@@ -99,10 +99,23 @@ every error, the router's 404 and 405 included, is an
 ([decision 0022](docs/research/decisions/0022-api-errors-and-update-semantics.md)).
 A request that needs PostgreSQL while it is unreachable answers
 `503 service-unavailable` with `Retry-After: 2`, which `pkg/sdk` retries;
-any other unexpected failure answers `500`. Routes check no credentials yet:
-authentication arrives with
-[decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)'s
-phase.
+any other unexpected failure answers `500`.
+
+Every route but `POST /auth/token` takes a bearer token
+([decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)).
+A secret API key, `iwk_` and 43 base64url characters, exchanges there:
+`{"id", "secret"}` answers the reference's `User`, whose `jwt` is an API
+token for `auth.tokens.api.ttl`, never past the key's expiry, and whose
+`validUntil` is its expiry. A wrong ID or secret, or an expired, disabled
+or deleted key, answers one `401 unauthenticated`. A request without a
+valid token answers `401 unauthenticated` with `WWW-Authenticate: Bearer`.
+Each token stands for a session row, which `GET /sessions`,
+`DELETE /sessions/{sessionId}`, `DELETE /sessions` (all but the caller's)
+and `POST /auth/logout` list and revoke within the caller's account; a
+session of another account answers `404`. Each replica trusts a session it
+read for 60 seconds, and a revocation reaches every replica at once through
+`NOTIFY infraweave_invalidate, 'session:<id>'`. The hourly
+`authn.sessions.expire` task deletes sessions 30 days after they end.
 
 | Setting | Flag | Environment | Default |
 |---|---|---|---|
@@ -196,8 +209,11 @@ controls, whether its operation is implemented or a stub:
   startup; a change to the table takes effect on every replica once
   `NOTIFY infraweave_invalidate, 'api_disabled_callers'` announces it.
 
-Until authentication arrives the caller is the client's IP address, so
-behind a proxy every client shares the proxy's budget. The buckets, keys
+The caller is the principal, `<kind>:<actor ID>`, so every token of one
+API key, `api_key:<key ID>`, shares one budget and one set of keys, and
+the disabled-callers list names callers so. `POST /auth/token`, which no
+token reaches, counts against the client's IP address, behind a proxy the
+proxy's. The buckets, keys
 and switch live in PostgreSQL
 ([decision 0005](docs/research/decisions/0005-persistence-postgresql.md)),
 so every replica on one database enforces one budget and sees the same

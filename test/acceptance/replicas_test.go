@@ -16,9 +16,9 @@ import (
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
-// loopback is the caller every scenario's requests count against: the
-// client address, the caller until requests carry a principal.
-const loopback = "127.0.0.1"
+// scenarioCaller is the caller every scenario's requests count against:
+// the home tenant's key, whose token the scenario's clients hold.
+var scenarioCaller = home.caller()
 
 // The response a scenario stores under a key, as a replica that served the
 // request would have.
@@ -193,7 +193,7 @@ func (s *servedSteps) stored(ctx context.Context, status int, path, body, key st
      created_at, expires_at)
 VALUES (%s, %s, %s, 'done', now(), %d, 'application/json', %s, decode(%s, 'hex'),
     now(), now() + interval '1 hour')`,
-		literal(loopback), literal(key), literal(fingerprint(http.MethodPost, path, body)),
+		literal(scenarioCaller), literal(key), literal(fingerprint(http.MethodPost, path, body)),
 		status, literal(storedLocation), literal(hex.EncodeToString(sealed))))
 	return err
 }
@@ -202,7 +202,7 @@ func (s *servedSteps) inFlight(ctx context.Context, path, body, key string) erro
 	_, err := s.query(ctx, fmt.Sprintf(`INSERT INTO idempotency_keys
     (caller, key, fingerprint, state, locked_until, created_at, expires_at)
 VALUES (%s, %s, %s, 'in_flight', now() + interval '1 hour', now(), now() + interval '1 day')`,
-		literal(loopback), literal(key), literal(fingerprint(http.MethodPost, path, body))))
+		literal(scenarioCaller), literal(key), literal(fingerprint(http.MethodPost, path, body))))
 	return err
 }
 

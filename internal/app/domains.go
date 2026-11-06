@@ -1,6 +1,9 @@
 package app
 
 import (
+	"strings"
+
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
@@ -14,19 +17,21 @@ import (
 // later, is bound here after construction.
 type Domains struct {
 	Access *accessassembly.Domain
+	// Auth authenticates the API's requests; nil refuses every credential.
+	Auth accessapi.Authenticator
 }
 
 // newDomains constructs every domain on db, sealing under keys, with c's
 // settings.
 func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring) Domains {
-	return Domains{
-		Access: accessassembly.New(accessassembly.Deps{
-			DB:        db.Primary(),
-			Keys:      keys,
-			Settings:  c.Auth,
-			PublicURL: c.Server.PublicURL,
-		}),
-	}
+	access := accessassembly.New(accessassembly.Deps{
+		DB:        db.Primary(),
+		Keys:      keys,
+		Settings:  c.Auth,
+		PublicURL: c.Server.PublicURL,
+		Audience:  strings.TrimSuffix(c.Server.PublicURL, "/") + BaseURL,
+	})
+	return Domains{Access: access, Auth: access.Authenticator()}
 }
 
 // cron is every domain's periodic tasks, which the scheduler role runs.

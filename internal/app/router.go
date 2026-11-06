@@ -57,7 +57,7 @@ func API(
 	queues QueueStats,
 	b Blobs,
 ) http.Handler {
-	r := Guarded(log, c, apiOperations(), g)
+	r := Guarded(log, c, apiOperations(), g, d.Auth)
 	if b.Routes != nil {
 		b.Routes(r)
 	}

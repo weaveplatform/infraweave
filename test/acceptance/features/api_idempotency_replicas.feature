@@ -6,7 +6,10 @@ Feature: Idempotency keys across replicas
   5xx releases its key, so these scenarios store a key's state in
   idempotency_keys themselves, as the replica that served the request would
   have. TestAccGuardedReplicas proves a response stored through one replica
-  replays through the other until a family serves a POST.
+  replays through the other until a family serves a POST. Each replica's
+  client holds a token of its own from one API key, whose caller,
+  api_key:<key ID>, owns the keys (decision 0006), so a key stored for one
+  token answers the other.
 
   Background:
     Given two infraweave servers, A and B, on one database

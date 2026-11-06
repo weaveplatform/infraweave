@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
@@ -50,6 +52,35 @@ func testKeyring(t testing.TB, db crypt.Querier) *crypt.Keyring {
 	return keys
 }
 
+// byAddress authenticates every request as an API key of its own client
+// address, so tests of what sits behind authentication keep one caller
+// per address.
+type byAddress struct{}
+
+func (byAddress) Middleware(public func(*http.Request) bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if public(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			p := addressPrincipal(ratelimit.ClientAddr(r))
+			next.ServeHTTP(w, r.WithContext(kernel.WithPrincipal(r.Context(), p)))
+		})
+	}
+}
+
+// addressPrincipal is the API key byAddress authenticates addr as.
+func addressPrincipal(addr string) kernel.Principal {
+	var id kernel.ULID
+	h := sha256.Sum256([]byte(addr))
+	copy(id[:], h[:])
+	return kernel.Principal{Kind: kernel.PrincipalAPIKey, ActorID: id}
+}
+
+// addressCaller is the caller key of a request from addr under byAddress.
+func addressCaller(addr string) string { return addressPrincipal(addr).Caller() }
+
 // memory is the controls' state in process memory, for tests that serve one
 // handler and need no database.
 func memory(c config.Server) Guards {
@@ -87,7 +118,7 @@ func TestUnitServerListeners(t *testing.T) {
 				c.Server,
 				m,
 				memory(c.Server),
-				Domains{},
+				Domains{Auth: byAddress{}},
 				nil,
 				Blobs{},
 				observe.NewHealth(time.Now),

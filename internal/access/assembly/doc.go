@@ -6,7 +6,10 @@
 // its migration stream and SealedColumns its sealed columns, which
 // internal/app registers in the declared graph's order. Settings are its
 // auth.* settings: the issuer, auth.tokens.api.ttl, and the signing
-// backend and rotation, which Validate checks. Cron is its periodic tasks:
+// backend and rotation, which Validate checks. Authenticator is the
+// middleware internal/app puts in front of the API; WatchSessions keeps the
+// replica's session cache in step with infraweave_invalidate. Cron is its
+// periodic tasks: ExpireSessions, authn.sessions.expire, hourly, and
 // RotateKeys, authn.keys.rotate, daily unless rotation is manual.
 //
 // # Input and output
@@ -16,8 +19,8 @@
 //
 // # Dependencies
 //
-// It imports the access domain's adapters and token package,
-// platform/cron and platform/queue for its task, platform/crypt and
-// platform/sql/migrate. Only internal/app and cmd/ import it, as the
+// It imports accessapi, the access domain's adapters and its authn,
+// session and token packages, platform/cron and platform/queue for its
+// tasks, platform/crypt, platform/sql/migrate and platform/sql/notify. Only internal/app and cmd/ import it, as the
 // constructors rule enforces.
 package assembly

@@ -88,9 +88,7 @@
       "searchAuditTrailEntries"
     ],
     "Auth": [
-      "apiKeyUser",
       "cliConfirmationToken",
-      "logout",
       "oauthRedirect",
       "oauthToken",
       "oauthUser"
@@ -543,9 +541,7 @@
     "Sessions and Security Keys": [
       "securityEmail",
       "securityKeyDelete",
-      "securityKeys",
-      "sessionDelete",
-      "sessions"
+      "securityKeys"
     ],
     "Slack": [
       "githubAppCreateFromManifest",
@@ -719,9 +715,6 @@
       "terragruntEffectiveVersion",
       "terragruntVersions"
     ],
-    "Viewer": [
-      "viewer"
-    ],
     "Webhooks": [
       "namedWebhooksIntegration",
       "namedWebhooksIntegrationCreate",
@@ -760,7 +753,6 @@
       "openTofuMigrate",
       "openTofuMigrationQueueClean",
       "resetOauthClientForSCIM",
-      "sessionDeleteAll",
       "stackMigrateVendorAll",
       "userSecurityKeyDeleteAll"
     ]

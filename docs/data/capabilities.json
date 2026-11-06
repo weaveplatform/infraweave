@@ -132,7 +132,8 @@
         "lowestTier": "Free",
         "phase": "P3",
         "also": "P23 (`oauthRedirect`, `oauthToken`, `oauthUser`)",
-        "state": "missing"
+        "state": "partial",
+        "notes": "`apiKeyUser` and `logout` are served (P3); `cliConfirmationToken` and the OAuth operations arrive with their phases"
       }
     },
     {
@@ -832,7 +833,8 @@
         "lowestTier": "Starter+ for `sessions`; Enterprise for `mfa`",
         "phase": "P3",
         "also": "P3b (`securityEmail`), P23 (security keys)",
-        "state": "missing"
+        "state": "partial",
+        "notes": "`sessions` and `sessionDelete` are served (P3), with the untagged `sessionDeleteAll`"
       }
     },
     {
@@ -1058,7 +1060,7 @@
         "feature": "`viewer`",
         "lowestTier": "Free",
         "phase": "P3",
-        "state": "missing"
+        "state": "implemented"
       }
     },
     {

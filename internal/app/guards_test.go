@@ -41,7 +41,13 @@ func TestAccGuardedReplicas(t *testing.T) {
 		l := notify.NewListener(db.ConnConfig, discard())
 		g := postgresGuards(ctx, &wg, c, db, keys, l)
 		wg.Go(func() { l.Run(ctx) })
-		r := Guarded(discard(), c, Operations{"POST /things": {Cost: ratelimit.Standard}}, g)
+		r := Guarded(
+			discard(),
+			c,
+			Operations{"POST /things": {Cost: ratelimit.Standard}},
+			g,
+			byAddress{},
+		)
 		r.Post("/things", func(w http.ResponseWriter, req *http.Request) {
 			runs.Add(1)
 			if req.Header.Get(idempotency.Header) == "slow" {
@@ -104,7 +110,8 @@ func TestAccGuardedReplicas(t *testing.T) {
 		}
 	}
 	if _, err := db.Primary().Exec(t.Context(),
-		`INSERT INTO api_disabled_callers (caller, reason) VALUES ($1, 'test')`, off); err != nil {
+		`INSERT INTO api_disabled_callers (caller, reason) VALUES ($1, 'test')`,
+		addressCaller(off)); err != nil {
 		t.Fatal(err)
 	}
 	if err := notify.Notify(

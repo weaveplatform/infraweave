@@ -266,6 +266,12 @@ func (d *Dependencies) OwnPostgres(ctx context.Context) (*OwnPostgres, error) {
 	return &OwnPostgres{c: c, DSN: dsn}, nil
 }
 
+// Query runs sql in the container's database through psql, as
+// Database.Query does.
+func (p *OwnPostgres) Query(ctx context.Context, sql string) (string, error) {
+	return (&Database{c: p.c, name: pgDatabase}).Query(ctx, sql)
+}
+
 // Pause freezes every process of the container, so connections stay open
 // and queries go unanswered, as a PostgreSQL that has stopped responding
 // looks to a client. Unpause resumes them on the same port, which stopping

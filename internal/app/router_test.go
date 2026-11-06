@@ -57,7 +57,7 @@ func TestUnitAPIRoutes(t *testing.T) {
 		discard(),
 		config.Defaults().Server,
 		memory(config.Defaults().Server),
-		Domains{},
+		Domains{Auth: byAddress{}},
 		nil,
 		Blobs{},
 	)
