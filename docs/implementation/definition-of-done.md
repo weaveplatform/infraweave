@@ -149,7 +149,7 @@ jobs their rows name:
 
 | Job | Runs | Timeout |
 |---|---|---|
-| `accept-core` | untagged, `@postgres`, `@objectstore`, `@oidc` | 20 min |
+| `accept-core` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min |
 | `accept-runs` | `@terraform`, `@tofu`, `@kubernetes`, `@flows-agent` | 30 min |
 | `accept-integrations` | `@vcs`, `@ai` | 20 min |
 | `provider-parity` | `specref provider-parity` and `TestAccProvider` | 30 min |

@@ -107,9 +107,11 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	// One listening connection per process; every subscriber subscribes
 	// before it runs, so none misses the first Resync.
 	l := notify.NewListener(db.ConnConfig, log)
+	keysChanged, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
+	wg.Go(func() { keys.Watch(background, keysChanged, log) })
 	var g Guards
 	if m.API {
-		g = postgresGuards(background, &wg, c.Server, db, l)
+		g = postgresGuards(background, &wg, c.Server, db, keys, l)
 	}
 	// Every domain appends to and subscribes on this one outbox, and
 	// registers its event kinds, before the scheduler starts.
@@ -120,6 +122,8 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			ctx,
 			c,
 			db,
+			keys,
+			provider,
 			l,
 			events,
 			objs.store,
@@ -195,14 +199,16 @@ func handlers(
 }
 
 // postgresGuards keeps the controls' state in db, shared by every replica
-// (decision 0005). The disabled callers are both lists, the configuration's
-// and api_disabled_callers; the table's copy follows infraweave_invalidate
-// through l, in a watcher that runs, with wg, until ctx ends.
+// (decision 0005), with stored bodies sealed under keys. The disabled
+// callers are both lists, the configuration's and api_disabled_callers; the
+// table's copy follows infraweave_invalidate through l, in a watcher that
+// runs, with wg, until ctx ends.
 func postgresGuards(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	c config.Server,
 	db *sql.DB,
+	keys *crypt.Keyring,
 	l *notify.Listener,
 ) Guards {
 	sub, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
@@ -211,7 +217,7 @@ func postgresGuards(
 	return Guards{
 		Switch:  ratelimit.Switches{ratelimit.NewCallers(c.RateLimit.DisabledCallers), table},
 		Buckets: ratelimit.NewPostgres(db.Primary()),
-		Keys:    idempotency.NewPostgres(db.Primary(), c.Idempotency),
+		Keys:    idempotency.NewPostgres(db.Primary(), c.Idempotency, keys),
 	}
 }
 

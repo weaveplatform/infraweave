@@ -184,13 +184,17 @@ func (s *servedSteps) query(ctx context.Context, sql string) (string, error) {
 }
 
 func (s *servedSteps) stored(ctx context.Context, status int, path, body, key string) error {
-	_, err := s.query(ctx, fmt.Sprintf(`INSERT INTO idempotency_keys
-    (caller, key, fingerprint, state, locked_until, status, content_type, location, body,
+	sealed, err := s.sealBody(ctx, key, []byte(storedBody))
+	if err != nil {
+		return err
+	}
+	_, err = s.query(ctx, fmt.Sprintf(`INSERT INTO idempotency_keys
+    (caller, key, fingerprint, state, locked_until, status, content_type, location, body_sealed,
      created_at, expires_at)
-VALUES (%s, %s, %s, 'done', now(), %d, 'application/json', %s, convert_to(%s, 'UTF8'),
+VALUES (%s, %s, %s, 'done', now(), %d, 'application/json', %s, decode(%s, 'hex'),
     now(), now() + interval '1 hour')`,
 		literal(loopback), literal(key), literal(fingerprint(http.MethodPost, path, body)),
-		status, literal(storedLocation), literal(storedBody)))
+		status, literal(storedLocation), literal(hex.EncodeToString(sealed))))
 	return err
 }
 

@@ -75,6 +75,7 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@op:stacks", "@case:denial", "@quarantine"}, "core"},
 		{[]string{"@postgres"}, "core"},
 		{[]string{"@oidc", "@objectstore"}, "core"},
+		{[]string{"@postgres", "@vault"}, "core"},
 		{[]string{"@postgres", "@terraform"}, "runs"},
 		{[]string{"@vcs", "@postgres"}, "integrations"},
 		{[]string{"@vcs", "@tofu"}, "runs"},

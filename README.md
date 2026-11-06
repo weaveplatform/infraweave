@@ -124,6 +124,7 @@ phase.
 | `secrets.kek.gcpkms.key_name` | | `INFRAWEAVE_SECRETS_KEK_GCPKMS_KEY_NAME` | a CryptoKey resource name; Application Default Credentials |
 | `secrets.kek.azurekv.vault_url`, `.key_name`, `.key_version` | | `INFRAWEAVE_SECRETS_KEK_AZUREKV_VAULT_URL` and so on | an RSA key; the key's current version; `azidentity`'s default chain |
 | `secrets.kek.vault.address`, `.mount`, `.key_name` | | `INFRAWEAVE_SECRETS_KEK_VAULT_ADDRESS` and so on | mount `transit`; a Transit key of an AEAD type, such as the default `aes256-gcm96` |
+| `secrets.rotation_interval` | | `INFRAWEAVE_SECRETS_ROTATION_INTERVAL` | `8760h` (365 days): the age at which the daily `secrets.rotate` task rotates the data key; `0` never rotates |
 | `secrets.kek.vault.auth.method`, `.mount`, `.token_file`, `.role`, `.jwt_file`, `.role_id`, `.secret_id_file` | | `INFRAWEAVE_SECRETS_KEK_VAULT_AUTH_METHOD` and so on | `token`, from `token_file` or `VAULT_TOKEN`; `kubernetes` with `role` and `jwt_file` (`/var/run/secrets/kubernetes.io/serviceaccount/token`); `approle` with `role_id` and `secret_id_file`; the auth mount defaults to the method's name |
 | `objectstore.driver` | | `INFRAWEAVE_OBJECTSTORE_DRIVER` | required by `serve`, `scheduler` and `all`: `s3`, `gcs`, `azureblob` or `fs` |
 | `objectstore.s3.bucket`, `.endpoint`, `.region`, `.path_style` | | `INFRAWEAVE_OBJECTSTORE_S3_BUCKET` and so on | region `us-east-1`; credentials from the AWS SDK's default chain |
@@ -144,6 +145,18 @@ sealed under a keyring of data keys in PostgreSQL, each wrapped by the KEK
 ([decision 0013](docs/research/decisions/0013-secrets-at-rest.md)); the
 first replica on an empty database creates the first key, and a replica
 whose KEK does not unwrap the keys refuses to start, naming the key.
+`infraweave secrets` runs the key operations and exits:
+
+- `infraweave secrets generate-kek <file>` writes a new local KEK to a file
+  that does not exist yet, readable only by its owner.
+- `infraweave secrets rotate` makes a new active data key now. Every
+  replica reloads its keyring and seals under the new key; a scheduler's
+  `secrets.reseal` job reseals every value and object key under it and
+  deletes the old key. A second rotation is refused until that is done.
+- `infraweave secrets rewrap --to <file>` rewraps every data key from the
+  configured KEK to the one a YAML file of `secrets.kek` settings names,
+  such as `provider: vault` with a `vault:` mapping, touching no value.
+  Restart the replicas with the new settings afterwards.
 Objects live under one bucket with a prefix per store, or a store's own
 bucket, and each has a row in `blob_objects`: `infraweave` expires them
 itself and deletes them only from the `scheduler` role, so `serve`'s

@@ -78,7 +78,7 @@ func (q *queueSteps) twoInstances(ctx context.Context, lease int) error {
 			"shutdown":     map[string]any{"ready_delay": "0s"},
 		},
 		"database":    map[string]any{"url": db.DSN},
-		"secrets":     secrets,
+		"secrets":     secretsWith(nil),
 		"objectstore": objectStore(q.s.w.objects()),
 		"log":         map[string]any{"level": "debug"},
 		"queue": map[string]any{

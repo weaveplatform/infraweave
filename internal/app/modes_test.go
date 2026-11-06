@@ -33,6 +33,22 @@ func local(t testing.TB) config.Config {
 	return c
 }
 
+// testKeyring is db's keyring under the local KEK local configures, the
+// one a mode started with local's configuration loads.
+func testKeyring(t testing.TB, db crypt.Querier) *crypt.Keyring {
+	t.Helper()
+	p, closeKEK, err := openKEK(t.Context(), local(t).Secrets.KEK)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(closeKEK)
+	keys, err := crypt.Load(t.Context(), db, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return keys
+}
+
 // memory is the controls' state in process memory, for tests that serve one
 // handler and need no database.
 func memory(c config.Server) Guards {

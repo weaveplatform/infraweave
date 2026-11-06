@@ -129,6 +129,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@terraform` | a pinned Terraform release, fetched once and checked against its SHA-256 | a real run (below) |
 | `@tofu` | a pinned OpenTofu release, checked the same way | a real run (below) |
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
+| `@vault` | Vault in dev mode, with the Transit engine mounted and a Transit key per scenario | the `vault` KEK provider: rewrapping the data keys to Vault, and servers that run on it ([0013](0013-secrets-at-rest.md)) |
 | `@vcs` | Gitea container, with a repository seeded per scenario | real webhooks, commit statuses, pull request comments (decision 0012) |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
@@ -315,7 +316,7 @@ coverage it would contribute is not waived.
 | Job | Runner | Runs | Timeout | Required |
 |---|---|---|---|---|
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
-| `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc` | 20 min | yes |
+| `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min | yes |
 | `accept-runs` | `ubuntu-latest` | `@terraform`, `@tofu`, `@kubernetes`, `@flows-agent` | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |

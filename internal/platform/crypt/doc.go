@@ -20,17 +20,32 @@
 // the sealed columns of every stream, blob_objects.content_key_sealed among
 // them.
 //
+// Rotation follows decision 0013. Rotate makes a new active key and marks
+// the old one retiring, in the caller's transaction, and refuses with
+// ErrRotating while a retiring key remains. Reseal walks Registry and
+// reseals every value under the active key, ResealBatch rows per
+// transaction, until a walk finds nothing; then it marks the old key
+// retired, walks again with the retired key loaded, and deletes it.
+// Rewrap moves every data key from one KEK to another, one row per
+// transaction, touching no value. Each change to encryption_keys notifies
+// Changed on infraweave_invalidate; Watch reloads the keyring on it, and
+// Reload keeps the keys already loaded when the new ones do not unwrap.
+//
 // # Input and output
 //
 // Load reads and, on a first start, inserts encryption_keys, the platform
-// stream's table, and calls the provider once per key. Database errors
-// that mean PostgreSQL is unreachable are marked with
+// stream's table, and calls the provider once per key. Rotate, Reseal and
+// Rewrap write encryption_keys, and Reseal every column of Registry.
+// Database errors that mean PostgreSQL is unreachable are marked with
 // kernel.ErrUnavailable. Sealing and opening touch neither the database
-// nor the provider. Nothing is logged.
+// nor the provider. Watch logs a reload through the given slog.Logger;
+// nothing else is logged.
 //
 // # Dependencies
 //
 // It imports platform/seal for the formats, crypt/kek for the KEK,
-// platform/sql for errors and pgx for the queries. internal/app loads the
-// keyring before any listener binds; internal/agent never imports it.
+// platform/sql for errors, platform/sql/notify for the invalidations and
+// pgx for the queries. internal/app loads the keyring before any listener
+// binds, runs the rotation's jobs and infraweave secrets; internal/agent
+// never imports it.
 package crypt

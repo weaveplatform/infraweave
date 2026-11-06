@@ -13,7 +13,8 @@
 // database.url, which it requires, applies or checks the migration streams
 // Streams registers, in the declared graph's order, loads the keyring
 // through the KEK provider secrets.kek.provider names, which it requires
-// (openKEK), opens the object store
+// (openKEK), and reloads it on each change to encryption_keys, opens the
+// object store
 // objectstore.driver names, which it requires (openObjects), registers the
 // probe checks every
 // mode runs (databaseChecks and keyringCheck), and serves the probes on the
@@ -26,12 +27,14 @@
 // the platform's handlers, the outbox's events.fanout and events.consume
 // and blob.delete over the full Store, and the cron ticker over
 // periodic_tasks, after registering queue.prune, idempotency.purge,
-// events.prune and blob.expire; every
+// events.prune, blob.expire and secrets.rotate, with secrets.reseal, which
+// each rotation enqueues (secretsTasks); every
 // domain appends to and subscribes on Run's one outbox. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
-// infraweave migrate up and status. Version is the line infraweave version
-// prints.
+// infraweave migrate up and status; GenerateKEK, SecretsRotate and
+// SecretsRewrap are infraweave secrets generate-kek, rotate and rewrap.
+// Version is the line infraweave version prints.
 //
 // # Input and output
 //
@@ -44,8 +47,9 @@
 // provider; the probes query it; every mode holds one listening connection, shared
 // by the API's switch (infraweave_invalidate) and the workers
 // (infraweave_jobs), whose liveness the scheduler's readiness checks. It closes the connections and the
-// pools after the drain. MigrateUp and MigrateStatus write their report to
-// the given io.Writer. Requests, panics and listener events are logged
+// pools after the drain. MigrateUp, MigrateStatus, SecretsRotate and
+// SecretsRewrap write their report to the given io.Writer; GenerateKEK
+// creates the file it is given. Requests, panics and listener events are logged
 // through the given slog.Logger. It reads no file and no environment
 // variable itself: config does that before it is called.
 //

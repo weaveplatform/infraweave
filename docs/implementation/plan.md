@@ -133,7 +133,7 @@ and lint is clean.
 | P1c Test harness, SDK and parity tooling | Done | **M1**. Epic [#94](https://github.com/weaveplatform/infraweave/issues/94) |
 | P1d Flows specification reference | Done | Epic [#82](https://github.com/weaveplatform/infraweave/issues/82). Done: [#83](https://github.com/weaveplatform/infraweave/issues/83) the product seam, [#84](https://github.com/weaveplatform/infraweave/issues/84) the Flows reference, [#85](https://github.com/weaveplatform/infraweave/issues/85) Flows parity, [#86](https://github.com/weaveplatform/infraweave/issues/86) product-scoped capabilities, [#87](https://github.com/weaveplatform/infraweave/issues/87) CI for both references |
 | P2 PostgreSQL, migrations and operability | Done | Epic [#114](https://github.com/weaveplatform/infraweave/issues/114). Done: [#115](https://github.com/weaveplatform/infraweave/issues/115) the pools, transactions, `LISTEN` fan-out, ULIDs and `sqltest`, [#116](https://github.com/weaveplatform/infraweave/issues/116) IAM token authentication for AWS, Azure and GCP, [#117](https://github.com/weaveplatform/infraweave/issues/117) the migration runner, the `platform` stream, `infraweave migrate` and the schema checks, [#118](https://github.com/weaveplatform/infraweave/issues/118) `postgres-next`, [#119](https://github.com/weaveplatform/infraweave/issues/119) idempotency keys, rate limits and disabled callers shared across replicas, [#120](https://github.com/weaveplatform/infraweave/issues/120) structured logs, request IDs, probes, the shutdown order and the `scheduler` and `all` modes, [#121](https://github.com/weaveplatform/infraweave/issues/121) problem `instance` and `service-unavailable` |
-| P2b Object storage and secrets at rest | In progress | Epic [#149](https://github.com/weaveplatform/infraweave/issues/149). Done: [#150](https://github.com/weaveplatform/infraweave/issues/150) the sealed formats, the keyring and the `local` KEK, [#151](https://github.com/weaveplatform/infraweave/issues/151) object storage on S3, Cloud Storage, Blob Storage and a local volume, `blob_objects` with `blob.delete` and `blob.expire`, and sealed stores, [#152](https://github.com/weaveplatform/infraweave/issues/152) the `awskms`, `gcpkms`, `azurekv` and `vault` KEK providers |
+| P2b Object storage and secrets at rest | In progress | Epic [#149](https://github.com/weaveplatform/infraweave/issues/149). Done: [#150](https://github.com/weaveplatform/infraweave/issues/150) the sealed formats, the keyring and the `local` KEK, [#151](https://github.com/weaveplatform/infraweave/issues/151) object storage on S3, Cloud Storage, Blob Storage and a local volume, `blob_objects` with `blob.delete` and `blob.expire`, and sealed stores, [#152](https://github.com/weaveplatform/infraweave/issues/152) the `awskms`, `gcpkms`, `azurekv` and `vault` KEK providers, [#153](https://github.com/weaveplatform/infraweave/issues/153) data key rotation and reseal, `rewrap` between KEKs, `infraweave secrets` and sealed idempotency bodies |
 | P2c Work queue, cron, outbox and the event model | Done | Epic [#132](https://github.com/weaveplatform/infraweave/issues/132). Done: [#133](https://github.com/weaveplatform/infraweave/issues/133) transactional enqueue and claims across replicas, [#135](https://github.com/weaveplatform/infraweave/issues/135) workers with leases, retries, timeouts and the ordered shutdown, [#136](https://github.com/weaveplatform/infraweave/issues/136) five-field cron and periodic tasks, [#139](https://github.com/weaveplatform/infraweave/issues/139) the outbox, typed event kinds and fan-out to consumers, [#134](https://github.com/weaveplatform/infraweave/issues/134) audit entries in the change's transaction, [#138](https://github.com/weaveplatform/infraweave/issues/138) the queue and periodic tasks in the `scheduler` and `all` modes, [#137](https://github.com/weaveplatform/infraweave/issues/137) `messageQueueStats` |
 | P3 Identity and tokens | Not started | |
 | P3b Organizations, members, account settings and the feature catalogue | Not started | |
@@ -847,9 +847,11 @@ checks have not seen.
    suites, recorded fixtures for the other two.
 4. `cmd/infraweave` `secrets generate-kek`, `secrets rewrap` and
    `secrets rotate`, which enqueues `secrets.reseal` on the `maintenance`
-   queue; the idempotency store seals `body_sealed`. Feature:
-   `secrets_key_rotation.feature` (rotate with two replicas, rewrap from
-   `local` to Vault). Records DV-048 to DV-050.
+   queue; the daily `secrets.rotate` periodic task under
+   `secrets.rotation_interval`; replicas reload the keyring on
+   `infraweave_invalidate`; the idempotency store seals `body_sealed`.
+   Feature: `secrets_key_rotation.feature` (`@vault`: rotate with two
+   replicas, rewrap from `local` to Vault). Records DV-048 to DV-050.
 5. CI ([0016](../research/decisions/0016-testing-and-acceptance.md)): the required `fips-only` job runs `make test` and every
    acceptance partition with the binary built with `GOFIPS140=certified`
    and every process run with `GODEBUG=fips140=only`, outside the merged
@@ -1081,8 +1083,10 @@ use.
    `api/operator.openapi.yaml`, generated into
    `internal/platform/gen/operator` and `pkg/client/operator`, outside the
    parity surface, for the installation-level actions only: organizations,
-   tiers, the billing switch, organization tiers, grants and the queue's
-   dead jobs. As for `api`, each domain serves its own operations:
+   tiers, the billing switch, organization tiers, grants, the queue's
+   dead jobs and `POST /operator/v1/secrets/rotate`, which rotates the data
+   key as `infraweave secrets rotate` does (decision
+   [0013](../research/decisions/0013-secrets-at-rest.md)). As for `api`, each domain serves its own operations:
    `access` organizations, their first account and break-glass
    credentials, whose tables `features` cannot reference, and `features`
    the rest. Creating
