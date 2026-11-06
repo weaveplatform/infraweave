@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/go-chi/chi/v5"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -33,6 +34,11 @@ type Operation struct {
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
 	Public bool
+	// Body is the request body of an operation whose JSON body schema sets
+	// additionalProperties: false, which strictBodies checks before the
+	// handler; nil for every other operation, whose body the generated
+	// handler decodes leniently.
+	Body *openapi3.RequestBody
 }
 
 // Operations maps "METHOD pattern", a method and the chi route pattern it is
@@ -62,10 +68,27 @@ func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 				Cost:   cost,
 				Search: style == "search" || strings.HasSuffix(path, "/search"),
 				Public: op.Security != nil && len(*op.Security) == 0,
+				Body:   strictBody(op),
 			}
 		}
 	}
 	return ops, nil
+}
+
+// strictBody is op's request body when its JSON schema forbids properties
+// it does not name.
+func strictBody(op *openapi3.Operation) *openapi3.RequestBody {
+	if op.RequestBody == nil || op.RequestBody.Value == nil {
+		return nil
+	}
+	mt := op.RequestBody.Value.Content.Get(jsonType)
+	if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
+		return nil
+	}
+	if ap := mt.Schema.Value.AdditionalProperties.Has; ap == nil || *ap {
+		return nil
+	}
+	return op.RequestBody.Value
 }
 
 // apiOperations reads the embedded spec once. It cannot fail at run time
@@ -136,8 +159,42 @@ func Guarded(
 				op, ok := resolve(req)
 				return ok && !op.Search
 			}, log),
+		strictBodies(func(req *http.Request) *openapi3.RequestBody {
+			op, _ := resolve(req)
+			return op.Body
+		}),
 	)
 	return r
+}
+
+// jsonType is the media type every request body of the API is.
+const jsonType = "application/json"
+
+// strictBodies checks the body of a request whose operation has a strict
+// one against its schema (decision 0022), answering 400 invalid-request
+// for an unknown field, a missing required one or a wrong type before the
+// handler decodes it. A body with no Content-Type is checked as JSON, as
+// the generated handler decodes it.
+func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Handler) http.Handler {
+	opts := &openapi3filter.Options{SkipSettingDefaults: true}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rb := body(r)
+			if rb == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if r.Header.Get("Content-Type") == "" {
+				r.Header.Set("Content-Type", jsonType)
+			}
+			in := &openapi3filter.RequestValidationInput{Request: r, Options: opts}
+			if err := openapi3filter.ValidateRequestBody(r.Context(), in, rb); err != nil {
+				problem.RequestError(w, r, err)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // caller is the key of decision 0003's controls: the principal's, or the

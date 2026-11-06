@@ -12,7 +12,10 @@
 // the generated strict server (apiServer, which embeds
 // api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL behind decision 0003's controls; Guarded and
 // Operations put authentication, then the operator switch, the rate limits
-// and idempotency keys in front of each route, with each operation's cost
+// and idempotency keys in front of each route, and last strictBodies, which
+// answers 400 invalid-request to a JSON body its operation's schema
+// refuses when that schema sets additionalProperties false (decision
+// 0022), with each operation's cost
 // class read from the embedded spec's x-infraweave-cost and whether it is
 // public from its empty security, with the controls' state in Guards and
 // the principal's <kind>:<actor ID> as their caller; the access log runs

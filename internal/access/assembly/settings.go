@@ -25,9 +25,22 @@ var ErrConfig = errors.New("invalid auth configuration")
 type Settings struct {
 	// APIIssuer is the iss of every API-facing token; empty means
 	// server.public_url.
-	APIIssuer string          `mapstructure:"api_issuer"`
-	Tokens    TokenSettings   `mapstructure:"tokens"`
-	Signing   SigningSettings `mapstructure:"signing"`
+	APIIssuer   string             `mapstructure:"api_issuer"`
+	Tokens      TokenSettings      `mapstructure:"tokens"`
+	Signing     SigningSettings    `mapstructure:"signing"`
+	OIDCAPIKeys OIDCAPIKeySettings `mapstructure:"oidc_api_keys"`
+}
+
+// OIDCAPIKeySettings are auth.oidc_api_keys.
+type OIDCAPIKeySettings struct {
+	// AllowedIssuers are the issuers an OIDC API key may name, checked at
+	// creation and at every exchange; empty allows any HTTPS issuer
+	// (DV-014).
+	AllowedIssuers []string `mapstructure:"allowed_issuers"`
+	// CAFile is a PEM file of certificate authorities trusted beside the
+	// system's when fetching an issuer's documents, for an issuer under a
+	// private CA; empty trusts the system's alone.
+	CAFile string `mapstructure:"ca_file"`
 }
 
 // TokenSettings are auth.tokens: each token kind's lifetime.
@@ -78,8 +91,9 @@ func DefaultSettings() Settings {
 }
 
 // Validate rejects a lifetime that is not positive, an unknown backend or
-// rotation, and an issuer that is not an absolute http or https URL.
-// Errors name the key.
+// rotation, an issuer that is not an absolute http or https URL, and an
+// allowed OIDC issuer that is not an absolute https URL. Errors name the
+// key.
 func (s Settings) Validate() error {
 	var errs []error
 	if s.Tokens.API.TTL <= 0 {
@@ -98,6 +112,13 @@ func (s Settings) Validate() error {
 				fmt.Errorf("%w: auth.api_issuer %q is not an absolute http or https URL",
 					ErrConfig, s.APIIssuer),
 			)
+		}
+	}
+	for i, iss := range s.OIDCAPIKeys.AllowedIssuers {
+		if u, err := url.Parse(iss); !absoluteURL(iss) || err != nil || u.Scheme != "https" {
+			errs = append(errs, fmt.Errorf(
+				"%w: auth.oidc_api_keys.allowed_issuers[%d] %q is not an absolute https URL",
+				ErrConfig, i, iss))
 		}
 	}
 	return errors.Join(errs...)

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -19,10 +20,11 @@ import (
 // oidcKeyID names the issuer's one signing key in its JWKS and its tokens.
 const oidcKeyID = "acceptance"
 
-// Issuer is the @oidc dependency: an OpenID Connect issuer on loopback that
-// publishes its discovery document and JWKS and mints RS256 tokens with
-// whatever claims a scenario chooses. It runs in process, so @oidc
-// scenarios need no Docker.
+// Issuer is the @oidc dependency: an OpenID Connect issuer on loopback,
+// over TLS as infraweave fetches issuers over HTTPS only, that publishes
+// its discovery document and JWKS and mints RS256 tokens with whatever
+// claims a scenario chooses. A server trusts it through CertPEM. It runs in
+// process, so @oidc scenarios need no Docker.
 type Issuer struct {
 	srv *httptest.Server
 	key *rsa.PrivateKey
@@ -55,12 +57,21 @@ func StartIssuer() (*Issuer, error) {
 			"e":   b64(big.NewInt(int64(key.E)).Bytes()),
 		}}})
 	})
-	iss.srv = httptest.NewServer(r)
+	iss.srv = httptest.NewTLSServer(r)
 	return iss, nil
 }
 
 // URL is the issuer identifier, which is also its base URL.
 func (i *Issuer) URL() string { return i.srv.URL }
+
+// CertPEM is the issuer's certificate, which a client must trust to reach
+// it.
+func (i *Issuer) CertPEM() []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: i.srv.Certificate().Raw})
+}
+
+// Client is an HTTP client that trusts the issuer.
+func (i *Issuer) Client() *http.Client { return i.srv.Client() }
 
 // Close stops the issuer.
 func (i *Issuer) Close() { i.srv.Close() }

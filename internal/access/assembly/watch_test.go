@@ -30,7 +30,10 @@ func TestAccWatchSessions(t *testing.T) {
 		wg.Wait()
 	}()
 	db := sqltest.Open(t)
-	d := New(Deps{DB: db.Primary(), Settings: DefaultSettings(), Audience: "http://iw.test/api/v1"})
+	d := mustNew(
+		t,
+		Deps{DB: db.Primary(), Settings: DefaultSettings(), Audience: "http://iw.test/api/v1"},
+	)
 	l := notify.NewListener(db.ConnConfig, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	sub, _ := l.Subscribe(notify.Invalidate)
 	wg.Go(func() { l.Run(ctx) })

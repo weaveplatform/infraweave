@@ -95,13 +95,19 @@ func (h *harnessSteps) verifies(ctx context.Context, subject string) error {
 		Issuer  string `json:"issuer"`
 		JWKSURI string `json:"jwks_uri"` //nolint:tagliatelle // fixed by OpenID Connect Discovery
 	}
-	if err := getJSON(ctx, h.issuer.URL()+"/.well-known/openid-configuration", &disc); err != nil {
+	c := h.issuer.Client()
+	if err := getJSON(
+		ctx,
+		c,
+		h.issuer.URL()+"/.well-known/openid-configuration",
+		&disc,
+	); err != nil {
 		return err
 	}
 	var jwks struct {
 		Keys []struct{ Kid, N, E string } `json:"keys"`
 	}
-	if err := getJSON(ctx, disc.JWKSURI, &jwks); err != nil {
+	if err := getJSON(ctx, c, disc.JWKSURI, &jwks); err != nil {
 		return err
 	}
 	parts := strings.Split(token, ".")
@@ -142,12 +148,12 @@ func (h *harnessSteps) verifies(ctx context.Context, subject string) error {
 	return nil
 }
 
-func getJSON(ctx context.Context, url string, v any) error {
+func getJSON(ctx context.Context, c *http.Client, url string, v any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("GET %s: %w", url, err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("GET %s: %w", url, err)
 	}

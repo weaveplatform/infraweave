@@ -1,6 +1,7 @@
 // Package port holds the access domain's ports: the interfaces its core
 // needs from its adapters, and the errors those adapters return through
-// them, so the core never imports an adapter (decision 0004).
+// them, so the core never imports an adapter (decision 0004). OIDC
+// verifies an issuer's JWT for an OIDC API key.
 //
 // # Input and output
 //

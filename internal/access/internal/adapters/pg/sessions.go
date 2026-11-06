@@ -7,7 +7,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -150,33 +149,6 @@ func (s *Store) ExpireSessions(ctx context.Context, before time.Time) (int64, er
 		return 0, fmt.Errorf("access: expire sessions: %w", sql.Unavailable(err))
 	}
 	return tag.RowsAffected(), nil
-}
-
-// APIKey reads the key id with its account's organization.
-func (s *Store) APIKey(ctx context.Context, id kernel.ULID) (apikey.Key, error) {
-	var (
-		k                     apikey.Key
-		expires, off, deleted *time.Time
-	)
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `
-		SELECT a.organization_id, k.account_id, k.id, k.name, k.type, k.secret_hash, k.teams,
-			k.expires_at, k.disabled_at, k.deleted_at
-		FROM api_keys k JOIN accounts a ON a.id = k.account_id WHERE k.id = $1`, id).
-		Scan(&k.OrganizationID, &k.AccountID, &k.ID, &k.Name, &k.Type, &k.SecretHash, &k.Teams,
-			&expires, &off, &deleted)
-	k.ExpiresAt, k.DisabledAt, k.DeletedAt = deref(expires), deref(off), deref(deleted)
-	return k, read(err, "API key", id)
-}
-
-// TouchAPIKey sets the key's last_used_at unless it is under a minute old,
-// so a busy key writes its row once a minute, not once an exchange.
-func (s *Store) TouchAPIKey(ctx context.Context, id kernel.ULID) error {
-	if _, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE api_keys SET last_used_at = now()
-		WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')`,
-		id); err != nil {
-		return fmt.Errorf("access: touch API key %s: %w", id, sql.Unavailable(err))
-	}
-	return nil
 }
 
 // revoke revokes the live sessions where holds, with args, sends each

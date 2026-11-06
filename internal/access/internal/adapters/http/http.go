@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
@@ -21,10 +22,15 @@ import (
 // internal/app embeds it beside the other domains' partials, so each
 // operation it implements shadows the router's 501, and an operation two
 // domains implement fails to compile.
-type Server struct{ auth *authn.Service }
+type Server struct {
+	auth *authn.Service
+	keys *apikey.Service
+}
 
-// NewServer returns the partial serving through auth.
-func NewServer(auth *authn.Service) Server { return Server{auth: auth} }
+// NewServer returns the partial serving through auth and keys.
+func NewServer(auth *authn.Service, keys *apikey.Service) Server {
+	return Server{auth: auth, keys: keys}
+}
 
 // refused is the detail of every refused credential, which names no part.
 const refused = "The request carries no valid credential."
@@ -32,7 +38,7 @@ const refused = "The request carries no valid credential."
 // sessionsList names the sessions list's cursors.
 const sessionsList = "sessions"
 
-// ApiKeyUser exchanges a secret API key for an API token
+// ApiKeyUser exchanges an API key for an API token
 // (POST /auth/token). It answers the reference's User, whose jwt and
 // validUntil are the token and its expiry.
 //

@@ -14,6 +14,34 @@ type UnimplementedStrict struct{}
 
 var _ StrictServerInterface = UnimplementedStrict{}
 
+func (UnimplementedStrict) ApiKeyEnableNonAdminManagers(context.Context, ApiKeyEnableNonAdminManagersRequestObject) (ApiKeyEnableNonAdminManagersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyEnableNonAdminManagers", Route: "PUT /account/api-key-non-admin-managers"}
+}
+
+func (UnimplementedStrict) ApiKeys(context.Context, ApiKeysRequestObject) (ApiKeysResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeys", Route: "GET /api-keys"}
+}
+
+func (UnimplementedStrict) ApiKeyCreate(context.Context, ApiKeyCreateRequestObject) (ApiKeyCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyCreate", Route: "POST /api-keys"}
+}
+
+func (UnimplementedStrict) ApiKeyDelete(context.Context, ApiKeyDeleteRequestObject) (ApiKeyDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyDelete", Route: "DELETE /api-keys/{apiKeyId}"}
+}
+
+func (UnimplementedStrict) ApiKey(context.Context, ApiKeyRequestObject) (ApiKeyResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKey", Route: "GET /api-keys/{apiKeyId}"}
+}
+
+func (UnimplementedStrict) ApiKeyUpdate(context.Context, ApiKeyUpdateRequestObject) (ApiKeyUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyUpdate", Route: "PUT /api-keys/{apiKeyId}"}
+}
+
+func (UnimplementedStrict) ApiKeyReset(context.Context, ApiKeyResetRequestObject) (ApiKeyResetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyReset", Route: "POST /api-keys/{apiKeyId}/reset"}
+}
+
 func (UnimplementedStrict) Logout(context.Context, LogoutRequestObject) (LogoutResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "logout", Route: "POST /auth/logout"}
 }

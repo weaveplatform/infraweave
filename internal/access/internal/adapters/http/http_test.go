@@ -194,8 +194,11 @@ func newWorld(t *testing.T) *world {
 		Keys: st, Sessions: st, Tokens: st, Audience: audience, TTL: 10 * time.Hour,
 		Now: func() time.Time { return t0 },
 	})
+	keys := apikey.NewService(apikey.Deps{
+		Store: st, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
+	})
 	strict := api.NewStrictHandlerWithOptions(
-		full{Server: NewServer(auth)},
+		full{Server: NewServer(auth, keys)},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,

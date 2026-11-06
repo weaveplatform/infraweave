@@ -36,7 +36,8 @@
         "lowestTier": "Free; Enterprise for `oidc-api-keys`",
         "phase": "P3",
         "also": "P4b (`apiKeyApiKeyRoleBindings`)",
-        "state": "missing"
+        "state": "partial",
+        "notes": "Seven operations are served (P3), secret and OIDC keys alike; `apiKeyApiKeyRoleBindings` arrives with key bindings in P4b, until when `admin` reads false"
       }
     },
     {

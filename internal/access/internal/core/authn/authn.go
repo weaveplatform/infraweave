@@ -25,6 +25,10 @@ const Retention = 30 * 24 * time.Hour
 // APIKeySubject prefixes an API token's sub, api::<key ID>.
 const APIKeySubject = "api::"
 
+// OIDCKeySubject prefixes the sub of an OIDC API key's token,
+// api::oidc::<client ID>::<key ID>.
+const OIDCKeySubject = APIKeySubject + "oidc::"
+
 // Tokens issues and verifies API tokens; *token.Service is one.
 type Tokens interface {
 	Issue(ctx context.Context, r token.Request) (string, token.Claims, error)
@@ -36,6 +40,12 @@ type Deps struct {
 	Keys     port.APIKeys
 	Sessions port.Sessions
 	Tokens   Tokens
+	// OIDC verifies an OIDC API key's JWT; nil, or a nil IssuerAllowed,
+	// refuses every OIDC key.
+	OIDC port.OIDC
+	// IssuerAllowed reports whether an OIDC key's issuer may still be
+	// fetched, as auth.oidc_api_keys.allowed_issuers says at the exchange.
+	IssuerAllowed func(issuer string) bool
 	// Audience is every API token's aud, server.public_url/api/v1.
 	Audience string
 	// TTL is auth.tokens.api.ttl, an API token's longest life.
@@ -65,11 +75,13 @@ type Grant struct {
 	Session session.Session
 }
 
-// Exchange trades a secret API key for an API token and the session it
-// stands for, recording ip as the session's address. The token lives
-// auth.tokens.api.ttl, never past the key's expiry. A key that does not
-// exist, is not a secret key, does not match secret, or is expired,
-// disabled or deleted is ErrUnauthenticated.
+// Exchange trades an API key for an API token and the session it stands
+// for, recording ip as the session's address. A secret key's secret is
+// its iwk_ secret; an OIDC key's is a JWT of its issuer, whose sub must
+// match the key's subject expression and whose mapped claims add teams.
+// The token lives auth.tokens.api.ttl, never past the key's expiry. A key
+// that does not exist, whose secret fails, or that is expired, disabled
+// or deleted is ErrUnauthenticated.
 func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, error) {
 	keyID, err := kernel.ParseULID(id)
 	if err != nil {
@@ -85,7 +97,18 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 		return Grant{}, err //nolint:wrapcheck // the store names the read
 	}
 	now := s.d.Now()
-	if !k.Matches(secret) || !k.Usable(now) {
+	subject, teams := APIKeySubject+k.ID.String(), k.Teams
+	switch {
+	case k.Type == apikey.TypeOIDC:
+		var ok bool
+		if teams, ok = s.oidc(ctx, k, secret); !ok {
+			return Grant{}, ErrUnauthenticated
+		}
+		subject = OIDCKeySubject + k.OIDC.ClientID + "::" + k.ID.String()
+	case !k.Matches(secret):
+		return Grant{}, ErrUnauthenticated
+	}
+	if !k.Usable(now) {
 		return Grant{}, ErrUnauthenticated
 	}
 	ttl := s.d.TTL
@@ -104,7 +127,7 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	sid := kernel.NewULID()
 	raw, claims, err := s.d.Tokens.Issue(ctx, token.Request{
 		Kind:     token.KindAPIKey,
-		Subject:  APIKeySubject + k.ID.String(),
+		Subject:  subject,
 		Session:  sid,
 		Audience: s.d.Audience,
 		TTL:      ttl,
@@ -121,7 +144,7 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 		ActorID:        k.ID,
 		Login:          k.ID.String(),
 		Name:           k.Name,
-		Teams:          k.Teams,
+		Teams:          teams,
 		IPAddress:      ip,
 		CreatedAt:      now,
 		ExpiresAt:      claims.Expiry,
@@ -132,6 +155,26 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 		return Grant{}, err //nolint:wrapcheck // the store names the write
 	}
 	return Grant{Token: raw, Claims: claims, Session: ss}, nil
+}
+
+// oidc verifies raw for the OIDC key k and returns the session's teams:
+// the issuer must still be allowed, the token must verify for the key's
+// client ID, and its sub must match the key's anchored subject
+// expression.
+func (s *Service) oidc(ctx context.Context, k apikey.Key, raw string) ([]string, bool) {
+	if s.d.OIDC == nil || s.d.IssuerAllowed == nil || !s.d.IssuerAllowed(k.OIDC.Issuer) {
+		return nil, false
+	}
+	claims, err := s.d.OIDC.Verify(ctx, k.OIDC.Issuer, k.OIDC.ClientID, raw)
+	if err != nil {
+		return nil, false
+	}
+	sub, _ := claims["sub"].(string)
+	re, err := apikey.CompileSubject(k.OIDC.SubjectExpression)
+	if err != nil || sub == "" || !re.MatchString(sub) {
+		return nil, false
+	}
+	return k.OIDC.Teams(k.Teams, claims), true
 }
 
 // actors are the principal kind each token kind's session must have.

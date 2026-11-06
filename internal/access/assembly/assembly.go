@@ -2,11 +2,15 @@ package assembly
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/http"
+	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/oidc"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
@@ -72,11 +76,13 @@ type Domain struct {
 	store  *pg.Store
 	tokens *token.Service
 	authn  *authn.Service
+	keys   *apikey.Service
 	manual bool
 }
 
-// New constructs the domain on d.
-func New(d Deps) *Domain {
+// New constructs the domain on d. It fails only when
+// auth.oidc_api_keys.ca_file cannot be read or holds no certificate.
+func New(d Deps) (*Domain, error) {
 	issuer := d.Settings.APIIssuer
 	if issuer == "" {
 		issuer = d.PublicURL
@@ -96,19 +102,43 @@ func New(d Deps) *Domain {
 		TokenLife: d.Settings.Tokens.API.TTL,
 		Refs:      refs,
 	}, now)
+	var roots []byte
+	if f := d.Settings.OIDCAPIKeys.CAFile; f != "" {
+		var err error
+		if roots, err = os.ReadFile(f); err != nil {
+			return nil, fmt.Errorf("%w: auth.oidc_api_keys.ca_file: %w", ErrConfig, err)
+		}
+	}
+	verifier, err := oidc.New(oidc.Options{RootCAs: roots, Now: now})
+	if err != nil {
+		return nil, fmt.Errorf("%w: auth.oidc_api_keys.ca_file %s: %w",
+			ErrConfig, d.Settings.OIDCAPIKeys.CAFile, err)
+	}
+	auth := authn.New(authn.Deps{
+		Keys:     store,
+		Sessions: store,
+		Tokens:   tokens,
+		OIDC:     verifier,
+		IssuerAllowed: func(issuer string) bool {
+			return apikey.IssuerAllowed(d.Settings.OIDCAPIKeys.AllowedIssuers, issuer)
+		},
+		Audience: d.Audience,
+		TTL:      d.Settings.Tokens.API.TTL,
+		Now:      now,
+	})
+	keys := apikey.NewService(apikey.Deps{
+		Store:          store,
+		Drop:           auth.Cache().Drop,
+		AllowedIssuers: d.Settings.OIDCAPIKeys.AllowedIssuers,
+		Now:            now,
+	})
 	return &Domain{
 		store:  store,
 		tokens: tokens,
-		authn: authn.New(authn.Deps{
-			Keys:     store,
-			Sessions: store,
-			Tokens:   tokens,
-			Audience: d.Audience,
-			TTL:      d.Settings.Tokens.API.TTL,
-			Now:      now,
-		}),
+		authn:  auth,
+		keys:   keys,
 		manual: manual,
-	}
+	}, nil
 }
 
 // API is the domain's partial of the API's strict server; a nil domain's
@@ -117,7 +147,7 @@ func (d *Domain) API() AccessAPI {
 	if d == nil {
 		return AccessAPI{}
 	}
-	return http.NewServer(d.authn)
+	return http.NewServer(d.authn, d.keys)
 }
 
 // Authenticator is the middleware that authenticates the API's requests.

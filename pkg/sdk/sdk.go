@@ -36,6 +36,7 @@ type Client struct {
 	base  string
 	doer  Doer
 	token string
+	key   *keyToken
 	retry Retry
 }
 
@@ -45,8 +46,9 @@ type Option func(*Client)
 // WithHTTPClient sends through d instead of http.DefaultClient.
 func WithHTTPClient(d Doer) Option { return func(c *Client) { c.doer = d } }
 
-// WithToken sends token as the bearer credential, as is. A token from
-// INFRAWEAVE_API_TOKEN is one; exchanging an API key for one is P3's.
+// WithToken sends token as the bearer credential, as is, such as a token
+// from INFRAWEAVE_API_TOKEN; WithAPIKey exchanges a key for tokens
+// instead.
 func WithToken(token string) Option { return func(c *Client) { c.token = token } }
 
 // WithRetry replaces DefaultRetry.
@@ -129,13 +131,22 @@ func (c *Client) Do(
 	return out, Check(resp, b)
 }
 
-// send sends req with the token and, on a write, an Idempotency-Key the
-// caller did not set, retrying as c.retry allows. The key is chosen once,
+// send sends req with the token, or the API key's, and, on a write, an
+// Idempotency-Key the caller did not set, retrying as c.retry allows. The key is chosen once,
 // so every attempt of the call carries the same one and the server
 // replays rather than repeats a write that already happened.
 func (c *Client) send(req *http.Request) (*http.Response, error) {
-	if c.token != "" && req.Header.Get("Authorization") == "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
+	if req.Header.Get("Authorization") == "" {
+		token := c.token
+		if c.key != nil {
+			var err error
+			if token, err = c.key.bearer(req.Context(), c); err != nil {
+				return nil, err
+			}
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
 	}
 	if (req.Method == http.MethodPost || req.Method == http.MethodPatch) &&
 		req.Header.Get(IdempotencyKeyHeader) == "" {
