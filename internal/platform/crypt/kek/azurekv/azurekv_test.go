@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek/azurekv"
@@ -151,5 +153,38 @@ func TestUnitAzureKVUnreachable(t *testing.T) {
 		kek.ErrConfig,
 	) {
 		t.Errorf("no key: %v", err)
+	}
+}
+
+// TestUnitAzureKVUnversioned checks that a wrapKey answer whose key ID
+// names no version is refused, since nothing could unwrap what it wrapped.
+func TestUnitAzureKVUnversioned(t *testing.T) {
+	r := chi.NewRouter()
+	r.Post("/keys/kek/wrapkey", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(
+			[]byte(`{"kid":"https://lab-vault.vault.azure.net/keys/kek","value":"AAEC"}`),
+		)
+	})
+	srv := httptest.NewTLSServer(r)
+	t.Cleanup(srv.Close)
+	p, err := azurekv.New(kek.AzureKVConfig{VaultURL: srv.URL, KeyName: "kek"}, azurekv.Options{
+		Credential: token{},
+		Client: &azkeys.ClientOptions{
+			ClientOptions: azcore.ClientOptions{Transport: srv.Client()},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Wrap(t.Context(), 1, kektest.Key()); !errors.Is(err, azurekv.ErrKeyID) {
+		t.Errorf("Wrap: %v", err)
+	}
+	// azidentity's default chain needs no credential until a call.
+	if _, err := azurekv.New(
+		kek.AzureKVConfig{VaultURL: srv.URL, KeyName: "kek"},
+		azurekv.Options{},
+	); err != nil {
+		t.Errorf("the default chain: %v", err)
 	}
 }

@@ -3,11 +3,13 @@ package gcpkms_test
 import (
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"google.golang.org/api/option"
 	htransport "google.golang.org/api/transport/http"
 
@@ -98,5 +100,56 @@ func TestUnitGCPKMSUnreachable(t *testing.T) {
 		kek.ErrConfig,
 	) {
 		t.Errorf("not a CryptoKey name: %v", err)
+	}
+}
+
+// tampered models Cloud KMS answering encrypt and decrypt with reply.
+func tampered(t *testing.T, reply string) *gcpkms.Provider {
+	t.Helper()
+	r := chi.NewRouter()
+	r.Post("/*", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(reply))
+	})
+	srv := httptest.NewServer(r)
+	t.Cleanup(srv.Close)
+	p, err := gcpkms.New(t.Context(), kek.GCPKMSConfig{KeyName: recorded},
+		option.WithEndpoint(srv.URL), option.WithoutAuthentication())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = p.Close() })
+	return p
+}
+
+// TestUnitGCPKMSIntegrity checks that an answer whose integrity fields do
+// not confirm the request, or that another key gave, is refused.
+func TestUnitGCPKMSIntegrity(t *testing.T) {
+	// "AAEC" is the bytes 0, 1, 2, whose CRC32C is 2466073594.
+	version := `"name":"` + recorded + `/cryptoKeyVersions/1"`
+	for name, reply := range map[string]string{
+		"plaintext unverified": `{` + version + `,"ciphertext":"AAEC","ciphertextCrc32c":"2466073594",
+			"verifiedAdditionalAuthenticatedDataCrc32c":true}`,
+		"AAD unverified": `{` + version + `,"ciphertext":"AAEC","ciphertextCrc32c":"2466073594",
+			"verifiedPlaintextCrc32c":true}`,
+		"ciphertext changed": `{` + version + `,"ciphertext":"AAEC","ciphertextCrc32c":"1",
+			"verifiedPlaintextCrc32c":true,"verifiedAdditionalAuthenticatedDataCrc32c":true}`,
+		"another key": `{"name":"projects/p/locations/global/keyRings/r/cryptoKeys/other/cryptoKeyVersions/1",
+			"ciphertext":"AAEC","ciphertextCrc32c":"2466073594",
+			"verifiedPlaintextCrc32c":true,"verifiedAdditionalAuthenticatedDataCrc32c":true}`,
+	} {
+		if _, err := tampered(
+			t,
+			reply,
+		).Wrap(t.Context(), 1, kektest.Key()); !errors.Is(
+			err,
+			gcpkms.ErrIntegrity,
+		) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if _, err := tampered(t, `{"plaintext":"AAEC","plaintextCrc32c":"1"}`).
+		Unwrap(t.Context(), 1, []byte("blob")); !errors.Is(err, gcpkms.ErrIntegrity) {
+		t.Errorf("plaintext changed: %v", err)
 	}
 }

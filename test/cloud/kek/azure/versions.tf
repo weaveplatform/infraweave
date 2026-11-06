@@ -17,4 +17,7 @@ provider "azurerm" {
     }
   }
   subscription_id = var.subscription_id
+  # The provider's default registrations leave out Key Vault, which a
+  # subscription that has never held a vault has not registered.
+  resource_providers_to_register = ["Microsoft.KeyVault"]
 }
