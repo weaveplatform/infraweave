@@ -28,6 +28,7 @@ import (
 const (
 	pgUser, pgPassword, pgDatabase = "infraweave", "infraweave", "infraweave"
 	storeAccessKey, storeSecretKey = "infraweave", "infraweave-secret" //nolint:gosec // see above
+	vaultToken                     = "infraweave-root"                 //nolint:gosec // see above
 )
 
 // pgTemplate is the database every scenario's database is copied from
@@ -129,7 +130,7 @@ type Dependencies struct {
 	// starts migrated. Nil leaves the template empty.
 	Migrate func(ctx context.Context, dsn string) error
 
-	pgOnce, storeOnce, oidcOnce sync.Once
+	pgOnce, storeOnce, oidcOnce, vaultOnce sync.Once
 
 	pg       *Database
 	pgErr    error
@@ -138,6 +139,9 @@ type Dependencies struct {
 	storeErr error
 	issuer   *Issuer
 	oidcErr  error
+	vault    *Vault
+	vaultErr error
+	keys     atomic.Int64
 
 	mu      sync.Mutex
 	cleanup []func(context.Context) error
@@ -371,6 +375,85 @@ func (d *Dependencies) ObjectStore(ctx context.Context) (*ObjectStore, error) {
 		}
 	})
 	return d.store, d.storeErr
+}
+
+// Vault is the @vault dependency: Vault in dev mode, with the Transit
+// engine mounted at transit, which the vault KEK provider wraps with.
+type Vault struct {
+	// Addr is Vault's address from the host; Token is its root token.
+	Addr, Token string
+}
+
+// Vault returns the shared Vault, starting it on first use.
+func (d *Dependencies) Vault(ctx context.Context) (*Vault, error) {
+	d.vaultOnce.Do(func() {
+		c, err := testcontainers.Run(ctx, ImageVault,
+			testcontainers.WithExposedPorts("8200/tcp"),
+			testcontainers.WithEnv(map[string]string{
+				"VAULT_DEV_ROOT_TOKEN_ID": vaultToken,
+				// Dev mode keeps everything in memory, so it needs no
+				// mlock, and the container no IPC_LOCK.
+				"SKIP_SETCAP": "true",
+			}),
+			testcontainers.WithWaitStrategy(wait.ForHTTP("/v1/sys/health").WithPort("8200/tcp")),
+		)
+		if c != nil {
+			d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+		}
+		if err != nil {
+			d.vaultErr = fmt.Errorf("@vault: %w", err)
+			return
+		}
+		addr, err := c.PortEndpoint(ctx, "8200/tcp", "http")
+		if err != nil {
+			d.vaultErr = fmt.Errorf("@vault: %w", err)
+			return
+		}
+		v := &Vault{Addr: addr, Token: vaultToken}
+		if err := v.post(ctx, "sys/mounts/transit", `{"type":"transit"}`); err != nil {
+			d.vaultErr = fmt.Errorf("@vault: %w", err)
+			return
+		}
+		d.vault = v
+	})
+	return d.vault, d.vaultErr
+}
+
+// VaultKey creates a Transit key of the scenario's own, so scenarios
+// running in parallel never wrap with one another's key, and returns its
+// name.
+func (d *Dependencies) VaultKey(ctx context.Context) (string, error) {
+	v, err := d.Vault(ctx)
+	if err != nil {
+		return "", err
+	}
+	name := fmt.Sprintf("kek-%d", d.keys.Add(1))
+	if err := v.post(ctx, "transit/keys/"+name, `{}`); err != nil {
+		return "", fmt.Errorf("@vault: %w", err)
+	}
+	return name, nil
+}
+
+// ErrVault is returned when Vault refuses a call the harness makes.
+var ErrVault = errors.New("vault refused the call")
+
+func (v *Vault) post(ctx context.Context, path, body string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, v.Addr+"/v1/"+path,
+		strings.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("POST %s: %w", path, err)
+	}
+	req.Header.Set("X-Vault-Token", v.Token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("POST %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		msg, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("%w: POST %s: %s: %s", ErrVault, path, resp.Status, msg)
+	}
+	return nil
 }
 
 // OIDC returns the shared issuer, starting it on first use.

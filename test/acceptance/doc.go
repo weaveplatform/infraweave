@@ -4,7 +4,7 @@
 // its own infraweave all subprocess (or scheduler, for a scenario about that
 // mode), reading its listeners from the JSON logs on its stdout, and starts
 // the dependencies a
-// selected scenario's tags name (@postgres, @objectstore, @oidc) once, on
+// selected scenario's tags name (@postgres, @objectstore, @oidc, @vault) once, on
 // first use. Without a Docker daemon it skips the scenarios that need one,
 // unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which fails the run instead. A
 // failed scenario leaves its evidence in out/<scenario>/. make accept
@@ -29,7 +29,10 @@
 // shared or a scenario's own (OwnPostgres, on a fixed port so it can stop
 // and start, and which the moby client pauses; OldPostgres, below the
 // floor),
-// and RustFS; chi serves the in-process OIDC issuer. Every step and every
+// RustFS and Vault; chi serves the in-process OIDC issuer. The secrets
+// steps load the keyring and serve's blob store from internal/platform to
+// seal and read what no operation serves yet, and run infraweave secrets
+// as a subprocess. Every step and every
 // capture replay calls the API through pkg/sdk, never the generated client
 // beneath it (TestUnitStepsUseTheSDK).
 package acceptance

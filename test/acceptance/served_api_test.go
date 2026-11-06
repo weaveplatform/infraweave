@@ -10,6 +10,7 @@ import (
 	"github.com/cucumber/godog"
 	"gopkg.in/yaml.v3"
 
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
@@ -18,6 +19,9 @@ type servedSteps struct {
 	w *world
 	// sent holds every response of the scenario, the last one last.
 	sent []response
+	// vault is the Vault KEK the data keys are wrapped by after a rewrap;
+	// nil while they are under the local KEK.
+	vault *kek.VaultConfig
 }
 
 type response struct {
@@ -45,12 +49,19 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
 	sc.Step(`^the problem names the request in its instance$`, s.namesRequest)
 	s.registerReplicas(sc)
+	s.registerSecrets(sc)
 	s.registerQueueStats(sc)
 	(&queueSteps{s: s}).register(sc)
 }
 
-// secrets selects the local KEK, which StartServer passes in KEK.
-var secrets = map[string]any{"kek": map[string]any{"provider": "local"}}
+// secretsWith is the secrets settings with kek as secrets.kek; nil
+// selects the local KEK, which StartServer passes in KEK.
+func secretsWith(kek map[string]any) map[string]any {
+	if kek == nil {
+		kek = map[string]any{"provider": "local"}
+	}
+	return map[string]any{"kek": kek}
+}
 
 // objectStore is the fs driver under root. Replicas of one scenario share
 // the root, as replicas share a volume. No scenario follows a signed URL
@@ -68,6 +79,12 @@ func objectStore(root string) map[string]any {
 // them. The ready delay is 0 unless the scenario names one, so stopping a
 // server costs no wait.
 func serverConfig(dsn, objects string, settings map[string]any) ([]byte, error) {
+	return serverConfigKEK(dsn, objects, settings, nil)
+}
+
+// serverConfigKEK is serverConfig with kek as the secrets.kek settings;
+// nil keeps the local KEK.
+func serverConfigKEK(dsn, objects string, settings, kek map[string]any) ([]byte, error) {
 	server := map[string]any{
 		"listen":       "127.0.0.1:0",
 		"admin_listen": "127.0.0.1:0",
@@ -77,7 +94,7 @@ func serverConfig(dsn, objects string, settings map[string]any) ([]byte, error) 
 	out, err := yaml.Marshal(map[string]any{
 		"server":      server,
 		"database":    map[string]any{"url": dsn},
-		"secrets":     secrets,
+		"secrets":     secretsWith(kek),
 		"objectstore": objectStore(objects),
 	})
 	if err != nil {

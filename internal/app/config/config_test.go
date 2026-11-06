@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
@@ -404,5 +405,26 @@ objectstore:
 	); err == nil ||
 		!strings.Contains(err.Error(), "objectstore.driver") {
 		t.Errorf("an unknown driver: %v", err)
+	}
+}
+
+// TestUnitLoadKEK checks the file infraweave secrets rewrap --to reads:
+// the keys under secrets.kek, decoded strictly and validated.
+func TestUnitLoadKEK(t *testing.T) {
+	c, err := LoadKEK(
+		writeFile(t, "provider: vault\nvault:\n  address: http://vault:8200\n  key_name: kek\n"),
+	)
+	if err != nil || c.Provider != "vault" || c.Vault.Address != "http://vault:8200" ||
+		c.Vault.Mount != kek.Defaults().Vault.Mount {
+		t.Errorf("LoadKEK: %+v %v", c, err)
+	}
+	for name, file := range map[string]string{
+		"missing":          filepath.Join(t.TempDir(), "none.yaml"),
+		"an unknown key":   writeFile(t, "provider: local\nlocal:\n  key: a2V5\n"),
+		"invalid settings": writeFile(t, "provider: vault\n"),
+	} {
+		if _, err := LoadKEK(file); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
 	}
 }

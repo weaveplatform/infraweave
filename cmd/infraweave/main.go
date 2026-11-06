@@ -20,7 +20,7 @@ func main() {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.AddCommand(serveCmd(), schedulerCmd(), allCmd(), migrateCmd(), versionCmd())
+	root.AddCommand(serveCmd(), schedulerCmd(), allCmd(), migrateCmd(), secretsCmd(), versionCmd())
 	err := root.ExecuteContext(stopOnSignal())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "infraweave:", err)

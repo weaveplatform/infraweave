@@ -442,7 +442,7 @@ option 5's
 - **Feature files** are named `<area>_<topic>.feature`, where `<area>` is the
   domain or concern (`runs_terraform.feature`, `events_webhooks.feature`,
   `authz_spaces.feature`). A scenario carries dependency tags (`@postgres`,
-  `@objectstore`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@ai`,
+  `@objectstore`, `@vault`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@ai`,
   `@kubernetes`, `@flows-agent`), one `@op:<operationId>` tag per
   operation it exercises, and `@case:success`, `@case:denial` or
   `@case:failure` for the kind of path it proves; a Terraform provider

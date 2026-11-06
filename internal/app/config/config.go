@@ -202,3 +202,25 @@ func bindEnv(v *viper.Viper, t reflect.Type, prefix string) {
 		_ = v.BindEnv(key)
 	}
 }
+
+// LoadKEK decodes file, a YAML mapping of the keys under secrets.kek, as
+// infraweave secrets rewrap --to reads the KEK it rewraps to. It decodes
+// strictly over kek.Defaults, as Load does, and reads no flag or
+// environment variable: the variables name the KEK the process runs with,
+// not the one it moves to.
+func LoadKEK(file string) (kek.Config, error) {
+	v := viper.New()
+	v.SetConfigFile(file)
+	v.SetConfigType("yaml")
+	if err := v.ReadInConfig(); err != nil {
+		return kek.Config{}, fmt.Errorf("read KEK settings: %w", err)
+	}
+	c := kek.Defaults()
+	if err := v.UnmarshalExact(&c); err != nil {
+		return kek.Config{}, fmt.Errorf("KEK settings: %w", err)
+	}
+	if err := c.Validate(); err != nil {
+		return kek.Config{}, fmt.Errorf("KEK settings: %w", err)
+	}
+	return c, nil
+}

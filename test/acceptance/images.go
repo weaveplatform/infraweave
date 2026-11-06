@@ -31,7 +31,7 @@ const (
 	// azureblob suite runs against.
 	ImageAzurite = "mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5"
 	// ImageVault is the Vault whose Transit engine the vault KEK
-	// provider's suite and the vault start run against.
+	// provider's suite, the vault start and @vault run against.
 	ImageVault = "hashicorp/vault:2.2.1@sha256:962a92876e168d68eaaa24b0b8b49bbce1cb63024060a67bba95cd158a366fc2"
 	// ImageMoto is the AWS emulator whose KMS the awskms KEK provider's
 	// suite runs against. LocalStack's image needs a licence token to

@@ -34,11 +34,12 @@ func TestAccGuardedReplicas(t *testing.T) {
 		wg.Wait()
 	}()
 
+	keys := testKeyring(t, db.Primary())
 	var runs atomic.Int32
 	entered, release := make(chan struct{}), make(chan struct{})
 	replica := func() *chi.Mux {
 		l := notify.NewListener(db.ConnConfig, discard())
-		g := postgresGuards(ctx, &wg, c, db, l)
+		g := postgresGuards(ctx, &wg, c, db, keys, l)
 		wg.Go(func() { l.Run(ctx) })
 		r := Guarded(discard(), c, Operations{"POST /things": {Cost: ratelimit.Standard}}, g)
 		r.Post("/things", func(w http.ResponseWriter, req *http.Request) {

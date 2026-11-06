@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -411,6 +412,13 @@ func TestUnitRegistry(t *testing.T) {
 func TestUnitConfig(t *testing.T) {
 	if err := crypt.Defaults().Validate(); err != nil {
 		t.Errorf("defaults: %v", err)
+	}
+	if err := (crypt.Config{RotationInterval: -time.Hour}).Validate(); !errors.Is(
+		err,
+		kek.ErrConfig,
+	) ||
+		!strings.Contains(err.Error(), "secrets.rotation_interval") {
+		t.Errorf("a negative interval: %v", err)
 	}
 	if err := (crypt.Config{KEK: kek.Config{Provider: "vault"}}).Validate(); !errors.Is(
 		err,

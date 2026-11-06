@@ -22,7 +22,7 @@ type Partition struct {
 var Partitions = []Partition{
 	{Name: "runs", Tags: []string{"@terraform", "@tofu", "@kubernetes", "@flows-agent"}},
 	{Name: "integrations", Tags: []string{"@vcs", "@ai"}},
-	{Name: "core", Tags: []string{"@postgres", "@objectstore", "@oidc"}},
+	{Name: "core", Tags: []string{"@postgres", "@objectstore", "@oidc", "@vault"}},
 }
 
 // Tags that place no scenario: @op:, @case: and @provider: name what a

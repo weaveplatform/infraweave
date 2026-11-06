@@ -245,6 +245,9 @@ type world struct {
 	// apis call each server's API listener, in the order of servers.
 	api, admin *sdk.Client
 	apis       []*sdk.Client
+	// kek is the secrets.kek settings the scenario's servers and commands
+	// run with; nil is the local KEK.
+	kek map[string]any
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -360,7 +363,7 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	if err != nil {
 		return nil, err
 	}
-	config, err := serverConfig(db.DSN, w.objects(), settings)
+	config, err := serverConfigKEK(db.DSN, w.objects(), settings, w.kek)
 	if err != nil {
 		return nil, err
 	}

@@ -7,8 +7,10 @@
 //
 // Middleware applies the rule to the requests its applies function selects;
 // Store holds each key's claim and stored response per caller. Postgres is
-// the store serve uses, shared by every replica, and Memory an in-process
-// one for tests. Config is server.idempotency: how long a stored response
+// the store serve uses, shared by every replica, which seals each stored
+// body in idempotency_keys.body_sealed (Body) under the keyring, with the
+// associated data idempotency_keys.body_sealed:<caller>/<key>; Memory is an
+// in-process one for tests. Config is server.idempotency: how long a stored response
 // is kept, and how long a request holds its key before another may take it
 // over.
 //
@@ -28,5 +30,7 @@
 //
 // It imports platform/httpkit/problem for its 400, 409, 413, 422, 500 and
 // 503 bodies, platform/tx for the transaction a store call joins,
-// platform/sql to mark an unreachable database, and pgx for its errors. internal/app composes it and app/config reads its Config.
+// platform/sql to mark an unreachable database, platform/crypt for the
+// sealed column, and pgx for its errors. internal/app composes it with the
+// keyring and app/config reads its Config.
 package idempotency

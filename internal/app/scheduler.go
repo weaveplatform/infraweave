@@ -11,6 +11,8 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
@@ -102,6 +104,8 @@ func startScheduler(
 	ctx context.Context,
 	c config.Config,
 	db *sql.DB,
+	keys *crypt.Keyring,
+	provider kek.Provider,
 	l *notify.Listener,
 	events *outbox.Outbox,
 	store objectstore.Store,
@@ -112,9 +116,9 @@ func startScheduler(
 	q := queue.New(db.Primary())
 	reg := queue.NewRegistry()
 	tasks := cron.NewPeriodicTasks(db.Primary(), q)
-	keys := idempotency.NewPostgres(db.Primary(), c.Server.Idempotency)
+	idem := idempotency.NewPostgres(db.Primary(), c.Server.Idempotency, keys)
 	reaper := blobs.NewReaper(db.Primary(), q, store)
-	for _, t := range platformTasks(c, q, keys, events, reaper, log) {
+	for _, t := range platformTasks(c, q, idem, events, reaper, log) {
 		if err := reg.Register(t.kind, t.handler, queue.HandlerOptions{}); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
@@ -122,7 +126,16 @@ func startScheduler(
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
 	}
-	if err := errors.Join(events.Register(reg), reaper.Register(reg)); err != nil {
+	rotate, reseal := secretsTasks(c, db.Primary(), q, provider, log)
+	if err := errors.Join(
+		reg.Register(rotate.kind, rotate.handler, queue.HandlerOptions{}),
+		tasks.Ensure(ctx, rotate.kind, rotate.every),
+		// A reseal that runs out of time runs again from the start, skipping
+		// what it has resealed, so the longest timeout only saves passes.
+		reg.Register(ResealValues, reseal, queue.HandlerOptions{Timeout: queue.MaxTimeout}),
+		events.Register(reg),
+		reaper.Register(reg),
+	); err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
 	}
 	health.Ready("queue_listener", func(context.Context) error {

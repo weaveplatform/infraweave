@@ -333,9 +333,9 @@ server never has unmasked output to leak.
 
 | Operation | Command | Effect |
 |---|---|---|
-| Rotate the KEK, or change provider | `infraweave secrets rewrap --to <provider settings>` | Unwraps each data key with the current KEK, wraps it with the new one and updates its row, one row per transaction. Values and objects are untouched. Replicas pick the change up through `infraweave_invalidate` |
-| Rotate the data key | `infraweave secrets rotate`, or `POST /operator/v1/secrets/rotate` on the operator API ([0021](0021-capability-scope-and-supersession.md)) | Inserts a new `active` key and marks the old one `retiring`. Then it enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)) |
-| Reseal | `secrets.reseal` job | Walks `crypt.Registry` with keyset pagination, 500 rows per transaction. It reseals each value whose key ID is not the active one, then marks the old key `retired` and deletes it once a final pass finds no reference |
+| Rotate the KEK, or change provider | `infraweave secrets rewrap --to <file of secrets.kek settings>` | Unwraps each data key with the current KEK, wraps it with the new one and updates its row, one row per transaction. Values and objects are untouched. A key the new KEK already unwraps is skipped, so a rewrap that stopped part-way runs again. The data keys themselves do not change, so replicas keep serving with the keys they hold, and are restarted with the new provider's settings |
+| Rotate the data key | `infraweave secrets rotate`, or `POST /operator/v1/secrets/rotate` on the operator API ([0021](0021-capability-scope-and-supersession.md)) | Inserts a new `active` key, marks the old one `retiring` and enqueues the `secrets.reseal` job on the `maintenance` queue ([0011](0011-persistent-work-queue.md)), in one transaction. It is refused while a `retiring` key remains. Replicas reload the keyring on `infraweave_invalidate` and seal under the new key |
+| Reseal | `secrets.reseal` job | Walks `crypt.Registry` with keyset pagination, 500 rows per transaction, resealing each value whose key ID is not the active one. It repeats the walk until one finds nothing, which catches a value a replica sealed under the old key before it reloaded. Then it marks the old key `retired`, which replicas no longer open with, walks once more with that key loaded, and deletes it once a walk finds no reference. It is idempotent: one that stops part-way runs again from the start |
 | Rotate a pool key | `workerPoolReset` ([0008](0008-run-execution-and-worker-protocol.md)) | New specs are sealed to the new key. Workspaces sealed to the old key can no longer be opened, so runs awaiting confirmation must be replanned |
 
 - **An annual default.** Data keys are rotated every 365 days by default
@@ -472,13 +472,15 @@ nothing about them is secret:
 - **The registry.** `TestAccSealedColumnRegistry` migrates a fresh database and
   asserts that the set of `*_sealed` columns in `pg_catalog` equals
   `crypt.Registry`.
-- **Rotation.** An acceptance feature, `secrets_key_rotation.feature`:
+- **Rotation.** An acceptance feature, `secrets_key_rotation.feature`
+  (`@postgres`, `@vault`):
   1. populates every sealed column;
   2. rotates the data key while two server instances run;
   3. checks every value through the API and every sealed object through its
      reader;
   4. confirms the old key is deleted;
-  5. runs `rewrap` from `local` to the Vault provider.
+  5. runs `rewrap` from `local` to the Vault provider, restarts the
+     instances on Vault and reads everything again.
 - **FIPS 140-3.** The `fips-only` CI job of
   [0016](0016-testing-and-acceptance.md#ci) runs the unit and acceptance
   suites with `GOFIPS140=certified` and `GODEBUG=fips140=only`.

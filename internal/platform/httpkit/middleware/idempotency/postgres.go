@@ -7,21 +7,39 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
 // Postgres is the Store every serve replica shares: the platform stream's
 // idempotency_keys table. Locks and expiry compare against the database
-// clock, so replicas whose clocks differ agree on every outcome.
+// clock, so replicas whose clocks differ agree on every outcome. A stored
+// body is sealed (decision 0013), since it can hold whatever the request
+// created.
 type Postgres struct {
 	db        tx.Querier
+	keys      Sealer
 	ttl, lock float64 // seconds
 }
 
-// NewPostgres keeps keys in db as c says.
-func NewPostgres(db tx.Querier, c Config) *Postgres {
-	return &Postgres{db: db, ttl: c.TTL.Seconds(), lock: c.Lock.Seconds()}
+// Sealer seals and opens a stored body; *crypt.Keyring is one.
+type Sealer interface {
+	SealColumn(ctx context.Context, c crypt.Column, pk []string, plaintext []byte) ([]byte, error)
+	OpenColumn(ctx context.Context, c crypt.Column, pk []string, sealed []byte) (crypt.Value, error)
+}
+
+// Body is the sealed column a stored body lives in, which crypt.Registry
+// lists.
+var Body = crypt.Column{
+	Table: "idempotency_keys",
+	Name:  "body_sealed",
+	Key:   []string{"caller", "key"},
+}
+
+// NewPostgres keeps keys in db as c says, sealing bodies with keys.
+func NewPostgres(db tx.Querier, c Config, keys Sealer) *Postgres {
+	return &Postgres{db: db, keys: keys, ttl: c.TTL.Seconds(), lock: c.Lock.Seconds()}
 }
 
 // claimKey inserts the key as in flight, or takes over a row that has
@@ -35,13 +53,13 @@ VALUES ($1, $2, $3, 'in_flight',
 ON CONFLICT (caller, key) DO UPDATE SET
     fingerprint = excluded.fingerprint, state = 'in_flight',
     locked_until = excluded.locked_until, status = NULL, content_type = NULL,
-    location = NULL, body = NULL, created_at = excluded.created_at,
+    location = NULL, body_sealed = NULL, created_at = excluded.created_at,
     expires_at = excluded.expires_at
 WHERE k.expires_at <= now() OR (k.state = 'in_flight' AND k.locked_until <= now())
 RETURNING true`
 
 const readKey = `
-SELECT fingerprint, status, coalesce(content_type, ''), coalesce(location, ''), body
+SELECT fingerprint, status, coalesce(content_type, ''), coalesce(location, ''), body_sealed
 FROM idempotency_keys
 WHERE caller = $1 AND key = $2 AND expires_at > now()`
 
@@ -69,14 +87,22 @@ func (p *Postgres) Claim(ctx context.Context, key Key, fingerprint string) (Reco
 			rec    Record
 			status *int32
 			resp   Response
+			sealed []byte
 		)
 		err = db.QueryRow(ctx, readKey, key.Caller, key.Value).
-			Scan(&rec.Fingerprint, &status, &resp.ContentType, &resp.Location, &resp.Body)
+			Scan(&rec.Fingerprint, &status, &resp.ContentType, &resp.Location, &sealed)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
 		if err != nil {
 			return Record{}, false, fmt.Errorf("read idempotency key: %w", sql.Unavailable(err))
+		}
+		if sealed != nil {
+			body, err := p.keys.OpenColumn(ctx, Body, []string{key.Caller, key.Value}, sealed)
+			if err != nil {
+				return Record{}, false, fmt.Errorf("open idempotency key's body: %w", err)
+			}
+			resp.Body = body.Reveal()
 		}
 		if status != nil {
 			resp.Status = int(*status)
@@ -89,12 +115,20 @@ func (p *Postgres) Claim(ctx context.Context, key Key, fingerprint string) (Reco
 
 // Complete implements Store.
 func (p *Postgres) Complete(ctx context.Context, key Key, resp Response) error {
+	var sealed []byte
+	if len(resp.Body) != 0 {
+		var err error
+		sealed, err = p.keys.SealColumn(ctx, Body, []string{key.Caller, key.Value}, resp.Body)
+		if err != nil {
+			return fmt.Errorf("seal idempotency key's body: %w", err)
+		}
+	}
 	tag, err := tx.Q(ctx, p.db).Exec(ctx, `
 UPDATE idempotency_keys
-SET state = 'done', status = $3, content_type = $4, location = $5, body = $6,
+SET state = 'done', status = $3, content_type = $4, location = $5, body_sealed = $6,
     expires_at = now() + $7 * interval '1 second'
 WHERE caller = $1 AND key = $2 AND state = 'in_flight' AND expires_at > now()`,
-		key.Caller, key.Value, resp.Status, resp.ContentType, resp.Location, resp.Body, p.ttl)
+		key.Caller, key.Value, resp.Status, resp.ContentType, resp.Location, sealed, p.ttl)
 	if err != nil {
 		return fmt.Errorf("complete idempotency key: %w", sql.Unavailable(err))
 	}

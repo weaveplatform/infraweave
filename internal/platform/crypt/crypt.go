@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -23,14 +24,23 @@ import (
 // Config holds the secrets settings, keyed below secrets.
 type Config struct {
 	KEK kek.Config `mapstructure:"kek"`
+	// RotationInterval is the age at which secrets.rotate rotates the
+	// active data key; 0 never does.
+	RotationInterval time.Duration `mapstructure:"rotation_interval"`
 }
 
 // Defaults are the settings an empty configuration means: no KEK
-// provider, which the process modes that seal refuse.
-func Defaults() Config { return Config{KEK: kek.Defaults()} }
+// provider, which the process modes that seal refuse, and a yearly
+// rotation.
+func Defaults() Config { return Config{KEK: kek.Defaults(), RotationInterval: 365 * 24 * time.Hour} }
 
-// Validate rejects a KEK setting infraweave could not start with.
-func (c Config) Validate() error { return c.KEK.Validate() } //nolint:wrapcheck // names its key
+// Validate rejects a setting infraweave could not start with.
+func (c Config) Validate() error {
+	if c.RotationInterval < 0 {
+		return fmt.Errorf("%w: secrets.rotation_interval must not be negative", kek.ErrConfig)
+	}
+	return c.KEK.Validate() //nolint:wrapcheck // names its key
+}
 
 var (
 	// ErrUnknownKey reports a value sealed under a data key the keyring
@@ -50,8 +60,11 @@ type Querier interface {
 
 // Keyring holds the unwrapped active and retiring data keys. Sealing and
 // opening are local AES operations, so the KEK provider is called only
-// when the keyring loads.
+// when the keyring loads or reloads.
 type Keyring struct {
+	db Querier
+	p  kek.Provider
+
 	mu     sync.RWMutex
 	active uint32
 	keys   map[uint32][]byte
@@ -63,7 +76,7 @@ type Keyring struct {
 // an error naming its ID, because it means the wrong KEK is configured.
 func Load(ctx context.Context, db Querier, p kek.Provider) (*Keyring, error) {
 	for range 2 {
-		k, err := load(ctx, db, p)
+		k, err := load(ctx, db, p, servable)
 		if err != nil || k.active != 0 {
 			return k, err
 		}
@@ -74,10 +87,15 @@ func Load(ctx context.Context, db Querier, p kek.Provider) (*Keyring, error) {
 	return nil, fmt.Errorf("%w: no active data key after creating one", ErrKeyring)
 }
 
-func load(ctx context.Context, db Querier, p kek.Provider) (*Keyring, error) {
+// servable are the states a replica seals and opens with; a retired key
+// opens nothing, though its row stays until no value references it.
+var servable = []string{"active", "retiring"}
+
+// load unwraps the keys in states with p.
+func load(ctx context.Context, db Querier, p kek.Provider, states []string) (*Keyring, error) {
 	rows, err := db.Query(ctx, `
 		SELECT id, wrapped_key, state FROM encryption_keys
-		WHERE state IN ('active', 'retiring')`)
+		WHERE state = ANY($1)`, states)
 	if err != nil {
 		return nil, fmt.Errorf("%w: read encryption_keys: %w", ErrKeyring, sql.Unavailable(err))
 	}
@@ -96,7 +114,7 @@ func load(ctx context.Context, db Querier, p kek.Provider) (*Keyring, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: read encryption_keys: %w", ErrKeyring, sql.Unavailable(err))
 	}
-	k := &Keyring{keys: map[uint32][]byte{}}
+	k := &Keyring{db: db, p: p, keys: map[uint32][]byte{}}
 	for _, r := range found {
 		key, err := p.Unwrap(ctx, r.id, r.wrapped)
 		if err != nil {
@@ -313,6 +331,7 @@ func (c Column) AAD(pk []string) ([]byte, error) {
 // _sealed columns of the migrated schema.
 var registry = []Column{
 	{Table: "blob_objects", Name: "content_key_sealed", Key: []string{"store", "key"}},
+	{Table: "idempotency_keys", Name: "body_sealed", Key: []string{"caller", "key"}},
 }
 
 // Registry lists the sealed columns.
