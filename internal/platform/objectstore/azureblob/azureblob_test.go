@@ -21,6 +21,31 @@ const (
 	accountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==" //nolint:gosec // public
 )
 
+// TestAccAzureBlobCloud runs the contract against Azure Blob Storage, in
+// the objectstore-cloud job, as the identity its credentials hold;
+// azidentity's default chain finds them.
+func TestAccAzureBlobCloud(t *testing.T) {
+	id, v := objectstoretest.Cloud(t,
+		"INFRAWEAVE_TEST_AZUREBLOB_ACCOUNT_URL", "INFRAWEAVE_TEST_AZUREBLOB_CONTAINER")
+	b, err := azureblob.New(
+		objectstore.AzureBlobConfig{AccountURL: v[0], Container: v[1]},
+		"",
+		objectstore.MinPartSize,
+		azureblob.Options{Client: &service.ClientOptions{ClientOptions: azcore.ClientOptions{
+			Transport: objectstoretest.NoMD5(t, http.DefaultTransport),
+		}}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objectstoretest.Run(t, b, objectstoretest.Options{
+		PartSize: objectstore.MinPartSize,
+		Skip:     objectstoretest.Unbound[objectstore.DriverAzureBlob],
+		Identity: id,
+	})
+	objectstoretest.Canceled(t, b, objectstore.MinPartSize)
+}
+
 // TestAccAzureBlobContract runs the contract against Azurite.
 func TestAccAzureBlobContract(t *testing.T) {
 	endpoint := objectstoretest.Emulator(t, acceptance.ImageAzurite, "10000/tcp",

@@ -25,9 +25,14 @@ func endpoint(url string) func(*kms.Options) {
 	return func(o *kms.Options) { o.BaseEndpoint = aws.String(url) }
 }
 
+// The test credentials. SigV4 keys its HMAC with "AWS4" and the secret, and
+// FIPS 140-only mode refuses an HMAC key under 112 bits, so the secret is
+// as long as a real one.
+const accessKey, secretKey = "infraweave-test", "infraweave-test-secret-0123456789abcdefghi" //nolint:gosec // a test credential
+
 func environment(t *testing.T) {
-	t.Setenv("AWS_ACCESS_KEY_ID", "test")
-	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
+	t.Setenv("AWS_ACCESS_KEY_ID", accessKey)
+	t.Setenv("AWS_SECRET_ACCESS_KEY", secretKey)
 	t.Setenv("AWS_PROFILE", "")
 }
 
@@ -41,7 +46,7 @@ func TestAccAWSKMS(t *testing.T) {
 	admin := kms.New(kms.Options{
 		Region:       c.Region,
 		BaseEndpoint: aws.String(url),
-		Credentials:  credentials.NewStaticCredentialsProvider("test", "test", ""),
+		Credentials:  credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
 	})
 	created, err := admin.CreateKey(t.Context(), &kms.CreateKeyInput{})
 	if err != nil {

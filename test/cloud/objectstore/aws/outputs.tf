@@ -1,4 +1,4 @@
-# The values the objectstore-cloud workflow reads as repository variables.
+# The values the objectstore-cloud workflow reads as its environment's secrets.
 
 output "bucket" {
   value = aws_s3_bucket.objectstore.bucket

@@ -26,8 +26,31 @@ cd test/cloud/objectstore/google   # or aws, azure
 terraform init
 terraform plan -out=lab.tfplan
 terraform apply lab.tfplan
-terraform output                   # the workflow's repository variables
+terraform output                   # the workflow's environment secrets
 ```
+
+The `objectstore` roots' outputs are the secrets of `objectstore-cloud.yml`'s
+`objectstore-cloud` environment, set with `gh secret set --env
+objectstore-cloud`. None is a credential, but they name the lab's accounts,
+and the public repository's logs mask secrets and print variables. A cloud
+with any of its secrets unset reports "not configured" and fails.
+
+| Root | Output | Secret |
+|---|---|---|
+| `objectstore/aws` | `bucket`, `region` | `OBJECTSTORE_AWS_BUCKET`, `OBJECTSTORE_AWS_REGION` |
+| | `roles.writer`, `roles.deleter` | `OBJECTSTORE_AWS_WRITER_ROLE`, `OBJECTSTORE_AWS_DELETER_ROLE` |
+| `objectstore/google` | `bucket`, `workload_identity_provider` | `OBJECTSTORE_GCS_BUCKET`, `OBJECTSTORE_GCS_WORKLOAD_IDENTITY_PROVIDER` |
+| | `service_accounts.writer`, `service_accounts.deleter` | `OBJECTSTORE_GCS_WRITER`, `OBJECTSTORE_GCS_DELETER` |
+| `objectstore/azure` | `account_url`, `container` | `OBJECTSTORE_AZURE_ACCOUNT_URL`, `OBJECTSTORE_AZURE_CONTAINER` |
+| | `tenant_id`, `subscription_id` | `OBJECTSTORE_AZURE_TENANT_ID`, `OBJECTSTORE_AZURE_SUBSCRIPTION_ID` |
+| | `client_ids.writer`, `client_ids.deleter` | `OBJECTSTORE_AZURE_WRITER_CLIENT_ID`, `OBJECTSTORE_AZURE_DELETER_CLIENT_ID` |
+
+The workflow's jobs run in the `objectstore-cloud` environment, whose
+token subject the AWS and Azure trust admits; give the environment a
+deployment branch rule that admits only `main`. Each cloud runs the
+contract as the writer, with the delete case replaced by one that asserts
+the cloud refuses it, then as the deleter, which removes what it wrote;
+the lifecycle rule clears the writer's objects.
 
 The `kek` roots' outputs are the live tests' variables:
 `INFRAWEAVE_TEST_GCPKMS_KEY` is `key_name`, and

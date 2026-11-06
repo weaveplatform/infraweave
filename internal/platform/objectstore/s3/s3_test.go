@@ -52,6 +52,26 @@ func TestAccS3Contract(t *testing.T) {
 	objectstoretest.Canceled(t, b, objectstore.MinPartSize)
 }
 
+// TestAccS3Cloud runs the contract against Amazon S3, in the
+// objectstore-cloud job, as the identity its credentials hold; the AWS
+// SDK's default chain finds them.
+func TestAccS3Cloud(t *testing.T) {
+	id, v := objectstoretest.Cloud(t, "INFRAWEAVE_TEST_S3_BUCKET", "INFRAWEAVE_TEST_S3_REGION")
+	c := objectstore.Defaults().S3
+	c.Bucket, c.Region = v[0], v[1]
+	b, err := s3.New(t.Context(), c, "", objectstore.MinPartSize,
+		config.WithHTTPClient(objectstoretest.NoMD5(t, http.DefaultTransport)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	objectstoretest.Run(t, b, objectstoretest.Options{
+		PartSize: objectstore.MinPartSize,
+		Skip:     objectstoretest.Unbound[objectstore.DriverS3],
+		Identity: id,
+	})
+	objectstoretest.Canceled(t, b, objectstore.MinPartSize)
+}
+
 // TestUnitS3Encryption checks that a signed PUT carries the configured
 // server-side encryption, which the client must send as signed.
 func TestUnitS3Encryption(t *testing.T) {

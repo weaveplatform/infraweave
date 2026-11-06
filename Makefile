@@ -5,6 +5,15 @@ SHELL := /bin/bash
 export GOWORK := off
 
 GO ?= go
+# FIPS=1 is decision 0016's fips-only job: every binary, the test binaries
+# and the one under acceptance, is built with the certified FIPS 140-3 Go
+# Cryptographic Module, and every process, the go command's included, runs
+# with fips140=only, so a call to MD5, SHA-1 or another refused algorithm
+# fails where it is made.
+ifeq ($(FIPS),1)
+export GOFIPS140 := certified
+export GODEBUG := fips140=only
+endif
 GOLANGCI_LINT ?= golangci-lint
 MODULE := $(shell GOWORK=off $(GO) list -m)
 COVER_DIR := cover

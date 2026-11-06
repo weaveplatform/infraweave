@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,7 +29,24 @@ type Options struct {
 	Skip map[string]string
 	// Client sends the signed requests; nil is http.DefaultClient.
 	Client *http.Client
+	// Identity is what the bucket's credentials may do.
+	Identity Identity
 }
+
+// Identity is what the credentials under test may do. The
+// objectstore-cloud job runs the contract as each of decision 0020's two
+// identities in turn; an emulator's credentials may do everything.
+type Identity int
+
+const (
+	// Full credentials run every case except delete-refused.
+	Full Identity = iota
+	// Writer is serve's identity, which reads and writes and may not
+	// delete: delete-refused runs in place of delete.
+	Writer
+	// Deleter is the scheduler's identity, which may also delete.
+	Deleter
+)
 
 // Case is one clause of the contract.
 type Case struct {
@@ -37,9 +55,24 @@ type Case struct {
 }
 
 type env struct {
-	b      objectstore.Bucket
-	o      Options
-	prefix string
+	b       objectstore.Bucket
+	o       Options
+	prefix  string
+	written *written
+}
+
+// written records every key a run names, so a run whose credentials may
+// delete removes what it wrote; a writer's run leaves its keys to the
+// bucket's lifecycle rule.
+type written struct {
+	mu   sync.Mutex
+	keys []string
+}
+
+func (w *written) add(key string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.keys = append(w.keys, key)
 }
 
 // Cases is the contract, in the order Run runs it.
@@ -49,6 +82,7 @@ func Cases() []Case {
 		{"empty", empty},
 		{"missing", missing},
 		{"delete", deleteCase},
+		{"delete-refused", deleteRefused},
 		{"short-write", shortWrite},
 		{"long-write", longWrite},
 		{"multipart", multipart},
@@ -108,20 +142,43 @@ func Run(t *testing.T, b objectstore.Bucket, o Options) {
 	}
 	var run [8]byte
 	_, _ = rand.Read(run[:])
+	w := &written{}
+	if o.Identity != Writer {
+		// The cases' contexts have ended by now.
+		t.Cleanup(func() {
+			for _, k := range w.keys {
+				if err := b.Delete(context.Background(), k); err != nil {
+					t.Errorf("removing %s: %v", k, err)
+				}
+			}
+		})
+	}
 	for _, c := range Cases() {
 		t.Run(c.Name, func(t *testing.T) {
 			if why, ok := o.Skip[c.Name]; ok {
 				t.Skip(why)
 			}
-			c.run(
-				t,
-				env{b: b, o: o, prefix: "contract/" + hex.EncodeToString(run[:]) + "/" + c.Name},
-			)
+			switch {
+			case c.Name == "delete" && o.Identity == Writer:
+				t.Skip("the writer may not delete; delete-refused runs instead")
+			case c.Name == "delete-refused" && o.Identity != Writer:
+				t.Skip("only the writer is refused a delete")
+			}
+			c.run(t, env{
+				b:       b,
+				o:       o,
+				prefix:  "contract/" + hex.EncodeToString(run[:]) + "/" + c.Name,
+				written: w,
+			})
 		})
 	}
 }
 
-func (e env) key(leaf string) string { return e.prefix + "/" + leaf }
+func (e env) key(leaf string) string {
+	k := e.prefix + "/" + leaf
+	e.written.add(k)
+	return k
+}
 
 func random(n int64) []byte {
 	b := make([]byte, n)
@@ -193,6 +250,18 @@ func deleteCase(t *testing.T, e env) {
 	if err := e.b.Delete(t.Context(), e.key("never-written")); err != nil {
 		t.Errorf("deleting a missing key: %v", err)
 	}
+}
+
+// deleteRefused checks that serve's identity cannot delete, so serve
+// needs no delete permission (decision 0005): the delete fails and the
+// object stays.
+func deleteRefused(t *testing.T, e env) {
+	body := random(10)
+	e.put(t, e.key("a"), body)
+	if err := e.b.Delete(t.Context(), e.key("a")); err == nil {
+		t.Fatal("the writer deleted an object")
+	}
+	e.expect(t, e.key("a"), body)
 }
 
 func shortWrite(t *testing.T, e env) {

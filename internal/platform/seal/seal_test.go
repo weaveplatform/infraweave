@@ -471,12 +471,13 @@ func TestUnitEnvelope(t *testing.T) {
 			}
 		})
 	}
-	x25519, err := ecdh.X25519().GenerateKey(rand.Reader)
+	// P-384 is a curve FIPS 140-only mode allows and the envelope does not.
+	p384, err := ecdh.P384().GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := seal.SealEnvelope(
-		x25519.PublicKey(),
+		p384.PublicKey(),
 		"r",
 		1,
 		nil,
@@ -484,10 +485,10 @@ func TestUnitEnvelope(t *testing.T) {
 		err,
 		seal.ErrPoolKey,
 	) {
-		t.Errorf("sealing to an X25519 key: %v", err)
+		t.Errorf("sealing to a P-384 key: %v", err)
 	}
-	if _, err := seal.OpenEnvelope(x25519, "r", 1, sealed); !errors.Is(err, seal.ErrPoolKey) {
-		t.Errorf("opening with an X25519 key: %v", err)
+	if _, err := seal.OpenEnvelope(p384, "r", 1, sealed); !errors.Is(err, seal.ErrPoolKey) {
+		t.Errorf("opening with a P-384 key: %v", err)
 	}
 	if _, err := seal.SealEnvelope(
 		pool.PublicKey(),

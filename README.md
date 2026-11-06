@@ -216,10 +216,11 @@ keys.
 
 | Target | What |
 |---|---|
-| `make gate` | Everything CI runs: docs-check, vet, lint, lint-fixtures, test, accept, verify-parity, verify-reference, verify-generate, cover, vuln, build |
+| `make gate` | Everything CI runs but its `FIPS=1` rerun: docs-check, vet, lint, lint-fixtures, test, accept, verify-parity, verify-reference, verify-generate, cover, vuln, build |
 | `make docs-check` | Fails on a broken link under `docs/`, a research report without its header or sources, a decision without a valid status or index row, a stale `docs/…` path anywhere in the repository, a register under `docs/data/` that fails its schema or cites a missing ID, a reference spec tag with no record in `docs/data/capabilities.json`, a superseded `operations` entry that is not an operation of its product's reference, a superseded `enumValues` or `fields` entry that is not a value or field of its type in Deploy's GraphQL inventory, or a report with *(unverified)* claims that no record of `docs/data/open-questions.json` lists, or a Go package under `internal/` or `pkg/` without a `doc.go` that has its `# Input and output` and `# Dependencies` sections |
 | `make test` | Every `TestUnit…` test in the module, with `-race -shuffle=on`, coverage to `cover/unit` |
 | `make accept` | Every `TestAcc…` test: the Gherkin features (godog) and the suites beside the code, such as specref's fetcher tests; coverage, the subprocess's included, and `cucumber.json` to `cover/accept`. `PARTITION=core\|runs\|integrations` runs one CI partition, as the `accept-<partition>` jobs do: `core` runs every `TestAcc…` test and the other two only their scenarios, and each job reports how many scenarios it ran, or that its partition has none yet. Without Docker, scenarios that need it are skipped and listed; `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, as CI sets, fails them instead. `INFRAWEAVE_POSTGRES=next` runs `@postgres` and the `sqltest` suites on the next PostgreSQL major instead of the floor, as the `postgres-next` job does with `PARTITION=core`; that job reports the version it ran and never blocks a merge. `INFRAWEAVE_ACCEPT_SEED` repeats the printed scenario order. `TestUnitTestNames` fails on a test named neither way ([decision 0016](docs/research/decisions/0016-testing-and-acceptance.md#test-kinds)) |
+| `make test FIPS=1`, `make accept FIPS=1` | The same tests with every binary, the one under acceptance included, built with the certified FIPS 140-3 Go Cryptographic Module (`GOFIPS140=certified`) and every process run with `GODEBUG=fips140=only`, as the required `fips-only` job runs `make test` and every partition: a call to MD5, SHA-1 or another algorithm the mode refuses fails, in a test or a library as in product code. Its coverage is not merged. `infraweave version` prints the binary's FIPS 140-3 mode and module version |
 | `make scaffold TAG=Stacks FAMILY=stacks` | Copies one reference tag (Deploy's, or Flows' with `PRODUCT=flows`) into `api/src/api/paths-<family>.yaml` with the decision 0003 conventions, then bundles |
 | `make parity` | Prints, for Deploy and then Flows, each reference operation's outcome (served, served with divergence, superseded, missing) and the infraweave-only operations by tag, and how they differ from `api/parity-baseline.<product>.json` |
 | `make verify-parity` | Run by the `parity` job over the merged `cucumber.json` of every partition. Fails, for either product, on an unrecorded divergence, a served superseded operation, a stale baseline, or a `docs/data/capabilities.json` state that `cover/accept/cucumber.json` does not show |
@@ -235,6 +236,17 @@ keys.
 | `make lint` / `make fmt` | golangci-lint with `.golangci.yml` over the whole tree, including depguard's [import rules](docs/implementation/repo-layout.md#depguard-rules) and the `time.Sleep` ban in tests |
 | `make lint-fixtures` | Lints the `test/depguard` module, whose packages break each import rule once, and fails unless the findings are exactly `test/depguard/expected.txt` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |
+
+Two scheduled workflows report beside the gate and never block a merge;
+each opens an issue on failure, or comments on the open one. `nightly.yml`
+runs every acceptance partition on `main`. `objectstore-cloud.yml` runs the
+object store contract (`objectstoretest`) each night against real Amazon
+S3, Google Cloud Storage and Azure Blob Storage, as `serve`'s writer
+identity, whose delete the cloud must refuse, and as the `scheduler`'s
+deleter, through GitHub's OIDC token with no stored key; the issue is per
+cloud. [`test/cloud`](test/cloud/README.md) provisions the buckets and the
+trust; a cloud without its environment secrets reports "not configured"
+and fails.
 
 ## Dependencies stay at latest
 

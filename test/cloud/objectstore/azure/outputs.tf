@@ -1,4 +1,4 @@
-# The values the objectstore-cloud workflow reads as repository variables.
+# The values the objectstore-cloud workflow reads as its environment's secrets.
 
 output "account_url" {
   value = azurerm_storage_account.objectstore.primary_blob_endpoint
