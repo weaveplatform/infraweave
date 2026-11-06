@@ -49,7 +49,7 @@ func TestAccCreateOrganization(t *testing.T) {
 	db := pool(t)
 	s := pg.New(db)
 	o, a := tenant(t, "acme", "acme")
-	if err := s.CreateOrganization(ctx, o, a); err != nil {
+	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.Organization(ctx, o.ID)
@@ -66,11 +66,29 @@ func TestAccCreateOrganization(t *testing.T) {
 	// organization; an organization slug among organizations. Neither
 	// insert of a refused pair lands.
 	o2, a2 := tenant(t, "acme", "other")
-	if err := s.CreateOrganization(ctx, o2, a2); !errors.Is(err, port.ErrSlugTaken) {
+	if err := s.CreateOrganization(
+		ctx,
+		o2,
+		a2,
+		nil,
+		created(o2),
+	); !errors.Is(
+		err,
+		port.ErrSlugTaken,
+	) {
 		t.Errorf("duplicate organization slug = %v, want ErrSlugTaken", err)
 	}
 	o3, a3 := tenant(t, "globex", "acme")
-	if err := s.CreateOrganization(ctx, o3, a3); !errors.Is(err, port.ErrSlugTaken) {
+	if err := s.CreateOrganization(
+		ctx,
+		o3,
+		a3,
+		nil,
+		created(o3),
+	); !errors.Is(
+		err,
+		port.ErrSlugTaken,
+	) {
 		t.Errorf("duplicate account slug = %v, want ErrSlugTaken", err)
 	}
 	if _, err := s.Organization(ctx, o3.ID); !errors.Is(err, port.ErrNotFound) {
@@ -96,7 +114,7 @@ func TestAccSlugImmutable(t *testing.T) {
 	db := pool(t)
 	s := pg.New(db)
 	o, a := tenant(t, "initech", "initech")
-	if err := s.CreateOrganization(ctx, o, a); err != nil {
+	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
 		t.Fatal(err)
 	}
 	for _, stmt := range []string{
@@ -123,11 +141,11 @@ func TestAccTenancyKeys(t *testing.T) {
 	db := pool(t)
 	s := pg.New(db)
 	o, a := tenant(t, "umbrella", "umbrella")
-	if err := s.CreateOrganization(ctx, o, a); err != nil {
+	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
 		t.Fatal(err)
 	}
 	other, otherAcct := tenant(t, "cyberdyne", "cyberdyne")
-	if err := s.CreateOrganization(ctx, other, otherAcct); err != nil {
+	if err := s.CreateOrganization(ctx, other, otherAcct, nil, created(other)); err != nil {
 		t.Fatal(err)
 	}
 	member := kernel.NewMemberID()
@@ -158,7 +176,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 	ctx := context.Background()
 	o, a := tenant(t, "closed", "closed")
 	for name, err := range map[string]error{
-		"create":       s.CreateOrganization(ctx, o, a),
+		"create":       s.CreateOrganization(ctx, o, a, nil, created(o)),
 		"organization": func() error { _, err := s.Organization(ctx, o.ID); return err }(),
 		"account":      func() error { _, err := s.Account(ctx, a.ID); return err }(),
 	} {
@@ -175,5 +193,17 @@ func TestUnitStream(t *testing.T) {
 	cols := pg.SealedColumns()
 	if len(cols) != 1 || cols[0].Table != "signing_keys" || cols[0].Name != "private_key_sealed" {
 		t.Errorf("SealedColumns = %+v", cols)
+	}
+}
+
+// created is the trail entry of an operator creating o.
+func created(o organization.Organization) kernel.OrganizationAuditEntry {
+	return kernel.OrganizationAuditEntry{
+		OrganizationID:   o.ID,
+		ActorKind:        kernel.PrincipalOperator,
+		ActorID:          kernel.NewULID().String(),
+		Action:           "organization.create",
+		EventType:        "CREATE",
+		AffectedResource: kernel.AuditResource{Type: "ORGANIZATION", ID: string(o.Slug)},
 	}
 }

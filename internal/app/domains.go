@@ -20,6 +20,9 @@ type Domains struct {
 	Access *accessassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
 	Auth accessapi.Authenticator
+	// OperatorAuth authenticates the operator API's requests, admitting
+	// operator principals alone; nil refuses every credential.
+	OperatorAuth accessapi.Authenticator
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
@@ -32,17 +35,22 @@ func newDomains(
 	kms []signer.KMS,
 ) (Domains, error) {
 	access, err := accessassembly.New(accessassembly.Deps{
-		DB:        db.Primary(),
-		Keys:      keys,
-		KMS:       kms,
-		Settings:  c.Auth,
-		PublicURL: c.Server.PublicURL,
-		Audience:  strings.TrimSuffix(c.Server.PublicURL, "/") + BaseURL,
+		DB:               db.Primary(),
+		Keys:             keys,
+		KMS:              kms,
+		Settings:         c.Auth,
+		PublicURL:        c.Server.PublicURL,
+		Audience:         strings.TrimSuffix(c.Server.PublicURL, "/") + BaseURL,
+		OperatorAudience: strings.TrimSuffix(c.Server.PublicURL, "/") + OperatorBaseURL,
 	})
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
-	return Domains{Access: access, Auth: access.Authenticator()}, nil
+	return Domains{
+		Access:       access,
+		Auth:         access.Authenticator(),
+		OperatorAuth: access.OperatorAuthenticator(),
+	}, nil
 }
 
 // cron is every domain's periodic tasks, which the scheduler role runs.

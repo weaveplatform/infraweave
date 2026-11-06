@@ -105,3 +105,43 @@ func registered(p problem.Problem) bool {
 		},
 	)
 }
+
+// TestUnitOperatorRoutes checks that each prefix authenticates with its
+// own authenticator: the API's admits a request under /api/v1 alone, and
+// with no operator authenticator every operator route answers 401.
+func TestUnitOperatorRoutes(t *testing.T) {
+	c := config.Defaults().Server
+	refused := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, nil, Blobs{})
+	rec := request(t, refused, http.MethodGet, OperatorBaseURL+"/organizations")
+	wantProblem(t, rec, http.StatusUnauthorized, "no valid credential")
+	if got := rec.Header().Get("WWW-Authenticate"); got != "Bearer" {
+		t.Errorf("WWW-Authenticate %q", got)
+	}
+	wantProblem(
+		t,
+		request(t, refused, http.MethodGet, "/api/v1/stacks"),
+		http.StatusNotImplemented,
+		"stacks",
+	)
+
+	admitted := API(discard(), c, memory(c), Domains{OperatorAuth: byAddress{}}, nil, Blobs{})
+	wantProblem(
+		t,
+		request(t, admitted, http.MethodGet, OperatorBaseURL+"/nope"),
+		http.StatusNotFound,
+		"nope",
+	)
+	wantProblem(
+		t,
+		request(t, admitted, http.MethodGet, "/api/v1/stacks"),
+		http.StatusUnauthorized,
+		"no valid credential",
+	)
+	// /operator/v10 is not under the operator prefix.
+	wantProblem(
+		t,
+		request(t, admitted, http.MethodGet, "/operator/v10"),
+		http.StatusUnauthorized,
+		"no valid credential",
+	)
+}

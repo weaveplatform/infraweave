@@ -39,7 +39,10 @@ infraweave's own API is authored as fragments in `api/src/api/`:
 
 `make bundle` (`tools/openapi-bundle` over `internal/devtools/openapibundle`)
 merges the fragments into `api/api.openapi.yaml`, served under `/api/v1`. The
-bundle is committed, and a unit test fails when it is stale.
+operator API's fragments in `api/src/operator/` bundle the same way into
+`api/operator.openapi.yaml`, served under `/operator/v1`; it is
+infraweave's own, outside the reference and parity. Each bundle is
+committed, and a unit test fails when it is stale.
 
 `make parity` decides, for each product's reference operation, decision
 0016's outcome: served, served with divergence, superseded or missing. A
@@ -56,7 +59,9 @@ acceptance results do not show.
 One document holds Deploy and, from P18c, Flows under `/api/v1/flows/`
 ([decision 0018](docs/research/decisions/0018-flows-runtime.md#api-and-clients)).
 `make generate` turns it into the strict server in
-`internal/platform/gen/api` and the client in `pkg/client/api`. Go programs
+`internal/platform/gen/api` and the client in `pkg/client/api`, and the
+operator document into `internal/platform/gen/operator` and
+`pkg/client/operator`. Go programs
 call the API through `pkg/sdk`, which wraps that client with the API's
 conventions: a bearer token, an `Idempotency-Key` on every `POST` and
 `PATCH`, retries on `429` and on `503` with `Retry-After`, iterators over
@@ -131,6 +136,49 @@ read for 60 seconds, and a revocation reaches every replica at once through
 `NOTIFY infraweave_invalidate, 'session:<id>'`. The hourly
 `authn.sessions.expire` task deletes sessions 30 days after they end.
 
+#### The operator API
+
+The operator API under `/operator/v1` creates the installation's
+organizations
+([decision 0021](docs/research/decisions/0021-capability-scope-and-supersession.md#billing)).
+Its callers are operator keys, listed in `auth.operator.keys` by ID and the
+SHA-256 of their secret, so the operator can act before any organization
+exists. An operator key exchanges at `POST /api/v1/auth/token` like an API
+key, for an operator token whose `aud` is the operator API's base URL and
+whose `iw_kind` is `operator`. Only `/operator/v1` accepts it, and
+`/operator/v1` accepts nothing else: each answers the other's token
+`401 unauthenticated`.
+
+- `POST /organizations` creates an organization from its `slug` and
+  `name`, its first account's `slug` and `name`, and optionally its
+  `breakGlass` `login` and `passwordHash`, in one transaction. The account
+  starts unclaimed. A slug in use answers `409 already-exists`.
+- `GET /organizations` lists them, oldest first, and `GET` and `DELETE
+  /organizations/{organization}` read and delete one by slug. A delete
+  takes the organization's accounts and everything access holds for them,
+  and revokes their sessions at once.
+- `PUT` and `DELETE /organizations/{organization}/break-glass` set and
+  remove the organization's break-glass credential.
+
+A password hash is PBKDF2-HMAC-SHA256 with at least 600,000 iterations, a
+salt of at least 16 bytes and a 32-byte key, written
+`$pbkdf2-sha256$i=<n>$<salt>$<hash>` in unpadded standard base64. Fewer
+iterations, another prefix or a short salt answers `422
+validation-failed` naming the field. No answer carries the hash. Every
+write is on the organization's trail with actor kind `operator`.
+
+To bootstrap an installation:
+
+1. Make an operator key: a ULID and a secret, such as `iwk_` and 43
+   base64url characters. Put the ID and the lower-case hex SHA-256 of the
+   secret in `auth.operator.keys`, and keep the secret in your secret
+   store.
+2. Hash the break-glass password with `infraweave auth hash-password`,
+   which reads the password's first line from stdin and prints its hash:
+   `infraweave auth hash-password < password.txt`.
+3. Exchange the operator key at `POST /api/v1/auth/token`, then `POST
+   /operator/v1/organizations` with the hash as `breakGlass.passwordHash`.
+
 | Setting | Flag | Environment | Default |
 |---|---|---|---|
 | `server.listen` | `--listen` | `INFRAWEAVE_SERVER_LISTEN` | `:8080` |
@@ -151,6 +199,7 @@ read for 60 seconds, and a revocation reaches every replica at once through
 | `auth.signing.rotation` | | `INFRAWEAVE_AUTH_SIGNING_ROTATION` | `automatic`: the daily `authn.keys.rotate` task replaces each local signing key every 90 days, and moves to a KMS key added to `auth.signing.kms_keys`; `manual` never replaces one, and is refused with `kms` |
 | `auth.oidc_api_keys.allowed_issuers` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_ALLOWED_ISSUERS` (comma-separated) | none: an OIDC API key may name any `https` issuer; when set, only these, at creation and at every exchange |
 | `auth.oidc_api_keys.ca_file` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_CA_FILE` | none: a PEM file of certificate authorities trusted beside the system's when fetching an OIDC issuer's documents, for an issuer under a private CA; read at start |
+| `auth.operator.keys` | | file only | none: a list of `{id, secret_sha256}`, each an operator key's ULID, named once, and the lower-case hex SHA-256 of its secret. Each exchanges at `POST /api/v1/auth/token` for an operator token, which only the operator API under `/operator/v1` accepts |
 | `auth.signing.kms_keys` | | file only | none; required by `kms`: a list of `{provider, ref}`, oldest first, whose newest key signs once it has been published for 48 hours. `awskms`: a key ID or key ARN of an `ECC_NIST_P256` `SIGN_VERIFY` key, not an alias. `gcpkms`: an `EC_SIGN_P256_SHA256` CryptoKeyVersion's resource name. `azurekv`: an EC P-256 key's ID with its version, `https://<vault>/keys/<name>/<version>`. `vault`: `<mount>/<key name>/<version>` of an `ecdsa-p256` Transit key, on the Vault `secrets.kek.vault.address` and `.auth` reach. Credentials are each KEK provider's. Every key is read at start, and one that cannot sign ES256 stops it, naming the key |
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
 | `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local`, `awskms`, `gcpkms`, `azurekv` or `vault` |

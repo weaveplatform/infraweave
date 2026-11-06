@@ -4,9 +4,15 @@
 // exchanges a JWT of its issuer, which the OIDC port verifies and which
 // Deps.IssuerAllowed must allow, its sub matched by the key's subject
 // expression, so the token's sub is OIDCKeySubject's. Without a verifier
-// every OIDC key is refused. and Authenticate turns a bearer token
-// into the principal a request acts as. Every refused credential is the
-// one ErrUnauthenticated. Sessions, Revoke, RevokeOthers and Logout list
+// every OIDC key is refused. An operator key of Deps.Operators exchanges
+// its secret, whose SHA-256 it compares in constant time, for an operator
+// token: sub OperatorSubject's, aud Deps.OperatorAudience, and a session
+// of actor kind operator in no organization or account. Authenticate
+// turns a bearer token into the principal a request to the API acts as,
+// refusing a session with no account; AuthenticateOperator does so for
+// the operator API, admitting operator sessions alone, so neither API
+// accepts the other's tokens. Every refused credential is the one
+// ErrUnauthenticated. Sessions, Revoke, RevokeOthers and Logout list
 // and revoke an account's sessions; Expire is authn.sessions.expire.
 //
 // Authenticate reads sessions through the replica's session.Cache, which

@@ -1,7 +1,9 @@
 // Package sdk is infraweave's Go SDK, the supported way a Go program calls
 // the API (decision 0001). New returns a Client whose API field is the
-// generated client of every served operation (pkg/client/api) and whose Do
-// sends any request; both carry the API's conventions (decision 0003):
+// generated client of every served operation (pkg/client/api), whose
+// Operator field is the operator API's (pkg/client/operator) and whose Do
+// sends any request; all three carry the API's conventions (decision
+// 0003):
 //
 //   - a bearer token, set with WithToken, or exchanged for an API key with
 //     WithAPIKey and exchanged again before it expires;
@@ -23,7 +25,7 @@
 //
 // # Dependencies
 //
-// It imports the generated client pkg/client/api and the standard
-// library, and nothing under internal/, so another repository can import
+// It imports the generated clients pkg/client/api and pkg/client/operator
+// and the standard library, and nothing under internal/, so another repository can import
 // it without the server.
 package sdk

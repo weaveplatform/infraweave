@@ -1,5 +1,5 @@
-// Package api is the generated Go client of api/api.openapi.yaml, the one
-// document infraweave serves under /api/v1.
+// Package api is the generated Go client of api/api.openapi.yaml, the API
+// infraweave serves under /api/v1; the operator API's is client/operator.
 //
 // client.gen.go is written by oapi-codegen from api/oapi-client-api.yaml
 // (make generate): the request and response models, Client with one method

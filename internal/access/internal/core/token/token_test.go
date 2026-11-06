@@ -273,7 +273,7 @@ func TestUnitTokenClaims(t *testing.T) {
 func TestUnitIssueRequest(t *testing.T) {
 	svc, _, _ := setup(t)
 	for name, f := range map[string]func(*token.Request){
-		"kind":     func(r *token.Request) { r.Kind = "operator" },
+		"kind":     func(r *token.Request) { r.Kind = "break_glass" },
 		"subject":  func(r *token.Request) { r.Subject = "" },
 		"session":  func(r *token.Request) { r.Session = kernel.ULID{} },
 		"audience": func(r *token.Request) { r.Audience = "" },

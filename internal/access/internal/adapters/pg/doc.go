@@ -5,8 +5,14 @@
 // credentials (API keys, sessions, signing keys and each organization's
 // break-glass credential), with migration 00003 adding each account's
 // api_key_non_admin_managers. Store implements port.Tenancy,
-// port.Sessions, port.APIKeys and apikey.Store, with an OIDC key's claim
-// mapping as jsonb: every revocation sends session:<id> on
+// port.Sessions, port.APIKeys, apikey.Store and operator.Store, with an
+// OIDC key's claim mapping as jsonb. operator.Store's writes record their
+// organization trail entry through platform/audit in the same
+// transaction; deleting an organization revokes its live sessions, then
+// deletes its sessions, API keys, members and their identities, its
+// break-glass credential, its accounts and itself, as every foreign key
+// restricts. A unique violation on a slug is port.ErrSlugTaken and a
+// break-glass credential of no organization port.ErrNotFound. every revocation sends session:<id> on
 // infraweave_invalidate in its own transaction, and a member's new
 // session in a channel revokes their live one there. SigningKeys
 // implements token.Store: under the local backend it generates each key
@@ -28,7 +34,7 @@
 //
 // It imports the access domain's core packages and ports, internal/kernel,
 // pgx, and platform/sql, platform/sql/migrate, platform/sql/notify,
-// platform/tx,
+// platform/tx, platform/audit for the organization trail,
 // platform/crypt for the sealed column and platform/crypt/signer for the
 // keys. Only the access domain's assembly
 // imports it.
