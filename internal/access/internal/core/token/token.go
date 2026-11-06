@@ -194,7 +194,7 @@ func (s *Service) activeKey(ctx context.Context) (kernel.ULID, error) {
 			}
 		}
 		if err := s.store.Rotate(ctx, APIToken, func(keys []Key) []Step {
-			return Policy{Manual: true}.Plan(keys, s.now())
+			return Policy{Manual: true, Refs: s.policy.Refs}.Plan(keys, s.now())
 		}); err != nil {
 			return kernel.ULID{}, fmt.Errorf("create the first signing key: %w", err)
 		}

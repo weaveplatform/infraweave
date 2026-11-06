@@ -506,6 +506,21 @@ customer can write it into a trust policy. Without AWS credentials it answers
   process and seals them; `kms` takes operator-supplied key references
   (`awskms`, `gcpkms`, `azurekv`, `vault` transit), signs through the KMS,
   and rotates only when the operator adds a reference.
+  - **References** in `auth.signing.kms_keys`, a list of `{provider, ref}`
+    oldest first, each name one fixed key pair, because the row's
+    `public_jwk` is read once: an AWS KMS key ID or ARN (not an alias), a
+    Cloud KMS CryptoKeyVersion, a Key Vault key ID with its version, and a
+    Transit key's `<mount>/<name>/<version>`. `kms_key_ref` stores
+    `<provider>:<ref>`.
+  - **Rotation.** The newest reference no key holds becomes the `next` key
+    and signs once published for 48 hours, as a local key does, whatever
+    the active key's age; with no key it is active at once. The daily task
+    makes the move, so `rotation: manual` is refused with `kms`.
+  - **Start.** Each replica reads every reference's public key at start,
+    and a key that is not ECDSA P-256 for signing stops it, naming the
+    reference. Credentials and clients are the KEK providers'
+    ([0013](0013-secrets-at-rest.md)); `vault` keys use
+    `secrets.kek.vault`'s address and auth.
 - **Verification** caches public keys per replica; an unknown `kid` reloads
   the table at most once a second.
 

@@ -198,10 +198,25 @@ func (c Config) Validate() error {
 }
 
 func (v VaultConfig) validate() error {
+	if err := v.ValidateConnection(); err != nil {
+		return err
+	}
+	if missing := firstEmpty(
+		map[string]string{"vault.mount": v.Mount, "vault.key_name": v.KeyName},
+	); missing != "" {
+		return fmt.Errorf("%w: secrets.kek.%s is required", ErrConfig, missing)
+	}
+	return nil
+}
+
+// ValidateConnection checks the settings that reach Vault, its address and
+// auth method, which the vault signing backend shares with the KEK
+// provider; it needs no Transit key of the KEK's.
+func (v VaultConfig) ValidateConnection() error {
 	if err := httpURL("vault.address", v.Address, "http", "https"); err != nil {
 		return err
 	}
-	want := map[string]string{"vault.mount": v.Mount, "vault.key_name": v.KeyName}
+	want := map[string]string{}
 	switch v.Auth.Method {
 	case VaultToken:
 	case VaultKubernetes:

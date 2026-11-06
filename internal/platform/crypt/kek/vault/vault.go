@@ -28,15 +28,8 @@ const TokenEnv = "VAULT_TOKEN"
 // derived.
 type Provider struct {
 	c      kek.VaultConfig
-	client *http.Client
+	client *Client
 	ref    string
-	now    func() time.Time
-
-	mu sync.Mutex
-	// token is the Vault token; renew is when a login method logs in
-	// again, zero for a token that does not expire.
-	token string
-	renew time.Time
 }
 
 // Options are what a test changes.
@@ -53,21 +46,48 @@ func New(c kek.VaultConfig, o Options) (*Provider, error) {
 	if err := (kek.Config{Provider: kek.Vault, Vault: c}).Validate(); err != nil {
 		return nil, err //nolint:wrapcheck // names its key
 	}
+	client, err := NewClient(c, o)
+	if err != nil {
+		return nil, err
+	}
+	return &Provider{
+		c:      c,
+		client: client,
+		ref: kek.Vault + ":" + strings.TrimSuffix(
+			c.Address,
+			"/",
+		) + "/" + c.Mount + "/" + c.KeyName,
+	}, nil
+}
+
+// Client calls Vault's HTTP API at c's address with a token from c's auth
+// method. The vault signing backend calls Transit through it too.
+type Client struct {
+	c      kek.VaultConfig
+	client *http.Client
+	now    func() time.Time
+
+	mu sync.Mutex
+	// token is the Vault token; renew is when a login method logs in
+	// again, zero for a token that does not expire.
+	token string
+	renew time.Time
+}
+
+// NewClient returns the client c's address and auth method configure; it
+// reads no Transit key of c's. The token method reads its token now;
+// kubernetes and approle log in on the first call.
+func NewClient(c kek.VaultConfig, o Options) (*Client, error) {
+	if err := c.ValidateConnection(); err != nil {
+		return nil, err //nolint:wrapcheck // names its key
+	}
 	if o.Client == nil {
 		o.Client = &http.Client{Timeout: 30 * time.Second}
 	}
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	p := &Provider{
-		c:      c,
-		client: o.Client,
-		ref: kek.Vault + ":" + strings.TrimSuffix(
-			c.Address,
-			"/",
-		) + "/" + c.Mount + "/" + c.KeyName,
-		now: o.Now,
-	}
+	cl := &Client{c: c, client: o.Client, now: o.Now}
 	if c.Auth.Method == kek.VaultToken {
 		token := os.Getenv(TokenEnv)
 		if c.Auth.TokenFile != "" {
@@ -81,7 +101,7 @@ func New(c kek.VaultConfig, o Options) (*Provider, error) {
 			}
 			token = string(b)
 		}
-		if p.token = strings.TrimSpace(token); p.token == "" {
+		if cl.token = strings.TrimSpace(token); cl.token == "" {
 			return nil, fmt.Errorf(
 				"%w: secrets.kek.vault.auth.token_file or %s is required",
 				kek.ErrConfig,
@@ -89,7 +109,7 @@ func New(c kek.VaultConfig, o Options) (*Provider, error) {
 			)
 		}
 	}
-	return p, nil
+	return cl, nil
 }
 
 // Ref is vault:<address>/<mount>/<key name>.
@@ -133,49 +153,55 @@ func (p *Provider) Unwrap(ctx context.Context, id uint32, wrapped []byte) ([]byt
 	return key, nil
 }
 
-// transit calls the Transit key's op. A login method's token that Vault
-// refuses is renewed once, since it may have been revoked early.
+// transit calls the Transit key's op.
 func (p *Provider) transit(ctx context.Context, op string, in map[string]string, out any) error {
 	path := p.c.Mount + "/" + op + "/" + url.PathEscape(p.c.KeyName)
+	if err := p.client.Do(ctx, http.MethodPost, path, in, out); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
+// Do sends method to /v1/<path> with in as its JSON body (none when in is
+// nil) and decodes the answer's data into out. A login method's token that
+// Vault refuses is renewed once, since it may have been revoked early.
+func (c *Client) Do(ctx context.Context, method, path string, in, out any) error {
 	for attempt := 0; ; attempt++ {
-		token, err := p.currentToken(ctx, attempt > 0)
+		token, err := c.currentToken(ctx, attempt > 0)
 		if err != nil {
 			return err
 		}
 		var data struct {
 			Data json.RawMessage `json:"data"`
 		}
-		err = p.call(ctx, path, token, in, &data)
+		err = c.call(ctx, method, path, token, in, &data)
 		if e := (*apiError)(nil); errors.As(err, &e) && e.status == http.StatusForbidden &&
-			attempt == 0 && p.c.Auth.Method != kek.VaultToken {
+			attempt == 0 && c.c.Auth.Method != kek.VaultToken {
 			continue
 		}
 		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
-		if err := json.Unmarshal(data.Data, out); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		return nil
+		return json.Unmarshal(data.Data, out) //nolint:wrapcheck // the caller names the call
 	}
 }
 
 // currentToken returns the token, logging in when there is none, when it
 // is due for renewal, or when force says Vault refused it.
-func (p *Provider) currentToken(ctx context.Context, force bool) (string, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.c.Auth.Method == kek.VaultToken ||
-		(!force && p.token != "" && (p.renew.IsZero() || p.now().Before(p.renew))) {
-		return p.token, nil
+func (c *Client) currentToken(ctx context.Context, force bool) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.c.Auth.Method == kek.VaultToken ||
+		(!force && c.token != "" && (c.renew.IsZero() || c.now().Before(c.renew))) {
+		return c.token, nil
 	}
-	body, err := p.loginBody()
+	body, err := c.loginBody()
 	if err != nil {
 		return "", err
 	}
-	mount := p.c.Auth.Mount
+	mount := c.c.Auth.Mount
 	if mount == "" {
-		mount = p.c.Auth.Method
+		mount = c.c.Auth.Method
 	}
 	//nolint:tagliatelle // Vault\'s format
 	var out struct {
@@ -184,34 +210,34 @@ func (p *Provider) currentToken(ctx context.Context, force bool) (string, error)
 			LeaseDuration int64  `json:"lease_duration"`
 		} `json:"auth"`
 	}
-	if err := p.call(ctx, "auth/"+mount+"/login", "", body, &out); err != nil {
-		return "", fmt.Errorf("%s login: %w", p.c.Auth.Method, err)
+	if err := c.call(ctx, http.MethodPost, "auth/"+mount+"/login", "", body, &out); err != nil {
+		return "", fmt.Errorf("%s login: %w", c.c.Auth.Method, err)
 	}
-	p.token, p.renew = out.Auth.ClientToken, time.Time{}
+	c.token, c.renew = out.Auth.ClientToken, time.Time{}
 	// Logging in again halfway through the lease leaves the other half
 	// for a call that is already under way.
 	if lease := time.Duration(out.Auth.LeaseDuration) * time.Second; lease > 0 {
-		p.renew = p.now().Add(lease / 2)
+		c.renew = c.now().Add(lease / 2)
 	}
-	return p.token, nil
+	return c.token, nil
 }
 
 // loginBody reads the login method's credential, which an agent or the
 // kubelet may have rotated since the last login.
-func (p *Provider) loginBody() (map[string]string, error) {
-	file, key := p.c.Auth.JWTFile, "jwt_file"
-	if p.c.Auth.Method == kek.VaultAppRole {
-		file, key = p.c.Auth.SecretIDFile, "secret_id_file"
+func (c *Client) loginBody() (map[string]string, error) {
+	file, key := c.c.Auth.JWTFile, "jwt_file"
+	if c.c.Auth.Method == kek.VaultAppRole {
+		file, key = c.c.Auth.SecretIDFile, "secret_id_file"
 	}
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("secrets.kek.vault.auth.%s: %w", key, err)
 	}
 	secret := strings.TrimSpace(string(b))
-	if p.c.Auth.Method == kek.VaultAppRole {
-		return map[string]string{"role_id": p.c.Auth.RoleID, "secret_id": secret}, nil
+	if c.c.Auth.Method == kek.VaultAppRole {
+		return map[string]string{"role_id": c.c.Auth.RoleID, "secret_id": secret}, nil
 	}
-	return map[string]string{"role": p.c.Auth.Role, "jwt": secret}, nil
+	return map[string]string{"role": c.c.Auth.Role, "jwt": secret}, nil
 }
 
 // apiError is a response other than 200, with Vault's errors.
@@ -227,17 +253,22 @@ func (e *apiError) Error() string {
 	return fmt.Sprintf("%s: %s", http.StatusText(e.status), strings.Join(e.errors, "; "))
 }
 
-// call POSTs in to /v1/<path> and decodes the response into out.
-func (p *Provider) call(ctx context.Context, path, token string, in, out any) error {
-	body, err := json.Marshal(in)
-	if err != nil {
-		return err //nolint:wrapcheck // a map of strings always marshals
+// call sends method to /v1/<path>, with in as its JSON body unless in is
+// nil, and decodes the response into out.
+func (c *Client) call(ctx context.Context, method, path, token string, in, out any) error {
+	var body io.Reader = http.NoBody
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return err //nolint:wrapcheck // the callers' bodies always marshal
+		}
+		body = bytes.NewReader(b)
 	}
 	req, err := http.NewRequestWithContext(
 		ctx,
-		http.MethodPost,
-		strings.TrimSuffix(p.c.Address, "/")+"/v1/"+path,
-		bytes.NewReader(body),
+		method,
+		strings.TrimSuffix(c.c.Address, "/")+"/v1/"+path,
+		body,
 	)
 	if err != nil {
 		return err //nolint:wrapcheck // the address is validated; the caller names the call
@@ -246,7 +277,7 @@ func (p *Provider) call(ctx context.Context, path, token string, in, out any) er
 	if token != "" {
 		req.Header.Set("X-Vault-Token", token)
 	}
-	resp, err := p.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return err //nolint:wrapcheck // the caller names the call
 	}

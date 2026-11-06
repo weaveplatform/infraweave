@@ -28,19 +28,30 @@ func New(ctx context.Context, c kek.AWSKMSConfig, opts ...func(*kms.Options)) (*
 	if err := (kek.Config{Provider: kek.AWSKMS, AWSKMS: c}).Validate(); err != nil {
 		return nil, err //nolint:wrapcheck // names its key
 	}
-	var load []func(*config.LoadOptions) error
-	if c.Region != "" {
-		load = append(load, config.WithRegion(c.Region))
-	}
-	cfg, err := config.LoadDefaultConfig(ctx, load...)
+	client, err := NewClient(ctx, c.Region, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%s: %w", kek.AWSKMS, c.KeyID, err)
 	}
-	return &Provider{
-		client: kms.NewFromConfig(cfg, opts...),
-		keyID:  c.KeyID,
-		ref:    kek.AWSKMS + ":" + c.KeyID,
-	}, nil
+	return &Provider{client: client, keyID: c.KeyID, ref: kek.AWSKMS + ":" + c.KeyID}, nil
+}
+
+// NewClient returns a KMS client in region, or the SDK's when region is
+// empty, with credentials from the SDK's default chain. The awskms signing
+// backend calls KMS through it too.
+func NewClient(
+	ctx context.Context,
+	region string,
+	opts ...func(*kms.Options),
+) (*kms.Client, error) {
+	var load []func(*config.LoadOptions) error
+	if region != "" {
+		load = append(load, config.WithRegion(region))
+	}
+	cfg, err := config.LoadDefaultConfig(ctx, load...)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the caller names the key
+	}
+	return kms.NewFromConfig(cfg, opts...), nil
 }
 
 // Ref is awskms:<key ID>, as secrets.kek.awskms.key_id names it.

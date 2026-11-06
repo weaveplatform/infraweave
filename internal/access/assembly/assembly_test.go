@@ -47,7 +47,28 @@ func TestUnitSettings(t *testing.T) {
 		want string
 	}{
 		"ttl":         {func(s *Settings) { s.Tokens.API.TTL = -time.Second }, "auth.tokens.api.ttl"},
-		"backend":     {func(s *Settings) { s.Signing.Backend = "kms" }, "auth.signing.backend"},
+		"backend":     {func(s *Settings) { s.Signing.Backend = "hsm" }, "auth.signing.backend"},
+		"no kms keys": {func(s *Settings) { s.Signing.Backend = BackendKMS }, "auth.signing.kms_keys is required"},
+		"local keys": {
+			func(s *Settings) { s.Signing.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/k/1"}} },
+			"auth.signing.kms_keys is set",
+		},
+		"kms manual": {func(s *Settings) {
+			s.Signing = SigningSettings{
+				Backend: BackendKMS, Rotation: RotationManual,
+				KMSKeys: []KMSKey{{Provider: "vault", Ref: "transit/k/1"}},
+			}
+		}, "auth.signing.rotation manual"},
+		"kms provider": {func(s *Settings) {
+			s.Signing.Backend, s.Signing.KMSKeys = BackendKMS, []KMSKey{{Provider: "local", Ref: "k"}}
+		}, "auth.signing.kms_keys[0].provider"},
+		"kms ref": {func(s *Settings) {
+			s.Signing.Backend, s.Signing.KMSKeys = BackendKMS, []KMSKey{{Provider: "awskms"}}
+		}, "auth.signing.kms_keys[0].ref"},
+		"kms repeated": {func(s *Settings) {
+			s.Signing.Backend = BackendKMS
+			s.Signing.KMSKeys = []KMSKey{{Provider: "gcpkms", Ref: "k"}, {Provider: "gcpkms", Ref: "k"}}
+		}, "auth.signing.kms_keys[1] repeats gcpkms:k"},
 		"rotation":    {func(s *Settings) { s.Signing.Rotation = "" }, "auth.signing.rotation"},
 		"relative":    {func(s *Settings) { s.APIIssuer = "/issuer" }, "auth.api_issuer"},
 		"credentials": {func(s *Settings) { s.APIIssuer = "https://u:p@iw.example.com" }, "auth.api_issuer"},
@@ -64,5 +85,14 @@ func TestUnitSettings(t *testing.T) {
 	s.APIIssuer = "https://iw.example.com/issuer"
 	if err := s.Validate(); err != nil {
 		t.Errorf("an issuer with a path: %v", err)
+	}
+	s = DefaultSettings()
+	s.Signing.Backend = BackendKMS
+	s.Signing.KMSKeys = []KMSKey{
+		{Provider: "awskms", Ref: "k1"},
+		{Provider: "vault", Ref: "transit/k/2"},
+	}
+	if err := s.Validate(); err != nil {
+		t.Errorf("two KMS keys: %v", err)
 	}
 }

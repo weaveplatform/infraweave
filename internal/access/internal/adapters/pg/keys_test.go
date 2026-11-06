@@ -57,7 +57,7 @@ func TestAccSigningKeysReplicas(t *testing.T) {
 		errs = make([]error, replicas)
 	)
 	for i := range replicas {
-		svcs[i] = token.New(pg.NewSigningKeys(db, keys), "https://iw.example.com",
+		svcs[i] = token.New(pg.NewSigningKeys(db, keys, nil), "https://iw.example.com",
 			token.Policy{TokenLife: time.Hour}, time.Now)
 		wg.Go(func() { raws[i], _, errs[i] = svcs[i].Issue(t.Context(), request()) })
 	}
@@ -83,7 +83,7 @@ func TestAccSigningKeysReplicas(t *testing.T) {
 func TestAccSigningKeysRotate(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
-	store := pg.NewSigningKeys(db, keyring(t, db))
+	store := pg.NewSigningKeys(db, keyring(t, db), nil)
 	now := time.Date(2026, 11, 6, 9, 0, 0, 0, time.UTC)
 	plan := func(steps ...token.Step) func([]token.Key) []token.Step {
 		return func([]token.Key) []token.Step { return steps }
@@ -161,7 +161,7 @@ func TestAccSigningKeysRotate(t *testing.T) {
 
 func TestAccSigningKeysUnavailable(t *testing.T) {
 	db := pool(t)
-	store := pg.NewSigningKeys(db, keyring(t, db))
+	store := pg.NewSigningKeys(db, keyring(t, db), nil)
 	db.Close()
 	if _, err := store.Keys(t.Context(), token.APIToken); err == nil {
 		t.Error("Keys on a closed pool succeeded")
@@ -194,7 +194,7 @@ func TestAccSigningKeysBroken(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
 	// A key that cannot be sealed is not stored.
-	err := pg.NewSigningKeys(db, failingSealer{}).Rotate(ctx, token.APIToken,
+	err := pg.NewSigningKeys(db, failingSealer{}, nil).Rotate(ctx, token.APIToken,
 		func([]token.Key) []token.Step { return []token.Step{{State: token.StateActive, At: time.Now()}} })
 	if !errors.Is(err, errSeal) {
 		t.Errorf("Rotate = %v, want the keyring's error", err)
@@ -206,7 +206,7 @@ VALUES ($1, 'api-token', 'ES256', '{"kty":"none"}', 'ref', 'next')`, kernel.NewU
 		t.Fatal(err)
 	}
 	keys := keyring(t, db)
-	if _, err := pg.NewSigningKeys(db, keys).Keys(ctx, token.APIToken); err == nil {
+	if _, err := pg.NewSigningKeys(db, keys, nil).Keys(ctx, token.APIToken); err == nil {
 		t.Error("Keys read a public key that does not parse")
 	}
 	// A private half that opens but is no key fails to load.
@@ -221,7 +221,106 @@ INSERT INTO signing_keys (id, purpose, algorithm, public_jwk, private_key_sealed
 VALUES ($1, 'federation', 'ES256', '{}', $2, 'next')`, id, junk); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pg.NewSigningKeys(db, keys).Signer(ctx, id); !errors.Is(err, signer.ErrKey) {
+	if _, err := pg.NewSigningKeys(db, keys, nil).Signer(ctx, id); !errors.Is(err, signer.ErrKey) {
 		t.Errorf("Signer(junk) = %v, want ErrKey", err)
+	}
+}
+
+// kmsKey is a KMS key held locally: a local key under a reference, whose
+// public JWK, as a KMS backend's, has no kid.
+type kmsKey struct {
+	*signer.Local
+
+	ref string
+}
+
+func newKMSKey(t *testing.T, ref string) kmsKey {
+	t.Helper()
+	l, err := signer.GenerateLocal("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return kmsKey{Local: l, ref: ref}
+}
+
+func (k kmsKey) Ref() string { return k.ref }
+
+// Under the kms backend a key's row holds its reference and no private
+// half, tokens signed through the KMS key verify on a replica that opened
+// it too, a second reference rotates through next and active, and a row
+// whose reference is no longer configured does not sign.
+func TestAccSigningKeysKMS(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	keys := keyring(t, db)
+	a, b := newKMSKey(t, "vault:transit/a/1"), newKMSKey(t, "vault:transit/b/1")
+	clock := time.Now()
+	now := func() time.Time { return clock }
+	replica := func(kms ...signer.KMS) *token.Service {
+		refs := make([]string, 0, len(kms))
+		for _, k := range kms {
+			refs = append(refs, k.Ref())
+		}
+		return token.New(pg.NewSigningKeys(db, keys, kms), "https://iw.example.com",
+			token.Policy{TokenLife: time.Hour, Refs: refs}, now)
+	}
+	first := replica(a)
+	raw, _, err := first.Issue(ctx, request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := replica(a).Verify(ctx, raw, audience); err != nil {
+		t.Errorf("another replica: %v", err)
+	}
+	var (
+		ref    string
+		sealed bool
+	)
+	if err := db.QueryRow(
+		ctx,
+		`SELECT kms_key_ref, private_key_sealed IS NOT NULL FROM signing_keys`,
+	).Scan(&ref, &sealed); err != nil ||
+		ref != a.Ref() || sealed {
+		t.Fatalf("the row: %q, sealed %v, %v", ref, sealed, err)
+	}
+
+	both := replica(a, b)
+	if err := both.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(token.MinPublished)
+	before, _, err := both.Issue(ctx, request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := both.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(token.SignerRefresh)
+	if _, err := both.Verify(ctx, before, audience); err != nil {
+		t.Errorf("the retiring key's token: %v", err)
+	}
+	listed, err := pg.NewSigningKeys(db, keys, nil).Keys(ctx, token.APIToken)
+	retiring, active := token.Key{Ref: a.Ref(), State: token.StateRetiring},
+		token.Key{Ref: b.Ref(), State: token.StateActive}
+	if err != nil || len(listed) != 2 ||
+		listed[0].Ref != retiring.Ref || listed[0].State != retiring.State ||
+		listed[1].Ref != active.Ref || listed[1].State != active.State {
+		t.Fatalf("after the rotation: %+v, %v", listed, err)
+	}
+	if _, _, err := both.Issue(ctx, request()); err != nil {
+		t.Errorf("Issue through b: %v", err)
+	}
+
+	// b's reference removed from the configuration while b signs.
+	if _, _, err := replica(a).Issue(ctx, request()); !errors.Is(err, pg.ErrKMSRef) {
+		t.Errorf("Issue without b's KMS key = %v, want ErrKMSRef", err)
+	}
+	err = pg.NewSigningKeys(db, keys, nil).
+		Rotate(ctx, token.APIToken, func([]token.Key) []token.Step {
+			return []token.Step{{State: token.StateNext, At: clock, Ref: "vault:transit/c/1"}}
+		})
+	if !errors.Is(err, pg.ErrKMSRef) {
+		t.Errorf("a step naming an unopened KMS key = %v, want ErrKMSRef", err)
 	}
 }

@@ -175,3 +175,101 @@ func TestUnitPlan(t *testing.T) {
 		t.Errorf("due promotion: %+v", s)
 	}
 }
+
+// TestUnitKMSRotation runs authn.keys.rotate under the kms backend, where
+// a key is replaced only when the operator adds a reference: the first
+// reference signs from the start and for as long as it is the newest, and
+// an added one is published as the next key for MinPublished before it
+// takes over.
+func TestUnitKMSRotation(t *testing.T) {
+	ctx := context.Background()
+	store, c := newMemStore(), &clock{t: start}
+	policy := token.Policy{TokenLife: time.Hour, Refs: []string{"vault:transit/a/1"}}
+	svc := token.New(store, issuer, policy, c.now)
+	first, _, err := svc.Issue(ctx, request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 200 {
+		c.advance(day)
+		if err := svc.Rotate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	live, _ := store.Keys(ctx, token.APIToken)
+	if len(live) != 1 || live[0].Ref != "vault:transit/a/1" || live[0].State != token.StateActive {
+		t.Fatalf("after 200 days on one reference: %+v", live)
+	}
+
+	// The operator adds a reference and restarts.
+	policy.Refs = append(policy.Refs, "vault:transit/b/1")
+	svc = token.New(store, issuer, policy, c.now)
+	if err := svc.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	live, _ = store.Keys(ctx, token.APIToken)
+	if len(live) != 2 || live[1].Ref != "vault:transit/b/1" || live[1].State != token.StateNext {
+		t.Fatalf("the added reference: %+v", live)
+	}
+	c.advance(token.MinPublished - time.Hour)
+	if err := svc.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if store.state(live[1].ID.String()) != token.StateNext {
+		t.Fatal("the next key signed before it was published for MinPublished")
+	}
+	before, _, err := svc.Issue(ctx, request())
+	if err != nil || kidOf(t, before) != kidOf(t, first) {
+		t.Fatalf("before the swap: %v", err)
+	}
+	c.advance(time.Hour)
+	if err := svc.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if store.state(live[0].ID.String()) != token.StateRetiring ||
+		store.state(live[1].ID.String()) != token.StateActive {
+		t.Fatalf("after MinPublished: %+v", store.live(token.APIToken))
+	}
+	if _, err := svc.Verify(ctx, before, audience); err != nil {
+		t.Errorf("a token of the retiring key: %v", err)
+	}
+	c.advance(token.SignerRefresh)
+	after, _, err := svc.Issue(ctx, request())
+	if err != nil || kidOf(t, after) != live[1].ID.String() {
+		t.Errorf("after the swap: kid %s, %v", kidOf(t, after), err)
+	}
+	if err := svc.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if live, _ := store.Keys(ctx, token.APIToken); len(live) != 2 {
+		t.Errorf("a reference a key holds made another: %+v", live)
+	}
+}
+
+func TestUnitPlanKMS(t *testing.T) {
+	p := token.Policy{TokenLife: time.Hour, Refs: []string{"awskms:a", "awskms:b"}}
+	if s := p.Plan(
+		nil,
+		start,
+	); len(s) != 1 || s[0].State != token.StateActive ||
+		s[0].Ref != "awskms:b" {
+		t.Errorf("no keys: %+v", s)
+	}
+	next := token.Key{ID: newID(), State: token.StateNext, CreatedAt: start, Ref: "awskms:b"}
+	if s := p.Plan([]token.Key{next}, start); len(s) != 1 || s[0].ID != next.ID ||
+		s[0].State != token.StateActive {
+		t.Errorf("orphaned next key: %+v", s)
+	}
+	// A local key the operator moves to kms from is replaced like any
+	// other, however young.
+	local := token.Key{ID: newID(), State: token.StateActive, ActivatedAt: start}
+	if s := p.Plan([]token.Key{local}, start); len(s) != 1 || s[0].State != token.StateNext ||
+		s[0].Ref != "awskms:b" {
+		t.Errorf("a local key: %+v", s)
+	}
+	manual := p
+	manual.Manual = true
+	if s := manual.Plan([]token.Key{local}, start); len(s) != 0 {
+		t.Errorf("bootstrapping replaced an active key: %+v", s)
+	}
+}

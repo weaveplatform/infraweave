@@ -58,6 +58,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.registerQueueStats(sc)
 	(&queueSteps{s: s}).register(sc)
 	(&authSteps{s: s, tokens: map[string]string{}}).register(sc)
+	(&kmsSteps{s: s}).register(sc)
 }
 
 // secretsWith is the secrets settings with kek as secrets.kek; nil
@@ -108,6 +109,20 @@ func serverConfigKEK(dsn, objects string, settings, kek map[string]any) ([]byte,
 		"secrets":     secretsWith(kek),
 		"objectstore": objectStore(objects),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("server config: %w", err)
+	}
+	return out, nil
+}
+
+// withSection is config with its top-level key set to section.
+func withSection(config []byte, key string, section map[string]any) ([]byte, error) {
+	var m map[string]any
+	if err := yaml.Unmarshal(config, &m); err != nil {
+		return nil, fmt.Errorf("server config: %w", err)
+	}
+	m[key] = section
+	out, err := yaml.Marshal(m)
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)
 	}

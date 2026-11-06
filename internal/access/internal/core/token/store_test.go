@@ -79,7 +79,14 @@ func (m *memStore) Rotate(
 			if err != nil {
 				return err //nolint:wrapcheck // a test store
 			}
-			k := token.Key{ID: id, Purpose: p, Public: l.Public(), State: s.State, CreatedAt: s.At}
+			k := token.Key{
+				ID:        id,
+				Purpose:   p,
+				Public:    l.Public(),
+				State:     s.State,
+				CreatedAt: s.At,
+				Ref:       s.Ref,
+			}
 			if s.State == token.StateActive {
 				k.ActivatedAt = s.At
 			}

@@ -38,12 +38,25 @@ func New(ctx context.Context, c kek.GCPKMSConfig, opts ...option.ClientOption) (
 		return nil, err //nolint:wrapcheck // names its key
 	}
 	ref := kek.GCPKMS + ":" + c.KeyName
-	client, err := kms.NewKeyManagementRESTClient(ctx, opts...)
+	client, err := NewClient(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ref, err)
 	}
 	return &Provider{client: client, name: c.KeyName, ref: ref}, nil
 }
+
+// NewClient returns a Cloud KMS client over REST, with Application Default
+// Credentials unless opts say otherwise. REST rather than gRPC lets one
+// transport serve production and the recorded fixtures; the gcpkms signing
+// backend calls Cloud KMS through it too.
+func NewClient(ctx context.Context, opts ...option.ClientOption) (*kms.KeyManagementClient, error) {
+	//nolint:wrapcheck // the caller names the key
+	return kms.NewKeyManagementRESTClient(ctx, opts...)
+}
+
+// CRC32C is Cloud KMS's integrity checksum of b, as its requests and
+// answers carry it.
+func CRC32C(b []byte) *wrapperspb.Int64Value { return crc(b) }
 
 // Ref is gcpkms:<CryptoKey resource name>.
 func (p *Provider) Ref() string { return p.ref }

@@ -1,8 +1,10 @@
-# The Google Cloud key the gcpkms KEK provider's live test wraps data keys
-# with (decision 0013), and that its recorded fixtures were recorded
-# against. Whoever runs the test needs Cloud KMS CryptoKey
-# Encrypter/Decrypter on it; the project's owners have it already. No key
-# material leaves Cloud KMS, and nothing here grants an outside identity.
+# The Google Cloud keys the gcpkms live tests use: the key the KEK provider
+# wraps data keys with (decision 0013), and the key the signing backend
+# signs tokens with (decision 0006), which their recorded fixtures were
+# recorded against. Whoever runs the tests needs Cloud KMS CryptoKey
+# Encrypter/Decrypter on the first and Signer/Verifier on the second; the
+# project's owners have both already. No key material leaves Cloud KMS,
+# and nothing here grants an outside identity.
 
 resource "google_project_service" "kms" {
   service            = "cloudkms.googleapis.com"
@@ -30,5 +32,20 @@ resource "google_kms_crypto_key" "kek" {
 
   # Destroying the key schedules its versions for destruction after a day,
   # Cloud KMS's shortest wait.
+  destroy_scheduled_duration = "86400s"
+}
+
+# The signing backend signs with a version, whose key pair is fixed; the
+# first version is the one the live test names.
+resource "google_kms_crypto_key" "signing" {
+  name     = "signing"
+  key_ring = google_kms_key_ring.kek.id
+  purpose  = "ASYMMETRIC_SIGN"
+
+  version_template {
+    algorithm        = "EC_SIGN_P256_SHA256"
+    protection_level = "SOFTWARE"
+  }
+
   destroy_scheduled_duration = "86400s"
 }

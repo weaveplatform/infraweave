@@ -17,5 +17,6 @@
 // # Dependencies
 //
 // It imports platform/crypt/kek, azcore, azidentity and azkeys.
-// internal/app opens it.
+// internal/app opens it; the azurekv signing backend builds its client with
+// NewClient.
 package azurekv
