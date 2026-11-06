@@ -34,7 +34,8 @@
 // installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
 // infraweave migrate up and status; GenerateKEK, SecretsRotate and
 // SecretsRewrap are infraweave secrets generate-kek, rotate and rewrap.
-// Version is the line infraweave version prints.
+// Version and FIPS are the lines infraweave version prints, the second the
+// FIPS 140-3 mode and the Go Cryptographic Module's version.
 //
 // # Input and output
 //

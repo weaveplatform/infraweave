@@ -1,0 +1,255 @@
+name: go | Object store contract in the clouds
+
+# Decision 0016's objectstore-cloud job: objectstoretest against real
+# Amazon S3, Google Cloud Storage and Azure Blob Storage, each night on
+# main, covering what the emulators cannot decide. Each cloud runs the
+# contract twice, as decision 0020's writer (serve's grants, whose delete
+# the cloud must refuse) and deleter (scheduler's). GitHub's OIDC token is
+# federated to each cloud; no key is stored. test/cloud/objectstore holds
+# the Terraform that provisions the buckets and the trust, and its outputs
+# are this workflow's environment secrets: none is a credential, but they
+# name the clouds' accounts, and a public repository's logs mask only
+# secrets. A cloud without them reports "not configured" and fails rather
+# than passing. The job is informational:
+# the quality gate does not need it, and a failure opens an issue per
+# cloud, or comments on the open one.
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      force-failure:
+        description: 'Fail the aws run on purpose, to exercise the issue report'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: objectstore-cloud
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+
+jobs:
+  contract:
+    name: 'objectstore-cloud ${{ matrix.cloud }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        cloud: [aws, google, azure]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The AWS and Azure trust admits this environment's token subject, and
+    # the environment's branch rule admits only main; Google's admits this
+    # workflow file on main.
+    environment: objectstore-cloud
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    env:
+      CLOUD: ${{ matrix.cloud }}
+      AWS_BUCKET: ${{ secrets.OBJECTSTORE_AWS_BUCKET }}
+      AWS_REGION_NAME: ${{ secrets.OBJECTSTORE_AWS_REGION }}
+      AWS_WRITER_ROLE: ${{ secrets.OBJECTSTORE_AWS_WRITER_ROLE }}
+      AWS_DELETER_ROLE: ${{ secrets.OBJECTSTORE_AWS_DELETER_ROLE }}
+      GCS_BUCKET: ${{ secrets.OBJECTSTORE_GCS_BUCKET }}
+      GCS_PROVIDER: ${{ secrets.OBJECTSTORE_GCS_WORKLOAD_IDENTITY_PROVIDER }}
+      GCS_WRITER: ${{ secrets.OBJECTSTORE_GCS_WRITER }}
+      GCS_DELETER: ${{ secrets.OBJECTSTORE_GCS_DELETER }}
+      AZURE_ACCOUNT_URL: ${{ secrets.OBJECTSTORE_AZURE_ACCOUNT_URL }}
+      AZURE_CONTAINER: ${{ secrets.OBJECTSTORE_AZURE_CONTAINER }}
+      AZURE_TENANT: ${{ secrets.OBJECTSTORE_AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION: ${{ secrets.OBJECTSTORE_AZURE_SUBSCRIPTION_ID }}
+      AZURE_WRITER: ${{ secrets.OBJECTSTORE_AZURE_WRITER_CLIENT_ID }}
+      AZURE_DELETER: ${{ secrets.OBJECTSTORE_AZURE_DELETER_CLIENT_ID }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      # Lists the cloud's missing variables rather than failing at its
+      # login with an error that names none of them.
+      - name: Read the cloud's configuration
+        id: config
+        run: |
+          case "$CLOUD" in
+            aws) need="AWS_BUCKET AWS_REGION_NAME AWS_WRITER_ROLE AWS_DELETER_ROLE" ;;
+            google) need="GCS_BUCKET GCS_PROVIDER GCS_WRITER GCS_DELETER" ;;
+            azure) need="AZURE_ACCOUNT_URL AZURE_CONTAINER AZURE_TENANT AZURE_SUBSCRIPTION AZURE_WRITER AZURE_DELETER" ;;
+          esac
+          missing=""
+          for v in $need; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "missing=${missing# }" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail on purpose
+        if: ${{ inputs.force-failure && matrix.cloud == 'aws' }}
+        run: |
+          echo "--- FAIL: force-failure is set" | tee cloud.log
+          exit 1
+
+      - name: Not configured
+        if: ${{ steps.config.outputs.configured != 'true' }}
+        env:
+          MISSING: ${{ steps.config.outputs.missing }}
+        run: |
+          line="objectstore-cloud ${CLOUD} is not configured: the objectstore-cloud environment's secrets for ${MISSING} are not set. test/cloud/README.md provisions the cloud and lists them."
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      # Each identity's run appends to cloud.log, whose failing cases the
+      # report quotes.
+      - name: AWS writer credentials
+        if: ${{ matrix.cloud == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.OBJECTSTORE_AWS_WRITER_ROLE }}
+          aws-region: ${{ secrets.OBJECTSTORE_AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: S3 as the writer
+        if: ${{ matrix.cloud == 'aws' }}
+        env:
+          INFRAWEAVE_TEST_CLOUD_IDENTITY: writer
+          INFRAWEAVE_TEST_S3_BUCKET: ${{ secrets.OBJECTSTORE_AWS_BUCKET }}
+          INFRAWEAVE_TEST_S3_REGION: ${{ secrets.OBJECTSTORE_AWS_REGION }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccS3Cloud$' ./internal/platform/objectstore/s3 2>&1 | tee -a cloud.log
+
+      - name: AWS deleter credentials
+        if: ${{ matrix.cloud == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.OBJECTSTORE_AWS_DELETER_ROLE }}
+          aws-region: ${{ secrets.OBJECTSTORE_AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: S3 as the deleter
+        if: ${{ matrix.cloud == 'aws' }}
+        env:
+          INFRAWEAVE_TEST_CLOUD_IDENTITY: deleter
+          INFRAWEAVE_TEST_S3_BUCKET: ${{ secrets.OBJECTSTORE_AWS_BUCKET }}
+          INFRAWEAVE_TEST_S3_REGION: ${{ secrets.OBJECTSTORE_AWS_REGION }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccS3Cloud$' ./internal/platform/objectstore/s3 2>&1 | tee -a cloud.log
+
+      - name: Google writer credentials
+        if: ${{ matrix.cloud == 'google' }}
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.OBJECTSTORE_GCS_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.OBJECTSTORE_GCS_WRITER }}
+
+      - name: Cloud Storage as the writer
+        if: ${{ matrix.cloud == 'google' }}
+        env:
+          INFRAWEAVE_TEST_CLOUD_IDENTITY: writer
+          INFRAWEAVE_TEST_GCS_BUCKET: ${{ secrets.OBJECTSTORE_GCS_BUCKET }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccGCSCloud$' ./internal/platform/objectstore/gcs 2>&1 | tee -a cloud.log
+
+      - name: Google deleter credentials
+        if: ${{ matrix.cloud == 'google' }}
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.OBJECTSTORE_GCS_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.OBJECTSTORE_GCS_DELETER }}
+
+      - name: Cloud Storage as the deleter
+        if: ${{ matrix.cloud == 'google' }}
+        env:
+          INFRAWEAVE_TEST_CLOUD_IDENTITY: deleter
+          INFRAWEAVE_TEST_GCS_BUCKET: ${{ secrets.OBJECTSTORE_GCS_BUCKET }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccGCSCloud$' ./internal/platform/objectstore/gcs 2>&1 | tee -a cloud.log
+
+      - name: Azure writer sign-in
+        if: ${{ matrix.cloud == 'azure' }}
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.OBJECTSTORE_AZURE_WRITER_CLIENT_ID }}
+          tenant-id: ${{ secrets.OBJECTSTORE_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.OBJECTSTORE_AZURE_SUBSCRIPTION_ID }}
+
+      # azidentity's default chain would first probe for a managed
+      # identity the runner does not have; the Azure CLI holds the sign-in.
+      - name: Blob Storage as the writer
+        if: ${{ matrix.cloud == 'azure' }}
+        env:
+          AZURE_TOKEN_CREDENTIALS: AzureCLICredential
+          INFRAWEAVE_TEST_CLOUD_IDENTITY: writer
+          INFRAWEAVE_TEST_AZUREBLOB_ACCOUNT_URL: ${{ secrets.OBJECTSTORE_AZURE_ACCOUNT_URL }}
+          INFRAWEAVE_TEST_AZUREBLOB_CONTAINER: ${{ secrets.OBJECTSTORE_AZURE_CONTAINER }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccAzureBlobCloud$' ./internal/platform/objectstore/azureblob 2>&1 | tee -a cloud.log
+
+      - name: Azure deleter sign-in
+        if: ${{ matrix.cloud == 'azure' }}
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.OBJECTSTORE_AZURE_DELETER_CLIENT_ID }}
+          tenant-id: ${{ secrets.OBJECTSTORE_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.OBJECTSTORE_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Blob Storage as the deleter
+        if: ${{ matrix.cloud == 'azure' }}
+        env:
+          AZURE_TOKEN_CREDENTIALS: AzureCLICredential
+          INFRAWEAVE_TEST_CLOUD_IDENTITY: deleter
+          INFRAWEAVE_TEST_AZUREBLOB_ACCOUNT_URL: ${{ secrets.OBJECTSTORE_AZURE_ACCOUNT_URL }}
+          INFRAWEAVE_TEST_AZUREBLOB_CONTAINER: ${{ secrets.OBJECTSTORE_AZURE_CONTAINER }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccAzureBlobCloud$' ./internal/platform/objectstore/azureblob 2>&1 | tee -a cloud.log
+
+      # One open issue per cloud tracks its failing runs: the first failure
+      # opens it, and each later one comments on it until a person closes
+      # it. A cloud that is not configured fails without an issue, since
+      # nothing ran.
+      - name: Open or update the cloud's issue
+        if: ${{ failure() && (steps.config.outputs.configured == 'true' || inputs.force-failure) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          title="objectstore-cloud failed on ${CLOUD}"
+          failed=$(grep -E -e '--- FAIL' cloud.log 2>/dev/null | sed 's/^ *//' | sort -u || true)
+          body=$(printf 'The object store contract failed against %s on %s: %s\n\nFailing cases:\n```\n%s\n```\n' \
+            "$CLOUD" "$SHA" "$RUN_URL" "${failed:-none recorded; the run failed outside the tests}")
+          number=$(gh issue list --state open --search "\"${title}\" in:title" --json number,title \
+            -q ".[] | select(.title == \"${title}\") | .number" | head -n 1)
+          if [ -z "$number" ]; then
+            gh issue create --title "$title" --body "$body"
+          else
+            gh issue comment "$number" --body "$body"
+          fi

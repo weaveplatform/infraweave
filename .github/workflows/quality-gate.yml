@@ -3,8 +3,9 @@ name: go | Quality gate
 # Every pull request passes vet, blocking lint, unit tests on Linux, macOS and
 # Windows, govulncheck, a cross-compile of every cmd/* binary, and the merged
 # coverage gate (>=95% total, >=90% per package), the acceptance partitions
-# of decision 0016 against real dependencies in Docker, and the parity
-# check over their results. The `gate` job is the single required status
+# of decision 0016 against real dependencies in Docker, the unit tests and
+# every partition again in FIPS 140-only mode, and the parity check over
+# their results. The `gate` job is the single required status
 # check: make it required in branch protection. Every required job is in its
 # `needs` and, when it produces coverage, in the coverage job's.
 
@@ -143,6 +144,49 @@ jobs:
           path: cover/accept
           include-hidden-files: true
           retention-days: 7
+
+  # Decision 0016's fips-only: the unit tests and every acceptance
+  # partition again, with every binary built with the certified FIPS 140-3
+  # module and every process in fips140=only mode (make's FIPS=1), so a
+  # call to MD5, SHA-1 or another refused algorithm, in product code, a
+  # test or a library, fails the merge. It proves the same tests under
+  # another mode, so its coverage is not uploaded and adds nothing.
+  fips-only:
+    name: fips-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Unit tests in fips140=only mode
+        run: make test FIPS=1
+
+      # With no PARTITION, make accept runs every TestAcc and every
+      # partition's scenarios.
+      - name: Every acceptance partition in fips140=only mode
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+        run: make accept FIPS=1
+
+      - name: Report the mode
+        run: |
+          GOFIPS140=certified go build -o /tmp/infraweave ./cmd/infraweave
+          line="fips-only ran every suite under $(GODEBUG=fips140=only /tmp/infraweave version | tail -n 1)."
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
   # A recorded capability state is a claim that the acceptance results must
   # back, so parity runs on the merged results of every partition.
@@ -393,7 +437,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, parity, reference, generated, lint, vuln, build, coverage]
+    needs: [unit, accept, fips-only, parity, reference, generated, lint, vuln, build, coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed
