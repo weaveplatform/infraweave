@@ -1,0 +1,31 @@
+[
+  {
+    "method": "GET",
+    "path": "/keys/signing/061f524f880c4279a2be24702b5d73ea?api-version=2025-07-01",
+    "status": 401,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": "Bearer authorization=\"https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000\", resource=\"https://vault.azure.net\""
+    },
+    "reply": "{\"error\":{\"code\":\"Unauthorized\",\"message\":\"AKV10000: Request is missing a Bearer, PoP, or MTLS_POP token.\"}}"
+  },
+  {
+    "method": "GET",
+    "path": "/keys/signing/061f524f880c4279a2be24702b5d73ea?api-version=2025-07-01",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "reply": "{\"key\":{\"kid\":\"https://lab-vault.vault.azure.net/keys/signing/061f524f880c4279a2be24702b5d73ea\",\"kty\":\"EC\",\"key_ops\":[\"sign\",\"verify\"],\"crv\":\"P-256\",\"x\":\"WCg_gEXQnPM3NJE9WYeNQwpVlmO7xs4WHsfxjeC5h3w\",\"y\":\"MqVEAWUiFg9dT-5H-kgzw8WF1HHTcGQQBKSMCxQMBDQ\"},\"attributes\":{\"enabled\":true,\"created\":1793994471,\"updated\":1793994471,\"recoveryLevel\":\"CustomizedRecoverable+Purgeable\",\"recoverableDays\":7,\"exportable\":false,\"hsmPlatform\":\"0\"},\"tags\":{}}"
+  },
+  {
+    "method": "POST",
+    "path": "/keys/signing/061f524f880c4279a2be24702b5d73ea/sign?api-version=2025-07-01",
+    "body": "{\"alg\":\"ES256\",\"value\":\"ehAXD-kAUvLe0aOTTwc5A5vdeDjgWsQeZFCt5wSGaAw\"}",
+    "status": 200,
+    "header": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "reply": "{\"kid\":\"https://lab-vault.vault.azure.net/keys/signing/061f524f880c4279a2be24702b5d73ea\",\"value\":\"AuN3m-9nUGsB02RBO7XG22TmUtdP8IzqTST2B05UWVJyJjTqs8k8vtmD4QdpVhRLLMu9hv4tL-hzuLNa6IuNrg\"}"
+  }
+]

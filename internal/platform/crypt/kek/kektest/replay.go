@@ -50,7 +50,10 @@ func canonical(body []byte) string {
 func key(method, path, body string) string { return method + " " + path + " " + body }
 
 // Replay serves the exchanges in file, matching each request by method,
-// path and query, and body. A request with no recorded exchange fails t.
+// path and query, and body. Requests that match alike get the exchanges
+// recorded for them in order, the last one again once they run out: Key
+// Vault's challenge answers a request 401 and its identical retry 200. A
+// request with no recorded exchange fails t.
 func Replay(t *testing.T, file string, tls bool) *httptest.Server {
 	t.Helper()
 	raw, err := os.ReadFile(file)
@@ -61,14 +64,26 @@ func Replay(t *testing.T, file string, tls bool) *httptest.Server {
 	if err := json.Unmarshal(raw, &exchanges); err != nil {
 		t.Fatalf("%s: %v", file, err)
 	}
-	recorded := map[string]Exchange{}
+	recorded := map[string][]Exchange{}
 	for _, e := range exchanges {
-		recorded[key(e.Method, e.Path, e.Body)] = e
+		k := key(e.Method, e.Path, e.Body)
+		recorded[k] = append(recorded[k], e)
 	}
+	var mu sync.Mutex
 	r := chi.NewRouter()
 	r.HandleFunc("/*", func(w http.ResponseWriter, req *http.Request) {
 		body, _ := io.ReadAll(req.Body)
-		e, ok := recorded[key(req.Method, req.URL.RequestURI(), canonical(body))]
+		k := key(req.Method, req.URL.RequestURI(), canonical(body))
+		mu.Lock()
+		queue, ok := recorded[k]
+		var e Exchange
+		if ok {
+			e = queue[0]
+			if len(queue) > 1 {
+				recorded[k] = queue[1:]
+			}
+		}
+		mu.Unlock()
 		if !ok {
 			t.Errorf("no recorded exchange for %s %s %s", req.Method, req.URL.RequestURI(), body)
 			w.WriteHeader(http.StatusNotImplemented)
