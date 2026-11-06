@@ -24,6 +24,12 @@ const (
 	// ImageObjectStore serves @objectstore: RustFS, the S3-compatible store
 	// decision 0010 names.
 	ImageObjectStore = "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"
+	// ImageFakeGCS is the Cloud Storage emulator objectstoretest's gcs
+	// suite runs against.
+	ImageFakeGCS = "fsouza/fake-gcs-server:1.56.1@sha256:797ce226d62f947c009dc40246b30cfb456b8473d8241407f9d6f2c04e4d69ef"
+	// ImageAzurite is the Blob Storage emulator objectstoretest's
+	// azureblob suite runs against.
+	ImageAzurite = "mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5"
 )
 
 // ErrPostgresEnv marks a PostgresEnv value that names no image.

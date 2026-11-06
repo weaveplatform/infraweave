@@ -86,7 +86,7 @@ func (s *observeSteps) ownPostgres(ctx context.Context) error {
 		return err
 	}
 	s.w.ownPG = pg
-	config, err := serverConfig(pg.DSN, nil)
+	config, err := serverConfig(pg.DSN, s.w.objects(), nil)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (s *observeSteps) scheduler(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	config, err := serverConfig(db.DSN, nil)
+	config, err := serverConfig(db.DSN, s.w.objects(), nil)
 	if err != nil {
 		return err
 	}

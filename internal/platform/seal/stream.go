@@ -48,6 +48,15 @@ func segmentAAD(index uint64, last bool) [header + 8 + 1]byte {
 	return aad
 }
 
+// ObjectSize is the size of a sealed object of n plaintext bytes: the
+// header, then each segment's plaintext with its nonce and tag. An empty
+// object is one empty segment, so a store can declare the size before it
+// writes.
+func ObjectSize(n int64) int64 {
+	segments := max(1, (n+SegmentSize-1)/SegmentSize)
+	return int64(header) + n + segments*overhead
+}
+
 // Writer seals an object to an io.Writer, one segment at a time. It holds
 // one segment of plaintext and one of ciphertext, whatever the object's
 // size. Close seals the last segment, so an object whose Writer is not

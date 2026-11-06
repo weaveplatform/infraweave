@@ -8,7 +8,11 @@
 // settings of platform/observe; Queue holds decision 0011's queue.*
 // settings of platform/queue; Events holds decision 0015's events.*
 // settings of platform/outbox; Secrets holds decision 0013's secrets.*
-// settings of platform/crypt, the KEK under secrets.kek. Defaults are what an empty configuration
+// settings of platform/crypt, the KEK under secrets.kek; ObjectStore holds
+// decision 0005's objectstore.* settings of platform/objectstore, whose
+// per-store keys are the stores' hyphenated names, as in
+// objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS.
+// Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags
 // those of a mode that serves only the admin listener, FileFlag only
@@ -33,5 +37,6 @@
 // It imports viper and pflag for the decoding, and the setting and default
 // types of platform/httpkit/serve, middleware/ratelimit,
 // middleware/idempotency, platform/sql, platform/observe, platform/queue,
-// platform/outbox, platform/crypt and crypt/kek. internal/app and cmd/ import it.
+// platform/outbox, platform/crypt, crypt/kek and platform/objectstore.
+// internal/app and cmd/ import it.
 package config

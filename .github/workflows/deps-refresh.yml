@@ -112,10 +112,13 @@ jobs:
             curl -fsS "https://hub.docker.com/v2/repositories/$1/tags?page_size=100&ordering=last_updated&name=${2//\\/}" \
               | jq -r '.results[].name'
           }
+          # repin <image> <tag> [tag prefix] moves the pin to tag.
+          repin() {
+            digest=$(docker buildx imagetools inspect "$1:$2" --format '{{json .Manifest}}' | jq -r .digest)
+            sed -i -E "s#\"$1:${3:-}[^@\"]*@sha256:[0-9a-f]{64}\"#\"$1:$2@$digest\"#" test/acceptance/images.go
+          }
           pin() {
-            tag=$(tags "$2" "${4:-}" | grep -E "$3" | sort -V | tail -1)
-            digest=$(docker buildx imagetools inspect "$1:$tag" --format '{{json .Manifest}}' | jq -r .digest)
-            sed -i -E "s#\"$1:${4:-}[^@\"]*@sha256:[0-9a-f]{64}\"#\"$1:$tag@$digest\"#" test/acceptance/images.go
+            repin "$1" "$(tags "$2" "${4:-}" | grep -E "$3" | sort -V | tail -1)" "${4:-}"
           }
           pin postgres library/postgres '^18\.[0-9]+$' '18\.'
           pin postgres library/postgres '^17\.[0-9]+$' '17\.'
@@ -129,6 +132,11 @@ jobs:
             fi
           done
           pin rustfs/rustfs rustfs/rustfs '^[0-9]+\.[0-9]+\.[0-9]+$'
+          pin fsouza/fake-gcs-server fsouza/fake-gcs-server '^[0-9]+\.[0-9]+\.[0-9]+$'
+          # Azurite publishes to the Microsoft Artifact Registry, not
+          # Docker Hub.
+          repin mcr.microsoft.com/azure-storage/azurite "$(curl -fsS https://mcr.microsoft.com/v2/azure-storage/azurite/tags/list \
+            | jq -r '.tags[]' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
           git diff --stat test/acceptance/images.go
 
       - name: Open or update the refresh PR

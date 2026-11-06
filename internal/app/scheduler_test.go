@@ -43,7 +43,7 @@ func rows(t *testing.T, db *sql.DB, query string) int {
 // returns its log.
 func runMode(t *testing.T, observer *sql.DB, m Mode) (out *lines, admin string, stop func()) {
 	t.Helper()
-	c := local()
+	c := local(t)
 	c.Database.URL = observer.Primary().Config().ConnString()
 	c.Server.AdminListen = freeAddr(t)
 	c.Queue.PollInterval = 50 * time.Millisecond

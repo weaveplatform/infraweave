@@ -77,9 +77,10 @@ func (q *queueSteps) twoInstances(ctx context.Context, lease int) error {
 			"admin_listen": "127.0.0.1:0",
 			"shutdown":     map[string]any{"ready_delay": "0s"},
 		},
-		"database": map[string]any{"url": db.DSN},
-		"secrets":  secrets,
-		"log":      map[string]any{"level": "debug"},
+		"database":    map[string]any{"url": db.DSN},
+		"secrets":     secrets,
+		"objectstore": objectStore(q.s.w.objects()),
+		"log":         map[string]any{"level": "debug"},
 		"queue": map[string]any{
 			"lease":          fmt.Sprintf("%ds", lease),
 			"poll_interval":  "100ms",

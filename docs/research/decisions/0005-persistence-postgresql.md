@@ -230,18 +230,19 @@ sees the same keys, buckets and switches.
 
 ### Object storage
 
-- **Interface.** `internal/objectstore` defines `objectstore.Store` with `Put`, `Get`, `Head`,
-  `Delete` and `SignURL(method, key, ttl, constraints)`. The driver is
+- **Interface.** `internal/platform/objectstore` defines `objectstore.Store` with `Put`, `Get`, `Head`,
+  `Delete` and `SignURL(method, key, ttl, constraints)`, which returns the
+  URL and the headers the client must send with it. The driver is
   `objectstore.driver`, and each driver's settings sit under
   `objectstore.<driver>`. Each driver uses its provider's own Go SDK, and
   none goes through another provider's compatibility API.
 
   | Driver | Backs | Notes |
   |---|---|---|
-  | `s3` | AWS S3 and S3-compatible stores (RustFS, Ceph RGW, Cloudflare R2) | `github.com/aws/aws-sdk-go-v2/service/s3` with its upload manager for multipart. Settings: `bucket`, `endpoint`, `region` (default `us-east-1`), `path_style`, credentials from the SDK's default chain (including workload identity) or static keys, and server-side encryption (`none`, `s3` or `kms` with a key ID) |
+  | `s3` | AWS S3 and S3-compatible stores (RustFS, Ceph RGW, Cloudflare R2) | `github.com/aws/aws-sdk-go-v2/service/s3`, driving multipart uploads itself so that each part carries its SHA-256 and the upload completes only once the source has given the declared size. Settings: `bucket`, `endpoint`, `region` (default `us-east-1`), `path_style`, credentials from the SDK's default chain (including workload identity) or static keys, and server-side encryption (`none`, `s3` or `kms` with a key ID) |
   | `gcs` | Google Cloud Storage | `cloud.google.com/go/storage`. Settings: `bucket`. Credentials from Application Default Credentials; V4 signed URLs are signed through the IAM `signBlob` call when the identity holds no private key, so workload identity needs no static key |
   | `azureblob` | Azure Blob Storage | `github.com/Azure/azure-sdk-for-go/sdk/storage/azblob`. Settings: `account_url`, `container`. Credentials from `azidentity`'s default chain; signed URLs are user delegation SAS, so Entra workload identity needs no account key |
-  | `fs` | A local directory or a shared POSIX volume | Writes go to a temporary file, are synced and are renamed into place. Signed URLs point at infraweave's own `GET` and `PUT /blobs/{token}`. The token carries method, key, expiry and size limit, and is signed with HMAC-SHA256 under `crypt.DeriveKey("objectstore-url")` of [0013](0013-secrets-at-rest.md). More than one replica needs a volume shared by all of them |
+  | `fs` | A local directory or a shared POSIX volume | Settings: `root`, and `url`, the API listener's public URL. Writes go to a temporary file, are synced and are renamed into place. Signed URLs point at infraweave's own `GET` and `PUT <url>/blobs/{token}` on the API listener. The token carries method, key, expiry, size and SHA-256, and is signed with HMAC-SHA256 under `crypt.DeriveKey("objectstore-url")` of [0013](0013-secrets-at-rest.md); the `PUT` handler hashes while it writes and refuses other bytes before they become readable. More than one replica needs a volume shared by all of them |
 
   The `gcs` and `azureblob` drivers exist because the reference deployments
   (decision 0020) authenticate with workload identity, and Google Cloud
@@ -254,8 +255,8 @@ sees the same keys, buckets and switches.
   |---|---|
   | Put, get, head, delete | Round-trips bytes and size; `Get` and `Head` of a missing key return `objectstore.ErrNotFound`; deleting a missing key succeeds |
   | Multipart | An object above `objectstore.part_size` (default 16 MiB) is written in parts: an S3 multipart upload, a GCS resumable upload in chunks, Azure staged blocks committed by a block list, or a temporary file on `fs`. A failed upload leaves no readable object, and the driver aborts what it started |
-  | Checksums | Every write carries the SHA-256 that `blob_objects` records. `s3` sends it as `x-amz-checksum-sha256`, which the store verifies. `gcs` and `azureblob` have no SHA-256 the service verifies, so the driver hashes the stream as it uploads and, on a mismatch, fails the write and leaves the object under its `pending` row for `blob.expire` to delete; the service's own CRC32C (GCS) or CRC64 (Azure) still guards each transfer. No driver computes or sends MD5, because `GODEBUG=fips140=only` refuses it ([0013](0013-secrets-at-rest.md#fips-140-3)) |
-  | Signed URLs | `GET` and `PUT` URLs that expire after their TTL and bind the method, key and declared size; a `PUT` URL on `s3` also binds the checksum |
+  | Checksums | Every write carries the SHA-256 that `blob_objects` records. `s3` sends it as `x-amz-checksum-sha256`, which the store verifies. `gcs` and `azureblob` have no SHA-256 the service verifies, so the driver hashes the stream as it uploads, and committing a signed upload reads the object back once to compare; a mismatch fails the commit and leaves the object under its `pending` row for `blob.expire` to delete. The service's own CRC32C (GCS) or CRC64 (Azure) still guards each transfer. No driver computes or sends MD5, because `GODEBUG=fips140=only` refuses it ([0013](0013-secrets-at-rest.md#fips-140-3)) |
+  | Signed URLs | `GET` and `PUT` URLs that expire after their TTL and bind the method and key; a `PUT` URL on `s3`, `gcs` and `fs` also binds the declared size, and on `s3` and `fs` the SHA-256. An Azure SAS binds neither, so the commit's `Head` and read-back check both |
   | Lifecycle | Expiry is infraweave's own (below): a `live` object past `expires_at` and a `pending` object older than 24 hours are deleted by `blob.expire`. Nothing relies on a bucket lifecycle rule or on bucket versioning |
 
 - **`serve` never deletes.** `serve` holds the store as
@@ -304,13 +305,18 @@ sees the same keys, buckets and switches.
 - **No bucket versioning.** infraweave neither needs nor uses it. An operator
   who turns it on for their own reasons also owns a lifecycle rule that expires
   non-current versions, because infraweave's deletes then leave them behind.
-- **Rows and objects stay consistent through `blob_objects`.**
+- **Rows and objects stay consistent through `blob_objects`,** which
+  `internal/platform/objectstore/blobs` keeps: `serve` writes through its
+  `Objects`, over the `Writer`, and the scheduler removes through its
+  `Reaper`, over the `Store`.
   - **The table.** `blob_objects(store, key, size, sha256, state, content_key_sealed, expires_at, created_at)`
     has primary key `(store, key)`. `state` is `pending`, `live` or
     `deleting`. Tables that reference an object have a foreign key to it.
-  - **Writing.** A row is inserted as `pending` in its own short transaction
-    before the upload, or before a pre-signed `PUT` URL is issued. The
-    transaction that records the business change marks it `live`. A `pending`
+  - **Writing.** A row is inserted as `pending` in its own statement, outside
+    the caller's transaction, before the upload (`Put`) or before a
+    pre-signed `PUT` URL is issued (`Begin`). The transaction that records the
+    business change marks it `live` (`Commit`, or `CommitUpload` after a
+    signed upload). A `pending`
     row older than 24 hours is deleted by `blob.expire`, together with any
     object under its key,
     so an upload whose transaction rolled back never leaves an orphan, and no
@@ -319,7 +325,10 @@ sees the same keys, buckets and switches.
     enqueues a `blob.delete` job in the same transaction. The object goes after
     commit.
   - **Expiry.** A `maintenance` periodic task, `blob.expire` (every 10
-    minutes), deletes objects whose `expires_at` has passed, 1,000 per batch.
+    minutes), marks up to 1,000 due rows `deleting` and enqueues a
+    `blob.delete` for each in the same transaction: `live` rows whose
+    `expires_at` has passed, and `pending` rows older than 24 hours. A row's
+    `expires_at` is its creation plus its store's retention, or none.
     infraweave expires objects itself rather than relying on bucket lifecycle
     rules, so the `fs` driver, and buckets where the operator sets no rules,
     behave the same. A bucket lifecycle rule an operator adds is a harmless
@@ -513,11 +522,14 @@ sees the same keys, buckets and switches.
   - every `_sealed` column is `bytea`;
   - every account-scoped table has `account_id`.
 - **Object storage.**
-  - `internal/objectstore/objectstoretest` runs the contract above against
+  - `internal/platform/objectstore/objectstoretest` runs the contract above against
     every driver: `s3` on RustFS, `gcs` on fake-gcs-server and `azureblob` on
     Azurite, each in testcontainers (`TestAcc`), and `fs` (`TestUnit`). The
     emulators' gaps, and the nightly run against real AWS, Google Cloud and
-    Azure buckets that covers them, are [0016](0016-testing-and-acceptance.md#contract-suites)'s.
+    Azure buckets that covers them, are [0016](0016-testing-and-acceptance.md#contract-suites)'s;
+    `TestUnitObjectstoreGaps` keeps every skipped case named, with its reason.
+    Every driver's suite sends its requests through a client that fails the
+    test on any MD5.
   - A floor test starts infraweave against PostgreSQL one major below the
     floor and asserts that it refuses to start.
   - Tests of `blob_objects` cover orphan cleanup of `pending` rows and

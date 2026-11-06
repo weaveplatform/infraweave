@@ -68,7 +68,7 @@ func (s *startupSteps) startOnOwn(ctx context.Context, mode string) error {
 }
 
 func (s *startupSteps) start(ctx context.Context, mode, dsn string) error {
-	config, err := serverConfig(dsn, nil)
+	config, err := serverConfig(dsn, s.w.objects(), nil)
 	if err != nil {
 		return err
 	}

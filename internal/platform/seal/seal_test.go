@@ -158,12 +158,14 @@ func TestUnitObjectRoundTrip(t *testing.T) {
 		for _, chunk := range []int{1000, seg, size + 1} {
 			sealed := sealObject(t, key(0), plain, chunk)
 			segments := max(1, (size+seg-1)/seg)
-			if want := 5 + size + 28*segments; len(sealed) != want {
+			if want := 5 + size + 28*segments; len(sealed) != want ||
+				seal.ObjectSize(int64(size)) != int64(want) {
 				t.Errorf(
-					"%d bytes in writes of %d: sealed to %d bytes, want %d",
+					"%d bytes in writes of %d: sealed to %d bytes, ObjectSize %d, want %d",
 					size,
 					chunk,
 					len(sealed),
+					seal.ObjectSize(int64(size)),
 					want,
 				)
 			}

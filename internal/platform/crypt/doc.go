@@ -16,7 +16,9 @@
 // infraweave/<purpose>, and the key's ID, which DerivedKey takes to verify
 // what a retiring key made. SealObject and OpenObject stream an object in
 // seal's object format under a fresh content key, which the caller stores
-// sealed beside it. Registry lists the sealed columns of every stream.
+// sealed beside it, with its Column's AAD as associated data. Registry lists
+// the sealed columns of every stream, blob_objects.content_key_sealed among
+// them.
 //
 // # Input and output
 //
