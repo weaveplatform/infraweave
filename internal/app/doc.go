@@ -22,7 +22,9 @@
 // Streams registers, in the declared graph's order, with each domain's
 // stream after the platform's, loads the keyring
 // through the KEK provider secrets.kek.provider names, which it requires
-// (openKEK), and reloads it on each change to encryption_keys, opens the
+// (openKEK), and reloads it on each change to encryption_keys, opens each
+// KMS signing key of auth.signing.kms_keys under the kms backend
+// (openSigners), so a key that cannot sign ES256 stops the start, opens the
 // object store
 // objectstore.driver names, which it requires (openObjects), registers the
 // probe checks every
@@ -75,7 +77,8 @@
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
 // platform/queue, platform/cron and platform/outbox for the scheduler role;
-// platform/crypt, crypt/kek and its providers for the keyring; platform/objectstore, its
+// platform/crypt, crypt/kek and its providers for the keyring;
+// crypt/signer and its KMS backends for the kms signing keys; platform/objectstore, its
 // drivers and objectstore/blobs for object storage;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no

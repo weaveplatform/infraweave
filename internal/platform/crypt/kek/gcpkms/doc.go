@@ -15,5 +15,6 @@
 // # Dependencies
 //
 // It imports platform/crypt/kek and cloud.google.com/go/kms. internal/app
-// opens it.
+// opens it; the gcpkms signing backend builds its client with NewClient and
+// checks Cloud KMS's answers with CRC32C.
 package gcpkms

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -110,6 +111,9 @@ func Record(t *testing.T, base http.RoundTripper, file string, pairs ...string) 
 		rec.mu.Lock()
 		defer rec.mu.Unlock()
 		b, err := json.MarshalIndent(rec.exchanges, "", "  ")
+		if err == nil {
+			err = os.MkdirAll(filepath.Dir(rec.File), 0o750)
+		}
 		if err == nil {
 			err = os.WriteFile(rec.File, append(b, '\n'), 0o600)
 		}

@@ -8,6 +8,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
@@ -21,12 +22,13 @@ type Domains struct {
 	Auth accessapi.Authenticator
 }
 
-// newDomains constructs every domain on db, sealing under keys, with c's
-// settings.
-func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring) Domains {
+// newDomains constructs every domain on db, sealing under keys and signing
+// tokens through kms under the kms backend, with c's settings.
+func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, kms []signer.KMS) Domains {
 	access := accessassembly.New(accessassembly.Deps{
 		DB:        db.Primary(),
 		Keys:      keys,
+		KMS:       kms,
 		Settings:  c.Auth,
 		PublicURL: c.Server.PublicURL,
 		Audience:  strings.TrimSuffix(c.Server.PublicURL, "/") + BaseURL,

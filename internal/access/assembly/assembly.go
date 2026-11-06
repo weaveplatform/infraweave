@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -51,7 +52,10 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 type Deps struct {
 	DB pg.DB
 	// Keys seals the signing keys' private halves; crypt.Keyring is one.
-	Keys     pg.Sealer
+	Keys pg.Sealer
+	// KMS are the opened keys of auth.signing.kms_keys, in its order,
+	// under the kms backend.
+	KMS      []signer.KMS
 	Settings Settings
 	// PublicURL is server.public_url, the issuer when auth.api_issuer is
 	// empty.
@@ -83,9 +87,14 @@ func New(d Deps) *Domain {
 	}
 	manual := d.Settings.Signing.Rotation == RotationManual
 	store := pg.New(d.DB)
-	tokens := token.New(pg.NewSigningKeys(d.DB, d.Keys), issuer, token.Policy{
+	refs := make([]string, 0, len(d.KMS))
+	for _, k := range d.KMS {
+		refs = append(refs, k.Ref())
+	}
+	tokens := token.New(pg.NewSigningKeys(d.DB, d.Keys, d.KMS), issuer, token.Policy{
 		Manual:    manual,
 		TokenLife: d.Settings.Tokens.API.TTL,
+		Refs:      refs,
 	}, now)
 	return &Domain{
 		store:  store,

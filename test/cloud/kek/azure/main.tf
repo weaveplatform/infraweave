@@ -1,10 +1,10 @@
-# The Azure key the azurekv KEK provider's live test wraps data keys with
-# (decision 0013), and that its recorded fixtures were recorded against: an
-# RSA key in a vault that authorizes through Azure RBAC, with Key Vault
-# Crypto Officer, which creates the key and wraps with it, for whoever
-# applies this root, who runs the test. No key
-# material leaves Key Vault, and nothing is registered in the tenant's
-# directory.
+# The Azure keys the azurekv live tests use, which their recorded fixtures
+# were recorded against: an RSA key the KEK provider wraps data keys with
+# (decision 0013), and an EC key on P-256 the signing backend signs tokens
+# with (decision 0006), in a vault that authorizes through Azure RBAC, with
+# Key Vault Crypto Officer, which creates the keys and uses them, for
+# whoever applies this root, who runs the tests. No key material leaves Key
+# Vault, and nothing is registered in the tenant's directory.
 
 data "azurerm_client_config" "current" {}
 
@@ -44,5 +44,15 @@ resource "azurerm_key_vault_key" "kek" {
   key_opts     = ["wrapKey", "unwrapKey"]
 
   # The data plane answers only once the role assignment has reached it.
+  depends_on = [azurerm_role_assignment.caller]
+}
+
+resource "azurerm_key_vault_key" "signing" {
+  name         = "signing"
+  key_vault_id = azurerm_key_vault.kek.id
+  key_type     = "EC"
+  curve        = "P-256"
+  key_opts     = ["sign", "verify"]
+
   depends_on = [azurerm_role_assignment.caller]
 }

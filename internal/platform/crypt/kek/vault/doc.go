@@ -5,6 +5,10 @@
 // any other answer, a refused permission among them, names the provider
 // and the key as itself.
 //
+// Client is the authenticated caller of Vault's HTTP API under the
+// provider, which NewClient builds from the address and auth method alone;
+// the vault signing backend calls Transit through it too.
+//
 // It gets its token by auth.method: token reads auth.token_file or
 // VAULT_TOKEN (TokenEnv) once; kubernetes and approle log in at the first
 // call, reading auth.jwt_file or auth.secret_id_file then, log in again
@@ -21,5 +25,6 @@
 //
 // It imports platform/crypt/kek and the standard library: it calls the
 // Transit API over net/http rather than through Vault's client module.
-// internal/app opens it.
+// internal/app opens it, and the vault signing backend imports it for
+// Client.
 package vault

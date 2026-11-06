@@ -1,6 +1,7 @@
 package token
 
 import (
+	"slices"
 	"time"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -61,6 +62,9 @@ type Key struct {
 	// RetireAfter is when the last token the key signed expires; set once
 	// it is retiring.
 	RetireAfter time.Time
+	// Ref is the KMS key that holds the private half, as kms_key_ref
+	// stores it; empty for a key the local backend generated.
+	Ref string
 }
 
 // Step is one change a rotation makes: a new key when ID is zero,
@@ -74,6 +78,9 @@ type Step struct {
 	At time.Time
 	// RetireAfter is set when the key becomes retiring.
 	RetireAfter time.Time
+	// Ref is the KMS key a new key under the kms backend signs with; empty
+	// when the local backend generates it.
+	Ref string
 }
 
 // Policy is how rotation runs for one installation.
@@ -83,6 +90,9 @@ type Policy struct {
 	Manual bool
 	// TokenLife is the longest lifetime of a token the purpose's keys sign.
 	TokenLife time.Duration
+	// Refs are the kms backend's keys, auth.signing.kms_keys, oldest
+	// first; empty under the local backend.
+	Refs []string
 }
 
 // Plan is the rotation due at now over keys, a purpose's keys that are not
@@ -91,7 +101,8 @@ type Policy struct {
 // first key is created active; a next key published for MinPublished takes
 // over from an active key KeyLifetime old, which becomes retiring until
 // its last token expires; and an active key within NextLead of
-// KeyLifetime gets a next key.
+// KeyLifetime gets a next key. Under the kms backend the operator rotates
+// instead (planKMS).
 func (p Policy) Plan(keys []Key, now time.Time) []Step {
 	var (
 		steps        []Step
@@ -109,6 +120,9 @@ func (p Policy) Plan(keys []Key, now time.Time) []Step {
 			}
 		case StateRetired:
 		}
+	}
+	if len(p.Refs) > 0 {
+		return append(steps, p.planKMS(keys, active, next, now)...)
 	}
 	switch {
 	case active == nil && next != nil:
@@ -133,4 +147,39 @@ func (p Policy) Plan(keys []Key, now time.Time) []Step {
 		return append(steps, Step{State: StateNext, At: now})
 	}
 	return steps
+}
+
+// planKMS is the kms backend's rotation, which runs when the operator adds
+// a reference: the newest reference is the key that should sign. With no
+// active key, a next key is promoted, or the newest reference becomes the
+// active key; a next key published for MinPublished takes over whatever
+// the active key's age, the active key retiring until its last token
+// expires; and a newest reference no key holds becomes the next key once
+// there is no next key.
+func (p Policy) planKMS(keys []Key, active, next *Key, now time.Time) []Step {
+	newest := p.Refs[len(p.Refs)-1]
+	switch {
+	case active == nil && next != nil:
+		return []Step{{ID: next.ID, State: StateActive, At: now}}
+	case active == nil:
+		return []Step{{State: StateActive, At: now, Ref: newest}}
+	case p.Manual:
+		return nil
+	case next != nil:
+		if now.Sub(next.CreatedAt) < MinPublished {
+			return nil
+		}
+		return []Step{
+			{
+				ID:          active.ID,
+				State:       StateRetiring,
+				At:          now,
+				RetireAfter: now.Add(SignerRefresh + p.TokenLife),
+			},
+			{ID: next.ID, State: StateActive, At: now},
+		}
+	case !slices.ContainsFunc(keys, func(k Key) bool { return k.Ref == newest }):
+		return []Step{{State: StateNext, At: now, Ref: newest}}
+	}
+	return nil
 }

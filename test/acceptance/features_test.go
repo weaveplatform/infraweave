@@ -250,6 +250,9 @@ type world struct {
 	// kek is the secrets.kek settings the scenario's servers and commands
 	// run with; nil is the local KEK.
 	kek map[string]any
+	// auth is the auth settings every server of the scenario starts with;
+	// nil keeps the defaults.
+	auth map[string]any
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -377,6 +380,11 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	config, err := serverConfigKEK(db.DSN, w.objects(), settings, w.kek)
 	if err != nil {
 		return nil, err
+	}
+	if w.auth != nil {
+		if config, err = withSection(config, "auth", w.auth); err != nil {
+			return nil, err
+		}
 	}
 	return w.launch(ctx, "all", config)
 }

@@ -51,18 +51,25 @@ func New(c kek.AzureKVConfig, o Options) (*Provider, error) {
 		return nil, err //nolint:wrapcheck // names its key
 	}
 	ref := kek.AzureKV + ":" + strings.TrimSuffix(c.VaultURL, "/") + "/keys/" + c.KeyName
-	cred := o.Credential
-	if cred == nil {
-		var err error
-		if cred, err = azidentity.NewDefaultAzureCredential(nil); err != nil {
-			return nil, fmt.Errorf("%s: %w", ref, err)
-		}
-	}
-	client, err := azkeys.NewClient(c.VaultURL, cred, o.Client)
+	client, err := NewClient(c.VaultURL, o)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ref, err)
 	}
 	return &Provider{client: client, name: c.KeyName, version: c.KeyVersion, ref: ref}, nil
+}
+
+// NewClient returns a Key Vault keys client for vaultURL, authenticating
+// with o.Credential or azidentity's default chain. The azurekv signing
+// backend calls Key Vault through it too.
+func NewClient(vaultURL string, o Options) (*azkeys.Client, error) {
+	cred := o.Credential
+	if cred == nil {
+		var err error
+		if cred, err = azidentity.NewDefaultAzureCredential(nil); err != nil {
+			return nil, err //nolint:wrapcheck // the caller names the key
+		}
+	}
+	return azkeys.NewClient(vaultURL, cred, o.Client) //nolint:wrapcheck // as above
 }
 
 // Ref is azurekv:<vault URL>/keys/<key name>. The version that wrapped

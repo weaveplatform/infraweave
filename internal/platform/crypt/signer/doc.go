@@ -7,8 +7,15 @@
 // (ES256, the only curve decision 0013's FIPS 140-3 rule allows),
 // PrivateKey writes it as PKCS #8 for the caller to seal into
 // signing_keys.private_key_sealed, and ParseLocal reads it back, refusing
-// any other key type or curve (ErrKey). The KMS backends join behind the
-// same interface.
+// any other key type or curve (ErrKey).
+//
+// A KMS backend (subpackages awskms, gcpkms, azurekv and vault) is a KMS:
+// a Signer whose Ref names its provider and key, as kms_key_ref stores it,
+// and whose public JWK has no kid; WithKeyID names it after its
+// signing_keys row. The backends share ParsePKIX and P256, which refuse a
+// key that is not P-256 (ErrKey, naming the reference); CheckDigest; and
+// FromDER and Raw, which turn the KMS's DER or r || s answer into JWS's
+// r || s or ErrSignature. ErrRef is a reference a backend cannot open.
 //
 // # Input and output
 //
@@ -18,5 +25,6 @@
 // # Dependencies
 //
 // It imports the standard library and github.com/go-jose/go-jose/v4 for the
-// JWK type. The access domain's token package signs through it.
+// JWK type. The access domain's token package signs through it, and its
+// KMS backends build on it.
 package signer

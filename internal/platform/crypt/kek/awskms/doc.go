@@ -16,5 +16,6 @@
 // # Dependencies
 //
 // It imports platform/crypt/kek and aws-sdk-go-v2's config and kms.
-// internal/app opens it.
+// internal/app opens it; the awskms signing backend builds its client with
+// NewClient.
 package awskms
