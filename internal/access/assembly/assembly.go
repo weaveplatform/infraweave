@@ -4,13 +4,17 @@ import (
 	"context"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 )
 
 // AccessAPI is the access domain's partial of the API's strict server,
@@ -25,6 +29,17 @@ var RotateKeys = queue.Kind{
 	Queue:  queue.Maintenance,
 	Policy: queue.Ignore,
 }
+
+// ExpireSessions is authn.sessions.expire, decision 0006's hourly deletion
+// of the sessions that ended authn.Retention ago.
+var ExpireSessions = queue.Kind{
+	Name:   "authn.sessions.expire",
+	Queue:  queue.Maintenance,
+	Policy: queue.Ignore,
+}
+
+// expireEvery is how often authn.sessions.expire runs.
+const expireEvery = time.Hour
 
 // Stream is the access domain's migration stream.
 func Stream() migrate.Stream { return pg.Stream() }
@@ -41,15 +56,19 @@ type Deps struct {
 	// PublicURL is server.public_url, the issuer when auth.api_issuer is
 	// empty.
 	PublicURL string
+	// Audience is the API's base URL, server.public_url and the API's
+	// prefix: every API token's aud.
+	Audience string
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 }
 
 // Domain is the access domain, constructed once per process.
 type Domain struct {
-	tenancy *pg.Store
-	tokens  *token.Service
-	manual  bool
+	store  *pg.Store
+	tokens *token.Service
+	authn  *authn.Service
+	manual bool
 }
 
 // New constructs the domain on d.
@@ -63,30 +82,77 @@ func New(d Deps) *Domain {
 		now = time.Now
 	}
 	manual := d.Settings.Signing.Rotation == RotationManual
+	store := pg.New(d.DB)
+	tokens := token.New(pg.NewSigningKeys(d.DB, d.Keys), issuer, token.Policy{
+		Manual:    manual,
+		TokenLife: d.Settings.Tokens.API.TTL,
+	}, now)
 	return &Domain{
-		tenancy: pg.New(d.DB),
-		tokens: token.New(pg.NewSigningKeys(d.DB, d.Keys), issuer, token.Policy{
-			Manual:    manual,
-			TokenLife: d.Settings.Tokens.API.TTL,
-		}, now),
+		store:  store,
+		tokens: tokens,
+		authn: authn.New(authn.Deps{
+			Keys:     store,
+			Sessions: store,
+			Tokens:   tokens,
+			Audience: d.Audience,
+			TTL:      d.Settings.Tokens.API.TTL,
+			Now:      now,
+		}),
 		manual: manual,
 	}
 }
 
-// API is the domain's partial of the API's strict server.
-func (*Domain) API() AccessAPI { return AccessAPI{} }
-
-// Cron is the domain's periodic tasks: authn.keys.rotate, daily, unless
-// auth.signing.rotation is manual.
-func (d *Domain) Cron() []cron.Task {
-	if d.manual {
-		return nil
+// API is the domain's partial of the API's strict server; a nil domain's
+// serves nothing it can answer, for tests that construct none.
+func (d *Domain) API() AccessAPI {
+	if d == nil {
+		return AccessAPI{}
 	}
-	return []cron.Task{{
+	return http.NewServer(d.authn)
+}
+
+// Authenticator is the middleware that authenticates the API's requests.
+func (d *Domain) Authenticator() accessapi.Authenticator { return http.NewAuthenticator(d.authn) }
+
+// WatchSessions keeps the replica's session cache in step with
+// revocations until ctx ends: a session:<id> message on sub, a
+// subscription to infraweave_invalidate, drops that session, and a Resync,
+// after which messages may have been lost, drops them all.
+func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
+	cache := d.authn.Cache()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-sub.C:
+			if m.Resync {
+				cache.Flush()
+			} else if id, ok := session.ParseKey(m.Payload); ok {
+				cache.Drop(id)
+			}
+		}
+	}
+}
+
+// Cron is the domain's periodic tasks: authn.sessions.expire, hourly, and
+// authn.keys.rotate, daily, unless auth.signing.rotation is manual.
+func (d *Domain) Cron() []cron.Task {
+	tasks := make([]cron.Task, 0, 2)
+	tasks = append(tasks, cron.Task{
+		Kind:  ExpireSessions,
+		Every: expireEvery,
+		Handler: func(ctx context.Context, _ queue.Job) error {
+			return d.authn.Expire(ctx) //nolint:wrapcheck // names itself
+		},
+	})
+	if d.manual {
+		return tasks
+	}
+	return append(tasks, cron.Task{
 		Kind:  RotateKeys,
 		Every: token.RotateEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
 			return d.tokens.Rotate(ctx) //nolint:wrapcheck // names itself
 		},
-	}}
+	})
 }

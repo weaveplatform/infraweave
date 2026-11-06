@@ -3,7 +3,10 @@
 // decision 0007's tenancy (organizations, accounts, members, their
 // identities and the members each account admits) and decision 0006's
 // credentials (API keys, sessions, signing keys and each organization's
-// break-glass credential). Store implements port.Tenancy. SigningKeys
+// break-glass credential). Store implements port.Tenancy, port.Sessions
+// and port.APIKeys: every revocation sends session:<id> on
+// infraweave_invalidate in its own transaction, and a member's new
+// session in a channel revokes their live one there. SigningKeys
 // implements token.Store with the local backend: it generates each key,
 // seals its private half into signing_keys.private_key_sealed bound to the
 // key's id, and applies a rotation under a SHARE ROW EXCLUSIVE lock, so
@@ -20,7 +23,8 @@
 // # Dependencies
 //
 // It imports the access domain's core packages and ports, internal/kernel,
-// pgx, and platform/sql, platform/sql/migrate, platform/tx,
+// pgx, and platform/sql, platform/sql/migrate, platform/sql/notify,
+// platform/tx,
 // platform/crypt for the sealed column and platform/crypt/signer for the
 // keys. Only the access domain's assembly
 // imports it.

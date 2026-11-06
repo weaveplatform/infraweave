@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -99,5 +100,16 @@ func TestUnitPrincipalCaller(t *testing.T) {
 	other := Principal{Kind: PrincipalAPIKey, ActorID: NewULID(), AccountID: p.AccountID}
 	if same.Caller() != p.Caller() || other.Caller() == p.Caller() {
 		t.Error("the caller key does not follow the actor")
+	}
+}
+
+func TestUnitPrincipalContext(t *testing.T) {
+	if _, ok := PrincipalFrom(context.Background()); ok {
+		t.Error("an empty context carries a principal")
+	}
+	p := Principal{Kind: PrincipalAPIKey, ActorID: NewULID(), Teams: []string{"ops"}}
+	got, ok := PrincipalFrom(WithPrincipal(context.Background(), p))
+	if !ok || got.ActorID != p.ActorID || got.Teams[0] != "ops" {
+		t.Errorf("PrincipalFrom = %+v, %v", got, ok)
 	}
 }

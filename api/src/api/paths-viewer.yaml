@@ -1,0 +1,39 @@
+# Scaffolded by `specref scaffold --tag Viewer` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+paths:
+  /viewer:
+    get:
+      description: Current user, if any.
+      operationId: viewer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: The viewer result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Viewer
+      tags:
+        - Viewer
+      x-bruno: Advanced/Viewer/Viewer.bru
+      x-graphql:
+        field: viewer
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read

@@ -280,10 +280,12 @@ func (s *observeSteps) inFlight(ctx context.Context, path string) error {
 	half := body[:len(body)/2]
 	if _, err := fmt.Fprintf(
 		conn,
-		"POST %s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json\r\n"+
+		"POST %s HTTP/1.1\r\nHost: %s\r\nAuthorization: Bearer %s\r\n"+
+			"Content-Type: application/json\r\n"+
 			"Idempotency-Key: in-flight\r\nContent-Length: %d\r\n\r\n%s",
 		path,
 		srv.API,
+		s.w.tokens[0],
 		len(body),
 		half,
 	); err != nil {
@@ -401,7 +403,11 @@ func (s *observeSteps) postRetrying(ctx context.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	c, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.DefaultRetry))
+	c, err := sdk.New(
+		"http://"+srv.API,
+		sdk.WithRetry(sdk.DefaultRetry),
+		sdk.WithToken(s.w.tokens[0]),
+	)
 	if err != nil {
 		return fmt.Errorf("sdk: %w", err)
 	}

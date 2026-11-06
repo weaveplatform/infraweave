@@ -19,15 +19,21 @@ func TestUnitAssembly(t *testing.T) {
 		t.Fatal("New returned nil")
 	}
 	_ = d.API()
+	_ = (*Domain)(nil).API()
+	if d.Authenticator() == nil {
+		t.Error("no authenticator")
+	}
 	tasks := d.Cron()
-	if len(tasks) != 1 || tasks[0].Kind.Name != "authn.keys.rotate" ||
-		tasks[0].Every != 24*time.Hour {
-		t.Errorf("Cron = %+v, want authn.keys.rotate daily", tasks)
+	if len(tasks) != 2 || tasks[0].Kind.Name != "authn.sessions.expire" ||
+		tasks[0].Every != time.Hour || tasks[1].Kind.Name != "authn.keys.rotate" ||
+		tasks[1].Every != 24*time.Hour {
+		t.Errorf("Cron = %+v, want authn.sessions.expire hourly and authn.keys.rotate daily", tasks)
 	}
 	manual := DefaultSettings()
 	manual.Signing.Rotation = RotationManual
 	manual.APIIssuer = "https://issuer.example.com"
-	if tasks := New(Deps{Settings: manual, Now: time.Now}).Cron(); len(tasks) != 0 {
+	if tasks := New(Deps{Settings: manual, Now: time.Now}).Cron(); len(tasks) != 1 ||
+		tasks[0].Kind != ExpireSessions {
 		t.Errorf("manual rotation registers %+v", tasks)
 	}
 }

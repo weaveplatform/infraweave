@@ -1,0 +1,368 @@
+# Scaffolded by `specref scaffold --tag Auth` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    ApiKeyRef:
+      description: A reference to a ApiKey; fetch it with GET /api-keys/{apiKeyId}.
+      properties:
+        id:
+          type: string
+      required:
+        - id
+      type: object
+      x-graphql-type: ApiKey
+    ApiKeyUserRequest:
+      description: The arguments of apiKeyUser not carried in the path.
+      properties:
+        id:
+          type: string
+        secret:
+          type: string
+      required:
+        - id
+        - secret
+      type: object
+      x-graphql-args-of: apiKeyUser
+    FederationProvider:
+      description: All supported federation providers.
+      enum:
+        - OIDC
+        - SAML
+        - GITHUB_OAUTH
+        - GOOGLE_OAUTH
+        - GITLAB_OAUTH
+        - MICROSOFT_OAUTH
+        - SLACK_OAUTH
+        - MICROSOFT_TEAMS_OAUTH
+      type: string
+      x-graphql-type: FederationProvider
+    Identity:
+      description: Identity represents a V2 identity record linked to a user via federation.
+      properties:
+        federations:
+          description: Federation records linking this identity to external providers.
+          items:
+            $ref: '#/components/schemas/IdentityFederation'
+          type: array
+        id:
+          description: ULID of the identity.
+          type: string
+      required:
+        - federations
+        - id
+      type: object
+      x-graphql-type: Identity
+    IdentityFederation:
+      description: IdentityFederation represents the link between an identity and an external identity provider.
+      properties:
+        externalID:
+          description: External ID from the identity provider.
+          type: string
+        externalUsername:
+          description: External username from the identity provider, if available.
+          nullable: true
+          type: string
+        provider:
+          $ref: '#/components/schemas/FederationProvider'
+      required:
+        - externalID
+        - provider
+      type: object
+      x-graphql-type: IdentityFederation
+    SecurityKey:
+      description: SecurityKey represents hardware device that supports the FIDO2 protocol.
+      properties:
+        createdAt:
+          description: Timestamp representing the security key registration.
+          format: int32
+          type: integer
+        currentOwner:
+          description: currentOwner returns true if the current user is the owner of the security key.
+          type: boolean
+        id:
+          description: Unique ID of the security key.
+          type: string
+        name:
+          description: Name of the security key.
+          type: string
+        owner:
+          description: Owner of the security key.
+          type: string
+      required:
+        - createdAt
+        - currentOwner
+        - id
+        - name
+        - owner
+      type: object
+      x-graphql-type: SecurityKey
+    Session:
+      description: Session is one session with an infraweave account, the session behind one or more tokens.
+      properties:
+        admin:
+          description: Admin means that the user is an admin of the organization.
+          type: boolean
+        channel:
+          $ref: '#/components/schemas/SessionChannel'
+        createdAt:
+          description: Time of the session creation.
+          format: int32
+          type: integer
+        current:
+          description: Current indicates whether the session is the current one.
+          type: boolean
+        email:
+          description: Email of the session creator if applicable.
+          type: string
+        expiresAt:
+          description: Time of the session expiration.
+          format: int32
+          type: integer
+        id:
+          description: Unique session ID, the same as JWT ID.
+          type: string
+        ipAddress:
+          description: IP address of the session creator.
+          type: string
+        isMachineUser:
+          description: Indicates whether the session is a machine user.
+          type: boolean
+        login:
+          description: Login of the session creator.
+          type: string
+        name:
+          description: Full name of the session creator.
+          type: string
+        teams:
+          description: Team names which the user has access to.
+          items:
+            type: string
+          type: array
+        type:
+          description: Type of the session
+          type: string
+      required:
+        - admin
+        - channel
+        - createdAt
+        - current
+        - email
+        - expiresAt
+        - id
+        - ipAddress
+        - isMachineUser
+        - login
+        - name
+        - teams
+        - type
+      type: object
+      x-graphql-type: Session
+    SessionChannel:
+      description: SessionChannel is the login path a session came through.
+      enum:
+        - UNKNOWN
+        - WEB
+        - TERRAFORM_CLI
+        - INFRAWEAVECTL
+      type: string
+      x-graphql-type: SessionChannel
+    SpaceActions:
+      description: SpaceActions define which actions are allowed in a space.
+      properties:
+        actions:
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
+        spaceID:
+          type: string
+      required:
+        - actions
+        - spaceID
+      type: object
+      x-graphql-type: SpaceActions
+    User:
+      description: The user, or the API key, a token acts as.
+      properties:
+        actions:
+          description: actions that the user can perform in spaces.
+          items:
+            $ref: '#/components/schemas/SpaceActions'
+          type: array
+        admin:
+          description: Whether the user has org-wide admin privileges.
+          type: boolean
+        apiKeys:
+          description: List of API keys created by the user.
+          items:
+            $ref: '#/components/schemas/ApiKeyRef'
+          type: array
+        avatarURL:
+          description: URL of the user avatar.
+          type: string
+        canCreatePersonalApiKey:
+          description: |-
+            Whether the current user may create a personal API key right now. Runs the
+            same checks as personalApiKeyCreate.
+          type: boolean
+        cannotEvaluateAccessPolicies:
+          description: Whether the access policies can be evaluated for this user.
+          type: boolean
+        email:
+          description: Email of the user, may be empty.
+          type: string
+        id:
+          description: Username.
+          type: string
+        identity:
+          $ref: '#/components/schemas/Identity'
+        identityProvider:
+          description: Identity provider.
+          type: string
+        isFirstUser:
+          description: Indicates whether the user is the first to log in for this account. Is guaranteed to be true only for the first user to log in and before any other user has logged in.
+          type: boolean
+        jwt:
+          description: Temporary access token as a string.
+          type: string
+        name:
+          description: Full name of the GitHub user.
+          type: string
+        ownedApiKeys:
+          description: |-
+            List of personal API keys owned by the user. Unlike apiKeys, this does not
+            depend on the account allowing non-root API keys.
+          items:
+            $ref: '#/components/schemas/ApiKeyRef'
+          type: array
+        securityKeys:
+          description: Returns list of the security keys for the current user.
+          items:
+            $ref: '#/components/schemas/SecurityKey'
+          type: array
+        since:
+          description: Timestamp of the first login, only populated for human users.
+          format: int32
+          nullable: true
+          type: integer
+        teams:
+          description: Team names which the user has access to.
+          items:
+            type: string
+          type: array
+        validUntil:
+          description: Unix timestamp of token validity expiration.
+          format: int32
+          type: integer
+      required:
+        - actions
+        - admin
+        - apiKeys
+        - avatarURL
+        - canCreatePersonalApiKey
+        - cannotEvaluateAccessPolicies
+        - email
+        - id
+        - identityProvider
+        - isFirstUser
+        - jwt
+        - name
+        - ownedApiKeys
+        - securityKeys
+        - teams
+        - validUntil
+      type: object
+      x-graphql-type: User
+paths:
+  /auth/logout:
+    post:
+      description: End the current session.
+      operationId: logout
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: The logout result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Logout
+      tags:
+        - Auth
+      x-bruno: Auth/Logout.bru
+      x-graphql:
+        field: logout
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
+  /auth/token:
+    post:
+      description: Exchange a secret API key for an API token, which the Users jwt carries until validUntil.
+      operationId: apiKeyUser
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyUserRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: The apiKeyUser result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      security: []
+      summary: Get Token
+      tags:
+        - Auth
+      x-bruno: Auth/Get Token.bru
+      x-graphql:
+        field: apiKeyUser
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override

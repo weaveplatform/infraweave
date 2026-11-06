@@ -9,8 +9,12 @@ Feature: Served API
   A stubbed POST answers 501, which releases its key, so an idempotent replay
   needs an operation that succeeds: TestUnitGuardedIdempotency proves it
   until a family serves a POST. Every problem names the request it answers
-  in its instance, urn:infraweave:request: and the X-Request-Id. Each
-  scenario runs its own infraweave all on a database of its own.
+  in its instance, urn:infraweave:request: and the X-Request-Id. Every
+  route but POST /auth/token needs a bearer token (decision 0006): the
+  scenario's client holds one of a seeded API key, whose caller,
+  api_key:<key>, the controls count against, and a request without one
+  answers 401 unauthenticated with WWW-Authenticate: Bearer. Each scenario
+  runs its own infraweave all on a database of its own.
 
   Scenario: The admin listener answers the liveness probe
     Given a running infraweave server
@@ -37,7 +41,7 @@ Feature: Served API
     And "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
 
   Scenario: A disabled caller gets 503 api-disabled
-    Given a running infraweave server that disables the caller "127.0.0.1"
+    Given a running infraweave server that disables the caller "api_key:01KACME0000000000000000003"
     Then "GET /api/v1/stacks" on the API listener answers a 503 problem "api-disabled"
     And the response carries Retry-After
     And "GET /livez" on the admin listener answers 200
@@ -45,3 +49,10 @@ Feature: Served API
   Scenario: Callers the operator has not disabled are unaffected
     Given a running infraweave server that disables the caller "192.0.2.1"
     Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
+
+  Scenario: A route that needs a credential refuses a request without one
+    Given a running infraweave server
+    Then "GET /api/v1/stacks" without a credential answers a 401 problem "unauthenticated"
+    And the response challenges for a bearer token
+    And "GET /api/v1/nope" without a credential answers a 401 problem "unauthenticated"
+    And "GET /livez" on the admin listener answers 200

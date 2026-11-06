@@ -301,7 +301,7 @@ func (s *servedSteps) sealBody(ctx context.Context, key string, body []byte) ([]
 		return nil, err
 	}
 	defer pool.Close()
-	sealed, err := keys.SealColumn(ctx, idempotency.Body, []string{loopback, key}, body)
+	sealed, err := keys.SealColumn(ctx, idempotency.Body, []string{scenarioCaller, key}, body)
 	if err != nil {
 		return nil, fmt.Errorf("seal a stored body: %w", err)
 	}

@@ -245,6 +245,8 @@ type world struct {
 	// apis call each server's API listener, in the order of servers.
 	api, admin *sdk.Client
 	apis       []*sdk.Client
+	// tokens are the API tokens apis hold, for a request no client sends.
+	tokens []string
 	// kek is the secrets.kek settings the scenario's servers and commands
 	// run with; nil is the local KEK.
 	kek map[string]any
@@ -345,6 +347,15 @@ func (w *world) database(ctx context.Context) (*Database, error) {
 	return db, nil
 }
 
+// querier is the scenario's database: its own PostgreSQL's when it has
+// one, else its database in the shared container.
+func (w *world) querier(ctx context.Context) (querier, error) {
+	if w.ownPG != nil {
+		return w.ownPG, nil
+	}
+	return w.database(ctx)
+}
+
 // objects is the scenario's object storage root, which all its servers
 // share.
 func (w *world) objects() string { return filepath.Join(w.dir, "objects") }
@@ -397,11 +408,17 @@ func (w *world) launch(ctx context.Context, mode string, config []byte) (*Server
 	if srv.API == "" {
 		return srv, nil
 	}
-	api, err := sdk.New("http://"+srv.API, sdk.WithRetry(sdk.NoRetry))
+	// Every route but a few needs a credential (decision 0006), so the
+	// scenario's clients hold a token of the home tenant's key.
+	db, err := w.querier(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("sdk: %w", err)
+		return nil, err
 	}
-	w.apis = append(w.apis, api)
+	api, tok, err := authenticated(ctx, db, "http://"+srv.API, home)
+	if err != nil {
+		return nil, fmt.Errorf("API client: %w", err)
+	}
+	w.apis, w.tokens = append(w.apis, api), append(w.tokens, tok)
 	if len(w.servers) == 1 {
 		w.api = api
 	}

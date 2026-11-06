@@ -44,6 +44,11 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 		`^"([A-Z]+) ([^"]+)" on the (admin|API) listener answers a (\d+) problem(?: "([a-z-]+)")?$`,
 		s.answersProblem,
 	)
+	sc.Step(
+		`^"([A-Z]+) ([^"]+)" without a credential answers a (\d+) problem(?: "([a-z-]+)")?$`,
+		s.anonymousProblem,
+	)
+	sc.Step(`^the response challenges for a bearer token$`, s.challenges)
 	sc.Step(`^"([A-Z]+) ([^"]+)" is sent (\d+) times on the API listener$`, s.sendTimes)
 	sc.Step(`^the response carries Retry-After and the rate-limit headers$`, s.rateLimitHeaders)
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
@@ -52,6 +57,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.registerSecrets(sc)
 	s.registerQueueStats(sc)
 	(&queueSteps{s: s}).register(sc)
+	(&authSteps{s: s, tokens: map[string]string{}}).register(sc)
 }
 
 // secretsWith is the secrets settings with kek as secrets.kek; nil
@@ -182,6 +188,30 @@ func (s *servedSteps) answersProblem(
 		return err
 	}
 	return isProblem(resp, method+" "+path, code, slug)
+}
+
+// anonymousProblem sends a request with no credential to the first
+// server's API listener.
+func (s *servedSteps) anonymousProblem(ctx context.Context, method, path, code, slug string) error {
+	c, err := sdk.New("http://"+s.w.servers[0].API, sdk.WithRetry(sdk.NoRetry))
+	if err != nil {
+		return fmt.Errorf("sdk: %w", err)
+	}
+	resp, err := c.Do(ctx, method, path, nil)
+	if resp == nil {
+		return err
+	}
+	r := response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
+	s.sent = append(s.sent, r)
+	return isProblem(r, method+" "+path, code, slug)
+}
+
+// challenges checks the last answer's WWW-Authenticate (RFC 6750).
+func (s *servedSteps) challenges() error {
+	if got := s.last().header.Get("WWW-Authenticate"); got != "Bearer" {
+		return fmt.Errorf("%w: WWW-Authenticate %q, want Bearer", errStep, got)
+	}
+	return nil
 }
 
 // isProblem checks that resp is a problem with status code and, when slug

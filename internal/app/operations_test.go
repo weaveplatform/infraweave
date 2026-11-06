@@ -54,7 +54,7 @@ func TestUnitAPIOperations(t *testing.T) {
 			t.Errorf("%s: %+v, want %+v", key, ops[key], want)
 		}
 	}
-	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), Domains{}, nil, Blobs{}).(*chi.Mux)
+	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), Domains{Auth: byAddress{}}, nil, Blobs{}).(*chi.Mux)
 	if !ok {
 		t.Fatal("API is not a chi router")
 	}
@@ -130,7 +130,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: 3}
 	c.RateLimit.Expensive = ratelimit.Limit{Rate: 1e-6, Burst: 1}
-	api := API(discard(), c, memory(c), Domains{}, nil, Blobs{})
+	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, nil, Blobs{})
 	const me = "192.0.2.1:1"
 
 	if rec := send(
@@ -174,8 +174,8 @@ func TestUnitAPIRateLimits(t *testing.T) {
 
 func TestUnitAPIDisabledCaller(t *testing.T) {
 	c := config.Defaults().Server
-	c.RateLimit.DisabledCallers = []string{"192.0.2.1"}
-	api := API(discard(), c, memory(c), Domains{}, nil, Blobs{})
+	c.RateLimit.DisabledCallers = []string{addressCaller("192.0.2.1")}
+	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, nil, Blobs{})
 	rec := send(api, http.MethodGet, "/api/v1/stacks", "192.0.2.1:1", "")
 	wantTyped(t, rec, problem.APIDisabled)
 	if rec.Header().Get("Retry-After") == "" || rec.Header().Get("X-RateLimit-Limit") != "" {
@@ -197,7 +197,7 @@ func TestUnitGuardedIdempotency(t *testing.T) {
 	r := Guarded(discard(), config.Defaults().Server, Operations{
 		"POST /things":        {Cost: ratelimit.Standard},
 		"POST /things/search": {Cost: ratelimit.Expensive, Search: true},
-	}, memory(config.Defaults().Server))
+	}, memory(config.Defaults().Server), byAddress{})
 	count := func(w http.ResponseWriter, _ *http.Request) {
 		runs++
 		w.WriteHeader(http.StatusCreated)
@@ -219,4 +219,38 @@ func TestUnitGuardedIdempotency(t *testing.T) {
 		rec.Header().Get(idempotency.ReplayedHeader) != "" {
 		t.Errorf("a 404 was stored: %d %v", rec.Code, rec.Header())
 	}
+}
+
+// TestUnitGuardedAuthentication checks the route classes: without an
+// authenticator every route that needs a credential answers 401 with a
+// Bearer challenge, a 404 included, and a public one passes, keyed on
+// the client's address.
+func TestUnitGuardedAuthentication(t *testing.T) {
+	ops := apiOperations()
+	if !ops["POST "+BaseURL+"/auth/token"].Public || ops["GET "+BaseURL+"/viewer"].Public ||
+		ops["POST "+BaseURL+"/auth/logout"].Public {
+		t.Fatalf("Public: token %v, viewer %v, logout %v", ops["POST "+BaseURL+"/auth/token"],
+			ops["GET "+BaseURL+"/viewer"], ops["POST "+BaseURL+"/auth/logout"])
+	}
+	c := config.Defaults().Server
+	c.RateLimit.DisabledCallers = []string{"192.0.2.1"}
+	r := Guarded(discard(), c, Operations{
+		"POST /open":   {Cost: ratelimit.Standard, Public: true},
+		"GET /private": {Cost: ratelimit.Standard},
+	}, memory(c), nil)
+	ok := func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+	r.Post("/open", ok)
+	r.Get("/private", ok)
+	for _, path := range []string{"/private", "/nope"} {
+		rec := send(r, http.MethodGet, path, "198.51.100.7:1", "")
+		wantTyped(t, rec, problem.Unauthenticated)
+		if rec.Header().Get("WWW-Authenticate") != "Bearer" {
+			t.Errorf("%s: WWW-Authenticate %q", path, rec.Header().Get("WWW-Authenticate"))
+		}
+	}
+	if rec := send(r, http.MethodPost, "/open", "198.51.100.7:1", ""); rec.Code != http.StatusOK {
+		t.Errorf("a public route: %d %s", rec.Code, rec.Body)
+	}
+	// The public route's caller is the client's address.
+	wantTyped(t, send(r, http.MethodPost, "/open", "192.0.2.1:1", ""), problem.APIDisabled)
 }

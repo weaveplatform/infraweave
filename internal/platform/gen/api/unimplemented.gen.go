@@ -14,8 +14,28 @@ type UnimplementedStrict struct{}
 
 var _ StrictServerInterface = UnimplementedStrict{}
 
+func (UnimplementedStrict) Logout(context.Context, LogoutRequestObject) (LogoutResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "logout", Route: "POST /auth/logout"}
+}
+
+func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) (ApiKeyUserResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyUser", Route: "POST /auth/token"}
+}
+
 func (UnimplementedStrict) MessageQueueStats(context.Context, MessageQueueStatsRequestObject) (MessageQueueStatsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "messageQueueStats", Route: "GET /message-queue-stats"}
+}
+
+func (UnimplementedStrict) SessionDeleteAll(context.Context, SessionDeleteAllRequestObject) (SessionDeleteAllResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "sessionDeleteAll", Route: "DELETE /sessions"}
+}
+
+func (UnimplementedStrict) Sessions(context.Context, SessionsRequestObject) (SessionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "sessions", Route: "GET /sessions"}
+}
+
+func (UnimplementedStrict) SessionDelete(context.Context, SessionDeleteRequestObject) (SessionDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "sessionDelete", Route: "DELETE /sessions/{sessionId}"}
 }
 
 func (UnimplementedStrict) StackDependencyCreate(context.Context, StackDependencyCreateRequestObject) (StackDependencyCreateResponseObject, error) {
@@ -304,4 +324,8 @@ func (UnimplementedStrict) WebhooksIntegrationUpdate(context.Context, WebhooksIn
 
 func (UnimplementedStrict) StateUploadUrl(context.Context, StateUploadUrlRequestObject) (StateUploadUrlResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stateUploadUrl", Route: "POST /state/upload-url"}
+}
+
+func (UnimplementedStrict) Viewer(context.Context, ViewerRequestObject) (ViewerResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "viewer", Route: "GET /viewer"}
 }
