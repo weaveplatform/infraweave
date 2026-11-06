@@ -208,7 +208,7 @@ var (
 	afterBatch  = func(context.Context) error { return nil }
 )
 
-// Reseal brings every sealed value of Registry under the active data key,
+// Reseal brings every sealed value of columns under the active data key,
 // then retires and deletes the keys no longer active, as decision 0013's
 // secrets.reseal does. It walks each column with keyset pagination,
 // ResealBatch rows per transaction, and repeats the walk until one finds
@@ -218,7 +218,7 @@ var (
 // here, reseals anything still under it, and the key is deleted once a
 // walk finds nothing. It is idempotent: one that stops part-way runs again
 // from the start.
-func Reseal(ctx context.Context, db DB, p kek.Provider) (int, error) {
+func Reseal(ctx context.Context, db DB, p kek.Provider, columns []Column) (int, error) {
 	all, err := load(ctx, db, p, []string{"active", "retiring", "retired"})
 	if err != nil {
 		return 0, err
@@ -228,7 +228,7 @@ func Reseal(ctx context.Context, db DB, p kek.Provider) (int, error) {
 	}
 	total := 0
 	for {
-		n, err := all.walk(ctx, db)
+		n, err := all.walk(ctx, db, columns)
 		total += n
 		if err != nil || n == 0 {
 			if err != nil {
@@ -242,7 +242,7 @@ func Reseal(ctx context.Context, db DB, p kek.Provider) (int, error) {
 		return total, err
 	}
 	for {
-		n, err := all.walk(ctx, db)
+		n, err := all.walk(ctx, db, columns)
 		total += n
 		if err != nil {
 			return total, err
@@ -273,11 +273,11 @@ func changeKeys(ctx context.Context, db DB, stmt string) error {
 	return nil
 }
 
-// walk reseals every value in Registry not under the active key and
+// walk reseals every value of columns not under the active key and
 // returns how many it resealed.
-func (k *Keyring) walk(ctx context.Context, db DB) (int, error) {
+func (k *Keyring) walk(ctx context.Context, db DB, columns []Column) (int, error) {
 	total := 0
-	for _, c := range registry {
+	for _, c := range columns {
 		n, err := k.walkColumn(ctx, db, c)
 		total += n
 		if err != nil {

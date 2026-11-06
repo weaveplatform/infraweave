@@ -504,23 +504,23 @@ func sealedRegistryProblems(schema []string, registry []crypt.Column) []string {
 	var out []string
 	for _, s := range schema {
 		if !listed[s] {
-			out = append(out, "not in crypt.Registry: "+s)
+			out = append(out, "not in SealedColumns: "+s)
 		}
 		delete(listed, s)
 	}
 	for _, e := range slices.Sorted(maps.Keys(listed)) {
-		out = append(out, "in crypt.Registry, not in the schema: "+e)
+		out = append(out, "in SealedColumns, not in the schema: "+e)
 	}
 	return out
 }
 
-// TestAccSealedColumnRegistry holds crypt.Registry to the fully migrated
+// TestAccSealedColumnRegistry holds SealedColumns to the fully migrated
 // schema (decision 0013): every _sealed column is listed with its primary
 // key, so resealing after a rotation reaches it, and nothing else is.
 func TestAccSealedColumnRegistry(t *testing.T) {
 	if got := sealedRegistryProblems(
 		sealedColumns(t, sqltest.DSN(t)),
-		crypt.Registry(),
+		SealedColumns(),
 	); len(
 		got,
 	) != 0 {
@@ -548,10 +548,10 @@ CREATE TABLE keys (id integer PRIMARY KEY, key_sealed bytea, note_sealed bytea);
 		{Table: "gone", Name: "value_sealed", Key: []string{"id"}},
 	}
 	want := []string{
-		"not in crypt.Registry: keys.key_sealed(id)",
-		"not in crypt.Registry: keys.note_sealed(id)",
-		"in crypt.Registry, not in the schema: gone.value_sealed(id)",
-		"in crypt.Registry, not in the schema: keys.key_sealed(account_id,id)",
+		"not in SealedColumns: keys.key_sealed(id)",
+		"not in SealedColumns: keys.note_sealed(id)",
+		"in SealedColumns, not in the schema: gone.value_sealed(id)",
+		"in SealedColumns, not in the schema: keys.key_sealed(account_id,id)",
 	}
 	if got := sealedRegistryProblems(
 		sealedColumns(t, url),

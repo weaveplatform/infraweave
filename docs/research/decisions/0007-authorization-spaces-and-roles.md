@@ -50,8 +50,11 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   `organization_entitlements` (0021), and
   `accounts(organization_id, id, slug, name, authz_version, claimed_at,
   created_at)`.
-  Slugs are immutable and names can be renamed. Account slugs are unique
-  across the installation, because the registry namespace
+  Slugs are immutable and names can be renamed. A slug is 1 to 63
+  lower-case letters, digits and single hyphens, starts with a letter and
+  does not end with a hyphen; `root` is reserved, because the top space
+  takes the account's slug where Spacelift says `root`. Account slugs are
+  unique across the installation, because the registry namespace
   ([0014](0014-module-and-provider-registry.md)) and the federation audience
   (0006) are installation-wide. Organization slugs are unique among
   organizations, and an organization and its first account may share a

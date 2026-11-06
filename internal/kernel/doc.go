@@ -9,8 +9,13 @@
 // characters on the wire and as a uuid in PostgreSQL, and Slug. It holds
 // decision 0015's AuditEntry, which every domain records through
 // platform/audit. It holds ErrUnavailable, the mark of a dependency that cannot be reached now, which
-// a store sets and the HTTP layer answers with 503. Principals, run states
-// and the other shared types join it with the phases that need them.
+// a store sets and the HTTP layer answers with 503. It holds decision
+// 0007's tenancy identifiers, OrganizationID, AccountID and MemberID, each a
+// ULID of its own type so one cannot stand in for another, and decision
+// 0006's Principal: its kind, the actor, and the organization, account and
+// member it acts in. Caller is the principal's `<kind>:<actor ID>` key,
+// which rate-limit buckets and idempotency keys use. Run states and the other
+// shared types join it with the phases that need them.
 //
 // # Input and output
 //

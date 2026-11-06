@@ -46,7 +46,8 @@ infraweave/
 │   ├── src/api/                   editable fragments: info.yaml, components-common.yaml, paths-<family>.yaml;
 │   │                              Deploy and Flows families alike, Flows under /api/v1/flows/ (P18c)
 │   ├── src/worker/                worker protocol fragments (P8)
-│   ├── src/operator/              operator API fragments: organizations, tiers, grants, billing, queue (P3b)
+│   ├── src/operator/              operator API fragments: organizations and break-glass (P3); tiers, grants,
+│   │                              billing, queue (P3b)
 │   ├── src/registry/              registry protocol description for contract tests; its routes are hand-written (P17)
 │   ├── proto/flows/app/v1/        the versioned App and Host gRPC services of Flows apps (P18d)
 │   ├── api.openapi.yaml           the served document, Deploy and Flows; bundled by make bundle; committed;
@@ -132,7 +133,7 @@ infraweave/
 │   │   ├── gen/                   GENERATED strict servers, one package per spec
 │   │   │   ├── api/               server.gen.go, unimplemented.gen.go                      ← internal/server/gen/deploy
 │   │   │   ├── worker/            (P8)
-│   │   │   └── operator/          (P3b)
+│   │   │   └── operator/          (P3)
 │   │   ├── observe/               slog, OpenTelemetry, /metrics, readiness on its own port (P2, P18b)
 │   │   └── testkit/               fake clock, fake object store, HTTP recorder helpers
 │   ├── iac/                       pure IaC vendor knowledge shared by server and agent (P5, P9, P20, P20b)
@@ -161,7 +162,7 @@ infraweave/
 │   │   flat domains hold one logic package, an http package and a pg package.
 │   │
 │   ├── features/                  flat, at the bottom of the domain graph: catalogue, tiers, grants, entitlement,
-│   │   │                          the feature middleware and the operator API (P3b)
+│   │   │                          the feature middleware and the operator API's features operations (P3b)
 │   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.gen.go
 │   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
 │   │   └── assembly/ internal/{expressions,http}/   no api/: no domain calls it
@@ -217,7 +218,7 @@ infraweave/
 ├── pkg/
 │   ├── client/
 │   │   ├── api/                   GENERATED client of the served API (Deploy and Flows), wrapped by pkg/sdk
-│   │   └── operator/              GENERATED operator API client (P3b)
+│   │   └── operator/              GENERATED operator API client (P3)
 │   ├── sdk/                       decision 0001's SDK over pkg/client/<spec>: token exchange, idempotency keys,
 │   │                              retries, iterators, typed problem errors; every Go client uses it (P1c)
 │   ├── flows/app/v1/              GENERATED App and Host gRPC stubs; the one pkg/ package the agent imports (P18d)

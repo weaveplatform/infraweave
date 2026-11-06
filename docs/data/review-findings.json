@@ -11372,7 +11372,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.gen.go`, which `make generate`",
-            "for the installation-level actions only: organizations, tiers, the billing switch",
+            "for the installation-level actions `access` does not serve:",
             "Entitlement belongs to the organization: its tier plus its grants"
           ],
           "absent": [
@@ -11602,7 +11602,7 @@
           "file": "docs/implementation/repo-layout.md",
           "present": [
             "the Go SDK for Flows apps, with apptest (P18d)",
-            "GENERATED operator API client (P3b)"
+            "GENERATED operator API client (P3)"
           ],
           "absent": [
             "flows-runtime",

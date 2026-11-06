@@ -325,14 +325,14 @@ func (c Column) AAD(pk []string) ([]byte, error) {
 	return []byte(c.Table + "." + c.Name + ":" + strings.Join(pk, "/")), nil
 }
 
-// registry is every sealed column of every stream. A store that seals a
-// column adds it here, and resealing after a rotation walks it;
-// TestAccSealedColumnRegistry in internal/app keeps it equal to the
+// registry is the platform stream's sealed columns. Each domain lists its
+// own beside its migrations, and internal/app joins them with these for
+// Reseal; TestAccSealedColumnRegistry there keeps the join equal to the
 // _sealed columns of the migrated schema.
 var registry = []Column{
 	{Table: "blob_objects", Name: "content_key_sealed", Key: []string{"store", "key"}},
 	{Table: "idempotency_keys", Name: "body_sealed", Key: []string{"caller", "key"}},
 }
 
-// Registry lists the sealed columns.
+// Registry lists the platform stream's sealed columns.
 func Registry() []Column { return slices.Clone(registry) }

@@ -170,7 +170,7 @@ func TestUnitBlobRoutes(t *testing.T) {
 	}
 	defer o.close()
 	cfg := local(t)
-	h := API(discard(), cfg.Server, memory(cfg.Server), nil, Blobs{Routes: o.routes})
+	h := API(discard(), cfg.Server, memory(cfg.Server), Domains{}, nil, Blobs{Routes: o.routes})
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(
 		rec,

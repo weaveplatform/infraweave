@@ -135,7 +135,7 @@ and lint is clean.
 | P2 PostgreSQL, migrations and operability | Done | Epic [#114](https://github.com/weaveplatform/infraweave/issues/114). Done: [#115](https://github.com/weaveplatform/infraweave/issues/115) the pools, transactions, `LISTEN` fan-out, ULIDs and `sqltest`, [#116](https://github.com/weaveplatform/infraweave/issues/116) IAM token authentication for AWS, Azure and GCP, [#117](https://github.com/weaveplatform/infraweave/issues/117) the migration runner, the `platform` stream, `infraweave migrate` and the schema checks, [#118](https://github.com/weaveplatform/infraweave/issues/118) `postgres-next`, [#119](https://github.com/weaveplatform/infraweave/issues/119) idempotency keys, rate limits and disabled callers shared across replicas, [#120](https://github.com/weaveplatform/infraweave/issues/120) structured logs, request IDs, probes, the shutdown order and the `scheduler` and `all` modes, [#121](https://github.com/weaveplatform/infraweave/issues/121) problem `instance` and `service-unavailable` |
 | P2b Object storage and secrets at rest | Done | Epic [#149](https://github.com/weaveplatform/infraweave/issues/149). Done: [#150](https://github.com/weaveplatform/infraweave/issues/150) the sealed formats, the keyring and the `local` KEK, [#151](https://github.com/weaveplatform/infraweave/issues/151) object storage on S3, Cloud Storage, Blob Storage and a local volume, `blob_objects` with `blob.delete` and `blob.expire`, and sealed stores, [#152](https://github.com/weaveplatform/infraweave/issues/152) the `awskms`, `gcpkms`, `azurekv` and `vault` KEK providers, [#153](https://github.com/weaveplatform/infraweave/issues/153) data key rotation and reseal, `rewrap` between KEKs, `infraweave secrets` and sealed idempotency bodies, [#154](https://github.com/weaveplatform/infraweave/issues/154) the `fips-only` job, the nightly `objectstore-cloud` job and the FIPS line of `infraweave version` |
 | P2c Work queue, cron, outbox and the event model | Done | Epic [#132](https://github.com/weaveplatform/infraweave/issues/132). Done: [#133](https://github.com/weaveplatform/infraweave/issues/133) transactional enqueue and claims across replicas, [#135](https://github.com/weaveplatform/infraweave/issues/135) workers with leases, retries, timeouts and the ordered shutdown, [#136](https://github.com/weaveplatform/infraweave/issues/136) five-field cron and periodic tasks, [#139](https://github.com/weaveplatform/infraweave/issues/139) the outbox, typed event kinds and fan-out to consumers, [#134](https://github.com/weaveplatform/infraweave/issues/134) audit entries in the change's transaction, [#138](https://github.com/weaveplatform/infraweave/issues/138) the queue and periodic tasks in the `scheduler` and `all` modes, [#137](https://github.com/weaveplatform/infraweave/issues/137) `messageQueueStats` |
-| P3 Identity and tokens | Not started | |
+| P3 Identity and tokens | In progress | Epic [#165](https://github.com/weaveplatform/infraweave/issues/165) |
 | P3b Organizations, members, account settings and the feature catalogue | Not started | |
 | P4 Spaces and authorization | Not started | |
 | P4b Roles and role bindings | Not started | |
@@ -324,7 +324,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | The object store emulators, the `fips-only` job and the scheduled cloud job land in P2b | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) runs `objectstoretest` on RustFS, fake-gcs-server, Azurite and `fs` in every pull request and against the real services nightly, and runs the tests under `fips140=only`; each lands with the drivers and the crypto it checks ([0013](../research/decisions/0013-secrets-at-rest.md)) |
 | Process logging, request IDs and the admin listener's health endpoints move from P18 to P2 | Every process mode reports `/readyz` against PostgreSQL from its first connection ([0017](../research/decisions/0017-observability-and-health.md), [0004](../research/decisions/0004-repository-architecture.md)); P18b keeps metrics, the per-account series and run tracing |
 | P3 and P4 split into P3, P3b, P4 and P4b | Size: about 110 identity operations and 47 spaces and roles operations |
-| The organization level, the feature catalogue, tiers, billing, the operator API and the OAuth authorization server land in P3b | Every operation of every served document carries `x-infraweave-feature` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)), so the gate exists before the first domain beyond identity; entitlement and pooled limits belong to the organization, and `seats` counts the members and keys P3b creates across its accounts. The authorization server ([0006](../research/decisions/0006-authentication-and-tokens.md)) needs only P3's sessions and P3b's redirect allowlist, and it stays off the critical path there |
+| The organization level, the feature catalogue, tiers, billing, the `features` operations of the operator API and the OAuth authorization server land in P3b; the operator API's document and its `access` operations land in P3 | Every operation of every served document carries `x-infraweave-feature` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)), so the gate exists before the first domain beyond identity; entitlement and pooled limits belong to the organization, and `seats` counts the members and keys P3b creates across its accounts. The authorization server ([0006](../research/decisions/0006-authentication-and-tokens.md)) needs only P3's sessions and P3b's redirect allowlist, and it stays off the critical path there. The operator API is the only way to create an organization and to set its break-glass credential, so it ships with the break-glass login that needs it |
 | Expressions land in P6 | Environment interpolation is the first surface of decision [0024](../research/decisions/0024-expression-language.md); `internal/platform/expr` and its endpoints exist before workflow files (P10), notification text (P18), templates (P21) and Flows (P18c) need them |
 | Private pools move from P14 to P8; the public worker pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public worker pool is an optional operator-run pool on the same protocol |
 | P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces |
@@ -919,15 +919,17 @@ writes it.
 
 ## P3: Identity and tokens
 
-Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0013](../research/decisions/0013-secrets-at-rest.md).
+Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0013](../research/decisions/0013-secrets-at-rest.md).
 
 **Depends on:** P2b, P2c.
 
 Every API request carries a principal: API keys exchange for tokens, sessions
-can be listed and revoked, and each organization's break-glass admin, whose
-credential only the operator sets, can log in before any identity provider
-exists. The `access` domain is created with the tenancy model: root, the
-organizations it holds, their accounts and their members.
+can be listed and revoked, the operator creates organizations with their
+first account through the operator API, and each organization's
+break-glass admin, whose credential only the operator sets, can log in
+before any identity provider exists. The `access` domain is created with
+the tenancy model: root, the organizations it holds, their accounts, their
+members and the members each account admits.
 
 **Tasks**
 1. `internal/access` skeleton (`api/`, `assembly/`, `internal/core`,
@@ -935,8 +937,10 @@ organizations it holds, their accounts and their members.
    `organizations` (an immutable slug and a display name), `accounts` (its
    organization, an immutable slug and a display name), `members` and
    `member_identities` (one row per identity provider identity of a
-   member), `api_keys` (each belonging to one account), `sessions` and
-   `signing_keys`. `root` has no row: it is the installation's top node,
+   member), `account_users` (the members an account admits, one row per
+   account and member of its organization), `api_keys` (each belonging to
+   one account), `sessions`, `signing_keys` and
+   `organization_break_glass`. `root` has no row: it is the installation's top node,
    which only operator principals reach. `internal/kernel`
    `organization.go`, `account.go` and `principal.go`, whose principal names
    its organization, its account and, for a person, its member.
@@ -966,10 +970,14 @@ organizations it holds, their accounts and their members.
    `authn.Middleware`: session rows, the `__Host-infraweave_session` cookie
    with the `Origin` rule, the 60-second cache cleared by
    `infraweave_invalidate`, forced revocation, `authn.sessions.expire`;
-   break-glass login at `/admin-login`, an organization-admin session with no account and no seat that reaches only the `Organization` and `SSO` tags, its credential in `organization_break_glass` set through the operator API; CLI loopback tokens. A session or
-   token works in one account at a time: entering another account of the
-   member's organization issues a session bound to that account, which
-   P13b's login policies admit or refuse. Operations:
+   break-glass login at `/admin-login/{organization}`, an
+   organization-admin session with no account and no seat that reaches
+   only the `Organization` and `SSO` tags, its credential in
+   `organization_break_glass` set through task 8's operator API; CLI
+   loopback tokens. A session or token works in one account at a time:
+   entering another account of the member's organization issues a session
+   bound to that account when `account_users` admits the member, which
+   P4b's bindings and P13b's login policies extend. Operations:
    `sessions`, `sessionDelete`, `sessionDeleteAll`, `logout`,
    `cliConfirmationToken`, `viewer`. Feature: `auth_sessions.feature`.
 5. Account reads: `id`, `name`, `type` and the vendor-bound
@@ -984,6 +992,20 @@ organizations it holds, their accounts and their members.
    domain in `domains.go` and the migration order. Its `features` edge lands with
    P3b and its `policiesapi.Evaluator` back edge with P13b
    ([declared graph](repo-layout.md#declared-graph)).
+8. The operator API ([0021](../research/decisions/0021-capability-scope-and-supersession.md)):
+   `api/src/operator/` bundled to `api/operator.openapi.yaml` under
+   `/operator/v1`, generated into `internal/platform/gen/operator` and
+   `pkg/client/operator`, outside the parity surface, with `access`'
+   operations: create an organization with its first account (which
+   starts unclaimed) and optionally its break-glass credential; list,
+   read and delete organizations; set, replace and remove an
+   organization's break-glass credential. Operator principals from
+   `auth.operator.keys` exchange at `POST /auth/token` for a token only
+   `/operator/v1` accepts ([0006](../research/decisions/0006-authentication-and-tokens.md)), and any other credential answers `401`
+   there. `infraweave auth hash-password` reads a password on standard
+   input and prints its PBKDF2-HMAC-SHA256 hash; a hash below 600,000
+   iterations answers `422 validation-failed`. Feature:
+   `operator_organizations.feature`.
 
 **Exit criteria**
 - Every operation listed above is served and passes its success and failure
@@ -993,6 +1015,9 @@ organizations it holds, their accounts and their members.
 - A revoked session stops working on a second replica within a second.
 - A key or session of one account reads nothing of another account, in the
   same organization or in another.
+- On an empty installation, an operator key creates an organization with
+  its first account and sets its break-glass credential, and the
+  break-glass admin signs in and reaches no account route.
 - Captures C22 and C119 replay through `TestAccCaptures` once recorded;
   until then the scenarios assert decision 0006's choices.
 - `make gate` passes at 95% in total and 90% per package.
@@ -1007,7 +1032,8 @@ The organization level and its served `Organization` tag; members,
 managed users, groups, personal keys and the account-wide settings that
 have no other owner; decision 0021's feature catalogue, with entitlement
 and pooled limits per organization, the seeded tiers, the billing switch,
-the operator API and the answers for the commercial operations; and
+the `features` operations of the operator API and the answers for the
+commercial operations; and
 decision 0006's OAuth authorization server, which `/flows/mcp` and `/mcp`
 use.
 
@@ -1079,22 +1105,18 @@ use.
    credential answers `401` there. Features:
    `organization_accounts.feature`, `organization_limits.feature`. Records
    DV-109.
-6. The operator API: `api/src/operator/` bundled to
-   `api/operator.openapi.yaml`, generated into
-   `internal/platform/gen/operator` and `pkg/client/operator`, outside the
-   parity surface, for the installation-level actions only: organizations,
-   tiers, the billing switch, organization tiers, grants, the queue's
-   dead jobs and `POST /operator/v1/secrets/rotate`, which rotates the data
-   key as `infraweave secrets rotate` does (decision
-   [0013](../research/decisions/0013-secrets-at-rest.md)). As for `api`, each domain serves its own operations:
-   `access` organizations, their first account and break-glass
-   credentials, whose tables `features` cannot reference, and `features`
-   the rest. Creating
-   an organization creates its first account, whose slug may be the
-   organization's; the account starts unclaimed until an organization admin
-   claims it (`accounts.claimed_at`, a second claim answers `409`, decision
-   [0007](../research/decisions/0007-authorization-spaces-and-roles.md)). Operator principals from `auth.operator.keys` exchange
-   at `POST /auth/token` for a token no other route accepts ([0006](../research/decisions/0006-authentication-and-tokens.md)).
+6. The operator API's `features` operations, in the document P3 task 8
+   creates, for the installation-level actions `access` does not serve:
+   tiers, the billing switch, organization tiers, grants, the queue's dead
+   jobs and `POST /operator/v1/secrets/rotate`, which rotates the data key
+   as `infraweave secrets rotate` does (decision
+   [0013](../research/decisions/0013-secrets-at-rest.md)). Creating an
+   organization, which P3 serves, gains its `organization_entitlements`
+   row with the default tier, in the same transaction through
+   `featuresapi`, and organizations created before it get theirs from a
+   migration. The first account starts unclaimed until an organization
+   admin claims it (`accounts.claimed_at`, a second claim answers `409`,
+   decision [0007](../research/decisions/0007-authorization-spaces-and-roles.md)).
    `cmd/infraweavectl` starts over `pkg/sdk` with `profile`, `whoami`,
    `version`, `api` and the `operator` group (`tier`, `organization`,
    `grant`, `billing`). Features: `platform_tiers.feature`,
