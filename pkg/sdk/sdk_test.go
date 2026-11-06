@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/weaveplatform/infraweave/pkg/client/api"
+	"github.com/weaveplatform/infraweave/pkg/client/operator"
 )
 
 // inMemory serves requests with a chi router in the calling goroutine. A
@@ -587,6 +588,35 @@ func TestUnitSDKDoHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.Get(IdempotencyKeyHeader) != "caller-key" || got.Get("X-Test") != "yes" {
+		t.Errorf("sent %v", got)
+	}
+}
+
+// TestUnitSDKOperator checks that the operator client sends under
+// OperatorPrefix with the client's token and an Idempotency-Key on a
+// write, as API does.
+func TestUnitSDKOperator(t *testing.T) {
+	var got http.Header
+	r := chi.NewRouter()
+	r.Post(OperatorPrefix+"/organizations", func(w http.ResponseWriter, req *http.Request) {
+		got = req.Header.Clone()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"o","slug":"acme","name":"Acme","createdAt":0,"accounts":[]}`))
+	})
+	c, err := New("http://infraweave.test", WithHTTPClient(inMemory{r}), WithToken("op-token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Operator.OrganizationCreateWithResponse(t.Context(), nil,
+		operator.OrganizationCreateInput{
+			Slug: "acme", Name: "Acme",
+			Account: operator.AccountInput{Slug: "main", Name: "Main"},
+		})
+	if err != nil || resp.JSON201 == nil || resp.JSON201.Slug != "acme" {
+		t.Fatalf("create = %+v, %v", resp, err)
+	}
+	if got.Get("Authorization") != "Bearer op-token" || got.Get(IdempotencyKeyHeader) == "" {
 		t.Errorf("sent %v", got)
 	}
 }

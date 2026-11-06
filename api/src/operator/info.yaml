@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: infraweave operator API
+  version: 0.1.0
+  description: >-
+    The installation operator's API (decision 0021): organizations, their
+    first accounts and their break-glass credentials. Only an operator
+    token, which an operator key from auth.operator.keys exchanges for at
+    POST /api/v1/auth/token, reaches it; any other credential answers 401.
+    Spacelift has no counterpart, so it is outside the parity surface.
+servers:
+  - url: /operator/v1
+    description: The operator API's prefix on the server's single listener.
+security:
+  - bearerAuth: []
+tags:
+  - name: Organizations
+    description: >-
+      Organizations, each created with its first account, and each
+      organization's break-glass credential.

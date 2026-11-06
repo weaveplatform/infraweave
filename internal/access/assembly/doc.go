@@ -2,15 +2,21 @@
 // (organizations, accounts, members and the members each account admits)
 // and decision 0006's identity (API keys, sessions, tokens, signing keys
 // and the break-glass credential). New builds the domain on its Deps; API
-// is its partial of the API's strict server, aliased AccessAPI; Stream is
+// is its partial of the API's strict server, aliased AccessAPI, and
+// OperatorAPI its partial of the operator API's, aliased
+// AccessOperatorAPI; Stream is
 // its migration stream and SealedColumns its sealed columns, which
 // internal/app registers in the declared graph's order. Settings are its
 // auth.* settings: the issuer, auth.tokens.api.ttl, and the signing
 // backend, rotation and kms_keys, and auth.oidc_api_keys' allowed_issuers
-// and ca_file, which Validate checks; New reads ca_file and fails when it
+// and ca_file, and auth.operator.keys, each a ULID and the lower-case hex
+// SHA-256 of its secret, which Validate checks; New reads ca_file and fails when it
 // holds no certificate; Deps.KMS are the
 // kms backend's keys, which internal/app opens. Authenticator is the
-// middleware internal/app puts in front of the API; WatchSessions keeps the
+// middleware internal/app puts in front of the API and
+// OperatorAuthenticator the one in front of the operator API;
+// HashPassword and VerifyPassword are decision 0006's break-glass
+// password hash, which infraweave auth hash-password prints; WatchSessions keeps the
 // replica's session cache in step with infraweave_invalidate. Cron is its
 // periodic tasks: ExpireSessions, authn.sessions.expire, hourly, and
 // RotateKeys, authn.keys.rotate, daily unless rotation is manual.
@@ -24,7 +30,7 @@
 // # Dependencies
 //
 // It imports accessapi, the access domain's adapters (oidc among them) and
-// its apikey, authn, session and token packages, platform/cron and platform/queue for its
+// its apikey, authn, breakglass, operator, session and token packages, platform/cron and platform/queue for its
 // tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
 // and platform/sql/notify. Only internal/app and cmd/ import it, as the
 // constructors rule enforces.

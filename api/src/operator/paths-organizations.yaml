@@ -1,0 +1,383 @@
+# The operator's organizations (decisions 0006, 0007 and 0021). An
+# organization is named by its slug, which never changes and is how the
+# operator and the break-glass login (/admin-login/{organization}) name it.
+components:
+  parameters:
+    OrganizationSlug:
+      name: organization
+      in: path
+      required: true
+      description: The organization's slug.
+      schema:
+        type: string
+  responses:
+    Unauthenticated:
+      description: >-
+        The request carries no operator token: none, an expired or revoked
+        one, or a token of any other kind.
+      headers:
+        WWW-Authenticate:
+          description: Bearer, as RFC 6750 asks.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Organization:
+      description: An organization, its accounts and whether it has a break-glass credential.
+      type: object
+      required: [id, slug, name, createdAt, accounts]
+      properties:
+        id:
+          type: string
+          description: The organization's ULID.
+        slug:
+          type: string
+          description: The organization's slug, unique among organizations and never changed.
+        name:
+          type: string
+          description: The organization's display name.
+        createdAt:
+          type: integer
+          format: int64
+          description: When the organization was created, in Unix seconds.
+        accounts:
+          type: array
+          description: The organization's accounts, oldest first.
+          items:
+            $ref: '#/components/schemas/OrganizationAccount'
+        breakGlass:
+          $ref: '#/components/schemas/BreakGlass'
+    OrganizationAccount:
+      description: One account of an organization.
+      type: object
+      required: [id, slug, name, claimed]
+      properties:
+        id:
+          type: string
+          description: The account's ULID.
+        slug:
+          type: string
+          description: The account's slug, unique across the installation and never changed.
+        name:
+          type: string
+          description: The account's display name.
+        claimed:
+          type: boolean
+          description: >-
+            Whether an organization admin has named the account's first
+            admin. An organization's first account starts unclaimed.
+    BreakGlass:
+      description: >-
+        The organization's break-glass credential, when it has one. The hash
+        is never answered.
+      type: object
+      required: [login, updatedAt]
+      properties:
+        login:
+          type: string
+          description: The login the break-glass admin signs in with.
+        updatedAt:
+          type: integer
+          format: int64
+          description: When the operator last set the credential, in Unix seconds.
+    OrganizationPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+        nextCursor:
+          type: string
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+    OrganizationCreateInput:
+      description: A new organization and its first account.
+      type: object
+      additionalProperties: false
+      required: [slug, name, account]
+      properties:
+        slug:
+          type: string
+          description: >-
+            1 to 63 lower-case letters, digits and single hyphens, starting
+            with a letter and not ending with a hyphen; root is reserved.
+        name:
+          type: string
+          description: The organization's display name.
+        account:
+          $ref: '#/components/schemas/AccountInput'
+        breakGlass:
+          $ref: '#/components/schemas/BreakGlassInput'
+    AccountInput:
+      description: The organization's first account, which starts unclaimed.
+      type: object
+      additionalProperties: false
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          description: >-
+            The account's slug, unique across the installation, in the
+            organization slug's form; it may equal the organization's.
+        name:
+          type: string
+          description: The account's display name.
+    BreakGlassInput:
+      description: An organization's break-glass credential.
+      type: object
+      additionalProperties: false
+      required: [login, passwordHash]
+      properties:
+        login:
+          type: string
+          description: The login the break-glass admin signs in with.
+        passwordHash:
+          type: string
+          writeOnly: true
+          description: >-
+            The password's PBKDF2-HMAC-SHA256 hash,
+            $pbkdf2-sha256$i=<iterations>$<salt>$<hash> in unpadded standard
+            base64, with at least 600,000 iterations and a 16-byte salt, as
+            infraweave auth hash-password prints it.
+paths:
+  /organizations:
+    get:
+      summary: List organizations
+      description: The installation's organizations, oldest first.
+      operationId: organizations
+      tags: [Organizations]
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationPage'
+          description: One page of organizations.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "401":
+          $ref: '#/components/responses/Unauthenticated'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      summary: Create an organization
+      description: >-
+        Creates an organization with its first account, unclaimed, in one
+        transaction, and its break-glass credential when the body names one.
+      operationId: organizationCreate
+      tags: [Organizations]
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateInput'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          description: >-
+            Another organization has the slug (already-exists), or a request
+            with this Idempotency-Key is in flight.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        "422":
+          description: >-
+            A slug, name, login or hash is invalid (validation-failed), or
+            this Idempotency-Key was used with another request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        "401":
+          $ref: '#/components/responses/Unauthenticated'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /organizations/{organization}:
+    get:
+      summary: Read an organization
+      operationId: organization
+      tags: [Organizations]
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: The organization.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthenticated'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      summary: Delete an organization
+      description: >-
+        Deletes the organization and its accounts with everything the access
+        domain holds for them: members, API keys, sessions and the
+        break-glass credential. Every session it held stops at once.
+      operationId: organizationDelete
+      tags: [Organizations]
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: The organization as it was.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthenticated'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /organizations/{organization}/break-glass:
+    put:
+      summary: Set the break-glass credential
+      description: >-
+        Sets or replaces the organization's break-glass credential.
+        Organization admins can neither read nor change it.
+      operationId: organizationBreakGlassSet
+      tags: [Organizations]
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BreakGlassInput'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: The organization with its credential.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          description: The login or hash is invalid (validation-failed).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        "401":
+          $ref: '#/components/responses/Unauthenticated'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      summary: Remove the break-glass credential
+      description: >-
+        Removes the organization's break-glass credential, so no break-glass
+        sign-in works until the operator sets one.
+      operationId: organizationBreakGlassDelete
+      tags: [Organizations]
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: The organization without a credential.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthenticated'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'

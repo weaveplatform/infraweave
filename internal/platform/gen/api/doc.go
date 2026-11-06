@@ -1,5 +1,5 @@
 // Package api is the generated strict chi server of api/api.openapi.yaml, the
-// one document infraweave serves under /api/v1.
+// API infraweave serves under /api/v1; the operator API is gen/operator.
 //
 // server.gen.go comes from oapi-codegen (api/oapi-server-api.yaml): the
 // request and response models, StrictServerInterface, the chi handler

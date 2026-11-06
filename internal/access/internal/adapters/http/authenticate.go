@@ -9,18 +9,31 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
-// Authenticator is accessapi.Authenticator over the authn service.
-type Authenticator struct{ auth *authn.Service }
+// Authenticator is accessapi.Authenticator over the authn service: the
+// API's, which accepts account principals, or the operator API's, which
+// accepts operator principals alone.
+type Authenticator struct {
+	authenticate func(context.Context, string) (kernel.Principal, token.Claims, error)
+}
 
 var _ accessapi.Authenticator = Authenticator{}
 
-// NewAuthenticator returns the middleware's source over auth.
-func NewAuthenticator(auth *authn.Service) Authenticator { return Authenticator{auth: auth} }
+// NewAuthenticator returns the API's middleware source over auth.
+func NewAuthenticator(auth *authn.Service) Authenticator {
+	return Authenticator{authenticate: auth.Authenticate}
+}
+
+// NewOperatorAuthenticator returns the operator API's middleware source
+// over auth.
+func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
+	return Authenticator{authenticate: auth.AuthenticateOperator}
+}
 
 // request is what the middleware keeps of a request for the handlers: the
 // client's address, and the bearer token with its expiry once it
@@ -55,7 +68,7 @@ func (a Authenticator) Middleware(public func(*http.Request) bool) func(http.Han
 				unauthenticated(w)
 				return
 			}
-			p, c, err := a.auth.Authenticate(r.Context(), raw)
+			p, c, err := a.authenticate(r.Context(), raw)
 			if errors.Is(err, authn.ErrUnauthenticated) {
 				unauthenticated(w)
 				return

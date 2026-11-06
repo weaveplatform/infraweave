@@ -2,6 +2,8 @@ package authn
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"time"
@@ -21,6 +23,9 @@ var ErrUnauthenticated = errors.New("unauthenticated")
 // authn.sessions.expire deletes it, so the session list and audit can
 // still name it.
 const Retention = 30 * 24 * time.Hour
+
+// OperatorSubject prefixes an operator token's sub, operator::<key ID>.
+const OperatorSubject = "operator::"
 
 // APIKeySubject prefixes an API token's sub, api::<key ID>.
 const APIKeySubject = "api::"
@@ -48,6 +53,12 @@ type Deps struct {
 	IssuerAllowed func(issuer string) bool
 	// Audience is every API token's aud, server.public_url/api/v1.
 	Audience string
+	// Operators are auth.operator.keys: each operator key's SHA-256 of its
+	// secret by the key's ID.
+	Operators map[kernel.ULID][sha256.Size]byte
+	// OperatorAudience is every operator token's aud,
+	// server.public_url/operator/v1, which no account route accepts.
+	OperatorAudience string
 	// TTL is auth.tokens.api.ttl, an API token's longest life.
 	TTL time.Duration
 	Now func() time.Time
@@ -75,8 +86,9 @@ type Grant struct {
 	Session session.Session
 }
 
-// Exchange trades an API key for an API token and the session it stands
-// for, recording ip as the session's address. A secret key's secret is
+// Exchange trades an API key or an operator key for a token and the
+// session it stands for, recording ip as the session's address. An
+// operator key's token is an operator token (exchangeOperator). A secret key's secret is
 // its iwk_ secret; an OIDC key's is a JWT of its issuer, whose sub must
 // match the key's subject expression and whose mapped claims add teams.
 // The token lives auth.tokens.api.ttl, never past the key's expiry. A key
@@ -86,6 +98,9 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	keyID, err := kernel.ParseULID(id)
 	if err != nil {
 		return Grant{}, ErrUnauthenticated
+	}
+	if digest, ok := s.d.Operators[keyID]; ok {
+		return s.exchangeOperator(ctx, keyID, digest, secret, ip)
 	}
 	k, err := s.d.Keys.APIKey(ctx, keyID)
 	if errors.Is(err, port.ErrNotFound) {
@@ -157,6 +172,47 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	return Grant{Token: raw, Claims: claims, Session: ss}, nil
 }
 
+// exchangeOperator trades the operator key id, whose secret's SHA-256 is
+// digest, for an operator token: its aud is the operator API's, so only
+// /operator/v1 accepts it, and its session belongs to no organization.
+func (s *Service) exchangeOperator(
+	ctx context.Context,
+	id kernel.ULID,
+	digest [sha256.Size]byte,
+	secret, ip string,
+) (Grant, error) {
+	sum := sha256.Sum256([]byte(secret))
+	if subtle.ConstantTimeCompare(sum[:], digest[:]) != 1 || s.d.OperatorAudience == "" {
+		return Grant{}, ErrUnauthenticated
+	}
+	sid := kernel.NewULID()
+	raw, claims, err := s.d.Tokens.Issue(ctx, token.Request{
+		Kind:     token.KindOperator,
+		Subject:  OperatorSubject + id.String(),
+		Session:  sid,
+		Audience: s.d.OperatorAudience,
+		TTL:      s.d.TTL.Truncate(time.Second),
+	})
+	if err != nil {
+		return Grant{}, fmt.Errorf("exchange operator key %s: %w", id, err)
+	}
+	ss := session.Session{
+		ID:        sid,
+		Channel:   session.ChannelUnknown,
+		ActorKind: kernel.PrincipalOperator,
+		ActorID:   id,
+		Login:     id.String(),
+		Name:      "operator",
+		IPAddress: ip,
+		CreatedAt: s.d.Now(),
+		ExpiresAt: claims.Expiry,
+	}
+	if err := s.d.Sessions.CreateSession(ctx, ss); err != nil {
+		return Grant{}, err //nolint:wrapcheck // the store names the write
+	}
+	return Grant{Token: raw, Claims: claims, Session: ss}, nil
+}
+
 // oidc verifies raw for the OIDC key k and returns the session's teams:
 // the issuer must still be allowed, the token must verify for the key's
 // client ID, and its sub must match the key's anchored subject
@@ -183,6 +239,7 @@ var actors = map[token.Kind]kernel.PrincipalKind{
 	token.KindAPIKey:          kernel.PrincipalAPIKey,
 	token.KindRun:             kernel.PrincipalRun,
 	token.KindOrganizationKey: kernel.PrincipalOrganization,
+	token.KindOperator:        kernel.PrincipalOperator,
 }
 
 // Authenticate is the principal an API token acts as on an account route,
@@ -195,7 +252,34 @@ func (s *Service) Authenticate(
 	ctx context.Context,
 	raw string,
 ) (kernel.Principal, token.Claims, error) {
-	c, err := s.d.Tokens.Verify(ctx, raw, s.d.Audience)
+	return s.authenticate(ctx, raw, s.d.Audience, func(ss session.Session) bool {
+		return !ss.AccountID.IsZero()
+	})
+}
+
+// AuthenticateOperator is the operator principal an operator token acts as
+// on /operator/v1, and the token's claims; any other token, an API
+// token among them, is ErrUnauthenticated, as Authenticate's are.
+func (s *Service) AuthenticateOperator(
+	ctx context.Context,
+	raw string,
+) (kernel.Principal, token.Claims, error) {
+	if s.d.OperatorAudience == "" {
+		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
+	}
+	return s.authenticate(ctx, raw, s.d.OperatorAudience, func(ss session.Session) bool {
+		return ss.ActorKind == kernel.PrincipalOperator
+	})
+}
+
+// authenticate verifies raw for audience and reads its session, which must
+// be live, of the token's kind's actor, and one route accepts.
+func (s *Service) authenticate(
+	ctx context.Context,
+	raw, audience string,
+	route func(session.Session) bool,
+) (kernel.Principal, token.Claims, error) {
+	c, err := s.d.Tokens.Verify(ctx, raw, audience)
 	if errors.Is(err, token.ErrToken) {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
 	}
@@ -209,7 +293,7 @@ func (s *Service) Authenticate(
 	if err != nil {
 		return kernel.Principal{}, token.Claims{}, err //nolint:wrapcheck // as above
 	}
-	if !ss.Live(s.d.Now()) || actors[c.Kind] != ss.ActorKind || ss.AccountID.IsZero() {
+	if !ss.Live(s.d.Now()) || actors[c.Kind] != ss.ActorKind || !route(ss) {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
 	}
 	return ss.Principal(), c, nil

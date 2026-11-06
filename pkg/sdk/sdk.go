@@ -11,11 +11,16 @@ import (
 	"strings"
 
 	"github.com/weaveplatform/infraweave/pkg/client/api"
+	"github.com/weaveplatform/infraweave/pkg/client/operator"
 )
 
 // APIPrefix is the path every served operation sits under (decision 0017),
 // the server URL of api/api.openapi.yaml.
 const APIPrefix = "/api/v1"
+
+// OperatorPrefix is the operator API's path, the server URL of
+// api/operator.openapi.yaml.
+const OperatorPrefix = "/operator/v1"
 
 // IdempotencyKeyHeader names the key every POST and PATCH carries
 // (decision 0003).
@@ -28,10 +33,14 @@ type Doer interface {
 
 // Client calls an infraweave server with the API's conventions: a bearer
 // token, an Idempotency-Key on writes, and retries on 429 and on 503 with
-// Retry-After. The generated client in API and the raw Do share them.
+// Retry-After. The generated clients in API and Operator and the raw Do
+// share them.
 type Client struct {
 	// API is the generated client of every served operation.
 	API *api.ClientWithResponses
+	// Operator is the generated client of the operator API, which only an
+	// operator token reaches.
+	Operator *operator.ClientWithResponses
 
 	base  string
 	doer  Doer
@@ -67,6 +76,11 @@ func New(baseURL string, opts ...Option) (*Client, error) {
 	}
 	var err error
 	c.API, err = api.NewClientWithResponses(c.base+APIPrefix, api.WithHTTPClient(transport{c}))
+	if err != nil {
+		return nil, fmt.Errorf("sdk: %w", err)
+	}
+	c.Operator, err = operator.NewClientWithResponses(c.base+OperatorPrefix,
+		operator.WithHTTPClient(transport{c}))
 	if err != nil {
 		return nil, fmt.Errorf("sdk: %w", err)
 	}

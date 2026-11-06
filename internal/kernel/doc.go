@@ -9,7 +9,8 @@
 // characters on the wire and as a uuid in PostgreSQL, whose text UUID
 // gives, and Slug. It holds
 // decision 0015's AuditEntry, which every domain records through
-// platform/audit. It holds ErrUnavailable, the mark of a dependency that cannot be reached now, which
+// platform/audit, and OrganizationAuditEntry, an entry of an
+// organization's own trail, above any account. It holds ErrUnavailable, the mark of a dependency that cannot be reached now, which
 // a store sets and the HTTP layer answers with 503. It holds decision
 // 0007's tenancy identifiers, OrganizationID, AccountID and MemberID, each a
 // ULID of its own type so one cannot stand in for another, and decision

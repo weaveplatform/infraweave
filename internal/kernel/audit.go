@@ -45,3 +45,27 @@ type AuditResource struct {
 	// Metadata is the type's own fields as JSON, or nil.
 	Metadata json.RawMessage
 }
+
+// OrganizationAuditEntry is an entry of an organization's own trail
+// (decision 0015): a change to the organization with no account, made by
+// an operator, an organization admin or the break-glass admin.
+type OrganizationAuditEntry struct {
+	OrganizationID OrganizationID
+	// ID is assigned when the entry is recorded.
+	ID ULID
+	// ActorKind and ActorID are the principal that acted, such as operator
+	// and its key's ID.
+	ActorKind PrincipalKind
+	ActorID   string
+	// Action is <resource>.<verb> in snake case, such as
+	// organization.create.
+	Action           string
+	EventType        string
+	AffectedResource AuditResource
+	// Body is the request as JSON with its write-only fields left out, or
+	// nil.
+	Body     json.RawMessage
+	RemoteIP string
+	// CreatedAt is set when the entry is recorded, unless the caller set it.
+	CreatedAt time.Time
+}

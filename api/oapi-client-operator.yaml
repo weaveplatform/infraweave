@@ -1,0 +1,10 @@
+# oapi-codegen configuration for the operator API's Go client (make generate).
+package: operator
+output: pkg/client/operator/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true
+  exclude-tags:
+    - handwritten

@@ -26,10 +26,11 @@ const (
 	KindOrganizationKey Kind = "organization_key"
 	KindOAuth           Kind = "oauth"
 	KindRun             Kind = "run"
+	KindOperator        Kind = "operator"
 )
 
 // Kinds are every Kind.
-var Kinds = []Kind{KindUser, KindAPIKey, KindOrganizationKey, KindOAuth, KindRun}
+var Kinds = []Kind{KindUser, KindAPIKey, KindOrganizationKey, KindOAuth, KindRun, KindOperator}
 
 // Leeway is the clock skew Verify allows on iat, nbf and exp, between
 // replicas of one installation (decision 0006's constraints).

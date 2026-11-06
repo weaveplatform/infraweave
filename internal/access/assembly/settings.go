@@ -1,12 +1,16 @@
 package assembly
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 // The auth.signing settings' values.
@@ -29,6 +33,22 @@ type Settings struct {
 	Tokens      TokenSettings      `mapstructure:"tokens"`
 	Signing     SigningSettings    `mapstructure:"signing"`
 	OIDCAPIKeys OIDCAPIKeySettings `mapstructure:"oidc_api_keys"`
+	Operator    OperatorSettings   `mapstructure:"operator"`
+}
+
+// OperatorSettings are auth.operator.
+type OperatorSettings struct {
+	// Keys are the operator keys, which exchange for operator tokens: they
+	// live in configuration so the operator can act before any
+	// organization exists (decision 0006).
+	Keys []OperatorKey `mapstructure:"keys"`
+}
+
+// OperatorKey is one operator key: a ULID, and the lower-case hex SHA-256
+// of its secret, so configuration never holds the secret itself.
+type OperatorKey struct {
+	ID           string `mapstructure:"id"`
+	SecretSHA256 string `mapstructure:"secret_sha256"`
 }
 
 // OIDCAPIKeySettings are auth.oidc_api_keys.
@@ -114,6 +134,7 @@ func (s Settings) Validate() error {
 			)
 		}
 	}
+	errs = append(errs, s.Operator.validate()...)
 	for i, iss := range s.OIDCAPIKeys.AllowedIssuers {
 		if u, err := url.Parse(iss); !absoluteURL(iss) || err != nil || u.Scheme != "https" {
 			errs = append(errs, fmt.Errorf(
@@ -122,6 +143,54 @@ func (s Settings) Validate() error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// validate checks that each operator key has a ULID, named once, and a
+// SHA-256 in 64 lower-case hex digits.
+func (o OperatorSettings) validate() []error {
+	var errs []error
+	seen := map[kernel.ULID]bool{}
+	for i, k := range o.Keys {
+		id, err := kernel.ParseULID(k.ID)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("%w: auth.operator.keys[%d].id %q is not a ULID",
+				ErrConfig, i, k.ID))
+		case seen[id]:
+			errs = append(errs, fmt.Errorf("%w: auth.operator.keys[%d] repeats the id %s",
+				ErrConfig, i, k.ID))
+		}
+		seen[id] = true
+		if _, ok := sha256Hex(k.SecretSHA256); !ok {
+			errs = append(errs, fmt.Errorf(
+				"%w: auth.operator.keys[%d].secret_sha256 is not a SHA-256 in 64 lower-case hex digits",
+				ErrConfig,
+				i,
+			))
+		}
+	}
+	return errs
+}
+
+// operators are the operator keys by ID, as authn takes them; Validate has
+// checked each.
+func (o OperatorSettings) operators() map[kernel.ULID][sha256.Size]byte {
+	out := make(map[kernel.ULID][sha256.Size]byte, len(o.Keys))
+	for _, k := range o.Keys {
+		id, _ := kernel.ParseULID(k.ID)
+		out[id], _ = sha256Hex(k.SecretSHA256)
+	}
+	return out
+}
+
+func sha256Hex(s string) ([sha256.Size]byte, bool) {
+	var out [sha256.Size]byte
+	b, err := hex.DecodeString(s)
+	if err != nil || len(b) != sha256.Size || strings.ToLower(s) != s {
+		return out, false
+	}
+	copy(out[:], b)
+	return out, true
 }
 
 // validateBackend checks that the kms backend has keys, each of a known

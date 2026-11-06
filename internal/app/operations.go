@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
@@ -91,17 +93,25 @@ func strictBody(op *openapi3.Operation) *openapi3.RequestBody {
 	return op.RequestBody.Value
 }
 
-// apiOperations reads the embedded spec once. It cannot fail at run time
-// unless the generated package is corrupt, which TestUnitAPIOperations
-// would already have caught.
+// apiOperations reads the embedded specs once: the API's under BaseURL
+// and the operator API's under OperatorBaseURL, which one router serves.
+// It cannot fail at run time unless a generated package is corrupt, which
+// TestUnitAPIOperations would already have caught.
 var apiOperations = sync.OnceValue(func() Operations {
-	doc, err := api.GetSpec()
-	if err != nil {
-		panic(fmt.Sprintf("load the embedded API: %v", err))
-	}
-	ops, err := operationsOf(doc, BaseURL)
-	if err != nil {
-		panic(err.Error())
+	ops := Operations{}
+	for base, spec := range map[string]func() (*openapi3.T, error){
+		BaseURL:         api.GetSpec,
+		OperatorBaseURL: operatorapi.GetSpec,
+	} {
+		doc, err := spec()
+		if err != nil {
+			panic(fmt.Sprintf("load the embedded spec of %s: %v", base, err))
+		}
+		some, err := operationsOf(doc, base)
+		if err != nil {
+			panic(err.Error())
+		}
+		maps.Copy(ops, some)
 	}
 	return ops
 })

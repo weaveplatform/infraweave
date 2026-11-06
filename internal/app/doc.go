@@ -4,13 +4,16 @@
 // process mode over it. Domains holds the business domains, which
 // newDomains builds in the declared graph's order on the primary pool and
 // the keyring, with their settings, beside the access domain's
-// Authenticator;
+// Authenticator and OperatorAuthenticator;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //
 // It composes the serve, scheduler and all process modes (Mode). API mounts
 // the generated strict server (apiServer, which embeds
-// api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL behind decision 0003's controls; Guarded and
+// api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL, and the
+// operator API's (operatorServer) under OperatorBaseURL on the same
+// router, behind decision 0003's controls, each prefix authenticated by
+// its own authenticator (byPrefix); Guarded and
 // Operations put authentication, then the operator switch, the rate limits
 // and idempotency keys in front of each route, and last strictBodies, which
 // answers 400 invalid-request to a JSON body its operation's schema
@@ -52,12 +55,16 @@
 // SecretsRewrap are infraweave secrets generate-kek, rotate and rewrap.
 // Version and FIPS are the lines infraweave version prints, the second the
 // FIPS 140-3 mode and the Go Cryptographic Module's version.
+// HashPassword is infraweave auth hash-password: it reads a password's
+// first line and prints its break-glass hash.
 //
 // # Input and output
 //
 // Run binds its mode's listeners through httpkit/serve and answers HTTP on
 // them until the context ends, then shuts down in decision 0017's order. The
-// operation table is decoded once from the spec embedded in gen/api. Run
+// operation table is decoded once from the specs embedded in gen/api and
+// gen/operator. HashPassword reads its io.Reader and writes the
+// io.Writer. Run
 // connects to PostgreSQL through platform/sql and migrates it through
 // platform/sql/migrate before any listener binds, logging each file it
 // applies, then loads the keyring from encryption_keys through the KEK
@@ -74,8 +81,8 @@
 //
 // It imports app/config for the settings; each domain's assembly (access)
 // to build it, mount its partial and list its stream and sealed columns;
-// platform/gen/api for the strict
-// server; platform/httpkit/{serve,middleware,middleware/ratelimit,
+// platform/gen/api and platform/gen/operator for the strict
+// servers; platform/httpkit/{serve,middleware,middleware/ratelimit,
 // middleware/idempotency,problem} for the listeners and controls;
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;

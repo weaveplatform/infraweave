@@ -55,32 +55,6 @@ var _ port.Tenancy = (*Store)(nil)
 // New returns the store on db.
 func New(db DB) *Store { return &Store{db: db} }
 
-// CreateOrganization inserts org and first in one transaction, or neither.
-func (s *Store) CreateOrganization(
-	ctx context.Context,
-	org organization.Organization,
-	first account.Account,
-) error {
-	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-		q := tx.Q(ctx, s.db)
-		if _, err := q.Exec(ctx,
-			`INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)`,
-			org.ID, org.Slug, org.Name); err != nil {
-			return classify(err, "organization")
-		}
-		if _, err := q.Exec(ctx,
-			`INSERT INTO accounts (organization_id, id, slug, name) VALUES ($1, $2, $3, $4)`,
-			first.OrganizationID, first.ID, first.Slug, first.Name); err != nil {
-			return classify(err, "account")
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("create organization %s: %w", org.Slug, err)
-	}
-	return nil
-}
-
 // Organization reads the organization id.
 func (s *Store) Organization(
 	ctx context.Context,

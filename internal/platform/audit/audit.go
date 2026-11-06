@@ -75,6 +75,43 @@ func validate(e kernel.AuditEntry) error {
 	return nil
 }
 
+const insertOrganization = `
+INSERT INTO organization_audit_trail_entries (organization_id, id, actor_kind, actor_id, action,
+    event_type, affected_type, affected_id, body, remote_ip, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, nullif($10, ''), $11)`
+
+// RecordOrganization inserts e into its organization's trail inside the
+// transaction on ctx, as Record does an account's entry: it refuses an
+// entry without its organization, actor, action, event type or affected
+// resource (ErrEntry) or made outside a transaction (ErrNoTransaction).
+func RecordOrganization(
+	ctx context.Context,
+	e kernel.OrganizationAuditEntry,
+) (kernel.OrganizationAuditEntry, error) {
+	if e.OrganizationID.IsZero() || e.ActorKind == "" || e.ActorID == "" || e.Action == "" ||
+		e.EventType == "" || e.AffectedResource.Type == "" || e.AffectedResource.ID == "" {
+		return kernel.OrganizationAuditEntry{}, fmt.Errorf(
+			"%w: organization %s, actor %s %q, action %q, event type %q, affected %s %q",
+			ErrEntry, e.OrganizationID, e.ActorKind, e.ActorID, e.Action, e.EventType,
+			e.AffectedResource.Type, e.AffectedResource.ID)
+	}
+	if !tx.In(ctx) {
+		return kernel.OrganizationAuditEntry{}, ErrNoTransaction
+	}
+	e.ID = kernel.NewULID()
+	if e.CreatedAt.IsZero() {
+		e.CreatedAt = time.Now()
+	}
+	_, err := tx.Q(ctx, nil).Exec(ctx, insertOrganization, e.OrganizationID, e.ID, e.ActorKind,
+		e.ActorID, e.Action, e.EventType, e.AffectedResource.Type, e.AffectedResource.ID,
+		jsonb(e.Body), e.RemoteIP, e.CreatedAt)
+	if err != nil {
+		return kernel.OrganizationAuditEntry{}, fmt.Errorf(
+			"record organization audit entry %s: %w", e.Action, sql.Unavailable(err))
+	}
+	return e, nil
+}
+
 // jsonb passes absent JSON as NULL rather than as an empty document.
 func jsonb(b []byte) any {
 	if len(b) == 0 {

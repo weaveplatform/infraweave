@@ -1,8 +1,10 @@
 package assembly
 
 import (
+	"crypto/sha256"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 func TestUnitAssembly(t *testing.T) {
@@ -25,7 +29,9 @@ func TestUnitAssembly(t *testing.T) {
 	}
 	_ = d.API()
 	_ = (*Domain)(nil).API()
-	if d.Authenticator() == nil {
+	_ = d.OperatorAPI()
+	_ = (*Domain)(nil).OperatorAPI()
+	if d.Authenticator() == nil || d.OperatorAuthenticator() == nil {
 		t.Error("no authenticator")
 	}
 	tasks := d.Cron()
@@ -125,6 +131,19 @@ func TestUnitSettings(t *testing.T) {
 		"relative issuer": {func(s *Settings) {
 			s.OIDCAPIKeys.AllowedIssuers = []string{"idp.example.com"}
 		}, "auth.oidc_api_keys.allowed_issuers[0]"},
+		"operator id": {func(s *Settings) {
+			s.Operator.Keys = []OperatorKey{{ID: "ops", SecretSHA256: secretSHA256}}
+		}, "auth.operator.keys[0].id"},
+		"operator repeated": {func(s *Settings) {
+			id := kernel.NewULID().String()
+			s.Operator.Keys = []OperatorKey{{id, secretSHA256}, {id, secretSHA256}}
+		}, "auth.operator.keys[1] repeats"},
+		"operator hash": {func(s *Settings) {
+			s.Operator.Keys = []OperatorKey{{kernel.NewULID().String(), strings.ToUpper(secretSHA256)}}
+		}, "auth.operator.keys[0].secret_sha256"},
+		"operator short hash": {func(s *Settings) {
+			s.Operator.Keys = []OperatorKey{{kernel.NewULID().String(), "abcd"}}
+		}, "auth.operator.keys[0].secret_sha256"},
 	} {
 		s := DefaultSettings()
 		tc.edit(&s)
@@ -147,5 +166,28 @@ func TestUnitSettings(t *testing.T) {
 	}
 	if err := s.Validate(); err != nil {
 		t.Errorf("two KMS keys: %v", err)
+	}
+	s = DefaultSettings()
+	id := kernel.NewULID()
+	s.Operator.Keys = []OperatorKey{{id.String(), secretSHA256}}
+	if err := s.Validate(); err != nil {
+		t.Errorf("an operator key: %v", err)
+	}
+	if got := s.Operator.operators()[id]; got != sha256.Sum256([]byte("s3cret")) {
+		t.Errorf("operators()[%s] = %x", id, got)
+	}
+}
+
+// secretSHA256 is the SHA-256 of "s3cret" in hex.
+var secretSHA256 = fmt.Sprintf("%x", sha256.Sum256([]byte("s3cret")))
+
+func TestUnitPassword(t *testing.T) {
+	h, err := HashPassword("correct horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !VerifyPassword(h, "correct horse") || VerifyPassword(h, "wrong horse") ||
+		VerifyPassword("$argon2id$x", "correct horse") {
+		t.Errorf("VerifyPassword(%s) disagrees with HashPassword", h)
 	}
 }

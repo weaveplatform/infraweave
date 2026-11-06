@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
@@ -25,6 +26,10 @@ import (
 // AccessAPI is the access domain's partial of the API's strict server,
 // named after the domain because an embedded field takes its type's name.
 type AccessAPI = http.Server
+
+// AccessOperatorAPI is the access domain's partial of the operator API's
+// strict server, named as AccessAPI is.
+type AccessOperatorAPI = http.OperatorServer
 
 // RotateKeys is authn.keys.rotate, decision 0006's daily signing key
 // rotation. It runs on the maintenance queue with policy Ignore, so a slow
@@ -67,6 +72,9 @@ type Deps struct {
 	// Audience is the API's base URL, server.public_url and the API's
 	// prefix: every API token's aud.
 	Audience string
+	// OperatorAudience is the operator API's base URL: every operator
+	// token's aud.
+	OperatorAudience string
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 }
@@ -77,6 +85,7 @@ type Domain struct {
 	tokens *token.Service
 	authn  *authn.Service
 	keys   *apikey.Service
+	orgs   *operator.Service
 	manual bool
 }
 
@@ -122,9 +131,11 @@ func New(d Deps) (*Domain, error) {
 		IssuerAllowed: func(issuer string) bool {
 			return apikey.IssuerAllowed(d.Settings.OIDCAPIKeys.AllowedIssuers, issuer)
 		},
-		Audience: d.Audience,
-		TTL:      d.Settings.Tokens.API.TTL,
-		Now:      now,
+		Audience:         d.Audience,
+		Operators:        d.Settings.Operator.operators(),
+		OperatorAudience: d.OperatorAudience,
+		TTL:              d.Settings.Tokens.API.TTL,
+		Now:              now,
 	})
 	keys := apikey.NewService(apikey.Deps{
 		Store:          store,
@@ -132,11 +143,13 @@ func New(d Deps) (*Domain, error) {
 		AllowedIssuers: d.Settings.OIDCAPIKeys.AllowedIssuers,
 		Now:            now,
 	})
+	orgs := operator.NewService(operator.Deps{Store: store, Drop: auth.Cache().Drop, Now: now})
 	return &Domain{
 		store:  store,
 		tokens: tokens,
 		authn:  auth,
 		keys:   keys,
+		orgs:   orgs,
 		manual: manual,
 	}, nil
 }
@@ -150,8 +163,23 @@ func (d *Domain) API() AccessAPI {
 	return http.NewServer(d.authn, d.keys, d.store)
 }
 
+// OperatorAPI is the domain's partial of the operator API's strict
+// server; a nil domain's serves nothing it can answer.
+func (d *Domain) OperatorAPI() AccessOperatorAPI {
+	if d == nil {
+		return AccessOperatorAPI{}
+	}
+	return http.NewOperatorServer(d.orgs)
+}
+
 // Authenticator is the middleware that authenticates the API's requests.
 func (d *Domain) Authenticator() accessapi.Authenticator { return http.NewAuthenticator(d.authn) }
+
+// OperatorAuthenticator is the middleware that authenticates the operator
+// API's requests, accepting operator tokens alone.
+func (d *Domain) OperatorAuthenticator() accessapi.Authenticator {
+	return http.NewOperatorAuthenticator(d.authn)
+}
 
 // WatchSessions keeps the replica's session cache in step with
 // revocations until ctx ends: a session:<id> message on sub, a

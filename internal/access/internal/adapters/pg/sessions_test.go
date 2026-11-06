@@ -75,7 +75,7 @@ func seed(t *testing.T, db *pgxpool.Pool, slug string) seeded {
 	ctx := t.Context()
 	s := pg.New(db)
 	o, a := tenant(t, slug, slug)
-	if err := s.CreateOrganization(ctx, o, a); err != nil {
+	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
 		t.Fatal(err)
 	}
 	m, key := kernel.NewMemberID(), kernel.NewULID()
