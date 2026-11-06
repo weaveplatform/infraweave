@@ -121,7 +121,10 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	// Every domain appends to and subscribes on this one outbox, and
 	// registers its event kinds, before the scheduler starts.
 	events := outbox.New(db.Primary(), queue.New(db.Primary()), outbox.NewKinds())
-	domains := newDomains(c, db, keys, kms)
+	domains, err := newDomains(c, db, keys, kms)
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
 	if m.API {
 		revoked, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
 		wg.Go(func() { domains.Access.WatchSessions(background, revoked) })

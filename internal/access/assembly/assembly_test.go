@@ -1,7 +1,12 @@
 package assembly
 
 import (
+	"encoding/pem"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -14,9 +19,9 @@ func TestUnitAssembly(t *testing.T) {
 	if len(SealedColumns()) == 0 {
 		t.Error("the access stream seals signing keys, but lists no sealed column")
 	}
-	d := New(Deps{Settings: DefaultSettings(), PublicURL: "https://iw.example.com"})
-	if d == nil {
-		t.Fatal("New returned nil")
+	d, err := New(Deps{Settings: DefaultSettings(), PublicURL: "https://iw.example.com"})
+	if err != nil || d == nil {
+		t.Fatalf("New = %v, %v", d, err)
 	}
 	_ = d.API()
 	_ = (*Domain)(nil).API()
@@ -32,10 +37,51 @@ func TestUnitAssembly(t *testing.T) {
 	manual := DefaultSettings()
 	manual.Signing.Rotation = RotationManual
 	manual.APIIssuer = "https://issuer.example.com"
-	if tasks := New(Deps{Settings: manual, Now: time.Now}).Cron(); len(tasks) != 1 ||
+	if tasks := mustNew(t, Deps{Settings: manual, Now: time.Now}).Cron(); len(tasks) != 1 ||
 		tasks[0].Kind != ExpireSessions {
 		t.Errorf("manual rotation registers %+v", tasks)
 	}
+}
+
+// TestUnitAssemblyCAFile checks that auth.oidc_api_keys.ca_file is read
+// at construction: a file that is missing, or holds no certificate, fails
+// New naming the setting, and a PEM certificate is trusted.
+func TestUnitAssemblyCAFile(t *testing.T) {
+	dir := t.TempDir()
+	srv := httptest.NewTLSServer(http.NotFoundHandler())
+	t.Cleanup(srv.Close)
+	good := filepath.Join(dir, "ca.pem")
+	if err := os.WriteFile(good, pem.EncodeToMemory(&pem.Block{
+		Type: "CERTIFICATE", Bytes: srv.Certificate().Raw,
+	}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	junk := filepath.Join(dir, "junk.pem")
+	if err := os.WriteFile(junk, []byte("not a certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for file, ok := range map[string]bool{
+		good:                             true,
+		junk:                             false,
+		filepath.Join(dir, "absent.pem"): false,
+	} {
+		s := DefaultSettings()
+		s.OIDCAPIKeys.CAFile = file
+		_, err := New(Deps{Settings: s})
+		if ok != (err == nil) ||
+			(err != nil && (!errors.Is(err, ErrConfig) || !strings.Contains(err.Error(), "ca_file"))) {
+			t.Errorf("%s: %v", filepath.Base(file), err)
+		}
+	}
+}
+
+func mustNew(t *testing.T, d Deps) *Domain {
+	t.Helper()
+	dom, err := New(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dom
 }
 
 func TestUnitSettings(t *testing.T) {
@@ -73,6 +119,12 @@ func TestUnitSettings(t *testing.T) {
 		"relative":    {func(s *Settings) { s.APIIssuer = "/issuer" }, "auth.api_issuer"},
 		"credentials": {func(s *Settings) { s.APIIssuer = "https://u:p@iw.example.com" }, "auth.api_issuer"},
 		"query":       {func(s *Settings) { s.APIIssuer = "https://iw.example.com?x=1" }, "auth.api_issuer"},
+		"http issuer": {func(s *Settings) {
+			s.OIDCAPIKeys.AllowedIssuers = []string{"https://ok.example.com", "http://idp.example.com"}
+		}, "auth.oidc_api_keys.allowed_issuers[1]"},
+		"relative issuer": {func(s *Settings) {
+			s.OIDCAPIKeys.AllowedIssuers = []string{"idp.example.com"}
+		}, "auth.oidc_api_keys.allowed_issuers[0]"},
 	} {
 		s := DefaultSettings()
 		tc.edit(&s)
@@ -83,8 +135,9 @@ func TestUnitSettings(t *testing.T) {
 	}
 	s := DefaultSettings()
 	s.APIIssuer = "https://iw.example.com/issuer"
+	s.OIDCAPIKeys.AllowedIssuers = []string{"https://token.actions.githubusercontent.com"}
 	if err := s.Validate(); err != nil {
-		t.Errorf("an issuer with a path: %v", err)
+		t.Errorf("an issuer with a path and an allowed OIDC issuer: %v", err)
 	}
 	s = DefaultSettings()
 	s.Signing.Backend = BackendKMS

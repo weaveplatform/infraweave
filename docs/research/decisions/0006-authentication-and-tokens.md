@@ -243,10 +243,15 @@ a binding change takes effect without a new token.
      client ID, and `exp` and `nbf` to hold within 60 seconds of skew;
   4. matches `sub` against the subject expression compiled with Go's RE2 and
      anchored as `^(?:<expression>)$`;
-  5. applies the claim mapping, so a mapped claim becomes the session's teams.
+  5. applies the claim mapping, which renames a claim (`name`) to `value`; the
+     values of the claim mapped to `groups` join the key's own teams as the
+     session's teams.
 
+  The session's subject is `api::oidc::<client ID>::<key ID>`.
   `auth.oidc_api_keys.allowed_issuers` optionally lists the issuers a key may
   name, so a key creator cannot point the server at arbitrary URLs.
+  `auth.oidc_api_keys.ca_file` names a PEM file of further roots to trust
+  for issuers, beside the system's, for an issuer behind a private CA.
 - **Reset** (`apiKeyReset`) replaces the secret in place and revokes every
   session of the key. **Disable** and **delete** do the same.
 - **`ApiKeyInput.admin`.** Not accepted, as decision 0021 rules for this
@@ -529,7 +534,7 @@ customer can write it into a trust policy. Without AWS credentials it answers
 Strict YAML under `auth`: `api_issuer`, `run_api_token.issuer`,
 `tokens.<kind>.ttl` (including `oauth_access`, `oauth_refresh` and
 `oauth_code`), `session.idle_timeout`, `session.max_age`,
-`oidc_api_keys.allowed_issuers`, `federation.issuer`, `federation.jwks_uri`,
+`oidc_api_keys.allowed_issuers`, `oidc_api_keys.ca_file`, `federation.issuer`, `federation.jwks_uri`,
 `federation.audience`, `federation.algorithm`, `signing.backend`,
 `signing.rotation`, `signing.kms_keys`, `operator.keys`. Identity providers,
 MFA enforcement, session limits and break-glass credentials are

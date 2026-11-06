@@ -23,9 +23,15 @@ type Domains struct {
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
-// tokens through kms under the kms backend, with c's settings.
-func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, kms []signer.KMS) Domains {
-	access := accessassembly.New(accessassembly.Deps{
+// tokens through kms under the kms backend, with c's settings. It fails
+// only on a setting a domain reads a file for.
+func newDomains(
+	c config.Config,
+	db *sql.DB,
+	keys *crypt.Keyring,
+	kms []signer.KMS,
+) (Domains, error) {
+	access, err := accessassembly.New(accessassembly.Deps{
 		DB:        db.Primary(),
 		Keys:      keys,
 		KMS:       kms,
@@ -33,7 +39,10 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, kms []signer.K
 		PublicURL: c.Server.PublicURL,
 		Audience:  strings.TrimSuffix(c.Server.PublicURL, "/") + BaseURL,
 	})
-	return Domains{Access: access, Auth: access.Authenticator()}
+	if err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the setting
+	}
+	return Domains{Access: access, Auth: access.Authenticator()}, nil
 }
 
 // cron is every domain's periodic tasks, which the scheduler role runs.

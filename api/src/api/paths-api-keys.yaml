@@ -1,0 +1,655 @@
+# Scaffolded by `specref scaffold --tag API Keys` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    APIKeyInputOIDC:
+      additionalProperties: false
+      properties:
+        claimMappings:
+          $ref: '#/components/schemas/ClaimMappingInput'
+        clientId:
+          type: string
+        issuer:
+          type: string
+        subjectExpression:
+          type: string
+      required:
+        - clientId
+        - issuer
+        - subjectExpression
+      type: object
+      x-graphql-type: APIKeyInputOIDC
+    APIKeyType:
+      description: APIKeyType represents the type of an API key.
+      enum:
+        - SECRET
+        - OIDC
+      type: string
+      x-enum-descriptions:
+        OIDC: |-
+          API key that can dynamically generate tokens using an external,
+          OIDC-compliant identity provider.
+        SECRET: Classic API key with a secret.
+      x-graphql-type: APIKeyType
+    ApiKey:
+      description: ApiKey represents a user-generated API key.
+      properties:
+        accessRules:
+          description: List of permissions given explicitly to this api key.
+          items:
+            $ref: '#/components/schemas/SpaceAccessRule'
+          type: array
+        admin:
+          description: Whether the key holds a space-admin role binding on the account's top space.
+          type: boolean
+        createdAt:
+          description: Creation timestamp.
+          format: int32
+          type: integer
+        creator:
+          description: The creator of the API key.
+          type: string
+        deleted:
+          description: Indicates whether the API key is deleted.
+          type: boolean
+        description:
+          description: Free-form description of the API key.
+          type: string
+        disabled:
+          description: Indicates whether the API key has been disabled.
+          type: boolean
+        disabledAt:
+          description: When the API key was disabled. Null while the key is active.
+          format: int32
+          nullable: true
+          type: integer
+        disabledReason:
+          $ref: '#/components/schemas/ApiKeyDisabledReason'
+        expiresAt:
+          format: int32
+          nullable: true
+          type: integer
+        id:
+          description: Globally unique ID of the API key.
+          type: string
+        isMachineUser:
+          description: Indicates whether the api key is a machine user.
+          type: boolean
+        isPersonal:
+          description: Indicates whether the API key is personal, owned by a person rather than the organization.
+          type: boolean
+        lastUsedAt:
+          description: Last usage (token generation) timestamp, if any.
+          format: int32
+          nullable: true
+          type: integer
+        name:
+          description: Human-readable name of this API key.
+          type: string
+        oidcSettings:
+          $ref: '#/components/schemas/ApiKeyOIDCSettings'
+        owner:
+          description: Login of the user who owns the API key. Null for organization-level keys.
+          nullable: true
+          type: string
+        secret:
+          description: |-
+            The secret, answered only by create and reset. infraweave stores only its
+            SHA-256, so save it.
+          nullable: true
+          type: string
+        spaceCount:
+          description: Number of spaces api key was explicitly given permissions to.
+          format: int32
+          type: integer
+        teamCount:
+          description: Number of teams this key "belongs to"
+          format: int32
+          type: integer
+        teams:
+          description: |-
+            List of teams this key "belongs to". This allows non-admin API keys to be
+            treated the same way as regular users by stack-level policies.
+          items:
+            type: string
+          type: array
+        type:
+          $ref: '#/components/schemas/APIKeyType'
+      required:
+        - accessRules
+        - admin
+        - createdAt
+        - creator
+        - deleted
+        - description
+        - disabled
+        - id
+        - isMachineUser
+        - isPersonal
+        - name
+        - spaceCount
+        - teamCount
+        - teams
+        - type
+      type: object
+      x-graphql-omitted:
+        apiKeyRoleBindings: served by GET /api-keys/{apiKeyId}/api-key-role-bindings
+      x-graphql-type: ApiKey
+    ApiKeyDisabledReason:
+      description: ApiKeyDisabledReason says who disabled a personal API key.
+      enum:
+        - ADMIN
+        - ACCOUNT
+        - DEPROVISIONED
+        - SCHEME
+      type: string
+      x-enum-descriptions:
+        ACCOUNT: An account admin turned personal API keys off and disabled existing keys.
+        ADMIN: An account admin disabled the key.
+        DEPROVISIONED: The owner was deprovisioned.
+        SCHEME: The account moved to login policies.
+      x-graphql-type: ApiKeyDisabledReason
+    ApiKeyEnableNonAdminManagersRequest:
+      additionalProperties: false
+      description: The arguments of apiKeyEnableNonAdminManagers not carried in the path.
+      properties:
+        enable:
+          type: boolean
+      required:
+        - enable
+      type: object
+      x-graphql-args-of: apiKeyEnableNonAdminManagers
+    ApiKeyInput:
+      additionalProperties: false
+      description: |-
+        A new API key. There is no admin field: a body that sets one answers
+        400, and a key becomes an account admin through a space-admin role
+        binding on the account's top space (decision 0006).
+      properties:
+        description:
+          description: Description of the API key
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_api_key.description
+        expiresAt:
+          format: int32
+          nullable: true
+          type: integer
+        machine:
+          nullable: true
+          type: boolean
+        name:
+          description: Name of the API key
+          type: string
+          x-terraform:
+            - spacelift_api_key.name
+        oidc:
+          $ref: '#/components/schemas/APIKeyInputOIDC'
+        teams:
+          items:
+            type: string
+          type: array
+      required:
+        - name
+        - teams
+      type: object
+      x-graphql-type: ApiKeyInput
+    ApiKeyOIDCSettings:
+      description: ApiKeyOIDCSettings represents the OIDC settings for an API key.
+      properties:
+        claimMapping:
+          $ref: '#/components/schemas/ClaimMapping'
+        clientId:
+          description: The OIDC client ID (audience).
+          type: string
+        issuer:
+          description: The OIDC issuer URL.
+          type: string
+        subjectExpression:
+          description: |-
+            The regular expression against which the subject of the OIDC token will be
+            matched.
+          type: string
+      required:
+        - claimMapping
+        - clientId
+        - issuer
+        - subjectExpression
+      type: object
+      x-graphql-type: ApiKeyOIDCSettings
+    ApiKeyPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ApiKey'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    ApiKeyUpdateInput:
+      additionalProperties: false
+      properties:
+        description:
+          nullable: true
+          type: string
+        name:
+          nullable: true
+          type: string
+        oidcClaimMappings:
+          $ref: '#/components/schemas/ClaimMappingInput'
+        teams:
+          items:
+            type: string
+          nullable: true
+          type: array
+      type: object
+      x-graphql-type: ApiKeyUpdateInput
+    ClaimMapping:
+      properties:
+        entries:
+          items:
+            $ref: '#/components/schemas/ClaimMappingEntry'
+          type: array
+      required:
+        - entries
+      type: object
+      x-graphql-type: ClaimMapping
+    ClaimMappingEntry:
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+      required:
+        - name
+        - value
+      type: object
+      x-graphql-type: ClaimMappingEntry
+    ClaimMappingEntryInput:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+      required:
+        - name
+        - value
+      type: object
+      x-graphql-type: ClaimMappingEntryInput
+    ClaimMappingInput:
+      additionalProperties: false
+      properties:
+        entries:
+          items:
+            $ref: '#/components/schemas/ClaimMappingEntryInput'
+          type: array
+      required:
+        - entries
+      type: object
+      x-graphql-type: ClaimMappingInput
+    SpaceAccessLevel:
+      description: The level of access a user has to the given space.
+      enum:
+        - NONE
+        - READ
+        - WRITE
+        - ADMIN
+      type: string
+      x-graphql-type: SpaceAccessLevel
+    SpaceAccessRule:
+      properties:
+        space:
+          description: Slug of the space that this access rule affects.
+          type: string
+        spaceAccessLevel:
+          $ref: '#/components/schemas/SpaceAccessLevel'
+      required:
+        - space
+        - spaceAccessLevel
+      type: object
+      x-graphql-type: SpaceAccessRule
+paths:
+  /account/api-key-non-admin-managers:
+    put:
+      description: |-
+        Enable or disable non-admin managers of API keys. True lets admins of
+        spaces below the account's top space create an API key up to their
+        own permissions, and lets a key's creator delete it whatever their
+        current permissions.
+      operationId: apiKeyEnableNonAdminManagers
+      requestBody:
+        content:
+          application/json:
+            example:
+              enable: true
+            schema:
+              $ref: '#/components/schemas/ApiKeyEnableNonAdminManagersRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The apiKeyEnableNonAdminManagers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Enable Non-Admin Managers
+      tags:
+        - API Keys
+      x-bruno: API Keys/Enable Non-Admin Managers.bru
+      x-graphql:
+        field: apiKeyEnableNonAdminManagers
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
+  /api-keys:
+    get:
+      description: List of all API keys for the account.
+      operationId: apiKeys
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyPage'
+          description: The apiKeys result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List API Keys
+      tags:
+        - API Keys
+      x-bruno: API Keys/List API Keys.bru
+      x-graphql:
+        field: apiKeys
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: Create an API key.
+      operationId: apiKeyCreate
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: My API key
+              expiresAt: null
+              machine: true
+              name: my-api-key
+              teams: []
+            schema:
+              $ref: '#/components/schemas/ApiKeyInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create API Key
+      tags:
+        - API Keys
+      x-bruno: API Keys/Create API Key.bru
+      x-graphql:
+        field: apiKeyCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /api-keys/{apiKeyId}:
+    delete:
+      description: Delete an API key.
+      operationId: apiKeyDelete
+      parameters:
+        - in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The apiKeyDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete API Key
+      tags:
+        - API Keys
+      x-bruno: API Keys/Delete API Key.bru
+      x-graphql:
+        field: apiKeyDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: delete
+    get:
+      operationId: apiKey
+      parameters:
+        - in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The apiKey result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get API Key
+      tags:
+        - API Keys
+      x-bruno: API Keys/Get API Key.bru
+      x-graphql:
+        field: apiKey
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: item
+    put:
+      description: Update an API key.
+      operationId: apiKeyUpdate
+      parameters:
+        - in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: Updated description
+              name: my-api-key-updated
+            schema:
+              $ref: '#/components/schemas/ApiKeyUpdateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The apiKeyUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update API Key
+      tags:
+        - API Keys
+      x-bruno: API Keys/Update API Key.bru
+      x-graphql:
+        field: apiKeyUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: update
+  /api-keys/{apiKeyId}/reset:
+    post:
+      description: Reset the secret of an API key.
+      operationId: apiKeyReset
+      parameters:
+        - in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The apiKeyReset result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Reset API Key
+      tags:
+        - API Keys
+      x-bruno: API Keys/Reset API Key.bru
+      x-graphql:
+        field: apiKeyReset
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action

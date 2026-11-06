@@ -8,14 +8,7 @@
       "aiIntegrations"
     ],
     "API Keys": [
-      "apiKey",
-      "apiKeyApiKeyRoleBindings",
-      "apiKeyCreate",
-      "apiKeyDelete",
-      "apiKeyEnableNonRootManagers",
-      "apiKeyReset",
-      "apiKeyUpdate",
-      "apiKeys"
+      "apiKeyApiKeyRoleBindings"
     ],
     "Account": [
       "defaultPrivateWorkerPoolRunnerImage",

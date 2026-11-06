@@ -68,6 +68,16 @@ type Sessions interface {
 	ExpireSessions(ctx context.Context, before time.Time) (int64, error)
 }
 
+// OIDC verifies a JWT that an OIDC API key's caller presents.
+type OIDC interface {
+	// Verify checks raw's signature against the keys issuer publishes,
+	// and that its iss is issuer, its aud contains audience, and its exp,
+	// which it must have, and nbf hold. It returns the token's claims. A
+	// token that fails any check, or an issuer that cannot be read, is an
+	// error.
+	Verify(ctx context.Context, issuer, audience, raw string) (map[string]any, error)
+}
+
 // APIKeys reads API keys for the exchange.
 type APIKeys interface {
 	// APIKey reads the key id, whatever its account, as the exchange must

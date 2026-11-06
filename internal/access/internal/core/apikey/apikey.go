@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -27,19 +29,49 @@ const (
 	TypeOIDC   Type = "OIDC"
 )
 
-// Key is what the exchange needs of an API key.
+// TeamsClaim is the claim whose values, after the claim mapping, are an
+// OIDC key's session's teams, as Spacelift's groups claim is.
+const TeamsClaim = "groups"
+
+// Key is an API key.
 type Key struct {
 	OrganizationID kernel.OrganizationID
 	AccountID      kernel.AccountID
 	ID             kernel.ULID
 	Name           string
+	Description    string
 	Type           Type
 	// SecretHash is the SHA-256 of a secret key's secret.
 	SecretHash []byte
-	Teams      []string
-	ExpiresAt  time.Time
-	DisabledAt time.Time
-	DeletedAt  time.Time
+	// OIDC is an OIDC key's issuer settings.
+	OIDC    OIDC
+	Teams   []string
+	Machine bool
+	// Creator is the login of the principal that created the key.
+	Creator        string
+	ExpiresAt      time.Time
+	DisabledAt     time.Time
+	DisabledReason string
+	LastUsedAt     time.Time
+	CreatedAt      time.Time
+	DeletedAt      time.Time
+}
+
+// OIDC is an OIDC key's settings: the issuer whose tokens it takes, the
+// client ID their aud must contain, the expression their sub must match,
+// and the mapping from the issuer's claim names to infraweave's.
+type OIDC struct {
+	Issuer            string
+	ClientID          string
+	SubjectExpression string
+	ClaimMapping      []Mapping
+}
+
+// Mapping renames the issuer's claim Name to Value, such as
+// cognito:groups to groups.
+type Mapping struct {
+	Name  string
+	Value string
 }
 
 // Usable reports whether the key may exchange at now: neither disabled,
@@ -75,4 +107,40 @@ func Hash(secret string) ([]byte, bool) {
 	}
 	h := sha256.Sum256([]byte(secret))
 	return h[:], true
+}
+
+// CompileSubject compiles a subject expression anchored at both ends, so
+// repo:main matches only repo:main and never x-repo:main-evil.
+func CompileSubject(expr string) (*regexp.Regexp, error) {
+	return regexp.Compile(`^(?:` + expr + `)$`) //nolint:wrapcheck // the caller names the field
+}
+
+// Teams are the session teams of a token with claims: the key's own, then
+// the values of TeamsClaim after o's mapping, a string or a list of them,
+// each once.
+func (o OIDC) Teams(own []string, claims map[string]any) []string {
+	mapped := map[string]any{}
+	for k, v := range claims {
+		mapped[k] = v
+	}
+	for _, m := range o.ClaimMapping {
+		if v, ok := claims[m.Name]; ok {
+			mapped[m.Value] = v
+		}
+	}
+	out := slices.Clone(own)
+	add := func(v any) {
+		if s, ok := v.(string); ok && s != "" && !slices.Contains(out, s) {
+			out = append(out, s)
+		}
+	}
+	switch v := mapped[TeamsClaim].(type) {
+	case []any:
+		for _, e := range v {
+			add(e)
+		}
+	default:
+		add(v)
+	}
+	return out
 }

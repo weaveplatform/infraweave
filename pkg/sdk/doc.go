@@ -3,7 +3,8 @@
 // generated client of every served operation (pkg/client/api) and whose Do
 // sends any request; both carry the API's conventions (decision 0003):
 //
-//   - a bearer token, set with WithToken;
+//   - a bearer token, set with WithToken, or exchanged for an API key with
+//     WithAPIKey and exchanged again before it expires;
 //   - an Idempotency-Key on every POST and PATCH, chosen once per call and
 //     sent again on each of its retries;
 //   - retries after a 429, or a 503 with Retry-After, honouring the wait
@@ -17,7 +18,8 @@
 //
 // It sends HTTP requests through the Doer it is given, http.DefaultClient
 // by default, and returns the answers and their typed errors. It logs
-// nothing and keeps no state between calls.
+// nothing; the only state it keeps between calls is WithAPIKey's current
+// token.
 //
 // # Dependencies
 //

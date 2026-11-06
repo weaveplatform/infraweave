@@ -3,7 +3,10 @@
 // AccessAPI alias: POST /auth/token (apiKeyUser) exchanges a secret API
 // key for an API token; viewer answers the caller; sessions,
 // sessionDelete, sessionDeleteAll and logout list and revoke the caller's
-// account's sessions. Authenticator is accessapi.Authenticator: the
+// account's sessions; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
+// apiKeyReset, apiKeyDelete and apiKeyEnableNonAdminManagers manage the
+// account's API keys, where a key of another account answers 404 and
+// input the service refuses 422 validation-failed. Authenticator is accessapi.Authenticator: the
 // middleware that turns a bearer token into the request's principal, or
 // answers 401 unauthenticated with WWW-Authenticate: Bearer.
 //
@@ -15,7 +18,7 @@
 //
 // # Dependencies
 //
-// It imports the access domain's authn, port and session packages and
+// It imports the access domain's apikey, authn, port and session packages and
 // accessapi, internal/kernel, the generated server, and platform/httpkit's
 // page, problem and ratelimit. Only the access domain's assembly imports
 // it.

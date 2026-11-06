@@ -13,9 +13,10 @@ import (
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
-// tenant is an account seeded through SQL with one secret API key, as
-// later scenarios seed with apiKeyCreate (#170). The IDs are fixed so
-// feature files can name the key's caller, api_key:<key>.
+// tenant is an account seeded through SQL with one secret API key, its
+// first: no credential exists before it to create one through the API
+// with. The IDs are fixed so feature files can name the key's caller,
+// api_key:<key>.
 type tenant struct {
 	org, account, key string
 	orgSlug, slug     string

@@ -3,8 +3,10 @@
 // decision 0007's tenancy (organizations, accounts, members, their
 // identities and the members each account admits) and decision 0006's
 // credentials (API keys, sessions, signing keys and each organization's
-// break-glass credential). Store implements port.Tenancy, port.Sessions
-// and port.APIKeys: every revocation sends session:<id> on
+// break-glass credential), with migration 00003 adding each account's
+// api_key_non_admin_managers. Store implements port.Tenancy,
+// port.Sessions, port.APIKeys and apikey.Store, with an OIDC key's claim
+// mapping as jsonb: every revocation sends session:<id> on
 // infraweave_invalidate in its own transaction, and a member's new
 // session in a channel revokes their live one there. SigningKeys
 // implements token.Store: under the local backend it generates each key

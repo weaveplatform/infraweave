@@ -103,11 +103,25 @@ any other unexpected failure answers `500`.
 
 Every route but `POST /auth/token` takes a bearer token
 ([decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)).
-A secret API key, `iwk_` and 43 base64url characters, exchanges there:
-`{"id", "secret"}` answers the reference's `User`, whose `jwt` is an API
-token for `auth.tokens.api.ttl`, never past the key's expiry, and whose
-`validUntil` is its expiry. A wrong ID or secret, or an expired, disabled
-or deleted key, answers one `401 unauthenticated`. A request without a
+An API key exchanges there: `{"id", "secret"}` answers the reference's
+`User`, whose `jwt` is an API token for `auth.tokens.api.ttl`, never past
+the key's expiry, and whose `validUntil` is its expiry. A secret key's
+secret is `iwk_` and 43 base64url characters. An OIDC key's secret is a JWT
+from the key's issuer, fetched over HTTPS only: it must be signed with an
+asymmetric algorithm, name the issuer as `iss` and the key's client ID in
+`aud`, hold `exp` and `nbf` within 60 seconds, and carry a `sub` the key's
+subject expression matches whole; its `groups` claim, after the key's claim
+mapping, adds teams. A wrong ID or secret, or an expired, disabled or
+deleted key, answers one `401 unauthenticated`.
+
+`GET /api-keys`, `POST /api-keys`, `GET`, `PUT` and `DELETE
+/api-keys/{apiKeyId}` and `POST /api-keys/{apiKeyId}/reset` manage the
+caller's account's keys; a key of another account answers `404`. Create and
+reset answer the secret once; only its SHA-256 is stored. Reset, disable
+and delete revoke every session of the key. `ApiKeyInput` has no `admin`:
+a body that sets it, or any field the schema does not name, answers
+`400 invalid-request`. A key's `admin` reads `false` until API key role
+bindings are served. A request without a
 valid token answers `401 unauthenticated` with `WWW-Authenticate: Bearer`.
 Each token stands for a session row, which `GET /sessions`,
 `DELETE /sessions/{sessionId}`, `DELETE /sessions` (all but the caller's)
@@ -135,6 +149,8 @@ read for 60 seconds, and a revocation reaches every replica at once through
 | `auth.tokens.api.ttl` | | `INFRAWEAVE_AUTH_TOKENS_API_TTL` | `10h`: the lifetime of the token an API key or operator key exchanges for; must be positive |
 | `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring; `kms` signs through the KMS keys of `auth.signing.kms_keys`, whose private halves never enter infraweave |
 | `auth.signing.rotation` | | `INFRAWEAVE_AUTH_SIGNING_ROTATION` | `automatic`: the daily `authn.keys.rotate` task replaces each local signing key every 90 days, and moves to a KMS key added to `auth.signing.kms_keys`; `manual` never replaces one, and is refused with `kms` |
+| `auth.oidc_api_keys.allowed_issuers` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_ALLOWED_ISSUERS` (comma-separated) | none: an OIDC API key may name any `https` issuer; when set, only these, at creation and at every exchange |
+| `auth.oidc_api_keys.ca_file` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_CA_FILE` | none: a PEM file of certificate authorities trusted beside the system's when fetching an OIDC issuer's documents, for an issuer under a private CA; read at start |
 | `auth.signing.kms_keys` | | file only | none; required by `kms`: a list of `{provider, ref}`, oldest first, whose newest key signs once it has been published for 48 hours. `awskms`: a key ID or key ARN of an `ECC_NIST_P256` `SIGN_VERIFY` key, not an alias. `gcpkms`: an `EC_SIGN_P256_SHA256` CryptoKeyVersion's resource name. `azurekv`: an EC P-256 key's ID with its version, `https://<vault>/keys/<name>/<version>`. `vault`: `<mount>/<key name>/<version>` of an `ecdsa-p256` Transit key, on the Vault `secrets.kek.vault.address` and `.auth` reach. Credentials are each KEK provider's. Every key is read at start, and one that cannot sign ES256 stops it, naming the key |
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
 | `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local`, `awskms`, `gcpkms`, `azurekv` or `vault` |

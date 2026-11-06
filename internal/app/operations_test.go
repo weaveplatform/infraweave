@@ -254,3 +254,77 @@ func TestUnitGuardedAuthentication(t *testing.T) {
 	// The public route's caller is the client's address.
 	wantTyped(t, send(r, http.MethodPost, "/open", "192.0.2.1:1", ""), problem.APIDisabled)
 }
+
+// TestUnitStrictBodies checks that an operation whose body schema forbids
+// unknown properties answers 400 invalid-request, before its handler, for
+// an unknown field, a missing required one or a wrong type, and passes a
+// good body with or without a Content-Type; a lenient operation's body is
+// not checked. The served apiKeyCreate is strict.
+func TestUnitStrictBodies(t *testing.T) {
+	ops := apiOperations()
+	if ops["POST "+BaseURL+"/api-keys"].Body == nil {
+		t.Error("apiKeyCreate's body is not strict")
+	}
+	if ops["POST "+BaseURL+"/stacks/search"].Body != nil {
+		t.Error("a lenient body is checked")
+	}
+	no := false
+	strict := &openapi3.RequestBody{
+		Required: true,
+		Content: openapi3.NewContentWithJSONSchema(&openapi3.Schema{
+			Type:                 &openapi3.Types{"object"},
+			Required:             []string{"name"},
+			Properties:           openapi3.Schemas{"name": openapi3.NewStringSchema().NewRef()},
+			AdditionalProperties: openapi3.AdditionalProperties{Has: &no},
+		}),
+	}
+	runs := 0
+	r := Guarded(discard(), config.Defaults().Server, Operations{
+		"POST /strict":  {Cost: ratelimit.Standard, Public: true, Body: strict},
+		"POST /lenient": {Cost: ratelimit.Standard, Public: true},
+	}, memory(config.Defaults().Server), nil)
+	ok := func(w http.ResponseWriter, r *http.Request) {
+		runs++
+		w.WriteHeader(http.StatusOK)
+	}
+	r.Post("/strict", ok)
+	r.Post("/lenient", ok)
+	post := func(path, body, ct string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			path,
+			strings.NewReader(body),
+		)
+		req.RemoteAddr = "192.0.2.1:1"
+		if ct != "" {
+			req.Header.Set("Content-Type", ct)
+		}
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		return rec
+	}
+	for name, body := range map[string]string{
+		"unknown field": `{"name":"k","admin":false}`,
+		"missing":       `{}`,
+		"wrong type":    `{"name":7}`,
+		"empty":         ``,
+	} {
+		rec := post("/strict", body, "application/json")
+		wantTyped(t, rec, problem.InvalidRequest)
+		if name == "unknown field" && !strings.Contains(rec.Body.String(), "admin") {
+			t.Errorf("the unknown field's problem does not name it: %s", rec.Body)
+		}
+	}
+	if runs != 0 {
+		t.Fatalf("a refused body reached the handler %d times", runs)
+	}
+	for _, ct := range []string{"application/json", ""} {
+		if rec := post("/strict", `{"name":"k"}`, ct); rec.Code != http.StatusOK {
+			t.Errorf("a good body with Content-Type %q: %d %s", ct, rec.Code, rec.Body)
+		}
+	}
+	if rec := post("/lenient", `{"anything":1}`, ""); rec.Code != http.StatusOK || runs != 3 {
+		t.Errorf("a lenient body: %d, %d runs", rec.Code, runs)
+	}
+}
