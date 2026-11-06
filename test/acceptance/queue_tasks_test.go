@@ -76,6 +76,7 @@ func (q *queueSteps) twoInstances(ctx context.Context, lease int) error {
 			"listen":       "127.0.0.1:0",
 			"admin_listen": "127.0.0.1:0",
 			"shutdown":     map[string]any{"ready_delay": "0s"},
+			"public_url":   publicURL,
 		},
 		"database":    map[string]any{"url": db.DSN},
 		"secrets":     secretsWith(nil),

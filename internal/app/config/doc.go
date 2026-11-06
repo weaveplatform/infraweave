@@ -3,7 +3,10 @@
 // Config holds every setting, keyed as in the YAML file; Server holds the
 // listener settings of httpkit/serve, squashed to server.listen,
 // server.admin_listen and server.shutdown, beside decision 0003's
-// server.rate_limit and server.idempotency; Database holds decision 0005's
+// server.rate_limit and server.idempotency and decision 0020's
+// server.public_url, which RequirePublicURL demands of the modes that
+// serve the API; Auth holds decision 0006's auth.* settings, the access
+// domain's assembly Settings; Database holds decision 0005's
 // database.* settings of platform/sql; Log holds decision 0017's log.*
 // settings of platform/observe; Queue holds decision 0011's queue.*
 // settings of platform/queue; Events holds decision 0015's events.*
@@ -43,6 +46,7 @@
 // It imports viper and pflag for the decoding, and the setting and default
 // types of platform/httpkit/serve, middleware/ratelimit,
 // middleware/idempotency, platform/sql, platform/observe, platform/queue,
-// platform/outbox, platform/crypt, crypt/kek and platform/objectstore.
+// platform/outbox, platform/crypt, crypt/kek and platform/objectstore,
+// and the access domain's assembly for its Settings.
 // internal/app and cmd/ import it.
 package config

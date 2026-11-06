@@ -950,6 +950,8 @@ members and the members each account admits.
    `internal/platform/crypt/signer` signs with a local key or a KMS
    signing key from the providers of `crypt/kek`
    ([0006](../research/decisions/0006-authentication-and-tokens.md)).
+   The issuer defaults to `server.public_url`, which `serve` and `all`
+   require ([0020](../research/decisions/0020-reference-deployments-and-packaging.md)).
    Tests: `TestUnitTokenClaims`, `TestUnitKeyRotation` in virtual time.
 3. `internal/access/internal/core/apikey`: `iwk_` secrets hashed with
    SHA-256, `POST /auth/token` exchange (`apiKeyUser`), reset, disable,

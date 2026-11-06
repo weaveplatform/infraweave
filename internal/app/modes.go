@@ -65,11 +65,11 @@ func (m Mode) String() string {
 // listening connection and the pools close only after the drain, when no
 // request can use them.
 func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
-	if err := errors.Join(
-		c.Server.Validate(),
-		c.Database.Validate(),
-		c.ObjectStore.Require(),
-	); err != nil {
+	errs := []error{c.Server.Validate(), c.Database.Validate(), c.ObjectStore.Require()}
+	if m.API {
+		errs = append(errs, c.Server.RequirePublicURL())
+	}
+	if err := errors.Join(errs...); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 	// Every mode Run starts seals, so each needs the KEK; migrate and
@@ -116,6 +116,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	// Every domain appends to and subscribes on this one outbox, and
 	// registers its event kinds, before the scheduler starts.
 	events := outbox.New(db.Primary(), queue.New(db.Primary()), outbox.NewKinds())
+	domains := newDomains(c, db, keys)
 	stopScheduler := func() {}
 	if m.Scheduler {
 		if stopScheduler, err = startScheduler(
@@ -127,6 +128,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			l,
 			events,
 			objs.store,
+			domains.cron(),
 			log,
 			health,
 		); err != nil {
@@ -139,7 +141,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		c.Server,
 		m,
 		g,
-		newDomains(db),
+		domains,
 		queue.New(db.Primary()),
 		serving(c.ObjectStore, db.Primary(), keys, objs),
 		health,

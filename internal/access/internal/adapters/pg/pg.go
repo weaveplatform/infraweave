@@ -38,9 +38,7 @@ func Stream() migrate.Stream {
 
 // SealedColumns are the access stream's sealed columns, which Reseal walks
 // with the platform's.
-func SealedColumns() []crypt.Column {
-	return []crypt.Column{{Table: "signing_keys", Name: "private_key_sealed", Key: []string{"id"}}}
-}
+func SealedColumns() []crypt.Column { return []crypt.Column{privateKey} }
 
 // DB is what the store needs of PostgreSQL: queries, and transactions for
 // a write of several rows.

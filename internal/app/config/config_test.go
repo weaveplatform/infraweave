@@ -220,6 +220,38 @@ func TestUnitLoadRejects(t *testing.T) {
 			nil,
 			"needs database.url",
 		},
+		{
+			"public URL with a path",
+			"server:\n  public_url: https://iw.example.com/api\n",
+			nil,
+			"server.public_url",
+		},
+		{
+			"public URL without a scheme",
+			"server:\n  public_url: iw.example.com\n",
+			nil,
+			"server.public_url",
+		},
+		{
+			"no API token lifetime",
+			"auth:\n  tokens:\n    api:\n      ttl: 0s\n",
+			nil,
+			"auth.tokens.api.ttl",
+		},
+		{"unknown token kind", "auth:\n  tokens:\n    browser:\n      ttl: 1h\n", nil, "browser"},
+		{
+			"unknown signing backend",
+			"auth:\n  signing:\n    backend: hsm\n",
+			nil,
+			"auth.signing.backend",
+		},
+		{
+			"unknown rotation",
+			"auth:\n  signing:\n    rotation: weekly\n",
+			nil,
+			"auth.signing.rotation",
+		},
+		{"relative issuer", "auth:\n  api_issuer: /iss\n", nil, "auth.api_issuer"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -315,6 +347,39 @@ func TestUnitServerValidate(t *testing.T) {
 				t.Errorf("got %v, want an invalid configuration naming %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// TestUnitLoadAuth checks that each auth setting and server.public_url
+// override their defaults from the file and the environment.
+func TestUnitLoadAuth(t *testing.T) {
+	file := writeFile(t, `
+server:
+  public_url: https://iw.example.com
+auth:
+  api_issuer: https://issuer.example.com
+  tokens:
+    api:
+      ttl: 2h
+  signing:
+    rotation: manual
+`)
+	t.Setenv("INFRAWEAVE_AUTH_TOKENS_API_TTL", "3h")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := c.Auth
+	if c.Server.PublicURL != "https://iw.example.com" ||
+		auth.APIIssuer != "https://issuer.example.com" || auth.Tokens.API.TTL != 3*time.Hour ||
+		auth.Signing.Rotation != "manual" || auth.Signing.Backend != "local" {
+		t.Errorf("auth = %+v, public URL %q", c.Auth, c.Server.PublicURL)
+	}
+	if err := c.Server.RequirePublicURL(); err != nil {
+		t.Error(err)
+	}
+	if err := Defaults().Server.RequirePublicURL(); !errors.Is(err, serve.ErrConfig) {
+		t.Errorf("RequirePublicURL with none = %v, want ErrConfig", err)
 	}
 }
 

@@ -46,7 +46,8 @@ func tenant(t *testing.T, org, acct string) (organization.Organization, account.
 
 func TestAccCreateOrganization(t *testing.T) {
 	ctx := t.Context()
-	s := pg.New(pool(t))
+	db := pool(t)
+	s := pg.New(db)
 	o, a := tenant(t, "acme", "acme")
 	if err := s.CreateOrganization(ctx, o, a); err != nil {
 		t.Fatal(err)
@@ -74,6 +75,16 @@ func TestAccCreateOrganization(t *testing.T) {
 	}
 	if _, err := s.Organization(ctx, o3.ID); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("the refused account's organization was kept: %v", err)
+	}
+	if _, err := db.Exec(
+		ctx,
+		`UPDATE accounts SET claimed_at = now() WHERE id = $1`,
+		a.ID,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if ga, err := s.Account(ctx, a.ID); err != nil || !ga.Claimed() {
+		t.Errorf("claimed account = %+v, %v", ga, err)
 	}
 	if _, err := s.Account(ctx, kernel.NewAccountID()); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("unknown account = %v, want ErrNotFound", err)

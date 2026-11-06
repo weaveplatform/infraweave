@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
@@ -33,13 +35,22 @@ type Config struct {
 	// ObjectStore is decision 0005's object storage; Load checks its
 	// settings, and the process modes require its driver.
 	ObjectStore objectstore.Config `mapstructure:"objectstore"`
+	// Auth is the access domain's: token lifetimes, the issuer and the
+	// signing keys (decision 0006).
+	Auth accessassembly.Settings `mapstructure:"auth"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
-// server.admin_listen and server.shutdown, and decision 0003's controls under
-// server.rate_limit and server.idempotency.
+// server.admin_listen and server.shutdown, decision 0003's controls under
+// server.rate_limit and server.idempotency, and server.public_url.
 type Server struct {
 	serve.Config `mapstructure:",squash"`
+
+	// PublicURL is decision 0020's server.public_url: the origin clients
+	// reach infraweave at, from which every absolute URL it emits derives,
+	// the token issuer among them. The modes that serve the API require it
+	// (RequirePublicURL).
+	PublicURL string `mapstructure:"public_url"`
 
 	RateLimit   ratelimit.Config   `mapstructure:"rate_limit"`
 	Idempotency idempotency.Config `mapstructure:"idempotency"`
@@ -60,6 +71,7 @@ func Defaults() Config {
 		Secrets:  crypt.Defaults(),
 
 		ObjectStore: objectstore.Defaults(),
+		Auth:        accessassembly.DefaultSettings(),
 	}
 }
 
@@ -73,7 +85,30 @@ func (s Server) Validate() error {
 	if err := s.Idempotency.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("%w: server.idempotency.%w", serve.ErrConfig, err))
 	}
+	if s.PublicURL != "" {
+		if u, err := url.Parse(
+			s.PublicURL,
+		); err != nil || (u.Scheme != "https" && u.Scheme != "http") ||
+			u.Host == "" || (u.Path != "" && u.Path != "/") || u.User != nil ||
+			u.RawQuery != "" ||
+			u.Fragment != "" {
+			errs = append(
+				errs,
+				fmt.Errorf("%w: server.public_url %q is not an http or https origin",
+					serve.ErrConfig, s.PublicURL),
+			)
+		}
+	}
 	return errors.Join(errs...)
+}
+
+// RequirePublicURL fails when server.public_url is unset, which the modes
+// that serve the API cannot run without.
+func (s Server) RequirePublicURL() error {
+	if s.PublicURL == "" {
+		return fmt.Errorf("%w: server.public_url is required to serve the API", serve.ErrConfig)
+	}
+	return nil
 }
 
 // ConfigFlag names the YAML file. It is not a setting, so it is never bound.
@@ -172,6 +207,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Events.Validate(),
 		c.Secrets.Validate(),
 		c.ObjectStore.Validate(),
+		c.Auth.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}

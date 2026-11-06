@@ -30,6 +30,7 @@ func local(t testing.TB) config.Config {
 	c.Secrets.KEK = kek.Config{Provider: kek.Local, Local: kek.LocalConfig{Key: acceptance.KEK}}
 	c.ObjectStore.Driver = objectstore.DriverFS
 	c.ObjectStore.FS.Root, c.ObjectStore.FS.URL = t.TempDir(), "http://infraweave.test"
+	c.Server.PublicURL = "http://infraweave.test"
 	return c
 }
 

@@ -80,7 +80,7 @@ func (u ULID) Value() (driver.Value, error) {
 	if u.IsZero() {
 		return nil, nil //nolint:nilnil // a nil driver.Value is SQL NULL
 	}
-	return uuidText(u), nil
+	return u.UUID(), nil
 }
 
 // Scan reads a uuid column as pgx hands it to a database/sql Scanner: its
@@ -119,7 +119,10 @@ func (u *ULID) scanUUID(s string) error {
 	return nil
 }
 
-func uuidText(u ULID) string {
+// UUID is the ULID as PostgreSQL writes its uuid column's text, which is
+// how a sealed column's associated data names a uuid key, since the
+// reseal walk reads every key as text.
+func (u ULID) UUID() string {
 	h := hex.EncodeToString(u[:])
 	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
 }

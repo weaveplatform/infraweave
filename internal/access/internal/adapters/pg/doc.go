@@ -3,7 +3,12 @@
 // decision 0007's tenancy (organizations, accounts, members, their
 // identities and the members each account admits) and decision 0006's
 // credentials (API keys, sessions, signing keys and each organization's
-// break-glass credential). Store implements port.Tenancy.
+// break-glass credential). Store implements port.Tenancy. SigningKeys
+// implements token.Store with the local backend: it generates each key,
+// seals its private half into signing_keys.private_key_sealed bound to the
+// key's id, and applies a rotation under a SHARE ROW EXCLUSIVE lock, so
+// replicas rotating together, the first key's creation among them, take
+// turns while verifiers keep reading.
 //
 // SealedColumns lists the stream's sealed columns, which internal/app
 // joins with the platform's for resealing after a data key rotation.
@@ -15,7 +20,8 @@
 // # Dependencies
 //
 // It imports the access domain's core packages and ports, internal/kernel,
-// pgx, and platform/sql, platform/sql/migrate, platform/tx and
-// platform/crypt for the column list. Only the access domain's assembly
+// pgx, and platform/sql, platform/sql/migrate, platform/tx,
+// platform/crypt for the sealed column and platform/crypt/signer for the
+// keys. Only the access domain's assembly
 // imports it.
 package pg

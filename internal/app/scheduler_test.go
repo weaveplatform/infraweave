@@ -82,22 +82,27 @@ func runModeWith(
 }
 
 // TestAccSchedulerModeStarts checks that the scheduler mode registers the
-// platform's periodic tasks and events.prune, runs them through its workers, and stops the
-// ticker before the workers; and that serve runs neither.
+// platform's periodic tasks, events.prune and the access domain's
+// authn.keys.rotate, runs them through its workers, and stops the ticker
+// before the workers; and that serve runs neither.
 func TestAccSchedulerModeStarts(t *testing.T) {
 	observer := sqltest.Open(t)
 	out, _, stop := runMode(t, observer, ModeScheduler)
 	if n := rows(t, observer, `SELECT count(*) FROM periodic_tasks
 WHERE (name, interval) IN (('queue.prune', interval '10 minutes'), ('idempotency.purge', interval '1 hour'),
-    ('events.prune', interval '10 minutes'))`); n != 3 {
-		t.Errorf("%d of the platform's periodic tasks registered, want 3", n)
+    ('events.prune', interval '10 minutes'), ('authn.keys.rotate', interval '1 day'))`); n != 4 {
+		t.Errorf("%d of the periodic tasks registered, want 4", n)
 	}
 	// Each is due once registered, so the first ticks run them.
 	until(t, "the tasks to run", func() bool {
 		return rows(t, observer, `SELECT count(*) FROM jobs
-WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune') AND queue = 'maintenance'
-    AND state = 'succeeded'`) == 3
+WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune', 'authn.keys.rotate')
+    AND queue = 'maintenance' AND state = 'succeeded'`) == 4
 	})
+	// The first rotation on an empty table creates the first key.
+	if n := rows(t, observer, `SELECT count(*) FROM signing_keys WHERE state = 'active'`); n != 1 {
+		t.Errorf("%d active signing keys after the first rotation, want 1", n)
+	}
 	if n := rows(
 		t,
 		observer,
@@ -133,5 +138,18 @@ WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune') AND queue = '
 	if got := served.String(); strings.Contains(got, "queue workers") ||
 		strings.Contains(got, "ticker") {
 		t.Errorf("serve runs the scheduler:\n%s", got)
+	}
+}
+
+// Under manual rotation the scheduler registers no authn.keys.rotate.
+func TestAccSchedulerManualRotation(t *testing.T) {
+	observer := sqltest.Open(t)
+	_, _, stop := runModeWith(t, observer, ModeScheduler, func(c *config.Config) {
+		c.Auth.Signing.Rotation = "manual"
+	})
+	defer stop()
+	if n := rows(t, observer,
+		`SELECT count(*) FROM periodic_tasks WHERE name = 'authn.keys.rotate'`); n != 0 {
+		t.Errorf("manual rotation registered authn.keys.rotate %d times", n)
 	}
 }
