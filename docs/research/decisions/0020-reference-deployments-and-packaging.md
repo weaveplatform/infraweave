@@ -191,7 +191,7 @@ Rules every cloud module follows:
 
   | Grant | `serve` | `scheduler` |
   |---|---|---|
-  | AWS S3 | `s3:GetObject`, `s3:PutObject`, `s3:AbortMultipartUpload` on the bucket's objects | the same plus `s3:DeleteObject` |
+  | AWS S3 | `s3:GetObject`, `s3:PutObject`, `s3:AbortMultipartUpload` on the bucket's objects, and `s3:ListBucket` on the bucket | the same plus `s3:DeleteObject` |
   | Google Cloud Storage | a custom role with `storage.objects.get` and `storage.objects.create`, and `iam.serviceAccounts.signBlob` on its own service account for signed URLs | the same plus `storage.objects.delete` |
   | Azure Blob Storage | a custom role with the blob `read`, `write` and `add/action` data actions, and `generateUserDelegationKey/action` for SAS | the same plus the blob `delete` data action |
   | Database | `rds-db:connect` for its database user (AWS); an Entra principal mapped to its PostgreSQL role (Azure); `roles/cloudsql.instanceUser` (Google) | the same |
@@ -199,7 +199,9 @@ Rules every cloud module follows:
 
   Google Cloud Storage needs `storage.objects.delete` to overwrite an
   object, and `serve` never overwrites one (0005's keys are written once),
-  so create alone suffices.
+  so create alone suffices. S3 answers `403` rather than `404` for a key
+  that does not exist unless the caller holds `s3:ListBucket`, so without
+  it the driver could not tell a missing object from a refused one.
 - **Outputs.** It outputs the server URL and the worker registration
   endpoint.
 - **Examples.** Each module has one example root per scenario under

@@ -54,7 +54,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "objectstore" {
 }
 
 # Decision 0020's grants: serve reads, writes and aborts multipart uploads;
-# scheduler may also delete.
+# scheduler may also delete. Both also hold s3:ListBucket on the bucket,
+# without which S3 answers 403 for a key that does not exist, and the
+# driver cannot tell a missing object from a refused one.
 locals {
   actions = {
     writer  = ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload"]
@@ -94,6 +96,10 @@ data "aws_iam_policy_document" "objectstore" {
   statement {
     actions   = each.value
     resources = ["${aws_s3_bucket.objectstore.arn}/*"]
+  }
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.objectstore.arn]
   }
 }
 
