@@ -20,6 +20,9 @@ const (
 	RotationAutomatic  = "automatic"
 	RotationManual     = "manual"
 	defaultAPITokenTTL = 10 * time.Hour
+	// A browser session's limits (decision 0006 § "Token kinds").
+	defaultIdleTimeout = 12 * time.Hour
+	defaultMaxAge      = 7 * 24 * time.Hour
 )
 
 // ErrConfig reports an auth setting the domain could not run with.
@@ -31,6 +34,7 @@ type Settings struct {
 	// server.public_url.
 	APIIssuer   string             `mapstructure:"api_issuer"`
 	Tokens      TokenSettings      `mapstructure:"tokens"`
+	Session     SessionSettings    `mapstructure:"session"`
 	Signing     SigningSettings    `mapstructure:"signing"`
 	OIDCAPIKeys OIDCAPIKeySettings `mapstructure:"oidc_api_keys"`
 	Operator    OperatorSettings   `mapstructure:"operator"`
@@ -70,6 +74,14 @@ type TokenSettings struct {
 	API Lifetime `mapstructure:"api"`
 }
 
+// SessionSettings are auth.session: a browser session's limits. It ends
+// IdleTimeout after its last use and MaxAge after its sign-in, whichever
+// comes first, and a CLI token from it ends with it.
+type SessionSettings struct {
+	IdleTimeout time.Duration `mapstructure:"idle_timeout"`
+	MaxAge      time.Duration `mapstructure:"max_age"`
+}
+
 // Lifetime is one token kind's.
 type Lifetime struct {
 	TTL time.Duration `mapstructure:"ttl"`
@@ -106,6 +118,7 @@ var kmsProviders = []string{"awskms", "gcpkms", "azurekv", "vault"}
 func DefaultSettings() Settings {
 	return Settings{
 		Tokens:  TokenSettings{API: Lifetime{TTL: defaultAPITokenTTL}},
+		Session: SessionSettings{IdleTimeout: defaultIdleTimeout, MaxAge: defaultMaxAge},
 		Signing: SigningSettings{Backend: BackendLocal, Rotation: RotationAutomatic},
 	}
 }
@@ -119,6 +132,20 @@ func (s Settings) Validate() error {
 	if s.Tokens.API.TTL <= 0 {
 		errs = append(errs, fmt.Errorf("%w: auth.tokens.api.ttl must be positive, got %s",
 			ErrConfig, s.Tokens.API.TTL))
+	}
+	for _, l := range []struct {
+		key string
+		d   time.Duration
+	}{
+		{"auth.session.idle_timeout", s.Session.IdleTimeout},
+		{"auth.session.max_age", s.Session.MaxAge},
+	} {
+		if l.d <= 0 {
+			errs = append(
+				errs,
+				fmt.Errorf("%w: %s must be positive, got %s", ErrConfig, l.key, l.d),
+			)
+		}
 	}
 	if s.Signing.Rotation != RotationAutomatic && s.Signing.Rotation != RotationManual {
 		errs = append(errs, fmt.Errorf("%w: auth.signing.rotation is %q, want %s or %s",

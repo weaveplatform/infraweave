@@ -61,18 +61,31 @@ type Deps struct {
 	OperatorAudience string
 	// TTL is auth.tokens.api.ttl, an API token's longest life.
 	TTL time.Duration
-	Now func() time.Time
+	// BreakGlass reads break-glass credentials and records sign-ins.
+	BreakGlass port.BreakGlass
+	// Admission decides which accounts admit a member.
+	Admission session.Admission
+	// Idle and MaxAge are auth.session's idle_timeout and max_age, a
+	// browser session's limits.
+	Idle, MaxAge time.Duration
+	Now          func() time.Time
 }
 
-// Service exchanges API keys for tokens and authenticates the tokens.
+// Service exchanges API keys for tokens, signs people in, and
+// authenticates both.
 type Service struct {
-	d     Deps
-	cache *session.Cache
+	d       Deps
+	cache   *session.Cache
+	secrets *secretIndex
 }
 
 // New returns the service on d, with this replica's session cache.
 func New(d Deps) *Service {
-	return &Service{d: d, cache: session.NewCache(d.Sessions.Session, d.Now)}
+	return &Service{
+		d:       d,
+		cache:   session.NewCache(d.Sessions.Session, d.Now),
+		secrets: &secretIndex{ids: map[string]kernel.ULID{}},
+	}
 }
 
 // Cache is the replica's session cache, which the invalidate watcher
@@ -242,19 +255,31 @@ var actors = map[token.Kind]kernel.PrincipalKind{
 	token.KindOperator:        kernel.PrincipalOperator,
 }
 
-// Authenticate is the principal an API token acts as on an account route,
-// and the token's claims. A token that fails verification, names no session or one that is not
+// Authenticate is the principal an API token acts as, and the token's
+// claims: on an account route, which org is false for, a principal that
+// works in an account; on an organization route also one of an
+// organization that works in none, such as a member no account admits. A
+// token that fails verification, names no session or one that is not
 // live, or whose session's actor is not of the token's kind, is
-// ErrUnauthenticated; so is a principal that works in no account, which an
-// organization, break-glass or operator principal never does. A store
-// that cannot be read is not.
+// ErrUnauthenticated, and so is an operator principal, which belongs to no
+// organization. A store that cannot be read is not.
 func (s *Service) Authenticate(
 	ctx context.Context,
 	raw string,
+	org bool,
 ) (kernel.Principal, token.Claims, error) {
-	return s.authenticate(ctx, raw, s.d.Audience, func(ss session.Session) bool {
+	return s.authenticate(ctx, raw, s.d.Audience, reaches(org))
+}
+
+// reaches is which sessions a route admits: one that works in an account,
+// or, on an organization route, one of an organization.
+func reaches(org bool) func(session.Session) bool {
+	return func(ss session.Session) bool {
+		if org {
+			return !ss.OrganizationID.IsZero()
+		}
 		return !ss.AccountID.IsZero()
-	})
+	}
 }
 
 // AuthenticateOperator is the operator principal an operator token acts as
@@ -339,9 +364,15 @@ func (s *Service) RevokeOthers(ctx context.Context, p kernel.Principal) ([]sessi
 	return out, nil
 }
 
-// Logout revokes p's own session and returns it.
+// Logout ends p's own session, which may work in no account, and returns
+// it. A CLI session it parents lives on.
 func (s *Service) Logout(ctx context.Context, p kernel.Principal) (session.Session, error) {
-	return s.Revoke(ctx, p, p.SessionID)
+	ss, err := s.d.Sessions.EndSession(ctx, p.SessionID)
+	if err != nil {
+		return session.Session{}, err //nolint:wrapcheck // as above
+	}
+	s.cache.Drop(ss.ID)
+	return ss, nil
 }
 
 // Expire is authn.sessions.expire: it deletes the sessions that ended

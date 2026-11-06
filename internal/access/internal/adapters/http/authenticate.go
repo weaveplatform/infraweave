@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
@@ -16,32 +18,59 @@ import (
 )
 
 // Authenticator is accessapi.Authenticator over the authn service: the
-// API's, which accepts account principals, or the operator API's, which
-// accepts operator principals alone.
+// API's, which accepts a bearer token or a browser session's cookie, or
+// the operator API's, which accepts operator tokens alone.
 type Authenticator struct {
-	authenticate func(context.Context, string) (kernel.Principal, token.Claims, error)
+	token   func(ctx context.Context, raw string, org bool) (kernel.Principal, token.Claims, error)
+	browser func(
+		ctx context.Context,
+		secret string,
+		org bool,
+	) (kernel.Principal, session.Session, error)
+	// origin is the public URL's origin, which a cookie-authenticated
+	// write must name in its Origin header.
+	origin string
 }
 
 var _ accessapi.Authenticator = Authenticator{}
 
-// NewAuthenticator returns the API's middleware source over auth.
-func NewAuthenticator(auth *authn.Service) Authenticator {
-	return Authenticator{authenticate: auth.Authenticate}
+// NewAuthenticator returns the API's middleware source over auth. A
+// browser session's write must carry an Origin of publicURL.
+func NewAuthenticator(auth *authn.Service, publicURL string) Authenticator {
+	return Authenticator{
+		token: auth.Authenticate, browser: auth.AuthenticateBrowser,
+		origin: Origin(publicURL),
+	}
 }
 
 // NewOperatorAuthenticator returns the operator API's middleware source
 // over auth.
 func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
-	return Authenticator{authenticate: auth.AuthenticateOperator}
+	return Authenticator{
+		token: func(ctx context.Context, raw string, _ bool) (kernel.Principal, token.Claims, error) {
+			return auth.AuthenticateOperator(ctx, raw)
+		},
+	}
+}
+
+// Origin is u's origin, <scheme>://<host>, as a browser sends it in an
+// Origin header; empty when u is not an absolute URL.
+func Origin(u string) string {
+	p, err := url.Parse(u)
+	if err != nil || p.Scheme == "" || p.Host == "" {
+		return ""
+	}
+	return p.Scheme + "://" + p.Host
 }
 
 // request is what the middleware keeps of a request for the handlers: the
-// client's address, and the bearer token with its expiry once it
-// authenticates.
+// client's address, and once it authenticates, the bearer token with its
+// expiry, or for a browser session none and the session's end.
 type request struct {
-	addr   string
-	token  string
-	expiry time.Time
+	addr    string
+	token   string
+	expiry  time.Time
+	browser bool
 }
 
 type requestKey struct{}
@@ -52,23 +81,39 @@ func from(ctx context.Context) request {
 	return r
 }
 
-// Middleware implements accessapi.Authenticator. A store that cannot be
-// read answers 503, never 401, so a client retries rather than discards a
-// good token.
-func (a Authenticator) Middleware(public func(*http.Request) bool) func(http.Handler) http.Handler {
+// Middleware implements accessapi.Authenticator. A bearer token wins over
+// a cookie. A cookie authenticates a GET or HEAD, and a write only when
+// its Origin is the public URL's (decision 0006 § "Sessions"), so another
+// site cannot make a signed-in browser write. A store that cannot be read
+// answers 503, never 401, so a client retries rather than discards a good
+// credential.
+func (a Authenticator) Middleware(
+	access func(*http.Request) accessapi.Access,
+) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rec := request{addr: ratelimit.ClientAddr(r)}
-			if public(r) {
+			acc := access(r)
+			if acc == accessapi.Public {
 				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestKey{}, rec)))
 				return
 			}
-			raw, ok := bearer(r)
-			if !ok {
-				unauthenticated(w)
-				return
+			org := acc == accessapi.Organization
+			var (
+				p   kernel.Principal
+				err error
+			)
+			if raw, ok := bearer(r); ok {
+				var c token.Claims
+				p, c, err = a.token(r.Context(), raw, org)
+				rec.token, rec.expiry = raw, c.Expiry
+			} else if secret, ok := a.cookie(r); ok {
+				var ss session.Session
+				p, ss, err = a.browser(r.Context(), secret, org)
+				rec.browser, rec.expiry = true, ss.ExpiresAt
+			} else {
+				err = authn.ErrUnauthenticated
 			}
-			p, c, err := a.authenticate(r.Context(), raw)
 			if errors.Is(err, authn.ErrUnauthenticated) {
 				unauthenticated(w)
 				return
@@ -77,11 +122,28 @@ func (a Authenticator) Middleware(public func(*http.Request) bool) func(http.Han
 				problem.Failure(w, err)
 				return
 			}
-			rec.token, rec.expiry = raw, c.Expiry
 			ctx := kernel.WithPrincipal(context.WithValue(r.Context(), requestKey{}, rec), p)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// cookie is the browser session's cookie value when the request may use
+// it: always on a safe method, and on a write only with the public URL's
+// Origin.
+func (a Authenticator) cookie(r *http.Request) (string, bool) {
+	if a.browser == nil {
+		return "", false
+	}
+	c, err := r.Cookie(session.CookieName)
+	if err != nil || c.Value == "" {
+		return "", false
+	}
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return c.Value, true
+	}
+	return c.Value, a.origin != "" && r.Header.Get("Origin") == a.origin
 }
 
 // bearer is the token of an Authorization: Bearer header, whose scheme is

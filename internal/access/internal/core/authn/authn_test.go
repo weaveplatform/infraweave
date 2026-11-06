@@ -10,6 +10,8 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
@@ -21,7 +23,11 @@ var (
 	errDown = errors.New("down")
 )
 
-const audience = "http://infraweave.test/api/v1"
+const (
+	audience = "http://infraweave.test/api/v1"
+	idle     = 12 * time.Hour
+	maxAge   = 7 * 24 * time.Hour
+)
 
 // fakes are the ports and tokens in memory. A token is its kind, session
 // and audience joined by spaces.
@@ -32,6 +38,18 @@ type fakes struct {
 	touched  int
 	expired  time.Time
 	fail     string
+	// orgs are the organizations by slug, each with its credential or nil.
+	orgs  map[kernel.Slug]orgCred
+	trail []kernel.OrganizationAuditEntry
+	// admits are the accounts that admit each member.
+	admits map[kernel.MemberID][]session.Admitted
+	// touches counts TouchSession's writes.
+	touches int
+}
+
+type orgCred struct {
+	org  organization.Organization
+	cred *breakglass.Credential
 }
 
 func (f *fakes) down(op string) error {
@@ -57,12 +75,124 @@ func (f *fakes) TouchAPIKey(context.Context, kernel.ULID) error {
 	return f.down("TouchAPIKey")
 }
 
+// CreateSession first revokes the member's live sessions in s's channel,
+// as the store does.
 func (f *fakes) CreateSession(_ context.Context, s session.Session) error {
 	if err := f.down("CreateSession"); err != nil {
 		return err
 	}
+	if !s.MemberID.IsZero() && s.Channel != session.ChannelUnknown {
+		for id, o := range f.sessions {
+			if o.MemberID == s.MemberID && o.Channel == s.Channel && o.RevokedAt.IsZero() {
+				o.RevokedAt = f.now
+				f.sessions[id] = o
+			}
+		}
+	}
 	f.sessions[s.ID] = s
 	return nil
+}
+
+func (f *fakes) SessionBySecret(_ context.Context, hash []byte) (session.Session, error) {
+	if err := f.down("SessionBySecret"); err != nil {
+		return session.Session{}, err
+	}
+	for _, s := range f.sessions {
+		if s.SecretHash != nil && string(s.SecretHash) == string(hash) {
+			return s, nil
+		}
+	}
+	return session.Session{}, port.ErrNotFound
+}
+
+func (f *fakes) TouchSession(_ context.Context, id kernel.ULID, idle time.Time) error {
+	if err := f.down("TouchSession"); err != nil {
+		return err
+	}
+	f.touches++
+	s := f.sessions[id]
+	if s.RevokedAt.IsZero() {
+		s.IdleExpiresAt = idle
+		f.sessions[id] = s
+	}
+	return nil
+}
+
+func (f *fakes) EndSession(_ context.Context, id kernel.ULID) (session.Session, error) {
+	if err := f.down("EndSession"); err != nil {
+		return session.Session{}, err
+	}
+	s, ok := f.sessions[id]
+	if !ok {
+		return session.Session{}, port.ErrNotFound
+	}
+	if s.RevokedAt.IsZero() {
+		s.RevokedAt = f.now
+	}
+	f.sessions[id] = s
+	return s, nil
+}
+
+func (f *fakes) BreakGlassCredential(
+	_ context.Context,
+	slug kernel.Slug,
+) (organization.Organization, *breakglass.Credential, error) {
+	if err := f.down("BreakGlassCredential"); err != nil {
+		return organization.Organization{}, nil, err
+	}
+	o, ok := f.orgs[slug]
+	if !ok {
+		return organization.Organization{}, nil, port.ErrNotFound
+	}
+	return o.org, o.cred, nil
+}
+
+func (f *fakes) SignIn(
+	ctx context.Context,
+	s session.Session,
+	e kernel.OrganizationAuditEntry,
+) error {
+	if err := f.down("SignIn"); err != nil {
+		return err
+	}
+	f.trail = append(f.trail, e)
+	return f.CreateSession(ctx, s)
+}
+
+func (f *fakes) RefuseSignIn(_ context.Context, e kernel.OrganizationAuditEntry) error {
+	if err := f.down("RefuseSignIn"); err != nil {
+		return err
+	}
+	f.trail = append(f.trail, e)
+	return nil
+}
+
+func (f *fakes) Accounts(
+	_ context.Context,
+	_ kernel.OrganizationID,
+	member kernel.MemberID,
+) ([]session.Admitted, error) {
+	if err := f.down("Accounts"); err != nil {
+		return nil, err
+	}
+	return f.admits[member], nil
+}
+
+func (f *fakes) Admits(
+	_ context.Context,
+	_ kernel.OrganizationID,
+	member kernel.MemberID,
+	acct kernel.AccountID,
+) (session.Admitted, bool, error) {
+	if err := f.down("Admits"); err != nil {
+		return session.Admitted{}, false, err
+	}
+	for _, a := range f.admits[member] {
+		if a.ID == acct {
+			return a, true, nil
+		}
+	}
+	return session.Admitted{}, false, nil
 }
 
 func (f *fakes) Session(_ context.Context, id kernel.ULID) (session.Session, error) {
@@ -173,6 +303,8 @@ func newWorld(t *testing.T) *world {
 		now:      t0,
 		keys:     map[kernel.ULID]apikey.Key{},
 		sessions: map[kernel.ULID]session.Session{},
+		orgs:     map[kernel.Slug]orgCred{},
+		admits:   map[kernel.MemberID][]session.Admitted{},
 	}
 	w := &world{
 		f:      f,
@@ -195,6 +327,7 @@ func (w *world) replica() *authn.Service {
 	f := w.f
 	return authn.New(authn.Deps{
 		Keys: f, Sessions: f, Tokens: f, Audience: audience, TTL: 10 * time.Hour,
+		BreakGlass: f, Admission: f, Idle: idle, MaxAge: maxAge,
 		Now: func() time.Time { return f.now },
 	})
 }
@@ -214,7 +347,7 @@ func (w *world) exchange(t *testing.T) (string, token.Claims) {
 // authenticate is the principal raw acts as through s.
 func authenticate(t *testing.T, s *authn.Service, raw string) (kernel.Principal, error) {
 	t.Helper()
-	p, _, err := s.Authenticate(t.Context(), raw)
+	p, _, err := s.Authenticate(t.Context(), raw, false)
 	return p, err
 }
 
@@ -231,7 +364,7 @@ func TestUnitExchange(t *testing.T) {
 		s.IPAddress != "192.0.2.1" || !s.ExpiresAt.Equal(c.Expiry) || w.f.touched != 1 {
 		t.Errorf("session = %+v", s)
 	}
-	p, got, err := w.s.Authenticate(t.Context(), raw)
+	p, got, err := w.s.Authenticate(t.Context(), raw, false)
 	if err != nil || p.SessionID != c.Session || p.Caller() != "api_key:"+w.key.String() ||
 		got.Session != c.Session {
 		t.Errorf("Authenticate = %+v, %+v, %v", p, got, err)
@@ -353,6 +486,11 @@ func TestUnitAuthenticate(t *testing.T) {
 	org = strings.Replace(org, string(token.KindAPIKey), string(token.KindOrganizationKey), 1)
 	if _, err := authenticate(t, w.s, org); !errors.Is(err, authn.ErrUnauthenticated) {
 		t.Errorf("organization principal = %v", err)
+	}
+	// On an organization route it is the organization's.
+	if p, _, err := w.s.Authenticate(t.Context(), org, true); err != nil ||
+		p.Kind != kernel.PrincipalOrganization {
+		t.Errorf("organization principal on an organization route = %+v, %v", p, err)
 	}
 
 	for _, op := range []string{"Verify", "Session"} {

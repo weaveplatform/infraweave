@@ -19,8 +19,11 @@
 // answers 400 invalid-request to a JSON body its operation's schema
 // refuses when that schema sets additionalProperties false (decision
 // 0022), with each operation's cost
-// class read from the embedded spec's x-infraweave-cost and whether it is
-// public from its empty security, with the controls' state in Guards and
+// class read from the embedded spec's x-infraweave-cost, whether it is
+// public from its empty security, and whether it admits a credential of
+// no account from its x-infraweave-access: organization, with the
+// access domain's break-glass login (accessapi.LoginPattern) public and
+// expensive beside them, with the controls' state in Guards and
 // the principal's <kind>:<actor ID> as their caller; the access log runs
 // before them. Run runs a mode: in serve and all it requires
 // server.public_url; it opens PostgreSQL from

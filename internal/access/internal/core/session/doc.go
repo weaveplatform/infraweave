@@ -2,6 +2,10 @@
 // credential but the federation, worker and run tokens. A Session works in
 // at most one account, names its actor, channel and expiry, and is Live
 // until it is revoked or ends; Principal is who its credential acts as.
+// A browser session is named by a cookie, CookieName, whose value
+// NewSecret makes and whose SHA-256, HashSecret, is all the row stores.
+// Admission is the port that decides which accounts admit a member, for
+// the account switcher.
 //
 // Revocation reaches every replica through infraweave_invalidate: Key is
 // the message session:<id>, which ParseKey reads back. Cache keeps a

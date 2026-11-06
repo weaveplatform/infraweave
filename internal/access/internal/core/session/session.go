@@ -46,6 +46,11 @@ type Session struct {
 	// sessions that have no idle limit.
 	IdleExpiresAt time.Time
 	RevokedAt     time.Time
+	// SecretHash is the SHA-256 of a browser session's cookie secret; nil
+	// for a session a token names.
+	SecretHash []byte
+	// ParentID is a CLI session's browser session, which it outlives.
+	ParentID kernel.ULID
 }
 
 // Live reports whether the session authenticates at now: not revoked, and

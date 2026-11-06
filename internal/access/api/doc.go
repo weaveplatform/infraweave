@@ -1,7 +1,8 @@
 // Package api is what other packages call of the access domain:
 // Authenticator, the middleware internal/app puts in front of every API
 // route, which puts the principal in each authenticated request's
-// context.
+// context, given each route's Access: Account, Organization or Public.
+// LoginPattern is the break-glass login's route, beside the APIs.
 //
 // # Input and output
 //

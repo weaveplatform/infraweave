@@ -2051,6 +2051,24 @@ type ApiKeyUserRequest struct {
 	Secret string `json:"secret"`
 }
 
+// AuthAccount An account that admits the caller's member, which the account switcher offers.
+type AuthAccount struct {
+	// Id The account's ID.
+	Id string `json:"id"`
+
+	// Name The account's display name.
+	Name string `json:"name"`
+
+	// Slug The account's slug, unique across the installation.
+	Slug string `json:"slug"`
+}
+
+// AuthSessionAccountRequest The account to switch the caller's session to.
+type AuthSessionAccountRequest struct {
+	// Account The ID of an account that admits the caller's member.
+	Account string `json:"account"`
+}
+
 // AwsIntegration AwsIntegration is an integration with AWS
 // that you can attach to your stack
 type AwsIntegration struct {
@@ -2287,6 +2305,12 @@ type ClaimMappingEntryInput struct {
 // ClaimMappingInput defines model for ClaimMappingInput.
 type ClaimMappingInput struct {
 	Entries []ClaimMappingEntryInput `json:"entries"`
+}
+
+// CliConfirmationTokenRequest The arguments of cliConfirmationToken not carried in the path.
+type CliConfirmationTokenRequest struct {
+	// PubKey The CLI's RSA public key of at least 2048 bits, PEM-encoded, or that PEM in base64url.
+	PubKey string `json:"pubKey"`
 }
 
 // CloudFormationEntity Possible CloudFormation entity types.
@@ -6143,8 +6167,20 @@ type ApiKeyResetParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// CliConfirmationTokenParams defines parameters for CliConfirmationToken.
+type CliConfirmationTokenParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // LogoutParams defines parameters for Logout.
 type LogoutParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AuthSessionAccountParams defines parameters for AuthSessionAccount.
+type AuthSessionAccountParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -6530,6 +6566,12 @@ type ApiKeyCreateJSONRequestBody = ApiKeyInput
 
 // ApiKeyUpdateJSONRequestBody defines body for ApiKeyUpdate for application/json ContentType.
 type ApiKeyUpdateJSONRequestBody = ApiKeyUpdateInput
+
+// CliConfirmationTokenJSONRequestBody defines body for CliConfirmationToken for application/json ContentType.
+type CliConfirmationTokenJSONRequestBody = CliConfirmationTokenRequest
+
+// AuthSessionAccountJSONRequestBody defines body for AuthSessionAccount for application/json ContentType.
+type AuthSessionAccountJSONRequestBody = AuthSessionAccountRequest
 
 // ApiKeyUserJSONRequestBody defines body for ApiKeyUser for application/json ContentType.
 type ApiKeyUserJSONRequestBody = ApiKeyUserRequest
@@ -7812,12 +7854,71 @@ type ClientInterface interface {
 	// Corresponds with POST /api-keys/{apiKeyId}/reset (the `ApiKeyReset` operationId).
 	ApiKeyReset(ctx context.Context, apiKeyId string, params *ApiKeyResetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthAccounts Auth Accounts
+	//
+	// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+	//
+	// Corresponds with GET /auth/accounts (the `AuthAccounts` operationId).
+	AuthAccounts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CliConfirmationTokenWithBody Cli Confirmation Token
+	//
+	// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+	// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+	// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+	// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+	// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+	// and token query parameters.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+	CliConfirmationTokenWithBody(ctx context.Context, params *CliConfirmationTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CliConfirmationToken Cli Confirmation Token
+	//
+	// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+	// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+	// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+	// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+	// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+	// and token query parameters.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+	CliConfirmationToken(ctx context.Context, params *CliConfirmationTokenParams, body CliConfirmationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Logout Logout
 	//
-	// End the current session.
+	// End the current session. A browser session's answer also clears its cookie.
 	//
 	// Corresponds with POST /auth/logout (the `Logout` operationId).
 	Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthSessionAccountWithBody Auth Session Account
+	//
+	// Replace the caller's session with a new one for an account that admits its member, in the same channel
+	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+	// 404, as does a credential that is not a member's.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+	AuthSessionAccountWithBody(ctx context.Context, params *AuthSessionAccountParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthSessionAccount Auth Session Account
+	//
+	// Replace the caller's session with a new one for an account that admits its member, in the same channel
+	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+	// 404, as does a credential that is not a member's.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+	AuthSessionAccount(ctx context.Context, params *AuthSessionAccountParams, body AuthSessionAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeyUserWithBody Get Token
 	//
@@ -8944,13 +9045,122 @@ func (c *Client) ApiKeyReset(ctx context.Context, apiKeyId string, params *ApiKe
 	return c.Client.Do(req)
 }
 
+// AuthAccounts Auth Accounts
+//
+// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+//
+// Corresponds with GET /auth/accounts (the `AuthAccounts` operationId).
+func (c *Client) AuthAccounts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthAccountsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CliConfirmationTokenWithBody Cli Confirmation Token
+//
+// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+// and token query parameters.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+func (c *Client) CliConfirmationTokenWithBody(ctx context.Context, params *CliConfirmationTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCliConfirmationTokenRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CliConfirmationToken Cli Confirmation Token
+//
+// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+// and token query parameters.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+func (c *Client) CliConfirmationToken(ctx context.Context, params *CliConfirmationTokenParams, body CliConfirmationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCliConfirmationTokenRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Logout Logout
 //
-// End the current session.
+// End the current session. A browser session's answer also clears its cookie.
 //
 // Corresponds with POST /auth/logout (the `Logout` operationId).
 func (c *Client) Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLogoutRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthSessionAccountWithBody Auth Session Account
+//
+// Replace the caller's session with a new one for an account that admits its member, in the same channel
+// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+// 404, as does a credential that is not a member's.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+func (c *Client) AuthSessionAccountWithBody(ctx context.Context, params *AuthSessionAccountParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthSessionAccountRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthSessionAccount Auth Session Account
+//
+// Replace the caller's session with a new one for an account that admits its member, in the same channel
+// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+// 404, as does a credential that is not a member's.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+func (c *Client) AuthSessionAccount(ctx context.Context, params *AuthSessionAccountParams, body AuthSessionAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthSessionAccountRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11344,6 +11554,88 @@ func NewApiKeyResetRequest(server string, apiKeyId string, params *ApiKeyResetPa
 	return req, nil
 }
 
+// NewAuthAccountsRequest constructs an http.Request for the AuthAccounts method
+func NewAuthAccountsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/accounts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCliConfirmationTokenRequest calls the generic CliConfirmationToken builder with application/json body
+func NewCliConfirmationTokenRequest(server string, params *CliConfirmationTokenParams, body CliConfirmationTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCliConfirmationTokenRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewCliConfirmationTokenRequestWithBody constructs an http.Request for the CliConfirmationToken method, with any body, and a specified content type
+func NewCliConfirmationTokenRequestWithBody(server string, params *CliConfirmationTokenParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/cli-confirmation-tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewLogoutRequest constructs an http.Request for the Logout method
 func NewLogoutRequest(server string, params *LogoutParams) (*http.Request, error) {
 	var err error
@@ -11367,6 +11659,61 @@ func NewLogoutRequest(server string, params *LogoutParams) (*http.Request, error
 	if err != nil {
 		return nil, err
 	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAuthSessionAccountRequest calls the generic AuthSessionAccount builder with application/json body
+func NewAuthSessionAccountRequest(server string, params *AuthSessionAccountParams, body AuthSessionAccountJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthSessionAccountRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAuthSessionAccountRequestWithBody constructs an http.Request for the AuthSessionAccount method, with any body, and a specified content type
+func NewAuthSessionAccountRequestWithBody(server string, params *AuthSessionAccountParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/session/account")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	if params != nil {
 
@@ -16019,14 +16366,75 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api-keys/{apiKeyId}/reset (the `ApiKeyReset` operationId).
 	ApiKeyResetWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyResetParams, reqEditors ...RequestEditorFn) (*ApiKeyResetResponse, error)
 
+	// AuthAccountsWithResponse Auth Accounts
+	//
+	// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/accounts (the `AuthAccounts` operationId).
+	AuthAccountsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthAccountsResponse, error)
+
+	// CliConfirmationTokenWithBodyWithResponse Cli Confirmation Token
+	//
+	// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+	// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+	// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+	// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+	// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+	// and token query parameters.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+	CliConfirmationTokenWithBodyWithResponse(ctx context.Context, params *CliConfirmationTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CliConfirmationTokenResponse, error)
+
+	// CliConfirmationTokenWithResponse Cli Confirmation Token
+	//
+	// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+	// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+	// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+	// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+	// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+	// and token query parameters.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+	CliConfirmationTokenWithResponse(ctx context.Context, params *CliConfirmationTokenParams, body CliConfirmationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CliConfirmationTokenResponse, error)
+
 	// LogoutWithResponse Logout
 	//
-	// End the current session.
+	// End the current session. A browser session's answer also clears its cookie.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /auth/logout (the `Logout` operationId).
 	LogoutWithResponse(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*LogoutResponse, error)
+
+	// AuthSessionAccountWithBodyWithResponse Auth Session Account
+	//
+	// Replace the caller's session with a new one for an account that admits its member, in the same channel
+	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+	// 404, as does a credential that is not a member's.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+	AuthSessionAccountWithBodyWithResponse(ctx context.Context, params *AuthSessionAccountParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthSessionAccountResponse, error)
+
+	// AuthSessionAccountWithResponse Auth Session Account
+	//
+	// Replace the caller's session with a new one for an account that admits its member, in the same channel
+	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+	// 404, as does a credential that is not a member's.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+	AuthSessionAccountWithResponse(ctx context.Context, params *AuthSessionAccountParams, body AuthSessionAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthSessionAccountResponse, error)
 
 	// ApiKeyUserWithBodyWithResponse Get Token
 	//
@@ -17750,8 +18158,206 @@ func (r ApiKeyResetResponse) ContentType() string {
 	return ""
 }
 
+// AuthAccountsResponse200Headers the declared response headers of an HTTP 200 response for AuthAccounts
+type AuthAccountsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthAccountsResponse429Headers the declared response headers of an HTTP 429 response for AuthAccounts
+type AuthAccountsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthAccountsResponse503Headers the declared response headers of an HTTP 503 response for AuthAccounts
+type AuthAccountsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthAccountsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]AuthAccount
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthAccountsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthAccountsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthAccountsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthAccountsResponse) GetJSON200() *[]AuthAccount {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthAccountsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthAccountsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AuthAccountsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthAccountsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthAccountsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthAccountsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthAccountsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CliConfirmationTokenResponse201Headers the declared response headers of an HTTP 201 response for CliConfirmationToken
+type CliConfirmationTokenResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// CliConfirmationTokenResponse429Headers the declared response headers of an HTTP 429 response for CliConfirmationToken
+type CliConfirmationTokenResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// CliConfirmationTokenResponse503Headers the declared response headers of an HTTP 503 response for CliConfirmationToken
+type CliConfirmationTokenResponse503Headers struct {
+	RetryAfter *int
+}
+
+type CliConfirmationTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *string
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CliConfirmationTokenResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *CliConfirmationTokenResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *CliConfirmationTokenResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CliConfirmationTokenResponse) GetJSON201() *string {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CliConfirmationTokenResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CliConfirmationTokenResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r CliConfirmationTokenResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r CliConfirmationTokenResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r CliConfirmationTokenResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CliConfirmationTokenResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CliConfirmationTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CliConfirmationTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CliConfirmationTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CliConfirmationTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // LogoutResponse200Headers the declared response headers of an HTTP 200 response for Logout
 type LogoutResponse200Headers struct {
+	SetCookie           *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -17846,6 +18452,116 @@ func (r LogoutResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LogoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthSessionAccountResponse200Headers the declared response headers of an HTTP 200 response for AuthSessionAccount
+type AuthSessionAccountResponse200Headers struct {
+	SetCookie           *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthSessionAccountResponse429Headers the declared response headers of an HTTP 429 response for AuthSessionAccount
+type AuthSessionAccountResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthSessionAccountResponse503Headers the declared response headers of an HTTP 503 response for AuthSessionAccount
+type AuthSessionAccountResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthSessionAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *User
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthSessionAccountResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthSessionAccountResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthSessionAccountResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthSessionAccountResponse) GetJSON200() *User {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthSessionAccountResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthSessionAccountResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthSessionAccountResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthSessionAccountResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthSessionAccountResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AuthSessionAccountResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthSessionAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthSessionAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthSessionAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthSessionAccountResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26132,9 +26848,64 @@ func (c *ClientWithResponses) ApiKeyResetWithResponse(ctx context.Context, apiKe
 	return ParseApiKeyResetResponse(rsp)
 }
 
+// AuthAccountsWithResponse Auth Accounts
+//
+// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/accounts (the `AuthAccounts` operationId).
+func (c *ClientWithResponses) AuthAccountsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthAccountsResponse, error) {
+	rsp, err := c.AuthAccounts(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthAccountsResponse(rsp)
+}
+
+// CliConfirmationTokenWithBodyWithResponse Cli Confirmation Token
+//
+// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+// and token query parameters.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+func (c *ClientWithResponses) CliConfirmationTokenWithBodyWithResponse(ctx context.Context, params *CliConfirmationTokenParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CliConfirmationTokenResponse, error) {
+	rsp, err := c.CliConfirmationTokenWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCliConfirmationTokenResponse(rsp)
+}
+
+// CliConfirmationTokenWithResponse Cli Confirmation Token
+//
+// Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+// is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+// expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+// AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+// padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+// and token query parameters.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/cli-confirmation-tokens (the `CliConfirmationToken` operationId).
+func (c *ClientWithResponses) CliConfirmationTokenWithResponse(ctx context.Context, params *CliConfirmationTokenParams, body CliConfirmationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CliConfirmationTokenResponse, error) {
+	rsp, err := c.CliConfirmationToken(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCliConfirmationTokenResponse(rsp)
+}
+
 // LogoutWithResponse Logout
 //
-// End the current session.
+// End the current session. A browser session's answer also clears its cookie.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -26145,6 +26916,42 @@ func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, params *Lo
 		return nil, err
 	}
 	return ParseLogoutResponse(rsp)
+}
+
+// AuthSessionAccountWithBodyWithResponse Auth Session Account
+//
+// Replace the caller's session with a new one for an account that admits its member, in the same channel
+// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+// 404, as does a credential that is not a member's.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+func (c *ClientWithResponses) AuthSessionAccountWithBodyWithResponse(ctx context.Context, params *AuthSessionAccountParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthSessionAccountResponse, error) {
+	rsp, err := c.AuthSessionAccountWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthSessionAccountResponse(rsp)
+}
+
+// AuthSessionAccountWithResponse Auth Session Account
+//
+// Replace the caller's session with a new one for an account that admits its member, in the same channel
+// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+// and carries no jwt; any other carries the new token. An account that does not admit the member answers
+// 404, as does a credential that is not a member's.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/session/account (the `AuthSessionAccount` operationId).
+func (c *ClientWithResponses) AuthSessionAccountWithResponse(ctx context.Context, params *AuthSessionAccountParams, body AuthSessionAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthSessionAccountResponse, error) {
+	rsp, err := c.AuthSessionAccount(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthSessionAccountResponse(rsp)
 }
 
 // ApiKeyUserWithBodyWithResponse Get Token
@@ -28729,6 +29536,257 @@ func ParseApiKeyResetResponse(rsp *http.Response) (*ApiKeyResetResponse, error) 
 	return response, nil
 }
 
+// ParseAuthAccountsResponse parses an HTTP response from a AuthAccountsWithResponse call
+func ParseAuthAccountsResponse(rsp *http.Response) (*AuthAccountsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthAccountsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []AuthAccount
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthAccountsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthAccountsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthAccountsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCliConfirmationTokenResponse parses an HTTP response from a CliConfirmationTokenWithResponse call
+func ParseCliConfirmationTokenResponse(rsp *http.Response) (*CliConfirmationTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CliConfirmationTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CliConfirmationTokenResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers CliConfirmationTokenResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers CliConfirmationTokenResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseLogoutResponse parses an HTTP response from a LogoutWithResponse call
 func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -28790,6 +29848,13 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 	switch {
 	case rsp.StatusCode == 200:
 		var headers LogoutResponse200Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -28845,6 +29910,149 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers LogoutResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthSessionAccountResponse parses an HTTP response from a AuthSessionAccountWithResponse call
+func ParseAuthSessionAccountResponse(rsp *http.Response) (*AuthSessionAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthSessionAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthSessionAccountResponse200Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthSessionAccountResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthSessionAccountResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -77,7 +77,6 @@
       "searchAuditTrailEntries"
     ],
     "Auth": [
-      "cliConfirmationToken",
       "oauthRedirect",
       "oauthToken",
       "oauthUser"

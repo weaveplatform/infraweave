@@ -2,7 +2,9 @@ package session
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,5 +146,17 @@ func TestUnitCacheSweep(t *testing.T) {
 	}
 	if n := len(cache.entries); n != 1 {
 		t.Errorf("%d entries after the sweep, want 1", n)
+	}
+}
+
+func TestUnitSecret(t *testing.T) {
+	a, ha := NewSecret()
+	b, _ := NewSecret()
+	if len(a) != 43 || a == b || strings.ContainsAny(a, "+/=") {
+		t.Errorf("secrets %q and %q, want 32 random bytes in unpadded base64url", a, b)
+	}
+	if want := sha256.Sum256([]byte(a)); string(ha) != string(want[:]) ||
+		string(HashSecret(a)) != string(ha) {
+		t.Errorf("hash = %x, want the secret's SHA-256", ha)
 	}
 }

@@ -83,3 +83,48 @@ Feature: API tokens and sessions
     When token "t1" logs out through A
     Then the viewer through B with token "t1" answers 401 within a second
     And the viewer through A with token "t1" answers 401
+
+  @op:cliConfirmationToken @case:success
+  Scenario: A browser session issues a CLI token that outlives its logout
+    Given the home account's member has a browser session, admitted to home alone
+    When the browser asks through A for a CLI token sealed to a new RSA key, as token "cli"
+    Then token "cli" stands for an INFRAWEAVECTL session whose parent is the browser's, ending when it does
+    When the browser logs out through B
+    Then the browser's ended cookie answers 401 at the viewer through A within a second
+    And the viewer through A with token "cli" answers 200
+    And the account reads through B with token "cli" answer the home account, type "ORG" and runner image "ghcr.io/weaveplatform/infraweave-runner-terraform"
+
+  @op:cliConfirmationToken @case:denial
+  Scenario: Only a member's browser session issues a CLI token
+    When the home key is exchanged through A for token "t1"
+    Then asking through B with token "t1" for a CLI token answers a 403 problem "forbidden"
+    And "POST /api/v1/auth/cli-confirmation-tokens" without a credential answers a 401 problem "unauthenticated"
+
+  @op:cliConfirmationToken @case:failure
+  Scenario: A public key the token cannot be sealed to is refused
+    Given the home account's member has a browser session, admitted to home alone
+    Then asking through A in the browser for a CLI token sealed to "not a key" answers a 422 problem "validation-failed"
+
+  @case:success
+  Scenario: A member switches their browser session to another account that admits them
+    Given the home account's member has a browser session, admitted to home and sibling
+    Then the browser's account switcher through A lists "acme, acme-dev"
+    When the browser switches to the sibling account through B
+    Then the account read through A in the browser is the sibling account
+    And the browser's ended cookie answers 401 at the viewer through A within a second
+    When the browser switches to the home account through A
+    Then the account read through B in the browser is the home account
+
+  @case:success
+  Scenario: A member no account admits sees an empty switcher
+    Given a member no account admits has a browser session
+    Then the browser's account switcher through A lists no account
+    And the viewer through B in the browser answers 200
+    And "GET /api/v1/id" through A in the browser without an Origin answers a 401 problem "unauthenticated"
+
+  @case:denial
+  Scenario: A switch to an account that does not admit the member answers 404
+    Given the home account's member has a browser session, admitted to home alone
+    Then switching the browser to the sibling account through A answers a 404 problem "not-found"
+    And switching the browser to the stranger account through B answers a 404 problem "not-found"
+    And the account read through A in the browser is the home account

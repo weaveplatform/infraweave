@@ -42,8 +42,20 @@ func (UnimplementedStrict) ApiKeyReset(context.Context, ApiKeyResetRequestObject
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyReset", Route: "POST /api-keys/{apiKeyId}/reset"}
 }
 
+func (UnimplementedStrict) AuthAccounts(context.Context, AuthAccountsRequestObject) (AuthAccountsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "authAccounts", Route: "GET /auth/accounts"}
+}
+
+func (UnimplementedStrict) CliConfirmationToken(context.Context, CliConfirmationTokenRequestObject) (CliConfirmationTokenResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "cliConfirmationToken", Route: "POST /auth/cli-confirmation-tokens"}
+}
+
 func (UnimplementedStrict) Logout(context.Context, LogoutRequestObject) (LogoutResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "logout", Route: "POST /auth/logout"}
+}
+
+func (UnimplementedStrict) AuthSessionAccount(context.Context, AuthSessionAccountRequestObject) (AuthSessionAccountResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "authSessionAccount", Route: "POST /auth/session/account"}
 }
 
 func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) (ApiKeyUserResponseObject, error) {

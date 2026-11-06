@@ -67,7 +67,8 @@ func (s Server) ApiKeyUser(
 	}, nil
 }
 
-// Viewer is the caller, with the token it presented.
+// Viewer is the caller, with the token it presented; a browser session
+// presents none.
 func (Server) Viewer(
 	ctx context.Context,
 	_ api.ViewerRequestObject,
@@ -167,7 +168,8 @@ func (s Server) SessionDeleteAll(
 	return api.SessionDeleteAll200JSONResponse{Body: out}, nil
 }
 
-// Logout revokes the caller's own session.
+// Logout revokes the caller's own session, and clears a browser
+// session's cookie.
 func (s Server) Logout(
 	ctx context.Context,
 	_ api.LogoutRequestObject,
@@ -180,7 +182,12 @@ func (s Server) Logout(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
-	return api.Logout200JSONResponse{Body: view(ss, p.SessionID)}, nil
+	out := api.Logout200JSONResponse{Body: view(ss, p.SessionID)}
+	if from(ctx).browser {
+		c := clearedCookie()
+		out.Headers.SetCookie = &c
+	}
+	return out, nil
 }
 
 // principal is the caller, which the middleware put on every route but

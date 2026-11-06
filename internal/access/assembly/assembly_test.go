@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -33,6 +35,22 @@ func TestUnitAssembly(t *testing.T) {
 	_ = (*Domain)(nil).OperatorAPI()
 	if d.Authenticator() == nil || d.OperatorAuthenticator() == nil {
 		t.Error("no authenticator")
+	}
+	if s := DefaultSettings().Session; s.IdleTimeout != 12*time.Hour || s.MaxAge != 7*24*time.Hour {
+		t.Errorf("session defaults = %+v, want 12h idle and 7 days", s)
+	}
+	// The login is mounted, and a nil domain's answers 501.
+	for dom, want := range map[*Domain]int{d: http.StatusOK, nil: http.StatusNotImplemented} {
+		r := chi.NewRouter()
+		dom.Routes(r)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(
+			rec,
+			httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin-login/acme", nil),
+		)
+		if rec.Code != want {
+			t.Errorf("GET /admin-login/acme on %v: %d, want %d", dom == nil, rec.Code, want)
+		}
 	}
 	tasks := d.Cron()
 	if len(tasks) != 2 || tasks[0].Kind.Name != "authn.sessions.expire" ||
@@ -99,6 +117,8 @@ func TestUnitSettings(t *testing.T) {
 		want string
 	}{
 		"ttl":         {func(s *Settings) { s.Tokens.API.TTL = -time.Second }, "auth.tokens.api.ttl"},
+		"idle":        {func(s *Settings) { s.Session.IdleTimeout = 0 }, "auth.session.idle_timeout"},
+		"max age":     {func(s *Settings) { s.Session.MaxAge = -time.Hour }, "auth.session.max_age"},
 		"backend":     {func(s *Settings) { s.Signing.Backend = "hsm" }, "auth.signing.backend"},
 		"no kms keys": {func(s *Settings) { s.Signing.Backend = BackendKMS }, "auth.signing.kms_keys is required"},
 		"local keys": {

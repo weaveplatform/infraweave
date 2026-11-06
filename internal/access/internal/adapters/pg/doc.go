@@ -12,7 +12,10 @@
 // deletes its sessions, API keys, members and their identities, its
 // break-glass credential, its accounts and itself, as every foreign key
 // restricts. A unique violation on a slug is port.ErrSlugTaken and a
-// break-glass credential of no organization port.ErrNotFound. every revocation sends session:<id> on
+// break-glass credential of no organization port.ErrNotFound. Store also
+// implements port.BreakGlass, whose sign-in writes the session and its
+// trail entry in one transaction, and session.Admission, from
+// account_users. Every revocation sends session:<id> on
 // infraweave_invalidate in its own transaction, and a member's new
 // session in a channel revokes their live one there. SigningKeys
 // implements token.Store: under the local backend it generates each key

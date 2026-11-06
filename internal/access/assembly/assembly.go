@@ -3,8 +3,11 @@ package assembly
 import (
 	"context"
 	"fmt"
+	nethttp "net/http"
 	"os"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/http"
@@ -18,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -87,6 +91,9 @@ type Domain struct {
 	keys   *apikey.Service
 	orgs   *operator.Service
 	manual bool
+	// publicURL is server.public_url, whose origin a browser session's
+	// write must carry.
+	publicURL string
 }
 
 // New constructs the domain on d. It fails only when
@@ -135,6 +142,10 @@ func New(d Deps) (*Domain, error) {
 		Operators:        d.Settings.Operator.operators(),
 		OperatorAudience: d.OperatorAudience,
 		TTL:              d.Settings.Tokens.API.TTL,
+		BreakGlass:       store,
+		Admission:        store,
+		Idle:             d.Settings.Session.IdleTimeout,
+		MaxAge:           d.Settings.Session.MaxAge,
 		Now:              now,
 	})
 	keys := apikey.NewService(apikey.Deps{
@@ -145,12 +156,13 @@ func New(d Deps) (*Domain, error) {
 	})
 	orgs := operator.NewService(operator.Deps{Store: store, Drop: auth.Cache().Drop, Now: now})
 	return &Domain{
-		store:  store,
-		tokens: tokens,
-		authn:  auth,
-		keys:   keys,
-		orgs:   orgs,
-		manual: manual,
+		store:     store,
+		tokens:    tokens,
+		authn:     auth,
+		keys:      keys,
+		orgs:      orgs,
+		manual:    manual,
+		publicURL: d.PublicURL,
 	}, nil
 }
 
@@ -172,8 +184,23 @@ func (d *Domain) OperatorAPI() AccessOperatorAPI {
 	return http.NewOperatorServer(d.orgs)
 }
 
+// Routes mounts the domain's pages beside the APIs on r: the break-glass
+// login at accessapi.LoginPattern. A nil domain's answer 501, as its API
+// partial's operations do, so the routes the controls know of exist.
+func (d *Domain) Routes(r chi.Router) {
+	if d == nil {
+		r.HandleFunc(accessapi.LoginPattern, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+			problem.Write(w, problem.NotImplemented.New("No access domain serves the login."))
+		})
+		return
+	}
+	http.NewLogin(d.authn, d.publicURL).Routes(r)
+}
+
 // Authenticator is the middleware that authenticates the API's requests.
-func (d *Domain) Authenticator() accessapi.Authenticator { return http.NewAuthenticator(d.authn) }
+func (d *Domain) Authenticator() accessapi.Authenticator {
+	return http.NewAuthenticator(d.authn, d.publicURL)
+}
 
 // OperatorAuthenticator is the middleware that authenticates the operator
 // API's requests, accepting operator tokens alone.
