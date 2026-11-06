@@ -6,7 +6,9 @@
 // account's sessions; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
 // apiKeyReset, apiKeyDelete and apiKeyEnableNonAdminManagers manage the
 // account's API keys, where a key of another account answers 404 and
-// input the service refuses 422 validation-failed. Authenticator is accessapi.Authenticator: the
+// input the service refuses 422 validation-failed; id, name, type and
+// defaultPrivateWorkerPoolRunnerImage read the caller's account, name
+// through Accounts. Authenticator is accessapi.Authenticator: the
 // middleware that turns a bearer token into the request's principal, or
 // answers 401 unauthenticated with WWW-Authenticate: Bearer.
 //

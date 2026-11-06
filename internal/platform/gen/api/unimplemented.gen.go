@@ -50,8 +50,20 @@ func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUser", Route: "POST /auth/token"}
 }
 
+func (UnimplementedStrict) DefaultPrivateWorkerPoolRunnerImage(context.Context, DefaultPrivateWorkerPoolRunnerImageRequestObject) (DefaultPrivateWorkerPoolRunnerImageResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "defaultPrivateWorkerPoolRunnerImage", Route: "GET /default-private-worker-pool-runner-image"}
+}
+
+func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
+}
+
 func (UnimplementedStrict) MessageQueueStats(context.Context, MessageQueueStatsRequestObject) (MessageQueueStatsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "messageQueueStats", Route: "GET /message-queue-stats"}
+}
+
+func (UnimplementedStrict) Name(context.Context, NameRequestObject) (NameResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "name", Route: "GET /name"}
 }
 
 func (UnimplementedStrict) SessionDeleteAll(context.Context, SessionDeleteAllRequestObject) (SessionDeleteAllResponseObject, error) {
@@ -352,6 +364,10 @@ func (UnimplementedStrict) WebhooksIntegrationUpdate(context.Context, WebhooksIn
 
 func (UnimplementedStrict) StateUploadUrl(context.Context, StateUploadUrlRequestObject) (StateUploadUrlResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stateUploadUrl", Route: "POST /state/upload-url"}
+}
+
+func (UnimplementedStrict) Type(context.Context, TypeRequestObject) (TypeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "type", Route: "GET /type"}
 }
 
 func (UnimplementedStrict) Viewer(context.Context, ViewerRequestObject) (ViewerResponseObject, error) {

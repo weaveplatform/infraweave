@@ -11,13 +11,9 @@
       "apiKeyApiKeyRoleBindings"
     ],
     "Account": [
-      "defaultPrivateWorkerPoolRunnerImage",
       "defaultPublicWorkerPoolRunnerImage",
-      "id",
-      "name",
       "outgoingIPAddresses",
-      "spaceliftAwsAccountId",
-      "type"
+      "spaceliftAwsAccountId"
     ],
     "Account Settings": [
       "accountCanBeDeleted",

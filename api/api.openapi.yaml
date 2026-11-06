@@ -453,6 +453,79 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /default-private-worker-pool-runner-image:
+    get:
+      description: >-
+        The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+      operationId: defaultPrivateWorkerPoolRunnerImage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The defaultPrivateWorkerPoolRunnerImage result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Default Private Worker Pool Runner Image
+      tags:
+        - Account
+      x-bruno: Account/Get Default Private Worker Pool Runner Image.bru
+      x-graphql:
+        field: defaultPrivateWorkerPoolRunnerImage
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /id:
+    get:
+      description: The ID of the caller's account.
+      operationId: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The id result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Id
+      tags:
+        - Account
+      x-bruno: Advanced/Account/Id.bru
+      x-graphql:
+        field: id
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /message-queue-stats:
     get:
       description: |-
@@ -496,6 +569,42 @@ paths:
       x-infraweave-cost: standard
       x-infraweave-divergence:
         - cursor-pagination
+        - rate-limit
+      x-rest-style: read
+  /name:
+    get:
+      description: The display name of the caller's account.
+      operationId: name
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The name result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Name
+      tags:
+        - Account
+      x-bruno: Advanced/Account/Name.bru
+      x-graphql:
+        field: name
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
   /sessions:
@@ -4532,6 +4641,42 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /type:
+    get:
+      description: The type of the caller's account, always ORG.
+      operationId: type
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountType'
+          description: The type result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Type
+      tags:
+        - Account
+      x-bruno: Advanced/Account/Type.bru
+      x-graphql:
+        field: type
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /viewer:
     get:
       description: Current user, if any.
@@ -4730,6 +4875,19 @@ components:
           OIDC-compliant identity provider.
         SECRET: Classic API key with a secret.
       x-graphql-type: APIKeyType
+    AccountType:
+      description: >-
+        The type of the account's owner, as the reference enumerates GitHub account types. An infraweave account belongs to an organization, so it is always ORG.
+      enum:
+        - UNKNOWN
+        - USER
+        - ORG
+      type: string
+      x-enum-descriptions:
+        ORG: Organization account.
+        UNKNOWN: Invalid "zero value" for the account type.
+        USER: Individual user account.
+      x-graphql-type: AccountType
     Action:
       description: Action represents an action that a user can perform.
       enum:

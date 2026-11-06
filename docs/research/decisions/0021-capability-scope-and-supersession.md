@@ -446,6 +446,7 @@ with an honest local meaning, and otherwise refuses with
 | `availableBillingAddons`, `availableSelfServicePlans` | Empty lists |
 | `billingSubscriptionCreate`, `billingSubscriptionUpdateV2`, `billingSubscriptionDelete`, `billingSubscriptionUpdateInfo`, `billingSubscriptionUpdateTier` | `installation-unsupported`. An organization's tier changes through the operator API |
 | `debugInfo` | infraweave's commit and version; an empty licence |
+| `defaultPrivateWorkerPoolRunnerImage` | Spacelift's runner image is Spacelift's own; infraweave answers its Terraform runner image ([0008](0008-run-execution-and-worker-protocol.md)) until an account sets its default |
 | Usage reporting to Spacelift | `installation-unsupported`: there is no recipient ([0015](0015-events-notifications-webhooks-audit.md)) |
 | The Spacelift-provided AI integration | Decided in [0019](0019-ai-provider-boundary.md) |
 | The GitHub Marketplace app | An operator-registered GitHub App, as self-hosted Spacelift requires (decision 0012) |

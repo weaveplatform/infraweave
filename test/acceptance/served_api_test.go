@@ -60,6 +60,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	auth := &authSteps{s: s, tokens: map[string]string{}}
 	auth.register(sc)
 	(&keySteps{a: auth, keys: map[string]*createdKey{}}).register(sc)
+	(&accountSteps{a: auth}).register(sc)
 	(&kmsSteps{s: s}).register(sc)
 }
 

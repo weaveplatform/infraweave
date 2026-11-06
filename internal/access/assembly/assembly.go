@@ -147,7 +147,7 @@ func (d *Domain) API() AccessAPI {
 	if d == nil {
 		return AccessAPI{}
 	}
-	return http.NewServer(d.authn, d.keys)
+	return http.NewServer(d.authn, d.keys, d.store)
 }
 
 // Authenticator is the middleware that authenticates the API's requests.

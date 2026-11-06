@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -23,13 +24,19 @@ import (
 // operation it implements shadows the router's 501, and an operation two
 // domains implement fails to compile.
 type Server struct {
-	auth *authn.Service
-	keys *apikey.Service
+	auth     *authn.Service
+	keys     *apikey.Service
+	accounts Accounts
 }
 
-// NewServer returns the partial serving through auth and keys.
-func NewServer(auth *authn.Service, keys *apikey.Service) Server {
-	return Server{auth: auth, keys: keys}
+// Accounts reads an account; port.Tenancy is one.
+type Accounts interface {
+	Account(ctx context.Context, id kernel.AccountID) (account.Account, error)
+}
+
+// NewServer returns the partial serving through auth, keys and accounts.
+func NewServer(auth *authn.Service, keys *apikey.Service, accounts Accounts) Server {
+	return Server{auth: auth, keys: keys, accounts: accounts}
 }
 
 // refused is the detail of every refused credential, which names no part.

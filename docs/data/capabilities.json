@@ -57,7 +57,8 @@
         "lowestTier": "Free",
         "phase": "P3",
         "also": "P8, P14, P15",
-        "state": "missing"
+        "state": "partial",
+        "notes": "`id`, `name`, `type` and `defaultPrivateWorkerPoolRunnerImage` are served (P3), the image as infraweave's Terraform runner image until P8 sets an account's default; `defaultPublicWorkerPoolRunnerImage`, `outgoingIPAddresses` and `spaceliftAwsAccountId` arrive with their phases"
       }
     },
     {
