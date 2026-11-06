@@ -8,7 +8,9 @@
 // settings of platform/observe; Queue holds decision 0011's queue.*
 // settings of platform/queue; Events holds decision 0015's events.*
 // settings of platform/outbox; Secrets holds decision 0013's secrets.*
-// settings of platform/crypt, the KEK under secrets.kek; ObjectStore holds
+// settings of platform/crypt, the KEK provider and each provider's
+// settings under secrets.kek, as in secrets.kek.vault.auth.method;
+// ObjectStore holds
 // decision 0005's objectstore.* settings of platform/objectstore, whose
 // per-store keys are the stores' hyphenated names, as in
 // objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS.

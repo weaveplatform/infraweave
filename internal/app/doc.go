@@ -12,7 +12,8 @@
 // log runs before them. Run runs a mode: it opens PostgreSQL from
 // database.url, which it requires, applies or checks the migration streams
 // Streams registers, in the declared graph's order, loads the keyring
-// under secrets.kek, which it requires, opens the object store
+// through the KEK provider secrets.kek.provider names, which it requires
+// (openKEK), opens the object store
 // objectstore.driver names, which it requires (openObjects), registers the
 // probe checks every
 // mode runs (databaseChecks and keyringCheck), and serves the probes on the
@@ -56,7 +57,7 @@
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
 // platform/queue, platform/cron and platform/outbox for the scheduler role;
-// platform/crypt and crypt/kek for the keyring; platform/objectstore, its
+// platform/crypt, crypt/kek and its providers for the keyring; platform/objectstore, its
 // drivers and objectstore/blobs for object storage;
 // platform/buildinfo for the version;
 // chi for routing and kin-openapi for the spec. Only cmd/ imports it; no

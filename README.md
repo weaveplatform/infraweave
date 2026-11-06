@@ -118,8 +118,13 @@ phase.
 | `server.idempotency.ttl` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_TTL` | `24h` |
 | `server.idempotency.lock` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_LOCK` | `5m` |
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
-| `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local` |
+| `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local`, `awskms`, `gcpkms`, `azurekv` or `vault` |
 | `secrets.kek.local.key_file` | | `INFRAWEAVE_SECRETS_KEK_LOCAL_KEY_FILE` | a file holding the KEK, base64 of 32 bytes; or the KEK itself in `INFRAWEAVE_SECRETS_KEK` |
+| `secrets.kek.awskms.key_id`, `.region` | | `INFRAWEAVE_SECRETS_KEK_AWSKMS_KEY_ID` and so on | a KMS key ID, ARN or alias; the SDK's region; credentials from the AWS SDK's default chain |
+| `secrets.kek.gcpkms.key_name` | | `INFRAWEAVE_SECRETS_KEK_GCPKMS_KEY_NAME` | a CryptoKey resource name; Application Default Credentials |
+| `secrets.kek.azurekv.vault_url`, `.key_name`, `.key_version` | | `INFRAWEAVE_SECRETS_KEK_AZUREKV_VAULT_URL` and so on | an RSA key; the key's current version; `azidentity`'s default chain |
+| `secrets.kek.vault.address`, `.mount`, `.key_name` | | `INFRAWEAVE_SECRETS_KEK_VAULT_ADDRESS` and so on | mount `transit`; a Transit key of an AEAD type, such as the default `aes256-gcm96` |
+| `secrets.kek.vault.auth.method`, `.mount`, `.token_file`, `.role`, `.jwt_file`, `.role_id`, `.secret_id_file` | | `INFRAWEAVE_SECRETS_KEK_VAULT_AUTH_METHOD` and so on | `token`, from `token_file` or `VAULT_TOKEN`; `kubernetes` with `role` and `jwt_file` (`/var/run/secrets/kubernetes.io/serviceaccount/token`); `approle` with `role_id` and `secret_id_file`; the auth mount defaults to the method's name |
 | `objectstore.driver` | | `INFRAWEAVE_OBJECTSTORE_DRIVER` | required by `serve`, `scheduler` and `all`: `s3`, `gcs`, `azureblob` or `fs` |
 | `objectstore.s3.bucket`, `.endpoint`, `.region`, `.path_style` | | `INFRAWEAVE_OBJECTSTORE_S3_BUCKET` and so on | region `us-east-1`; credentials from the AWS SDK's default chain |
 | `objectstore.s3.encryption`, `.kms_key_id` | | `INFRAWEAVE_OBJECTSTORE_S3_ENCRYPTION`, `INFRAWEAVE_OBJECTSTORE_S3_KMS_KEY_ID` | `none` (`s3`, or `kms` with a key) |

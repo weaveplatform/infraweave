@@ -25,9 +25,9 @@ type Config struct {
 	KEK kek.Config `mapstructure:"kek"`
 }
 
-// Defaults are the settings an empty configuration means: no KEK, which
-// the process modes that seal refuse.
-func Defaults() Config { return Config{} }
+// Defaults are the settings an empty configuration means: no KEK
+// provider, which the process modes that seal refuse.
+func Defaults() Config { return Config{KEK: kek.Defaults()} }
 
 // Validate rejects a KEK setting infraweave could not start with.
 func (c Config) Validate() error { return c.KEK.Validate() } //nolint:wrapcheck // names its key

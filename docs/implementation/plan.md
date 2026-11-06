@@ -843,7 +843,7 @@ checks have not seen.
    bounded memory, replicas racing to create the first key, a wrong KEK,
    `TestAccSealedColumnRegistry`.
 3. `internal/platform/crypt/kek`: the `awskms`, `gcpkms`, `azurekv` and
-   `vault` providers. Tests: `vault` and `awskms` (LocalStack) as `TestAcc`
+   `vault` providers. Tests: `vault` and `awskms` (moto) as `TestAcc`
    suites, recorded fixtures for the other two.
 4. `cmd/infraweave` `secrets generate-kek`, `secrets rewrap` and
    `secrets rotate`, which enqueues `secrets.reseal` on the `maintenance`

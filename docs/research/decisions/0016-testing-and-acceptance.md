@@ -74,6 +74,7 @@ pass:
 | The `pg` store tests, on `internal/platform/sql/sqltest` | PostgreSQL at the version floor decision 0005 sets (blocking), and at the next major (reported, not blocking) | `TestAcc` |
 | `internal/platform/objectstore/objectstoretest` | Every object store driver of decision 0005: `s3` on RustFS, `gcs` on fake-gcs-server, `azureblob` on Azurite, and `fs` on local disk; all blocking | `TestAcc` for the three emulators, `TestUnit` for local disk |
 | `internal/queue/queuetest` | the work queue of decision 0011 on PostgreSQL | `TestAcc` |
+| `internal/platform/crypt/kek/kektest` | Every KEK provider of decision 0013: `vault` on Vault, `awskms` on [moto](https://github.com/getmoto/moto)'s KMS (Apache-2.0), both blocking; `gcpkms` and `azurekv` on recorded HTTP fixtures, served by a chi server that matches each request; `local` in process | `TestAcc` for the two emulators, `TestUnit` for the rest |
 
 Each PostgreSQL case gets its own database, created with
 `CREATE DATABASE … TEMPLATE iw_template` from a template the suite migrates
@@ -396,7 +397,9 @@ coverage it would contribute is not waived.
     ([minio/minio](https://github.com/minio/minio)), so a pin could never
     move to a fixed release.
   - **Rejected: LocalStack.** It emulates many AWS services, which the suite
-    does not need, at a larger image size.
+    does not need, at a larger image size, and its image needs a licence
+    token to start, which no public pull request has. The KEK suite's one
+    AWS service, KMS, runs on moto.
 - **fake-gcs-server and Azurite** are the maintained open-source emulators
   for their services, and both speak the APIs the native SDKs call, so the
   drivers run unchanged against them.
