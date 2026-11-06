@@ -35,6 +35,27 @@ func (e APIKeyType) Valid() bool {
 	}
 }
 
+// Defines values for AccountType.
+const (
+	AccountTypeORG     AccountType = "ORG"
+	AccountTypeUNKNOWN AccountType = "UNKNOWN"
+	AccountTypeUSER    AccountType = "USER"
+)
+
+// Valid indicates whether the value is a known member of the AccountType enum.
+func (e AccountType) Valid() bool {
+	switch e {
+	case AccountTypeORG:
+		return true
+	case AccountTypeUNKNOWN:
+		return true
+	case AccountTypeUSER:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Action.
 const (
 	AIINTEGRATIONCREATE                      Action = "AI_INTEGRATION_CREATE"
@@ -1872,6 +1893,9 @@ type APIKeyInputOIDC struct {
 
 // APIKeyType APIKeyType represents the type of an API key.
 type APIKeyType string
+
+// AccountType The type of the account's owner, as the reference enumerates GitHub account types. An infraweave account belongs to an organization, so it is always ORG.
+type AccountType string
 
 // Action Action represents an action that a user can perform.
 type Action string
@@ -7813,6 +7837,20 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
+	//
+	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+	//
+	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
+	DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Id Id
+	//
+	// The ID of the caller's account.
+	//
+	// Corresponds with GET /id (the `Id` operationId).
+	Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// MessageQueueStats Message Queue Stats
 	//
 	// MessageQueueStats returns the current size of every message queue the
@@ -7821,6 +7859,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
 	MessageQueueStats(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Name Name
+	//
+	// The display name of the caller's account.
+	//
+	// Corresponds with GET /name (the `Name` operationId).
+	Name(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SessionDeleteAll Session Delete All
 	//
@@ -8698,6 +8743,13 @@ type ClientInterface interface {
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// Type Type
+	//
+	// The type of the caller's account, always ORG.
+	//
+	// Corresponds with GET /type (the `Type` operationId).
+	Type(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Viewer Viewer
 	//
 	// Current user, if any.
@@ -8947,6 +8999,40 @@ func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body 
 	return c.Client.Do(req)
 }
 
+// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
+//
+// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+//
+// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
+func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDefaultPrivateWorkerPoolRunnerImageRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Id Id
+//
+// The ID of the caller's account.
+//
+// Corresponds with GET /id (the `Id` operationId).
+func (c *Client) Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewIdRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // MessageQueueStats Message Queue Stats
 //
 // MessageQueueStats returns the current size of every message queue the
@@ -8956,6 +9042,23 @@ func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body 
 // Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
 func (c *Client) MessageQueueStats(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMessageQueueStatsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Name Name
+//
+// The display name of the caller's account.
+//
+// Corresponds with GET /name (the `Name` operationId).
+func (c *Client) Name(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewNameRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -10882,6 +10985,23 @@ func (c *Client) StateUploadUrl(ctx context.Context, params *StateUploadUrlParam
 	return c.Client.Do(req)
 }
 
+// Type Type
+//
+// The type of the caller's account, always ORG.
+//
+// Corresponds with GET /type (the `Type` operationId).
+func (c *Client) Type(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTypeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Viewer Viewer
 //
 // Current user, if any.
@@ -11321,6 +11441,60 @@ func NewApiKeyUserRequestWithBody(server string, params *ApiKeyUserParams, conte
 	return req, nil
 }
 
+// NewDefaultPrivateWorkerPoolRunnerImageRequest constructs an http.Request for the DefaultPrivateWorkerPoolRunnerImage method
+func NewDefaultPrivateWorkerPoolRunnerImageRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/default-private-worker-pool-runner-image")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewIdRequest constructs an http.Request for the Id method
+func NewIdRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/id")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewMessageQueueStatsRequest constructs an http.Request for the MessageQueueStats method
 func NewMessageQueueStatsRequest(server string, params *MessageQueueStatsParams) (*http.Request, error) {
 	var err error
@@ -11377,6 +11551,33 @@ func NewMessageQueueStatsRequest(server string, params *MessageQueueStatsParams)
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewNameRequest constructs an http.Request for the Name method
+func NewNameRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/name")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -15626,6 +15827,33 @@ func NewStateUploadUrlRequest(server string, params *StateUploadUrlParams) (*htt
 	return req, nil
 }
 
+// NewTypeRequest constructs an http.Request for the Type method
+func NewTypeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/type")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewViewerRequest constructs an http.Request for the Viewer method
 func NewViewerRequest(server string) (*http.Request, error) {
 	var err error
@@ -15818,6 +16046,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUserWithResponse(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUserResponse, error)
 
+	// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
+	//
+	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
+	DefaultPrivateWorkerPoolRunnerImageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DefaultPrivateWorkerPoolRunnerImageResponse, error)
+
+	// IdWithResponse Id
+	//
+	// The ID of the caller's account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /id (the `Id` operationId).
+	IdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*IdResponse, error)
+
 	// MessageQueueStatsWithResponse Message Queue Stats
 	//
 	// MessageQueueStats returns the current size of every message queue the
@@ -15828,6 +16074,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /message-queue-stats (the `MessageQueueStats` operationId).
 	MessageQueueStatsWithResponse(ctx context.Context, params *MessageQueueStatsParams, reqEditors ...RequestEditorFn) (*MessageQueueStatsResponse, error)
+
+	// NameWithResponse Name
+	//
+	// The display name of the caller's account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /name (the `Name` operationId).
+	NameWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*NameResponse, error)
 
 	// SessionDeleteAllWithResponse Session Delete All
 	//
@@ -16797,6 +17052,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrlWithResponse(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error)
 
+	// TypeWithResponse Type
+	//
+	// The type of the caller's account, always ORG.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /type (the `Type` operationId).
+	TypeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*TypeResponse, error)
+
 	// ViewerWithResponse Viewer
 	//
 	// Current user, if any.
@@ -17690,6 +17954,182 @@ func (r ApiKeyUserResponse) ContentType() string {
 	return ""
 }
 
+// DefaultPrivateWorkerPoolRunnerImageResponse200Headers the declared response headers of an HTTP 200 response for DefaultPrivateWorkerPoolRunnerImage
+type DefaultPrivateWorkerPoolRunnerImageResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// DefaultPrivateWorkerPoolRunnerImageResponse429Headers the declared response headers of an HTTP 429 response for DefaultPrivateWorkerPoolRunnerImage
+type DefaultPrivateWorkerPoolRunnerImageResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// DefaultPrivateWorkerPoolRunnerImageResponse503Headers the declared response headers of an HTTP 503 response for DefaultPrivateWorkerPoolRunnerImage
+type DefaultPrivateWorkerPoolRunnerImageResponse503Headers struct {
+	RetryAfter *int
+}
+
+type DefaultPrivateWorkerPoolRunnerImageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *DefaultPrivateWorkerPoolRunnerImageResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *DefaultPrivateWorkerPoolRunnerImageResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *DefaultPrivateWorkerPoolRunnerImageResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DefaultPrivateWorkerPoolRunnerImageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// IdResponse200Headers the declared response headers of an HTTP 200 response for Id
+type IdResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// IdResponse429Headers the declared response headers of an HTTP 429 response for Id
+type IdResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// IdResponse503Headers the declared response headers of an HTTP 503 response for Id
+type IdResponse503Headers struct {
+	RetryAfter *int
+}
+
+type IdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *IdResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *IdResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *IdResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r IdResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r IdResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r IdResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r IdResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r IdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r IdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r IdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r IdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // MessageQueueStatsResponse200Headers the declared response headers of an HTTP 200 response for MessageQueueStats
 type MessageQueueStatsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -17779,6 +18219,94 @@ func (r MessageQueueStatsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r MessageQueueStatsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// NameResponse200Headers the declared response headers of an HTTP 200 response for Name
+type NameResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// NameResponse429Headers the declared response headers of an HTTP 429 response for Name
+type NameResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// NameResponse503Headers the declared response headers of an HTTP 503 response for Name
+type NameResponse503Headers struct {
+	RetryAfter *int
+}
+
+type NameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *NameResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *NameResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *NameResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r NameResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r NameResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r NameResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r NameResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r NameResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r NameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r NameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r NameResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -25274,6 +25802,94 @@ func (r StateUploadUrlResponse) ContentType() string {
 	return ""
 }
 
+// TypeResponse200Headers the declared response headers of an HTTP 200 response for Type
+type TypeResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TypeResponse429Headers the declared response headers of an HTTP 429 response for Type
+type TypeResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TypeResponse503Headers the declared response headers of an HTTP 503 response for Type
+type TypeResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AccountType
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TypeResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TypeResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TypeResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TypeResponse) GetJSON200() *AccountType {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TypeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TypeResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TypeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TypeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ViewerResponse200Headers the declared response headers of an HTTP 200 response for Viewer
 type ViewerResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -25561,6 +26177,36 @@ func (c *ClientWithResponses) ApiKeyUserWithResponse(ctx context.Context, params
 	return ParseApiKeyUserResponse(rsp)
 }
 
+// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
+//
+// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
+func (c *ClientWithResponses) DefaultPrivateWorkerPoolRunnerImageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DefaultPrivateWorkerPoolRunnerImageResponse, error) {
+	rsp, err := c.DefaultPrivateWorkerPoolRunnerImage(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp)
+}
+
+// IdWithResponse Id
+//
+// The ID of the caller's account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /id (the `Id` operationId).
+func (c *ClientWithResponses) IdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*IdResponse, error) {
+	rsp, err := c.Id(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseIdResponse(rsp)
+}
+
 // MessageQueueStatsWithResponse Message Queue Stats
 //
 // MessageQueueStats returns the current size of every message queue the
@@ -25576,6 +26222,21 @@ func (c *ClientWithResponses) MessageQueueStatsWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseMessageQueueStatsResponse(rsp)
+}
+
+// NameWithResponse Name
+//
+// The display name of the caller's account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /name (the `Name` operationId).
+func (c *ClientWithResponses) NameWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*NameResponse, error) {
+	rsp, err := c.Name(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseNameResponse(rsp)
 }
 
 // SessionDeleteAllWithResponse Session Delete All
@@ -27170,6 +27831,21 @@ func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, pa
 	return ParseStateUploadUrlResponse(rsp)
 }
 
+// TypeWithResponse Type
+//
+// The type of the caller's account, always ORG.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /type (the `Type` operationId).
+func (c *ClientWithResponses) TypeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*TypeResponse, error) {
+	rsp, err := c.Type(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTypeResponse(rsp)
+}
+
 // ViewerWithResponse Viewer
 //
 // Current user, if any.
@@ -28311,6 +28987,236 @@ func ParseApiKeyUserResponse(rsp *http.Response) (*ApiKeyUserResponse, error) {
 	return response, nil
 }
 
+// ParseDefaultPrivateWorkerPoolRunnerImageResponse parses an HTTP response from a DefaultPrivateWorkerPoolRunnerImageWithResponse call
+func ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp *http.Response) (*DefaultPrivateWorkerPoolRunnerImageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DefaultPrivateWorkerPoolRunnerImageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers DefaultPrivateWorkerPoolRunnerImageResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers DefaultPrivateWorkerPoolRunnerImageResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers DefaultPrivateWorkerPoolRunnerImageResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseIdResponse parses an HTTP response from a IdWithResponse call
+func ParseIdResponse(rsp *http.Response) (*IdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &IdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers IdResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers IdResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers IdResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseMessageQueueStatsResponse parses an HTTP response from a MessageQueueStatsWithResponse call
 func ParseMessageQueueStatsResponse(rsp *http.Response) (*MessageQueueStatsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -28420,6 +29326,121 @@ func ParseMessageQueueStatsResponse(rsp *http.Response) (*MessageQueueStatsRespo
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers MessageQueueStatsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseNameResponse parses an HTTP response from a NameWithResponse call
+func ParseNameResponse(rsp *http.Response) (*NameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &NameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers NameResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers NameResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers NameResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -37934,6 +38955,121 @@ func ParseStateUploadUrlResponse(rsp *http.Response) (*StateUploadUrlResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StateUploadUrlResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTypeResponse parses an HTTP response from a TypeWithResponse call
+func ParseTypeResponse(rsp *http.Response) (*TypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AccountType
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TypeResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TypeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TypeResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

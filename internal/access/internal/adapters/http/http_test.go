@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -32,6 +33,7 @@ const audience = "http://infraweave.test/api/v1"
 // store is the ports and tokens in memory; a token is its kind, session
 // and audience joined by spaces.
 type store struct {
+	accounts map[kernel.AccountID]account.Account
 	keys     map[kernel.ULID]apikey.Key
 	sessions map[kernel.ULID]session.Session
 	down     bool
@@ -50,6 +52,14 @@ func (s *store) APIKey(_ context.Context, id kernel.ULID) (apikey.Key, error) {
 		return apikey.Key{}, port.ErrNotFound
 	}
 	return k, s.err()
+}
+
+func (s *store) Account(_ context.Context, id kernel.AccountID) (account.Account, error) {
+	a, ok := s.accounts[id]
+	if !ok {
+		return account.Account{}, port.ErrNotFound
+	}
+	return a, s.err()
 }
 
 func (s *store) TouchAPIKey(context.Context, kernel.ULID) error { return s.err() }
@@ -186,8 +196,12 @@ func newWorld(t *testing.T) *world {
 		secret: apikey.NewSecret(),
 	}
 	h, _ := apikey.Hash(w.secret)
+	org := kernel.NewOrganizationID()
+	st.accounts = map[kernel.AccountID]account.Account{
+		w.acct: {OrganizationID: org, ID: w.acct, Slug: "acme", Name: "Acme"},
+	}
 	st.keys[w.key] = apikey.Key{
-		OrganizationID: kernel.NewOrganizationID(), AccountID: w.acct, ID: w.key, Name: "ci",
+		OrganizationID: org, AccountID: w.acct, ID: w.key, Name: "ci",
 		Type: apikey.TypeSecret, SecretHash: h, Teams: []string{"ops"},
 	}
 	auth := authn.New(authn.Deps{
@@ -198,7 +212,7 @@ func newWorld(t *testing.T) *world {
 		Store: st, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
 	strict := api.NewStrictHandlerWithOptions(
-		full{Server: NewServer(auth, keys)},
+		full{Server: NewServer(auth, keys, st)},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,

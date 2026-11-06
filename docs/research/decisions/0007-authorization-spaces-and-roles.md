@@ -64,7 +64,11 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 - **The principal fixes the account.** Every credential that reaches
   account data is issued for one account (decision 0006 issues them), so a
   request never names the account it acts in. A member works in one account
-  at a time and switches accounts by taking a new session (0006).
+  at a time and switches accounts by taking a new session (0006). The
+  `Account` tag's reads (`id`, `name`, `type`) therefore answer the
+  principal's account. `type` is always `ORG` (DV-115): the reference's
+  `AccountType` is the type of the GitHub owner a Spacelift account was
+  created for, and every infraweave account belongs to an organization.
 - **Accounts never see each other.** An entity of another account answers
   `404`, as one the caller cannot read does, between accounts of one
   organization as across organizations. No role, binding, admin flag or

@@ -1159,6 +1159,15 @@
       "why": "DV-102's rule applied to the API itself: a Spacelift name would claim a compatibility infraweave does not offer, and one table keeps every rename findable",
       "impact": "Ports rename these operations, fields, enum values and policy input keys as the table lists; `specref parity` treats each rename as a recorded divergence",
       "source": "[0001 Decision](../research/decisions/0001-rest-first-spacelift-surface.md#decision)"
+    },
+    {
+      "id": "DV-115",
+      "group": "Tenancy: decisions 0006, 0007, 0014 and 0021",
+      "spacelift": "`type` answers the type of the GitHub account the Spacelift account was created for: `USER` for a personal account, `ORG` for an organization's",
+      "infraweave": "`type` answers `ORG` for every account",
+      "why": "An infraweave account is not created for a GitHub owner: it belongs to an organization, which `ORG` describes, and no account is one person's",
+      "impact": "A client that branches on `USER` never takes that branch",
+      "source": "[0007 Tenancy](../research/decisions/0007-authorization-spaces-and-roles.md#tenancy)"
     }
   ]
 }
