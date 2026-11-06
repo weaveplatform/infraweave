@@ -6,7 +6,8 @@
 // list cursor carries, and PageLimit, which clamps a requested page size to
 // DefaultPageLimit and MaxPageLimit. It holds decision 0005's identifiers:
 // ULID, generated monotonically within a millisecond, written as 26
-// characters on the wire and as a uuid in PostgreSQL, and Slug. It holds
+// characters on the wire and as a uuid in PostgreSQL, whose text UUID
+// gives, and Slug. It holds
 // decision 0015's AuditEntry, which every domain records through
 // platform/audit. It holds ErrUnavailable, the mark of a dependency that cannot be reached now, which
 // a store sets and the HTTP layer answers with 503. It holds decision

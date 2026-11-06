@@ -117,6 +117,11 @@ phase.
 | `server.rate_limit.disabled_callers` | | `INFRAWEAVE_SERVER_RATE_LIMIT_DISABLED_CALLERS` (comma-separated) | none |
 | `server.idempotency.ttl` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_TTL` | `24h` |
 | `server.idempotency.lock` | | `INFRAWEAVE_SERVER_IDEMPOTENCY_LOCK` | `5m` |
+| `server.public_url` | | `INFRAWEAVE_SERVER_PUBLIC_URL` | required by `serve` and `all`: the http or https origin clients reach infraweave at, such as `https://infraweave.example.com` |
+| `auth.api_issuer` | | `INFRAWEAVE_AUTH_API_ISSUER` | `server.public_url`: the `iss` of every API token |
+| `auth.tokens.api.ttl` | | `INFRAWEAVE_AUTH_TOKENS_API_TTL` | `10h`: the lifetime of the token an API key or operator key exchanges for; must be positive |
+| `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring |
+| `auth.signing.rotation` | | `INFRAWEAVE_AUTH_SIGNING_ROTATION` | `automatic`: the daily `authn.keys.rotate` task replaces each signing key every 90 days; `manual` never replaces one |
 | `database.url` | | `INFRAWEAVE_DATABASE_URL` | required |
 | `secrets.kek.provider` | | `INFRAWEAVE_SECRETS_KEK_PROVIDER` | required by `serve`, `scheduler` and `all`: `local`, `awskms`, `gcpkms`, `azurekv` or `vault` |
 | `secrets.kek.local.key_file` | | `INFRAWEAVE_SECRETS_KEK_LOCAL_KEY_FILE` | a file holding the KEK, base64 of 32 bytes; or the KEK itself in `INFRAWEAVE_SECRETS_KEK` |

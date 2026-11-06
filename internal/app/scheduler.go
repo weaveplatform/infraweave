@@ -38,13 +38,6 @@ var (
 	PruneEvents = queue.Kind{Name: "events.prune", Queue: queue.Maintenance, Policy: queue.Ignore}
 )
 
-// periodic is a periodic task: its kind, its interval and its handler.
-type periodic struct {
-	kind    queue.Kind
-	every   time.Duration
-	handler queue.Handler
-}
-
 // platformTasks are the periodic tasks of the platform's own tables.
 func platformTasks(
 	c config.Config,
@@ -53,36 +46,52 @@ func platformTasks(
 	events *outbox.Outbox,
 	reaper *blobs.Reaper,
 	log *slog.Logger,
-) []periodic {
-	return []periodic{
-		{PruneJobs, 10 * time.Minute, func(ctx context.Context, _ queue.Job) error {
-			n, err := q.Prune(ctx, c.Queue.CompletedRetention, c.Queue.DeadRetention)
-			if err == nil {
-				log.Debug("finished jobs pruned", "jobs", n)
-			}
-			return err //nolint:wrapcheck // Prune names itself
-		}},
-		{PurgeIdempotencyKeys, time.Hour, func(ctx context.Context, _ queue.Job) error {
-			n, err := keys.Purge(ctx)
-			if err == nil {
-				log.Debug("expired idempotency keys purged", "keys", n)
-			}
-			return err //nolint:wrapcheck // Purge names itself
-		}},
-		{PruneEvents, 10 * time.Minute, func(ctx context.Context, _ queue.Job) error {
-			n, err := events.Prune(ctx, c.Events.Retention)
-			if err == nil {
-				log.Debug("fanned-out events pruned", "events", n)
-			}
-			return err //nolint:wrapcheck // Prune names itself
-		}},
-		{blobs.ExpireKind, blobs.ExpireEvery, func(ctx context.Context, _ queue.Job) error {
-			n, err := reaper.Expire(ctx, blobs.ExpireBatch)
-			if err == nil {
-				log.Debug("expired and abandoned objects marked for deletion", "objects", n)
-			}
-			return err //nolint:wrapcheck // Expire names itself
-		}},
+) []cron.Task {
+	return []cron.Task{
+		{
+			Kind:  PruneJobs,
+			Every: 10 * time.Minute,
+			Handler: func(ctx context.Context, _ queue.Job) error {
+				n, err := q.Prune(ctx, c.Queue.CompletedRetention, c.Queue.DeadRetention)
+				if err == nil {
+					log.Debug("finished jobs pruned", "jobs", n)
+				}
+				return err //nolint:wrapcheck // Prune names itself
+			},
+		},
+		{
+			Kind:  PurgeIdempotencyKeys,
+			Every: time.Hour,
+			Handler: func(ctx context.Context, _ queue.Job) error {
+				n, err := keys.Purge(ctx)
+				if err == nil {
+					log.Debug("expired idempotency keys purged", "keys", n)
+				}
+				return err //nolint:wrapcheck // Purge names itself
+			},
+		},
+		{
+			Kind:  PruneEvents,
+			Every: 10 * time.Minute,
+			Handler: func(ctx context.Context, _ queue.Job) error {
+				n, err := events.Prune(ctx, c.Events.Retention)
+				if err == nil {
+					log.Debug("fanned-out events pruned", "events", n)
+				}
+				return err //nolint:wrapcheck // Prune names itself
+			},
+		},
+		{
+			Kind:  blobs.ExpireKind,
+			Every: blobs.ExpireEvery,
+			Handler: func(ctx context.Context, _ queue.Job) error {
+				n, err := reaper.Expire(ctx, blobs.ExpireBatch)
+				if err == nil {
+					log.Debug("expired and abandoned objects marked for deletion", "objects", n)
+				}
+				return err //nolint:wrapcheck // Expire names itself
+			},
+		},
 	}
 }
 
@@ -109,6 +118,7 @@ func startScheduler(
 	l *notify.Listener,
 	events *outbox.Outbox,
 	store objectstore.Store,
+	domainTasks []cron.Task,
 	log *slog.Logger,
 	health *observe.Health,
 ) (stop func(), err error) {
@@ -118,18 +128,17 @@ func startScheduler(
 	tasks := cron.NewPeriodicTasks(db.Primary(), q)
 	idem := idempotency.NewPostgres(db.Primary(), c.Server.Idempotency, keys)
 	reaper := blobs.NewReaper(db.Primary(), q, store)
-	for _, t := range platformTasks(c, q, idem, events, reaper, log) {
-		if err := reg.Register(t.kind, t.handler, queue.HandlerOptions{}); err != nil {
+	rotate, reseal := secretsTasks(c, db.Primary(), q, provider, log)
+	periodic := append(platformTasks(c, q, idem, events, reaper, log), rotate)
+	for _, t := range append(periodic, domainTasks...) {
+		if err := reg.Register(t.Kind, t.Handler, queue.HandlerOptions{}); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
-		if err := tasks.Ensure(ctx, t.kind, t.every); err != nil {
+		if err := tasks.Ensure(ctx, t.Kind, t.Every); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
 	}
-	rotate, reseal := secretsTasks(c, db.Primary(), q, provider, log)
 	if err := errors.Join(
-		reg.Register(rotate.kind, rotate.handler, queue.HandlerOptions{}),
-		tasks.Ensure(ctx, rotate.kind, rotate.every),
 		// A reseal that runs out of time runs again from the start, skipping
 		// what it has resealed, so the longest timeout only saves passes.
 		reg.Register(ResealValues, reseal, queue.HandlerOptions{Timeout: queue.MaxTimeout}),

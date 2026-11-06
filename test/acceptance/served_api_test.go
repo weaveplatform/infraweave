@@ -82,6 +82,10 @@ func serverConfig(dsn, objects string, settings map[string]any) ([]byte, error) 
 	return serverConfigKEK(dsn, objects, settings, nil)
 }
 
+// publicURL is every server's server.public_url, which the modes that
+// serve the API require; no client dials it.
+const publicURL = "http://infraweave.test"
+
 // serverConfigKEK is serverConfig with kek as the secrets.kek settings;
 // nil keeps the local KEK.
 func serverConfigKEK(dsn, objects string, settings, kek map[string]any) ([]byte, error) {
@@ -89,6 +93,7 @@ func serverConfigKEK(dsn, objects string, settings, kek map[string]any) ([]byte,
 		"listen":       "127.0.0.1:0",
 		"admin_listen": "127.0.0.1:0",
 		"shutdown":     map[string]any{"ready_delay": "0s"},
+		"public_url":   publicURL,
 	}
 	maps.Copy(server, settings)
 	out, err := yaml.Marshal(map[string]any{

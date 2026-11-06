@@ -84,7 +84,7 @@ func TestAccSecretsTasks(t *testing.T) {
 	c := local(t)
 	run := func(c config.Config) error {
 		rotate, _ := secretsTasks(c, db.Primary(), q, p, discard())
-		return rotate.handler(t.Context(), queue.Job{})
+		return rotate.Handler(t.Context(), queue.Job{})
 	}
 	keys := func() int { return rows(t, db, `SELECT count(*) FROM encryption_keys`) }
 	reseals := func() int {
@@ -135,7 +135,7 @@ func TestAccSecretsTasks(t *testing.T) {
 	closed := sqltest.Open(t)
 	closed.Close()
 	rotate, reseal := secretsTasks(c, closed.Primary(), q, p, discard())
-	if err := rotate.handler(t.Context(), queue.Job{}); err == nil {
+	if err := rotate.Handler(t.Context(), queue.Job{}); err == nil {
 		t.Error("rotate on a closed pool")
 	}
 	if err := reseal(t.Context(), queue.Job{}); err == nil {

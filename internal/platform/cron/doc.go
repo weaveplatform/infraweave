@@ -17,7 +17,7 @@
 // with FOR UPDATE SKIP LOCKED, enqueue their fire jobs and store their next
 // fire times, so two replicas never fire one due time twice and no leader
 // is elected. PeriodicTasks is the Source of infraweave's own recurring
-// work: Ensure registers a job kind with policy Ignore and an interval, and
+// work, each a Task the platform or a domain lists: Ensure registers a job kind with policy Ignore and an interval, and
 // a due task fires once however many runs it missed.
 //
 // # Input and output

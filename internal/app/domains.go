@@ -2,6 +2,9 @@ package app
 
 import (
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
+	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
@@ -13,9 +16,18 @@ type Domains struct {
 	Access *accessassembly.Domain
 }
 
-// newDomains constructs every domain on db.
-func newDomains(db *sql.DB) Domains {
+// newDomains constructs every domain on db, sealing under keys, with c's
+// settings.
+func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring) Domains {
 	return Domains{
-		Access: accessassembly.New(accessassembly.Deps{DB: db.Primary()}),
+		Access: accessassembly.New(accessassembly.Deps{
+			DB:        db.Primary(),
+			Keys:      keys,
+			Settings:  c.Auth,
+			PublicURL: c.Server.PublicURL,
+		}),
 	}
 }
+
+// cron is every domain's periodic tasks, which the scheduler role runs.
+func (d Domains) cron() []cron.Task { return d.Access.Cron() }

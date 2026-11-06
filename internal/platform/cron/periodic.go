@@ -16,6 +16,15 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
+// Task is a periodic task: the kind it enqueues, how often, and the
+// handler that runs it. The platform and each domain list theirs, and the
+// scheduler registers them all.
+type Task struct {
+	Kind    queue.Kind
+	Every   time.Duration
+	Handler queue.Handler
+}
+
 // ErrTask reports a periodic task that cannot be registered.
 var ErrTask = errors.New("invalid periodic task")
 

@@ -2,7 +2,8 @@
 // from the configuration and the platform packages, and is the one place
 // that sees every domain. cmd/infraweave holds one thin cobra file per
 // process mode over it. Domains holds the business domains, which
-// newDomains builds in the declared graph's order on the primary pool;
+// newDomains builds in the declared graph's order on the primary pool and
+// the keyring, with their settings;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //
@@ -12,7 +13,8 @@
 // Operations put the operator switch, the rate limits and idempotency keys in
 // front of each route, with each operation's cost class read from the
 // embedded spec's x-infraweave-cost, with their state in Guards; the access
-// log runs before them. Run runs a mode: it opens PostgreSQL from
+// log runs before them. Run runs a mode: in serve and all it requires
+// server.public_url; it opens PostgreSQL from
 // database.url, which it requires, applies or checks the migration streams
 // Streams registers, in the declared graph's order, with each domain's
 // stream after the platform's, loads the keyring
@@ -30,7 +32,8 @@
 // it starts the scheduler role (startScheduler): the queue's workers with
 // the platform's handlers, the outbox's events.fanout and events.consume
 // and blob.delete over the full Store, and the cron ticker over
-// periodic_tasks, after registering queue.prune, idempotency.purge,
+// periodic_tasks, after registering each domain's tasks (Domains.cron),
+// queue.prune, idempotency.purge,
 // events.prune, blob.expire and secrets.rotate, with secrets.reseal, which
 // each rotation enqueues (secretsTasks) and which walks SealedColumns, the
 // platform's sealed columns and each domain's; every

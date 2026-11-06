@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -75,21 +76,25 @@ func secretsTasks(
 	q *queue.Queue,
 	p kek.Provider,
 	log *slog.Logger,
-) (rotate periodic, reseal queue.Handler) {
-	rotate = periodic{RotateKeys, RotateEvery, func(ctx context.Context, _ queue.Job) error {
-		if c.Secrets.RotationInterval == 0 {
-			return nil
-		}
-		rotated, err := rotateKeys(ctx, db, q, p, c.Secrets.RotationInterval)
-		if errors.Is(err, crypt.ErrRotating) {
-			log.Debug("data key rotation skipped", "reason", err)
-			return nil
-		}
-		if rotated {
-			log.Info("data key rotated; secrets.reseal enqueued")
-		}
-		return err
-	}}
+) (rotate cron.Task, reseal queue.Handler) {
+	rotate = cron.Task{
+		Kind:  RotateKeys,
+		Every: RotateEvery,
+		Handler: func(ctx context.Context, _ queue.Job) error {
+			if c.Secrets.RotationInterval == 0 {
+				return nil
+			}
+			rotated, err := rotateKeys(ctx, db, q, p, c.Secrets.RotationInterval)
+			if errors.Is(err, crypt.ErrRotating) {
+				log.Debug("data key rotation skipped", "reason", err)
+				return nil
+			}
+			if rotated {
+				log.Info("data key rotated; secrets.reseal enqueued")
+			}
+			return err
+		},
+	}
 	reseal = func(ctx context.Context, _ queue.Job) error {
 		n, err := crypt.Reseal(ctx, db, p, SealedColumns())
 		if err == nil {
