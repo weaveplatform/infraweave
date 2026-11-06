@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -41,8 +42,13 @@ func TestUnitGenerateKEK(t *testing.T) {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(file)
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode %v, %v", info.Mode(), err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Windows keeps no permission bits: Go reports 0666 for any file that
+	// is not read-only, so the mode is checked where the bits exist.
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Errorf("mode %v", info.Mode())
 	}
 	b, err := os.ReadFile(file)
 	if err != nil {
