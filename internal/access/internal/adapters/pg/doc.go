@@ -45,8 +45,15 @@
 // other account admits takes; removing a managed user deletes its
 // invitations, disables its personal keys in the account as
 // DEPROVISIONED and revokes their and its sessions there. A group's
-// members are the admissions whose latest_groups hold its name. A key's
-// first use in SeatWindow takes it a
+// members are the admissions whose latest_groups hold its name. Creating
+// a personal key share-locks the account, the owner's admission and the
+// member while it reads personalApiKeysEnabled and the owner's state,
+// and turning the setting off, removing the member and deactivating them
+// lock the same rows first, so none misses a key created beside it;
+// PersonalCreatable reads the same rule without the locks, and KeysOf the
+// keys a caller created and owns, for the User view;
+// KeyOwner reads an admitted active owner with their latest_groups as
+// teams. A key's first use in SeatWindow takes it a
 // seat, checked against the seats limit through the same Entitlements in
 // the transaction that records the use, counting each active or pending
 // member once

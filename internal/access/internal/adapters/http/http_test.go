@@ -57,6 +57,10 @@ type store struct {
 	full *featuresapi.LimitError
 	// peopleOnly lets only people manage API keys.
 	peopleOnly bool
+	// owners are the members the account admits as personal keys'
+	// owners; personalOff turns personal keys off.
+	owners      map[kernel.MemberID]apikey.Owner
+	personalOff bool
 }
 
 func (s *store) err() error {

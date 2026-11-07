@@ -4,7 +4,10 @@
 // exchanges a JWT of its issuer, which the OIDC port verifies and which
 // Deps.IssuerAllowed must allow, its sub matched by the key's subject
 // expression, so the token's sub is OIDCKeySubject's. Without a verifier
-// every OIDC key is refused. An operator key of Deps.Operators exchanges
+// every OIDC key is refused. A personal key's session acts as its owner
+// in the key's account, with the owner's member, login, name and teams
+// from APIKeys.KeyOwner, and is refused once the account no longer admits
+// the owner as an active member. An operator key of Deps.Operators exchanges
 // its secret, whose SHA-256 it compares in constant time, for an operator
 // token: sub OperatorSubject's, aud Deps.OperatorAudience, and a session
 // of actor kind operator in no organization or account. An organization

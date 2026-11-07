@@ -124,9 +124,11 @@ func (s Server) AuthSessionAccount(
 	case err != nil:
 		return nil, err //nolint:wrapcheck // as above
 	}
-	out := api.AuthSessionAccount200JSONResponse{
-		Body: user(sw.Session.Principal(), sw.Token, sw.Session.ExpiresAt),
+	u, err := s.userOf(ctx, sw.Session.Principal(), sw.Token, sw.Session.ExpiresAt)
+	if err != nil {
+		return nil, err
 	}
+	out := api.AuthSessionAccount200JSONResponse{Body: u}
 	if sw.Secret != "" {
 		c := sessionCookie(authn.Browser{Secret: sw.Secret, Session: sw.Session})
 		out.Headers.SetCookie = &c

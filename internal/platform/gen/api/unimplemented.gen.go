@@ -318,8 +318,24 @@ func (UnimplementedStrict) OrganizationUsage(context.Context, OrganizationUsageR
 	return nil, &problem.NotImplementedError{OperationID: "organizationUsage", Route: "GET /organization/usage"}
 }
 
+func (UnimplementedStrict) PersonalApiKeys(context.Context, PersonalApiKeysRequestObject) (PersonalApiKeysResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "personalApiKeys", Route: "GET /personal-api-keys"}
+}
+
+func (UnimplementedStrict) PersonalApiKeyCreate(context.Context, PersonalApiKeyCreateRequestObject) (PersonalApiKeyCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyCreate", Route: "POST /personal-api-keys"}
+}
+
+func (UnimplementedStrict) PersonalApiKeysCount(context.Context, PersonalApiKeysCountRequestObject) (PersonalApiKeysCountResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "personalApiKeysCount", Route: "GET /personal-api-keys-count"}
+}
+
 func (UnimplementedStrict) PersonalApiKeysEnabled(context.Context, PersonalApiKeysEnabledRequestObject) (PersonalApiKeysEnabledResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeysEnabled", Route: "GET /personal-api-keys-enabled"}
+}
+
+func (UnimplementedStrict) PersonalApiKeyDisable(context.Context, PersonalApiKeyDisableRequestObject) (PersonalApiKeyDisableResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyDisable", Route: "POST /personal-api-keys/{personalApiKeyId}/disable"}
 }
 
 func (UnimplementedStrict) Seats(context.Context, SeatsRequestObject) (SeatsResponseObject, error) {

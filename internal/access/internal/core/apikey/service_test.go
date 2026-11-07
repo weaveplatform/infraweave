@@ -22,7 +22,13 @@ type mem struct {
 	managers map[kernel.AccountID]bool
 	// peopleOnly is the accounts that let only people manage keys.
 	peopleOnly map[kernel.AccountID]bool
-	err        error
+	// personalOff is the accounts whose personal keys are turned off;
+	// unadmitted the members no account admits; creatableErr fails the
+	// personal key rule's read.
+	personalOff  map[kernel.AccountID]bool
+	unadmitted   map[kernel.MemberID]bool
+	creatableErr error
+	err          error
 }
 
 func newMem() *mem {
@@ -447,5 +453,236 @@ func TestUnitServiceNonHumans(t *testing.T) {
 	w.st.err = errors.New("down")
 	if _, err := w.svc.Delete(ctx, w.me, k.ID); !errors.Is(err, w.st.err) {
 		t.Errorf("a delete with the store down = %v", err)
+	}
+}
+
+func (m *mem) CreatePersonalAPIKey(_ context.Context, k Key) (Key, error) {
+	switch {
+	case m.err != nil:
+		return Key{}, m.err
+	case m.personalOff[k.AccountID]:
+		return Key{}, ErrPersonalOff
+	}
+	k.OwnerLogin = "alice"
+	m.keys[k.ID] = k
+	return k, nil
+}
+
+func (m *mem) AccountPersonalAPIKeys(
+	ctx context.Context,
+	acct kernel.AccountID,
+	after kernel.ULID,
+	limit int,
+) ([]Key, error) {
+	all, err := m.AccountAPIKeys(ctx, acct, after, len(m.keys))
+	var out []Key
+	for _, k := range all {
+		if k.Personal() {
+			out = append(out, k)
+		}
+	}
+	return out[:min(len(out), limit)], err
+}
+
+func (m *mem) CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID) (int, error) {
+	keys, err := m.AccountPersonalAPIKeys(ctx, acct, kernel.ULID{}, len(m.keys))
+	n := 0
+	for _, k := range keys {
+		if k.DisabledAt.IsZero() {
+			n++
+		}
+	}
+	return n, err
+}
+
+func (m *mem) DisablePersonalAPIKey(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	reason string,
+) (Key, []kernel.ULID, error) {
+	if k, ok := m.keys[id]; ok && !k.Personal() {
+		return Key{}, nil, errMissing
+	}
+	return m.DisableAPIKey(ctx, acct, id, reason)
+}
+
+// TestUnitServicePersonalKey creates, lists, counts and disables a
+// personal key, which only a member's own session creates and which
+// another account never sees.
+func TestUnitServicePersonalKey(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld()
+	alice := w.me
+	alice.Kind, alice.MemberID, alice.Login = kernel.PrincipalUser, kernel.NewMemberID(), "alice"
+
+	k, secret, err := w.svc.CreatePersonal(ctx, alice, PersonalInput{
+		Name: " laptop ", Description: "mine", ExpiresAt: t0.Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !k.Personal() || k.Owner != alice.MemberID || k.OwnerLogin != "alice" ||
+		k.Name != "laptop" || k.Creator != "alice" || k.Type != TypeSecret ||
+		len(k.Teams) != 0 || !k.Matches(secret) {
+		t.Fatalf("CreatePersonal = %+v", k)
+	}
+	if _, _, err := w.svc.Create(ctx, w.me, Input{Name: "ci"}); err != nil {
+		t.Fatal(err)
+	}
+	if list, err := w.svc.Personal(ctx, w.me, kernel.ULID{}, 10); err != nil ||
+		len(list) != 1 || list[0].ID != k.ID {
+		t.Errorf("Personal = %v, %v", list, err)
+	}
+	if list, _ := w.svc.Personal(ctx, w.other, kernel.ULID{}, 10); len(list) != 0 {
+		t.Errorf("another account lists %v", list)
+	}
+	if n, err := w.svc.PersonalCount(ctx, w.me); err != nil || n != 1 {
+		t.Errorf("PersonalCount = %d, %v", n, err)
+	}
+
+	w.st.sessions[k.ID] = []kernel.ULID{kernel.NewULID()}
+	off, err := w.svc.DisablePersonal(ctx, w.me, k.ID)
+	if err != nil || off.DisabledReason != DisabledByAdmin || len(w.dropped) != 1 {
+		t.Errorf("DisablePersonal = %+v, %v, dropped %v", off, err, w.dropped)
+	}
+	if n, _ := w.svc.PersonalCount(ctx, w.me); n != 0 {
+		t.Errorf("PersonalCount after disabling = %d", n)
+	}
+	list, _ := w.svc.List(ctx, w.me, kernel.ULID{}, 10)
+	for _, o := range list {
+		if !o.Personal() {
+			if _, err := w.svc.DisablePersonal(ctx, w.me, o.ID); !errors.Is(err, errMissing) {
+				t.Errorf("DisablePersonal of the account's key: %v", err)
+			}
+		}
+	}
+	w.st.peopleOnly[w.me.AccountID] = true
+	if _, err := w.svc.DisablePersonal(ctx, w.me, k.ID); !errors.Is(err, ErrNonHuman) {
+		t.Errorf("DisablePersonal by a key where only people manage keys: %v", err)
+	}
+}
+
+// TestUnitServicePersonalRefusals checks who may not create a personal
+// key and the input that is refused.
+func TestUnitServicePersonalRefusals(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld()
+	alice := w.me
+	alice.Kind, alice.MemberID = kernel.PrincipalUser, kernel.NewMemberID()
+	breakGlass := w.me
+	breakGlass.Kind = kernel.PrincipalBreakGlass
+
+	for name, p := range map[string]kernel.Principal{
+		"an API key":            w.me,
+		"the break-glass admin": breakGlass,
+	} {
+		if _, _, err := w.svc.CreatePersonal(ctx, p, PersonalInput{Name: "k"}); !errors.Is(
+			err, ErrNoOwner) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	_, _, err := w.svc.CreatePersonal(ctx, alice, PersonalInput{ExpiresAt: t0})
+	if !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), "name") ||
+		!strings.Contains(err.Error(), "expiresAt") {
+		t.Errorf("no name, expired: %v", err)
+	}
+	w.st.personalOff = map[kernel.AccountID]bool{alice.AccountID: true}
+	if _, _, err := w.svc.CreatePersonal(ctx, alice, PersonalInput{Name: "k"}); !errors.Is(
+		err, ErrPersonalOff) {
+		t.Errorf("with personal keys off: %v", err)
+	}
+	w.st.personalOff, w.st.err = nil, errors.New("down")
+	if _, _, err := w.svc.CreatePersonal(ctx, alice, PersonalInput{Name: "k"}); !errors.Is(
+		err, w.st.err) {
+		t.Errorf("a failing store: %v", err)
+	}
+}
+
+func (m *mem) PersonalCreatable(
+	_ context.Context,
+	acct kernel.AccountID,
+	member kernel.MemberID,
+) error {
+	switch {
+	case m.creatableErr != nil:
+		return m.creatableErr
+	case m.unadmitted[member]:
+		return ErrNoOwner
+	case m.personalOff[acct]:
+		return ErrPersonalOff
+	}
+	return nil
+}
+
+func (m *mem) KeysOf(
+	ctx context.Context,
+	acct kernel.AccountID,
+	login string,
+	member kernel.MemberID,
+) ([]kernel.ULID, []kernel.ULID, error) {
+	keys, err := m.AccountAPIKeys(ctx, acct, kernel.ULID{}, len(m.keys))
+	var created, owned []kernel.ULID
+	for _, k := range keys {
+		if k.Creator == login {
+			created = append(created, k.ID)
+		}
+		if k.Personal() && k.Owner == member {
+			owned = append(owned, k.ID)
+		}
+	}
+	return created, owned, err
+}
+
+// TestUnitServiceHeld checks the keys a principal created and owns and
+// whether it may create a personal key, each answered from the rule the
+// operations enforce.
+func TestUnitServiceHeld(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld()
+	alice := w.me
+	alice.Kind, alice.MemberID, alice.Login = kernel.PrincipalUser, kernel.NewMemberID(), "alice"
+
+	if h, err := w.svc.Held(ctx, kernel.Principal{Kind: kernel.PrincipalBreakGlass}); err != nil ||
+		h.Created != nil || h.Owned != nil || h.CanCreatePersonal {
+		t.Errorf("a principal in no account holds %+v, %v", h, err)
+	}
+	ci, _, err := w.svc.Create(ctx, w.me, Input{Name: "ci"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	laptop, _, err := w.svc.CreatePersonal(ctx, alice, PersonalInput{Name: "laptop"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h, err := w.svc.Held(
+		ctx,
+		w.me,
+	); err != nil || !slices.Equal(h.Created, []kernel.ULID{ci.ID}) ||
+		h.Owned != nil ||
+		h.CanCreatePersonal {
+		t.Errorf("the key holds %+v, %v", h, err)
+	}
+	h, err := w.svc.Held(ctx, alice)
+	if err != nil || !slices.Equal(h.Created, []kernel.ULID{laptop.ID}) ||
+		!slices.Equal(h.Owned, []kernel.ULID{laptop.ID}) || !h.CanCreatePersonal {
+		t.Errorf("alice holds %+v, %v", h, err)
+	}
+
+	w.st.personalOff = map[kernel.AccountID]bool{alice.AccountID: true}
+	if h, err := w.svc.Held(ctx, alice); err != nil || h.CanCreatePersonal {
+		t.Errorf("with personal keys off: %+v, %v", h, err)
+	}
+	w.st.personalOff, w.st.unadmitted = nil, map[kernel.MemberID]bool{alice.MemberID: true}
+	if h, err := w.svc.Held(ctx, alice); err != nil || h.CanCreatePersonal {
+		t.Errorf("alice the account no longer admits: %+v, %v", h, err)
+	}
+	w.st.creatableErr = errors.New("down")
+	if _, err := w.svc.Held(ctx, alice); !errors.Is(err, w.st.creatableErr) {
+		t.Errorf("the rule unreadable: %v", err)
+	}
+	w.st.creatableErr, w.st.err = nil, errors.New("down")
+	if _, err := w.svc.Held(ctx, alice); !errors.Is(err, w.st.err) {
+		t.Errorf("the keys unreadable: %v", err)
 	}
 }

@@ -113,6 +113,9 @@ type Grant struct {
 // (exchangeOperator), and an iwo_ secret's an organization token
 // (exchangeOrganization). A secret key's secret is its iwk_ secret; an OIDC key's is a JWT of its issuer, whose sub must
 // match the key's subject expression and whose mapped claims add teams.
+// A personal key's session acts as its owner in the key's account, with
+// the owner's login, name and teams, and only while the account admits
+// the owner as an active member, whatever the key's own state says.
 // The token lives auth.tokens.api.ttl, never past the key's expiry. A key
 // that does not exist, whose secret fails, or that is expired, disabled
 // or deleted is ErrUnauthenticated.
@@ -151,6 +154,17 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	if !k.Usable(now) {
 		return Grant{}, ErrUnauthenticated
 	}
+	login, name := k.ID.String(), k.Name
+	if k.Personal() {
+		o, err := s.d.Keys.KeyOwner(ctx, k.AccountID, k.Owner)
+		if errors.Is(err, port.ErrNotFound) {
+			return Grant{}, ErrUnauthenticated
+		}
+		if err != nil {
+			return Grant{}, err //nolint:wrapcheck // the store names the read
+		}
+		login, name, teams = o.Login, o.Name, o.Teams
+	}
 	ttl, ok := s.ttl(k.ExpiresAt, now)
 	if !ok {
 		return Grant{}, ErrUnauthenticated
@@ -176,8 +190,9 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 		Channel:        session.ChannelUnknown,
 		ActorKind:      kernel.PrincipalAPIKey,
 		ActorID:        k.ID,
-		Login:          k.ID.String(),
-		Name:           k.Name,
+		MemberID:       k.Owner,
+		Login:          login,
+		Name:           name,
 		Teams:          teams,
 		IPAddress:      ip,
 		CreatedAt:      now,

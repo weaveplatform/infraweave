@@ -15,7 +15,18 @@
 // list, read, update, reset, disable and delete, where reset, disable and
 // delete revoke every session of the key and drop them from the replica's
 // cache. Input it refuses is ErrInvalid, naming the field; IssuerAllowed
-// is DV-014's issuer rule.
+// is DV-014's issuer rule. A personal key has an Owner, the member whose
+// principal in the key's account its tokens act as: CreatePersonal takes
+// it from a member's own session, any other caller being ErrNoOwner, and
+// the store refuses it with ErrPersonalOff while the account turns
+// personal keys off; Personal, PersonalCount and DisablePersonal list,
+// count and disable the account's personal keys. Held answers what a
+// principal holds for the User view, from the rules the operations
+// enforce: the keys it created and owns, and whether CreatePersonal would
+// accept it now, through the store's unlocked reading of the rule the
+// creation runs under its locks. A personal key whose
+// owner leaves the account or is deactivated is disabled as
+// DEPROVISIONED.
 //
 // # Input and output
 //

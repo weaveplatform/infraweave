@@ -70,6 +70,43 @@ type Store interface {
 	// NonHumanKeyManagers reads whether the account lets API keys and runs
 	// manage API keys.
 	NonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error)
+	// CreatePersonalAPIKey inserts the personal key k and answers it with
+	// its owner's login. It is ErrPersonalOff while the account's
+	// personalApiKeysEnabled is off and ErrNoOwner unless the account
+	// admits k.Owner as an active member, both read under the locks that
+	// turning the setting off, removing the member and deactivating them
+	// take, so none of them misses a key created beside it.
+	CreatePersonalAPIKey(ctx context.Context, k Key) (Key, error)
+	// PersonalCreatable is CreatePersonalAPIKey's rule for member in acct,
+	// read without its locks: nil, ErrNoOwner or ErrPersonalOff.
+	PersonalCreatable(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) error
+	// KeysOf are the IDs of the account's keys that are not deleted, in
+	// ID order: those login created, and the personal keys member owns.
+	KeysOf(
+		ctx context.Context,
+		acct kernel.AccountID,
+		login string,
+		member kernel.MemberID,
+	) ([]kernel.ULID, []kernel.ULID, error)
+	// AccountPersonalAPIKeys are up to limit of the account's personal
+	// keys that are not deleted, in ID order, from the first after after.
+	AccountPersonalAPIKeys(
+		ctx context.Context,
+		acct kernel.AccountID,
+		after kernel.ULID,
+		limit int,
+	) ([]Key, error)
+	// CountPersonalAPIKeys counts the account's personal keys that are
+	// neither disabled nor deleted.
+	CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID) (int, error)
+	// DisablePersonalAPIKey is DisableAPIKey of a personal key; a key of
+	// the account's own is the store's not found error.
+	DisablePersonalAPIKey(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+		reason string,
+	) (Key, []kernel.ULID, error)
 }
 
 // Deps are what the service needs.
