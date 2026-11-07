@@ -47,7 +47,7 @@ func (s *servedSteps) seatsTaken(ctx context.Context) error {
 		return fmt.Errorf("seed the sibling tenant: %w", err)
 	}
 	_, err = db.Query(ctx, fmt.Sprintf(`
-		INSERT INTO organization_entitlements (organization_id, tier) VALUES ('%[1]s', 'Free');
+		UPDATE organization_entitlements SET tier = 'Free' WHERE organization_id = '%[1]s';
 		INSERT INTO members (organization_id, id, login, name, email, status)
 			VALUES ('%[1]s', '%[2]s', 'alice', 'Alice', 'alice@example.com', 'active');
 		INSERT INTO account_users (account_id, organization_id, member_id)

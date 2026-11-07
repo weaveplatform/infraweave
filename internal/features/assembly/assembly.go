@@ -83,6 +83,24 @@ func New(d Deps) *Domain {
 	return &Domain{entitlements: entitlement.New(pg.New(d.DB), inTx, d.Settings.Disabled)}
 }
 
+// FeaturesOperatorAPI is the domain's partial of the operator API's strict
+// server, which internal/app embeds under this alias.
+type FeaturesOperatorAPI = http.OperatorServer
+
+// Organizations resolves an organization's slug, which the access domain
+// owns; ok is false when no organization has it.
+type Organizations = http.Organizations
+
+// OperatorAPI is the domain's partial of the operator API's strict server,
+// naming organizations through orgs; a nil domain's serves nothing it can
+// answer.
+func (d *Domain) OperatorAPI(orgs Organizations) FeaturesOperatorAPI {
+	if d == nil {
+		return FeaturesOperatorAPI{}
+	}
+	return http.NewOperatorServer(d.entitlements, orgs)
+}
+
 // Entitlements is what other domains call of this one.
 func (d *Domain) Entitlements() featuresapi.Entitlements { return d.entitlements }
 

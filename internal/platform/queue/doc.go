@@ -18,8 +18,8 @@
 // commits a handler's writes with its completion. Fail retries after
 // Backoff, with full jitter, until the job's attempts run out and it is
 // dead. Recover returns running jobs whose lease lapsed to pending. Prune
-// deletes finished jobs past their retention; ListDead, Retry and Discard
-// are the operator's dead-job operations, and Stats reports each queue's
+// deletes finished jobs past their retention; ListDead, ReadDead, Retry and
+// Discard are the operator's dead-job operations, and Stats reports each queue's
 // depth.
 //
 // A process that runs jobs registers a Handler per kind in a Registry, with

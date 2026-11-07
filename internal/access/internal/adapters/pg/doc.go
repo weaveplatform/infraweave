@@ -4,9 +4,12 @@
 // identities and the members each account admits) and decision 0006's
 // credentials (API keys, sessions, signing keys and each organization's
 // break-glass credential), with migration 00003 adding each account's
-// api_key_non_admin_managers and 00004 its account_settings, a row
+// api_key_non_admin_managers, 00004 its account_settings, a row
 // created on the first write, so an account without one reads each
-// column's default. Store implements port.Tenancy, port.Sessions,
+// column's default, and 00005 the Enterprise entitlement of every
+// organization without one, where the features stream is applied.
+// Creating an organization creates its entitlement through
+// featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, apikey.Store, operator.Store and settings.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same

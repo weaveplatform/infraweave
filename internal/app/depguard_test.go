@@ -14,15 +14,15 @@ import (
 
 const module = "github.com/weaveplatform/infraweave"
 
-// sharedRules are decision 0004's rules 3 to 9 (repo-layout.md, "depguard
+// sharedRules are decision 0004's rules 3 to 10 (repo-layout.md, "depguard
 // rules"); make lint-fixtures proves each one fires.
 var sharedRules = []string{
 	"api-packages", "constructors", "core-not-adapters", "shared-below-domains",
-	"agent-isolation", "devtools", "public-packages",
+	"agent-isolation", "devtools", "public-packages", "ctl",
 }
 
 // notDomains are the directories under internal/ that sit beside the domains.
-var notDomains = []string{"agent", "app", "devtools", "iac", "kernel", "platform"}
+var notDomains = []string{"agent", "app", "ctl", "devtools", "iac", "kernel", "platform"}
 
 type depguardRule struct {
 	ListMode string         `yaml:"list-mode"` //nolint:tagliatelle // depguard's own key

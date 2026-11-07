@@ -265,6 +265,19 @@ linters:
           deny:
             - pkg: github.com/weaveplatform/infraweave/internal
               desc: pkg/ is public and cannot expose internal/
+        ctl:
+          list-mode: lax
+          files:
+            - "**/internal/ctl/**"
+            - "**/cmd/infraweavectl/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: infraweavectl is a client and reaches the server only through pkg/sdk
+            - pkg: github.com/weaveplatform/infraweave/pkg/client
+              desc: infraweavectl calls the API through pkg/sdk, not the generated clients
+          allow:
+            - github.com/weaveplatform/infraweave/internal/ctl$
+            - github.com/weaveplatform/infraweave/internal/platform/buildinfo$
     forbidigo:
       analyze-types: true
       forbid:

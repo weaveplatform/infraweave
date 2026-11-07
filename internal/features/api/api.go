@@ -77,9 +77,9 @@ type OptionGate struct {
 // an organization's or account's rows in the transaction that creates or
 // deletes the organization or account.
 type Entitlements interface {
-	// CreateOrganization gives org its entitlement on tier, which must
-	// exist.
-	CreateOrganization(ctx context.Context, org kernel.OrganizationID, tier string) error
+	// CreateOrganization gives org its entitlement on the installation's
+	// default tier, Enterprise unless the operator changed it.
+	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
 	// DeleteOrganization deletes org's entitlement, grants and account
 	// limits; an organization without any is no error.
 	DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error

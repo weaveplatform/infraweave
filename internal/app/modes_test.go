@@ -122,7 +122,7 @@ func TestUnitServerListeners(t *testing.T) {
 				m,
 				memory(c.Server),
 				Domains{Auth: byAddress{}},
-				nil,
+				Platform{},
 				Blobs{},
 				observe.NewHealth(time.Now),
 			)

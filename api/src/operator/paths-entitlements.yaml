@@ -1,0 +1,780 @@
+# Tiers, the billing switch and each organization's tier and grants
+# (decision 0021), which the features domain serves. A change takes effect
+# on every replica without a restart.
+components:
+  parameters:
+    TierName:
+      name: tier
+      in: path
+      required: true
+      description: The tier's name.
+      schema:
+        type: string
+  schemas:
+    Tier:
+      description: 'A tier: a set of features and a set of limit values (decision
+        0021).'
+      type: object
+      required:
+        - name
+        - features
+        - limits
+        - organizations
+        - editable
+      properties:
+        name:
+          type: string
+          description: The tier's name, unique among tiers and never changed.
+        features:
+          type: array
+          description: The capabilities and options the tier holds, sorted.
+          items:
+            type: string
+        limits:
+          type: object
+          description: Each limit's value by limit name. A limit the tier does not
+            name has no limit.
+          additionalProperties:
+            type: integer
+            format: int64
+            minimum: 0
+        organizations:
+          type: integer
+          format: int64
+          description: How many organizations hold the tier.
+        editable:
+          type: boolean
+          description: False for Enterprise, which holds every feature and no limit
+            and which the operator can neither edit nor delete.
+    TierPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tier'
+        nextCursor:
+          type: string
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+    TierInput:
+      description: A new tier.
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - features
+        - limits
+      properties:
+        name:
+          type: string
+          description: 1 to 63 letters, digits, spaces and the characters + . _ -,
+            starting with a letter or digit.
+        features:
+          type: array
+          description: Capabilities and options of the catalogue, each once.
+          items:
+            type: string
+        limits:
+          type: object
+          description: Limit values by limit name, each a limit of the catalogue.
+          additionalProperties:
+            type: integer
+            format: int64
+            minimum: 0
+    TierContent:
+      description: A tier's content, which replaces what it held.
+      type: object
+      additionalProperties: false
+      required:
+        - features
+        - limits
+      properties:
+        features:
+          type: array
+          description: Capabilities and options of the catalogue, each once.
+          items:
+            type: string
+        limits:
+          type: object
+          description: Limit values by limit name, each a limit of the catalogue.
+          additionalProperties:
+            type: integer
+            format: int64
+            minimum: 0
+    Billing:
+      description: The installation's billing switch and default tier (decision 0021).
+      type: object
+      required:
+        - enabled
+        - defaultTier
+      properties:
+        enabled:
+          type: boolean
+          description: Whether entitlement checks run. While it is off every organization
+            behaves as Enterprise.
+        defaultTier:
+          type: string
+          description: The tier a new organization gets.
+    BillingInput:
+      description: The billing switch, and the default tier when set.
+      type: object
+      additionalProperties: false
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+          description: Whether entitlement checks run.
+        defaultTier:
+          type: string
+          description: The tier a new organization gets; left out, it stays as it
+            is.
+    Entitlement:
+      description: 'An organization''s tier and grants, and what they entitle it to
+        while billing is on: the tier''s features and the granted ones, less features.disabled
+        and every feature whose requirements that leaves out, with each limit''s value
+        from a grant, else the tier.'
+      type: object
+      required:
+        - tier
+        - version
+        - features
+        - limits
+        - grants
+      properties:
+        tier:
+          type: string
+          description: The organization's tier.
+        version:
+          type: integer
+          format: int64
+          description: Bumped by every change to the tier or the grants.
+        features:
+          type: array
+          description: The features the organization holds, sorted.
+          items:
+            type: string
+        limits:
+          type: object
+          description: Each limit's value by limit name. A limit absent here has no
+            limit.
+          additionalProperties:
+            type: integer
+            format: int64
+            minimum: 0
+        grants:
+          $ref: '#/components/schemas/Grants'
+    Grants:
+      description: What the operator grants the organization beyond its tier; grants
+        survive a change of tier.
+      type: object
+      required:
+        - features
+        - limits
+      properties:
+        features:
+          type: array
+          description: Features granted beyond the tier, sorted.
+          items:
+            type: string
+        limits:
+          type: array
+          description: Limit values set above or below the tier's, by limit name.
+          items:
+            $ref: '#/components/schemas/LimitGrant'
+    LimitGrant:
+      description: One limit's granted value.
+      type: object
+      required:
+        - limit
+        - value
+      properties:
+        limit:
+          type: string
+          description: The limit's name.
+        value:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 0
+          description: The organization's value; null lifts the limit.
+    TierChoice:
+      description: The tier an organization moves to.
+      type: object
+      additionalProperties: false
+      required:
+        - tier
+      properties:
+        tier:
+          type: string
+          description: An existing tier's name.
+    LimitGrantInput:
+      description: A limit's value for the organization.
+      type: object
+      additionalProperties: false
+      required:
+        - value
+      properties:
+        value:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 0
+          description: The organization's value; null lifts the limit.
+paths:
+  /tiers:
+    get:
+      summary: List tiers
+      description: The installation's tiers, by name.
+      operationId: tiers
+      x-infraweave-feature: operator
+      tags:
+        - Tiers
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TierPage'
+          description: One page of tiers.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '400':
+          $ref: '#/components/responses/InvalidCursor'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      summary: Create a tier
+      description: Creates a tier the operator can then give organizations.
+      operationId: tierCreate
+      x-infraweave-feature: operator
+      tags:
+        - Tiers
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TierInput'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tier'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '409':
+          description: Another tier has the name (already-exists), or a request with
+            this Idempotency-Key is in flight.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The name, a feature or a limit is invalid, or this Idempotency-Key
+            was used with another request. (validation-failed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /tiers/{tier}:
+    get:
+      summary: Read a tier
+      operationId: tier
+      x-infraweave-feature: operator
+      tags:
+        - Tiers
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/TierName'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tier'
+          description: The tier.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    put:
+      summary: Replace a tier's content
+      description: Replaces the tier's features and limits. Every organization that
+        holds it has the new content on its next request, on every replica.
+      operationId: tierUpdate
+      x-infraweave-feature: operator
+      tags:
+        - Tiers
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/TierName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TierContent'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tier'
+          description: The tier.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The tier is Enterprise (invalid-state).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: A feature or a limit is invalid (validation-failed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      summary: Delete a tier
+      operationId: tierDelete
+      x-infraweave-feature: operator
+      tags:
+        - Tiers
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/TierName'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tier'
+          description: The tier as it was.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The tier is Enterprise, or an organization holds it, or it
+            is the default tier (invalid-state).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /billing:
+    get:
+      summary: Read the billing switch
+      operationId: billing
+      x-infraweave-feature: operator
+      tags:
+        - Billing
+      x-infraweave-cost: standard
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Billing'
+          description: The switch and the default tier.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    put:
+      summary: Set the billing switch
+      description: Turns entitlement checks on or off, and sets the default tier when
+        the body names one. Every replica applies it on its next request.
+      operationId: billingSet
+      x-infraweave-feature: operator
+      tags:
+        - Billing
+      x-infraweave-cost: standard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillingInput'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Billing'
+          description: The switch and the default tier.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '422':
+          description: The default tier does not exist (validation-failed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /organizations/{organization}/entitlement:
+    get:
+      summary: Read an organization's entitlement
+      description: The organization's tier, its grants and what they entitle it to
+        while billing is on.
+      operationId: organizationEntitlement
+      x-infraweave-feature: operator
+      tags:
+        - Entitlements
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlement'
+          description: The entitlement.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /organizations/{organization}/tier:
+    put:
+      summary: Set an organization's tier
+      description: Moves the organization to another tier. Its grants stay, and nothing
+        it holds is deleted.
+      operationId: organizationTierSet
+      x-infraweave-feature: operator
+      tags:
+        - Entitlements
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TierChoice'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlement'
+          description: The entitlement.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The tier does not exist (validation-failed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /organizations/{organization}/grants/features/{feature}:
+    put:
+      summary: Grant a feature
+      description: Grants the organization a feature its tier may lack.
+      operationId: organizationFeatureGrant
+      x-infraweave-feature: operator
+      tags:
+        - Entitlements
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+        - name: feature
+          in: path
+          required: true
+          description: A capability or option of the catalogue.
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlement'
+          description: The entitlement.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The feature is not a capability or option of the catalogue
+            (validation-failed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      summary: Revoke a granted feature
+      operationId: organizationFeatureRevoke
+      x-infraweave-feature: operator
+      tags:
+        - Entitlements
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+        - name: feature
+          in: path
+          required: true
+          description: A capability or option of the catalogue.
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlement'
+          description: The entitlement.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /organizations/{organization}/grants/limits/{limit}:
+    put:
+      summary: Grant a limit value
+      description: Sets one of the organization's limits above or below its tier's,
+        or lifts it with null.
+      operationId: organizationLimitGrant
+      x-infraweave-feature: operator
+      tags:
+        - Entitlements
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+        - name: limit
+          in: path
+          required: true
+          description: A limit of the catalogue.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LimitGrantInput'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlement'
+          description: The entitlement.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The limit is not a limit of the catalogue (validation-failed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      summary: Remove a granted limit value
+      description: The organization's limit is its tier's again.
+      operationId: organizationLimitRevoke
+      x-infraweave-feature: operator
+      tags:
+        - Entitlements
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/OrganizationSlug'
+        - name: limit
+          in: path
+          required: true
+          description: A limit of the catalogue.
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlement'
+          description: The entitlement.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'

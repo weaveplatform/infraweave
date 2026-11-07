@@ -12,6 +12,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
@@ -165,7 +166,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		m,
 		g,
 		domains,
-		queue.New(db.Primary()),
+		platform(db.Primary(), provider),
 		serving(c.ObjectStore, db.Primary(), keys, objs),
 		health,
 	)
@@ -205,8 +206,8 @@ func keyringCheck(h *observe.Health, keys *crypt.Keyring) {
 }
 
 // handlers are mode m's two listeners' handlers: the API, behind the
-// controls whose state g holds, serving the operations of the domains d, reading queue depths from queues and
-// holding objects as b, or nil
+// controls whose state g holds, serving the operations of the domains d
+// and the installation's own through p, and holding objects as b, or nil
 // when m serves no API, so serve binds no API listener; and the probes,
 // which answer from health.
 func handlers(
@@ -215,12 +216,12 @@ func handlers(
 	m Mode,
 	g Guards,
 	d Domains,
-	queues QueueStats,
+	p Platform,
 	b Blobs,
 	health *observe.Health,
 ) (api, admin http.Handler) {
 	if m.API {
-		api = API(log, c, g, d, queues, b)
+		api = API(log, c, g, d, p, b)
 	}
 	return api, observe.Probes(log, health)
 }
@@ -245,6 +246,19 @@ func postgresGuards(
 		Switch:  ratelimit.Switches{ratelimit.NewCallers(c.RateLimit.DisabledCallers), table},
 		Buckets: ratelimit.NewPostgres(db.Primary()),
 		Keys:    idempotency.NewPostgres(db.Primary(), c.Idempotency, keys),
+	}
+}
+
+// platform is the installation's own operations' reach: the queue on pool,
+// and the data key's rotation, wrapped by provider, whatever its age.
+func platform(pool keysDB, provider kek.Provider) Platform {
+	q := queue.New(pool)
+	return Platform{
+		Queues: q,
+		Dead:   q,
+		RotateKey: func(ctx context.Context) (uint32, error) {
+			return rotateKeys(ctx, pool, q, provider, 0)
+		},
 	}
 }
 

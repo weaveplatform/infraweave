@@ -59,7 +59,7 @@ func TestUnitAPIRoutes(t *testing.T) {
 		config.Defaults().Server,
 		memory(config.Defaults().Server),
 		Domains{Auth: byAddress{}},
-		nil,
+		Platform{},
 		Blobs{},
 	)
 	cases := []struct {
@@ -112,7 +112,7 @@ func registered(p problem.Problem) bool {
 // with no operator authenticator every operator route answers 401.
 func TestUnitOperatorRoutes(t *testing.T) {
 	c := config.Defaults().Server
-	refused := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, nil, Blobs{})
+	refused := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, Platform{}, Blobs{})
 	rec := request(t, refused, http.MethodGet, OperatorBaseURL+"/organizations")
 	wantProblem(t, rec, http.StatusUnauthorized, "no valid credential")
 	if got := rec.Header().Get("WWW-Authenticate"); got != "Bearer" {
@@ -125,7 +125,14 @@ func TestUnitOperatorRoutes(t *testing.T) {
 		"stacks",
 	)
 
-	admitted := API(discard(), c, memory(c), Domains{OperatorAuth: byAddress{}}, nil, Blobs{})
+	admitted := API(
+		discard(),
+		c,
+		memory(c),
+		Domains{OperatorAuth: byAddress{}},
+		Platform{},
+		Blobs{},
+	)
 	wantProblem(
 		t,
 		request(t, admitted, http.MethodGet, OperatorBaseURL+"/nope"),

@@ -111,6 +111,19 @@ components:
       schema:
         type: boolean
   responses:
+    Unauthenticated:
+      description: >-
+        The request carries no operator token: none, an expired or revoked
+        one, or a token of any other kind.
+      headers:
+        WWW-Authenticate:
+          description: Bearer, as RFC 6750 asks.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     TooManyRequests:
       description: The caller's rate-limit bucket for this operation's cost class is empty.
       headers:

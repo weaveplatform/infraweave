@@ -1,16 +1,17 @@
 @postgres @vault
 Feature: Data key rotation and KEK migration
   Decision 0013 seals values in PostgreSQL, and the content keys of sealed
-  stores' objects, under data keys the KEK wraps. infraweave secrets rotate
-  makes a new data key while the servers serve, and secrets.reseal moves
-  every value onto it and deletes the old key; infraweave secrets rewrap
-  moves the data keys to another KEK without touching a value. No
+  stores' objects, under data keys the KEK wraps. infraweave secrets rotate,
+  or the operator API's POST /operator/v1/secrets/rotate, makes a new data
+  key while the servers serve, and secrets.reseal moves every value onto
+  it and deletes the old key; infraweave secrets rewrap moves the data
+  keys to another KEK without touching a value. No
   operation serves objects yet, so the scenarios write and read a sealed
   object as serve's blob store does, on the servers' database and object
   storage, with a keyring loaded at that moment.
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given two infraweave servers, A and B, on one database, with an operator key
     And a 201 response to "POST /api/v1/stacks" with body '{"name":"x"}' is stored under key "k1"
     And the object "acct/state-1" in the states store holds "terraform state"
 
@@ -23,6 +24,15 @@ Feature: Data key rotation and KEK migration
     And "POST /api/v1/stacks" with body '{"name":"x"}' and key "k1" through B replays the stored 201
     And "POST /api/v1/stacks" with body '{"name":"x"}' and key "k1" through A replays the stored 201
     And the object "acct/state-1" in the states store reads "terraform state"
+
+  Scenario: The operator API rotates the data key, and values sealed under the old one still open
+    When the operator key is exchanged through A for token "op"
+    And "POST /operator/v1/secrets/rotate" through B with token "op" answers '{"keyId":2}'
+    Then "POST /api/v1/stacks" with body '{"name":"x"}' and key "k1" through A replays the stored 201
+    And the object "acct/state-1" in the states store reads "terraform state"
+    And data key 1 is eventually deleted
+    And every sealed value is under data key 2
+    And "POST /api/v1/stacks" with body '{"name":"x"}' and key "k1" through B replays the stored 201
 
   Scenario: A rewrap from the local KEK to Vault, after which the servers restart on Vault
     When the operator runs infraweave secrets rewrap to Vault

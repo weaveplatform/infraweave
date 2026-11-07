@@ -14,6 +14,14 @@ type UnimplementedStrict struct{}
 
 var _ StrictServerInterface = UnimplementedStrict{}
 
+func (UnimplementedStrict) Billing(context.Context, BillingRequestObject) (BillingResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billing", Route: "GET /billing"}
+}
+
+func (UnimplementedStrict) BillingSet(context.Context, BillingSetRequestObject) (BillingSetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSet", Route: "PUT /billing"}
+}
+
 func (UnimplementedStrict) Organizations(context.Context, OrganizationsRequestObject) (OrganizationsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "organizations", Route: "GET /organizations"}
 }
@@ -36,4 +44,68 @@ func (UnimplementedStrict) OrganizationBreakGlassDelete(context.Context, Organiz
 
 func (UnimplementedStrict) OrganizationBreakGlassSet(context.Context, OrganizationBreakGlassSetRequestObject) (OrganizationBreakGlassSetResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "organizationBreakGlassSet", Route: "PUT /organizations/{organization}/break-glass"}
+}
+
+func (UnimplementedStrict) OrganizationEntitlement(context.Context, OrganizationEntitlementRequestObject) (OrganizationEntitlementResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationEntitlement", Route: "GET /organizations/{organization}/entitlement"}
+}
+
+func (UnimplementedStrict) OrganizationFeatureRevoke(context.Context, OrganizationFeatureRevokeRequestObject) (OrganizationFeatureRevokeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationFeatureRevoke", Route: "DELETE /organizations/{organization}/grants/features/{feature}"}
+}
+
+func (UnimplementedStrict) OrganizationFeatureGrant(context.Context, OrganizationFeatureGrantRequestObject) (OrganizationFeatureGrantResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationFeatureGrant", Route: "PUT /organizations/{organization}/grants/features/{feature}"}
+}
+
+func (UnimplementedStrict) OrganizationLimitRevoke(context.Context, OrganizationLimitRevokeRequestObject) (OrganizationLimitRevokeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationLimitRevoke", Route: "DELETE /organizations/{organization}/grants/limits/{limit}"}
+}
+
+func (UnimplementedStrict) OrganizationLimitGrant(context.Context, OrganizationLimitGrantRequestObject) (OrganizationLimitGrantResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationLimitGrant", Route: "PUT /organizations/{organization}/grants/limits/{limit}"}
+}
+
+func (UnimplementedStrict) OrganizationTierSet(context.Context, OrganizationTierSetRequestObject) (OrganizationTierSetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationTierSet", Route: "PUT /organizations/{organization}/tier"}
+}
+
+func (UnimplementedStrict) DeadJobs(context.Context, DeadJobsRequestObject) (DeadJobsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "deadJobs", Route: "GET /queue/jobs"}
+}
+
+func (UnimplementedStrict) DeadJobDiscard(context.Context, DeadJobDiscardRequestObject) (DeadJobDiscardResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "deadJobDiscard", Route: "DELETE /queue/jobs/{id}"}
+}
+
+func (UnimplementedStrict) DeadJob(context.Context, DeadJobRequestObject) (DeadJobResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "deadJob", Route: "GET /queue/jobs/{id}"}
+}
+
+func (UnimplementedStrict) DeadJobRetry(context.Context, DeadJobRetryRequestObject) (DeadJobRetryResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "deadJobRetry", Route: "POST /queue/jobs/{id}/retry"}
+}
+
+func (UnimplementedStrict) SecretsRotate(context.Context, SecretsRotateRequestObject) (SecretsRotateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "secretsRotate", Route: "POST /secrets/rotate"}
+}
+
+func (UnimplementedStrict) Tiers(context.Context, TiersRequestObject) (TiersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tiers", Route: "GET /tiers"}
+}
+
+func (UnimplementedStrict) TierCreate(context.Context, TierCreateRequestObject) (TierCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tierCreate", Route: "POST /tiers"}
+}
+
+func (UnimplementedStrict) TierDelete(context.Context, TierDeleteRequestObject) (TierDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tierDelete", Route: "DELETE /tiers/{tier}"}
+}
+
+func (UnimplementedStrict) Tier(context.Context, TierRequestObject) (TierResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tier", Route: "GET /tiers/{tier}"}
+}
+
+func (UnimplementedStrict) TierUpdate(context.Context, TierUpdateRequestObject) (TierUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tierUpdate", Route: "PUT /tiers/{tier}"}
 }

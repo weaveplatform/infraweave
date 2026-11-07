@@ -121,6 +121,7 @@ func TestUnitUnreachable(t *testing.T) {
 		"Recover":  func() error { _, err := q.Recover(ctx); return err },
 		"Prune":    func() error { _, err := q.Prune(ctx, time.Hour, time.Hour); return err },
 		"ListDead": func() error { _, err := q.ListDead(ctx, 0, 10); return err },
+		"ReadDead": func() error { _, err := q.ReadDead(ctx, 1); return err },
 		"Retry":    func() error { return q.Retry(ctx, 1) },
 		"Discard":  func() error { return q.Discard(ctx, 1) },
 		"Stats":    func() error { _, err := q.Stats(ctx); return err },

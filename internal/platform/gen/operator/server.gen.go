@@ -48,6 +48,24 @@ type AccountInput struct {
 	Slug string `json:"slug"`
 }
 
+// Billing The installation's billing switch and default tier (decision 0021).
+type Billing struct {
+	// DefaultTier The tier a new organization gets.
+	DefaultTier string `json:"defaultTier"`
+
+	// Enabled Whether entitlement checks run. While it is off every organization behaves as Enterprise.
+	Enabled bool `json:"enabled"`
+}
+
+// BillingInput The billing switch, and the default tier when set.
+type BillingInput struct {
+	// DefaultTier The tier a new organization gets; left out, it stays as it is.
+	DefaultTier *string `json:"defaultTier,omitempty"`
+
+	// Enabled Whether entitlement checks run.
+	Enabled bool `json:"enabled"`
+}
+
 // BreakGlass The organization's break-glass credential, when it has one. The hash is never answered.
 type BreakGlass struct {
 	// Login The login the break-glass admin signs in with.
@@ -64,6 +82,95 @@ type BreakGlassInput struct {
 
 	// PasswordHash The password's PBKDF2-HMAC-SHA256 hash, $pbkdf2-sha256$i=<iterations>$<salt>$<hash> in unpadded standard base64, with at least 600,000 iterations and a 16-byte salt, as infraweave auth hash-password prints it.
 	PasswordHash *string `json:"passwordHash,omitempty"`
+}
+
+// DataKey The data key that seals new values (decision 0013).
+type DataKey struct {
+	// KeyId The active data key's ID.
+	KeyId int64 `json:"keyId"`
+}
+
+// DeadJob A job that exhausted its attempts or failed permanently (decision 0011).
+type DeadJob struct {
+	// Account The ULID of the account the job ran for, when it ran for one.
+	Account *string `json:"account,omitempty"`
+
+	// Attempt The attempts it made.
+	Attempt int32 `json:"attempt"`
+
+	// CreatedAt When it was enqueued, in Unix seconds.
+	CreatedAt int64 `json:"createdAt"`
+
+	// FinishedAt When it died, in Unix seconds.
+	FinishedAt int64 `json:"finishedAt"`
+
+	// Id The job's ID.
+	Id int64 `json:"id"`
+
+	// Kind The job kind, <area>.<verb>.
+	Kind string `json:"kind"`
+
+	// LastError The error of its last attempt.
+	LastError string `json:"lastError"`
+
+	// Payload The job's JSON payload.
+	Payload interface{} `json:"payload"`
+
+	// Queue The logical queue it ran on.
+	Queue string `json:"queue"`
+
+	// UniqueKey The key that keeps its duplicates out, when it has one.
+	UniqueKey *string `json:"uniqueKey,omitempty"`
+}
+
+// DeadJobPage One page of a cursor-paginated list (decision 0003).
+type DeadJobPage struct {
+	Items []DeadJob `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// Entitlement An organization's tier and grants, and what they entitle it to while billing is on: the tier's features and the granted ones, less features.disabled and every feature whose requirements that leaves out, with each limit's value from a grant, else the tier.
+type Entitlement struct {
+	// Features The features the organization holds, sorted.
+	Features []string `json:"features"`
+
+	// Grants What the operator grants the organization beyond its tier; grants survive a change of tier.
+	Grants Grants `json:"grants"`
+
+	// Limits Each limit's value by limit name. A limit absent here has no limit.
+	Limits map[string]int64 `json:"limits"`
+
+	// Tier The organization's tier.
+	Tier string `json:"tier"`
+
+	// Version Bumped by every change to the tier or the grants.
+	Version int64 `json:"version"`
+}
+
+// Grants What the operator grants the organization beyond its tier; grants survive a change of tier.
+type Grants struct {
+	// Features Features granted beyond the tier, sorted.
+	Features []string `json:"features"`
+
+	// Limits Limit values set above or below the tier's, by limit name.
+	Limits []LimitGrant `json:"limits"`
+}
+
+// LimitGrant One limit's granted value.
+type LimitGrant struct {
+	// Limit The limit's name.
+	Limit string `json:"limit"`
+
+	// Value The organization's value; null lifts the limit.
+	Value *int64 `json:"value"`
+}
+
+// LimitGrantInput A limit's value for the organization.
+type LimitGrantInput struct {
+	// Value The organization's value; null lifts the limit.
+	Value *int64 `json:"value"`
 }
 
 // Organization An organization, its accounts and whether it has a break-glass credential.
@@ -161,6 +268,59 @@ type Problem struct {
 // ProblemScope For limit-reached, whether the organization's pool or the account's limit was reached.
 type ProblemScope string
 
+// Tier A tier: a set of features and a set of limit values (decision 0021).
+type Tier struct {
+	// Editable False for Enterprise, which holds every feature and no limit and which the operator can neither edit nor delete.
+	Editable bool `json:"editable"`
+
+	// Features The capabilities and options the tier holds, sorted.
+	Features []string `json:"features"`
+
+	// Limits Each limit's value by limit name. A limit the tier does not name has no limit.
+	Limits map[string]int64 `json:"limits"`
+
+	// Name The tier's name, unique among tiers and never changed.
+	Name string `json:"name"`
+
+	// Organizations How many organizations hold the tier.
+	Organizations int64 `json:"organizations"`
+}
+
+// TierChoice The tier an organization moves to.
+type TierChoice struct {
+	// Tier An existing tier's name.
+	Tier string `json:"tier"`
+}
+
+// TierContent A tier's content, which replaces what it held.
+type TierContent struct {
+	// Features Capabilities and options of the catalogue, each once.
+	Features []string `json:"features"`
+
+	// Limits Limit values by limit name, each a limit of the catalogue.
+	Limits map[string]int64 `json:"limits"`
+}
+
+// TierInput A new tier.
+type TierInput struct {
+	// Features Capabilities and options of the catalogue, each once.
+	Features []string `json:"features"`
+
+	// Limits Limit values by limit name, each a limit of the catalogue.
+	Limits map[string]int64 `json:"limits"`
+
+	// Name 1 to 63 letters, digits, spaces and the characters + . _ -, starting with a letter or digit.
+	Name string `json:"name"`
+}
+
+// TierPage One page of a cursor-paginated list (decision 0003).
+type TierPage struct {
+	Items []Tier `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // Cursor defines model for Cursor.
 type Cursor = string
 
@@ -172,6 +332,9 @@ type Limit = int32
 
 // OrganizationSlug defines model for OrganizationSlug.
 type OrganizationSlug = string
+
+// TierName defines model for TierName.
+type TierName = string
 
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
@@ -209,14 +372,71 @@ type OrganizationCreateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// DeadJobsParams defines parameters for DeadJobs.
+type DeadJobsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// DeadJobRetryParams defines parameters for DeadJobRetry.
+type DeadJobRetryParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// SecretsRotateParams defines parameters for SecretsRotate.
+type SecretsRotateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// TiersParams defines parameters for Tiers.
+type TiersParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// TierCreateParams defines parameters for TierCreate.
+type TierCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BillingSetJSONRequestBody defines body for BillingSet for application/json ContentType.
+type BillingSetJSONRequestBody = BillingInput
+
 // OrganizationCreateJSONRequestBody defines body for OrganizationCreate for application/json ContentType.
 type OrganizationCreateJSONRequestBody = OrganizationCreateInput
 
 // OrganizationBreakGlassSetJSONRequestBody defines body for OrganizationBreakGlassSet for application/json ContentType.
 type OrganizationBreakGlassSetJSONRequestBody = BreakGlassInput
 
+// OrganizationLimitGrantJSONRequestBody defines body for OrganizationLimitGrant for application/json ContentType.
+type OrganizationLimitGrantJSONRequestBody = LimitGrantInput
+
+// OrganizationTierSetJSONRequestBody defines body for OrganizationTierSet for application/json ContentType.
+type OrganizationTierSetJSONRequestBody = TierChoice
+
+// TierCreateJSONRequestBody defines body for TierCreate for application/json ContentType.
+type TierCreateJSONRequestBody = TierInput
+
+// TierUpdateJSONRequestBody defines body for TierUpdate for application/json ContentType.
+type TierUpdateJSONRequestBody = TierContent
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Billing Read the billing switch
+	// (GET /billing)
+	Billing(w http.ResponseWriter, r *http.Request)
+	// BillingSet Set the billing switch
+	// (PUT /billing)
+	BillingSet(w http.ResponseWriter, r *http.Request)
 	// Organizations List organizations
 	// (GET /organizations)
 	Organizations(w http.ResponseWriter, r *http.Request, params OrganizationsParams)
@@ -235,11 +455,71 @@ type ServerInterface interface {
 	// OrganizationBreakGlassSet Set the break-glass credential
 	// (PUT /organizations/{organization}/break-glass)
 	OrganizationBreakGlassSet(w http.ResponseWriter, r *http.Request, organization OrganizationSlug)
+	// OrganizationEntitlement Read an organization's entitlement
+	// (GET /organizations/{organization}/entitlement)
+	OrganizationEntitlement(w http.ResponseWriter, r *http.Request, organization OrganizationSlug)
+	// OrganizationFeatureRevoke Revoke a granted feature
+	// (DELETE /organizations/{organization}/grants/features/{feature})
+	OrganizationFeatureRevoke(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, feature string)
+	// OrganizationFeatureGrant Grant a feature
+	// (PUT /organizations/{organization}/grants/features/{feature})
+	OrganizationFeatureGrant(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, feature string)
+	// OrganizationLimitRevoke Remove a granted limit value
+	// (DELETE /organizations/{organization}/grants/limits/{limit})
+	OrganizationLimitRevoke(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, limit string)
+	// OrganizationLimitGrant Grant a limit value
+	// (PUT /organizations/{organization}/grants/limits/{limit})
+	OrganizationLimitGrant(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, limit string)
+	// OrganizationTierSet Set an organization's tier
+	// (PUT /organizations/{organization}/tier)
+	OrganizationTierSet(w http.ResponseWriter, r *http.Request, organization OrganizationSlug)
+	// DeadJobs List dead jobs
+	// (GET /queue/jobs)
+	DeadJobs(w http.ResponseWriter, r *http.Request, params DeadJobsParams)
+	// DeadJobDiscard Discard a dead job
+	// (DELETE /queue/jobs/{id})
+	DeadJobDiscard(w http.ResponseWriter, r *http.Request, id int64)
+	// DeadJob Read a dead job
+	// (GET /queue/jobs/{id})
+	DeadJob(w http.ResponseWriter, r *http.Request, id int64)
+	// DeadJobRetry Retry a dead job
+	// (POST /queue/jobs/{id}/retry)
+	DeadJobRetry(w http.ResponseWriter, r *http.Request, id int64, params DeadJobRetryParams)
+	// SecretsRotate Rotate the data key
+	// (POST /secrets/rotate)
+	SecretsRotate(w http.ResponseWriter, r *http.Request, params SecretsRotateParams)
+	// Tiers List tiers
+	// (GET /tiers)
+	Tiers(w http.ResponseWriter, r *http.Request, params TiersParams)
+	// TierCreate Create a tier
+	// (POST /tiers)
+	TierCreate(w http.ResponseWriter, r *http.Request, params TierCreateParams)
+	// TierDelete Delete a tier
+	// (DELETE /tiers/{tier})
+	TierDelete(w http.ResponseWriter, r *http.Request, tier TierName)
+	// Tier Read a tier
+	// (GET /tiers/{tier})
+	Tier(w http.ResponseWriter, r *http.Request, tier TierName)
+	// TierUpdate Replace a tier's content
+	// (PUT /tiers/{tier})
+	TierUpdate(w http.ResponseWriter, r *http.Request, tier TierName)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Billing Read the billing switch
+// (GET /billing)
+func (_ Unimplemented) Billing(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BillingSet Set the billing switch
+// (PUT /billing)
+func (_ Unimplemented) BillingSet(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Organizations List organizations
 // (GET /organizations)
@@ -277,6 +557,102 @@ func (_ Unimplemented) OrganizationBreakGlassSet(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// OrganizationEntitlement Read an organization's entitlement
+// (GET /organizations/{organization}/entitlement)
+func (_ Unimplemented) OrganizationEntitlement(w http.ResponseWriter, r *http.Request, organization OrganizationSlug) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// OrganizationFeatureRevoke Revoke a granted feature
+// (DELETE /organizations/{organization}/grants/features/{feature})
+func (_ Unimplemented) OrganizationFeatureRevoke(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, feature string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// OrganizationFeatureGrant Grant a feature
+// (PUT /organizations/{organization}/grants/features/{feature})
+func (_ Unimplemented) OrganizationFeatureGrant(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, feature string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// OrganizationLimitRevoke Remove a granted limit value
+// (DELETE /organizations/{organization}/grants/limits/{limit})
+func (_ Unimplemented) OrganizationLimitRevoke(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, limit string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// OrganizationLimitGrant Grant a limit value
+// (PUT /organizations/{organization}/grants/limits/{limit})
+func (_ Unimplemented) OrganizationLimitGrant(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, limit string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// OrganizationTierSet Set an organization's tier
+// (PUT /organizations/{organization}/tier)
+func (_ Unimplemented) OrganizationTierSet(w http.ResponseWriter, r *http.Request, organization OrganizationSlug) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeadJobs List dead jobs
+// (GET /queue/jobs)
+func (_ Unimplemented) DeadJobs(w http.ResponseWriter, r *http.Request, params DeadJobsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeadJobDiscard Discard a dead job
+// (DELETE /queue/jobs/{id})
+func (_ Unimplemented) DeadJobDiscard(w http.ResponseWriter, r *http.Request, id int64) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeadJob Read a dead job
+// (GET /queue/jobs/{id})
+func (_ Unimplemented) DeadJob(w http.ResponseWriter, r *http.Request, id int64) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeadJobRetry Retry a dead job
+// (POST /queue/jobs/{id}/retry)
+func (_ Unimplemented) DeadJobRetry(w http.ResponseWriter, r *http.Request, id int64, params DeadJobRetryParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SecretsRotate Rotate the data key
+// (POST /secrets/rotate)
+func (_ Unimplemented) SecretsRotate(w http.ResponseWriter, r *http.Request, params SecretsRotateParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tiers List tiers
+// (GET /tiers)
+func (_ Unimplemented) Tiers(w http.ResponseWriter, r *http.Request, params TiersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TierCreate Create a tier
+// (POST /tiers)
+func (_ Unimplemented) TierCreate(w http.ResponseWriter, r *http.Request, params TierCreateParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TierDelete Delete a tier
+// (DELETE /tiers/{tier})
+func (_ Unimplemented) TierDelete(w http.ResponseWriter, r *http.Request, tier TierName) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Tier Read a tier
+// (GET /tiers/{tier})
+func (_ Unimplemented) Tier(w http.ResponseWriter, r *http.Request, tier TierName) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TierUpdate Replace a tier's content
+// (PUT /tiers/{tier})
+func (_ Unimplemented) TierUpdate(w http.ResponseWriter, r *http.Request, tier TierName) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler            ServerInterface
@@ -285,6 +661,34 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// Billing operation middleware
+func (siw *ServerInterfaceWrapper) Billing(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Billing(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BillingSet operation middleware
+func (siw *ServerInterfaceWrapper) BillingSet(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BillingSet(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // Organizations operation middleware
 func (siw *ServerInterfaceWrapper) Organizations(w http.ResponseWriter, r *http.Request) {
@@ -477,6 +881,552 @@ func (siw *ServerInterfaceWrapper) OrganizationBreakGlassSet(w http.ResponseWrit
 	handler.ServeHTTP(w, r)
 }
 
+// OrganizationEntitlement operation middleware
+func (siw *ServerInterfaceWrapper) OrganizationEntitlement(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "organization" -------------
+	var organization OrganizationSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization", chi.URLParam(r, "organization"), &organization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OrganizationEntitlement(w, r, organization)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OrganizationFeatureRevoke operation middleware
+func (siw *ServerInterfaceWrapper) OrganizationFeatureRevoke(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "organization" -------------
+	var organization OrganizationSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization", chi.URLParam(r, "organization"), &organization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "feature" -------------
+	var feature string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "feature", chi.URLParam(r, "feature"), &feature, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "feature", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OrganizationFeatureRevoke(w, r, organization, feature)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OrganizationFeatureGrant operation middleware
+func (siw *ServerInterfaceWrapper) OrganizationFeatureGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "organization" -------------
+	var organization OrganizationSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization", chi.URLParam(r, "organization"), &organization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "feature" -------------
+	var feature string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "feature", chi.URLParam(r, "feature"), &feature, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "feature", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OrganizationFeatureGrant(w, r, organization, feature)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OrganizationLimitRevoke operation middleware
+func (siw *ServerInterfaceWrapper) OrganizationLimitRevoke(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "organization" -------------
+	var organization OrganizationSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization", chi.URLParam(r, "organization"), &organization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "limit" -------------
+	var limit string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "limit", chi.URLParam(r, "limit"), &limit, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OrganizationLimitRevoke(w, r, organization, limit)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OrganizationLimitGrant operation middleware
+func (siw *ServerInterfaceWrapper) OrganizationLimitGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "organization" -------------
+	var organization OrganizationSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization", chi.URLParam(r, "organization"), &organization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "limit" -------------
+	var limit string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "limit", chi.URLParam(r, "limit"), &limit, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OrganizationLimitGrant(w, r, organization, limit)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OrganizationTierSet operation middleware
+func (siw *ServerInterfaceWrapper) OrganizationTierSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "organization" -------------
+	var organization OrganizationSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization", chi.URLParam(r, "organization"), &organization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OrganizationTierSet(w, r, organization)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeadJobs operation middleware
+func (siw *ServerInterfaceWrapper) DeadJobs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeadJobsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeadJobs(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeadJobDiscard operation middleware
+func (siw *ServerInterfaceWrapper) DeadJobDiscard(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeadJobDiscard(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeadJob operation middleware
+func (siw *ServerInterfaceWrapper) DeadJob(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeadJob(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeadJobRetry operation middleware
+func (siw *ServerInterfaceWrapper) DeadJobRetry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeadJobRetryParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeadJobRetry(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SecretsRotate operation middleware
+func (siw *ServerInterfaceWrapper) SecretsRotate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SecretsRotateParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SecretsRotate(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Tiers operation middleware
+func (siw *ServerInterfaceWrapper) Tiers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TiersParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Tiers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TierCreate operation middleware
+func (siw *ServerInterfaceWrapper) TierCreate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TierCreateParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TierCreate(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TierDelete operation middleware
+func (siw *ServerInterfaceWrapper) TierDelete(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tier" -------------
+	var tier TierName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tier", chi.URLParam(r, "tier"), &tier, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TierDelete(w, r, tier)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Tier operation middleware
+func (siw *ServerInterfaceWrapper) Tier(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tier" -------------
+	var tier TierName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tier", chi.URLParam(r, "tier"), &tier, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Tier(w, r, tier)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TierUpdate operation middleware
+func (siw *ServerInterfaceWrapper) TierUpdate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tier" -------------
+	var tier TierName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tier", chi.URLParam(r, "tier"), &tier, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TierUpdate(w, r, tier)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -591,6 +1541,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/billing", wrapper.Billing)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/billing", wrapper.BillingSet)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/organizations", wrapper.Organizations)
 	})
 	r.Group(func(r chi.Router) {
@@ -607,6 +1563,54 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/organizations/{organization}/break-glass", wrapper.OrganizationBreakGlassSet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/organizations/{organization}/entitlement", wrapper.OrganizationEntitlement)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/organizations/{organization}/grants/features/{feature}", wrapper.OrganizationFeatureRevoke)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/organizations/{organization}/grants/features/{feature}", wrapper.OrganizationFeatureGrant)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/organizations/{organization}/grants/limits/{limit}", wrapper.OrganizationLimitRevoke)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/organizations/{organization}/grants/limits/{limit}", wrapper.OrganizationLimitGrant)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/organizations/{organization}/tier", wrapper.OrganizationTierSet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/queue/jobs", wrapper.DeadJobs)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/queue/jobs/{id}", wrapper.DeadJobDiscard)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/queue/jobs/{id}", wrapper.DeadJob)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/queue/jobs/{id}/retry", wrapper.DeadJobRetry)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/secrets/rotate", wrapper.SecretsRotate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/tiers", wrapper.Tiers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/tiers", wrapper.TierCreate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/tiers/{tier}", wrapper.TierDelete)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/tiers/{tier}", wrapper.Tier)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/tiers/{tier}", wrapper.TierUpdate)
 	})
 
 	return r
@@ -650,6 +1654,265 @@ type UnauthenticatedApplicationProblemPlusJSONResponse struct {
 	Body Problem
 
 	Headers UnauthenticatedResponseHeaders
+}
+
+type BillingRequestObject struct {
+}
+
+type BillingResponseObject interface {
+	VisitBillingResponse(w http.ResponseWriter) error
+}
+
+type Billing200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type Billing200JSONResponse struct {
+	Body    Billing
+	Headers Billing200ResponseHeaders
+}
+
+func (response Billing200JSONResponse) VisitBillingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Billing401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response Billing401ApplicationProblemPlusJSONResponse) VisitBillingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Billing429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response Billing429ApplicationProblemPlusJSONResponse) VisitBillingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Billing503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response Billing503ApplicationProblemPlusJSONResponse) VisitBillingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response BillingdefaultApplicationProblemPlusJSONResponse) VisitBillingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingSetRequestObject struct {
+	Body *BillingSetJSONRequestBody
+}
+
+type BillingSetResponseObject interface {
+	VisitBillingSetResponse(w http.ResponseWriter) error
+}
+
+type BillingSet200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type BillingSet200JSONResponse struct {
+	Body    Billing
+	Headers BillingSet200ResponseHeaders
+}
+
+func (response BillingSet200JSONResponse) VisitBillingSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingSet401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response BillingSet401ApplicationProblemPlusJSONResponse) VisitBillingSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingSet422ApplicationProblemPlusJSONResponse Problem
+
+func (response BillingSet422ApplicationProblemPlusJSONResponse) VisitBillingSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingSet429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response BillingSet429ApplicationProblemPlusJSONResponse) VisitBillingSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingSet503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response BillingSet503ApplicationProblemPlusJSONResponse) VisitBillingSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BillingSetdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response BillingSetdefaultApplicationProblemPlusJSONResponse) VisitBillingSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type OrganizationsRequestObject struct {
@@ -1514,8 +2777,2387 @@ func (response OrganizationBreakGlassSetdefaultApplicationProblemPlusJSONRespons
 	return err
 }
 
+type OrganizationEntitlementRequestObject struct {
+	Organization OrganizationSlug `json:"organization"`
+}
+
+type OrganizationEntitlementResponseObject interface {
+	VisitOrganizationEntitlementResponse(w http.ResponseWriter) error
+}
+
+type OrganizationEntitlement200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type OrganizationEntitlement200JSONResponse struct {
+	Body    Entitlement
+	Headers OrganizationEntitlement200ResponseHeaders
+}
+
+func (response OrganizationEntitlement200JSONResponse) VisitOrganizationEntitlementResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationEntitlement401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationEntitlement401ApplicationProblemPlusJSONResponse) VisitOrganizationEntitlementResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationEntitlement404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationEntitlement404ApplicationProblemPlusJSONResponse) VisitOrganizationEntitlementResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationEntitlement429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationEntitlement429ApplicationProblemPlusJSONResponse) VisitOrganizationEntitlementResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationEntitlement503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationEntitlement503ApplicationProblemPlusJSONResponse) VisitOrganizationEntitlementResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationEntitlementdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response OrganizationEntitlementdefaultApplicationProblemPlusJSONResponse) VisitOrganizationEntitlementResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureRevokeRequestObject struct {
+	Organization OrganizationSlug `json:"organization"`
+	Feature      string           `json:"feature"`
+}
+
+type OrganizationFeatureRevokeResponseObject interface {
+	VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error
+}
+
+type OrganizationFeatureRevoke200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type OrganizationFeatureRevoke200JSONResponse struct {
+	Body    Entitlement
+	Headers OrganizationFeatureRevoke200ResponseHeaders
+}
+
+func (response OrganizationFeatureRevoke200JSONResponse) VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureRevoke401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureRevoke401ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureRevoke404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureRevoke404ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureRevoke429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureRevoke429ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureRevoke503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureRevoke503ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureRevokedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response OrganizationFeatureRevokedefaultApplicationProblemPlusJSONResponse) VisitOrganizationFeatureRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrantRequestObject struct {
+	Organization OrganizationSlug `json:"organization"`
+	Feature      string           `json:"feature"`
+}
+
+type OrganizationFeatureGrantResponseObject interface {
+	VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error
+}
+
+type OrganizationFeatureGrant200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type OrganizationFeatureGrant200JSONResponse struct {
+	Body    Entitlement
+	Headers OrganizationFeatureGrant200ResponseHeaders
+}
+
+func (response OrganizationFeatureGrant200JSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrant401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureGrant401ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrant404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureGrant404ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrant422ApplicationProblemPlusJSONResponse Problem
+
+func (response OrganizationFeatureGrant422ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrant429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureGrant429ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrant503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationFeatureGrant503ApplicationProblemPlusJSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationFeatureGrantdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response OrganizationFeatureGrantdefaultApplicationProblemPlusJSONResponse) VisitOrganizationFeatureGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitRevokeRequestObject struct {
+	Organization OrganizationSlug `json:"organization"`
+	Limit        string           `json:"limit"`
+}
+
+type OrganizationLimitRevokeResponseObject interface {
+	VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error
+}
+
+type OrganizationLimitRevoke200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type OrganizationLimitRevoke200JSONResponse struct {
+	Body    Entitlement
+	Headers OrganizationLimitRevoke200ResponseHeaders
+}
+
+func (response OrganizationLimitRevoke200JSONResponse) VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitRevoke401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitRevoke401ApplicationProblemPlusJSONResponse) VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitRevoke404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitRevoke404ApplicationProblemPlusJSONResponse) VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitRevoke429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitRevoke429ApplicationProblemPlusJSONResponse) VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitRevoke503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitRevoke503ApplicationProblemPlusJSONResponse) VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitRevokedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response OrganizationLimitRevokedefaultApplicationProblemPlusJSONResponse) VisitOrganizationLimitRevokeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrantRequestObject struct {
+	Organization OrganizationSlug `json:"organization"`
+	Limit        string           `json:"limit"`
+	Body         *OrganizationLimitGrantJSONRequestBody
+}
+
+type OrganizationLimitGrantResponseObject interface {
+	VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error
+}
+
+type OrganizationLimitGrant200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type OrganizationLimitGrant200JSONResponse struct {
+	Body    Entitlement
+	Headers OrganizationLimitGrant200ResponseHeaders
+}
+
+func (response OrganizationLimitGrant200JSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrant401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitGrant401ApplicationProblemPlusJSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrant404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitGrant404ApplicationProblemPlusJSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrant422ApplicationProblemPlusJSONResponse Problem
+
+func (response OrganizationLimitGrant422ApplicationProblemPlusJSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrant429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitGrant429ApplicationProblemPlusJSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrant503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationLimitGrant503ApplicationProblemPlusJSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationLimitGrantdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response OrganizationLimitGrantdefaultApplicationProblemPlusJSONResponse) VisitOrganizationLimitGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSetRequestObject struct {
+	Organization OrganizationSlug `json:"organization"`
+	Body         *OrganizationTierSetJSONRequestBody
+}
+
+type OrganizationTierSetResponseObject interface {
+	VisitOrganizationTierSetResponse(w http.ResponseWriter) error
+}
+
+type OrganizationTierSet200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type OrganizationTierSet200JSONResponse struct {
+	Body    Entitlement
+	Headers OrganizationTierSet200ResponseHeaders
+}
+
+func (response OrganizationTierSet200JSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSet401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationTierSet401ApplicationProblemPlusJSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSet404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationTierSet404ApplicationProblemPlusJSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSet422ApplicationProblemPlusJSONResponse Problem
+
+func (response OrganizationTierSet422ApplicationProblemPlusJSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSet429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationTierSet429ApplicationProblemPlusJSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSet503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response OrganizationTierSet503ApplicationProblemPlusJSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type OrganizationTierSetdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response OrganizationTierSetdefaultApplicationProblemPlusJSONResponse) VisitOrganizationTierSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobsRequestObject struct {
+	Params DeadJobsParams
+}
+
+type DeadJobsResponseObject interface {
+	VisitDeadJobsResponse(w http.ResponseWriter) error
+}
+
+type DeadJobs200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type DeadJobs200JSONResponse struct {
+	Body    DeadJobPage
+	Headers DeadJobs200ResponseHeaders
+}
+
+func (response DeadJobs200JSONResponse) VisitDeadJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobs400ApplicationProblemPlusJSONResponse struct {
+	InvalidCursorApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobs400ApplicationProblemPlusJSONResponse) VisitDeadJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobs401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobs401ApplicationProblemPlusJSONResponse) VisitDeadJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobs429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobs429ApplicationProblemPlusJSONResponse) VisitDeadJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobs503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobs503ApplicationProblemPlusJSONResponse) VisitDeadJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeadJobsdefaultApplicationProblemPlusJSONResponse) VisitDeadJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobDiscardRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type DeadJobDiscardResponseObject interface {
+	VisitDeadJobDiscardResponse(w http.ResponseWriter) error
+}
+
+type DeadJobDiscard200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type DeadJobDiscard200JSONResponse struct {
+	Body    DeadJob
+	Headers DeadJobDiscard200ResponseHeaders
+}
+
+func (response DeadJobDiscard200JSONResponse) VisitDeadJobDiscardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobDiscard401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobDiscard401ApplicationProblemPlusJSONResponse) VisitDeadJobDiscardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobDiscard404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobDiscard404ApplicationProblemPlusJSONResponse) VisitDeadJobDiscardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobDiscard429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobDiscard429ApplicationProblemPlusJSONResponse) VisitDeadJobDiscardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobDiscard503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobDiscard503ApplicationProblemPlusJSONResponse) VisitDeadJobDiscardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobDiscarddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeadJobDiscarddefaultApplicationProblemPlusJSONResponse) VisitDeadJobDiscardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type DeadJobResponseObject interface {
+	VisitDeadJobResponse(w http.ResponseWriter) error
+}
+
+type DeadJob200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type DeadJob200JSONResponse struct {
+	Body    DeadJob
+	Headers DeadJob200ResponseHeaders
+}
+
+func (response DeadJob200JSONResponse) VisitDeadJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJob401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJob401ApplicationProblemPlusJSONResponse) VisitDeadJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJob404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJob404ApplicationProblemPlusJSONResponse) VisitDeadJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJob429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJob429ApplicationProblemPlusJSONResponse) VisitDeadJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJob503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJob503ApplicationProblemPlusJSONResponse) VisitDeadJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeadJobdefaultApplicationProblemPlusJSONResponse) VisitDeadJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetryRequestObject struct {
+	Id     int64 `json:"id"`
+	Params DeadJobRetryParams
+}
+
+type DeadJobRetryResponseObject interface {
+	VisitDeadJobRetryResponse(w http.ResponseWriter) error
+}
+
+type DeadJobRetry200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type DeadJobRetry200JSONResponse struct {
+	Body    DeadJob
+	Headers DeadJobRetry200ResponseHeaders
+}
+
+func (response DeadJobRetry200JSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetry401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobRetry401ApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetry404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobRetry404ApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetry409ApplicationProblemPlusJSONResponse Problem
+
+func (response DeadJobRetry409ApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetry422ApplicationProblemPlusJSONResponse struct {
+	IdempotencyMismatchApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobRetry422ApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetry429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobRetry429ApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetry503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response DeadJobRetry503ApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeadJobRetrydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeadJobRetrydefaultApplicationProblemPlusJSONResponse) VisitDeadJobRetryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotateRequestObject struct {
+	Params SecretsRotateParams
+}
+
+type SecretsRotateResponseObject interface {
+	VisitSecretsRotateResponse(w http.ResponseWriter) error
+}
+
+type SecretsRotate200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type SecretsRotate200JSONResponse struct {
+	Body    DataKey
+	Headers SecretsRotate200ResponseHeaders
+}
+
+func (response SecretsRotate200JSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotate401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response SecretsRotate401ApplicationProblemPlusJSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotate409ApplicationProblemPlusJSONResponse Problem
+
+func (response SecretsRotate409ApplicationProblemPlusJSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotate422ApplicationProblemPlusJSONResponse struct {
+	IdempotencyMismatchApplicationProblemPlusJSONResponse
+}
+
+func (response SecretsRotate422ApplicationProblemPlusJSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotate429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response SecretsRotate429ApplicationProblemPlusJSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotate503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response SecretsRotate503ApplicationProblemPlusJSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SecretsRotatedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response SecretsRotatedefaultApplicationProblemPlusJSONResponse) VisitSecretsRotateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TiersRequestObject struct {
+	Params TiersParams
+}
+
+type TiersResponseObject interface {
+	VisitTiersResponse(w http.ResponseWriter) error
+}
+
+type Tiers200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type Tiers200JSONResponse struct {
+	Body    TierPage
+	Headers Tiers200ResponseHeaders
+}
+
+func (response Tiers200JSONResponse) VisitTiersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tiers400ApplicationProblemPlusJSONResponse struct {
+	InvalidCursorApplicationProblemPlusJSONResponse
+}
+
+func (response Tiers400ApplicationProblemPlusJSONResponse) VisitTiersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tiers401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response Tiers401ApplicationProblemPlusJSONResponse) VisitTiersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tiers429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response Tiers429ApplicationProblemPlusJSONResponse) VisitTiersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tiers503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response Tiers503ApplicationProblemPlusJSONResponse) VisitTiersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TiersdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response TiersdefaultApplicationProblemPlusJSONResponse) VisitTiersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreateRequestObject struct {
+	Params TierCreateParams
+	Body   *TierCreateJSONRequestBody
+}
+
+type TierCreateResponseObject interface {
+	VisitTierCreateResponse(w http.ResponseWriter) error
+}
+
+type TierCreate201ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type TierCreate201JSONResponse struct {
+	Body    Tier
+	Headers TierCreate201ResponseHeaders
+}
+
+func (response TierCreate201JSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreate401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response TierCreate401ApplicationProblemPlusJSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreate409ApplicationProblemPlusJSONResponse Problem
+
+func (response TierCreate409ApplicationProblemPlusJSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreate422ApplicationProblemPlusJSONResponse Problem
+
+func (response TierCreate422ApplicationProblemPlusJSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreate429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response TierCreate429ApplicationProblemPlusJSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreate503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response TierCreate503ApplicationProblemPlusJSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierCreatedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response TierCreatedefaultApplicationProblemPlusJSONResponse) VisitTierCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDeleteRequestObject struct {
+	Tier TierName `json:"tier"`
+}
+
+type TierDeleteResponseObject interface {
+	VisitTierDeleteResponse(w http.ResponseWriter) error
+}
+
+type TierDelete200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type TierDelete200JSONResponse struct {
+	Body    Tier
+	Headers TierDelete200ResponseHeaders
+}
+
+func (response TierDelete200JSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDelete401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response TierDelete401ApplicationProblemPlusJSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDelete404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response TierDelete404ApplicationProblemPlusJSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDelete409ApplicationProblemPlusJSONResponse Problem
+
+func (response TierDelete409ApplicationProblemPlusJSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDelete429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response TierDelete429ApplicationProblemPlusJSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDelete503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response TierDelete503ApplicationProblemPlusJSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierDeletedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response TierDeletedefaultApplicationProblemPlusJSONResponse) VisitTierDeleteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierRequestObject struct {
+	Tier TierName `json:"tier"`
+}
+
+type TierResponseObject interface {
+	VisitTierResponse(w http.ResponseWriter) error
+}
+
+type Tier200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type Tier200JSONResponse struct {
+	Body    Tier
+	Headers Tier200ResponseHeaders
+}
+
+func (response Tier200JSONResponse) VisitTierResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tier401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response Tier401ApplicationProblemPlusJSONResponse) VisitTierResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tier404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response Tier404ApplicationProblemPlusJSONResponse) VisitTierResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tier429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response Tier429ApplicationProblemPlusJSONResponse) VisitTierResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Tier503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response Tier503ApplicationProblemPlusJSONResponse) VisitTierResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response TierdefaultApplicationProblemPlusJSONResponse) VisitTierResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdateRequestObject struct {
+	Tier TierName `json:"tier"`
+	Body *TierUpdateJSONRequestBody
+}
+
+type TierUpdateResponseObject interface {
+	VisitTierUpdateResponse(w http.ResponseWriter) error
+}
+
+type TierUpdate200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type TierUpdate200JSONResponse struct {
+	Body    Tier
+	Headers TierUpdate200ResponseHeaders
+}
+
+func (response TierUpdate200JSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdate401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response TierUpdate401ApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdate404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response TierUpdate404ApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdate409ApplicationProblemPlusJSONResponse Problem
+
+func (response TierUpdate409ApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdate422ApplicationProblemPlusJSONResponse Problem
+
+func (response TierUpdate422ApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdate429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response TierUpdate429ApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdate503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response TierUpdate503ApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TierUpdatedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response TierUpdatedefaultApplicationProblemPlusJSONResponse) VisitTierUpdateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Billing Read the billing switch
+	// (GET /billing)
+	Billing(ctx context.Context, request BillingRequestObject) (BillingResponseObject, error)
+	// BillingSet Set the billing switch
+	// (PUT /billing)
+	BillingSet(ctx context.Context, request BillingSetRequestObject) (BillingSetResponseObject, error)
 	// Organizations List organizations
 	// (GET /organizations)
 	Organizations(ctx context.Context, request OrganizationsRequestObject) (OrganizationsResponseObject, error)
@@ -1534,6 +5176,54 @@ type StrictServerInterface interface {
 	// OrganizationBreakGlassSet Set the break-glass credential
 	// (PUT /organizations/{organization}/break-glass)
 	OrganizationBreakGlassSet(ctx context.Context, request OrganizationBreakGlassSetRequestObject) (OrganizationBreakGlassSetResponseObject, error)
+	// OrganizationEntitlement Read an organization's entitlement
+	// (GET /organizations/{organization}/entitlement)
+	OrganizationEntitlement(ctx context.Context, request OrganizationEntitlementRequestObject) (OrganizationEntitlementResponseObject, error)
+	// OrganizationFeatureRevoke Revoke a granted feature
+	// (DELETE /organizations/{organization}/grants/features/{feature})
+	OrganizationFeatureRevoke(ctx context.Context, request OrganizationFeatureRevokeRequestObject) (OrganizationFeatureRevokeResponseObject, error)
+	// OrganizationFeatureGrant Grant a feature
+	// (PUT /organizations/{organization}/grants/features/{feature})
+	OrganizationFeatureGrant(ctx context.Context, request OrganizationFeatureGrantRequestObject) (OrganizationFeatureGrantResponseObject, error)
+	// OrganizationLimitRevoke Remove a granted limit value
+	// (DELETE /organizations/{organization}/grants/limits/{limit})
+	OrganizationLimitRevoke(ctx context.Context, request OrganizationLimitRevokeRequestObject) (OrganizationLimitRevokeResponseObject, error)
+	// OrganizationLimitGrant Grant a limit value
+	// (PUT /organizations/{organization}/grants/limits/{limit})
+	OrganizationLimitGrant(ctx context.Context, request OrganizationLimitGrantRequestObject) (OrganizationLimitGrantResponseObject, error)
+	// OrganizationTierSet Set an organization's tier
+	// (PUT /organizations/{organization}/tier)
+	OrganizationTierSet(ctx context.Context, request OrganizationTierSetRequestObject) (OrganizationTierSetResponseObject, error)
+	// DeadJobs List dead jobs
+	// (GET /queue/jobs)
+	DeadJobs(ctx context.Context, request DeadJobsRequestObject) (DeadJobsResponseObject, error)
+	// DeadJobDiscard Discard a dead job
+	// (DELETE /queue/jobs/{id})
+	DeadJobDiscard(ctx context.Context, request DeadJobDiscardRequestObject) (DeadJobDiscardResponseObject, error)
+	// DeadJob Read a dead job
+	// (GET /queue/jobs/{id})
+	DeadJob(ctx context.Context, request DeadJobRequestObject) (DeadJobResponseObject, error)
+	// DeadJobRetry Retry a dead job
+	// (POST /queue/jobs/{id}/retry)
+	DeadJobRetry(ctx context.Context, request DeadJobRetryRequestObject) (DeadJobRetryResponseObject, error)
+	// SecretsRotate Rotate the data key
+	// (POST /secrets/rotate)
+	SecretsRotate(ctx context.Context, request SecretsRotateRequestObject) (SecretsRotateResponseObject, error)
+	// Tiers List tiers
+	// (GET /tiers)
+	Tiers(ctx context.Context, request TiersRequestObject) (TiersResponseObject, error)
+	// TierCreate Create a tier
+	// (POST /tiers)
+	TierCreate(ctx context.Context, request TierCreateRequestObject) (TierCreateResponseObject, error)
+	// TierDelete Delete a tier
+	// (DELETE /tiers/{tier})
+	TierDelete(ctx context.Context, request TierDeleteRequestObject) (TierDeleteResponseObject, error)
+	// Tier Read a tier
+	// (GET /tiers/{tier})
+	Tier(ctx context.Context, request TierRequestObject) (TierResponseObject, error)
+	// TierUpdate Replace a tier's content
+	// (PUT /tiers/{tier})
+	TierUpdate(ctx context.Context, request TierUpdateRequestObject) (TierUpdateResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -1573,6 +5263,61 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// Billing operation middleware
+func (sh *strictHandler) Billing(w http.ResponseWriter, r *http.Request) {
+	var request BillingRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Billing(ctx, request.(BillingRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Billing")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BillingResponseObject); ok {
+		if err := validResponse.VisitBillingResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BillingSet operation middleware
+func (sh *strictHandler) BillingSet(w http.ResponseWriter, r *http.Request) {
+	var request BillingSetRequestObject
+
+	var body BillingSetJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BillingSet(ctx, request.(BillingSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BillingSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BillingSetResponseObject); ok {
+		if err := validResponse.VisitBillingSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // Organizations operation middleware
@@ -1745,69 +5490,562 @@ func (sh *strictHandler) OrganizationBreakGlassSet(w http.ResponseWriter, r *htt
 	}
 }
 
+// OrganizationEntitlement operation middleware
+func (sh *strictHandler) OrganizationEntitlement(w http.ResponseWriter, r *http.Request, organization OrganizationSlug) {
+	var request OrganizationEntitlementRequestObject
+
+	request.Organization = organization
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.OrganizationEntitlement(ctx, request.(OrganizationEntitlementRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OrganizationEntitlement")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(OrganizationEntitlementResponseObject); ok {
+		if err := validResponse.VisitOrganizationEntitlementResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OrganizationFeatureRevoke operation middleware
+func (sh *strictHandler) OrganizationFeatureRevoke(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, feature string) {
+	var request OrganizationFeatureRevokeRequestObject
+
+	request.Organization = organization
+	request.Feature = feature
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.OrganizationFeatureRevoke(ctx, request.(OrganizationFeatureRevokeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OrganizationFeatureRevoke")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(OrganizationFeatureRevokeResponseObject); ok {
+		if err := validResponse.VisitOrganizationFeatureRevokeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OrganizationFeatureGrant operation middleware
+func (sh *strictHandler) OrganizationFeatureGrant(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, feature string) {
+	var request OrganizationFeatureGrantRequestObject
+
+	request.Organization = organization
+	request.Feature = feature
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.OrganizationFeatureGrant(ctx, request.(OrganizationFeatureGrantRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OrganizationFeatureGrant")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(OrganizationFeatureGrantResponseObject); ok {
+		if err := validResponse.VisitOrganizationFeatureGrantResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OrganizationLimitRevoke operation middleware
+func (sh *strictHandler) OrganizationLimitRevoke(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, limit string) {
+	var request OrganizationLimitRevokeRequestObject
+
+	request.Organization = organization
+	request.Limit = limit
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.OrganizationLimitRevoke(ctx, request.(OrganizationLimitRevokeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OrganizationLimitRevoke")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(OrganizationLimitRevokeResponseObject); ok {
+		if err := validResponse.VisitOrganizationLimitRevokeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OrganizationLimitGrant operation middleware
+func (sh *strictHandler) OrganizationLimitGrant(w http.ResponseWriter, r *http.Request, organization OrganizationSlug, limit string) {
+	var request OrganizationLimitGrantRequestObject
+
+	request.Organization = organization
+	request.Limit = limit
+
+	var body OrganizationLimitGrantJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.OrganizationLimitGrant(ctx, request.(OrganizationLimitGrantRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OrganizationLimitGrant")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(OrganizationLimitGrantResponseObject); ok {
+		if err := validResponse.VisitOrganizationLimitGrantResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OrganizationTierSet operation middleware
+func (sh *strictHandler) OrganizationTierSet(w http.ResponseWriter, r *http.Request, organization OrganizationSlug) {
+	var request OrganizationTierSetRequestObject
+
+	request.Organization = organization
+
+	var body OrganizationTierSetJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.OrganizationTierSet(ctx, request.(OrganizationTierSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OrganizationTierSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(OrganizationTierSetResponseObject); ok {
+		if err := validResponse.VisitOrganizationTierSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeadJobs operation middleware
+func (sh *strictHandler) DeadJobs(w http.ResponseWriter, r *http.Request, params DeadJobsParams) {
+	var request DeadJobsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeadJobs(ctx, request.(DeadJobsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeadJobs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeadJobsResponseObject); ok {
+		if err := validResponse.VisitDeadJobsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeadJobDiscard operation middleware
+func (sh *strictHandler) DeadJobDiscard(w http.ResponseWriter, r *http.Request, id int64) {
+	var request DeadJobDiscardRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeadJobDiscard(ctx, request.(DeadJobDiscardRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeadJobDiscard")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeadJobDiscardResponseObject); ok {
+		if err := validResponse.VisitDeadJobDiscardResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeadJob operation middleware
+func (sh *strictHandler) DeadJob(w http.ResponseWriter, r *http.Request, id int64) {
+	var request DeadJobRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeadJob(ctx, request.(DeadJobRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeadJob")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeadJobResponseObject); ok {
+		if err := validResponse.VisitDeadJobResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeadJobRetry operation middleware
+func (sh *strictHandler) DeadJobRetry(w http.ResponseWriter, r *http.Request, id int64, params DeadJobRetryParams) {
+	var request DeadJobRetryRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeadJobRetry(ctx, request.(DeadJobRetryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeadJobRetry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeadJobRetryResponseObject); ok {
+		if err := validResponse.VisitDeadJobRetryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SecretsRotate operation middleware
+func (sh *strictHandler) SecretsRotate(w http.ResponseWriter, r *http.Request, params SecretsRotateParams) {
+	var request SecretsRotateRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SecretsRotate(ctx, request.(SecretsRotateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SecretsRotate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SecretsRotateResponseObject); ok {
+		if err := validResponse.VisitSecretsRotateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Tiers operation middleware
+func (sh *strictHandler) Tiers(w http.ResponseWriter, r *http.Request, params TiersParams) {
+	var request TiersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Tiers(ctx, request.(TiersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Tiers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TiersResponseObject); ok {
+		if err := validResponse.VisitTiersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TierCreate operation middleware
+func (sh *strictHandler) TierCreate(w http.ResponseWriter, r *http.Request, params TierCreateParams) {
+	var request TierCreateRequestObject
+
+	request.Params = params
+
+	var body TierCreateJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TierCreate(ctx, request.(TierCreateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TierCreate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TierCreateResponseObject); ok {
+		if err := validResponse.VisitTierCreateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TierDelete operation middleware
+func (sh *strictHandler) TierDelete(w http.ResponseWriter, r *http.Request, tier TierName) {
+	var request TierDeleteRequestObject
+
+	request.Tier = tier
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TierDelete(ctx, request.(TierDeleteRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TierDelete")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TierDeleteResponseObject); ok {
+		if err := validResponse.VisitTierDeleteResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Tier operation middleware
+func (sh *strictHandler) Tier(w http.ResponseWriter, r *http.Request, tier TierName) {
+	var request TierRequestObject
+
+	request.Tier = tier
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Tier(ctx, request.(TierRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Tier")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TierResponseObject); ok {
+		if err := validResponse.VisitTierResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TierUpdate operation middleware
+func (sh *strictHandler) TierUpdate(w http.ResponseWriter, r *http.Request, tier TierName) {
+	var request TierUpdateRequestObject
+
+	request.Tier = tier
+
+	var body TierUpdateJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TierUpdate(ctx, request.(TierUpdateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TierUpdate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TierUpdateResponseObject); ok {
+		if err := validResponse.VisitTierUpdateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -58,9 +58,12 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.registerSecrets(sc)
 	s.registerSignedURLs(sc)
 	s.registerQueueStats(sc)
-	(&queueSteps{s: s}).register(sc)
+	queue := &queueSteps{s: s}
+	queue.register(sc)
 	auth := &authSteps{s: s, tokens: map[string]string{}}
 	auth.register(sc)
+	(&platformSteps{a: auth, q: queue}).register(sc)
+	(&ctlSteps{a: auth}).register(sc)
 	(&keySteps{a: auth, keys: map[string]*createdKey{}}).register(sc)
 	(&accountSteps{a: auth}).register(sc)
 	(&operatorSteps{a: auth}).register(sc)

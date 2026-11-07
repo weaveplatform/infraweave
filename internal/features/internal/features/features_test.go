@@ -30,6 +30,11 @@ type store struct {
 	locked      bool
 	calls       []string
 	reads       map[string]int
+	held        []features.Held
+	billing     features.Billing
+	grants      features.Grants
+	grantsErr   error
+	opErr       error
 }
 
 func (s *store) read(what string) {
@@ -54,7 +59,7 @@ func (s *store) Seed(_ context.Context, seeds []root.Tier) error {
 	return s.err
 }
 
-func (s *store) CreateOrganization(context.Context, kernel.OrganizationID, string) error {
+func (s *store) CreateOrganization(context.Context, kernel.OrganizationID) error {
 	s.calls = append(s.calls, "create")
 	return s.err
 }
@@ -175,7 +180,7 @@ func TestUnitEntitlementWritesPassThrough(t *testing.T) {
 	svc := features.New(s, inTx(&n), nil)
 	ctx, org, acct := t.Context(), kernel.NewOrganizationID(), kernel.NewAccountID()
 	for name, err := range map[string]error{
-		"create":         svc.CreateOrganization(ctx, org, "Enterprise"),
+		"create":         svc.CreateOrganization(ctx, org),
 		"delete":         svc.DeleteOrganization(ctx, org),
 		"set":            svc.SetAccountLimit(ctx, org, acct, "seats", 2),
 		"delete account": svc.DeleteAccount(ctx, acct),

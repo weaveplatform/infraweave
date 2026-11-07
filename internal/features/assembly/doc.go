@@ -3,6 +3,9 @@
 // the domain on its Deps; Entitlements is the featuresapi.Entitlements the
 // access domain calls; Seed installs the seeded tiers at startup;
 // Middleware is the chi middleware internal/app runs after authentication;
+// OperatorAPI is its partial of the operator API's strict server, aliased
+// FeaturesOperatorAPI, over the Organizations that finds an organization
+// by its slug;
 // WatchEntitlements drops the replica's snapshots on infraweave_invalidate;
 // Stream is its migration stream, which internal/app registers ahead of
 // access'; Settings are its features.* settings, features.disabled the
@@ -17,7 +20,7 @@
 // # Dependencies
 //
 // It imports the catalogue (internal/features), featuresapi, the domain's
-// features, http and pg packages, platform/sql/migrate,
+// features, http and pg packages, internal/kernel, platform/sql/migrate,
 // platform/sql/notify and platform/tx. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.
 package assembly

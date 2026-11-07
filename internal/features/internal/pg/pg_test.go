@@ -42,6 +42,14 @@ func exec(t *testing.T, db *pgxpool.Pool, stmt string, args ...any) {
 	}
 }
 
+// entitle gives org its entitlement on tier directly, as the default tier
+// is the operator's to choose.
+func entitle(t *testing.T, db *pgxpool.Pool, org kernel.OrganizationID, tier string) {
+	t.Helper()
+	exec(t, db, `INSERT INTO organization_entitlements (organization_id, tier) VALUES ($1, $2)`,
+		org, tier)
+}
+
 // tier creates a tier named after t with features and limits.
 func tier(t *testing.T, db *pgxpool.Pool, features []string, limits map[string]int64) string {
 	t.Helper()
@@ -68,17 +76,15 @@ func TestAccEntitlement(t *testing.T) {
 	if _, err := s.Entitlement(ctx, org, false); !errors.Is(err, featuresapi.ErrNotFound) {
 		t.Errorf("no entitlement = %v", err)
 	}
-	if err := s.CreateOrganization(
-		ctx,
-		org,
-		"no-such-tier",
-	); !errors.Is(
-		err,
-		featuresapi.ErrNotFound,
-	) {
-		t.Errorf("an unknown tier = %v", err)
+	// Enterprise, the default while the operator names none, is not seeded
+	// here.
+	if err := s.CreateOrganization(ctx, org); !errors.Is(err, featuresapi.ErrNotFound) {
+		t.Errorf("a default tier that does not exist = %v", err)
 	}
-	if err := s.CreateOrganization(ctx, org, business); err != nil {
+	if err := s.SetBilling(ctx, false, &business); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateOrganization(ctx, org); err != nil {
 		t.Fatal(err)
 	}
 	exec(t, db, `INSERT INTO organization_feature_grants (organization_id, feature)
@@ -96,9 +102,7 @@ func TestAccEntitlement(t *testing.T) {
 	}
 
 	bare := kernel.NewOrganizationID()
-	if err := s.CreateOrganization(ctx, bare, tier(t, db, nil, nil)); err != nil {
-		t.Fatal(err)
-	}
+	entitle(t, db, bare, tier(t, db, nil, nil))
 	if e, err := s.Entitlement(ctx, bare, true); err != nil || len(e.Features) != 0 ||
 		len(e.Limits) != 0 {
 		t.Errorf("an empty tier's entitlement = %+v, %v", e, err)
@@ -122,9 +126,7 @@ func TestAccAccountLimits(t *testing.T) {
 	) {
 		t.Errorf("a limit of an organization without an entitlement = %v", err)
 	}
-	if err := s.CreateOrganization(ctx, org, tier(t, db, nil, nil)); err != nil {
-		t.Fatal(err)
-	}
+	entitle(t, db, org, tier(t, db, nil, nil))
 	for _, l := range []struct {
 		acct  kernel.AccountID
 		value int64
@@ -159,9 +161,7 @@ func TestAccDeleteOrganization(t *testing.T) {
 	name := tier(t, db, []string{"stacks"}, nil)
 	org, kept := kernel.NewOrganizationID(), kernel.NewOrganizationID()
 	for _, o := range []kernel.OrganizationID{org, kept} {
-		if err := s.CreateOrganization(ctx, o, name); err != nil {
-			t.Fatal(err)
-		}
+		entitle(t, db, o, name)
 		exec(t, db, `INSERT INTO organization_feature_grants (organization_id, feature)
 			VALUES ($1, 'scans')`, o)
 		exec(t, db, `INSERT INTO organization_limit_grants (organization_id, limit_name, value)
@@ -216,9 +216,12 @@ func TestAccCreateRolledBack(t *testing.T) {
 	s := pg.New(db)
 	org := kernel.NewOrganizationID()
 	name := tier(t, db, nil, nil)
+	if err := s.SetBilling(ctx, false, &name); err != nil {
+		t.Fatal(err)
+	}
 	errRollback := errors.New("rollback")
 	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
-		if err := s.CreateOrganization(ctx, org, name); err != nil {
+		if err := s.CreateOrganization(ctx, org); err != nil {
 			return err
 		}
 		return errRollback
@@ -244,13 +247,7 @@ func TestAccLimitCheckSerializes(t *testing.T) {
 	)
 	org := kernel.NewOrganizationID()
 	store := pg.New(db)
-	if err := store.CreateOrganization(
-		ctx,
-		org,
-		tier(t, db, nil, map[string]int64{"seats": 1}),
-	); err != nil {
-		t.Fatal(err)
-	}
+	entitle(t, db, org, tier(t, db, nil, map[string]int64{"seats": 1}))
 	inTx := func(ctx context.Context, fn func(context.Context) error) error {
 		return tx.Do(ctx, db, tx.Options{}, fn)
 	}
@@ -312,7 +309,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 	ctx := context.Background()
 	org, acct := kernel.NewOrganizationID(), kernel.NewAccountID()
 	for name, err := range map[string]error{
-		"create":         s.CreateOrganization(ctx, org, "Enterprise"),
+		"create":         s.CreateOrganization(ctx, org),
 		"delete":         s.DeleteOrganization(ctx, org),
 		"set":            s.SetAccountLimit(ctx, org, acct, "seats", 1),
 		"delete account": s.DeleteAccount(ctx, acct),

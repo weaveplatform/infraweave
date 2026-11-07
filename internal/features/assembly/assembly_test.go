@@ -50,7 +50,10 @@ func TestAccDomain(t *testing.T) {
 		Settings: Settings{Disabled: []string{"scans"}},
 	}).Entitlements()
 	org := kernel.NewOrganizationID()
-	if err := e.CreateOrganization(ctx, org, "Starter"); err != nil {
+	if _, err := db.Exec(ctx, `UPDATE billing SET default_tier = 'Starter'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.CreateOrganization(ctx, org); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := e.Entitlement(
@@ -87,7 +90,10 @@ func TestAccDomainGates(t *testing.T) {
 		t.Fatalf("seeded %v, %v", seeded, err)
 	}
 	org := kernel.NewOrganizationID()
-	if err := d.Entitlements().CreateOrganization(ctx, org, features.Free); err != nil {
+	if _, err := db.Exec(ctx, `UPDATE billing SET default_tier = $1`, features.Free); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Entitlements().CreateOrganization(ctx, org); err != nil {
 		t.Fatal(err)
 	}
 	full := func(context.Context) (featuresapi.Usage, error) { return featuresapi.Usage{Organization: 1 << 20}, nil }

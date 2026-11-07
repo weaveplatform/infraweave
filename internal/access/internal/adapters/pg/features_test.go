@@ -17,13 +17,54 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
-// features is the features domain's rows as the organization delete sees
-// them: it records whether its delete ran inside a transaction.
+// entitled is the features domain as a fake embeds it for the methods it
+// does not record: every organization's entitlement is created, and any
+// other call panics on the nil interface.
+type entitled struct{ featuresapi.Entitlements }
+
+func (entitled) CreateOrganization(context.Context, kernel.OrganizationID) error { return nil }
+
+// features is the features domain's rows as the organization create and
+// delete see them: it records each, whether it ran inside a transaction,
+// and fails the create with createErr and the delete with err.
 type features struct {
-	featuresapi.Entitlements
-	deleted []kernel.OrganizationID
-	inTx    bool
-	err     error
+	entitled
+	created   []kernel.OrganizationID
+	createdTx bool
+	createErr error
+	deleted   []kernel.OrganizationID
+	inTx      bool
+	err       error
+}
+
+func (f *features) CreateOrganization(ctx context.Context, org kernel.OrganizationID) error {
+	f.created = append(f.created, org)
+	f.createdTx = tx.In(ctx)
+	return f.createErr
+}
+
+// TestAccCreateOrganizationFeatures checks that creating an organization
+// creates its entitlement in the same transaction, and that a failure
+// there creates nothing.
+func TestAccCreateOrganizationFeatures(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	f := &features{createErr: errors.New("features down")}
+	s := pg.New(db).WithFeatures(f)
+	o, a := tenant(t, "hooli", "hooli")
+	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); !errors.Is(err, f.createErr) {
+		t.Fatalf("a failed entitlement = %v", err)
+	}
+	if _, err := s.Organization(ctx, o.ID); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("the organization after a failed entitlement = %v", err)
+	}
+	f.createErr = nil
+	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.created) != 2 || f.created[1] != o.ID || !f.createdTx {
+		t.Errorf("entitlements created = %v, in a transaction %t", f.created, f.createdTx)
+	}
 }
 
 func (f *features) DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error {
@@ -63,7 +104,7 @@ func TestAccDeleteOrganizationFeatures(t *testing.T) {
 // it: it counts, records what it counted, how often it was called and
 // whether it ran in a transaction, and refuses with refuse when set.
 type seats struct {
-	featuresapi.Entitlements
+	entitled
 	usage  featuresapi.Usage
 	calls  int
 	inTx   bool
@@ -222,7 +263,7 @@ func TestAccSeatsUnavailable(t *testing.T) {
 
 // failingCount aborts the use's transaction before it counts.
 type failingCount struct {
-	featuresapi.Entitlements
+	entitled
 	db *pgxpool.Pool
 }
 

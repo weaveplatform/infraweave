@@ -18,30 +18,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BuildBinary builds cmd/infraweave from the module at root into dir with
-// coverage over the whole module, so the statements a scenario reaches in
-// the subprocess count toward the merged profile. atomic matches the mode
-// make accept runs the test binary in; covdata refuses to merge profiles
-// whose modes differ.
-func BuildBinary(ctx context.Context, root, dir string) (string, error) {
+// BuildBinary builds cmd/<name>, infraweave or infraweavectl, from the
+// module at root into dir with coverage over the whole module, so the
+// statements a scenario reaches in the subprocess count toward the merged
+// profile. atomic matches the mode make accept runs the test binary in;
+// covdata refuses to merge profiles whose modes differ.
+func BuildBinary(ctx context.Context, root, dir, name string) (string, error) {
 	goBin, err := exec.LookPath("go")
 	if err != nil {
-		return "", fmt.Errorf("build infraweave: %w", err)
+		return "", fmt.Errorf("build %s: %w", name, err)
 	}
 	mod := exec.CommandContext(ctx, goBin, "list", "-m")
 	mod.Dir = root
 	mod.Env = append(os.Environ(), "GOWORK=off")
 	module, err := mod.Output()
 	if err != nil {
-		return "", fmt.Errorf("build infraweave: go list -m: %w", err)
+		return "", fmt.Errorf("build %s: go list -m: %w", name, err)
 	}
-	bin := filepath.Join(dir, "infraweave")
+	bin := filepath.Join(dir, name)
 	build := exec.CommandContext(ctx, goBin, "build", "-cover", "-covermode=atomic",
-		"-coverpkg="+strings.TrimSpace(string(module))+"/...", "-o", bin, "./cmd/infraweave")
+		"-coverpkg="+strings.TrimSpace(string(module))+"/...", "-o", bin, "./cmd/"+name)
 	build.Dir = root
 	build.Env = append(os.Environ(), "GOWORK=off")
 	if out, err := build.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build infraweave: %w: %s", err, out)
+		return "", fmt.Errorf("build %s: %w: %s", name, err, out)
 	}
 	return bin, nil
 }

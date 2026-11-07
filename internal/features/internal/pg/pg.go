@@ -67,15 +67,13 @@ func write(err error, what string) error {
 	return fmt.Errorf("features: %w", sql.Unavailable(err))
 }
 
-// CreateOrganization gives org its entitlement on tier.
-func (s *Store) CreateOrganization(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	tier string,
-) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx,
-		`INSERT INTO organization_entitlements (organization_id, tier) VALUES ($1, $2)`, org, tier)
-	return write(err, "tier "+tier)
+// CreateOrganization gives org its entitlement on the default tier,
+// Enterprise while the operator has named none.
+func (s *Store) CreateOrganization(ctx context.Context, org kernel.OrganizationID) error {
+	_, err := tx.Q(ctx, s.db).
+		Exec(ctx, `INSERT INTO organization_entitlements (organization_id, tier)
+		SELECT $1, coalesce(default_tier, $2) FROM billing`, org, features.Enterprise)
+	return write(err, "tier "+features.Enterprise)
 }
 
 // deleteOrganization deletes an organization's rows, referencing tables

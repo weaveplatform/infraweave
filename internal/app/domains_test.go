@@ -40,13 +40,13 @@ func TestAccJobEntitlements(t *testing.T) {
 	}{
 		{`INSERT INTO organizations (id, slug, name) VALUES ($1, 'o', 'o')`, []any{org}},
 		{`INSERT INTO accounts (organization_id, id, slug, name) VALUES ($1, $2, 'o', 'o')`, []any{org, acct}},
-		{`UPDATE billing SET enabled = true`, nil},
+		{`UPDATE billing SET enabled = true, default_tier = 'Free'`, nil},
 	} {
 		if _, err := db.Primary().Exec(ctx, stmt.sql, stmt.args...); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := d.Features.Entitlements().CreateOrganization(ctx, org, "Free"); err != nil {
+	if err := d.Features.Entitlements().CreateOrganization(ctx, org); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range []struct {
@@ -106,7 +106,7 @@ func TestAccSeatRace(t *testing.T) {
 			`INSERT INTO account_users (account_id, organization_id, member_id) VALUES ($1, $2, $3)`,
 			[]any{acct, org, member},
 		},
-		{`UPDATE billing SET enabled = true`, nil},
+		{`UPDATE billing SET enabled = true, default_tier = 'Free'`, nil},
 	}
 	for _, s := range stmts {
 		if _, err := db.Primary().Exec(ctx, s.sql, s.args...); err != nil {
@@ -126,10 +126,10 @@ func TestAccSeatRace(t *testing.T) {
 	}
 	// Free holds 2 seats; alice takes one, so one key's first use may take
 	// the last.
-	if err := d.Features.Entitlements().CreateOrganization(ctx, org, "Free"); err != nil {
+	if err := d.Features.Entitlements().CreateOrganization(ctx, org); err != nil {
 		t.Fatal(err)
 	}
-	h := API(discard(), c.Server, memory(c.Server), d, nil, Blobs{})
+	h := API(discard(), c.Server, memory(c.Server), d, Platform{}, Blobs{})
 	codes := make([]int, len(keys))
 	var wg sync.WaitGroup
 	for i, k := range keys {

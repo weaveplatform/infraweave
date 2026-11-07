@@ -17,7 +17,9 @@ import (
 // Store is what the service needs of storage; pg.Store is one. Every
 // method joins the transaction ctx carries.
 type Store interface {
-	CreateOrganization(ctx context.Context, org kernel.OrganizationID, tier string) error
+	OperatorStore
+	// CreateOrganization gives org its entitlement on the default tier.
+	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
 	DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error
 	SetAccountLimit(
 		ctx context.Context,
@@ -60,6 +62,10 @@ func InvalidateKey(org kernel.OrganizationID) string { return invalidatePrefix +
 // TiersKey is the payload that makes every replica drop every snapshot
 // after a tier's content changes, which reaches every organization on it.
 const TiersKey = invalidatePrefix + "tiers"
+
+// BillingKey is the payload that makes every replica drop every snapshot
+// after the billing switch changes, which turns every check on or off.
+const BillingKey = invalidatePrefix + "billing"
 
 // Service is featuresapi.Entitlements over a Store, with the replica's
 // snapshot of each organization's entitlement, the billing switch and the
@@ -131,13 +137,9 @@ func (s *Service) flush() {
 	s.billing, s.tiers = nil, nil
 }
 
-// CreateOrganization gives org its entitlement on tier.
-func (s *Service) CreateOrganization(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	tier string,
-) error {
-	return s.store.CreateOrganization(ctx, org, tier) //nolint:wrapcheck // the store names itself
+// CreateOrganization gives org its entitlement on the default tier.
+func (s *Service) CreateOrganization(ctx context.Context, org kernel.OrganizationID) error {
+	return s.store.CreateOrganization(ctx, org) //nolint:wrapcheck // the store names itself
 }
 
 // DeleteOrganization deletes org's entitlement, grants and account limits.

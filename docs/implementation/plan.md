@@ -136,7 +136,7 @@ and lint is clean.
 | P2b Object storage and secrets at rest | Done | Epic [#149](https://github.com/weaveplatform/infraweave/issues/149). Done: [#150](https://github.com/weaveplatform/infraweave/issues/150) the sealed formats, the keyring and the `local` KEK, [#151](https://github.com/weaveplatform/infraweave/issues/151) object storage on S3, Cloud Storage, Blob Storage and a local volume, `blob_objects` with `blob.delete` and `blob.expire`, and sealed stores, [#152](https://github.com/weaveplatform/infraweave/issues/152) the `awskms`, `gcpkms`, `azurekv` and `vault` KEK providers, [#153](https://github.com/weaveplatform/infraweave/issues/153) data key rotation and reseal, `rewrap` between KEKs, `infraweave secrets` and sealed idempotency bodies, [#154](https://github.com/weaveplatform/infraweave/issues/154) the `fips-only` job, the nightly `objectstore-cloud` job and the FIPS line of `infraweave version` |
 | P2c Work queue, cron, outbox and the event model | Done | Epic [#132](https://github.com/weaveplatform/infraweave/issues/132). Done: [#133](https://github.com/weaveplatform/infraweave/issues/133) transactional enqueue and claims across replicas, [#135](https://github.com/weaveplatform/infraweave/issues/135) workers with leases, retries, timeouts and the ordered shutdown, [#136](https://github.com/weaveplatform/infraweave/issues/136) five-field cron and periodic tasks, [#139](https://github.com/weaveplatform/infraweave/issues/139) the outbox, typed event kinds and fan-out to consumers, [#134](https://github.com/weaveplatform/infraweave/issues/134) audit entries in the change's transaction, [#138](https://github.com/weaveplatform/infraweave/issues/138) the queue and periodic tasks in the `scheduler` and `all` modes, [#137](https://github.com/weaveplatform/infraweave/issues/137) `messageQueueStats` |
 | P3 Identity and tokens | Done | Epic [#165](https://github.com/weaveplatform/infraweave/issues/165). Done: [#166](https://github.com/weaveplatform/infraweave/issues/166) the `access` domain, the tenancy and identity tables, `account_users` and the kernel principal, [#167](https://github.com/weaveplatform/infraweave/issues/167) JWTs under rotating installation signing keys, [#168](https://github.com/weaveplatform/infraweave/issues/168) signing through AWS KMS, Cloud KMS, Key Vault and Vault, [#169](https://github.com/weaveplatform/infraweave/issues/169) the bearer-token middleware, sessions and their revocation across replicas, [#170](https://github.com/weaveplatform/infraweave/issues/170) API keys and OIDC API keys, [#171](https://github.com/weaveplatform/infraweave/issues/171) the break-glass login, browser sessions, CLI tokens and account switching, [#172](https://github.com/weaveplatform/infraweave/issues/172) the account reads, [#173](https://github.com/weaveplatform/infraweave/issues/173) the operator API with organizations, break-glass credentials and `infraweave auth hash-password` |
-| P3b Organizations, members, account settings and the feature catalogue | In progress | Epic [#184](https://github.com/weaveplatform/infraweave/issues/184). Done: [#185](https://github.com/weaveplatform/infraweave/issues/185) the `features` domain below `access`, its tables and `featuresapi`; [#186](https://github.com/weaveplatform/infraweave/issues/186) the generated catalogue, seeded tiers, the billing switch, the feature middleware on every operation, the dequeue skip and the `seats` check at an API key's first use; [#187](https://github.com/weaveplatform/infraweave/issues/187) the account settings no other domain owns, with the account delete |
+| P3b Organizations, members, account settings and the feature catalogue | In progress | Epic [#184](https://github.com/weaveplatform/infraweave/issues/184). Done: [#185](https://github.com/weaveplatform/infraweave/issues/185) the `features` domain below `access`, its tables and `featuresapi`; [#186](https://github.com/weaveplatform/infraweave/issues/186) the generated catalogue, seeded tiers, the billing switch, the feature middleware on every operation, the dequeue skip and the `seats` check at an API key's first use; [#187](https://github.com/weaveplatform/infraweave/issues/187) the account settings no other domain owns, with the account delete; [#188](https://github.com/weaveplatform/infraweave/issues/188) tiers, organization tiers, grants, the billing switch with the default tier, dead jobs and the data key rotation through the operator API, and `infraweavectl` with its `operator` group |
 | P4 Spaces and authorization | Not started | |
 | P4b Roles and role bindings | Not started | |
 | P5 Stacks | Not started | **M2** |
@@ -1121,15 +1121,17 @@ use.
    as `infraweave secrets rotate` does (decision
    [0013](../research/decisions/0013-secrets-at-rest.md)). Creating an
    organization, which P3 serves, gains its `organization_entitlements`
-   row with the default tier, in the same transaction through
+   row with the default tier, which the billing switch names, in the same
+   transaction through
    `featuresapi`, and organizations created before it get theirs from a
    migration. The first account starts unclaimed until an organization
    admin claims it (`accounts.claimed_at`, a second claim answers `409`,
    decision [0007](../research/decisions/0007-authorization-spaces-and-roles.md)).
-   `cmd/infraweavectl` starts over `pkg/sdk` with `profile`, `whoami`,
-   `version`, `api` and the `operator` group (`tier`, `organization`,
-   `grant`, `billing`). Features: `platform_tiers.feature`,
-   `queue_dead_letters.feature`.
+   `cmd/infraweavectl` starts, its command tree in `internal/ctl` over
+   `pkg/sdk` only, with `profile`, `whoami`, `version`, `api` and the
+   `operator` group (`tier`, `organization`, `grant`, `billing`). Features:
+   `platform_tiers.feature`, `queue_dead_letters.feature`,
+   `cli_operator.feature`.
 7. Billing reads per decision 0021's vendor-bound table: `tier` as a tier
    object, `tierFeatures` as the entitlement in infraweave feature names,
    `seats`, `billedExternally`, `billingSubscription`, `onTrialUntil`,

@@ -41,7 +41,7 @@ infraweave/
 │   │   └── agent.go               registers agent/cli: launcher (P8), hidden runner (P8 stub, P9), vcs-agent (P19b),
 │   │                              flows-agent (P18d); imports no internal/app
 │   ├── infraweave-agent/          optional slim build: registers the same agent/cli commands; links only internal/agent
-│   └── infraweavectl/             the CLI over pkg/sdk; a client, not a process mode (P3b, P24b)
+│   └── infraweavectl/             main.go only: runs internal/ctl's command tree; a client, not a process mode
 ├── api/                           specifications; the source of truth for every served API
 │   ├── src/api/                   editable fragments: info.yaml, components-common.yaml, paths-<family>.yaml;
 │   │                              Deploy and Flows families alike, Flows under /api/v1/flows/ (P18c)
@@ -73,6 +73,8 @@ infraweave/
 │   │   ├── router.go              chi router, middleware, strict servers composed by embedding
 │   │   ├── discovery.go           /.well-known/terraform.json from domain contributions (P17)
 │   │   └── modes.go               which domain parts (Routes, Consumers, Cron) each process mode starts
+│   ├── ctl/                       infraweavectl's command tree over pkg/sdk only: profile, whoami, version, api,
+│   │                              operator (P3b); the spacectl-shaped groups, flows and mcp (P24b)
 │   ├── devtools/                  libraries behind tools/; never linked into cmd/
 │   │   ├── specref/               reference generation, scaffold, inventory, parity       ← internal/specref
 │   │   ├── openapibundle/         fragment bundler                                         ← internal/openapibundle
@@ -353,7 +355,7 @@ rule, and the domain that owns its rule otherwise.
 | IaC vendor knowledge | `internal/iac/<vendor>` | Pure; the server validates and parses with it, the agent runs commands with it |
 | Code that runs on a customer host | `internal/agent/...` | Never a domain, SQL, the queue, object storage credentials or the keyring |
 | Wiring and process modes | `internal/app/...` | The only place that sees every domain; back edges are bound after construction |
-| Entry points | `cmd/infraweave`, `cmd/infraweave-agent`, `cmd/infraweavectl` | Thin cobra shims; logic belongs in `internal/` or, for the CLI, `pkg/sdk` |
+| Entry points | `cmd/infraweave`, `cmd/infraweave-agent`, `cmd/infraweavectl` | Thin cobra shims; logic belongs in `internal/`, for the CLI `internal/ctl` over `pkg/sdk` |
 | Developer commands | `tools/<name>` over `internal/devtools/<name>` | `internal/devtools` is imported only by `tools/` and its own tests |
 | Public Go API | `pkg/client/<spec>`, `pkg/sdk`, `pkg/flows/appsdk` | Generated clients, the SDK over them, and the Flows app SDK; nothing under `pkg/` imports `internal/` |
 | The console | `web/console/` | TypeScript only; it calls the served REST API through its generated client and nothing else |
@@ -479,6 +481,7 @@ only refuses more.
 | `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave/agent.go`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/pkg/flows/app/v1$`, `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}$` |
 | `devtools` (rule 8) | everything except `**/tools/**`, `**/internal/devtools/**`, and the tests of `api/` and `test/acceptance/`, which check the committed documents with `specref` | deny | `$m/internal/devtools` |
 | `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
+| `ctl` (rule 10) | `**/internal/ctl/**`, `**/cmd/infraweavectl/**` | lax: deny, then allow | deny `$m/internal` and `$m/pkg/client`; allow `$m/internal/ctl$` and `$m/internal/platform/buildinfo$` |
 
 Rule 2 is the declared graph below: one rule per domain, which allows
 `$m/internal/platform/`, `kernel` and `iac`, its own tree and the `api/`

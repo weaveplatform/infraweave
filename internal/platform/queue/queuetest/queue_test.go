@@ -576,8 +576,15 @@ func TestAccQueueDeadOperations(t *testing.T) {
 		t.Errorf("second page %+v (%v)", rest, err)
 	}
 
+	if one, err := q.ReadDead(t.Context(), dead[0]); err != nil || one.ID != d.ID ||
+		one.LastError != d.LastError || string(one.Payload) != string(d.Payload) {
+		t.Errorf("ReadDead = %+v, %v; want %+v", one, err, d)
+	}
 	if err := q.Retry(t.Context(), dead[0]); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := q.ReadDead(t.Context(), dead[0]); !errors.Is(err, queue.ErrNotDead) {
+		t.Errorf("reading a retried job as dead: %v", err)
 	}
 	if r := read(
 		t,
