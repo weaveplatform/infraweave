@@ -6,6 +6,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
@@ -17,7 +18,8 @@ import (
 // domain whose api/ it imports. A back edge, a call to a domain built
 // later, is bound here after construction.
 type Domains struct {
-	Access *accessassembly.Domain
+	Features *featuresassembly.Domain
+	Access   *accessassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
 	Auth accessapi.Authenticator
 	// OperatorAuth authenticates the operator API's requests, admitting
@@ -34,8 +36,13 @@ func newDomains(
 	keys *crypt.Keyring,
 	kms []signer.KMS,
 ) (Domains, error) {
+	features := featuresassembly.New(featuresassembly.Deps{
+		DB:       db.Primary(),
+		Settings: c.Features,
+	})
 	access, err := accessassembly.New(accessassembly.Deps{
 		DB:               db.Primary(),
+		Features:         features.Entitlements(),
 		Keys:             keys,
 		KMS:              kms,
 		Settings:         c.Auth,
@@ -47,6 +54,7 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
 	return Domains{
+		Features:     features,
 		Access:       access,
 		Auth:         access.Authenticator(),
 		OperatorAuth: access.OperatorAuthenticator(),

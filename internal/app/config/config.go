@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
+	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
@@ -38,6 +39,9 @@ type Config struct {
 	// Auth is the access domain's: token lifetimes, the issuer and the
 	// signing keys (decision 0006).
 	Auth accessassembly.Settings `mapstructure:"auth"`
+	// Features is the features domain's: the features switched off for
+	// the whole installation (decision 0021).
+	Features featuresassembly.Settings `mapstructure:"features"`
 }
 
 // Server holds the server settings: the listeners under server.listen,

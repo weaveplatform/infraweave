@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -111,6 +112,22 @@ queue:
 	}
 }
 
+func TestUnitLoadFeatures(t *testing.T) {
+	file := writeFile(t, "features:\n  disabled: [ai-integrations, scans]\n")
+	c, err := loadArgs(t, "--config", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(c.Features.Disabled, []string{"ai-integrations", "scans"}) {
+		t.Errorf("features.disabled %v", c.Features.Disabled)
+	}
+	t.Setenv("INFRAWEAVE_FEATURES_DISABLED", "intent,scans")
+	if c, err = loadArgs(t, "--config", file); err != nil ||
+		!slices.Equal(c.Features.Disabled, []string{"intent", "scans"}) {
+		t.Errorf("features.disabled from the environment %v, %v", c.Features.Disabled, err)
+	}
+}
+
 // The connection string has no flag, so it never shows in a process listing;
 // the environment sets it over the file.
 func TestUnitLoadDatabase(t *testing.T) {
@@ -166,6 +183,7 @@ func TestUnitLoadRejects(t *testing.T) {
 	}{
 		{"unknown key", "server:\n  listn: \":1\"\n", nil, "listn"},
 		{"unknown section", "storage:\n  bucket: x\n", nil, "storage"},
+		{"unknown features key", "features:\n  enabled: [scans]\n", nil, "enabled"},
 		{"invalid listener", "", []string{"--listen", "nowhere"}, "server.listen"},
 		{
 			"invalid admin listener",

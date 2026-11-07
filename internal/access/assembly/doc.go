@@ -31,7 +31,8 @@
 //
 // # Dependencies
 //
-// It imports accessapi, the access domain's adapters (oidc among them) and
+// It imports accessapi, featuresapi, whose Entitlements Deps.Features
+// carries for the organization delete, the access domain's adapters (oidc among them) and
 // its apikey, authn, breakglass, operator, session and token packages, platform/cron and platform/queue for its
 // tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
 // platform/sql/notify, platform/httpkit/problem and chi. Only
