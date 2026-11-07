@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 )
 
@@ -58,6 +59,8 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /api/v1/auth/accounts":                        {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
 		"GET /admin-login/{organization}":                  {Public: true},
 		"POST /admin-login/{organization}":                 {Cost: ratelimit.Expensive, Public: true},
+		"GET /blobs/{token}":                               {Public: true},
+		"PUT /blobs/{token}":                               {Public: true},
 	} {
 		if !reflect.DeepEqual(ops[key], want) {
 			t.Errorf("%s: %+v, want %+v", key, ops[key], want)
@@ -66,9 +69,11 @@ func TestUnitAPIOperations(t *testing.T) {
 	for key, op := range ops {
 		f, known := features.Lookup(op.Gate.Feature)
 		switch {
-		case strings.HasSuffix(key, " "+accessapi.LoginPattern):
+		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
+			strings.HasSuffix(key, " "+fs.Pattern):
 			if op.Gate.Feature != "" {
-				t.Errorf("%s names %s; the break-glass login names none", key, op.Gate.Feature)
+				t.Errorf("%s names %s; a route outside the API documents names none",
+					key, op.Gate.Feature)
 			}
 		case !known || f.Kind != features.Capability:
 			t.Errorf("%s names %q, not a capability of the catalogue", key, op.Gate.Feature)
@@ -82,7 +87,10 @@ func TestUnitAPIOperations(t *testing.T) {
 		[]featuresapi.OptionGate{{Property: "oidc", Feature: "oidc-api-keys"}}) {
 		t.Errorf("apiKeyCreate's options: %+v", g.Options)
 	}
-	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), Domains{Auth: byAddress{}}, nil, Blobs{}).(*chi.Mux)
+	// The fs driver's routes are mounted, so a pattern they serve that the
+	// table lacks, or the reverse, fails the walk below.
+	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server),
+		Domains{Auth: byAddress{}}, nil, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
 	if !ok {
 		t.Fatal("API is not a chi router")
 	}
@@ -382,6 +390,23 @@ func TestUnitGuardedAuthentication(t *testing.T) {
 	}
 	// The public route's caller is the client's address.
 	wantTyped(t, send(r, http.MethodPost, "/open", "192.0.2.1:1", ""), problem.APIDisabled)
+}
+
+// TestUnitSignedURLRoutes checks that the fs driver's routes take no
+// bearer credential: with every credential refused, a token that does not
+// verify reaches the driver and answers its 403, while a route the API
+// does not serve still answers 401.
+func TestUnitSignedURLRoutes(t *testing.T) {
+	c := config.Defaults().Server
+	h := API(discard(), c, memory(c), Domains{}, nil, Blobs{Routes: (&fs.Bucket{}).Routes})
+	for _, method := range []string{http.MethodGet, http.MethodPut} {
+		rec := send(h, method, "/blobs/not-a-token", "198.51.100.7:1", "")
+		wantTyped(t, rec, problem.Forbidden)
+		if rec.Header().Get("WWW-Authenticate") != "" {
+			t.Errorf("%s: a Bearer challenge on a signed URL", method)
+		}
+	}
+	wantTyped(t, send(h, http.MethodGet, "/blobs", "198.51.100.7:1", ""), problem.Unauthenticated)
 }
 
 // TestUnitStrictBodies checks that an operation whose body schema forbids

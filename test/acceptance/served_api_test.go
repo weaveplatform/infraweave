@@ -56,6 +56,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.registerReplicas(sc)
 	s.registerFeatures(sc)
 	s.registerSecrets(sc)
+	s.registerSignedURLs(sc)
 	s.registerQueueStats(sc)
 	(&queueSteps{s: s}).register(sc)
 	auth := &authSteps{s: s, tokens: map[string]string{}}
@@ -77,8 +78,9 @@ func secretsWith(kek map[string]any) map[string]any {
 }
 
 // objectStore is the fs driver under root. Replicas of one scenario share
-// the root, as replicas share a volume. No scenario follows a signed URL
-// yet, so the URL names no listener.
+// the root, as replicas share a volume. The URL names no listener, since
+// a scenario's ports are known only once its servers start; the
+// signed-URL steps sign for the listener themselves.
 func objectStore(root string) map[string]any {
 	return map[string]any{
 		"driver": "fs",

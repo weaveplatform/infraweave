@@ -119,13 +119,19 @@ func (b *Bucket) verify(s, method string) (token, error) {
 	return t, nil
 }
 
-// Routes adds GET and PUT /blobs/{token} to r, the API listener's router.
+// Pattern is the chi route pattern of the signed-URL routes. The API
+// listener's operations table registers it as public, since the token is
+// the only credential; a route mounted under any other pattern would fall
+// to bearer authentication and answer 401 to every signed URL.
+const Pattern = "/blobs/{token}"
+
+// Routes adds GET and PUT Pattern to r, the API listener's router.
 // They answer 403 for a token that does not verify, and a PUT whose
 // Content-Length is not the token's size 413 when larger and 400 when
 // smaller or missing.
 func (b *Bucket) Routes(r chi.Router) {
-	r.Get("/blobs/{token}", b.serveGet)
-	r.Put("/blobs/{token}", b.servePut)
+	r.Get(Pattern, b.serveGet)
+	r.Put(Pattern, b.servePut)
 }
 
 func (b *Bucket) serveGet(w http.ResponseWriter, r *http.Request) {

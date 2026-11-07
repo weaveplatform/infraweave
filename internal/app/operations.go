@@ -25,6 +25,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 )
 
 // Operation is what the controls in front of the router need to know about
@@ -192,6 +193,13 @@ var apiOperations = sync.OnceValue(func() Operations {
 		Public: true,
 		Cost:   ratelimit.Expensive,
 	}
+	// The fs driver's signed URLs carry their credential in the token,
+	// which the driver verifies (decision 0005); a bearer check in front
+	// would answer 401 to every one. Each draws on the standard budget of
+	// the client's address and names no feature, since the URL was signed
+	// by an operation already gated.
+	ops[http.MethodGet+" "+fs.Pattern] = Operation{Public: true}
+	ops[http.MethodPut+" "+fs.Pattern] = Operation{Public: true}
 	return ops
 })
 
