@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
@@ -58,6 +59,14 @@ func (s Server) ApiKeyUser(
 	if errors.Is(err, authn.ErrUnauthenticated) {
 		//nolint:wrapcheck // a problem, answered as it is
 		return nil, problem.Unauthenticated.Error(refused)
+	}
+	// The key's first use in the seat window would take the organization
+	// or account past its seats. The exchange checks the secret first, so
+	// only a holder of the key learns the limit.
+	if le, ok := errors.AsType[*featuresapi.LimitError](err); ok {
+		return nil, &problem.Error{
+			Problem: problem.NewLimitReached(le.Limit, string(le.Scope), le.Value),
+		}
 	}
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store marks an unreachable database

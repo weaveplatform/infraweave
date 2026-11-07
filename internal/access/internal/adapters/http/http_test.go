@@ -52,7 +52,7 @@ type store struct {
 	trail    []kernel.OrganizationAuditEntry
 	admits   map[kernel.MemberID][]session.Admitted
 	down     bool
-	// full refuses a key's creation as the seats limit would.
+	// full refuses a key's use as the seats limit would.
 	full *featuresapi.LimitError
 }
 
@@ -79,7 +79,12 @@ func (s *store) Account(_ context.Context, id kernel.AccountID) (account.Account
 	return a, s.err()
 }
 
-func (s *store) TouchAPIKey(context.Context, kernel.ULID) error { return s.err() }
+func (s *store) TouchAPIKey(context.Context, kernel.ULID) error {
+	if s.full != nil {
+		return fmt.Errorf("access: touch API key: %w", s.full)
+	}
+	return s.err()
+}
 
 // CreateSession first revokes the member's live sessions in ss's channel,
 // as the store does.
@@ -458,6 +463,25 @@ func TestUnitExchange(t *testing.T) {
 			wantUnauthenticated(t, w.do(t, http.MethodPost, public, "", body), false)
 		})
 	}
+	// A first use beyond the seats limit is refused, naming the limit.
+	w.st.full = &featuresapi.LimitError{
+		Limit: featuresapi.Seats,
+		Scope: featuresapi.ScopeOrganization,
+		Value: 2,
+	}
+	rec := w.do(
+		t,
+		http.MethodPost,
+		public,
+		"",
+		fmt.Sprintf(`{"id":%q,"secret":%q}`, w.key, w.secret),
+	)
+	if p := decode[problem.Problem](t, rec); rec.Code != http.StatusForbidden ||
+		p.Type != problem.LimitReached.New("").Type || p.Limit != featuresapi.Seats ||
+		p.Scope != "organization" || p.Value == nil || *p.Value != 2 {
+		t.Errorf("a use beyond the seats limit: %d %s", rec.Code, rec.Body)
+	}
+	w.st.full = nil
 	w.st.down = true
 	if rec := w.do(
 		t,

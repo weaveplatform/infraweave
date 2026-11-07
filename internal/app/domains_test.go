@@ -2,6 +2,15 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
@@ -57,5 +66,90 @@ func TestAccJobEntitlements(t *testing.T) {
 	db.Close()
 	if _, err := d.Allowed(context.Background(), acct.ULID, "stacks"); err == nil {
 		t.Error("a closed database answered")
+	}
+}
+
+// TestAccSeatRace checks decision 0021's last seat under PostgreSQL, through
+// both domains as the server wires them: two keys' first uses race for it,
+// and exactly one exchange is admitted while the other answers 403
+// limit-reached.
+func TestAccSeatRace(t *testing.T) {
+	ctx := t.Context()
+	db := sqltest.Open(t)
+	c := config.Defaults()
+	c.Server.PublicURL = "http://iw.test"
+	d, err := newDomains(c, db, testKeyring(t, db.Primary()), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Features.Seed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	org, acct, member := kernel.NewOrganizationID(), kernel.NewAccountID(), kernel.NewMemberID()
+	type key struct {
+		id     kernel.ULID
+		secret string
+	}
+	keys := []key{{id: kernel.NewULID()}, {id: kernel.NewULID()}}
+	stmts := []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO organizations (id, slug, name) VALUES ($1, 'o', 'o')`, []any{org}},
+		{
+			`INSERT INTO accounts (organization_id, id, slug, name) VALUES ($1, $2, 'o', 'o')`,
+			[]any{org, acct},
+		},
+		{`INSERT INTO members (organization_id, id, login, name, email, status)
+			VALUES ($1, $2, 'alice', 'Alice', 'alice@example.com', 'active')`, []any{org, member}},
+		{
+			`INSERT INTO account_users (account_id, organization_id, member_id) VALUES ($1, $2, $3)`,
+			[]any{acct, org, member},
+		},
+		{`UPDATE billing SET enabled = true`, nil},
+	}
+	for _, s := range stmts {
+		if _, err := db.Primary().Exec(ctx, s.sql, s.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := range keys {
+		raw := make([]byte, 32)
+		_, _ = rand.Read(raw)
+		keys[i].secret = "iwk_" + base64.RawURLEncoding.EncodeToString(raw)
+		sum := sha256.Sum256([]byte(keys[i].secret))
+		if _, err := db.Primary().Exec(ctx, `INSERT INTO api_keys
+			(account_id, id, name, type, secret_hash, creator)
+			VALUES ($1, $2, 'ci', 'SECRET', $3, 'test')`, acct, keys[i].id, sum[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Free holds 2 seats; alice takes one, so one key's first use may take
+	// the last.
+	if err := d.Features.Entitlements().CreateOrganization(ctx, org, "Free"); err != nil {
+		t.Fatal(err)
+	}
+	h := API(discard(), c.Server, memory(c.Server), d, nil, Blobs{})
+	codes := make([]int, len(keys))
+	var wg sync.WaitGroup
+	for i, k := range keys {
+		wg.Go(func() {
+			body := fmt.Sprintf(`{"id":%q,"secret":%q}`, k.id, k.secret)
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, BaseURL+"/auth/token",
+				strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			codes[i] = rec.Code
+			if rec.Code == http.StatusForbidden &&
+				!strings.Contains(rec.Body.String(), `"limit":"seats"`) {
+				t.Errorf("the refused exchange: %s", rec.Body)
+			}
+		})
+	}
+	wg.Wait()
+	slices.Sort(codes)
+	if !slices.Equal(codes, []int{http.StatusOK, http.StatusForbidden}) {
+		t.Errorf("exchanges answered %v, want one 200 and one 403", codes)
 	}
 }

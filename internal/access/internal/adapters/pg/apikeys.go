@@ -39,33 +39,23 @@ func (s *Store) APIKey(ctx context.Context, id kernel.ULID) (apikey.Key, error) 
 	return k, read(err, "API key", id)
 }
 
-// TouchAPIKey sets the key's last_used_at unless it is under a minute old,
-// so a busy key writes its row once a minute, not once an exchange.
-func (s *Store) TouchAPIKey(ctx context.Context, id kernel.ULID) error {
-	if _, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE api_keys SET last_used_at = now()
-		WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')`,
-		id); err != nil {
-		return fmt.Errorf("access: touch API key %s: %w", id, sql.Unavailable(err))
-	}
-	return nil
-}
-
-// SeatWindow is how long an API key holds a seat after it was created or
-// last used: Spacelift's rolling 30 days (report 14, section 4.4).
+// SeatWindow is how long an API key holds a seat after its last use:
+// Spacelift's rolling 30 days (report 14, section 4.4).
 const SeatWindow = 30 * 24 * time.Hour
 
-// seats counts decision 0021's seats as a creation finds them: each active
-// member once, however many of the organization's accounts admit it, and
-// each live key that is not personal and was created or used within
-// SeatWindow. Counting a key from its creation, not only its use, makes a
-// new key take its seat before its first exchange. A personal key rides on
-// its owner's seat.
+// seats counts decision 0021's seats in organization $1 and account $2 as
+// the first use of key $4 in SeatWindow ($3) finds them: each active member
+// once, however many of the organization's accounts admit it, and each
+// other live key that is not personal and was used within the window. A
+// personal key rides on its owner's seat. Leaving $4 out lets two first
+// uses of one key share its seat rather than the second count the first.
 const seats = `
 WITH keys AS (
   SELECT k.account_id FROM api_keys k JOIN accounts a ON a.id = k.account_id
-  WHERE a.organization_id = $1 AND k.deleted_at IS NULL AND k.disabled_at IS NULL
-    AND NOT k.is_personal AND (k.expires_at IS NULL OR k.expires_at > $3)
-    AND greatest(k.created_at, k.last_used_at) > $3 - $4::interval)
+  WHERE a.organization_id = $1 AND k.id <> $4 AND k.deleted_at IS NULL
+    AND k.disabled_at IS NULL AND NOT k.is_personal
+    AND (k.expires_at IS NULL OR k.expires_at > now())
+    AND k.last_used_at > now() - $3::interval)
 SELECT
   (SELECT count(DISTINCT u.member_id) FROM account_users u
      JOIN members m ON m.id = u.member_id
@@ -75,31 +65,64 @@ SELECT
      WHERE u.account_id = $2 AND m.status = 'active')
     + (SELECT count(*) FROM keys WHERE account_id = $2)`
 
-// CreateAPIKey inserts k, which takes a seat: with the features domain
-// held, the seats limit is checked in the inserting transaction, so its
-// lock on the organization's entitlement holds until the key commits.
-func (s *Store) CreateAPIKey(ctx context.Context, k apikey.Key) error {
-	//nolint:wrapcheck // the check and the insert name themselves
+// TouchAPIKey records a use of the key id: it sets last_used_at unless it
+// is under a minute old, so a busy key writes its row once a minute, not
+// once an exchange. A key that is not personal and was not used within
+// SeatWindow takes a seat with this use: with the features domain held,
+// the seats limit is checked in the touching transaction, whose lock on
+// the organization's entitlement holds until the use commits, and a use
+// beyond it is refused with a *featuresapi.LimitError.
+func (s *Store) TouchAPIKey(ctx context.Context, id kernel.ULID) error {
+	//nolint:wrapcheck // the check and the update name themselves
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		q := tx.Q(ctx, s.db)
 		if s.features != nil {
-			if err := s.features.CheckLimit(ctx, k.OrganizationID, k.AccountID, featuresapi.Seats,
-				func(ctx context.Context) (featuresapi.Usage, error) {
-					var u featuresapi.Usage
-					err := tx.Q(ctx, s.db).QueryRow(ctx, seats, k.OrganizationID, k.AccountID,
-						k.CreatedAt, SeatWindow).Scan(&u.Organization, &u.Account)
-					if err != nil {
-						return u, fmt.Errorf("access: count seats: %w", sql.Unavailable(err))
-					}
-					return u, nil
-				}); err != nil {
+			if err := s.takeSeat(ctx, id); err != nil {
 				return err
 			}
 		}
-		return s.insertAPIKey(ctx, k)
+		if _, err := q.Exec(ctx, `UPDATE api_keys SET last_used_at = now()
+			WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')`,
+			id); err != nil {
+			return fmt.Errorf("access: touch API key %s: %w", id, sql.Unavailable(err))
+		}
+		return nil
 	})
 }
 
-func (s *Store) insertAPIKey(ctx context.Context, k apikey.Key) error {
+// takeSeat checks the seats limit for the key id unless it already holds
+// a seat or rides on its owner's.
+func (s *Store) takeSeat(ctx context.Context, id kernel.ULID) error {
+	var (
+		org    kernel.OrganizationID
+		acct   kernel.AccountID
+		seated bool
+	)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `
+		SELECT a.organization_id, k.account_id,
+			k.is_personal OR coalesce(k.last_used_at > now() - $2::interval, false)
+		FROM api_keys k JOIN accounts a ON a.id = k.account_id WHERE k.id = $1`,
+		id, SeatWindow).Scan(&org, &acct, &seated)
+	if err != nil {
+		return read(err, "API key", id)
+	}
+	if seated {
+		return nil
+	}
+	//nolint:wrapcheck // the features domain names the refusal
+	return s.features.CheckLimit(ctx, org, acct, featuresapi.Seats,
+		func(ctx context.Context) (featuresapi.Usage, error) {
+			var u featuresapi.Usage
+			if err := tx.Q(ctx, s.db).QueryRow(ctx, seats, org, acct, SeatWindow, id).
+				Scan(&u.Organization, &u.Account); err != nil {
+				return u, fmt.Errorf("access: count seats: %w", sql.Unavailable(err))
+			}
+			return u, nil
+		})
+}
+
+// CreateAPIKey inserts k. A new key takes no seat until its first use.
+func (s *Store) CreateAPIKey(ctx context.Context, k apikey.Key) error {
 	var issuer, client, subject *string
 	var claims []byte
 	if k.Type == apikey.TypeOIDC {
