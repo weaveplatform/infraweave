@@ -27,12 +27,17 @@ var static = config.WithCredentialsProvider(
 // TestAccS3Contract runs the contract against RustFS, the harness's
 // @objectstore image.
 func TestAccS3Contract(t *testing.T) {
-	endpoint := objectstoretest.Emulator(t, acceptance.ImageObjectStore, "9000/tcp",
+	endpoint := objectstoretest.Emulator(
+		t,
+		acceptance.ImageObjectStore,
+		"9000/tcp",
 		testcontainers.WithEnv(map[string]string{
 			"RUSTFS_ACCESS_KEY": accessKey,
 			"RUSTFS_SECRET_KEY": secretKey,
 		}),
-		testcontainers.WithWaitStrategy(wait.ForHTTP("/health").WithPort("9000/tcp")),
+		testcontainers.WithWaitStrategy(
+			wait.ForHTTP(acceptance.ObjectStoreReady).WithPort("9000/tcp"),
+		),
 	)
 	c := objectstore.Defaults().S3
 	c.Bucket, c.Endpoint, c.PathStyle = "contract", endpoint, true

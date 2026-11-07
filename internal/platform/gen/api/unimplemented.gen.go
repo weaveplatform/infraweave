@@ -102,6 +102,18 @@ func (UnimplementedStrict) Logout(context.Context, LogoutRequestObject) (LogoutR
 	return nil, &problem.NotImplementedError{OperationID: "logout", Route: "POST /auth/logout"}
 }
 
+func (UnimplementedStrict) AuthOAuthRequest(context.Context, AuthOAuthRequestRequestObject) (AuthOAuthRequestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "authOAuthRequest", Route: "GET /auth/oauth/requests/{requestId}"}
+}
+
+func (UnimplementedStrict) AuthOAuthRequestApprove(context.Context, AuthOAuthRequestApproveRequestObject) (AuthOAuthRequestApproveResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "authOAuthRequestApprove", Route: "POST /auth/oauth/requests/{requestId}/approve"}
+}
+
+func (UnimplementedStrict) AuthOAuthRequestDeny(context.Context, AuthOAuthRequestDenyRequestObject) (AuthOAuthRequestDenyResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "authOAuthRequestDeny", Route: "POST /auth/oauth/requests/{requestId}/deny"}
+}
+
 func (UnimplementedStrict) AuthSessionAccount(context.Context, AuthSessionAccountRequestObject) (AuthSessionAccountResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "authSessionAccount", Route: "POST /auth/session/account"}
 }

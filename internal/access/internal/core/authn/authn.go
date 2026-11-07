@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -347,6 +348,7 @@ var actors = map[token.Kind]kernel.PrincipalKind{
 	token.KindRun:             kernel.PrincipalRun,
 	token.KindOrganizationKey: kernel.PrincipalOrganization,
 	token.KindOperator:        kernel.PrincipalOperator,
+	token.KindOAuth:           kernel.PrincipalUser,
 }
 
 // Reach is which sessions a route admits (accessapi.Access).
@@ -410,6 +412,34 @@ func (s *Service) AuthenticateOperator(
 	return s.authenticate(ctx, raw, s.d.OperatorAudience, func(ss session.Session) bool {
 		return ss.ActorKind == kernel.PrincipalOperator
 	})
+}
+
+// AuthenticateGrant is the principal an OAuth access token acts as on the
+// MCP surface resource, the URL the token's aud must be, and the token's
+// claims: the member in the grant's account, whose Scopes are the
+// grant's. A token of another kind or resource, or whose grant is not
+// live, is ErrUnauthenticated; so is a token whose scope the grant no
+// longer holds.
+func (s *Service) AuthenticateGrant(
+	ctx context.Context,
+	raw, resource string,
+) (kernel.Principal, token.Claims, error) {
+	p, c, err := s.authenticate(ctx, raw, resource, func(ss session.Session) bool {
+		return ss.ClientID != "" && ss.Resource == resource && !ss.AccountID.IsZero()
+	})
+	if err != nil {
+		return kernel.Principal{}, token.Claims{}, err
+	}
+	if c.Kind != token.KindOAuth {
+		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
+	}
+	for sc := range strings.FieldsSeq(c.Scope) {
+		if !slices.Contains(p.Scopes, sc) {
+			return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
+		}
+	}
+	p.Scopes = strings.Fields(c.Scope)
+	return p, c, nil
 }
 
 // authenticate verifies raw for audience and reads its session, which must

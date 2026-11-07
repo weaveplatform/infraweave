@@ -40,6 +40,65 @@ components:
         - name
         - slug
       type: object
+    AuthOAuthDecision:
+      description: Where the browser goes next after a decision on an authorization request.
+      properties:
+        redirectTo:
+          description: The client's redirect URI with the code and state, or with the error access_denied after a denial.
+          type: string
+      required:
+        - redirectTo
+      type: object
+    AuthOAuthRequest:
+      description: An MCP client's authorization request waiting for the member's consent.
+      properties:
+        clientId:
+          description: The ID the client registered under.
+          type: string
+        clientName:
+          description: The name the client registered, which may be empty and is the client's own claim.
+          type: string
+        expiresAt:
+          description: When the request ends unanswered, in Unix seconds.
+          format: int64
+          type: integer
+        id:
+          description: The request's ID, which the consent page's path names.
+          type: string
+        redirectHost:
+          description: The host the browser returns to with the code.
+          type: string
+        redirectUri:
+          description: The client's redirect URI.
+          type: string
+        resource:
+          description: The URL of the MCP server the access tokens are for.
+          type: string
+        scopes:
+          description: The scopes requested; mcp:write brings mcp:read with it.
+          items:
+            type: string
+          type: array
+      required:
+        - clientId
+        - clientName
+        - expiresAt
+        - id
+        - redirectHost
+        - redirectUri
+        - resource
+        - scopes
+      type: object
+    AuthOAuthApproveRequest:
+      additionalProperties: false
+      description: The account the member grants the client access to.
+      properties:
+        account:
+          description: The ID of an account that admits the member.
+          type: string
+      required:
+        - account
+      type: object
     AuthSessionAccountRequest:
       additionalProperties: false
       description: The account to switch the caller's session to.
@@ -451,6 +510,153 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /auth/oauth/requests/{requestId}:
+    get:
+      description: |-
+        An MCP client's authorization request as the console's consent page shows it. Only a member's browser
+        session reads one; any other credential answers 403. A request that was approved or denied already, or
+        that is past its end, answers 404.
+      operationId: authOAuthRequest
+      x-infraweave-feature: auth
+      parameters:
+        - description: The authorization request's ID.
+          in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthOAuthRequest'
+          description: The authorization request.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Auth OAuth Request
+      tags:
+        - Auth
+      x-infraweave-access: organization
+      x-infraweave-cost: standard
+      x-upstream: none
+  /auth/oauth/requests/{requestId}/approve:
+    post:
+      description: |-
+        Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+        answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+        approves; any other credential answers 403, as does an account that does not admit the member, or a
+        redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+        request that was approved or denied already, or that is past its end, answers 404.
+      operationId: authOAuthRequestApprove
+      x-infraweave-feature: auth
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - description: The authorization request's ID.
+          in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthOAuthApproveRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthOAuthDecision'
+          description: Where the browser goes with the code.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Auth OAuth Request Approve
+      tags:
+        - Auth
+      x-infraweave-access: organization
+      x-infraweave-cost: standard
+      x-upstream: none
+  /auth/oauth/requests/{requestId}/deny:
+    post:
+      description: |-
+        Refuse an MCP client's authorization request, and answer the client's redirect URI with the error
+        access_denied. Only a member's browser session denies; any other credential answers 403. A request that
+        was approved or denied already, or that is past its end, answers 404.
+      operationId: authOAuthRequestDeny
+      x-infraweave-feature: auth
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - description: The authorization request's ID.
+          in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthOAuthDecision'
+          description: Where the browser goes with the refusal.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Auth OAuth Request Deny
+      tags:
+        - Auth
+      x-infraweave-access: organization
+      x-infraweave-cost: standard
+      x-upstream: none
   /auth/session/account:
     post:
       description: |-

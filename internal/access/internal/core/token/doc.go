@@ -5,7 +5,8 @@
 // (ES256, through go-jose and a platform/crypt/signer Signer), creating the
 // first key when there is none. The claims are exactly iss, aud as one
 // string, sub, jti (the session ULID), iat, nbf equal to iat, exp and
-// iw_kind (Kind: api_key, or operator for the operator API's token).
+// iw_kind (Kind: api_key, or operator for the operator API's token), and
+// for an OAuth access token scope, its scopes separated by spaces.
 // Service.Verify accepts ES256 alone, so alg none and
 // every HMAC algorithm fail, checks the signature against the key the kid
 // names, and requires the issuer, exactly the one audience, the claims

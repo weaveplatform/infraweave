@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
@@ -304,6 +305,7 @@ type world struct {
 	acct   kernel.AccountID
 	key    kernel.ULID
 	secret string
+	grants *grants
 }
 
 // public is the route class that takes no credential.
@@ -323,7 +325,8 @@ func access(r *http.Request) accessapi.Access {
 	switch {
 	case r.URL.Path == public:
 		return accessapi.Public
-	case slices.Contains(organizationRoutes, r.URL.Path):
+	case slices.Contains(organizationRoutes, r.URL.Path),
+		strings.HasPrefix(r.URL.Path, "/auth/oauth/requests/"):
 		return accessapi.Organization
 	}
 	return accessapi.Account
@@ -365,8 +368,16 @@ func newWorld(t *testing.T) *world {
 	cfg := settings.NewService(settings.Deps{
 		Store: w.cfg, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
+	w.grants = newGrants()
+	grants := oauth.NewService(oauth.Deps{
+		Store: w.grants, Tokens: st, Admission: st, Drop: auth.Cache().Drop,
+		PublicURL: publicURL, AccessTTL: time.Hour, RefreshTTL: 30 * 24 * time.Hour,
+		CodeTTL: time.Minute, Now: func() time.Time { return t0 },
+	})
 	strict := api.NewStrictHandlerWithOptions(
-		full{Server: NewServer(Services{Auth: auth, Keys: keys, Accounts: st, Settings: cfg})},
+		full{Server: NewServer(Services{
+			Auth: auth, Keys: keys, Accounts: st, Settings: cfg, OAuth: grants,
+		})},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,
@@ -375,6 +386,7 @@ func newWorld(t *testing.T) *world {
 	)
 	r := chi.NewRouter()
 	NewLogin(auth, publicURL).Routes(r)
+	NewOAuth(grants).Routes(r)
 	r.Mount("/", NewAuthenticator(auth, publicURL).Middleware(access)(api.Handler(strict)))
 	w.h = r
 	return w

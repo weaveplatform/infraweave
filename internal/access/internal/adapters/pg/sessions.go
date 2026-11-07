@@ -23,7 +23,8 @@ var (
 // sessionColumns are what scanSession reads, in its order.
 const sessionColumns = `organization_id, account_id, id, channel, actor_kind, actor_id,
 	member_id, login, name, email, admin, teams, scopes, coalesce(host(ip_address), ''),
-	created_at, expires_at, idle_expires_at, revoked_at, secret_hash, parent_session_id`
+	created_at, expires_at, idle_expires_at, revoked_at, secret_hash, parent_session_id,
+	coalesce(oauth_client_id, ''), coalesce(oauth_resource, '')`
 
 // Each write's transaction may fail to begin or commit with pgx's own
 // error, which the writes mark as kernel.ErrUnavailable when PostgreSQL is
@@ -40,26 +41,32 @@ func (s *Store) CreateSession(ctx context.Context, ss session.Session) error {
 				return err
 			}
 		}
-		var idle *time.Time
-		if !ss.IdleExpiresAt.IsZero() {
-			idle = &ss.IdleExpiresAt
-		}
-		if _, err := q.Exec(ctx, `
-			INSERT INTO sessions (organization_id, account_id, id, channel, actor_kind,
-				actor_id, member_id, login, name, email, admin, teams, scopes, ip_address,
-				expires_at, idle_expires_at, secret_hash, parent_session_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-				NULLIF($14, '')::inet, $15, $16, $17, $18)`,
-			ss.OrganizationID, ss.AccountID, ss.ID, ss.Channel, ss.ActorKind, ss.ActorID,
-			ss.MemberID, ss.Login, ss.Name, ss.Email, ss.Admin, nonNil(ss.Teams),
-			nonNil(ss.Scopes), ss.IPAddress, ss.ExpiresAt, idle, ss.SecretHash,
-			ss.ParentID); err != nil {
-			return fmt.Errorf("access: insert session: %w", sql.Unavailable(err))
-		}
-		return nil
+		return insertSession(ctx, q, ss)
 	})
 	if err != nil {
 		return fmt.Errorf("create session %s: %w", ss.ID, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// insertSession inserts ss in the caller's transaction.
+func insertSession(ctx context.Context, q tx.Querier, ss session.Session) error {
+	var idle *time.Time
+	if !ss.IdleExpiresAt.IsZero() {
+		idle = &ss.IdleExpiresAt
+	}
+	if _, err := q.Exec(ctx, `
+		INSERT INTO sessions (organization_id, account_id, id, channel, actor_kind,
+			actor_id, member_id, login, name, email, admin, teams, scopes, ip_address,
+			expires_at, idle_expires_at, secret_hash, parent_session_id, oauth_client_id,
+			oauth_resource)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+			NULLIF($14, '')::inet, $15, $16, $17, $18, NULLIF($19, ''), NULLIF($20, ''))`,
+		ss.OrganizationID, ss.AccountID, ss.ID, ss.Channel, ss.ActorKind, ss.ActorID,
+		ss.MemberID, ss.Login, ss.Name, ss.Email, ss.Admin, nonNil(ss.Teams),
+		nonNil(ss.Scopes), ss.IPAddress, ss.ExpiresAt, idle, ss.SecretHash,
+		ss.ParentID, ss.ClientID, ss.Resource); err != nil {
+		return fmt.Errorf("access: insert session: %w", sql.Unavailable(err))
 	}
 	return nil
 }
@@ -238,7 +245,7 @@ func scanSession(r pgx.Row) (session.Session, error) {
 	err := r.Scan(&ss.OrganizationID, &ss.AccountID, &ss.ID, &ss.Channel, &ss.ActorKind,
 		&ss.ActorID, &ss.MemberID, &ss.Login, &ss.Name, &ss.Email, &ss.Admin, &ss.Teams,
 		&ss.Scopes, &ss.IPAddress, &ss.CreatedAt, &ss.ExpiresAt, &idle, &revoked, &ss.SecretHash,
-		&ss.ParentID)
+		&ss.ParentID, &ss.ClientID, &ss.Resource)
 	if err != nil {
 		return session.Session{}, err //nolint:wrapcheck // the callers name the read
 	}

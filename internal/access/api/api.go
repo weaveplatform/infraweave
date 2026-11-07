@@ -37,3 +37,15 @@ type Authenticator interface {
 // POST of the form signs in. It is outside the API's base URL, a page
 // for a browser rather than an operation of the API.
 const LoginPattern = "/admin-login/{organization}"
+
+// The routes of the authorization server for MCP clients (decision 0006 §
+// "The OAuth authorization server for MCP"), outside the API's base URL
+// as the OAuth protocol places them: RFC 8414 metadata, RFC 7591
+// registration, and the authorization and token endpoints. None takes a
+// credential.
+const (
+	OAuthMetadataPattern  = "/.well-known/oauth-authorization-server"
+	OAuthRegisterPattern  = "/oauth/register"
+	OAuthAuthorizePattern = "/oauth/authorize"
+	OAuthTokenPattern     = "/oauth/token" //nolint:gosec // a route, not a credential
+)

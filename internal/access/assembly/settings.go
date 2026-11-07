@@ -20,6 +20,11 @@ const (
 	RotationAutomatic  = "automatic"
 	RotationManual     = "manual"
 	defaultAPITokenTTL = 10 * time.Hour
+	// The authorization server's lifetimes (decision 0006 § "Token
+	// kinds"): an access token, a refresh token unused, and a code.
+	defaultOAuthAccessTTL  = time.Hour
+	defaultOAuthRefreshTTL = 30 * 24 * time.Hour
+	defaultOAuthCodeTTL    = time.Minute
 	// A browser session's limits (decision 0006 § "Token kinds").
 	defaultIdleTimeout = 12 * time.Hour
 	defaultMaxAge      = 7 * 24 * time.Hour
@@ -72,6 +77,12 @@ type TokenSettings struct {
 	// API is the API token's, which an API key or an operator key
 	// exchanges for.
 	API Lifetime `mapstructure:"api"`
+	// OAuthAccess is an MCP access token's; OAuthRefresh is how long a
+	// grant's refresh token lives unused, each refresh starting it again;
+	// OAuthCode is an authorization code's.
+	OAuthAccess  Lifetime `mapstructure:"oauth_access"`
+	OAuthRefresh Lifetime `mapstructure:"oauth_refresh"`
+	OAuthCode    Lifetime `mapstructure:"oauth_code"`
 }
 
 // SessionSettings are auth.session: a browser session's limits. It ends
@@ -117,7 +128,12 @@ var kmsProviders = []string{"awskms", "gcpkms", "azurekv", "vault"}
 // DefaultSettings are decision 0006's defaults.
 func DefaultSettings() Settings {
 	return Settings{
-		Tokens:  TokenSettings{API: Lifetime{TTL: defaultAPITokenTTL}},
+		Tokens: TokenSettings{
+			API:          Lifetime{TTL: defaultAPITokenTTL},
+			OAuthAccess:  Lifetime{TTL: defaultOAuthAccessTTL},
+			OAuthRefresh: Lifetime{TTL: defaultOAuthRefreshTTL},
+			OAuthCode:    Lifetime{TTL: defaultOAuthCodeTTL},
+		},
 		Session: SessionSettings{IdleTimeout: defaultIdleTimeout, MaxAge: defaultMaxAge},
 		Signing: SigningSettings{Backend: BackendLocal, Rotation: RotationAutomatic},
 	}
@@ -137,6 +153,9 @@ func (s Settings) Validate() error {
 		key string
 		d   time.Duration
 	}{
+		{"auth.tokens.oauth_access.ttl", s.Tokens.OAuthAccess.TTL},
+		{"auth.tokens.oauth_refresh.ttl", s.Tokens.OAuthRefresh.TTL},
+		{"auth.tokens.oauth_code.ttl", s.Tokens.OAuthCode.TTL},
 		{"auth.session.idle_timeout", s.Session.IdleTimeout},
 		{"auth.session.max_age", s.Session.MaxAge},
 	} {

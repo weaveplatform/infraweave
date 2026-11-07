@@ -2364,6 +2364,45 @@ type AuthAccount struct {
 	Slug string `json:"slug"`
 }
 
+// AuthOAuthApproveRequest The account the member grants the client access to.
+type AuthOAuthApproveRequest struct {
+	// Account The ID of an account that admits the member.
+	Account string `json:"account"`
+}
+
+// AuthOAuthDecision Where the browser goes next after a decision on an authorization request.
+type AuthOAuthDecision struct {
+	// RedirectTo The client's redirect URI with the code and state, or with the error access_denied after a denial.
+	RedirectTo string `json:"redirectTo"`
+}
+
+// AuthOAuthRequest An MCP client's authorization request waiting for the member's consent.
+type AuthOAuthRequest struct {
+	// ClientId The ID the client registered under.
+	ClientId string `json:"clientId"`
+
+	// ClientName The name the client registered, which may be empty and is the client's own claim.
+	ClientName string `json:"clientName"`
+
+	// ExpiresAt When the request ends unanswered, in Unix seconds.
+	ExpiresAt int64 `json:"expiresAt"`
+
+	// Id The request's ID, which the consent page's path names.
+	Id string `json:"id"`
+
+	// RedirectHost The host the browser returns to with the code.
+	RedirectHost string `json:"redirectHost"`
+
+	// RedirectUri The client's redirect URI.
+	RedirectUri string `json:"redirectUri"`
+
+	// Resource The URL of the MCP server the access tokens are for.
+	Resource string `json:"resource"`
+
+	// Scopes The scopes requested; mcp:write brings mcp:read with it.
+	Scopes []string `json:"scopes"`
+}
+
 // AuthSessionAccountRequest The account to switch the caller's session to.
 type AuthSessionAccountRequest struct {
 	// Account The ID of an account that admits the caller's member.
@@ -7270,6 +7309,18 @@ type LogoutParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AuthOAuthRequestApproveParams defines parameters for AuthOAuthRequestApprove.
+type AuthOAuthRequestApproveParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AuthOAuthRequestDenyParams defines parameters for AuthOAuthRequestDeny.
+type AuthOAuthRequestDenyParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // AuthSessionAccountParams defines parameters for AuthSessionAccount.
 type AuthSessionAccountParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -7902,6 +7953,9 @@ type ApiKeyUpdateJSONRequestBody = ApiKeyUpdateInput
 
 // CliConfirmationTokenJSONRequestBody defines body for CliConfirmationToken for application/json ContentType.
 type CliConfirmationTokenJSONRequestBody = CliConfirmationTokenRequest
+
+// AuthOAuthRequestApproveJSONRequestBody defines body for AuthOAuthRequestApprove for application/json ContentType.
+type AuthOAuthRequestApproveJSONRequestBody = AuthOAuthApproveRequest
 
 // AuthSessionAccountJSONRequestBody defines body for AuthSessionAccount for application/json ContentType.
 type AuthSessionAccountJSONRequestBody = AuthSessionAccountRequest
@@ -9418,6 +9472,50 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /auth/logout (the `Logout` operationId).
 	Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthOAuthRequest Auth OAuth Request
+	//
+	// An MCP client's authorization request as the console's consent page shows it. Only a member's browser
+	// session reads one; any other credential answers 403. A request that was approved or denied already, or
+	// that is past its end, answers 404.
+	//
+	// Corresponds with GET /auth/oauth/requests/{requestId} (the `AuthOAuthRequest` operationId).
+	AuthOAuthRequest(ctx context.Context, requestId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthOAuthRequestApproveWithBody Auth OAuth Request Approve
+	//
+	// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+	// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+	// approves; any other credential answers 403, as does an account that does not admit the member, or a
+	// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+	// request that was approved or denied already, or that is past its end, answers 404.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+	AuthOAuthRequestApproveWithBody(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthOAuthRequestApprove Auth OAuth Request Approve
+	//
+	// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+	// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+	// approves; any other credential answers 403, as does an account that does not admit the member, or a
+	// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+	// request that was approved or denied already, or that is past its end, answers 404.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+	AuthOAuthRequestApprove(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, body AuthOAuthRequestApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthOAuthRequestDeny Auth OAuth Request Deny
+	//
+	// Refuse an MCP client's authorization request, and answer the client's redirect URI with the error
+	// access_denied. Only a member's browser session denies; any other credential answers 403. A request that
+	// was approved or denied already, or that is past its end, answers 404.
+	//
+	// Corresponds with POST /auth/oauth/requests/{requestId}/deny (the `AuthOAuthRequestDeny` operationId).
+	AuthOAuthRequestDeny(ctx context.Context, requestId string, params *AuthOAuthRequestDenyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AuthSessionAccountWithBody Auth Session Account
 	//
@@ -11561,6 +11659,90 @@ func (c *Client) CliConfirmationToken(ctx context.Context, params *CliConfirmati
 // Corresponds with POST /auth/logout (the `Logout` operationId).
 func (c *Client) Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLogoutRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthOAuthRequest Auth OAuth Request
+//
+// An MCP client's authorization request as the console's consent page shows it. Only a member's browser
+// session reads one; any other credential answers 403. A request that was approved or denied already, or
+// that is past its end, answers 404.
+//
+// Corresponds with GET /auth/oauth/requests/{requestId} (the `AuthOAuthRequest` operationId).
+func (c *Client) AuthOAuthRequest(ctx context.Context, requestId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthOAuthRequestRequest(c.Server, requestId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthOAuthRequestApproveWithBody Auth OAuth Request Approve
+//
+// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+// approves; any other credential answers 403, as does an account that does not admit the member, or a
+// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+// request that was approved or denied already, or that is past its end, answers 404.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+func (c *Client) AuthOAuthRequestApproveWithBody(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthOAuthRequestApproveRequestWithBody(c.Server, requestId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthOAuthRequestApprove Auth OAuth Request Approve
+//
+// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+// approves; any other credential answers 403, as does an account that does not admit the member, or a
+// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+// request that was approved or denied already, or that is past its end, answers 404.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+func (c *Client) AuthOAuthRequestApprove(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, body AuthOAuthRequestApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthOAuthRequestApproveRequest(c.Server, requestId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthOAuthRequestDeny Auth OAuth Request Deny
+//
+// Refuse an MCP client's authorization request, and answer the client's redirect URI with the error
+// access_denied. Only a member's browser session denies; any other credential answers 403. A request that
+// was approved or denied already, or that is past its end, answers 404.
+//
+// Corresponds with POST /auth/oauth/requests/{requestId}/deny (the `AuthOAuthRequestDeny` operationId).
+func (c *Client) AuthOAuthRequestDeny(ctx context.Context, requestId string, params *AuthOAuthRequestDenyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthOAuthRequestDenyRequest(c.Server, requestId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -15961,6 +16143,151 @@ func NewLogoutRequest(server string, params *LogoutParams) (*http.Request, error
 	}
 
 	operationPath := fmt.Sprintf("/auth/logout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAuthOAuthRequestRequest constructs an http.Request for the AuthOAuthRequest method
+func NewAuthOAuthRequestRequest(server string, requestId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/requests/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthOAuthRequestApproveRequest calls the generic AuthOAuthRequestApprove builder with application/json body
+func NewAuthOAuthRequestApproveRequest(server string, requestId string, params *AuthOAuthRequestApproveParams, body AuthOAuthRequestApproveJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthOAuthRequestApproveRequestWithBody(server, requestId, params, "application/json", bodyReader)
+}
+
+// NewAuthOAuthRequestApproveRequestWithBody constructs an http.Request for the AuthOAuthRequestApprove method, with any body, and a specified content type
+func NewAuthOAuthRequestApproveRequestWithBody(server string, requestId string, params *AuthOAuthRequestApproveParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/requests/%s/approve", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAuthOAuthRequestDenyRequest constructs an http.Request for the AuthOAuthRequestDeny method
+func NewAuthOAuthRequestDenyRequest(server string, requestId string, params *AuthOAuthRequestDenyParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/requests/%s/deny", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -23644,6 +23971,54 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/logout (the `Logout` operationId).
 	LogoutWithResponse(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*LogoutResponse, error)
 
+	// AuthOAuthRequestWithResponse Auth OAuth Request
+	//
+	// An MCP client's authorization request as the console's consent page shows it. Only a member's browser
+	// session reads one; any other credential answers 403. A request that was approved or denied already, or
+	// that is past its end, answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/oauth/requests/{requestId} (the `AuthOAuthRequest` operationId).
+	AuthOAuthRequestWithResponse(ctx context.Context, requestId string, reqEditors ...RequestEditorFn) (*AuthOAuthRequestResponse, error)
+
+	// AuthOAuthRequestApproveWithBodyWithResponse Auth OAuth Request Approve
+	//
+	// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+	// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+	// approves; any other credential answers 403, as does an account that does not admit the member, or a
+	// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+	// request that was approved or denied already, or that is past its end, answers 404.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+	AuthOAuthRequestApproveWithBodyWithResponse(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthOAuthRequestApproveResponse, error)
+
+	// AuthOAuthRequestApproveWithResponse Auth OAuth Request Approve
+	//
+	// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+	// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+	// approves; any other credential answers 403, as does an account that does not admit the member, or a
+	// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+	// request that was approved or denied already, or that is past its end, answers 404.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+	AuthOAuthRequestApproveWithResponse(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, body AuthOAuthRequestApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthOAuthRequestApproveResponse, error)
+
+	// AuthOAuthRequestDenyWithResponse Auth OAuth Request Deny
+	//
+	// Refuse an MCP client's authorization request, and answer the client's redirect URI with the error
+	// access_denied. Only a member's browser session denies; any other credential answers 403. A request that
+	// was approved or denied already, or that is past its end, answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/requests/{requestId}/deny (the `AuthOAuthRequestDeny` operationId).
+	AuthOAuthRequestDenyWithResponse(ctx context.Context, requestId string, params *AuthOAuthRequestDenyParams, reqEditors ...RequestEditorFn) (*AuthOAuthRequestDenyResponse, error)
+
 	// AuthSessionAccountWithBodyWithResponse Auth Session Account
 	//
 	// Replace the caller's session with a new one for an account that admits its member, in the same channel
@@ -27546,6 +27921,319 @@ func (r LogoutResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LogoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthOAuthRequestResponse200Headers the declared response headers of an HTTP 200 response for AuthOAuthRequest
+type AuthOAuthRequestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthOAuthRequestResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthRequest
+type AuthOAuthRequestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthOAuthRequestResponse503Headers the declared response headers of an HTTP 503 response for AuthOAuthRequest
+type AuthOAuthRequestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthOAuthRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthOAuthRequest
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthOAuthRequestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthOAuthRequestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthOAuthRequestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthOAuthRequestResponse) GetJSON200() *AuthOAuthRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthOAuthRequestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthOAuthRequestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthOAuthRequestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AuthOAuthRequestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthOAuthRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthOAuthRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthOAuthRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthOAuthRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthOAuthRequestApproveResponse200Headers the declared response headers of an HTTP 200 response for AuthOAuthRequestApprove
+type AuthOAuthRequestApproveResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthOAuthRequestApproveResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthRequestApprove
+type AuthOAuthRequestApproveResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthOAuthRequestApproveResponse503Headers the declared response headers of an HTTP 503 response for AuthOAuthRequestApprove
+type AuthOAuthRequestApproveResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthOAuthRequestApproveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthOAuthDecision
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthOAuthRequestApproveResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthOAuthRequestApproveResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthOAuthRequestApproveResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthOAuthRequestApproveResponse) GetJSON200() *AuthOAuthDecision {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthOAuthRequestApproveResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthOAuthRequestApproveResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthOAuthRequestApproveResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthOAuthRequestApproveResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthOAuthRequestApproveResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AuthOAuthRequestApproveResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthOAuthRequestApproveResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthOAuthRequestApproveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthOAuthRequestApproveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthOAuthRequestApproveResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthOAuthRequestDenyResponse200Headers the declared response headers of an HTTP 200 response for AuthOAuthRequestDeny
+type AuthOAuthRequestDenyResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthOAuthRequestDenyResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthRequestDeny
+type AuthOAuthRequestDenyResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthOAuthRequestDenyResponse503Headers the declared response headers of an HTTP 503 response for AuthOAuthRequestDeny
+type AuthOAuthRequestDenyResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthOAuthRequestDenyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthOAuthDecision
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthOAuthRequestDenyResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthOAuthRequestDenyResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthOAuthRequestDenyResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthOAuthRequestDenyResponse) GetJSON200() *AuthOAuthDecision {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthOAuthRequestDenyResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthOAuthRequestDenyResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthOAuthRequestDenyResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthOAuthRequestDenyResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthOAuthRequestDenyResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AuthOAuthRequestDenyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthOAuthRequestDenyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthOAuthRequestDenyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthOAuthRequestDenyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthOAuthRequestDenyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42134,6 +42822,78 @@ func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, params *Lo
 	return ParseLogoutResponse(rsp)
 }
 
+// AuthOAuthRequestWithResponse Auth OAuth Request
+//
+// An MCP client's authorization request as the console's consent page shows it. Only a member's browser
+// session reads one; any other credential answers 403. A request that was approved or denied already, or
+// that is past its end, answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/oauth/requests/{requestId} (the `AuthOAuthRequest` operationId).
+func (c *ClientWithResponses) AuthOAuthRequestWithResponse(ctx context.Context, requestId string, reqEditors ...RequestEditorFn) (*AuthOAuthRequestResponse, error) {
+	rsp, err := c.AuthOAuthRequest(ctx, requestId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthOAuthRequestResponse(rsp)
+}
+
+// AuthOAuthRequestApproveWithBodyWithResponse Auth OAuth Request Approve
+//
+// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+// approves; any other credential answers 403, as does an account that does not admit the member, or a
+// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+// request that was approved or denied already, or that is past its end, answers 404.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+func (c *ClientWithResponses) AuthOAuthRequestApproveWithBodyWithResponse(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthOAuthRequestApproveResponse, error) {
+	rsp, err := c.AuthOAuthRequestApproveWithBody(ctx, requestId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthOAuthRequestApproveResponse(rsp)
+}
+
+// AuthOAuthRequestApproveWithResponse Auth OAuth Request Approve
+//
+// Grant an MCP client's authorization request to the caller's member in an account that admits them, and
+// answer the client's redirect URI with a code that lives a minute. Only a member's browser session
+// approves; any other credential answers 403, as does an account that does not admit the member, or a
+// redirect URI that is neither loopback nor on a host of the account's oauthRedirectAllowedHosts. A
+// request that was approved or denied already, or that is past its end, answers 404.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/requests/{requestId}/approve (the `AuthOAuthRequestApprove` operationId).
+func (c *ClientWithResponses) AuthOAuthRequestApproveWithResponse(ctx context.Context, requestId string, params *AuthOAuthRequestApproveParams, body AuthOAuthRequestApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthOAuthRequestApproveResponse, error) {
+	rsp, err := c.AuthOAuthRequestApprove(ctx, requestId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthOAuthRequestApproveResponse(rsp)
+}
+
+// AuthOAuthRequestDenyWithResponse Auth OAuth Request Deny
+//
+// Refuse an MCP client's authorization request, and answer the client's redirect URI with the error
+// access_denied. Only a member's browser session denies; any other credential answers 403. A request that
+// was approved or denied already, or that is past its end, answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/requests/{requestId}/deny (the `AuthOAuthRequestDeny` operationId).
+func (c *ClientWithResponses) AuthOAuthRequestDenyWithResponse(ctx context.Context, requestId string, params *AuthOAuthRequestDenyParams, reqEditors ...RequestEditorFn) (*AuthOAuthRequestDenyResponse, error) {
+	rsp, err := c.AuthOAuthRequestDeny(ctx, requestId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthOAuthRequestDenyResponse(rsp)
+}
+
 // AuthSessionAccountWithBodyWithResponse Auth Session Account
 //
 // Replace the caller's session with a new one for an account that admits its member, in the same channel
@@ -47762,6 +48522,400 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers LogoutResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthOAuthRequestResponse parses an HTTP response from a AuthOAuthRequestWithResponse call
+func ParseAuthOAuthRequestResponse(rsp *http.Response) (*AuthOAuthRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthOAuthRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthOAuthRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthOAuthRequestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthOAuthRequestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthOAuthRequestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthOAuthRequestApproveResponse parses an HTTP response from a AuthOAuthRequestApproveWithResponse call
+func ParseAuthOAuthRequestApproveResponse(rsp *http.Response) (*AuthOAuthRequestApproveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthOAuthRequestApproveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthOAuthDecision
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthOAuthRequestApproveResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthOAuthRequestApproveResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthOAuthRequestApproveResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthOAuthRequestDenyResponse parses an HTTP response from a AuthOAuthRequestDenyWithResponse call
+func ParseAuthOAuthRequestDenyResponse(rsp *http.Response) (*AuthOAuthRequestDenyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthOAuthRequestDenyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthOAuthDecision
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthOAuthRequestDenyResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthOAuthRequestDenyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthOAuthRequestDenyResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

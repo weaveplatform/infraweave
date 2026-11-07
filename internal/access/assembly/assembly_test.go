@@ -39,17 +39,21 @@ func TestUnitAssembly(t *testing.T) {
 	if s := DefaultSettings().Session; s.IdleTimeout != 12*time.Hour || s.MaxAge != 7*24*time.Hour {
 		t.Errorf("session defaults = %+v, want 12h idle and 7 days", s)
 	}
-	// The login is mounted, and a nil domain's answers 501.
-	for dom, want := range map[*Domain]int{d: http.StatusOK, nil: http.StatusNotImplemented} {
-		r := chi.NewRouter()
-		dom.Routes(r)
-		rec := httptest.NewRecorder()
-		r.ServeHTTP(
-			rec,
-			httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin-login/acme", nil),
-		)
-		if rec.Code != want {
-			t.Errorf("GET /admin-login/acme on %v: %d, want %d", dom == nil, rec.Code, want)
+	if tk := DefaultSettings().Tokens; tk.OAuthAccess.TTL != time.Hour ||
+		tk.OAuthRefresh.TTL != 30*24*time.Hour || tk.OAuthCode.TTL != time.Minute {
+		t.Errorf("OAuth defaults = %+v, want an hour, 30 days and a minute", tk)
+	}
+	// The login and the authorization server's metadata are mounted, and
+	// a nil domain's answer 501.
+	for _, path := range []string{"/admin-login/acme", "/.well-known/oauth-authorization-server"} {
+		for dom, want := range map[*Domain]int{d: http.StatusOK, nil: http.StatusNotImplemented} {
+			r := chi.NewRouter()
+			dom.Routes(r)
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
+			if rec.Code != want {
+				t.Errorf("GET %s on %v: %d, want %d", path, dom == nil, rec.Code, want)
+			}
 		}
 	}
 	tasks := d.Cron()
@@ -116,8 +120,16 @@ func TestUnitSettings(t *testing.T) {
 		edit func(*Settings)
 		want string
 	}{
-		"ttl":         {func(s *Settings) { s.Tokens.API.TTL = -time.Second }, "auth.tokens.api.ttl"},
-		"idle":        {func(s *Settings) { s.Session.IdleTimeout = 0 }, "auth.session.idle_timeout"},
+		"ttl":  {func(s *Settings) { s.Tokens.API.TTL = -time.Second }, "auth.tokens.api.ttl"},
+		"idle": {func(s *Settings) { s.Session.IdleTimeout = 0 }, "auth.session.idle_timeout"},
+		"access": {
+			func(s *Settings) { s.Tokens.OAuthAccess.TTL = 0 }, "auth.tokens.oauth_access.ttl",
+		},
+		"refresh": {
+			func(s *Settings) { s.Tokens.OAuthRefresh.TTL = -time.Hour },
+			"auth.tokens.oauth_refresh.ttl",
+		},
+		"code":        {func(s *Settings) { s.Tokens.OAuthCode.TTL = 0 }, "auth.tokens.oauth_code.ttl"},
 		"max age":     {func(s *Settings) { s.Session.MaxAge = -time.Hour }, "auth.session.max_age"},
 		"backend":     {func(s *Settings) { s.Signing.Backend = "hsm" }, "auth.signing.backend"},
 		"no kms keys": {func(s *Settings) { s.Signing.Backend = BackendKMS }, "auth.signing.kms_keys is required"},

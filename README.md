@@ -174,6 +174,35 @@ authenticates `GET`, `HEAD` and `OPTIONS`; a `POST`, `PUT`, `PATCH` or
   admit the member answers `404`. A member no account admits holds a session
   of no account, which lists no account.
 
+#### The OAuth server for MCP clients
+
+An MCP client authorizes as a member through the built-in OAuth 2.1
+server, which `GET /.well-known/oauth-authorization-server` describes.
+
+- **Registration.** `POST /oauth/register` registers a public client
+  (RFC 7591) by anyone, from the client address's expensive budget. Each
+  redirect URI is `https`, or `http` on a loopback host; any other answers
+  `invalid_redirect_uri`. A client unused for 30 days is deleted.
+- **Authorization.** `GET /oauth/authorize` takes the code flow with an
+  `S256` PKCE challenge, the scopes `mcp:read` (the default) and
+  `mcp:write`, which includes it, and a `resource` of `<public URL>/mcp`,
+  `/flows/mcp` or `/flows/mcp/<project>`. It answers `302` to the
+  console's `/consent/<request>` page, which reads the request with
+  `GET /api/v1/auth/oauth/requests/{requestId}` and approves it for one
+  account or denies it, each answering the `redirectTo` that sends the
+  browser back to the client. Only a member's browser session consents. A
+  redirect URI matches a registered one exactly, or on a loopback host at
+  any port; approving sends the code only to a loopback host or one on the
+  account's `oauthRedirectAllowedHosts`, any other answering `403`.
+- **Tokens.** `POST /oauth/token` redeems a code, once and within
+  `auth.tokens.oauth_code.ttl`, for an access token whose `aud` is the
+  resource, of `auth.tokens.oauth_access.ttl`, and a refresh token. A
+  refresh answers a new pair and spends the old refresh token; its `scope`
+  narrows that access token alone. Redeeming a code twice, or presenting a
+  spent refresh token, revokes the grant. The grant is a session of the
+  member's in the account, listed by `GET /sessions`, which removing or
+  deactivating the member ends.
+
 #### The operator API
 
 The operator API under `/operator/v1` creates the installation's
@@ -233,6 +262,9 @@ To bootstrap an installation:
 | `server.public_url` | | `INFRAWEAVE_SERVER_PUBLIC_URL` | required by `serve` and `all`: the http or https origin clients reach infraweave at, such as `https://infraweave.example.com` |
 | `auth.api_issuer` | | `INFRAWEAVE_AUTH_API_ISSUER` | `server.public_url`: the `iss` of every API token |
 | `auth.tokens.api.ttl` | | `INFRAWEAVE_AUTH_TOKENS_API_TTL` | `10h`: the lifetime of the token an API key or operator key exchanges for; must be positive |
+| `auth.tokens.oauth_access.ttl` | | `INFRAWEAVE_AUTH_TOKENS_OAUTH_ACCESS_TTL` | `1h`: the most an MCP client's access token lasts, never past its grant; must be positive |
+| `auth.tokens.oauth_refresh.ttl` | | `INFRAWEAVE_AUTH_TOKENS_OAUTH_REFRESH_TTL` | `720h`: how long an MCP client's grant lasts after its last refresh; must be positive |
+| `auth.tokens.oauth_code.ttl` | | `INFRAWEAVE_AUTH_TOKENS_OAUTH_CODE_TTL` | `1m`: how long an authorization code waits to be redeemed; must be positive |
 | `auth.session.idle_timeout` | | `INFRAWEAVE_AUTH_SESSION_IDLE_TIMEOUT` | `12h`: how long a browser session lasts without a request; must be positive |
 | `auth.session.max_age` | | `INFRAWEAVE_AUTH_SESSION_MAX_AGE` | `168h`: a browser session's absolute lifetime, which its CLI tokens share; must be positive |
 | `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring; `kms` signs through the KMS keys of `auth.signing.kms_keys`, whose private halves never enter infraweave |
