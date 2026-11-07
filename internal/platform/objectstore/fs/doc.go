@@ -9,11 +9,12 @@
 // the expiry and a PUT's size and SHA-256, under HMAC-SHA256 with the
 // objectstore-url key derived from the keyring's active data key, whose
 // ID it carries so a URL signed before a rotation still verifies. Routes
-// serves GET and PUT /blobs/{token} on the API listener: 403 for a token
-// that is malformed, altered, expired or for the other method, 413 for a
-// PUT above its size and 400 below it or without a length, and 422 when
-// the bytes do not match the bound SHA-256, which the handler checks
-// before the object becomes readable.
+// serves GET and PUT Pattern, /blobs/{token}, on the API listener, where
+// the token is the only credential: 403 for a token that is malformed,
+// altered, expired or for the other method, 413 for a PUT above its size
+// and 400 below it or without a length, and 422 when the bytes do not
+// match the bound SHA-256, which the handler checks before the object
+// becomes readable.
 //
 // # Input and output
 //

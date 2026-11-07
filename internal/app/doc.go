@@ -42,7 +42,8 @@
 // the controls' state in PostgreSQL (postgresGuards). serve holds object
 // storage as Blobs (serving): blob records over objectstore.WriterOnly of
 // the store, so nothing it holds can delete an object, and the fs driver's
-// /blobs/{token} routes on the API listener. In scheduler and all
+// /blobs/{token} routes on the API listener, public in the operations
+// table because the token is their credential. In scheduler and all
 // it starts the scheduler role (startScheduler): the queue's workers with
 // the platform's handlers, the outbox's events.fanout and events.consume
 // and blob.delete over the full Store, and the cron ticker over
