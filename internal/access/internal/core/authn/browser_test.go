@@ -78,17 +78,19 @@ func TestUnitSignInBreakGlass(t *testing.T) {
 		t.Errorf("on an account route = %v", err)
 	}
 
-	for name, c := range map[string]struct{ slug, login, password string }{
-		"wrong password":    {"acme", bgLogin, "incorrect horse battery staple"},
-		"wrong login":       {"acme", "root", bgPassword},
-		"no credential":     {"bare", bgLogin, bgPassword},
-		"no organization":   {"initech", bgLogin, bgPassword},
-		"not a slug at all": {"Not A Slug!", bgLogin, bgPassword},
+	// A slice, not a map, so the attempts reach the trail in the order the
+	// check below expects.
+	for _, c := range []struct{ name, slug, login, password string }{
+		{"wrong password", "acme", bgLogin, "incorrect horse battery staple"},
+		{"wrong login", "acme", "root", bgPassword},
+		{"no credential", "bare", bgLogin, bgPassword},
+		{"no organization", "initech", bgLogin, bgPassword},
+		{"not a slug at all", "Not A Slug!", bgLogin, bgPassword},
 	} {
 		if _, err := w.s.SignInBreakGlass(
 			t.Context(), c.slug, c.login, c.password, "",
 		); err != authn.ErrUnauthenticated { //nolint:errorlint // the identical error
-			t.Errorf("%s = %v", name, err)
+			t.Errorf("%s = %v", c.name, err)
 		}
 	}
 	// The organizations that exist record each attempt; the others have
