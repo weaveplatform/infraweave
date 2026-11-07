@@ -25,6 +25,7 @@ paths:
         stack nor the run names one. Until worker pools are served, the
         infraweave Terraform runner image.
       operationId: defaultPrivateWorkerPoolRunnerImage
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -61,6 +62,7 @@ paths:
     get:
       description: The ID of the caller's account.
       operationId: id
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -97,6 +99,7 @@ paths:
     get:
       description: The display name of the caller's account.
       operationId: name
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -133,6 +136,7 @@ paths:
     get:
       description: The type of the caller's account, always ORG.
       operationId: type
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:

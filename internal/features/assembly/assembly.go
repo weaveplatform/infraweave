@@ -2,11 +2,19 @@ package assembly
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	nethttp "net/http"
+	"slices"
 
+	"github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	entitlement "github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/http"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -16,6 +24,40 @@ type Settings struct {
 	// Disabled are the features switched off for every organization of
 	// the installation.
 	Disabled []string `mapstructure:"disabled"`
+}
+
+// ErrConfig reports a features setting the server could not start with.
+var ErrConfig = errors.New("invalid features configuration")
+
+// Validate rejects a features.disabled name that is not a capability or
+// option of the catalogue, so a typo, a Spacelift spelling such as SCANS,
+// a limit, billing or operator cannot leave a feature silently on or lock
+// the operator out.
+func (s Settings) Validate() error {
+	var errs []error
+	for i, name := range s.Disabled {
+		f, ok := features.Lookup(name)
+		switch {
+		case !ok:
+			errs = append(
+				errs,
+				fmt.Errorf("%w: features.disabled names %q, which the catalogue lacks",
+					ErrConfig, name),
+			)
+		case name == features.Operator || f.Kind == features.Switch:
+			errs = append(
+				errs,
+				fmt.Errorf("%w: features.disabled names %q, which the installation holds",
+					ErrConfig, name),
+			)
+		case f.Kind == features.Limit:
+			errs = append(errs, fmt.Errorf("%w: features.disabled names %q, a limit, not a feature",
+				ErrConfig, name))
+		case slices.Contains(s.Disabled[:i], name):
+			errs = append(errs, fmt.Errorf("%w: features.disabled names %q twice", ErrConfig, name))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // Stream is the features domain's migration stream.
@@ -29,7 +71,7 @@ type Deps struct {
 
 // Domain is the features domain, constructed once per process.
 type Domain struct {
-	entitlements *features.Service
+	entitlements *entitlement.Service
 }
 
 // New constructs the domain on d.
@@ -38,8 +80,57 @@ func New(d Deps) *Domain {
 		//nolint:wrapcheck // fn's error, as it returned it
 		return tx.Do(ctx, d.DB, tx.Options{}, fn)
 	}
-	return &Domain{entitlements: features.New(pg.New(d.DB), inTx, d.Settings.Disabled)}
+	return &Domain{entitlements: entitlement.New(pg.New(d.DB), inTx, d.Settings.Disabled)}
 }
 
 // Entitlements is what other domains call of this one.
 func (d *Domain) Entitlements() featuresapi.Entitlements { return d.entitlements }
+
+// Seed installs the seeded tiers the first time, and brings forward those
+// the operator has not changed since; every mode that opens the database
+// runs it after the migrations.
+func (d *Domain) Seed(ctx context.Context) error {
+	return d.entitlements.Seed(ctx) //nolint:wrapcheck // the store names the seed
+}
+
+// Middleware is the chi middleware that refuses a request for a feature
+// the installation switched off or, with billing on, the caller's
+// organization lacks; gate resolves each request's Gate.
+func (d *Domain) Middleware(
+	gate func(*nethttp.Request) (featuresapi.Gate, bool),
+) func(nethttp.Handler) nethttp.Handler {
+	return http.Middleware(d.entitlements, gate)
+}
+
+// Allowed reports whether org's work may use feature outside a request,
+// as a queued job does at dequeue: false when the installation switched
+// it off or, with billing on, org's entitlement lacks it.
+func (d *Domain) Allowed(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	feature string,
+) (bool, error) {
+	err := d.entitlements.AllowOrganization(ctx, org, feature)
+	if _, refused := errors.AsType[*entitlement.Refusal](err); refused {
+		return false, nil
+	}
+	return err == nil, err //nolint:wrapcheck // the store names itself
+}
+
+// WatchEntitlements keeps the replica's entitlement snapshots in step with
+// infraweave_invalidate until ctx ends: a payload of this domain drops what
+// it concerns, and a resync drops them all.
+func (d *Domain) WatchEntitlements(ctx context.Context, sub *notify.Subscription) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-sub.C:
+			if m.Resync {
+				d.entitlements.Flush()
+			} else {
+				d.entitlements.Invalidate(m.Payload)
+			}
+		}
+	}
+}

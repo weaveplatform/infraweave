@@ -39,8 +39,8 @@
 // # Dependencies
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
-// operator, organization, port and session packages and accessapi,
-// internal/kernel, chi, the generated servers of both APIs, and
+// operator, organization, port and session packages, accessapi,
+// featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.
 package http

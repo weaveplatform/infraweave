@@ -11,6 +11,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
@@ -23,6 +24,9 @@ import (
 func (s *store) CreateAPIKey(_ context.Context, k apikey.Key) error {
 	if err := s.err(); err != nil {
 		return err
+	}
+	if s.full != nil {
+		return fmt.Errorf("access: create API key: %w", s.full)
 	}
 	s.keys[k.ID] = k
 	return nil
@@ -337,6 +341,18 @@ func TestUnitAPIKeyRefusals(t *testing.T) {
 		decode[api.ApiKey](t, rec).DisabledReason == nil {
 		t.Errorf("a disabled key: %d %s", rec.Code, rec.Body)
 	}
+	w.st.full = &featuresapi.LimitError{
+		Limit: featuresapi.Seats,
+		Scope: featuresapi.ScopeAccount,
+		Value: 0,
+	}
+	rec = w.do(t, http.MethodPost, "/api-keys", bearer, `{"name":"x","teams":[]}`)
+	if p := decode[problem.Problem](t, rec); rec.Code != http.StatusForbidden ||
+		p.Type != problem.LimitReached.New("").Type || p.Limit != featuresapi.Seats ||
+		p.Scope != "account" || p.Value == nil || *p.Value != 0 {
+		t.Errorf("a creation beyond the seats limit: %d %s", rec.Code, rec.Body)
+	}
+	w.st.full = nil
 	w.st.down = true
 	for _, op := range []struct{ method, path, body string }{
 		{http.MethodGet, "/api-keys", ""},

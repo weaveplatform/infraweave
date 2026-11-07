@@ -298,6 +298,14 @@
       "phase": "P20b"
     },
     {
+      "id": "operator",
+      "kind": "capability",
+      "gates": "The operator API, `api/operator.openapi.yaml`, which answers to the installation rather than an organization",
+      "lowestTier": "Free",
+      "phase": "P3",
+      "notes": "No entitlement applies to an operator principal, so nothing refuses it: `features.disabled` rejects the name as it rejects `billing`, and every tier holds it, so an operator never locks itself out"
+    },
+    {
       "id": "organization",
       "kind": "capability",
       "gates": "The served `Organization` tag, outside the parity surface: the organization, its accounts, members, identity linking, account limits and usage across accounts; its identity provider operations carry `oidc-sso` or `saml-sso`, by provider kind",
@@ -429,7 +437,7 @@
     {
       "id": "seats",
       "kind": "limit",
-      "unit": "members, each counted once however many accounts admit it, and API keys as Spacelift counts them",
+      "unit": "active members, each counted once however many accounts admit it, and API keys that are not personal, for 30 days from creation or last use",
       "values": {
         "free": 2,
         "starter": 2

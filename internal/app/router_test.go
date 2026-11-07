@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -101,7 +102,7 @@ func registered(p problem.Problem) bool {
 		func(t problem.Type) bool {
 			want := t.New(p.Detail)
 			want.Instance = p.Instance
-			return want == p
+			return reflect.DeepEqual(want, p)
 		},
 	)
 }

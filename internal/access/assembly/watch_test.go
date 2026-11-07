@@ -92,3 +92,35 @@ func TestAccWatchSessions(t *testing.T) {
 		t.Errorf("authn.sessions.expire: %v", err)
 	}
 }
+
+// TestAccAccountOrganization checks the lookup a queued job's entitlement
+// check makes: an account's organization, the zero ID for an account that
+// does not exist, and the store's error.
+func TestAccAccountOrganization(t *testing.T) {
+	ctx := t.Context()
+	db := sqltest.Open(t)
+	d := mustNew(
+		t,
+		Deps{DB: db.Primary(), Settings: DefaultSettings(), Audience: "http://iw.test/api/v1"},
+	)
+	org, acct := kernel.NewOrganizationID(), kernel.NewAccountID()
+	if _, err := db.Primary().
+		Exec(ctx, `INSERT INTO organizations (id, slug, name) VALUES ($1, 'o', 'o')`,
+			org); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Primary().Exec(ctx,
+		`INSERT INTO accounts (organization_id, id, slug, name) VALUES ($1, $2, 'o', 'o')`, org, acct); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := d.AccountOrganization(ctx, acct); err != nil || got != org {
+		t.Errorf("an account's organization = %v, %v", got, err)
+	}
+	if got, err := d.AccountOrganization(ctx, kernel.NewAccountID()); err != nil || !got.IsZero() {
+		t.Errorf("no account = %v, %v", got, err)
+	}
+	db.Primary().Close()
+	if _, err := d.AccountOrganization(context.Background(), acct); err == nil {
+		t.Error("a closed pool answered")
+	}
+}

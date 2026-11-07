@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -49,8 +50,56 @@ func (s *Store) TouchAPIKey(ctx context.Context, id kernel.ULID) error {
 	return nil
 }
 
-// CreateAPIKey inserts k.
+// SeatWindow is how long an API key holds a seat after it was created or
+// last used: Spacelift's rolling 30 days (report 14, section 4.4).
+const SeatWindow = 30 * 24 * time.Hour
+
+// seats counts decision 0021's seats as a creation finds them: each active
+// member once, however many of the organization's accounts admit it, and
+// each live key that is not personal and was created or used within
+// SeatWindow. Counting a key from its creation, not only its use, makes a
+// new key take its seat before its first exchange. A personal key rides on
+// its owner's seat.
+const seats = `
+WITH keys AS (
+  SELECT k.account_id FROM api_keys k JOIN accounts a ON a.id = k.account_id
+  WHERE a.organization_id = $1 AND k.deleted_at IS NULL AND k.disabled_at IS NULL
+    AND NOT k.is_personal AND (k.expires_at IS NULL OR k.expires_at > $3)
+    AND greatest(k.created_at, k.last_used_at) > $3 - $4::interval)
+SELECT
+  (SELECT count(DISTINCT u.member_id) FROM account_users u
+     JOIN members m ON m.id = u.member_id
+     WHERE u.organization_id = $1 AND m.status = 'active')
+    + (SELECT count(*) FROM keys),
+  (SELECT count(*) FROM account_users u JOIN members m ON m.id = u.member_id
+     WHERE u.account_id = $2 AND m.status = 'active')
+    + (SELECT count(*) FROM keys WHERE account_id = $2)`
+
+// CreateAPIKey inserts k, which takes a seat: with the features domain
+// held, the seats limit is checked in the inserting transaction, so its
+// lock on the organization's entitlement holds until the key commits.
 func (s *Store) CreateAPIKey(ctx context.Context, k apikey.Key) error {
+	//nolint:wrapcheck // the check and the insert name themselves
+	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		if s.features != nil {
+			if err := s.features.CheckLimit(ctx, k.OrganizationID, k.AccountID, featuresapi.Seats,
+				func(ctx context.Context) (featuresapi.Usage, error) {
+					var u featuresapi.Usage
+					err := tx.Q(ctx, s.db).QueryRow(ctx, seats, k.OrganizationID, k.AccountID,
+						k.CreatedAt, SeatWindow).Scan(&u.Organization, &u.Account)
+					if err != nil {
+						return u, fmt.Errorf("access: count seats: %w", sql.Unavailable(err))
+					}
+					return u, nil
+				}); err != nil {
+				return err
+			}
+		}
+		return s.insertAPIKey(ctx, k)
+	})
+}
+
+func (s *Store) insertAPIKey(ctx context.Context, k apikey.Key) error {
 	var issuer, client, subject *string
 	var claims []byte
 	if k.Type == apikey.TypeOIDC {

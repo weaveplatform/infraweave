@@ -20,6 +20,7 @@ paths:
     delete:
       description: Invalidate all account sessions except for the session making the request. Returns the deleted sessions.
       operationId: sessionDeleteAll
+      x-infraweave-feature: sessions
       responses:
         "200":
           content:
@@ -57,6 +58,7 @@ paths:
         List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
         tier. An empty array will be returned for Starter tier accounts.
       operationId: sessions
+      x-infraweave-feature: sessions
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -99,6 +101,7 @@ paths:
     delete:
       description: 'Invalidate a Session. NOTE: this functionality is not available in the Starter tier.'
       operationId: sessionDelete
+      x-infraweave-feature: sessions
       parameters:
         - in: path
           name: sessionId

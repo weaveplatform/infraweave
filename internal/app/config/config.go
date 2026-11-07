@@ -212,6 +212,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Secrets.Validate(),
 		c.ObjectStore.Validate(),
 		c.Auth.Validate(),
+		c.Features.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}

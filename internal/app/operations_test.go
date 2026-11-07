@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -17,6 +18,8 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/features"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
@@ -46,19 +49,38 @@ func TestUnitAPIOperations(t *testing.T) {
 		t.Fatalf("%d operations, want every scaffolded one", len(ops))
 	}
 	for key, want := range map[string]Operation{
-		"POST /api/v1/stacks/search":                       {Cost: ratelimit.Expensive, Search: true},
-		"POST /api/v1/stack-dependencies/batch":            {Cost: ratelimit.Expensive},
-		"GET /api/v1/stacks":                               {Cost: ratelimit.Standard},
-		"POST /api/v1/stacks":                              {Cost: ratelimit.Standard},
-		"DELETE /operator/v1/organizations/{organization}": {Cost: ratelimit.Standard},
-		"GET /api/v1/viewer":                               {Cost: ratelimit.Standard, Organization: true},
-		"GET /api/v1/auth/accounts":                        {Cost: ratelimit.Standard, Organization: true},
+		"POST /api/v1/stacks/search":                       {Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")},
+		"POST /api/v1/stack-dependencies/batch":            {Cost: ratelimit.Expensive, Gate: gate("stacks")},
+		"GET /api/v1/stacks":                               {Cost: ratelimit.Standard, Gate: gate("stacks")},
+		"POST /api/v1/stacks":                              {Cost: ratelimit.Standard, Gate: gate("stacks")},
+		"DELETE /operator/v1/organizations/{organization}": {Cost: ratelimit.Standard, Gate: gate("operator")},
+		"GET /api/v1/viewer":                               {Cost: ratelimit.Standard, Organization: true, Gate: gate("viewer")},
+		"GET /api/v1/auth/accounts":                        {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
 		"GET /admin-login/{organization}":                  {Public: true},
 		"POST /admin-login/{organization}":                 {Cost: ratelimit.Expensive, Public: true},
 	} {
-		if ops[key] != want {
+		if !reflect.DeepEqual(ops[key], want) {
 			t.Errorf("%s: %+v, want %+v", key, ops[key], want)
 		}
+	}
+	for key, op := range ops {
+		f, known := features.Lookup(op.Gate.Feature)
+		switch {
+		case strings.HasSuffix(key, " "+accessapi.LoginPattern):
+			if op.Gate.Feature != "" {
+				t.Errorf("%s names %s; the break-glass login names none", key, op.Gate.Feature)
+			}
+		case !known || f.Kind != features.Capability:
+			t.Errorf("%s names %q, not a capability of the catalogue", key, op.Gate.Feature)
+		case strings.Contains(key, " "+OperatorBaseURL+"/"):
+			if op.Gate.Feature != features.Operator {
+				t.Errorf("%s names %s, not operator", key, op.Gate.Feature)
+			}
+		}
+	}
+	if g := ops["POST "+BaseURL+"/api-keys"].Gate; !reflect.DeepEqual(g.Options,
+		[]featuresapi.OptionGate{{Property: "oidc", Feature: "oidc-api-keys"}}) {
+		t.Errorf("apiKeyCreate's options: %+v", g.Options)
 	}
 	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server), Domains{Auth: byAddress{}}, nil, Blobs{}).(*chi.Mux)
 	if !ok {
@@ -75,19 +97,27 @@ func TestUnitAPIOperations(t *testing.T) {
 
 func TestUnitOperationsOf(t *testing.T) {
 	doc := func(path string, op *openapi3.Operation) *openapi3.T {
+		if op.Extensions == nil {
+			op.Extensions = map[string]any{}
+		}
+		if _, ok := op.Extensions["x-infraweave-feature"]; !ok {
+			op.Extensions["x-infraweave-feature"] = "stacks"
+		}
 		return &openapi3.T{
 			Paths: openapi3.NewPaths(openapi3.WithPath(path, &openapi3.PathItem{Post: op})),
 		}
 	}
 	ops, err := operationsOf(doc("/things/search", &openapi3.Operation{}), "/v1")
 	if err != nil ||
-		ops["POST /v1/things/search"] != (Operation{Cost: ratelimit.Standard, Search: true}) {
+		!reflect.DeepEqual(ops["POST /v1/things/search"],
+			Operation{Cost: ratelimit.Standard, Search: true, Gate: gate("stacks")}) {
 		t.Errorf("no cost and a /search path: %+v %v", ops, err)
 	}
 	ops, err = operationsOf(doc("/find", &openapi3.Operation{
 		Extensions: map[string]any{"x-infraweave-cost": "expensive", "x-rest-style": "search"},
 	}), "")
-	if err != nil || ops["POST /find"] != (Operation{Cost: ratelimit.Expensive, Search: true}) {
+	if err != nil || !reflect.DeepEqual(ops["POST /find"],
+		Operation{Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")}) {
 		t.Errorf("x-rest-style search: %+v %v", ops, err)
 	}
 	for _, bad := range []any{"pricey", 3} {
@@ -112,17 +142,83 @@ func TestUnitOperationsOf(t *testing.T) {
 			t.Errorf("x-infraweave-access %v: %v", bad, err)
 		}
 	}
+	for _, bad := range []any{"", "SCANS", "seats", "oidc-api-keys", 3} {
+		_, err := operationsOf(doc("/things", &openapi3.Operation{
+			Extensions: map[string]any{"x-infraweave-feature": bad},
+		}), "")
+		if !errors.Is(err, errSpec) || !errors.Is(err, errFeature) {
+			t.Errorf("x-infraweave-feature %v: %v", bad, err)
+		}
+	}
+}
+
+// TestUnitOperationOptions checks that a body property's
+// x-infraweave-feature, beside its $ref or in its schema, is an option
+// gate on that property, and that a name of another kind is refused.
+func TestUnitOperationOptions(t *testing.T) {
+	op := func(props openapi3.Schemas) *openapi3.T {
+		body := openapi3.NewRequestBody().WithJSONSchema(&openapi3.Schema{Properties: props})
+		return &openapi3.T{Paths: openapi3.NewPaths(openapi3.WithPath("/keys", &openapi3.PathItem{
+			Post: &openapi3.Operation{
+				Extensions:  map[string]any{"x-infraweave-feature": "api-keys"},
+				RequestBody: &openapi3.RequestBodyRef{Value: body},
+			},
+		}))}
+	}
+	beside := openapi3.NewObjectSchema().NewRef()
+	beside.Extensions = map[string]any{
+		"x-infraweave-feature": map[string]any{"feature": "oidc-api-keys"},
+	}
+	inside := openapi3.NewStringSchema()
+	inside.Extensions = map[string]any{"x-infraweave-feature": map[string]any{
+		"feature": "aggregated-vcs-checks", "value": "AGGREGATED",
+	}}
+	ops, err := operationsOf(op(openapi3.Schemas{
+		"oidc": beside, "vcsChecks": inside.NewRef(), "name": openapi3.NewStringSchema().NewRef(),
+	}), "")
+	want := []featuresapi.OptionGate{
+		{Property: "oidc", Feature: "oidc-api-keys"},
+		{Property: "vcsChecks", Value: "AGGREGATED", Feature: "aggregated-vcs-checks"},
+	}
+	if err != nil || !reflect.DeepEqual(ops["POST /keys"].Gate.Options, want) {
+		t.Errorf("options = %+v, %v", ops["POST /keys"].Gate, err)
+	}
+	for _, bad := range []string{"stacks", "SCANS", ""} {
+		ref := openapi3.NewObjectSchema().NewRef()
+		ref.Extensions = map[string]any{"x-infraweave-feature": map[string]any{"feature": bad}}
+		if _, err := operationsOf(
+			op(openapi3.Schemas{"oidc": ref}),
+			"",
+		); !errors.Is(
+			err,
+			errFeature,
+		) {
+			t.Errorf("option %q: %v", bad, err)
+		}
+	}
+	noBody := &openapi3.T{Paths: openapi3.NewPaths(openapi3.WithPath("/x", &openapi3.PathItem{
+		Post: &openapi3.Operation{
+			Extensions:  map[string]any{"x-infraweave-feature": "stacks"},
+			RequestBody: &openapi3.RequestBodyRef{Value: openapi3.NewRequestBody()},
+		},
+	}))}
+	if ops, err := operationsOf(noBody, ""); err != nil || ops["POST /x"].Gate.Options != nil {
+		t.Errorf("a body with no JSON schema: %+v, %v", ops, err)
+	}
 }
 
 func TestUnitOperationAccess(t *testing.T) {
-	for op, want := range map[Operation]accessapi.Access{
-		{}:                                 accessapi.Account,
-		{Organization: true}:               accessapi.Organization,
-		{Public: true}:                     accessapi.Public,
-		{Public: true, Organization: true}: accessapi.Public,
+	for _, c := range []struct {
+		op   Operation
+		want accessapi.Access
+	}{
+		{Operation{}, accessapi.Account},
+		{Operation{Organization: true}, accessapi.Organization},
+		{Operation{Public: true}, accessapi.Public},
+		{Operation{Public: true, Organization: true}, accessapi.Public},
 	} {
-		if got := op.access(); got != want {
-			t.Errorf("%+v: %v, want %v", op, got, want)
+		if got := c.op.access(); got != c.want {
+			t.Errorf("%+v: %v, want %v", c.op, got, c.want)
 		}
 	}
 }
@@ -230,7 +326,7 @@ func TestUnitGuardedIdempotency(t *testing.T) {
 	r := Guarded(discard(), config.Defaults().Server, Operations{
 		"POST /things":        {Cost: ratelimit.Standard},
 		"POST /things/search": {Cost: ratelimit.Expensive, Search: true},
-	}, memory(config.Defaults().Server), byAddress{})
+	}, memory(config.Defaults().Server), byAddress{}, nil)
 	count := func(w http.ResponseWriter, _ *http.Request) {
 		runs++
 		w.WriteHeader(http.StatusCreated)
@@ -270,7 +366,7 @@ func TestUnitGuardedAuthentication(t *testing.T) {
 	r := Guarded(discard(), c, Operations{
 		"POST /open":   {Cost: ratelimit.Standard, Public: true},
 		"GET /private": {Cost: ratelimit.Standard},
-	}, memory(c), nil)
+	}, memory(c), nil, nil)
 	ok := func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 	r.Post("/open", ok)
 	r.Get("/private", ok)
@@ -315,7 +411,7 @@ func TestUnitStrictBodies(t *testing.T) {
 	r := Guarded(discard(), config.Defaults().Server, Operations{
 		"POST /strict":  {Cost: ratelimit.Standard, Public: true, Body: strict},
 		"POST /lenient": {Cost: ratelimit.Standard, Public: true},
-	}, memory(config.Defaults().Server), nil)
+	}, memory(config.Defaults().Server), nil, nil)
 	ok := func(w http.ResponseWriter, r *http.Request) {
 		runs++
 		w.WriteHeader(http.StatusOK)
@@ -361,3 +457,6 @@ func TestUnitStrictBodies(t *testing.T) {
 		t.Errorf("a lenient body: %d, %d runs", rec.Code, runs)
 	}
 }
+
+// gate is the gate of an operation that needs the capability feature only.
+func gate(feature string) featuresapi.Gate { return featuresapi.Gate{Feature: feature} }

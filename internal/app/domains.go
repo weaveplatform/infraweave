@@ -1,15 +1,18 @@
 package app
 
 import (
+	"context"
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
@@ -60,6 +63,20 @@ func newDomains(
 		OperatorAuth: access.OperatorAuthenticator(),
 	}, nil
 }
+
+// Allowed is queue.Entitlements over the domains: a job's account names
+// its organization through access, whose entitlement features decides. A
+// job of an account that no longer exists is refused only a switched-off
+// feature, and its handler finds the account gone.
+func (d Domains) Allowed(ctx context.Context, account kernel.ULID, feature string) (bool, error) {
+	org, err := d.Access.AccountOrganization(ctx, kernel.AccountID{ULID: account})
+	if err != nil {
+		return false, err //nolint:wrapcheck // the store names the read
+	}
+	return d.Features.Allowed(ctx, org, feature) //nolint:wrapcheck // as above
+}
+
+var _ queue.Entitlements = Domains{}
 
 // cron is every domain's periodic tasks, which the scheduler role runs.
 func (d Domains) cron() []cron.Task { return d.Access.Cron() }

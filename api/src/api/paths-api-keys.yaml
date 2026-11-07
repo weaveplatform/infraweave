@@ -186,6 +186,9 @@ components:
             - spacelift_api_key.name
         oidc:
           $ref: '#/components/schemas/APIKeyInputOIDC'
+          # Any OIDC settings make an OIDC key, which needs the option.
+          x-infraweave-feature:
+            feature: oidc-api-keys
         teams:
           items:
             type: string
@@ -323,6 +326,7 @@ paths:
         own permissions, and lets a key's creator delete it whatever their
         current permissions.
       operationId: apiKeyEnableNonAdminManagers
+      x-infraweave-feature: api-keys
       requestBody:
         content:
           application/json:
@@ -367,6 +371,7 @@ paths:
     get:
       description: List of all API keys for the account.
       operationId: apiKeys
+      x-infraweave-feature: api-keys
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -408,6 +413,7 @@ paths:
     post:
       description: Create an API key.
       operationId: apiKeyCreate
+      x-infraweave-feature: api-keys
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -464,6 +470,7 @@ paths:
     delete:
       description: Delete an API key.
       operationId: apiKeyDelete
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -507,6 +514,7 @@ paths:
       x-rest-style: delete
     get:
       operationId: apiKey
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -551,6 +559,7 @@ paths:
     put:
       description: Update an API key.
       operationId: apiKeyUpdate
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -606,6 +615,7 @@ paths:
     post:
       description: Reset the secret of an API key.
       operationId: apiKeyReset
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId

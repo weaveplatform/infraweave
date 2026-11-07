@@ -150,6 +150,19 @@ func (t Type) New(detail string) Problem {
 	return Problem{Type: TypePrefix + t.Slug, Title: t.Title, Status: t.Status, Detail: detail}
 }
 
+// NewLimitReached is decision 0022's 403 limit-reached for a creation
+// refused at limit's value in scope, organization or account, with the
+// three as members, so a client reads which limit to raise and who can.
+func NewLimitReached(limit, scope string, value int64) Problem {
+	whose := "The organization has"
+	if scope == "account" {
+		whose = "This account has"
+	}
+	p := LimitReached.New(fmt.Sprintf("%s reached its %s limit of %d.", whose, limit, value))
+	p.Limit, p.Scope, p.Value = limit, scope, &value
+	return p
+}
+
 // Error is an error of type t, for a handler to return so ResponseError
 // answers with it.
 func (t Type) Error(detail string) *Error { return &Error{Problem: t.New(detail)} }
@@ -168,6 +181,16 @@ type Problem struct {
 	Status   int    `json:"status"`
 	Detail   string `json:"detail,omitempty"`
 	Instance string `json:"instance,omitempty"`
+
+	// Feature is the feature of feature-disabled and feature-not-in-tier,
+	// and Tiers, for the latter, the tiers that hold it, smallest first.
+	Feature string   `json:"feature,omitempty"`
+	Tiers   []string `json:"tiers,omitempty"`
+	// Limit, Scope and Value are limit-reached's: the limit, organization
+	// or account, and that scope's value, which may be 0.
+	Limit string `json:"limit,omitempty"`
+	Scope string `json:"scope,omitempty"`
+	Value *int64 `json:"value,omitempty"`
 }
 
 // Write sends p with its status. The status line and the body's status are

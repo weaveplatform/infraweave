@@ -47,6 +47,7 @@ func TestAccGuardedReplicas(t *testing.T) {
 			Operations{"POST /things": {Cost: ratelimit.Standard}},
 			g,
 			byAddress{},
+			nil,
 		)
 		r.Post("/things", func(w http.ResponseWriter, req *http.Request) {
 			runs.Add(1)

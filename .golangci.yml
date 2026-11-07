@@ -227,6 +227,7 @@ linters:
             - pkg: github.com/weaveplatform/infraweave/internal
               desc: features imports no domain; it sits at the bottom of the declared graph
           allow:
+            - github.com/weaveplatform/infraweave/internal/features$
             - github.com/weaveplatform/infraweave/internal/features/
             - github.com/weaveplatform/infraweave/internal/kernel$
             - github.com/weaveplatform/infraweave/internal/kernel/

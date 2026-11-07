@@ -31,6 +31,31 @@ components:
             The request this problem answers, as urn:infraweave:request: and
             the request ID the X-Request-Id response header carries and the
             server logs.
+        feature:
+          type: string
+          description: >-
+            The feature of feature-disabled and feature-not-in-tier, a name
+            of the feature catalogue (decision 0021).
+        tiers:
+          type: array
+          items:
+            type: string
+          description: >-
+            For feature-not-in-tier, the tiers that include the feature,
+            smallest first.
+        limit:
+          type: string
+          description: The limit of limit-reached, such as seats.
+        scope:
+          type: string
+          enum: [organization, account]
+          description: >-
+            For limit-reached, whether the organization's pool or the
+            account's limit was reached.
+        value:
+          type: integer
+          format: int64
+          description: For limit-reached, that scope's limit.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key

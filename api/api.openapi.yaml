@@ -30,6 +30,7 @@ paths:
         own permissions, and lets a key's creator delete it whatever their
         current permissions.
       operationId: apiKeyEnableNonAdminManagers
+      x-infraweave-feature: api-keys
       requestBody:
         content:
           application/json:
@@ -74,6 +75,7 @@ paths:
     get:
       description: List of all API keys for the account.
       operationId: apiKeys
+      x-infraweave-feature: api-keys
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -115,6 +117,7 @@ paths:
     post:
       description: Create an API key.
       operationId: apiKeyCreate
+      x-infraweave-feature: api-keys
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -171,6 +174,7 @@ paths:
     delete:
       description: Delete an API key.
       operationId: apiKeyDelete
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -214,6 +218,7 @@ paths:
       x-rest-style: delete
     get:
       operationId: apiKey
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -258,6 +263,7 @@ paths:
     put:
       description: Update an API key.
       operationId: apiKeyUpdate
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -313,6 +319,7 @@ paths:
     post:
       description: Reset the secret of an API key.
       operationId: apiKeyReset
+      x-infraweave-feature: api-keys
       parameters:
         - in: path
           name: apiKeyId
@@ -364,6 +371,7 @@ paths:
     get:
       description: The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
       operationId: authAccounts
+      x-infraweave-feature: auth
       responses:
         "200":
           content:
@@ -402,6 +410,7 @@ paths:
         padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
         and token query parameters.
       operationId: cliConfirmationToken
+      x-infraweave-feature: auth
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -453,6 +462,7 @@ paths:
     post:
       description: End the current session. A browser session's answer also clears its cookie.
       operationId: logout
+      x-infraweave-feature: auth
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -505,6 +515,7 @@ paths:
         and carries no jwt; any other carries the new token. An account that does not admit the member answers
         404, as does a credential that is not a member's.
       operationId: authSessionAccount
+      x-infraweave-feature: auth
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -553,6 +564,7 @@ paths:
     post:
       description: Exchange a secret API key for an API token, which the Users jwt carries until validUntil.
       operationId: apiKeyUser
+      x-infraweave-feature: auth
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -604,6 +616,7 @@ paths:
       description: >-
         The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
       operationId: defaultPrivateWorkerPoolRunnerImage
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -640,6 +653,7 @@ paths:
     get:
       description: The ID of the caller's account.
       operationId: id
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -679,6 +693,7 @@ paths:
         backend is configured to use. Only available on Self-Hosted instances and
         can only be fetched by admins.
       operationId: messageQueueStats
+      x-infraweave-feature: infrastructure
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -721,6 +736,7 @@ paths:
     get:
       description: The display name of the caller's account.
       operationId: name
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -757,6 +773,7 @@ paths:
     delete:
       description: Invalidate all account sessions except for the session making the request. Returns the deleted sessions.
       operationId: sessionDeleteAll
+      x-infraweave-feature: sessions
       responses:
         "200":
           content:
@@ -794,6 +811,7 @@ paths:
         List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
         tier. An empty array will be returned for Starter tier accounts.
       operationId: sessions
+      x-infraweave-feature: sessions
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -836,6 +854,7 @@ paths:
     delete:
       description: 'Invalidate a Session. NOTE: this functionality is not available in the Starter tier.'
       operationId: sessionDelete
+      x-infraweave-feature: sessions
       parameters:
         - in: path
           name: sessionId
@@ -881,6 +900,7 @@ paths:
     post:
       description: Create a new stack dependency.
       operationId: stackDependencyCreate
+      x-infraweave-feature: stacks
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -935,6 +955,7 @@ paths:
     post:
       description: Creates multiple stack dependencies in a single request.
       operationId: stackDependenciesCreateInBatch
+      x-infraweave-feature: stacks
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -992,6 +1013,7 @@ paths:
     delete:
       description: Delete a stack dependency.
       operationId: stackDependencyDelete
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackDependencyId
@@ -1036,6 +1058,7 @@ paths:
     put:
       description: Update an existing stack dependency.
       operationId: stackDependencyUpdate
+      x-infraweave-feature: stacks
       parameters:
         - description: ID of the stack dependency to update.
           in: path
@@ -1091,6 +1114,7 @@ paths:
     post:
       description: Adds reference output/input
       operationId: stackDependenciesAddReference
+      x-infraweave-feature: stacks
       parameters:
         - description: Immutable ID of stack dependency
           in: path
@@ -1157,6 +1181,7 @@ paths:
     post:
       description: Adds multiple references output/input in a single request.
       operationId: stackDependenciesAddReferences
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackDependencyId
@@ -1222,6 +1247,7 @@ paths:
     delete:
       description: Deletes multiple references from stack dependency.
       operationId: stackDependenciesDeleteReferences
+      x-infraweave-feature: stacks
       parameters:
         - in: query
           name: ids
@@ -1268,6 +1294,7 @@ paths:
     put:
       description: Updates multiple references output/input in a single request.
       operationId: stackDependenciesUpdateReferences
+      x-infraweave-feature: stacks
       requestBody:
         content:
           application/json:
@@ -1319,6 +1346,7 @@ paths:
     delete:
       description: Deletes reference output/input from stack dependency
       operationId: stackDependenciesDeleteReference
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: referenceId
@@ -1363,6 +1391,7 @@ paths:
     put:
       description: Updates reference output/input
       operationId: stackDependenciesUpdateReference
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: referenceId
@@ -1420,6 +1449,7 @@ paths:
     get:
       description: List of all the stacks in the account.
       operationId: stacks
+      x-infraweave-feature: stacks
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -1464,6 +1494,7 @@ paths:
         should only be used when creating a Stack with pre-existing state that is
         handed over to infraweave for further management.
       operationId: stackCreate
+      x-infraweave-feature: stacks
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1525,6 +1556,7 @@ paths:
     post:
       description: Search Stacks with a set of predicates, ordering and paging.
       operationId: searchStacks
+      x-infraweave-feature: stacks
       requestBody:
         content:
           application/json:
@@ -1570,6 +1602,7 @@ paths:
     delete:
       description: Delete an existing stack.
       operationId: stackDelete
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -1619,6 +1652,7 @@ paths:
     get:
       description: Details of a single Stack.
       operationId: stack
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -1663,6 +1697,7 @@ paths:
     put:
       description: Update an existing stack.
       operationId: stackUpdate
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -1725,6 +1760,7 @@ paths:
     get:
       description: List of aws integrations that can be attached to this Stack.
       operationId: stackAttachableAwsIntegrations
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -1774,6 +1810,7 @@ paths:
     get:
       description: List of azure integrations that can be attached to this Stack.
       operationId: stackAttachableAzureIntegrations
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -1823,6 +1860,7 @@ paths:
     get:
       description: List of contexts that can be attached to this Stack.
       operationId: stackAttachableContexts
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -1872,6 +1910,7 @@ paths:
     get:
       description: List of policies that can be attached to this Stack.
       operationId: stackAttachablePolicies
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -1921,6 +1960,7 @@ paths:
     get:
       description: List of worker pools that can be attached to this Stack.
       operationId: stackAttachableWorkerPools
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -1970,6 +2010,7 @@ paths:
     get:
       description: Single stack config element.
       operationId: stackConfigElement
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2020,6 +2061,7 @@ paths:
     post:
       description: Add a stack config element.
       operationId: stackConfigAdd
+      x-infraweave-feature: stacks
       parameters:
         - description: ID of the stack on which the environment variable is defined
           in: path
@@ -2088,6 +2130,7 @@ paths:
     delete:
       description: Delete a stack config element.
       operationId: stackConfigDelete
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2139,6 +2182,7 @@ paths:
     get:
       description: An individual stack dependency.
       operationId: stackDependency
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2193,6 +2237,7 @@ paths:
     post:
       description: Disable the stack, so it cannot create new runs.
       operationId: stackDisable
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2244,6 +2289,7 @@ paths:
     post:
       description: Enable the stack.
       operationId: stackEnable
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2295,6 +2341,7 @@ paths:
     get:
       description: Individual entity managed by this stack (id is the address of the entity).
       operationId: stackEntity
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2345,6 +2392,7 @@ paths:
     post:
       description: Lock the stack for exclusive use.
       operationId: stackLock
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2403,6 +2451,7 @@ paths:
     post:
       description: "Import a previously uploaded state file into a managed-state stack.\nNOTE: the `state` argument is the objectId returned by the stateUploadUrl \nmutation, which points at the file you uploaded via its pre-signed URL."
       operationId: stackManagedStateImport
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2461,6 +2510,7 @@ paths:
   /stacks/{stackId}/managed-state-rollback:
     post:
       operationId: stackManagedStateRollback
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2522,6 +2572,7 @@ paths:
         Migrate stack vendor configuration.
         Supports bidirectional migration between Terraform stacks with 'terragrunt' label and native Terragrunt.
       operationId: stackMigrateVendor
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2581,6 +2632,7 @@ paths:
     get:
       description: Retrieve stack policy attachment by a known ID.
       operationId: stackPolicyAttachment
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2631,6 +2683,7 @@ paths:
     get:
       description: Paginated list of proposed Runs.
       operationId: stackProposedRuns
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2690,6 +2743,7 @@ paths:
         overriding environment variables in the proposed runs to enable more complex testing environment.
         Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
       operationId: proposeWithOverrides
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2753,6 +2807,7 @@ paths:
         Terraform resources then some of those resources will be recreated. Make
         sure you know exactly what you're doing!
       operationId: stackReslug
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -2804,6 +2859,7 @@ paths:
     get:
       description: List of role bindings for this Stack.
       operationId: stackRoleBindings
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2853,6 +2909,7 @@ paths:
     get:
       description: Individual Run (or task) by ID.
       operationId: stackRun
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2902,6 +2959,7 @@ paths:
   /stacks/{stackId}/run-resource-state:
     get:
       operationId: stackRunResourceState
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2952,6 +3010,7 @@ paths:
     get:
       description: Paginated list of Runs targeting the tracked branch.
       operationId: stackRuns
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3009,6 +3068,7 @@ paths:
         commit, against the HEAD of the Stack's tracked branch. These defaults can
         be overridden.
       operationId: runTrigger
+      x-infraweave-feature: stacks
       parameters:
         - description: ID of the stack on which the run is to be triggered.
           in: path
@@ -3075,6 +3135,7 @@ paths:
         is apparently really hard in JavaScript.
         Also, note that the maximum supported range is 8 days (691,200 seconds).
       operationId: stackRunsInRange
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3136,6 +3197,7 @@ paths:
     get:
       description: Individual ScheduledDelete created for this stack
       operationId: stackScheduledDelete
+      x-infraweave-feature: scheduling
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3186,6 +3248,7 @@ paths:
     post:
       description: Create a new ScheduledDelete for stack
       operationId: stackScheduledDeleteCreate
+      x-infraweave-feature: scheduling
       parameters:
         - description: ID of the stack for which to set up scheduling
           in: path
@@ -3251,6 +3314,7 @@ paths:
     delete:
       description: Delete ScheduledDelete for stack
       operationId: stackScheduledDeleteDelete
+      x-infraweave-feature: scheduling
       parameters:
         - in: path
           name: stackId
@@ -3301,6 +3365,7 @@ paths:
     put:
       description: Update ScheduledDelete for stack
       operationId: stackScheduledDeleteUpdate
+      x-infraweave-feature: scheduling
       parameters:
         - in: path
           name: stackId
@@ -3363,6 +3428,7 @@ paths:
     get:
       description: Individual ScheduledRun created for this stack
       operationId: stackScheduledRun
+      x-infraweave-feature: scheduling
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3413,6 +3479,7 @@ paths:
     post:
       description: Create a new ScheduledRun for stack
       operationId: stackScheduledRunCreate
+      x-infraweave-feature: scheduling
       parameters:
         - description: ID of the stack for which to set up the scheduled run
           in: path
@@ -3479,6 +3546,7 @@ paths:
     delete:
       description: Delete ScheduledRun for stack
       operationId: stackScheduledRunDelete
+      x-infraweave-feature: scheduling
       parameters:
         - in: path
           name: stackId
@@ -3529,6 +3597,7 @@ paths:
     put:
       description: Update ScheduledRun for stack
       operationId: stackScheduledRunUpdate
+      x-infraweave-feature: scheduling
       parameters:
         - in: path
           name: stackId
@@ -3592,6 +3661,7 @@ paths:
     get:
       description: Individual ScheduledTask created for this stack
       operationId: stackScheduledTask
+      x-infraweave-feature: scheduling
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3642,6 +3712,7 @@ paths:
     post:
       description: Create a new ScheduledTask for stack
       operationId: stackScheduledTaskCreate
+      x-infraweave-feature: scheduling
       parameters:
         - description: ID of the stack for which to set up the scheduled task
           in: path
@@ -3703,6 +3774,7 @@ paths:
     delete:
       description: Delete ScheduledTask for stack
       operationId: stackScheduledTaskDelete
+      x-infraweave-feature: scheduling
       parameters:
         - in: path
           name: stackId
@@ -3753,6 +3825,7 @@ paths:
     put:
       description: Update ScheduledTask for stack
       operationId: stackScheduledTaskUpdate
+      x-infraweave-feature: scheduling
       parameters:
         - in: path
           name: stackId
@@ -3811,6 +3884,7 @@ paths:
     get:
       description: Search managed entities with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntities
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3863,6 +3937,7 @@ paths:
     get:
       description: Search managed entities grouped by providers with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntitiesGroupByProviders
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3915,6 +3990,7 @@ paths:
     get:
       description: Search managed entities grouped by stacks with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntitiesGroupByStacks
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -3967,6 +4043,7 @@ paths:
     get:
       description: Search managed entities grouped by types with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntitiesGroupByTypes
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -4019,6 +4096,7 @@ paths:
     get:
       description: Information about fields available for searching managed entities.
       operationId: stackSearchManagedEntitiesSuggestions
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -4071,6 +4149,7 @@ paths:
     get:
       description: Returns managed state versions
       operationId: stackSearchManagedStateVersions
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -4125,6 +4204,7 @@ paths:
         Searches run ignored triggers. This query can only be fetched by admins.
         Note: this is an experimental functionality.
       operationId: stackSearchRunIgnoredTriggers
+      x-infraweave-feature: ignored-runs
       parameters:
         - description: Selects the parent object.
           in: path
@@ -4179,6 +4259,7 @@ paths:
         Set the current commit on an existing stack. The current commit is what is
         used for tasks and - by default - for triggering tracked runs (deployments).
       operationId: stackSetCurrentCommit
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -4238,6 +4319,7 @@ paths:
     put:
       description: Sets or unsets star on a Stack or Module.
       operationId: starSet
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -4293,6 +4375,7 @@ paths:
         Generate pre-signed state download URL for a stack.
         Requires external state access to be enabled on the stack.
       operationId: stateDownloadUrl
+      x-infraweave-feature: stacks
       parameters:
         - description: ID of the stack to download state from.
           in: path
@@ -4353,6 +4436,7 @@ paths:
     post:
       description: Sync the tracked commit of the stack.
       operationId: stackSyncCommit
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -4404,6 +4488,7 @@ paths:
     get:
       description: Paginated list of Tasks.
       operationId: stackTasks
+      x-infraweave-feature: stacks
       parameters:
         - description: Selects the parent object.
           in: path
@@ -4457,6 +4542,7 @@ paths:
     post:
       description: Create a Task from a command.
       operationId: taskCreate
+      x-infraweave-feature: stacks
       parameters:
         - description: ID of the stack for which to run the task
           in: path
@@ -4520,6 +4606,7 @@ paths:
     post:
       description: Unlock the stack.
       operationId: stackUnlock
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -4571,6 +4658,7 @@ paths:
     post:
       description: Create a new WebhooksIntegration for stack
       operationId: webhooksIntegrationCreate
+      x-infraweave-feature: stacks
       parameters:
         - description: ID of the stack which triggers the webhooks
           in: path
@@ -4636,6 +4724,7 @@ paths:
     delete:
       description: Delete WebhooksIntegration for stack
       operationId: webhooksIntegrationDelete
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -4686,6 +4775,7 @@ paths:
     put:
       description: Update WebhooksIntegration for stack
       operationId: webhooksIntegrationUpdate
+      x-infraweave-feature: stacks
       parameters:
         - in: path
           name: stackId
@@ -4748,6 +4838,7 @@ paths:
     post:
       description: Generate pre-signed state upload URL.
       operationId: stateUploadUrl
+      x-infraweave-feature: stacks
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -4791,6 +4882,7 @@ paths:
     get:
       description: The type of the caller's account, always ORG.
       operationId: type
+      x-infraweave-feature: account-details
       responses:
         "200":
           content:
@@ -4827,6 +4919,7 @@ paths:
     get:
       description: Current user, if any.
       operationId: viewer
+      x-infraweave-feature: viewer
       responses:
         "200":
           content:
@@ -5376,6 +5469,9 @@ components:
             - spacelift_api_key.name
         oidc:
           $ref: '#/components/schemas/APIKeyInputOIDC'
+          # Any OIDC settings make an OIDC key, which needs the option.
+          x-infraweave-feature:
+            feature: oidc-api-keys
         teams:
           items:
             type: string
@@ -7574,6 +7670,28 @@ components:
           type: string
           description: >-
             The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
+        feature:
+          type: string
+          description: >-
+            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+        tiers:
+          type: array
+          items:
+            type: string
+          description: >-
+            For feature-not-in-tier, the tiers that include the feature, smallest first.
+        limit:
+          type: string
+          description: The limit of limit-reached, such as seats.
+        scope:
+          type: string
+          enum: [organization, account]
+          description: >-
+            For limit-reached, whether the organization's pool or the account's limit was reached.
+        value:
+          type: integer
+          format: int64
+          description: For limit-reached, that scope's limit.
     ProposeWithOverridesRequest:
       description: The arguments of proposeWithOverrides not carried in the path.
       properties:

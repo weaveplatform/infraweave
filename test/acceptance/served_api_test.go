@@ -54,6 +54,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
 	sc.Step(`^the problem names the request in its instance$`, s.namesRequest)
 	s.registerReplicas(sc)
+	s.registerFeatures(sc)
 	s.registerSecrets(sc)
 	s.registerQueueStats(sc)
 	(&queueSteps{s: s}).register(sc)

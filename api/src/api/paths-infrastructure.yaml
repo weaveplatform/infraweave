@@ -51,6 +51,7 @@ paths:
         backend is configured to use. Only available on Self-Hosted instances and
         can only be fetched by admins.
       operationId: messageQueueStats
+      x-infraweave-feature: infrastructure
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'

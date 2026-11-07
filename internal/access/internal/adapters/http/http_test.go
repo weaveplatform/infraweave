@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
@@ -51,6 +52,8 @@ type store struct {
 	trail    []kernel.OrganizationAuditEntry
 	admits   map[kernel.MemberID][]session.Admitted
 	down     bool
+	// full refuses a key's creation as the seats limit would.
+	full *featuresapi.LimitError
 }
 
 func (s *store) err() error {

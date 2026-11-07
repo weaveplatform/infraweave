@@ -125,9 +125,19 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
+	// After the migrations, which Open ran, and before any role reads a
+	// tier; every replica seeds, and the seed's lock makes all but the
+	// first a no-op.
+	if err := domains.Features.Seed(ctx); err != nil {
+		return err //nolint:wrapcheck // names the seed
+	}
 	if m.API {
 		revoked, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
 		wg.Go(func() { domains.Access.WatchSessions(background, revoked) })
+		entitlements, _ := l.Subscribe(
+			notify.Invalidate,
+		) // one of notify.Channels, so never an error
+		wg.Go(func() { domains.Features.WatchEntitlements(background, entitlements) })
 	}
 	stopScheduler := func() {}
 	if m.Scheduler {
@@ -141,6 +151,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			events,
 			objs.store,
 			domains.cron(),
+			domains,
 			log,
 			health,
 		); err != nil {

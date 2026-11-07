@@ -5,16 +5,19 @@ import (
 	"errors"
 	"maps"
 	"os"
+	"reflect"
 	"slices"
 	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	root "github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/features/internal/features"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -252,6 +255,7 @@ func TestAccLimitCheckSerializes(t *testing.T) {
 		return tx.Do(ctx, db, tx.Options{}, fn)
 	}
 	svc := features.New(store, inTx, nil)
+	exec(t, db, `UPDATE billing SET enabled = true`)
 
 	const racers = 4
 	var (
@@ -320,6 +324,15 @@ func TestAccStoreUnavailable(t *testing.T) {
 			_, _, err := s.AccountLimit(ctx, acct, "seats")
 			return err
 		}(),
+		"billing": func() error {
+			_, err := s.Billing(ctx)
+			return err
+		}(),
+		"tiers": func() error {
+			_, err := s.Tiers(ctx)
+			return err
+		}(),
+		"seed": s.Seed(ctx, nil),
 	} {
 		if err == nil || errors.Is(err, featuresapi.ErrNotFound) {
 			t.Errorf("%s on a closed pool = %v", name, err)
@@ -343,5 +356,175 @@ func TestAccDeleteAborted(t *testing.T) {
 	})
 	if !errors.Is(err, errAborted) {
 		t.Fatal(err)
+	}
+}
+
+// seedTiers reads back the tiers whose names are in names.
+func seedTiers(t *testing.T, s *pg.Store, names ...string) map[string]root.Tier {
+	t.Helper()
+	all, err := s.Tiers(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]root.Tier{}
+	for _, tr := range all {
+		if slices.Contains(names, tr.Name) {
+			out[tr.Name] = tr
+		}
+	}
+	return out
+}
+
+// listen returns a connection listening on infraweave_invalidate, and a
+// func that sends a marker and returns the payloads that arrived before it,
+// so a test sees every notification a step sent without waiting on a clock.
+func listen(t *testing.T, db *pgxpool.Pool) func() []string {
+	t.Helper()
+	conn, err := db.Acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(conn.Release)
+	if _, err := conn.Exec(t.Context(), "LISTEN "+notify.Invalidate); err != nil {
+		t.Fatal(err)
+	}
+	return func() []string {
+		t.Helper()
+		exec(t, db, `SELECT pg_notify($1, 'marker')`, notify.Invalidate)
+		var got []string
+		for {
+			n, err := conn.Conn().WaitForNotification(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if n.Payload == "marker" {
+				return got
+			}
+			got = append(got, n.Payload)
+		}
+	}
+}
+
+// TestAccSeed checks decision 0021's seeding: a seeded tier is installed
+// once, and a release replaces its content only while the operator has
+// not edited or deleted it, nor made a tier of its name first.
+func TestAccSeed(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	notified := listen(t, db)
+	free := root.Tier{
+		Name:     "Free",
+		Features: []string{"stacks"},
+		Limits:   map[string]int64{"seats": 2},
+	}
+	paid := root.Tier{
+		Name:     "Paid",
+		Features: []string{"policies", "stacks"},
+		Limits:   map[string]int64{},
+	}
+	if err := s.Seed(ctx, []root.Tier{free, paid}); err != nil {
+		t.Fatal(err)
+	}
+	if got := seedTiers(
+		t,
+		s,
+		"Free",
+		"Paid",
+	); !reflect.DeepEqual(
+		got,
+		map[string]root.Tier{"Free": free, "Paid": paid},
+	) {
+		t.Errorf("first seed installed %+v", got)
+	}
+	if got := notified(); !slices.Equal(got, []string{features.TiersKey}) {
+		t.Errorf("first seed notified %v", got)
+	}
+
+	if err := s.Seed(ctx, []root.Tier{free, paid}); err != nil {
+		t.Fatal(err)
+	}
+	if got := notified(); got != nil {
+		t.Errorf("an unchanged seed notified %v", got)
+	}
+
+	// The operator edits Paid and deletes Free; the next release changes
+	// both, and adds Own, which the operator made first.
+	exec(t, db, `INSERT INTO tier_features (tier, feature) VALUES ('Paid', 'scans')`)
+	exec(t, db, `DELETE FROM tier_limits WHERE tier = 'Free'`)
+	exec(t, db, `DELETE FROM tier_features WHERE tier = 'Free'`)
+	exec(t, db, `DELETE FROM tiers WHERE name = 'Free'`)
+	own := tier(t, db, []string{"stacks"}, nil)
+	edited := seedTiers(t, s, "Paid")["Paid"]
+	next := []root.Tier{
+		{
+			Name:     "Free",
+			Features: []string{"policies", "stacks"},
+			Limits:   map[string]int64{"seats": 3},
+		},
+		{Name: "Paid", Features: []string{"stacks"}, Limits: map[string]int64{"seats": 9}},
+		{Name: own, Features: []string{"audit-trail"}, Limits: map[string]int64{}},
+	}
+	if err := s.Seed(ctx, next); err != nil {
+		t.Fatal(err)
+	}
+	got := seedTiers(t, s, "Free", "Paid", own)
+	if _, ok := got["Free"]; ok || !reflect.DeepEqual(got["Paid"], edited) ||
+		!slices.Equal(got[own].Features, []string{"stacks"}) {
+		t.Errorf("a release over the operator's changes left %+v", got)
+	}
+	if got := notified(); got != nil {
+		t.Errorf("a seed that changed nothing notified %v", got)
+	}
+
+	// An unedited seeded tier follows the release.
+	exec(t, db, `DELETE FROM tier_features WHERE tier = 'Paid' AND feature = 'scans'`)
+	if err := s.Seed(ctx, next[1:2]); err != nil {
+		t.Fatal(err)
+	}
+	if got := seedTiers(t, s, "Paid")["Paid"]; !reflect.DeepEqual(got, next[1]) {
+		t.Errorf("an unedited tier after a release = %+v, want %+v", got, next[1])
+	}
+	if got := notified(); !slices.Equal(got, []string{features.TiersKey}) {
+		t.Errorf("a release notified %v", got)
+	}
+}
+
+func TestAccSeedFailures(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	bad := root.Tier{Name: "Bad", Features: []string{}, Limits: map[string]int64{"seats": -1}}
+	if err := s.Seed(ctx, []root.Tier{bad}); err == nil {
+		t.Error("a seed with a negative limit succeeded")
+	}
+	if got := seedTiers(t, s, "Bad"); len(got) != 0 {
+		t.Errorf("a failed seed left %+v", got)
+	}
+	errAborted := errors.New("aborted")
+	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+		_, _ = tx.Q(ctx, db).Exec(ctx, `SELECT 1/0`)
+		if err := s.Seed(ctx, nil); err == nil {
+			t.Error("a seed in an aborted transaction succeeded")
+		}
+		return errAborted
+	})
+	if !errors.Is(err, errAborted) {
+		t.Fatal(err)
+	}
+}
+
+func TestAccBilling(t *testing.T) {
+	db := pool(t)
+	s := pg.New(db)
+	if on, err := s.Billing(t.Context()); err != nil || on {
+		t.Errorf("Billing on a new installation = %t, %v", on, err)
+	}
+	exec(t, db, `UPDATE billing SET enabled = true`)
+	if on, err := s.Billing(t.Context()); err != nil || !on {
+		t.Errorf("Billing switched on = %t, %v", on, err)
+	}
+	if _, err := db.Exec(t.Context(), `INSERT INTO billing (id) VALUES (false)`); err == nil {
+		t.Error("a second billing row was accepted")
 	}
 }

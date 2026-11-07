@@ -16,6 +16,24 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for ProblemScope.
+const (
+	ProblemScopeAccount      ProblemScope = "account"
+	ProblemScopeOrganization ProblemScope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ProblemScope enum.
+func (e ProblemScope) Valid() bool {
+	switch e {
+	case ProblemScopeAccount:
+		return true
+	case ProblemScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // AccountInput The organization's first account, which starts unclaimed.
 type AccountInput struct {
 	// Name The account's display name.
@@ -107,18 +125,36 @@ type Problem struct {
 	// Detail What went wrong with this request.
 	Detail *string `json:"detail,omitempty"`
 
+	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+	Feature *string `json:"feature,omitempty"`
+
 	// Instance The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
 	Instance *string `json:"instance,omitempty"`
 
+	// Limit The limit of limit-reached, such as seats.
+	Limit *string `json:"limit,omitempty"`
+
+	// Scope For limit-reached, whether the organization's pool or the account's limit was reached.
+	Scope *ProblemScope `json:"scope,omitempty"`
+
 	// Status The HTTP status code, repeated for clients that lose it.
 	Status int32 `json:"status"`
+
+	// Tiers For feature-not-in-tier, the tiers that include the feature, smallest first.
+	Tiers *[]string `json:"tiers,omitempty"`
 
 	// Title A short summary of the problem type.
 	Title string `json:"title"`
 
 	// Type A URI naming the problem type.
 	Type *string `json:"type,omitempty"`
+
+	// Value For limit-reached, that scope's limit.
+	Value *int64 `json:"value,omitempty"`
 }
+
+// ProblemScope For limit-reached, whether the organization's pool or the account's limit was reached.
+type ProblemScope string
 
 // Cursor defines model for Cursor.
 type Cursor = string
