@@ -182,3 +182,93 @@ func TestUnitSeats(t *testing.T) {
 		})
 	}
 }
+
+// TestUnitSetAccountLimit checks decision 0021's rule for an account
+// limit: a limit of the catalogue, zero or more, and no more than the pool
+// as it applies now, which billing off lifts.
+func TestUnitSetAccountLimit(t *testing.T) {
+	pooled := &featuresapi.Entitlement{
+		Tier: root.Starter, Limits: map[string]int64{featuresapi.Seats: 10},
+	}
+	cases := []struct {
+		name  string
+		s     *store
+		limit string
+		value int64
+		want  *featuresapi.AccountLimitError
+		err   error
+		set   bool
+	}{
+		{name: "at the pool", s: &store{entitlement: pooled}, limit: "seats", value: 10, set: true},
+		{
+			name: "above the pool", s: &store{entitlement: pooled}, limit: "seats", value: 11,
+			want: &featuresapi.AccountLimitError{Limit: "seats", Value: 11, Pool: 10},
+		},
+		{
+			name: "above the pool with billing off",
+			s: &store{
+				billingOff:  true,
+				entitlement: pooled,
+			},
+			limit: "seats",
+			value: 11,
+			set:   true,
+		},
+		{
+			name: "a limit the pool does not set",
+			s:    &store{entitlement: pooled}, limit: "private-workers", value: 4, set: true,
+		},
+		{
+			name: "negative", s: &store{entitlement: pooled}, limit: "seats", value: -1,
+			want: &featuresapi.AccountLimitError{Limit: "seats", Value: -1},
+		},
+		{
+			name: "a capability", s: &store{entitlement: pooled}, limit: "stacks", value: 1,
+			want: &featuresapi.AccountLimitError{Limit: "stacks", Value: 1, Unknown: true},
+		},
+		{
+			name: "no such name", s: &store{entitlement: pooled}, limit: "SEATS", value: 1,
+			want: &featuresapi.AccountLimitError{Limit: "SEATS", Value: 1, Unknown: true},
+		},
+		{name: "entitlement unreadable", s: &store{err: errStore}, limit: "seats", err: errStore},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var n int
+			err := features.New(tc.s, inTx(&n), nil).SetAccountLimit(
+				t.Context(), kernel.NewOrganizationID(), kernel.NewAccountID(), tc.limit, tc.value)
+			le, _ := errors.AsType[*featuresapi.AccountLimitError](err)
+			switch {
+			case tc.want != nil && (le == nil || *le != *tc.want || le.Error() == ""):
+				t.Errorf("SetAccountLimit = %v, want %+v", err, tc.want)
+			case tc.err != nil && !errors.Is(err, tc.err):
+				t.Errorf("SetAccountLimit = %v, want %v", err, tc.err)
+			case tc.want == nil && tc.err == nil && err != nil:
+				t.Errorf("SetAccountLimit = %v", err)
+			}
+			if set := slices.Contains(tc.s.calls, "set"); set != tc.set {
+				t.Errorf("stored %t, want %t", set, tc.set)
+			}
+		})
+	}
+	var n int
+	svc := features.New(&store{accounts: map[string]int64{"seats": 3}}, inTx(&n), nil)
+	limits, err := svc.AccountLimits(t.Context(), kernel.NewAccountID())
+	if err != nil || limits["seats"] != 3 {
+		t.Errorf("AccountLimits = %v, %v", limits, err)
+	}
+	le, _ := errors.AsType[*featuresapi.AccountLimitError](
+		svc.ClearAccountLimit(t.Context(), kernel.NewAccountID(), "stacks"))
+	if le == nil || !le.Unknown || le.Limit != "stacks" {
+		t.Errorf("clearing a capability = %+v", le)
+	}
+	want := []string{}
+	for _, f := range root.Catalogue() {
+		if f.Kind == root.Limit {
+			want = append(want, f.Name)
+		}
+	}
+	if got := svc.LimitNames(); !slices.Equal(got, slices.Sorted(slices.Values(want))) {
+		t.Errorf("LimitNames = %v, want %v", got, want)
+	}
+}

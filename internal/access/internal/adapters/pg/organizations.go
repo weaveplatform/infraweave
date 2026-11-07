@@ -184,15 +184,18 @@ var deleteOrganization = []string{
 	`DELETE FROM api_keys WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
 	`DELETE FROM account_users WHERE organization_id = $1`,
 	`DELETE FROM member_identities WHERE organization_id = $1`,
+	`DELETE FROM organization_keys WHERE organization_id = $1`,
+	`DELETE FROM organization_admins WHERE organization_id = $1`,
 	`DELETE FROM members WHERE organization_id = $1`,
 	`DELETE FROM organization_break_glass WHERE organization_id = $1`,
 	`DELETE FROM accounts WHERE organization_id = $1`,
 }
 
 // DeleteOrganization deletes the organization id with its accounts,
-// members, API keys, sessions and break-glass credential, and records e,
-// in one transaction. Each of its live sessions is revoked first, so every
-// replica drops it from its cache, and returned.
+// members, organization admins, API keys, organization keys, sessions and
+// break-glass credential, and records e, in one transaction. Each of its
+// live sessions is revoked first, so every replica drops it from its
+// cache, and returned.
 func (s *Store) DeleteOrganization(
 	ctx context.Context,
 	id kernel.OrganizationID,

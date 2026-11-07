@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
@@ -30,6 +31,10 @@ const OperatorSubject = "operator::"
 // APIKeySubject prefixes an API token's sub, api::<key ID>.
 const APIKeySubject = "api::"
 
+// OrganizationKeySubject prefixes an organization token's sub,
+// org::<key ID>.
+const OrganizationKeySubject = "org::"
+
 // OIDCKeySubject prefixes the sub of an OIDC API key's token,
 // api::oidc::<client ID>::<key ID>.
 const OIDCKeySubject = APIKeySubject + "oidc::"
@@ -42,9 +47,12 @@ type Tokens interface {
 
 // Deps are what the service needs.
 type Deps struct {
-	Keys     port.APIKeys
-	Sessions port.Sessions
-	Tokens   Tokens
+	Keys port.APIKeys
+	// OrganizationKeys reads organization keys for the exchange; nil
+	// refuses every one.
+	OrganizationKeys port.OrganizationKeys
+	Sessions         port.Sessions
+	Tokens           Tokens
 	// OIDC verifies an OIDC API key's JWT; nil, or a nil IssuerAllowed,
 	// refuses every OIDC key.
 	OIDC port.OIDC
@@ -99,10 +107,11 @@ type Grant struct {
 	Session session.Session
 }
 
-// Exchange trades an API key or an operator key for a token and the
-// session it stands for, recording ip as the session's address. An
-// operator key's token is an operator token (exchangeOperator). A secret key's secret is
-// its iwk_ secret; an OIDC key's is a JWT of its issuer, whose sub must
+// Exchange trades an API key, an organization key or an operator key for
+// a token and the session it stands for, recording ip as the session's
+// address. An operator key's token is an operator token
+// (exchangeOperator), and an iwo_ secret's an organization token
+// (exchangeOrganization). A secret key's secret is its iwk_ secret; an OIDC key's is a JWT of its issuer, whose sub must
 // match the key's subject expression and whose mapped claims add teams.
 // The token lives auth.tokens.api.ttl, never past the key's expiry. A key
 // that does not exist, whose secret fails, or that is expired, disabled
@@ -114,6 +123,9 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	}
 	if digest, ok := s.d.Operators[keyID]; ok {
 		return s.exchangeOperator(ctx, keyID, digest, secret, ip)
+	}
+	if strings.HasPrefix(secret, apikey.OrganizationPrefix) {
+		return s.exchangeOrganization(ctx, keyID, secret, ip)
 	}
 	k, err := s.d.Keys.APIKey(ctx, keyID)
 	if errors.Is(err, port.ErrNotFound) {
@@ -139,14 +151,8 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	if !k.Usable(now) {
 		return Grant{}, ErrUnauthenticated
 	}
-	ttl := s.d.TTL
-	if !k.ExpiresAt.IsZero() {
-		ttl = min(ttl, k.ExpiresAt.Sub(now))
-	}
-	// Issue counts exp from now in whole seconds; a whole-second TTL keeps
-	// exp at or before the key's expiry.
-	ttl = ttl.Truncate(time.Second)
-	if ttl < time.Second {
+	ttl, ok := s.ttl(k.ExpiresAt, now)
+	if !ok {
 		return Grant{}, ErrUnauthenticated
 	}
 	if err := s.d.Keys.TouchAPIKey(ctx, k.ID); err != nil {
@@ -183,6 +189,79 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 		return Grant{}, err //nolint:wrapcheck // the store names the write
 	}
 	return Grant{Token: raw, Claims: claims, Session: ss}, nil
+}
+
+// exchangeOrganization trades the organization key id for an organization
+// token: a session of actor kind organization in no account, which only
+// the Organization tag's routes accept. Its use takes no seat.
+func (s *Service) exchangeOrganization(
+	ctx context.Context,
+	id kernel.ULID,
+	secret, ip string,
+) (Grant, error) {
+	if s.d.OrganizationKeys == nil {
+		return Grant{}, ErrUnauthenticated
+	}
+	k, err := s.d.OrganizationKeys.OrganizationKey(ctx, id)
+	if errors.Is(err, port.ErrNotFound) {
+		// Hashing anyway keeps an unknown ID as slow as a wrong secret.
+		apikey.OrganizationKey{}.Matches(secret)
+		return Grant{}, ErrUnauthenticated
+	}
+	if err != nil {
+		return Grant{}, err //nolint:wrapcheck // the store names the read
+	}
+	now := s.d.Now()
+	if !k.Matches(secret) || !k.Usable(now) {
+		return Grant{}, ErrUnauthenticated
+	}
+	ttl, ok := s.ttl(k.ExpiresAt, now)
+	if !ok {
+		return Grant{}, ErrUnauthenticated
+	}
+	if err := s.d.OrganizationKeys.TouchOrganizationKey(ctx, k.ID); err != nil {
+		return Grant{}, err //nolint:wrapcheck // the store names the write
+	}
+	sid := kernel.NewULID()
+	raw, claims, err := s.d.Tokens.Issue(ctx, token.Request{
+		Kind:     token.KindOrganizationKey,
+		Subject:  OrganizationKeySubject + k.ID.String(),
+		Session:  sid,
+		Audience: s.d.Audience,
+		TTL:      ttl,
+	})
+	if err != nil {
+		return Grant{}, fmt.Errorf("exchange organization key %s: %w", k.ID, err)
+	}
+	ss := session.Session{
+		ID:             sid,
+		OrganizationID: k.OrganizationID,
+		Channel:        session.ChannelUnknown,
+		ActorKind:      kernel.PrincipalOrganization,
+		ActorID:        k.ID,
+		Login:          k.ID.String(),
+		Name:           k.Name,
+		IPAddress:      ip,
+		CreatedAt:      now,
+		ExpiresAt:      claims.Expiry,
+	}
+	if err := s.d.Sessions.CreateSession(ctx, ss); err != nil {
+		return Grant{}, err //nolint:wrapcheck // the store names the write
+	}
+	return Grant{Token: raw, Claims: claims, Session: ss}, nil
+}
+
+// ttl is a key's token's life at now: auth.tokens.api.ttl, never past
+// expires unless it is zero, in whole seconds, since Issue counts exp from
+// now in whole seconds and so keeps exp at or before the key's expiry.
+// False when less than a second is left.
+func (s *Service) ttl(expires, now time.Time) (time.Duration, bool) {
+	ttl := s.d.TTL
+	if !expires.IsZero() {
+		ttl = min(ttl, expires.Sub(now))
+	}
+	ttl = ttl.Truncate(time.Second)
+	return ttl, ttl >= time.Second
 }
 
 // exchangeOperator trades the operator key id, whose secret's SHA-256 is
@@ -255,28 +334,49 @@ var actors = map[token.Kind]kernel.PrincipalKind{
 	token.KindOperator:        kernel.PrincipalOperator,
 }
 
-// Authenticate is the principal an API token acts as, and the token's
-// claims: on an account route, which org is false for, a principal that
-// works in an account; on an organization route also one of an
-// organization that works in none, such as a member no account admits. A
-// token that fails verification, names no session or one that is not
-// live, or whose session's actor is not of the token's kind, is
-// ErrUnauthenticated, and so is an operator principal, which belongs to no
-// organization. A store that cannot be read is not.
+// Reach is which sessions a route admits (accessapi.Access).
+type Reach int
+
+const (
+	// ReachAccount admits a session that works in an account.
+	ReachAccount Reach = iota
+	// ReachOrganization also admits a session of an organization that
+	// works in none, such as the break-glass admin or a member no account
+	// admits, but no organization token's.
+	ReachOrganization
+	// ReachOrganizationAdmin admits the sessions that may hold the
+	// organization role, a member's and the break-glass admin's, whether
+	// they work in an account or not, and organization tokens'. The
+	// Organization tag's service refuses a member without the role.
+	ReachOrganizationAdmin
+)
+
+// Authenticate is the principal an API token acts as on a route of reach,
+// and the token's claims. A token that fails verification, names no
+// session or one that is not live, or whose session's actor is not of the
+// token's kind or does not reach the route, is ErrUnauthenticated, and so
+// is an operator principal, which belongs to no organization. A store
+// that cannot be read is not.
 func (s *Service) Authenticate(
 	ctx context.Context,
 	raw string,
-	org bool,
+	reach Reach,
 ) (kernel.Principal, token.Claims, error) {
-	return s.authenticate(ctx, raw, s.d.Audience, reaches(org))
+	return s.authenticate(ctx, raw, s.d.Audience, reaches(reach))
 }
 
-// reaches is which sessions a route admits: one that works in an account,
-// or, on an organization route, one of an organization.
-func reaches(org bool) func(session.Session) bool {
+// reaches is which sessions a route of reach admits.
+func reaches(reach Reach) func(session.Session) bool {
 	return func(ss session.Session) bool {
-		if org {
-			return !ss.OrganizationID.IsZero()
+		switch reach {
+		case ReachOrganization:
+			return !ss.OrganizationID.IsZero() && ss.ActorKind != kernel.PrincipalOrganization
+		case ReachOrganizationAdmin:
+			switch ss.ActorKind {
+			case kernel.PrincipalUser, kernel.PrincipalBreakGlass, kernel.PrincipalOrganization:
+				return !ss.OrganizationID.IsZero()
+			}
+			return false
 		}
 		return !ss.AccountID.IsZero()
 	}

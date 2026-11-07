@@ -118,6 +118,31 @@ func (s *Store) SetAccountLimit(
 	return write(err, "entitlement of organization "+org.String())
 }
 
+// ClearAccountLimit deletes acct's limit on limit.
+func (s *Store) ClearAccountLimit(ctx context.Context, acct kernel.AccountID, limit string) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx,
+		`DELETE FROM account_limits WHERE account_id = $1 AND limit_name = $2`,
+		acct, limit); err != nil {
+		return fmt.Errorf("features: %w", sql.Unavailable(err))
+	}
+	return nil
+}
+
+// AccountLimits reads acct's limits by limit name.
+func (s *Store) AccountLimits(
+	ctx context.Context,
+	acct kernel.AccountID,
+) (map[string]int64, error) {
+	out := map[string]int64{}
+	if err := tx.Q(ctx, s.db).
+		QueryRow(ctx, `SELECT coalesce(jsonb_object_agg(limit_name, value), '{}')
+		FROM account_limits WHERE account_id = $1`, acct).
+		Scan(&out); err != nil {
+		return nil, fmt.Errorf("features: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 // DeleteAccount deletes acct's limits.
 func (s *Store) DeleteAccount(ctx context.Context, acct kernel.AccountID) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx,

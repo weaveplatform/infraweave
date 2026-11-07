@@ -21,11 +21,11 @@ import (
 // API's, which accepts a bearer token or a browser session's cookie, or
 // the operator API's, which accepts operator tokens alone.
 type Authenticator struct {
-	token   func(ctx context.Context, raw string, org bool) (kernel.Principal, token.Claims, error)
+	token   func(ctx context.Context, raw string, reach authn.Reach) (kernel.Principal, token.Claims, error)
 	browser func(
 		ctx context.Context,
 		secret string,
-		org bool,
+		reach authn.Reach,
 	) (kernel.Principal, session.Session, error)
 	// origin is the public URL's origin, which a cookie-authenticated
 	// write must name in its Origin header.
@@ -47,7 +47,11 @@ func NewAuthenticator(auth *authn.Service, publicURL string) Authenticator {
 // over auth.
 func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
 	return Authenticator{
-		token: func(ctx context.Context, raw string, _ bool) (kernel.Principal, token.Claims, error) {
+		token: func(
+			ctx context.Context,
+			raw string,
+			_ authn.Reach,
+		) (kernel.Principal, token.Claims, error) {
 			return auth.AuthenticateOperator(ctx, raw)
 		},
 	}
@@ -98,18 +102,18 @@ func (a Authenticator) Middleware(
 				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestKey{}, rec)))
 				return
 			}
-			org := acc == accessapi.Organization
+			reach := reaches[acc]
 			var (
 				p   kernel.Principal
 				err error
 			)
 			if raw, ok := bearer(r); ok {
 				var c token.Claims
-				p, c, err = a.token(r.Context(), raw, org)
+				p, c, err = a.token(r.Context(), raw, reach)
 				rec.token, rec.expiry = raw, c.Expiry
 			} else if secret, ok := a.cookie(r); ok {
 				var ss session.Session
-				p, ss, err = a.browser(r.Context(), secret, org)
+				p, ss, err = a.browser(r.Context(), secret, reach)
 				rec.browser, rec.expiry = true, ss.ExpiresAt
 			} else {
 				err = authn.ErrUnauthenticated
@@ -126,6 +130,13 @@ func (a Authenticator) Middleware(
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// reaches is the sessions each access admits.
+var reaches = map[accessapi.Access]authn.Reach{
+	accessapi.Account:           authn.ReachAccount,
+	accessapi.Organization:      authn.ReachOrganization,
+	accessapi.OrganizationAdmin: authn.ReachOrganizationAdmin,
 }
 
 // cookie is the browser session's cookie value when the request may use

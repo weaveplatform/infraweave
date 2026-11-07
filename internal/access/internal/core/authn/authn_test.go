@@ -45,6 +45,26 @@ type fakes struct {
 	admits map[kernel.MemberID][]session.Admitted
 	// touches counts TouchSession's writes.
 	touches int
+	// orgKeys are the organization keys by ID; orgTouched counts their
+	// touches.
+	orgKeys    map[kernel.ULID]apikey.OrganizationKey
+	orgTouched int
+}
+
+func (f *fakes) OrganizationKey(_ context.Context, id kernel.ULID) (apikey.OrganizationKey, error) {
+	if err := f.down("OrganizationKey"); err != nil {
+		return apikey.OrganizationKey{}, err
+	}
+	k, ok := f.orgKeys[id]
+	if !ok {
+		return apikey.OrganizationKey{}, port.ErrNotFound
+	}
+	return k, nil
+}
+
+func (f *fakes) TouchOrganizationKey(context.Context, kernel.ULID) error {
+	f.orgTouched++
+	return f.down("TouchOrganizationKey")
 }
 
 type orgCred struct {
@@ -305,6 +325,7 @@ func newWorld(t *testing.T) *world {
 		sessions: map[kernel.ULID]session.Session{},
 		orgs:     map[kernel.Slug]orgCred{},
 		admits:   map[kernel.MemberID][]session.Admitted{},
+		orgKeys:  map[kernel.ULID]apikey.OrganizationKey{},
 	}
 	w := &world{
 		f:      f,
@@ -326,7 +347,8 @@ func newWorld(t *testing.T) *world {
 func (w *world) replica() *authn.Service {
 	f := w.f
 	return authn.New(authn.Deps{
-		Keys: f, Sessions: f, Tokens: f, Audience: audience, TTL: 10 * time.Hour,
+		Keys: f, OrganizationKeys: f, Sessions: f, Tokens: f, Audience: audience,
+		TTL:        10 * time.Hour,
 		BreakGlass: f, Admission: f, Idle: idle, MaxAge: maxAge,
 		Now: func() time.Time { return f.now },
 	})
@@ -347,7 +369,7 @@ func (w *world) exchange(t *testing.T) (string, token.Claims) {
 // authenticate is the principal raw acts as through s.
 func authenticate(t *testing.T, s *authn.Service, raw string) (kernel.Principal, error) {
 	t.Helper()
-	p, _, err := s.Authenticate(t.Context(), raw, false)
+	p, _, err := s.Authenticate(t.Context(), raw, authn.ReachAccount)
 	return p, err
 }
 
@@ -364,7 +386,7 @@ func TestUnitExchange(t *testing.T) {
 		s.IPAddress != "192.0.2.1" || !s.ExpiresAt.Equal(c.Expiry) || w.f.touched != 1 {
 		t.Errorf("session = %+v", s)
 	}
-	p, got, err := w.s.Authenticate(t.Context(), raw, false)
+	p, got, err := w.s.Authenticate(t.Context(), raw, authn.ReachAccount)
 	if err != nil || p.SessionID != c.Session || p.Caller() != "api_key:"+w.key.String() ||
 		got.Session != c.Session {
 		t.Errorf("Authenticate = %+v, %+v, %v", p, got, err)
@@ -487,10 +509,23 @@ func TestUnitAuthenticate(t *testing.T) {
 	if _, err := authenticate(t, w.s, org); !errors.Is(err, authn.ErrUnauthenticated) {
 		t.Errorf("organization principal = %v", err)
 	}
-	// On an organization route it is the organization's.
-	if p, _, err := w.s.Authenticate(t.Context(), org, true); err != nil ||
+	// The viewer's and the switcher's routes refuse it too; only the
+	// Organization tag's accept it, as the organization's.
+	if _, _, err := w.s.Authenticate(
+		t.Context(), org, authn.ReachOrganization,
+	); !errors.Is(err, authn.ErrUnauthenticated) {
+		t.Errorf("organization principal on an organization route = %v", err)
+	}
+	if p, _, err := w.s.Authenticate(t.Context(), org, authn.ReachOrganizationAdmin); err != nil ||
 		p.Kind != kernel.PrincipalOrganization {
-		t.Errorf("organization principal on an organization route = %+v, %v", p, err)
+		t.Errorf("organization principal on an organization admin route = %+v, %v", p, err)
+	}
+	// An API key's token works in an account, which the tag's routes
+	// refuse.
+	if _, _, err := w.s.Authenticate(
+		t.Context(), raw, authn.ReachOrganizationAdmin,
+	); !errors.Is(err, authn.ErrUnauthenticated) {
+		t.Errorf("API key on an organization admin route = %v", err)
 	}
 
 	for _, op := range []string{"Verify", "Session"} {

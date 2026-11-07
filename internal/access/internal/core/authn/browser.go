@@ -76,14 +76,13 @@ func (x *secretIndex) put(hash []byte, id kernel.ULID) {
 }
 
 // AuthenticateBrowser is the principal a browser session's cookie value
-// acts as, on an account route or, when org is true, an organization
-// route, and the session. A cookie that names no session, or a session
+// acts as on a route of reach, and the session. A cookie that names no session, or a session
 // that is not live or not a browser session, is ErrUnauthenticated. A use
 // moves the session's idle end at most once a minute.
 func (s *Service) AuthenticateBrowser(
 	ctx context.Context,
 	secret string,
-	org bool,
+	reach Reach,
 ) (kernel.Principal, session.Session, error) {
 	hash := session.HashSecret(secret)
 	id, ok := s.secrets.get(hash)
@@ -106,7 +105,7 @@ func (s *Service) AuthenticateBrowser(
 		return kernel.Principal{}, session.Session{}, err //nolint:wrapcheck // as above
 	}
 	now := s.d.Now()
-	if ss.Channel != session.ChannelWeb || !ss.Live(now) || !reaches(org)(ss) {
+	if ss.Channel != session.ChannelWeb || !ss.Live(now) || !reaches(reach)(ss) {
 		return kernel.Principal{}, session.Session{}, ErrUnauthenticated
 	}
 	if now.Sub(ss.IdleExpiresAt.Add(-s.d.Idle)) >= touchEvery {

@@ -7,10 +7,18 @@
 // every OIDC key is refused. An operator key of Deps.Operators exchanges
 // its secret, whose SHA-256 it compares in constant time, for an operator
 // token: sub OperatorSubject's, aud Deps.OperatorAudience, and a session
-// of actor kind operator in no organization or account. Authenticate
-// turns a bearer token into the principal a request to the API acts as:
-// on an account route a session with no account is refused, and on an
-// organization route any session of an organization is admitted.
+// of actor kind operator in no organization or account. An organization
+// key, whose secret has apikey.OrganizationPrefix, exchanges through
+// Deps.OrganizationKeys for an organization token: sub
+// OrganizationKeySubject's, and a session of actor kind organization in
+// its organization and no account; it takes no seat, and its last use
+// moves at most once a minute. Authenticate turns a bearer token into the
+// principal a request to the API acts as, by the route's Reach: on
+// ReachAccount a session with no account is refused; on ReachOrganization
+// any session of an organization but an organization key's is admitted;
+// on ReachOrganizationAdmin, the Organization tag's, only a member's,
+// the break-glass admin's or an organization key's session is, so API
+// key and run tokens are refused there.
 // AuthenticateOperator does so for the operator API, admitting operator
 // sessions alone, so neither API accepts the other's tokens. Every
 // refused credential is the one ErrUnauthenticated. Sessions, Revoke,
@@ -38,8 +46,8 @@
 //
 // # Input and output
 //
-// None of its own: it reads and writes through the APIKeys, Sessions and
-// BreakGlass ports and session.Admission, verifies through the OIDC port,
+// None of its own: it reads and writes through the APIKeys, Sessions,
+// OrganizationKeys and BreakGlass ports and session.Admission, verifies through the OIDC port,
 // and signs through the token service it is given. Nothing is logged.
 //
 // # Dependencies

@@ -20,7 +20,16 @@
 // unmarked account or its organization's last answers 409 invalid-state,
 // and an account gone since its token was issued answers 404; id, name, type and
 // defaultPrivateWorkerPoolRunnerImage read the caller's account, name
-// through Accounts. OperatorServer is its partial of the operator API's
+// through Accounts. The Organization tag's operations, through
+// orgadmin.Service, read and rename the caller's organization, create,
+// claim, rename and delete its accounts by slug, set and clear an
+// account's limits, list, deactivate and grant or revoke organization-admin
+// to its members, manage its organization keys, whose secret only their
+// creation answers, and read its limits and each account's usage: a
+// member without organization-admin answers 403 forbidden, an account,
+// member or key of another organization 404, a slug in use or a claim of
+// a claimed account or a deletion of the last 409, and input the service
+// or features domain refuses 422 validation-failed. OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
 // organizationDelete, organizationBreakGlassSet and
@@ -32,7 +41,8 @@
 // a browser session's cookie, into the request's principal, or answers
 // 401 unauthenticated with WWW-Authenticate: Bearer; a cookie
 // authenticates a write only with an Origin of the public URL.
-// NewAuthenticator's admits API tokens and cookies and
+// NewAuthenticator's admits API tokens and cookies, each route's access
+// mapping to an authn.Reach, and
 // NewOperatorAuthenticator's operator tokens alone. Login serves the
 // break-glass login's form and sign-in at accessapi.LoginPattern, which
 // sets the session's __Host- cookie and answers 303 to the console.
@@ -46,7 +56,7 @@
 // # Dependencies
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
-// operator, organization, port, session and settings packages, accessapi,
+// operator, orgadmin, organization, port, session and settings packages, accessapi,
 // featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.

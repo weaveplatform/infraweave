@@ -15,7 +15,7 @@ import (
 )
 
 // served returns the partial over a seeded database with "acme" on
-// Starter and a seats limit of 3 on its account, billing switched as on
+// Starter and a seats limit of 1 on its account, billing switched as on
 // says, and a context carrying a principal of the account.
 func served(t *testing.T, on bool) (Server, context.Context) {
 	t.Helper()
@@ -25,12 +25,14 @@ func served(t *testing.T, on bool) (Server, context.Context) {
 	if _, err := svc.SetTier(ctx, acme, features.Starter); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.SetAccountLimit(ctx, acme, acct, featuresapi.Seats, 3); err != nil {
+	if err := svc.SetAccountLimit(ctx, acme, acct, featuresapi.Seats, 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.SetBilling(ctx, on, nil); err != nil {
 		t.Fatal(err)
 	}
+	// No watcher runs here to drop the snapshots the writes above read.
+	svc.Flush()
 	seats := func(_ context.Context, org kernel.OrganizationID, a kernel.AccountID) (featuresapi.Usage, error) {
 		if org != acme || a != acct {
 			return featuresapi.Usage{}, errDown
@@ -46,7 +48,7 @@ func TestAccBillingReads(t *testing.T) {
 	starter, _ := features.Seed(features.Starter)
 	enterprise, _ := features.Seed(features.Enterprise)
 	pool := starter.Limits[featuresapi.Seats]
-	three := int64(3)
+	one := int64(1)
 	cases := []struct {
 		name     string
 		on       bool
@@ -67,7 +69,7 @@ func TestAccBillingReads(t *testing.T) {
 			entitled: starter.Features,
 			seats: api.Seats{
 				Organization: api.SeatLimit{InUse: 4, Limit: &pool},
-				Account:      &api.SeatLimit{InUse: 1, Limit: &three},
+				Account:      &api.SeatLimit{InUse: 1, Limit: &one},
 			},
 		},
 	}

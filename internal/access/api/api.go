@@ -14,6 +14,12 @@ const (
 	Organization
 	// Public routes take no credential.
 	Public
+	// OrganizationAdmin routes, the Organization tag's, admit the
+	// principals of an organization that may hold the organization role,
+	// members and the break-glass admin, and organization tokens, which
+	// every other route refuses. An API key's or a run's token works in an
+	// account, and is refused.
+	OrganizationAdmin
 )
 
 // Authenticator authenticates the API's requests (decision 0006).

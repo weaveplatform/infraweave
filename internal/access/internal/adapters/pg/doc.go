@@ -7,14 +7,18 @@
 // api_key_non_admin_managers, 00004 its account_settings, a row
 // created on the first write, so an account without one reads each
 // column's default, and 00005 the Enterprise entitlement of every
-// organization without one, where the features stream is applied.
+// organization without one, where the features stream is applied, and
+// 00006 organization_admins, the members holding organization-admin, and
+// organization_keys.
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
-// port.APIKeys, apikey.Store, operator.Store and settings.Store, with an
+// port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
+// orgadmin.Store and settings.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then
-// deletes its sessions, API keys, members and their identities, its
+// deletes its sessions, API keys, organization keys and admins, members
+// and their identities, its
 // break-glass credential, its accounts, its rows in the features domain
 // through the featuresapi.Entitlements WithFeatures gives, and itself, as
 // every foreign key restricts. Deleting an account takes its
@@ -23,7 +27,13 @@
 // API keys, admissions, settings and features rows and the account, and
 // records its organization trail entry in the same transaction; turning
 // personal keys off with disableExistingKeys disables them for ACCOUNT
-// and revokes their sessions. A key's first use in SeatWindow takes it a
+// and revokes their sessions. orgadmin.Store's writes record their
+// organization trail entry in the same transaction: claiming an account
+// locks it, and admitting an account admin checks the seat it takes,
+// as a key's first use does; deactivating a member disables their
+// personal keys as DEPROVISIONED and revokes their and those keys'
+// sessions; disabling or deleting an organization key revokes its
+// sessions. A key's first use in SeatWindow takes it a
 // seat, checked against the seats limit through the same Entitlements in
 // the transaction that records the use, counting each active member once
 // and each other live key that is not personal and was used in the window;

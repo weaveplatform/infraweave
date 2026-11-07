@@ -5,7 +5,11 @@
 // nor expired. An OIDC key has no secret: it exchanges a JWT of its
 // issuer whose sub matches CompileSubject's anchored expression, and
 // OIDC.Teams adds the values of the claim its mapping names TeamsClaim
-// to the key's teams.
+// to the key's teams. An organization key (decision 0007) is an
+// organization's, not an account's: its secret is OrganizationPrefix,
+// iwo_, and 43 base64url characters (NewOrganizationSecret), stored as
+// HashOrganization's SHA-256, and OrganizationKey.Usable and Matches
+// mirror an API key's.
 //
 // Service manages the keys of the caller's account through Store: create,
 // list, read, update, reset, disable and delete, where reset, disable and

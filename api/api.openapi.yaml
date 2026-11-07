@@ -1965,6 +1965,832 @@ paths:
         - DV-080
         - rate-limit
       x-rest-style: read
+  /organization:
+    get:
+      description: |-
+        The caller's organization.
+      operationId: organization
+      x-infraweave-feature: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationView'
+          description: The organization result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    patch:
+      description: |-
+        Rename the caller's organization; its slug never changes.
+      operationId: organizationUpdate
+      x-infraweave-feature: organization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationView'
+          description: The organizationUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "422":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Update
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/accounts:
+    get:
+      description: |-
+        The organization's accounts, oldest first.
+      operationId: organizationAccounts
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccountPage'
+          description: The organizationAccounts result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Accounts
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    post:
+      description: |-
+        Create an account of the organization, claimed at creation: the member the body names becomes its
+        first account admin and the account admits it. A slug another account of any organization holds
+        answers 409 already-exists, and an admin that is no active member of the organization 422.
+      operationId: organizationAccountCreate
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationAccountCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccount'
+          description: The organizationAccountCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Account Create
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/accounts/{account}:
+    delete:
+      description: |-
+        Delete an account of the organization and everything the access domain holds for it, revoking its
+        sessions. Deleting the organization's last account answers 409 invalid-state.
+      operationId: organizationAccountDelete
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationAccountSlug'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccount'
+          description: The organizationAccountDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Account Delete
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    patch:
+      description: |-
+        Rename an account of the organization; its slug never changes.
+      operationId: organizationAccountUpdate
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationAccountSlug'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationAccountUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccount'
+          description: The organizationAccountUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Account Update
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/accounts/{account}/claim:
+    post:
+      description: |-
+        Claim an unclaimed account: the member the body names becomes its first account admin and the
+        account admits it. A claimed account stays claimed, so claiming it again answers 409 invalid-state.
+      operationId: organizationAccountClaim
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationAccountSlug'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationAccountClaimRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccount'
+          description: The organizationAccountClaim result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Account Claim
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/accounts/{account}/limits/{limit}:
+    delete:
+      description: |-
+        Clear an account limit, so the organization's pool alone applies to the account. Clearing none is
+        no change. It answers the account's use of every limit.
+      operationId: organizationAccountLimitClear
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationAccountSlug'
+        - $ref: '#/components/parameters/OrganizationLimitName'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccountUsage'
+          description: The organizationAccountLimitClear result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Account Limit Clear
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    put:
+      description: |-
+        Set an account limit, which a creation in the account checks as it checks the organization's pool.
+        A value above the pool as it applies now, a negative value or a name that is no limit answers 422
+        validation-failed naming the limit. It answers the account's use of every limit.
+      operationId: organizationAccountLimitSet
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationAccountSlug'
+        - $ref: '#/components/parameters/OrganizationLimitName'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationAccountLimitRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccountUsage'
+          description: The organizationAccountLimitSet result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Account Limit Set
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/keys:
+    get:
+      description: |-
+        The organization's keys, oldest first, with no secret.
+      operationId: organizationKeys
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationKeyPage'
+          description: The organizationKeys result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Keys
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    post:
+      description: |-
+        Create an organization key. The answer carries its secret, which no later answer does; only its
+        SHA-256 is stored. Its token reaches the Organization tag alone and takes no seat.
+      operationId: organizationKeyCreate
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationKeyCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationKey'
+          description: The organizationKeyCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Key Create
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/keys/{key}:
+    delete:
+      description: |-
+        Delete an organization key, revoking every session of its tokens.
+      operationId: organizationKeyDelete
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationKeyID'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationKey'
+          description: The organizationKeyDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Key Delete
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/keys/{key}/disable:
+    post:
+      description: |-
+        Disable an organization key, revoking every session of its tokens. Disabling a disabled key is no
+        change.
+      operationId: organizationKeyDisable
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationKeyID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationKey'
+          description: The organizationKeyDisable result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Key Disable
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/limits:
+    get:
+      description: |-
+        The organization's pooled limits as they apply now, and their use across its accounts.
+      operationId: organizationLimits
+      x-infraweave-feature: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLimits'
+          description: The organizationLimits result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Limits
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/members:
+    get:
+      description: |-
+        The organization's members, oldest first.
+      operationId: organizationMembers
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberPage'
+          description: The organizationMembers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Members
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/members/{member}/deactivate:
+    post:
+      description: |-
+        Deactivate a member: it signs in no more, its sessions are revoked, its personal API keys are
+        disabled as DEPROVISIONED, and it holds no seat. Deactivating a deactivated member is no change.
+      operationId: organizationMemberDeactivate
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationMemberID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMember'
+          description: The organizationMemberDeactivate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Member Deactivate
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/members/{member}/organization-admin:
+    delete:
+      description: |-
+        Revoke a member's organization role organization-admin. Revoking a role the member does not hold
+        is no change.
+      operationId: organizationAdminRevoke
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationMemberID'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMember'
+          description: The organizationAdminRevoke result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Admin Revoke
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    put:
+      description: |-
+        Grant a member the organization role organization-admin, which reaches the Organization tag and
+        no account's data. Granting a role the member holds is no change.
+      operationId: organizationAdminGrant
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationMemberID'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMember'
+          description: The organizationAdminGrant result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Admin Grant
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/usage:
+    get:
+      description: |-
+        Each account's use of every limit, oldest account first, with the account limits set. It reads no
+        stack, run, state or secret.
+      operationId: organizationUsage
+      x-infraweave-feature: organization
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationUsagePage'
+          description: The organizationUsage result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Usage
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
   /personal-api-keys-enabled:
     get:
       description: >-
@@ -6399,6 +7225,34 @@ components:
         type: integer
         format: int32
         default: 20
+    OrganizationAccountSlug:
+      description: The account's slug.
+      in: path
+      name: account
+      required: true
+      schema:
+        type: string
+    OrganizationKeyID:
+      description: The organization key's ID.
+      in: path
+      name: key
+      required: true
+      schema:
+        type: string
+    OrganizationLimitName:
+      description: The limit's name in the feature catalogue, such as seats.
+      in: path
+      name: limit
+      required: true
+      schema:
+        type: string
+    OrganizationMemberID:
+      description: The member's ID.
+      in: path
+      name: member
+      required: true
+      schema:
+        type: string
   responses:
     ApiDisabled:
       description: The operator has disabled the API for this caller.
@@ -9153,6 +10007,297 @@ components:
         CUSTOM: A custom workflow tool.
         OPENTOFU: OpenTofu.
       x-graphql-type: OpenTofuWorkflowTool
+    OrganizationAccount:
+      description: An account of the caller's organization, as its organization admins see it.
+      properties:
+        claimed:
+          description: Whether an organization admin has named the account's first account admin.
+          type: boolean
+        createdAt:
+          description: Unix seconds of the account's creation.
+          format: int64
+          type: integer
+        id:
+          description: The account's ID.
+          type: string
+        name:
+          description: The account's display name.
+          type: string
+        slug:
+          description: The account's slug, unique across the installation, which never changes.
+          type: string
+      required:
+        - claimed
+        - createdAt
+        - id
+        - name
+        - slug
+      type: object
+    OrganizationAccountClaimRequest:
+      additionalProperties: false
+      description: The member that becomes the unclaimed account's first account admin.
+      properties:
+        admin:
+          description: The ID of an active member of the organization.
+          type: string
+      required:
+        - admin
+      type: object
+    OrganizationAccountCreateRequest:
+      additionalProperties: false
+      description: A new account and the member that becomes its first account admin.
+      properties:
+        admin:
+          description: The ID of an active member of the organization.
+          type: string
+        name:
+          description: At most 100 characters, not blank.
+          type: string
+        slug:
+          description: 1 to 63 lower-case letters, digits and single hyphens, starting with a letter.
+          type: string
+      required:
+        - admin
+        - name
+        - slug
+      type: object
+    OrganizationAccountLimitRequest:
+      additionalProperties: false
+      description: An account limit, which may not exceed the organization's pool.
+      properties:
+        value:
+          description: Zero or more, and at most the organization's value of the limit.
+          format: int64
+          type: integer
+      required:
+        - value
+      type: object
+    OrganizationAccountPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/OrganizationAccount'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    OrganizationAccountUpdateRequest:
+      additionalProperties: false
+      description: The account's new display name.
+      properties:
+        name:
+          description: At most 100 characters, not blank.
+          type: string
+      required:
+        - name
+      type: object
+    OrganizationAccountUsage:
+      description: One account's use of each limit, with the account's own limit where one is set.
+      properties:
+        account:
+          $ref: '#/components/schemas/OrganizationAccount'
+        limits:
+          description: Every limit of the feature catalogue, in name order; value is the account's limit, null where none is set.
+          items:
+            $ref: '#/components/schemas/OrganizationLimit'
+          type: array
+      required:
+        - account
+        - limits
+      type: object
+    OrganizationKey:
+      description: An organization key, whose token reaches the Organization tag alone. Its secret is answered once, at creation.
+      properties:
+        createdAt:
+          description: Unix seconds of the key's creation.
+          format: int64
+          type: integer
+        disabled:
+          description: Whether the key is disabled, so it exchanges for no token.
+          type: boolean
+        expiresAt:
+          description: Unix seconds after which the key exchanges for no token, or null for never.
+          format: int64
+          nullable: true
+          type: integer
+        id:
+          description: The key's ID, which POST /auth/token takes with its secret.
+          type: string
+        lastUsedAt:
+          description: Unix seconds of the key's last exchange, to the minute, or null for never.
+          format: int64
+          nullable: true
+          type: integer
+        name:
+          description: The key's name.
+          type: string
+        secret:
+          description: The key's secret, iwo_ and 43 base64url characters. Present only in the answer that creates the key.
+          type: string
+      required:
+        - createdAt
+        - disabled
+        - id
+        - name
+      type: object
+    OrganizationKeyCreateRequest:
+      additionalProperties: false
+      description: A new organization key.
+      properties:
+        expiresAt:
+          description: Unix seconds after which the key exchanges for no token; absent or null for never.
+          format: int64
+          nullable: true
+          type: integer
+        name:
+          description: At most 100 characters, not blank.
+          type: string
+      required:
+        - name
+      type: object
+    OrganizationKeyPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/OrganizationKey'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    OrganizationLimit:
+      description: A limit of the feature catalogue as it applies to the organization or to one of its accounts.
+      properties:
+        inUse:
+          description: How much of the limit is in use, or null for a limit nothing counts yet.
+          format: int64
+          nullable: true
+          type: integer
+        name:
+          description: The limit's name in the feature catalogue, such as seats.
+          type: string
+        value:
+          description: The limit, or null for none.
+          format: int64
+          nullable: true
+          type: integer
+      required:
+        - name
+      type: object
+    OrganizationLimits:
+      description: Every limit of the feature catalogue, pooled across the organization's accounts, in name order. While billing is off no limit applies.
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/OrganizationLimit'
+          type: array
+      required:
+        - items
+      type: object
+    OrganizationMember:
+      description: A member of the caller's organization.
+      properties:
+        createdAt:
+          description: Unix seconds of the member's creation.
+          format: int64
+          type: integer
+        email:
+          description: The member's e-mail address, as its identity provider last asserted it.
+          type: string
+        id:
+          description: The member's ID.
+          type: string
+        login:
+          description: The member's login.
+          type: string
+        name:
+          description: The member's full name.
+          type: string
+        organizationAdmin:
+          description: Whether the member holds the organization role organization-admin.
+          type: boolean
+        status:
+          $ref: '#/components/schemas/OrganizationMemberStatus'
+      required:
+        - createdAt
+        - email
+        - id
+        - login
+        - name
+        - organizationAdmin
+        - status
+      type: object
+    OrganizationMemberPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/OrganizationMember'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    OrganizationMemberStatus:
+      description: Whether the member may sign in; a deactivated member holds no seat.
+      enum:
+        - ACTIVE
+        - DEACTIVATED
+      type: string
+    OrganizationUpdateRequest:
+      additionalProperties: false
+      description: The organization's new display name.
+      properties:
+        name:
+          description: At most 100 characters, not blank.
+          type: string
+      required:
+        - name
+      type: object
+    OrganizationUsagePage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/OrganizationAccountUsage'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    OrganizationView:
+      description: The caller's organization. Its slug never changes; its name may.
+      properties:
+        createdAt:
+          description: Unix seconds of the organization's creation.
+          format: int64
+          type: integer
+        id:
+          description: The organization's ID.
+          type: string
+        name:
+          description: The organization's display name.
+          type: string
+        slug:
+          description: The organization's slug, unique across the installation.
+          type: string
+      required:
+        - createdAt
+        - id
+        - name
+        - slug
+      type: object
     PageInfo:
       properties:
         endCursor:

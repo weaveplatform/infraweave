@@ -108,6 +108,15 @@ func (s *store) AccountLimit(
 	return v, ok, s.accountErr
 }
 
+func (s *store) ClearAccountLimit(context.Context, kernel.AccountID, string) error {
+	s.calls = append(s.calls, "clear")
+	return s.err
+}
+
+func (s *store) AccountLimits(context.Context, kernel.AccountID) (map[string]int64, error) {
+	return s.accounts, s.accountErr
+}
+
 // inTx runs fn directly, counting the transactions it stands for.
 func inTx(n *int) features.Transactor {
 	return func(ctx context.Context, fn func(context.Context) error) error {
@@ -182,7 +191,7 @@ func TestUnitEntitlementWritesPassThrough(t *testing.T) {
 	for name, err := range map[string]error{
 		"create":         svc.CreateOrganization(ctx, org),
 		"delete":         svc.DeleteOrganization(ctx, org),
-		"set":            svc.SetAccountLimit(ctx, org, acct, "seats", 2),
+		"clear":          svc.ClearAccountLimit(ctx, acct, "seats"),
 		"delete account": svc.DeleteAccount(ctx, acct),
 	} {
 		if !errors.Is(err, errStore) {
@@ -190,7 +199,15 @@ func TestUnitEntitlementWritesPassThrough(t *testing.T) {
 		}
 	}
 	slices.Sort(s.calls)
-	if want := []string{"create", "delete", "delete account", "set"}; !slices.Equal(s.calls, want) {
+	if want := []string{
+		"clear",
+		"create",
+		"delete",
+		"delete account",
+	}; !slices.Equal(
+		s.calls,
+		want,
+	) {
 		t.Errorf("calls = %v, want %v", s.calls, want)
 	}
 }

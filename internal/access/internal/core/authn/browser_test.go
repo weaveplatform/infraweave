@@ -68,12 +68,12 @@ func TestUnitSignInBreakGlass(t *testing.T) {
 	if string(ss.SecretHash) != string(session.HashSecret(b.Secret)) {
 		t.Error("the session does not store its cookie's hash")
 	}
-	p, got, err := w.s.AuthenticateBrowser(t.Context(), b.Secret, true)
+	p, got, err := w.s.AuthenticateBrowser(t.Context(), b.Secret, authn.ReachOrganization)
 	if err != nil || p.Kind != kernel.PrincipalBreakGlass || got.ID != ss.ID {
 		t.Errorf("on an organization route = %+v, %v", p, err)
 	}
 	if _, _, err := w.s.AuthenticateBrowser(
-		t.Context(), b.Secret, false,
+		t.Context(), b.Secret, authn.ReachAccount,
 	); !errors.Is(err, authn.ErrUnauthenticated) {
 		t.Errorf("on an account route = %v", err)
 	}
@@ -157,7 +157,7 @@ func (w *world) member(
 func TestUnitAuthenticateBrowser(t *testing.T) {
 	w := newWorld(t)
 	ss, secret := w.member(w.acct)
-	p, got, err := w.s.AuthenticateBrowser(t.Context(), secret, false)
+	p, got, err := w.s.AuthenticateBrowser(t.Context(), secret, authn.ReachAccount)
 	if err != nil || p.SessionID != ss.ID || got.ID != ss.ID || w.f.touches != 0 {
 		t.Errorf("AuthenticateBrowser = %+v, %v; %d touches", p, err, w.f.touches)
 	}
@@ -166,7 +166,7 @@ func TestUnitAuthenticateBrowser(t *testing.T) {
 	if _, _, err := w.s.AuthenticateBrowser(
 		t.Context(),
 		secret,
-		false,
+		authn.ReachAccount,
 	); err != nil ||
 		w.f.touches != 1 {
 		t.Errorf("a minute on = %v; %d touches", err, w.f.touches)
@@ -177,7 +177,7 @@ func TestUnitAuthenticateBrowser(t *testing.T) {
 	if _, _, err := w.s.AuthenticateBrowser(
 		t.Context(),
 		secret,
-		false,
+		authn.ReachAccount,
 	); err != nil ||
 		w.f.touches != 1 {
 		t.Errorf("again within the minute = %v; %d touches", err, w.f.touches)
@@ -199,7 +199,7 @@ func TestUnitAuthenticateBrowser(t *testing.T) {
 		"no account here": sess(func(s *session.Session) { s.AccountID = kernel.AccountID{} }),
 	} {
 		if _, _, err := w.s.AuthenticateBrowser(
-			t.Context(), secret, false,
+			t.Context(), secret, authn.ReachAccount,
 		); err != authn.ErrUnauthenticated { //nolint:errorlint // the identical error
 			t.Errorf("%s = %v", name, err)
 		}
@@ -211,7 +211,7 @@ func TestUnitAuthenticateBrowser(t *testing.T) {
 	if p, _, err := w.s.AuthenticateBrowser(
 		t.Context(),
 		none,
-		true,
+		authn.ReachOrganization,
 	); err != nil ||
 		!p.AccountID.IsZero() {
 		t.Errorf("no account on an organization route = %+v, %v", p, err)
@@ -224,7 +224,7 @@ func TestUnitAuthenticateBrowser(t *testing.T) {
 		if _, _, err := w.s.AuthenticateBrowser(
 			t.Context(),
 			secret,
-			false,
+			authn.ReachAccount,
 		); !errors.Is(
 			err,
 			errDown,
@@ -254,7 +254,7 @@ func TestUnitBrowserLimits(t *testing.T) {
 			return b.Secret
 		}
 		use := func(secret string) error {
-			_, _, err := s.AuthenticateBrowser(t.Context(), secret, true)
+			_, _, err := s.AuthenticateBrowser(t.Context(), secret, authn.ReachOrganization)
 			return err
 		}
 
@@ -333,14 +333,14 @@ func TestUnitCLIToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw := fmt.Sprintf("%s %s %s", token.KindUser, child.ID, audience)
-	if _, _, err := w.s.Authenticate(t.Context(), raw, false); err != nil {
+	if _, _, err := w.s.Authenticate(t.Context(), raw, authn.ReachAccount); err != nil {
 		t.Errorf("the CLI token after its parent's logout: %v", err)
 	}
 	w.f.now = child.ExpiresAt
 	if _, _, err := w.s.Authenticate(
 		t.Context(),
 		raw,
-		false,
+		authn.ReachAccount,
 	); !errors.Is(
 		err,
 		authn.ErrUnauthenticated,
@@ -429,14 +429,14 @@ func TestUnitSwitchAccount(t *testing.T) {
 	if _, _, err := w.s.AuthenticateBrowser(
 		t.Context(),
 		secret,
-		false,
+		authn.ReachAccount,
 	); !errors.Is(
 		err,
 		authn.ErrUnauthenticated,
 	) {
 		t.Errorf("the old cookie = %v", err)
 	}
-	np, _, err := w.s.AuthenticateBrowser(t.Context(), sw.Secret, false)
+	np, _, err := w.s.AuthenticateBrowser(t.Context(), sw.Secret, authn.ReachAccount)
 	if err != nil || np.AccountID != sibling.ID {
 		t.Errorf("the new cookie = %+v, %v", np, err)
 	}

@@ -141,11 +141,24 @@ func TestAccAccountLimits(t *testing.T) {
 	if _, ok, err := s.AccountLimit(ctx, acct, "private-workers"); err != nil || ok {
 		t.Errorf("an unset limit = %t, %v", ok, err)
 	}
+	if err := s.SetAccountLimit(ctx, org, acct, "private-workers", 1); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.AccountLimits(ctx, acct); err != nil ||
+		!reflect.DeepEqual(got, map[string]int64{"seats": 5, "private-workers": 1}) {
+		t.Errorf("AccountLimits = %v, %v", got, err)
+	}
+	if err := s.ClearAccountLimit(ctx, acct, "private-workers"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ClearAccountLimit(ctx, acct, "private-workers"); err != nil {
+		t.Errorf("clearing a limit again = %v", err)
+	}
 	if err := s.DeleteAccount(ctx, acct); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok, err := s.AccountLimit(ctx, acct, "seats"); err != nil || ok {
-		t.Errorf("after DeleteAccount = %t, %v", ok, err)
+	if got, err := s.AccountLimits(ctx, acct); err != nil || len(got) != 0 {
+		t.Errorf("after DeleteAccount = %v, %v", got, err)
 	}
 	if v, ok, err := s.AccountLimit(ctx, other, "seats"); err != nil || !ok || v != 1 {
 		t.Errorf("another account after DeleteAccount = %d, %t, %v", v, ok, err)
@@ -313,6 +326,11 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"delete":         s.DeleteOrganization(ctx, org),
 		"set":            s.SetAccountLimit(ctx, org, acct, "seats", 1),
 		"delete account": s.DeleteAccount(ctx, acct),
+		"clear":          s.ClearAccountLimit(ctx, acct, "seats"),
+		"account limits": func() error {
+			_, err := s.AccountLimits(ctx, acct)
+			return err
+		}(),
 		"entitlement": func() error {
 			_, err := s.Entitlement(ctx, org, false)
 			return err
