@@ -89,16 +89,20 @@ func (k Key) Matches(secret string) bool {
 }
 
 // NewSecret returns a new secret: Prefix and 32 random bytes in base64url.
-func NewSecret() string {
-	b := make([]byte, secretBytes)
-	_, _ = rand.Read(b) // crypto/rand.Read never fails
-	return Prefix + base64.RawURLEncoding.EncodeToString(b)
-}
+func NewSecret() string { return newSecret(Prefix) }
 
 // Hash is the stored form of secret, its SHA-256, and false when secret is
 // not Prefix and 43 base64url characters.
-func Hash(secret string) ([]byte, bool) {
-	raw, ok := strings.CutPrefix(secret, Prefix)
+func Hash(secret string) ([]byte, bool) { return hash(Prefix, secret) }
+
+func newSecret(prefix string) string {
+	b := make([]byte, secretBytes)
+	_, _ = rand.Read(b) // crypto/rand.Read never fails
+	return prefix + base64.RawURLEncoding.EncodeToString(b)
+}
+
+func hash(prefix, secret string) ([]byte, bool) {
+	raw, ok := strings.CutPrefix(secret, prefix)
 	if !ok {
 		return nil, false
 	}

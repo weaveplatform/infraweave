@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
@@ -98,6 +99,7 @@ type Domain struct {
 	authn    *authn.Service
 	keys     *apikey.Service
 	orgs     *operator.Service
+	orgAdmin *orgadmin.Service
 	settings *settings.Service
 	manual   bool
 	// publicURL is server.public_url, whose origin a browser session's
@@ -140,10 +142,11 @@ func New(d Deps) (*Domain, error) {
 			ErrConfig, d.Settings.OIDCAPIKeys.CAFile, err)
 	}
 	auth := authn.New(authn.Deps{
-		Keys:     store,
-		Sessions: store,
-		Tokens:   tokens,
-		OIDC:     verifier,
+		Keys:             store,
+		OrganizationKeys: store,
+		Sessions:         store,
+		Tokens:           tokens,
+		OIDC:             verifier,
 		IssuerAllowed: func(issuer string) bool {
 			return apikey.IssuerAllowed(d.Settings.OIDCAPIKeys.AllowedIssuers, issuer)
 		},
@@ -170,6 +173,9 @@ func New(d Deps) (*Domain, error) {
 		authn:  auth,
 		keys:   keys,
 		orgs:   orgs,
+		orgAdmin: orgadmin.NewService(orgadmin.Deps{
+			Store: store, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
+		}),
 		settings: settings.NewService(
 			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
 		),
@@ -184,7 +190,7 @@ func (d *Domain) API() AccessAPI {
 	if d == nil {
 		return AccessAPI{}
 	}
-	return http.NewServer(d.authn, d.keys, d.store, d.settings)
+	return http.NewServer(d.authn, d.keys, d.store, d.settings, d.orgAdmin)
 }
 
 // OperatorAPI is the domain's partial of the operator API's strict

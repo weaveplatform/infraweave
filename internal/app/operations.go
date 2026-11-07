@@ -45,6 +45,11 @@ type Operation struct {
 	// account or none, such as the viewer or the account switcher. Every
 	// other operation needs a credential of an account (decision 0006).
 	Organization bool
+	// OrganizationAdmin marks an operation whose x-infraweave-access is
+	// organization-admin, the Organization tag's: it serves the principals
+	// that may hold the organization role and organization tokens, which no
+	// other operation accepts (decision 0006).
+	OrganizationAdmin bool
 	// Body is the request body of an operation whose JSON body schema sets
 	// additionalProperties: false, which strictBodies checks before the
 	// handler; nil for every other operation, whose body the generated
@@ -81,25 +86,29 @@ func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 				}
 			}
 			style, _ := op.Extensions["x-rest-style"].(string)
-			org := false
-			if v, ok := op.Extensions["x-infraweave-access"]; ok {
-				if v != "organization" {
-					return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
-						errSpec, method, path, v)
-				}
+			var org, admin bool
+			switch v, ok := op.Extensions["x-infraweave-access"]; {
+			case !ok:
+			case v == "organization":
 				org = true
+			case v == "organization-admin":
+				admin = true
+			default:
+				return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
+					errSpec, method, path, v)
 			}
 			gate, err := gateOf(op)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
 			}
 			ops[method+" "+base+path] = Operation{
-				Cost:         cost,
-				Search:       style == "search" || strings.HasSuffix(path, "/search"),
-				Public:       op.Security != nil && len(*op.Security) == 0,
-				Organization: org,
-				Body:         strictBody(op),
-				Gate:         gate,
+				Cost:              cost,
+				Search:            style == "search" || strings.HasSuffix(path, "/search"),
+				Public:            op.Security != nil && len(*op.Security) == 0,
+				Organization:      org,
+				OrganizationAdmin: admin,
+				Body:              strictBody(op),
+				Gate:              gate,
 			}
 		}
 	}
@@ -288,6 +297,8 @@ func (o Operation) access() accessapi.Access {
 		return accessapi.Public
 	case o.Organization:
 		return accessapi.Organization
+	case o.OrganizationAdmin:
+		return accessapi.OrganizationAdmin
 	}
 	return accessapi.Account
 }

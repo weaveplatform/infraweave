@@ -56,6 +56,27 @@ func (e *LimitError) Error() string {
 	return fmt.Sprintf("features: %s reached its %s limit of %d", e.Limit, e.Scope, e.Value)
 }
 
+// AccountLimitError refuses an account limit (decision 0021 § "Limits"):
+// Unknown when Limit is no limit of the catalogue, else Value is negative
+// or above Pool, the organization's value of the limit.
+type AccountLimitError struct {
+	Limit   string
+	Value   int64
+	Pool    int64
+	Unknown bool
+}
+
+func (e *AccountLimitError) Error() string {
+	switch {
+	case e.Unknown:
+		return fmt.Sprintf("features: %q is no limit", e.Limit)
+	case e.Value < 0:
+		return fmt.Sprintf("features: an account limit on %s cannot be negative", e.Limit)
+	}
+	return fmt.Sprintf("features: an account limit of %d on %s is above the organization's %d",
+		e.Value, e.Limit, e.Pool)
+}
+
 // Gate is what a request needs of the catalogue: Feature, the capability
 // its operation's x-infraweave-feature names, and Options, the gated
 // values its body may set.
@@ -84,7 +105,9 @@ type Entitlements interface {
 	// limits; an organization without any is no error.
 	DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error
 	// SetAccountLimit sets acct's limit on the counted thing limit, which
-	// org's entitlement must exist to hold.
+	// org's entitlement must exist to hold. A name that is no limit of the
+	// catalogue, a negative value, or a value above the organization's
+	// pool as it applies now is an *AccountLimitError.
 	SetAccountLimit(
 		ctx context.Context,
 		org kernel.OrganizationID,
@@ -92,6 +115,14 @@ type Entitlements interface {
 		limit string,
 		value int64,
 	) error
+	// ClearAccountLimit removes acct's limit on limit, so the pool alone
+	// applies; clearing none is no error. A name that is no limit of the
+	// catalogue is an *AccountLimitError.
+	ClearAccountLimit(ctx context.Context, acct kernel.AccountID, limit string) error
+	// LimitNames are the catalogue's limits, in name order.
+	LimitNames() []string
+	// AccountLimits are acct's limits by limit name.
+	AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error)
 	// DeleteAccount deletes acct's limits.
 	DeleteAccount(ctx context.Context, acct kernel.AccountID) error
 	// Entitlement reads org's entitlement.

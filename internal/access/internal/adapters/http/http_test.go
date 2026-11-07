@@ -362,7 +362,7 @@ func newWorld(t *testing.T) *world {
 		Store: w.cfg, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
 	strict := api.NewStrictHandlerWithOptions(
-		full{Server: NewServer(auth, keys, st, cfg)},
+		full{Server: NewServer(auth, keys, st, cfg, nil)},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,

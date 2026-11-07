@@ -3,7 +3,8 @@
 // them, so the core never imports an adapter (decision 0004). Tenancy,
 // Sessions and APIKeys read and write tenancy, sessions and keys;
 // BreakGlass reads an organization's break-glass credential and records
-// its sign-ins; OIDC verifies an issuer's JWT for an OIDC API key.
+// its sign-ins; OrganizationKeys reads an organization key and records
+// its use; OIDC verifies an issuer's JWT for an OIDC API key.
 //
 // # Input and output
 //

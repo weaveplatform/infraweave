@@ -182,6 +182,82 @@ func (UnimplementedStrict) OnTrialUntil(context.Context, OnTrialUntilRequestObje
 	return nil, &problem.NotImplementedError{OperationID: "onTrialUntil", Route: "GET /on-trial-until"}
 }
 
+func (UnimplementedStrict) Organization(context.Context, OrganizationRequestObject) (OrganizationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organization", Route: "GET /organization"}
+}
+
+func (UnimplementedStrict) OrganizationUpdate(context.Context, OrganizationUpdateRequestObject) (OrganizationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationUpdate", Route: "PATCH /organization"}
+}
+
+func (UnimplementedStrict) OrganizationAccounts(context.Context, OrganizationAccountsRequestObject) (OrganizationAccountsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccounts", Route: "GET /organization/accounts"}
+}
+
+func (UnimplementedStrict) OrganizationAccountCreate(context.Context, OrganizationAccountCreateRequestObject) (OrganizationAccountCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccountCreate", Route: "POST /organization/accounts"}
+}
+
+func (UnimplementedStrict) OrganizationAccountDelete(context.Context, OrganizationAccountDeleteRequestObject) (OrganizationAccountDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccountDelete", Route: "DELETE /organization/accounts/{account}"}
+}
+
+func (UnimplementedStrict) OrganizationAccountUpdate(context.Context, OrganizationAccountUpdateRequestObject) (OrganizationAccountUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccountUpdate", Route: "PATCH /organization/accounts/{account}"}
+}
+
+func (UnimplementedStrict) OrganizationAccountClaim(context.Context, OrganizationAccountClaimRequestObject) (OrganizationAccountClaimResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccountClaim", Route: "POST /organization/accounts/{account}/claim"}
+}
+
+func (UnimplementedStrict) OrganizationAccountLimitClear(context.Context, OrganizationAccountLimitClearRequestObject) (OrganizationAccountLimitClearResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccountLimitClear", Route: "DELETE /organization/accounts/{account}/limits/{limit}"}
+}
+
+func (UnimplementedStrict) OrganizationAccountLimitSet(context.Context, OrganizationAccountLimitSetRequestObject) (OrganizationAccountLimitSetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAccountLimitSet", Route: "PUT /organization/accounts/{account}/limits/{limit}"}
+}
+
+func (UnimplementedStrict) OrganizationKeys(context.Context, OrganizationKeysRequestObject) (OrganizationKeysResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationKeys", Route: "GET /organization/keys"}
+}
+
+func (UnimplementedStrict) OrganizationKeyCreate(context.Context, OrganizationKeyCreateRequestObject) (OrganizationKeyCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationKeyCreate", Route: "POST /organization/keys"}
+}
+
+func (UnimplementedStrict) OrganizationKeyDelete(context.Context, OrganizationKeyDeleteRequestObject) (OrganizationKeyDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationKeyDelete", Route: "DELETE /organization/keys/{key}"}
+}
+
+func (UnimplementedStrict) OrganizationKeyDisable(context.Context, OrganizationKeyDisableRequestObject) (OrganizationKeyDisableResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationKeyDisable", Route: "POST /organization/keys/{key}/disable"}
+}
+
+func (UnimplementedStrict) OrganizationLimits(context.Context, OrganizationLimitsRequestObject) (OrganizationLimitsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationLimits", Route: "GET /organization/limits"}
+}
+
+func (UnimplementedStrict) OrganizationMembers(context.Context, OrganizationMembersRequestObject) (OrganizationMembersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationMembers", Route: "GET /organization/members"}
+}
+
+func (UnimplementedStrict) OrganizationMemberDeactivate(context.Context, OrganizationMemberDeactivateRequestObject) (OrganizationMemberDeactivateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationMemberDeactivate", Route: "POST /organization/members/{member}/deactivate"}
+}
+
+func (UnimplementedStrict) OrganizationAdminRevoke(context.Context, OrganizationAdminRevokeRequestObject) (OrganizationAdminRevokeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAdminRevoke", Route: "DELETE /organization/members/{member}/organization-admin"}
+}
+
+func (UnimplementedStrict) OrganizationAdminGrant(context.Context, OrganizationAdminGrantRequestObject) (OrganizationAdminGrantResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationAdminGrant", Route: "PUT /organization/members/{member}/organization-admin"}
+}
+
+func (UnimplementedStrict) OrganizationUsage(context.Context, OrganizationUsageRequestObject) (OrganizationUsageResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationUsage", Route: "GET /organization/usage"}
+}
+
 func (UnimplementedStrict) PersonalApiKeysEnabled(context.Context, PersonalApiKeysEnabledRequestObject) (PersonalApiKeysEnabledResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeysEnabled", Route: "GET /personal-api-keys-enabled"}
 }

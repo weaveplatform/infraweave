@@ -106,3 +106,12 @@ type APIKeys interface {
 	// *featuresapi.LimitError, and the exchange then issues no token.
 	TouchAPIKey(ctx context.Context, id kernel.ULID) error
 }
+
+// OrganizationKeys reads organization keys for the exchange.
+type OrganizationKeys interface {
+	// OrganizationKey reads the key id, whatever its organization.
+	OrganizationKey(ctx context.Context, id kernel.ULID) (apikey.OrganizationKey, error)
+	// TouchOrganizationKey records a use of the key id, at most once a
+	// minute.
+	TouchOrganizationKey(ctx context.Context, id kernel.ULID) error
+}

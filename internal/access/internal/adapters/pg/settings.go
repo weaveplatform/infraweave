@@ -185,47 +185,57 @@ var deleteAccount = []string{
 	`DELETE FROM account_settings WHERE account_id = $1`,
 }
 
-// DeleteAccount deletes the account under its organization's row lock, so
-// it counts the organization's accounts with every other deletion done.
+// DeleteAccount deletes the account once it is marked for deletion, under
+// its organization's row lock, so it counts the organization's accounts
+// with every other deletion done.
 func (s *Store) DeleteAccount(
 	ctx context.Context,
 	acct kernel.AccountID,
 	e kernel.OrganizationAuditEntry,
 ) ([]kernel.ULID, error) {
+	return s.removeAccount(ctx, kernel.OrganizationID{}, acct, true, settings.ErrInvalidState, e)
+}
+
+// removeAccount deletes the account acct, of org unless org is zero,
+// refusing with invalid an account not marked when marked is true and an
+// organization's last account. It returns the sessions it revoked.
+func (s *Store) removeAccount(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	acct kernel.AccountID,
+	marked bool,
+	invalid error,
+	e kernel.OrganizationAuditEntry,
+) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
-		var org kernel.OrganizationID
+		var held kernel.OrganizationID
 		err := q.QueryRow(ctx, `SELECT o.id FROM organizations o
-			JOIN accounts a ON a.organization_id = o.id WHERE a.id = $1 FOR UPDATE OF o`, acct).
-			Scan(&org)
+			JOIN accounts a ON a.organization_id = o.id
+			WHERE a.id = $1 AND ($2::uuid IS NULL OR o.id = $2) FOR UPDATE OF o`, acct, org).
+			Scan(&held)
 		if err != nil {
 			return read(err, "account", acct.ULID)
 		}
 		// A statement that waited for the lock still reads the snapshot it
 		// started with, which holds an account another deletion has since
 		// removed, so the state is read by the next statement, after it.
-		var exists, marked, last bool
+		var exists, isMarked, last bool
 		err = q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM accounts WHERE id = $1),
 				EXISTS (SELECT 1 FROM account_settings
 					WHERE account_id = $1 AND marked_at IS NOT NULL),
-				(SELECT count(*) FROM accounts WHERE organization_id = $2) = 1`, acct, org).
-			Scan(&exists, &marked, &last)
+				(SELECT count(*) FROM accounts WHERE organization_id = $2) = 1`, acct, held).
+			Scan(&exists, &isMarked, &last)
 		switch {
 		case err != nil:
 			return read(err, "account", acct.ULID)
 		case !exists:
 			return fmt.Errorf("%w: account %s", port.ErrNotFound, acct)
-		case !marked:
-			return fmt.Errorf(
-				"%w: the account is not marked for deletion",
-				settings.ErrInvalidState,
-			)
+		case marked && !isMarked:
+			return fmt.Errorf("%w: the account is not marked for deletion", invalid)
 		case last:
-			return fmt.Errorf(
-				"%w: the account is its organization's last",
-				settings.ErrInvalidState,
-			)
+			return fmt.Errorf("%w: the account is its organization's last", invalid)
 		}
 		revoked, err := revoke(ctx, q, `account_id = $1`, acct)
 		if err != nil {

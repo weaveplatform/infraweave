@@ -5,7 +5,8 @@
 // owns. New builds the domain on its Deps; API
 // is its partial of the API's strict server, aliased AccessAPI, and
 // OperatorAPI its partial of the operator API's, aliased
-// AccessOperatorAPI; OrganizationID finds an organization's ID by its
+// AccessOperatorAPI, the API's partial serving the Organization tag
+// through the orgadmin service; OrganizationID finds an organization's ID by its
 // slug, for the features domain's operator partial, and Seats counts an
 // organization's and an account's seats in use, for its seats read; Stream is
 // its migration stream and SealedColumns its sealed columns, which
@@ -35,8 +36,8 @@
 // # Dependencies
 //
 // It imports accessapi, featuresapi, whose Entitlements Deps.Features
-// carries for the organization and account deletes, the access domain's adapters (oidc among them) and
-// its apikey, authn, breakglass, operator, session, settings and token packages, platform/cron and platform/queue for its
+// carries for the organization and account deletes and the account limits, the access domain's adapters (oidc among them) and
+// its apikey, authn, breakglass, operator, orgadmin, session, settings and token packages, platform/cron and platform/queue for its
 // tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
 // platform/sql/notify, platform/httpkit/problem and chi. Only
 // internal/app and cmd/ import it, as the

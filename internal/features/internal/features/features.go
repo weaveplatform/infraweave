@@ -37,6 +37,8 @@ type Store interface {
 		lock bool,
 	) (featuresapi.Entitlement, error)
 	AccountLimit(ctx context.Context, acct kernel.AccountID, limit string) (int64, bool, error)
+	ClearAccountLimit(ctx context.Context, acct kernel.AccountID, limit string) error
+	AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error)
 	Billing(ctx context.Context) (bool, error)
 	// Tiers reads every tier's content.
 	Tiers(ctx context.Context) ([]features.Tier, error)
@@ -147,7 +149,9 @@ func (s *Service) DeleteOrganization(ctx context.Context, org kernel.Organizatio
 	return s.store.DeleteOrganization(ctx, org) //nolint:wrapcheck // as above
 }
 
-// SetAccountLimit sets acct's limit on limit.
+// SetAccountLimit sets acct's limit on limit, which must be a limit of
+// the catalogue, zero or more, and no more than org's pool as it applies
+// now; with billing off no pool applies.
 func (s *Service) SetAccountLimit(
 	ctx context.Context,
 	org kernel.OrganizationID,
@@ -155,7 +159,52 @@ func (s *Service) SetAccountLimit(
 	limit string,
 	value int64,
 ) error {
+	if f, ok := features.Lookup(limit); !ok || f.Kind != features.Limit {
+		return &featuresapi.AccountLimitError{Limit: limit, Value: value, Unknown: true}
+	}
+	if value < 0 {
+		return &featuresapi.AccountLimitError{Limit: limit, Value: value}
+	}
+	e, err := s.Entitlement(ctx, org)
+	if err != nil {
+		return err
+	}
+	if pool, ok := e.Limits[limit]; ok && value > pool {
+		return &featuresapi.AccountLimitError{Limit: limit, Value: value, Pool: pool}
+	}
 	return s.store.SetAccountLimit(ctx, org, acct, limit, value) //nolint:wrapcheck // as above
+}
+
+// ClearAccountLimit removes acct's limit on limit.
+func (s *Service) ClearAccountLimit(
+	ctx context.Context,
+	acct kernel.AccountID,
+	limit string,
+) error {
+	if f, ok := features.Lookup(limit); !ok || f.Kind != features.Limit {
+		return &featuresapi.AccountLimitError{Limit: limit, Unknown: true}
+	}
+	return s.store.ClearAccountLimit(ctx, acct, limit) //nolint:wrapcheck // as above
+}
+
+// LimitNames are the catalogue's limits, in name order.
+func (*Service) LimitNames() []string {
+	var out []string
+	for _, f := range features.Catalogue() {
+		if f.Kind == features.Limit {
+			out = append(out, f.Name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// AccountLimits are acct's limits by limit name.
+func (s *Service) AccountLimits(
+	ctx context.Context,
+	acct kernel.AccountID,
+) (map[string]int64, error) {
+	return s.store.AccountLimits(ctx, acct) //nolint:wrapcheck // as above
 }
 
 // DeleteAccount deletes acct's limits.

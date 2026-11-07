@@ -142,6 +142,12 @@ func TestUnitOperationsOf(t *testing.T) {
 	if err != nil || !ops["POST /me"].Organization {
 		t.Errorf("x-infraweave-access organization: %+v %v", ops, err)
 	}
+	ops, err = operationsOf(doc("/organization", &openapi3.Operation{
+		Extensions: map[string]any{"x-infraweave-access": "organization-admin"},
+	}), "")
+	if op := ops["POST /organization"]; err != nil || !op.OrganizationAdmin || op.Organization {
+		t.Errorf("x-infraweave-access organization-admin: %+v %v", ops, err)
+	}
 	for _, bad := range []any{"account", true} {
 		_, err := operationsOf(doc("/things", &openapi3.Operation{
 			Extensions: map[string]any{"x-infraweave-access": bad},
@@ -222,6 +228,7 @@ func TestUnitOperationAccess(t *testing.T) {
 	}{
 		{Operation{}, accessapi.Account},
 		{Operation{Organization: true}, accessapi.Organization},
+		{Operation{OrganizationAdmin: true}, accessapi.OrganizationAdmin},
 		{Operation{Public: true}, accessapi.Public},
 		{Operation{Public: true, Organization: true}, accessapi.Public},
 	} {

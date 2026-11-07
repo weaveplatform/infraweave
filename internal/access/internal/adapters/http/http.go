@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
@@ -30,6 +31,7 @@ type Server struct {
 	keys     *apikey.Service
 	accounts Accounts
 	settings *settings.Service
+	orgs     *orgadmin.Service
 }
 
 // Accounts reads an account; port.Tenancy is one.
@@ -37,15 +39,16 @@ type Accounts interface {
 	Account(ctx context.Context, id kernel.AccountID) (account.Account, error)
 }
 
-// NewServer returns the partial serving through auth, keys, accounts and
-// st.
+// NewServer returns the partial serving through auth, keys, accounts, st
+// and, for the Organization tag, orgs.
 func NewServer(
 	auth *authn.Service,
 	keys *apikey.Service,
 	accounts Accounts,
 	st *settings.Service,
+	orgs *orgadmin.Service,
 ) Server {
-	return Server{auth: auth, keys: keys, accounts: accounts, settings: st}
+	return Server{auth: auth, keys: keys, accounts: accounts, settings: st, orgs: orgs}
 }
 
 // refused is the detail of every refused credential, which names no part.
