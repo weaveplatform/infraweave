@@ -188,7 +188,7 @@ func (s Server) ApiKeyEnableNonAdminManagers(
 	}
 	on, err := s.keys.SetNonAdminManagers(ctx, p, req.Body.Enable)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the store marks an unreachable database
+		return nil, keyError(err, "")
 	}
 	return api.ApiKeyEnableNonAdminManagers200JSONResponse{Body: on}, nil
 }
@@ -217,9 +217,9 @@ func (s Server) onKey(
 }
 
 // keyError is err as the problem it answers: 404 for a key the caller's
-// account does not hold, 422 for input the service refuses, and err
-// itself otherwise, which the store marks when the database is
-// unreachable.
+// account does not hold, 422 for input the service refuses, 403 for a key
+// or a run managing keys where only people may, and err itself otherwise,
+// which the store marks when the database is unreachable.
 func keyError(err error, id string) error {
 	switch {
 	case errors.Is(err, port.ErrNotFound):
@@ -227,6 +227,8 @@ func keyError(err error, id string) error {
 		return problem.NotFound.Error(fmt.Sprintf("No API key %q in this account.", id))
 	case errors.Is(err, apikey.ErrInvalid):
 		return problem.ValidationFailed.Error(err.Error()) //nolint:wrapcheck // as above
+	case errors.Is(err, apikey.ErrNonHuman):
+		return problem.Forbidden.Error(err.Error()) //nolint:wrapcheck // as above
 	}
 	return err
 }

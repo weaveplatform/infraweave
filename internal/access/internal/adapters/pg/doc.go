@@ -4,15 +4,23 @@
 // identities and the members each account admits) and decision 0006's
 // credentials (API keys, sessions, signing keys and each organization's
 // break-glass credential), with migration 00003 adding each account's
-// api_key_non_admin_managers. Store implements port.Tenancy,
-// port.Sessions, port.APIKeys, apikey.Store and operator.Store, with an
+// api_key_non_admin_managers and 00004 its account_settings, a row
+// created on the first write, so an account without one reads each
+// column's default. Store implements port.Tenancy, port.Sessions,
+// port.APIKeys, apikey.Store, operator.Store and settings.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then
 // deletes its sessions, API keys, members and their identities, its
 // break-glass credential, its accounts, its rows in the features domain
 // through the featuresapi.Entitlements WithFeatures gives, and itself, as
-// every foreign key restricts. A key's first use in SeatWindow takes it a
+// every foreign key restricts. Deleting an account takes its
+// organization's row lock, so two deletions never both remove an
+// organization's last two accounts, then deletes the account's sessions,
+// API keys, admissions, settings and features rows and the account, and
+// records its organization trail entry in the same transaction; turning
+// personal keys off with disableExistingKeys disables them for ACCOUNT
+// and revokes their sessions. A key's first use in SeatWindow takes it a
 // seat, checked against the seats limit through the same Entitlements in
 // the transaction that records the use, counting each active member once
 // and each other live key that is not personal and was used in the window.
@@ -44,7 +52,7 @@
 // It imports the access domain's core packages and ports, featuresapi,
 // internal/kernel,
 // pgx, and platform/sql, platform/sql/migrate, platform/sql/notify,
-// platform/tx, platform/audit for the organization trail,
+// platform/tx, platform/audit for the account and organization trails,
 // platform/crypt for the sealed column and platform/crypt/signer for the
 // keys. Only the access domain's assembly
 // imports it.

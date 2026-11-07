@@ -146,6 +146,10 @@ func (s *store) SetNonAdminManagers(
 	return s.err()
 }
 
+func (s *store) NonHumanKeyManagers(context.Context, kernel.AccountID) (bool, error) {
+	return !s.peopleOnly, s.err()
+}
+
 // TestUnitAPIKeys runs the API Keys operations through the router: a key
 // is created with its secret, read, listed page by page, updated, reset,
 // which stops the old secret and its token, and deleted.
@@ -337,6 +341,25 @@ func TestUnitAPIKeyRefusals(t *testing.T) {
 		decode[api.ApiKey](t, rec).DisabledReason == nil {
 		t.Errorf("a disabled key: %d %s", rec.Code, rec.Body)
 	}
+	// The account lets only people manage keys: each change a key makes
+	// answers 403, and reading still works.
+	w.st.peopleOnly = true
+	for _, op := range []struct{ method, path, body string }{
+		{http.MethodPost, "/api-keys", `{"name":"x","teams":[]}`},
+		{http.MethodPut, "/api-keys/" + o.Id, `{"name":"y"}`},
+		{http.MethodDelete, "/api-keys/" + o.Id, ""},
+		{http.MethodPut, "/account/api-key-non-admin-managers", `{"enable":false}`},
+	} {
+		rec := w.do(t, op.method, op.path, bearer, op.body)
+		if p := decode[problem.Problem](t, rec); rec.Code != http.StatusForbidden ||
+			p.Type != problem.Forbidden.New("").Type {
+			t.Errorf("%s %s by a key: %d %+v", op.method, op.path, rec.Code, p)
+		}
+	}
+	if rec := w.do(t, http.MethodGet, "/api-keys", bearer, ""); rec.Code != http.StatusOK {
+		t.Errorf("listing by a key: %d %s", rec.Code, rec.Body)
+	}
+	w.st.peopleOnly = false
 	w.st.down = true
 	for _, op := range []struct{ method, path, body string }{
 		{http.MethodGet, "/api-keys", ""},

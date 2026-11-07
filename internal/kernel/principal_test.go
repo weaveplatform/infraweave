@@ -113,3 +113,12 @@ func TestUnitPrincipalContext(t *testing.T) {
 		t.Errorf("PrincipalFrom = %+v, %v", got, ok)
 	}
 }
+
+func TestUnitPrincipalHuman(t *testing.T) {
+	for _, k := range PrincipalKinds {
+		want := k == PrincipalUser || k == PrincipalBreakGlass
+		if got := (Principal{Kind: k}).Human(); got != want {
+			t.Errorf("%s: Human() = %v, want %v", k, got, want)
+		}
+	}
+}

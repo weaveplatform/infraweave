@@ -8,11 +8,14 @@ Feature: API keys
   (DV-013). An OIDC key exchanges a JWT of its issuer, which infraweave
   fetches over HTTPS only and from the allowed issuers only (DV-014). The
   home account's first key is seeded through SQL, as no credential exists
-  before it; every other key here is created through the API. The servers
-  trust the shared OIDC issuer's certificate and allow it alone.
+  before it; every other key here is created through the API. Keys manage
+  keys here because the home account allows it, a setting only a member
+  turns on, which account_settings.feature covers. The servers trust the
+  shared OIDC issuer's certificate and allow it alone.
 
   Background:
     Given two infraweave servers, A and B, on one database, allowing the shared OIDC issuer
+    And the home account lets API keys manage API keys
     And the home key is exchanged through A for token "admin"
 
   @op:apiKeyCreate @op:apiKeyUser @op:apiKey @op:apiKeys @case:success
@@ -67,6 +70,8 @@ Feature: API keys
   @op:apiKey @op:apiKeyUpdate @op:apiKeyReset @op:apiKeyDelete @case:denial
   Scenario: A key of another account answers 404
     When token "admin" creates the secret key "deploy" with team "ops" through A
+    And the stranger account lets API keys manage API keys
+    And the sibling account lets API keys manage API keys
     And the stranger key is exchanged through A for token "str"
     And the sibling key is exchanged through A for token "sib"
     Then token "str" reading, updating, resetting and deleting the key "deploy" through B each answer a 404 problem "not-found"

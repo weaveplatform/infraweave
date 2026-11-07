@@ -10,8 +10,15 @@
 // list the accounts that admit the caller's member and switch to one,
 // any other answering 404; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
 // apiKeyReset, apiKeyDelete and apiKeyEnableNonAdminManagers manage the
-// account's API keys, where a key of another account answers 404 and
-// input the service refuses 422 validation-failed; id, name, type and
+// account's API keys, where a key of another account answers 404, input
+// the service refuses 422 validation-failed, and an API key or run 403
+// forbidden while the account does not let API keys manage API keys; the
+// Account Settings operations read and set the settings no other domain
+// owns, where only a member flips accountToggleAPIKeyManagementFromNonHumans,
+// any other caller answering 403, a refused security email or redirect
+// host answers 422 validation-failed, confirming the deletion of an
+// unmarked account or its organization's last answers 409 invalid-state,
+// and an account gone since its token was issued answers 404; id, name, type and
 // defaultPrivateWorkerPoolRunnerImage read the caller's account, name
 // through Accounts. OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
@@ -39,7 +46,7 @@
 // # Dependencies
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
-// operator, organization, port and session packages, accessapi,
+// operator, organization, port, session and settings packages, accessapi,
 // featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.

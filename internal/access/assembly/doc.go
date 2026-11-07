@@ -1,7 +1,8 @@
 // Package assembly constructs the access domain: decision 0007's tenancy
-// (organizations, accounts, members and the members each account admits)
-// and decision 0006's identity (API keys, sessions, tokens, signing keys
-// and the break-glass credential). New builds the domain on its Deps; API
+// (organizations, accounts, members and the members each account admits),
+// decision 0006's identity (API keys, sessions, tokens, signing keys and
+// the break-glass credential), and the account settings no other domain
+// owns. New builds the domain on its Deps; API
 // is its partial of the API's strict server, aliased AccessAPI, and
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI; Stream is
@@ -32,8 +33,8 @@
 // # Dependencies
 //
 // It imports accessapi, featuresapi, whose Entitlements Deps.Features
-// carries for the organization delete, the access domain's adapters (oidc among them) and
-// its apikey, authn, breakglass, operator, session and token packages, platform/cron and platform/queue for its
+// carries for the organization and account deletes, the access domain's adapters (oidc among them) and
+// its apikey, authn, breakglass, operator, session, settings and token packages, platform/cron and platform/queue for its
 // tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
 // platform/sql/notify, platform/httpkit/problem and chi. Only
 // internal/app and cmd/ import it, as the
