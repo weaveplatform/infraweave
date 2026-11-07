@@ -437,7 +437,7 @@
     {
       "id": "seats",
       "kind": "limit",
-      "unit": "active members, each counted once however many accounts admit it, and API keys that are not personal, for 30 days from creation or last use",
+      "unit": "active members, each counted once however many accounts admit it, and API keys that are not personal and were used in the last 30 days; a key takes its seat on its first use in the window, which the limit may refuse",
       "values": {
         "free": 2,
         "starter": 2

@@ -96,7 +96,7 @@ Every limit is pooled across an organization's accounts. An empty cell means no 
 | `ai-budget` | spend of the installation's default AI integration across the organization's accounts, in USD per 30 days | 10 | | | | | P25 |
 | `private-workers` | registered private workers | 0 | 0 | 2 | 3 | | P8 |
 | `public-worker-slots` | runs in flight on the public worker pool; a run beyond it waits | 1 | 1 | 2 | 2 | | P14 |
-| `seats` | active members, each counted once however many accounts admit it, and API keys that are not personal, for 30 days from creation or last use | 2 | 2 | | | | P3b |
+| `seats` | active members, each counted once however many accounts admit it, and API keys that are not personal and were used in the last 30 days; a key takes its seat on its first use in the window, which the limit may refuse | 2 | 2 | | | | P3b |
 
 ## Summary by phase
 

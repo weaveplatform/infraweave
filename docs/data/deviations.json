@@ -167,8 +167,8 @@
       "id": "DV-018",
       "group": "Scope, tiers and clients: decision 0021",
       "spacelift": "Seat limits by plan",
-      "infraweave": "Seats are the `seats` limit of the organization's tier, pooled across its accounts, counting each active member once and each API key that is not personal for 30 days from its creation or last use, where Spacelift counts a key only once it is used, and enforced only while billing is on (DV-101); a seat beyond the pool, or beyond an account limit an organization admin sets, answers `403` `limit-reached`",
-      "why": "Seats are one more tier limit, with one refusal for every limit; counting a key from its creation stops an organization creating keys without limit before their first use",
+      "infraweave": "Seats are the `seats` limit of the organization's tier, pooled across its accounts, counting each member once and API keys as Spacelift counts them, and enforced only while billing is on (DV-101); a seat beyond the pool, or beyond an account limit an organization admin sets, answers `403` `limit-reached`",
+      "why": "Seats are one more tier limit, with one refusal for every limit",
       "impact": "None while billing is off; with billing on, the limits of Spacelift's documented plans until the operator changes them",
       "source": "[0021 Decision](../research/decisions/0021-capability-scope-and-supersession.md#tiers)"
     },

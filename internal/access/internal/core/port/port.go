@@ -101,6 +101,8 @@ type APIKeys interface {
 	// APIKey reads the key id, whatever its account, as the exchange must
 	// before it knows the account.
 	APIKey(ctx context.Context, id kernel.ULID) (apikey.Key, error)
-	// TouchAPIKey records a use of the key id, at most once a minute.
+	// TouchAPIKey records a use of the key id, at most once a minute. A
+	// use that takes the key a seat may be refused with a
+	// *featuresapi.LimitError, and the exchange then issues no token.
 	TouchAPIKey(ctx context.Context, id kernel.ULID) error
 }

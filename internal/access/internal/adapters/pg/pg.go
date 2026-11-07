@@ -64,8 +64,8 @@ func New(db DB) *Store { return &Store{db: db} }
 
 // WithFeatures returns s deleting an organization's rows in the features
 // domain, through f, in the transaction that deletes the organization, and
-// checking the seats limit through f in the transaction that creates an
-// API key.
+// checking the seats limit through f in the transaction that records an
+// API key's first use in SeatWindow.
 func (s *Store) WithFeatures(f featuresapi.Entitlements) *Store {
 	s.features = f
 	return s
