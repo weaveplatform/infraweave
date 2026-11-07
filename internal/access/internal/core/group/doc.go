@@ -1,0 +1,21 @@
+// Package group is Spacelift's managed user groups, each one account's: a
+// group names an identity provider group, and its members are the
+// account's managed users whose latest sign-in to the account reported
+// that name, so a group reaches no other account. Service lists, creates,
+// reads, describes and deletes the caller's account's groups, lists a
+// group's members, and lists the names the account's latest sign-ins
+// reported. A name another group of the account holds is
+// port.ErrSlugTaken, and role bindings, which arrive with P4b, are
+// user.ErrBindingsUnsupported. Every write carries its entry on the
+// account's trail.
+//
+// # Input and output
+//
+// None of its own: Service reads and writes through Store.
+//
+// # Dependencies
+//
+// It imports the standard library, internal/kernel and the access
+// domain's organization, port and user packages. The pg and http adapters
+// and the assembly use it.
+package group

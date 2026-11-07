@@ -11,10 +11,12 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
+	managed "github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -32,6 +34,8 @@ type Server struct {
 	accounts Accounts
 	settings *settings.Service
 	orgs     *orgadmin.Service
+	users    *managed.Service
+	groups   *group.Service
 }
 
 // Accounts reads an account; port.Tenancy is one.
@@ -39,16 +43,24 @@ type Accounts interface {
 	Account(ctx context.Context, id kernel.AccountID) (account.Account, error)
 }
 
-// NewServer returns the partial serving through auth, keys, accounts, st
-// and, for the Organization tag, orgs.
-func NewServer(
-	auth *authn.Service,
-	keys *apikey.Service,
-	accounts Accounts,
-	st *settings.Service,
-	orgs *orgadmin.Service,
-) Server {
-	return Server{auth: auth, keys: keys, accounts: accounts, settings: st, orgs: orgs}
+// Services are what the partial serves through: Orgs the Organization
+// tag, and Users and Groups the Managed Users tag.
+type Services struct {
+	Auth     *authn.Service
+	Keys     *apikey.Service
+	Accounts Accounts
+	Settings *settings.Service
+	Orgs     *orgadmin.Service
+	Users    *managed.Service
+	Groups   *group.Service
+}
+
+// NewServer returns the partial serving through sv.
+func NewServer(sv Services) Server {
+	return Server{
+		auth: sv.Auth, keys: sv.Keys, accounts: sv.Accounts, settings: sv.Settings, orgs: sv.Orgs,
+		users: sv.Users, groups: sv.Groups,
+	}
 }
 
 // refused is the detail of every refused credential, which names no part.

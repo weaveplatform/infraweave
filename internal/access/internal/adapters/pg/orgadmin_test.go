@@ -9,6 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
@@ -39,8 +40,8 @@ func trail(t *testing.T, x seeded, action string) int {
 	return n
 }
 
-// member adds a member of x's organization with status and returns it.
-func member(t *testing.T, x seeded, login, status string) kernel.MemberID {
+// addMember adds a member of x's organization with status and returns it.
+func addMember(t *testing.T, x seeded, login, status string) kernel.MemberID {
 	t.Helper()
 	m := kernel.NewMemberID()
 	if _, err := x.db.Exec(t.Context(), `INSERT INTO members (organization_id, id, login, name,
@@ -57,7 +58,7 @@ func TestAccOrganizationAdmins(t *testing.T) {
 	x := seed(t, db, "initech")
 	other := seed(t, db, "initrode")
 	s := x.s
-	bob := member(t, x, "bob", "deactivated")
+	bob := addMember(t, x, "bob", "deactivated")
 
 	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member); err != nil || ok {
 		t.Errorf("before a grant = %t, %v", ok, err)
@@ -95,7 +96,8 @@ func TestAccOrganizationAdmins(t *testing.T) {
 	}
 	for _, m := range ms {
 		alice := m.ID == x.member
-		if m.Admin != alice || m.Active != alice || (alice && m.Login != "alice") {
+		if m.Admin != alice || (m.Status == member.Active) != alice ||
+			(alice && m.Login != "alice") {
 			t.Errorf("member = %+v", m)
 		}
 	}
@@ -107,7 +109,12 @@ func TestAccOrganizationAdmins(t *testing.T) {
 	if err != nil || len(rest) != 1 || rest[0].ID == first[0].ID {
 		t.Errorf("second page = %+v, %v", rest, err)
 	}
-	if m, err := s.Member(ctx, x.org, bob); err != nil || m.Active || m.Login != "bob" {
+	if m, err := s.Member(
+		ctx,
+		x.org,
+		bob,
+	); err != nil || m.Status != member.Deactivated ||
+		m.Login != "bob" {
 		t.Errorf("bob = %+v, %v", m, err)
 	}
 	if _, err := s.Member(ctx, other.org, bob); !errors.Is(err, port.ErrNotFound) {
@@ -142,7 +149,7 @@ func TestAccClaim(t *testing.T) {
 	other := seed(t, db, "endframe")
 	f := &seats{}
 	s := pg.New(db).WithFeatures(f)
-	bob := member(t, x, "bob", "deactivated")
+	bob := addMember(t, x, "bob", "deactivated")
 	at := time.Date(2026, 11, 7, 9, 0, 0, 0, time.UTC)
 	claim := byAdmin(x, orgadmin.ActionAccountClaim)
 
@@ -363,7 +370,7 @@ func TestAccDeactivateMember(t *testing.T) {
 	if err != nil || k.DisabledReason != "DEPROVISIONED" {
 		t.Errorf("personal key = %+v, %v", k, err)
 	}
-	if m, err := x.s.Member(ctx, x.org, x.member); err != nil || m.Active {
+	if m, err := x.s.Member(ctx, x.org, x.member); err != nil || m.Status != member.Deactivated {
 		t.Errorf("member = %+v, %v", m, err)
 	}
 	if u, err := x.s.Seats(ctx, x.org, x.acct); err != nil || u.Organization != 0 {

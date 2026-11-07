@@ -1255,6 +1255,50 @@ paths:
         - cursor-pagination
         - rate-limit
       x-rest-style: read
+  /available-user-groups:
+    get:
+      description: >-
+        The groups the identity provider reported for the account's managed users at their latest sign-in, in name order: the names a managed user group can match.
+      operationId: availableUserGroups
+      x-infraweave-feature: managed-users
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableUserGroupsPage'
+          description: The availableUserGroups result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Available Groups
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/User Groups/List Available Groups.bru
+      x-graphql:
+        field: availableUserGroups
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
   /awareness-source-survey:
     get:
       description: >-
@@ -1760,6 +1804,718 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /managed-user-groups:
+    get:
+      description: >-
+        The account's managed user groups, oldest first. A group is the account's: its members are the account's managed users whose latest sign-in reported its name, and it reaches no other account.
+      operationId: managedUserGroups
+      x-infraweave-feature: managed-users
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroupPage'
+          description: The managedUserGroups result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List User Groups
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/User Groups/List User Groups.bru
+      x-graphql:
+        field: managedUserGroups
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+      operationId: managedUserGroupCreateV2
+      x-infraweave-feature: managed-users
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: My user group
+              groupName: my-user-group
+              roleBindings:
+                - roleID: ROLE_ID_HERE
+                  spaceID: root
+            schema:
+              $ref: '#/components/schemas/ManagedUserGroupCreateInputV2'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroup'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create User Group
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/User Groups/Create User Group.bru
+      x-graphql:
+        field: managedUserGroupCreateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /managed-user-groups/{managedUserGroupId}:
+    delete:
+      description: >-
+        Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
+      operationId: managedUserGroupDelete
+      x-infraweave-feature: managed-users
+      parameters:
+        - in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroup'
+          description: The managedUserGroupDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete User Group
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/User Groups/Delete User Group.bru
+      x-graphql:
+        field: managedUserGroupDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: >-
+        The account's managed user group; a group of another account answers 404.
+      operationId: managedUserGroup
+      x-infraweave-feature: managed-users
+      parameters:
+        - in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroup'
+          description: The managedUserGroup result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get User Group
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/User Groups/Get User Group.bru
+      x-graphql:
+        field: managedUserGroup
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: item
+    put:
+      description: >-
+        Set the description of the account's managed user group.
+      operationId: managedUserGroupUpdateV2
+      x-infraweave-feature: managed-users
+      parameters:
+        - description: Globally unique, immutable ID of ManagedUserGroup.
+          in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: input.id
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: Updated description
+            schema:
+              $ref: '#/components/schemas/ManagedUserGroupUpdateInputV2Body'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroup'
+          description: The managedUserGroupUpdateV2 result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update User Group
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/User Groups/Update User Group.bru
+      x-graphql:
+        field: managedUserGroupUpdateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: update
+  /managed-user-groups/{managedUserGroupId}/managed-users:
+    get:
+      description: >-
+        The managed users of the account whose latest sign-in reported the group's name, oldest first.
+      operationId: managedUserGroupManagedUsers
+      x-infraweave-feature: managed-users
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserPage'
+          description: The managedUsers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Managed user group managed users
+      tags:
+        - Managed Users
+      x-graphql:
+        field: managedUsers
+        operation: query
+        type: ManagedUserGroup
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: field
+  /managed-user-invite-requests:
+    post:
+      description: >-
+        Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+      operationId: managedUserRequestInvite
+      x-infraweave-feature: managed-users
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              email: user@example.com
+              userName: myuser
+            schema:
+              $ref: '#/components/schemas/ManagedUserRequestInviteRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Request Invite
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Request Invite.bru
+      x-graphql:
+        field: managedUserRequestInvite
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
+  /managed-users:
+    get:
+      description: >-
+        The account's managed users, oldest first: the organization's members the account admits, invited or signed in. A member another account admits appears here only once this account admits it too.
+      operationId: managedUsers
+      x-infraweave-feature: managed-users
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserPage'
+          description: The managedUsers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Managed Users
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/List Managed Users.bru
+      x-graphql:
+        field: managedUsers
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+      operationId: managedUserInviteV2
+      x-infraweave-feature: managed-users
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              invitationEmail: user@example.com
+              roleBindings:
+                - roleID: ROLE_ID_HERE
+                  spaceID: root
+              username: myuser
+            schema:
+              $ref: '#/components/schemas/ManagedUserInviteInputV2'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Invite Managed User
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Invite Managed User.bru
+      x-graphql:
+        field: managedUserInviteV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
+  /managed-users/{managedUserId}:
+    delete:
+      description: >-
+        Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
+      operationId: managedUserDelete
+      x-infraweave-feature: managed-users
+      parameters:
+        - in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: The managedUserDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Managed User
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Delete Managed User.bru
+      x-graphql:
+        field: managedUserDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: >-
+        The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+      operationId: managedUser
+      x-infraweave-feature: managed-users
+      parameters:
+        - in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: The managedUser result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Managed User
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Get Managed User.bru
+      x-graphql:
+        field: managedUser
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: item
+    put:
+      description: >-
+        Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+      operationId: managedUserUpdate
+      x-infraweave-feature: managed-users
+      parameters:
+        - description: Globally unique, immutable ID of ManagedUser to update.
+          in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: input.id
+      requestBody:
+        content:
+          application/json:
+            example:
+              accessRules:
+                - space: root
+                  spaceAccessLevel: READ
+              slackMemberID: SLACK_MEMBER_ID_HERE
+            schema:
+              $ref: '#/components/schemas/ManagedUserUpdateInputBody'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: The managedUserUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Managed User
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Update Managed User.bru
+      x-graphql:
+        field: managedUserUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: update
+  /managed-users/{managedUserId}/personal-api-keys:
+    get:
+      description: >-
+        The managed user's personal API keys in the account, oldest first, including those disabled as DEPROVISIONED.
+      operationId: managedUserPersonalApiKeys
+      x-infraweave-feature: managed-users
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyPage'
+          description: The personalApiKeys result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Managed user personal api keys
+      tags:
+        - Managed Users
+      x-graphql:
+        field: personalApiKeys
+        operation: query
+        type: ManagedUser
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: field
+  /managed-users/{managedUserId}/resend-invite:
+    post:
+      description: >-
+        Resend the managed user's invitation, which moves its sentAt to now and so restarts its 24 hours; nothing is delivered. A managed user who has accepted their invitation, or has none, answers 409 invalid-state.
+      operationId: managedUserResendInvite
+      x-infraweave-feature: managed-users
+      parameters:
+        - in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: The managedUserResendInvite result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Resend Invite
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Resend Invite.bru
+      x-graphql:
+        field: managedUserResendInvite
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
   /marked-for-deletion:
     get:
       description: Whether the account is marked for deletion.
@@ -3031,6 +3787,67 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
+  /spaces/{spaceId}/role-change-requests:
+    post:
+      description: >-
+        Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+      operationId: managedUserRequestRoleChange
+      x-infraweave-feature: managed-users
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: spaceId
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              requestedAccessLevel: READ
+            schema:
+              $ref: '#/components/schemas/ManagedUserRequestRoleChangeRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Request Role Change
+      tags:
+        - Managed Users
+      x-bruno: Managed Users/Request Role Change.bru
+      x-graphql:
+        field: managedUserRequestRoleChange
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
         - rate-limit
       x-rest-style: override
   /stack-dependencies:
@@ -7887,6 +8704,19 @@ components:
       required:
         - account
       type: object
+    AvailableUserGroupsPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            type: string
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
     AwarenessSourceSurvey:
       properties:
         completed:
@@ -9328,6 +10158,20 @@ components:
         - provider
       type: object
       x-graphql-type: IdentityFederation
+    IdentityProvider:
+      enum:
+        - UNKNOWN
+        - GITHUB
+        - GOOGLE
+        - GITLAB
+        - MICROSOFT
+        - OIDC
+        - SAML
+        - EMPTY
+      type: string
+      x-enum-descriptions:
+        EMPTY: Default setting for self-hosted installations before SAML or OIDC is configured. Not valid in SaaS.
+      x-graphql-type: IdentityProvider
     IntentProjectReference:
       description: |-
         IntentProjectReference is a lightweight pointer to an IntentProject,
@@ -9722,6 +10566,256 @@ components:
         - pageInfo
       type: object
       x-graphql-type: ManagedStateVersionOutput
+    ManagedUser:
+      properties:
+        accessRules:
+          description: List of permissions given explicitly to given user.
+          items:
+            $ref: '#/components/schemas/SpaceAccessRule'
+          type: array
+        groupCount:
+          description: Number of groups in your identity provider that this user was a member of on last login.
+          format: int32
+          type: integer
+        id:
+          description: Globally unique, immutable ID of ManagedUser.
+          type: string
+        invitationEmail:
+          description: Email through which user was invited to given account. Can be empty.
+          nullable: true
+          type: string
+        lastLoginTime:
+          description: Unix timestamp (in seconds) at which user has last authenticated.
+          format: int32
+          nullable: true
+          type: integer
+        latestGroups:
+          description: Groups in your identity provider that this user was a member of on last login.
+          items:
+            type: string
+          type: array
+        latestInvitation:
+          $ref: '#/components/schemas/ManagedUserInvitation'
+        loginMethod:
+          $ref: '#/components/schemas/IdentityProvider'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        scimGroupMemberships:
+          description: Names of groups the user is a SCIM-provisioned member of.
+          items:
+            type: string
+          type: array
+        scimMetadata:
+          $ref: '#/components/schemas/SCIMUserMetadata'
+        slackMemberID:
+          description: The Slack member ID that acts with this managed user's permissions through the Slack integration.
+          nullable: true
+          type: string
+        spaceCount:
+          description: Number of spaces user was explicitly given permissions to.
+          format: int32
+          type: integer
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        username:
+          description: Username from account's identity provider.
+          type: string
+      required:
+        - accessRules
+        - groupCount
+        - id
+        - latestGroups
+        - loginMethod
+        - role
+        - scimGroupMemberships
+        - spaceCount
+        - status
+        - username
+      type: object
+      x-graphql-omitted:
+        personalApiKeys: served by GET /managed-users/{managedUserId}/personal-api-keys
+        userRoleBindings: served by GET /managed-users/{managedUserId}/user-role-bindings
+      x-graphql-type: ManagedUser
+    ManagedUserGroup:
+      properties:
+        accessRules:
+          description: List of permissions given explicitly to given user group.
+          items:
+            $ref: '#/components/schemas/SpaceAccessRule'
+          type: array
+        description:
+          description: Description is optional, user-provided text describing the group resource or serving as a human-readable name.
+          type: string
+        groupName:
+          description: Name of user group from account's identity provider.
+          type: string
+        id:
+          description: Globally unique, immutable ID of ManagedUserGroup.
+          type: string
+        identityProvider:
+          $ref: '#/components/schemas/IdentityProvider'
+        lastLoginTime:
+          description: Unix timestamp (in seconds) at which user from this group was last authenticated.
+          format: int32
+          nullable: true
+          type: integer
+        memberCount:
+          description: Number of members of this group who logged into this account.
+          format: int32
+          type: integer
+        members:
+          description: Members of this group
+          items:
+            type: string
+          type: array
+        scimMetadata:
+          $ref: '#/components/schemas/SCIMGroupMetadata'
+        spaceCount:
+          description: Number of spaces user group was explicitly given permissions to.
+          format: int32
+          type: integer
+        status:
+          $ref: '#/components/schemas/UserGroupStatus'
+      required:
+        - accessRules
+        - description
+        - groupName
+        - id
+        - identityProvider
+        - memberCount
+        - members
+        - spaceCount
+        - status
+      type: object
+      x-graphql-omitted:
+        managedUsers: served by GET /managed-user-groups/{managedUserGroupId}/managed-users
+        userRoleBindings: served by GET /managed-user-groups/{managedUserGroupId}/user-role-bindings
+      x-graphql-type: ManagedUserGroup
+    ManagedUserGroupCreateInputV2:
+      properties:
+        description:
+          nullable: true
+          type: string
+        groupName:
+          type: string
+        roleBindings:
+          items:
+            $ref: '#/components/schemas/RoleBindingInput'
+          type: array
+      required:
+        - groupName
+        - roleBindings
+      type: object
+      x-graphql-type: ManagedUserGroupCreateInputV2
+    ManagedUserGroupPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ManagedUserGroup'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    ManagedUserGroupUpdateInputV2Body:
+      properties:
+        description:
+          nullable: true
+          type: string
+      type: object
+      x-graphql-in-path: id
+      x-graphql-type: ManagedUserGroupUpdateInputV2
+    ManagedUserInvitation:
+      properties:
+        createdAt:
+          description: Unix timestamp (in seconds) at which this invitation was issued.
+          format: int32
+          type: integer
+        sentAt:
+          description: Unix timestamp (in seconds) at which the invitation was sent. Can be empty for unsent invitations.
+          format: int32
+          nullable: true
+          type: integer
+      required:
+        - createdAt
+      type: object
+      x-graphql-type: ManagedUserInvitation
+    ManagedUserInviteInputV2:
+      properties:
+        invitationEmail:
+          description: Email address of the user to invite.
+          nullable: true
+          type: string
+        roleBindings:
+          description: Access rules for the user.
+          items:
+            $ref: '#/components/schemas/RoleBindingInput'
+          type: array
+        slackMemberID:
+          description: new slack member ID
+          nullable: true
+          type: string
+        username:
+          description: Unique identifier of a user within an identity provider.
+          type: string
+      required:
+        - roleBindings
+        - username
+      type: object
+      x-graphql-type: ManagedUserInviteInputV2
+    ManagedUserPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ManagedUser'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    ManagedUserRequestInviteRequest:
+      description: The arguments of managedUserRequestInvite not carried in the path.
+      properties:
+        email:
+          type: string
+        userName:
+          type: string
+      required:
+        - email
+        - userName
+      type: object
+      x-graphql-args-of: managedUserRequestInvite
+    ManagedUserRequestRoleChangeRequest:
+      description: The arguments of managedUserRequestRoleChange not carried in the path.
+      properties:
+        requestedAccessLevel:
+          $ref: '#/components/schemas/SpaceAccessLevel'
+      required:
+        - requestedAccessLevel
+      type: object
+      x-graphql-args-of: managedUserRequestRoleChange
+    ManagedUserUpdateInputBody:
+      properties:
+        accessRules:
+          description: new access rules
+          items:
+            $ref: '#/components/schemas/SpaceAccessRuleInput'
+          type: array
+        slackMemberID:
+          description: new slack member ID
+          nullable: true
+          type: string
+      required:
+        - accessRules
+      type: object
+      x-graphql-in-path: id
+      x-graphql-type: ManagedUserUpdateInput
     MessageQueueStats:
       description: |-
         MessageQueueStats is a point-in-time snapshot of how many messages a single
@@ -10248,9 +11342,11 @@ components:
         - items
       type: object
     OrganizationMemberStatus:
-      description: Whether the member may sign in; a deactivated member holds no seat.
+      description: >-
+        Whether the member may sign in: ACTIVE once they have, PENDING while an invitation awaits them, DEACTIVATED once an organization admin deactivated them. A deactivated member holds no seat.
       enum:
         - ACTIVE
+        - PENDING
         - DEACTIVATED
       type: string
     OrganizationUpdateRequest:
@@ -10806,6 +11902,19 @@ components:
         - phantom
       type: object
       x-graphql-type: PulumiStack
+    RoleBindingInput:
+      properties:
+        roleID:
+          description: ID of the role.
+          type: string
+        spaceID:
+          description: ID of the space.
+          type: string
+      required:
+        - roleID
+        - spaceID
+      type: object
+      x-graphql-type: RoleBindingInput
     RoleRef:
       description: A reference to a Role; fetch it with GET /roles/{roleId}.
       properties:
@@ -11769,6 +12878,49 @@ components:
           type: string
       type: object
       x-graphql-type: RuntimeConfigInput
+    SCIMGroupMetadata:
+      properties:
+        externalId:
+          description: External ID assigned by the SCIM identity provider
+          type: string
+      required:
+        - externalId
+      type: object
+      x-graphql-type: SCIMGroupMetadata
+    SCIMUserMetadata:
+      properties:
+        displayName:
+          description: Display name from the SCIM identity provider (RFC 7643 §4.1.1)
+          type: string
+        email:
+          description: Email address from the SCIM identity provider
+          type: string
+        externalId:
+          description: External ID assigned by the SCIM identity provider
+          type: string
+        familyName:
+          description: Family (last) name from the SCIM identity provider
+          type: string
+        formattedName:
+          description: Formatted full name from the SCIM identity provider
+          type: string
+        givenName:
+          description: Given (first) name from the SCIM identity provider
+          type: string
+        provisionedAt:
+          description: Unix timestamp (seconds) at which the user was provisioned via SCIM
+          format: int32
+          type: integer
+      required:
+        - displayName
+        - email
+        - externalId
+        - familyName
+        - formattedName
+        - givenName
+        - provisionedAt
+      type: object
+      x-graphql-type: SCIMUserMetadata
     ScheduledDelete:
       properties:
         cronSchedule:
@@ -12604,6 +13756,18 @@ components:
         - spaceAccessLevel
       type: object
       x-graphql-type: SpaceAccessRule
+    SpaceAccessRuleInput:
+      properties:
+        space:
+          description: Slug of the space that this access rule affects.
+          type: string
+        spaceAccessLevel:
+          $ref: '#/components/schemas/SpaceAccessLevel'
+      required:
+        - space
+        - spaceAccessLevel
+      type: object
+      x-graphql-type: SpaceAccessRuleInput
     SpaceActions:
       description: SpaceActions define which actions are allowed in a space.
       properties:
@@ -14989,6 +16153,27 @@ components:
         - validUntil
       type: object
       x-graphql-type: User
+    UserGroupStatus:
+      enum:
+        - ACTIVE
+        - INACTIVE
+      type: string
+      x-graphql-type: UserGroupStatus
+    UserRole:
+      enum:
+        - USER
+        - ADMIN
+        - OWNER
+      type: string
+      x-graphql-type: UserRole
+    UserStatus:
+      enum:
+        - QUEUED
+        - PENDING
+        - ACTIVE
+        - INACTIVE
+      type: string
+      x-graphql-type: UserStatus
     VCSIntegrationRef:
       description: A reference to a VCSIntegration; fetch it with GET /vcs-integrations/{vcsIntegrationId}.
       properties:

@@ -10,6 +10,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -106,7 +107,7 @@ func (s *store) CreateAccount(
 	admin kernel.MemberID,
 	e kernel.OrganizationAuditEntry,
 ) error {
-	if m, ok := s.members[admin]; !ok || !m.Active {
+	if m, ok := s.members[admin]; !ok || m.Status != member.Active {
 		return orgadmin.ErrNoAdmin
 	}
 	if err := s.record("CreateAccount", e); err != nil {
@@ -131,7 +132,7 @@ func (s *store) ClaimAccount(
 		if a.Claimed() {
 			return account.Account{}, orgadmin.ErrInvalidState
 		}
-		if m, ok := s.members[admin]; !ok || !m.Active {
+		if m, ok := s.members[admin]; !ok || m.Status != member.Active {
 			return account.Account{}, orgadmin.ErrNoAdmin
 		}
 		if err := s.record("ClaimAccount", e); err != nil {
@@ -389,8 +390,8 @@ func newWorld(t *testing.T) *world {
 		admins:   map[kernel.MemberID]bool{w.alice: true},
 		accounts: []account.Account{w.acct},
 		members: map[kernel.MemberID]orgadmin.Member{
-			w.alice: {ID: w.alice, Login: "alice", Active: true, Admin: true},
-			w.bob:   {ID: w.bob, Login: "bob", Active: true},
+			w.alice: {ID: w.alice, Login: "alice", Status: member.Active, Admin: true},
+			w.bob:   {ID: w.bob, Login: "bob", Status: member.Active},
 		},
 		keys:  map[kernel.ULID]apikey.OrganizationKey{},
 		seats: featuresapi.Usage{Organization: 3, Account: 1},
@@ -550,7 +551,7 @@ func TestUnitAccounts(t *testing.T) {
 		},
 		"a deactivated admin": func() error {
 			m := w.st.members[w.bob]
-			m.Active = false
+			m.Status = member.Deactivated
 			w.st.members[w.bob] = m
 			_, err := w.s.CreateAccount(ctx, admin, "acme-three", "Acme", w.bob.String())
 			return err
@@ -625,7 +626,7 @@ func TestUnitMembers(t *testing.T) {
 		t.Errorf("entry = %+v", e)
 	}
 	m, err = w.s.Deactivate(ctx, admin, w.bob.String())
-	if err != nil || m.Active || len(w.dropped) != 1 {
+	if err != nil || m.Status != member.Deactivated || len(w.dropped) != 1 {
 		t.Errorf("deactivate = %+v, %v, dropped %v", m, err, w.dropped)
 	}
 	for name, id := range map[string]string{"no member": kernel.NewULID().String(), "not an ID": "bob"} {

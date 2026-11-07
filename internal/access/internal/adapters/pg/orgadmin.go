@@ -187,27 +187,40 @@ func (s *Store) admit(
 	if err != nil {
 		return fmt.Errorf("access: read member %s: %w", admin, sql.Unavailable(err))
 	}
-	if s.features != nil {
-		err := s.features.CheckLimit(ctx, org, acct, featuresapi.Seats,
-			func(ctx context.Context) (featuresapi.Usage, error) {
-				u, err := s.countSeats(ctx, org, acct, kernel.ULID{})
-				// A member another account admits holds its seat already, so
-				// the organization's count does not grow with this
-				// admission; CheckLimit asks whether one more fits.
-				if seated {
-					u.Organization--
-				}
-				return u, err
-			})
-		if err != nil {
-			return err //nolint:wrapcheck // the features domain names the refusal
-		}
+	if err := s.checkSeat(ctx, org, acct, seated); err != nil {
+		return err
 	}
 	if _, err := q.Exec(ctx, `INSERT INTO account_users (account_id, organization_id, member_id)
 		VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, acct, org, admin); err != nil {
 		return fmt.Errorf("access: admit member %s: %w", admin, sql.Unavailable(err))
 	}
 	return nil
+}
+
+// checkSeat checks the seat admitting a member to acct takes against the
+// seats limit while the features domain is held; seated is whether
+// another account of org admits the member already.
+func (s *Store) checkSeat(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	acct kernel.AccountID,
+	seated bool,
+) error {
+	if s.features == nil {
+		return nil
+	}
+	//nolint:wrapcheck // the features domain names the refusal
+	return s.features.CheckLimit(ctx, org, acct, featuresapi.Seats,
+		func(ctx context.Context) (featuresapi.Usage, error) {
+			u, err := s.countSeats(ctx, org, acct, kernel.ULID{})
+			// A member another account admits holds its seat already, so
+			// the organization's count does not grow with this admission;
+			// CheckLimit asks whether one more fits.
+			if seated {
+				u.Organization--
+			}
+			return u, err
+		})
 }
 
 // RenameAccount renames org's account acct and records e.
@@ -244,13 +257,13 @@ func (s *Store) RemoveAccount(
 
 // memberColumns are what scanMember reads, in its order, from members as
 // m.
-const memberColumns = `m.id, m.login, m.name, m.email, m.status = 'active', m.created_at,
+const memberColumns = `m.id, m.login, m.name, m.email, m.status, m.created_at,
 	EXISTS (SELECT 1 FROM organization_admins r
 		WHERE r.organization_id = m.organization_id AND r.member_id = m.id)`
 
 func scanMember(r pgx.Row) (orgadmin.Member, error) {
 	var m orgadmin.Member
-	err := r.Scan(&m.ID, &m.Login, &m.Name, &m.Email, &m.Active, &m.CreatedAt, &m.Admin)
+	err := r.Scan(&m.ID, &m.Login, &m.Name, &m.Email, &m.Status, &m.CreatedAt, &m.Admin)
 	return m, err //nolint:wrapcheck // the caller names the read
 }
 

@@ -857,6 +857,42 @@ func (e ForceApplyMode) Valid() bool {
 	}
 }
 
+// Defines values for IdentityProvider.
+const (
+	IdentityProviderEMPTY     IdentityProvider = "EMPTY"
+	IdentityProviderGITHUB    IdentityProvider = "GITHUB"
+	IdentityProviderGITLAB    IdentityProvider = "GITLAB"
+	IdentityProviderGOOGLE    IdentityProvider = "GOOGLE"
+	IdentityProviderMICROSOFT IdentityProvider = "MICROSOFT"
+	IdentityProviderOIDC      IdentityProvider = "OIDC"
+	IdentityProviderSAML      IdentityProvider = "SAML"
+	IdentityProviderUNKNOWN   IdentityProvider = "UNKNOWN"
+)
+
+// Valid indicates whether the value is a known member of the IdentityProvider enum.
+func (e IdentityProvider) Valid() bool {
+	switch e {
+	case IdentityProviderEMPTY:
+		return true
+	case IdentityProviderGITHUB:
+		return true
+	case IdentityProviderGITLAB:
+		return true
+	case IdentityProviderGOOGLE:
+		return true
+	case IdentityProviderMICROSOFT:
+		return true
+	case IdentityProviderOIDC:
+		return true
+	case IdentityProviderSAML:
+		return true
+	case IdentityProviderUNKNOWN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for KubernetesResourceKind.
 const (
 	KubernetesResourceKindKubernetesResource KubernetesResourceKind = "KubernetesResource"
@@ -1035,6 +1071,7 @@ func (e OpenTofuWorkflowTool) Valid() bool {
 const (
 	OrganizationMemberStatusACTIVE      OrganizationMemberStatus = "ACTIVE"
 	OrganizationMemberStatusDEACTIVATED OrganizationMemberStatus = "DEACTIVATED"
+	OrganizationMemberStatusPENDING     OrganizationMemberStatus = "PENDING"
 )
 
 // Valid indicates whether the value is a known member of the OrganizationMemberStatus enum.
@@ -1043,6 +1080,8 @@ func (e OrganizationMemberStatus) Valid() bool {
 	case OrganizationMemberStatusACTIVE:
 		return true
 	case OrganizationMemberStatusDEACTIVATED:
+		return true
+	case OrganizationMemberStatusPENDING:
 		return true
 	default:
 		return false
@@ -1952,45 +1991,108 @@ func (e TerragruntTool) Valid() bool {
 	}
 }
 
+// Defines values for UserGroupStatus.
+const (
+	UserGroupStatusACTIVE   UserGroupStatus = "ACTIVE"
+	UserGroupStatusINACTIVE UserGroupStatus = "INACTIVE"
+)
+
+// Valid indicates whether the value is a known member of the UserGroupStatus enum.
+func (e UserGroupStatus) Valid() bool {
+	switch e {
+	case UserGroupStatusACTIVE:
+		return true
+	case UserGroupStatusINACTIVE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserRole.
+const (
+	UserRoleADMIN UserRole = "ADMIN"
+	UserRoleOWNER UserRole = "OWNER"
+	UserRoleUSER  UserRole = "USER"
+)
+
+// Valid indicates whether the value is a known member of the UserRole enum.
+func (e UserRole) Valid() bool {
+	switch e {
+	case UserRoleADMIN:
+		return true
+	case UserRoleOWNER:
+		return true
+	case UserRoleUSER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserStatus.
+const (
+	UserStatusACTIVE   UserStatus = "ACTIVE"
+	UserStatusINACTIVE UserStatus = "INACTIVE"
+	UserStatusPENDING  UserStatus = "PENDING"
+	UserStatusQUEUED   UserStatus = "QUEUED"
+)
+
+// Valid indicates whether the value is a known member of the UserStatus enum.
+func (e UserStatus) Valid() bool {
+	switch e {
+	case UserStatusACTIVE:
+		return true
+	case UserStatusINACTIVE:
+		return true
+	case UserStatusPENDING:
+		return true
+	case UserStatusQUEUED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for VCSProvider.
 const (
-	AZUREDEVOPS         VCSProvider = "AZURE_DEVOPS"
-	BITBUCKETCLOUD      VCSProvider = "BITBUCKET_CLOUD"
-	BITBUCKETDATACENTER VCSProvider = "BITBUCKET_DATACENTER"
-	BLOB                VCSProvider = "BLOB"
-	GIT                 VCSProvider = "GIT"
-	GITHUB              VCSProvider = "GITHUB"
-	GITHUBENTERPRISE    VCSProvider = "GITHUB_ENTERPRISE"
-	GITLAB              VCSProvider = "GITLAB"
-	INFRAWEAVE          VCSProvider = "INFRAWEAVE"
-	ORIGIN              VCSProvider = "ORIGIN"
-	SHOWCASE            VCSProvider = "SHOWCASE"
+	VCSProviderAZUREDEVOPS         VCSProvider = "AZURE_DEVOPS"
+	VCSProviderBITBUCKETCLOUD      VCSProvider = "BITBUCKET_CLOUD"
+	VCSProviderBITBUCKETDATACENTER VCSProvider = "BITBUCKET_DATACENTER"
+	VCSProviderBLOB                VCSProvider = "BLOB"
+	VCSProviderGIT                 VCSProvider = "GIT"
+	VCSProviderGITHUB              VCSProvider = "GITHUB"
+	VCSProviderGITHUBENTERPRISE    VCSProvider = "GITHUB_ENTERPRISE"
+	VCSProviderGITLAB              VCSProvider = "GITLAB"
+	VCSProviderINFRAWEAVE          VCSProvider = "INFRAWEAVE"
+	VCSProviderORIGIN              VCSProvider = "ORIGIN"
+	VCSProviderSHOWCASE            VCSProvider = "SHOWCASE"
 )
 
 // Valid indicates whether the value is a known member of the VCSProvider enum.
 func (e VCSProvider) Valid() bool {
 	switch e {
-	case AZUREDEVOPS:
+	case VCSProviderAZUREDEVOPS:
 		return true
-	case BITBUCKETCLOUD:
+	case VCSProviderBITBUCKETCLOUD:
 		return true
-	case BITBUCKETDATACENTER:
+	case VCSProviderBITBUCKETDATACENTER:
 		return true
-	case BLOB:
+	case VCSProviderBLOB:
 		return true
-	case GIT:
+	case VCSProviderGIT:
 		return true
-	case GITHUB:
+	case VCSProviderGITHUB:
 		return true
-	case GITHUBENTERPRISE:
+	case VCSProviderGITHUBENTERPRISE:
 		return true
-	case GITLAB:
+	case VCSProviderGITLAB:
 		return true
-	case INFRAWEAVE:
+	case VCSProviderINFRAWEAVE:
 		return true
-	case ORIGIN:
+	case VCSProviderORIGIN:
 		return true
-	case SHOWCASE:
+	case VCSProviderSHOWCASE:
 		return true
 	default:
 		return false
@@ -2266,6 +2368,14 @@ type AuthAccount struct {
 type AuthSessionAccountRequest struct {
 	// Account The ID of an account that admits the caller's member.
 	Account string `json:"account"`
+}
+
+// AvailableUserGroupsPage One page of a cursor-paginated list (decision 0003).
+type AvailableUserGroupsPage struct {
+	Items []string `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
 // AwarenessSourceSurvey defines model for AwarenessSourceSurvey.
@@ -3172,6 +3282,9 @@ type IdentityFederation struct {
 	Provider FederationProvider `json:"provider"`
 }
 
+// IdentityProvider defines model for IdentityProvider.
+type IdentityProvider string
+
 // IntentProjectReference IntentProjectReference is a lightweight pointer to an IntentProject,
 // returned by relations (e.g. WorkerPool.intentProjects) that don't need to
 // expose the full IntentProject surface area.
@@ -3430,6 +3543,147 @@ type ManagedStateVersionConnection struct {
 type ManagedStateVersionOutput struct {
 	Edges    []ManagedStateVersionConnection `json:"edges"`
 	PageInfo PageInfo                        `json:"pageInfo"`
+}
+
+// ManagedUser defines model for ManagedUser.
+type ManagedUser struct {
+	// AccessRules List of permissions given explicitly to given user.
+	AccessRules []SpaceAccessRule `json:"accessRules"`
+
+	// GroupCount Number of groups in your identity provider that this user was a member of on last login.
+	GroupCount int32 `json:"groupCount"`
+
+	// Id Globally unique, immutable ID of ManagedUser.
+	Id string `json:"id"`
+
+	// InvitationEmail Email through which user was invited to given account. Can be empty.
+	InvitationEmail *string `json:"invitationEmail,omitempty"`
+
+	// LastLoginTime Unix timestamp (in seconds) at which user has last authenticated.
+	LastLoginTime *int32 `json:"lastLoginTime,omitempty"`
+
+	// LatestGroups Groups in your identity provider that this user was a member of on last login.
+	LatestGroups     []string               `json:"latestGroups"`
+	LatestInvitation *ManagedUserInvitation `json:"latestInvitation,omitempty"`
+	LoginMethod      IdentityProvider       `json:"loginMethod"`
+	Role             UserRole               `json:"role"`
+
+	// ScimGroupMemberships Names of groups the user is a SCIM-provisioned member of.
+	ScimGroupMemberships []string          `json:"scimGroupMemberships"`
+	ScimMetadata         *SCIMUserMetadata `json:"scimMetadata,omitempty"`
+
+	// SlackMemberID The Slack member ID that acts with this managed user's permissions through the Slack integration.
+	SlackMemberID *string `json:"slackMemberID,omitempty"`
+
+	// SpaceCount Number of spaces user was explicitly given permissions to.
+	SpaceCount int32      `json:"spaceCount"`
+	Status     UserStatus `json:"status"`
+
+	// Username Username from account's identity provider.
+	Username string `json:"username"`
+}
+
+// ManagedUserGroup defines model for ManagedUserGroup.
+type ManagedUserGroup struct {
+	// AccessRules List of permissions given explicitly to given user group.
+	AccessRules []SpaceAccessRule `json:"accessRules"`
+
+	// Description Description is optional, user-provided text describing the group resource or serving as a human-readable name.
+	Description string `json:"description"`
+
+	// GroupName Name of user group from account's identity provider.
+	GroupName string `json:"groupName"`
+
+	// Id Globally unique, immutable ID of ManagedUserGroup.
+	Id               string           `json:"id"`
+	IdentityProvider IdentityProvider `json:"identityProvider"`
+
+	// LastLoginTime Unix timestamp (in seconds) at which user from this group was last authenticated.
+	LastLoginTime *int32 `json:"lastLoginTime,omitempty"`
+
+	// MemberCount Number of members of this group who logged into this account.
+	MemberCount int32 `json:"memberCount"`
+
+	// Members Members of this group
+	Members      []string           `json:"members"`
+	ScimMetadata *SCIMGroupMetadata `json:"scimMetadata,omitempty"`
+
+	// SpaceCount Number of spaces user group was explicitly given permissions to.
+	SpaceCount int32           `json:"spaceCount"`
+	Status     UserGroupStatus `json:"status"`
+}
+
+// ManagedUserGroupCreateInputV2 defines model for ManagedUserGroupCreateInputV2.
+type ManagedUserGroupCreateInputV2 struct {
+	Description  *string            `json:"description,omitempty"`
+	GroupName    string             `json:"groupName"`
+	RoleBindings []RoleBindingInput `json:"roleBindings"`
+}
+
+// ManagedUserGroupPage One page of a cursor-paginated list (decision 0003).
+type ManagedUserGroupPage struct {
+	Items []ManagedUserGroup `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// ManagedUserGroupUpdateInputV2Body defines model for ManagedUserGroupUpdateInputV2Body.
+type ManagedUserGroupUpdateInputV2Body struct {
+	Description *string `json:"description,omitempty"`
+}
+
+// ManagedUserInvitation defines model for ManagedUserInvitation.
+type ManagedUserInvitation struct {
+	// CreatedAt Unix timestamp (in seconds) at which this invitation was issued.
+	CreatedAt int32 `json:"createdAt"`
+
+	// SentAt Unix timestamp (in seconds) at which the invitation was sent. Can be empty for unsent invitations.
+	SentAt *int32 `json:"sentAt,omitempty"`
+}
+
+// ManagedUserInviteInputV2 defines model for ManagedUserInviteInputV2.
+type ManagedUserInviteInputV2 struct {
+	// InvitationEmail Email address of the user to invite.
+	InvitationEmail *string `json:"invitationEmail,omitempty"`
+
+	// RoleBindings Access rules for the user.
+	RoleBindings []RoleBindingInput `json:"roleBindings"`
+
+	// SlackMemberID new slack member ID
+	SlackMemberID *string `json:"slackMemberID,omitempty"`
+
+	// Username Unique identifier of a user within an identity provider.
+	Username string `json:"username"`
+}
+
+// ManagedUserPage One page of a cursor-paginated list (decision 0003).
+type ManagedUserPage struct {
+	Items []ManagedUser `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// ManagedUserRequestInviteRequest The arguments of managedUserRequestInvite not carried in the path.
+type ManagedUserRequestInviteRequest struct {
+	Email    string `json:"email"`
+	UserName string `json:"userName"`
+}
+
+// ManagedUserRequestRoleChangeRequest The arguments of managedUserRequestRoleChange not carried in the path.
+type ManagedUserRequestRoleChangeRequest struct {
+	// RequestedAccessLevel The level of access a user has to the given space.
+	RequestedAccessLevel SpaceAccessLevel `json:"requestedAccessLevel"`
+}
+
+// ManagedUserUpdateInputBody defines model for ManagedUserUpdateInputBody.
+type ManagedUserUpdateInputBody struct {
+	// AccessRules new access rules
+	AccessRules []SpaceAccessRuleInput `json:"accessRules"`
+
+	// SlackMemberID new slack member ID
+	SlackMemberID *string `json:"slackMemberID,omitempty"`
 }
 
 // MessageQueueStats MessageQueueStats is a point-in-time snapshot of how many messages a single
@@ -3706,7 +3960,7 @@ type OrganizationMember struct {
 	// OrganizationAdmin Whether the member holds the organization role organization-admin.
 	OrganizationAdmin bool `json:"organizationAdmin"`
 
-	// Status Whether the member may sign in; a deactivated member holds no seat.
+	// Status Whether the member may sign in: ACTIVE once they have, PENDING while an invitation awaits them, DEACTIVATED once an organization admin deactivated them. A deactivated member holds no seat.
 	Status OrganizationMemberStatus `json:"status"`
 }
 
@@ -3718,7 +3972,7 @@ type OrganizationMemberPage struct {
 	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
-// OrganizationMemberStatus Whether the member may sign in; a deactivated member holds no seat.
+// OrganizationMemberStatus Whether the member may sign in: ACTIVE once they have, PENDING while an invitation awaits them, DEACTIVATED once an organization admin deactivated them. A deactivated member holds no seat.
 type OrganizationMemberStatus string
 
 // OrganizationUpdateRequest The organization's new display name.
@@ -4068,6 +4322,15 @@ type PulumiStack struct {
 
 // PulumiStackKind The concrete type, for union and interface responses.
 type PulumiStackKind string
+
+// RoleBindingInput defines model for RoleBindingInput.
+type RoleBindingInput struct {
+	// RoleID ID of the role.
+	RoleID string `json:"roleID"`
+
+	// SpaceID ID of the space.
+	SpaceID string `json:"spaceID"`
+}
 
 // RoleRef A reference to a Role; fetch it with GET /roles/{roleId}.
 type RoleRef struct {
@@ -4602,6 +4865,36 @@ type RuntimeConfigInput struct {
 	Yaml *string `json:"yaml,omitempty"`
 }
 
+// SCIMGroupMetadata defines model for SCIMGroupMetadata.
+type SCIMGroupMetadata struct {
+	// ExternalId External ID assigned by the SCIM identity provider
+	ExternalId string `json:"externalId"`
+}
+
+// SCIMUserMetadata defines model for SCIMUserMetadata.
+type SCIMUserMetadata struct {
+	// DisplayName Display name from the SCIM identity provider (RFC 7643 §4.1.1)
+	DisplayName string `json:"displayName"`
+
+	// Email Email address from the SCIM identity provider
+	Email string `json:"email"`
+
+	// ExternalId External ID assigned by the SCIM identity provider
+	ExternalId string `json:"externalId"`
+
+	// FamilyName Family (last) name from the SCIM identity provider
+	FamilyName string `json:"familyName"`
+
+	// FormattedName Formatted full name from the SCIM identity provider
+	FormattedName string `json:"formattedName"`
+
+	// GivenName Given (first) name from the SCIM identity provider
+	GivenName string `json:"givenName"`
+
+	// ProvisionedAt Unix timestamp (seconds) at which the user was provisioned via SCIM
+	ProvisionedAt int32 `json:"provisionedAt"`
+}
+
 // ScheduledDelete defines model for ScheduledDelete.
 type ScheduledDelete struct {
 	// CronSchedule Apply will be scheduled according to this cron schedule expression if specified.
@@ -5072,6 +5365,15 @@ type SpaceAccessLevel string
 
 // SpaceAccessRule defines model for SpaceAccessRule.
 type SpaceAccessRule struct {
+	// Space Slug of the space that this access rule affects.
+	Space string `json:"space"`
+
+	// SpaceAccessLevel The level of access a user has to the given space.
+	SpaceAccessLevel SpaceAccessLevel `json:"spaceAccessLevel"`
+}
+
+// SpaceAccessRuleInput defines model for SpaceAccessRuleInput.
+type SpaceAccessRuleInput struct {
 	// Space Slug of the space that this access rule affects.
 	Space string `json:"space"`
 
@@ -6537,6 +6839,15 @@ type User struct {
 	ValidUntil int32 `json:"validUntil"`
 }
 
+// UserGroupStatus defines model for UserGroupStatus.
+type UserGroupStatus string
+
+// UserRole defines model for UserRole.
+type UserRole string
+
+// UserStatus defines model for UserStatus.
+type UserStatus string
+
 // VCSIntegrationRef A reference to a VCSIntegration; fetch it with GET /vcs-integrations/{vcsIntegrationId}.
 type VCSIntegrationRef struct {
 	Id string `json:"id"`
@@ -6977,6 +7288,15 @@ type AvailableSelfServicePlansParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// AvailableUserGroupsParams defines parameters for AvailableUserGroups.
+type AvailableUserGroupsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // BillingSubscriptionCreateParams defines parameters for BillingSubscriptionCreate.
 type BillingSubscriptionCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -7004,6 +7324,66 @@ type EvaluateFeatureFlagsParams struct {
 
 	// Limit Page size. Values outside 1–100 are clamped.
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ManagedUserGroupsParams defines parameters for ManagedUserGroups.
+type ManagedUserGroupsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ManagedUserGroupCreateV2Params defines parameters for ManagedUserGroupCreateV2.
+type ManagedUserGroupCreateV2Params struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ManagedUserGroupManagedUsersParams defines parameters for ManagedUserGroupManagedUsers.
+type ManagedUserGroupManagedUsersParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ManagedUserRequestInviteParams defines parameters for ManagedUserRequestInvite.
+type ManagedUserRequestInviteParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ManagedUsersParams defines parameters for ManagedUsers.
+type ManagedUsersParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ManagedUserInviteV2Params defines parameters for ManagedUserInviteV2.
+type ManagedUserInviteV2Params struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ManagedUserPersonalApiKeysParams defines parameters for ManagedUserPersonalApiKeys.
+type ManagedUserPersonalApiKeysParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ManagedUserResendInviteParams defines parameters for ManagedUserResendInvite.
+type ManagedUserResendInviteParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // MessageQueueStatsParams defines parameters for MessageQueueStats.
@@ -7097,6 +7477,12 @@ type SessionsParams struct {
 
 	// Limit Page size. Values outside 1–100 are clamped.
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ManagedUserRequestRoleChangeParams defines parameters for ManagedUserRequestRoleChange.
+type ManagedUserRequestRoleChangeParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // StackDependencyCreateParams defines parameters for StackDependencyCreate.
@@ -7502,6 +7888,21 @@ type BillingSubscriptionUpdateInfoJSONRequestBody = SubscriptionInput
 // BillingSubscriptionUpdateTierJSONRequestBody defines body for BillingSubscriptionUpdateTier for application/json ContentType.
 type BillingSubscriptionUpdateTierJSONRequestBody = BillingSubscriptionUpdateTierRequest
 
+// ManagedUserGroupCreateV2JSONRequestBody defines body for ManagedUserGroupCreateV2 for application/json ContentType.
+type ManagedUserGroupCreateV2JSONRequestBody = ManagedUserGroupCreateInputV2
+
+// ManagedUserGroupUpdateV2JSONRequestBody defines body for ManagedUserGroupUpdateV2 for application/json ContentType.
+type ManagedUserGroupUpdateV2JSONRequestBody = ManagedUserGroupUpdateInputV2Body
+
+// ManagedUserRequestInviteJSONRequestBody defines body for ManagedUserRequestInvite for application/json ContentType.
+type ManagedUserRequestInviteJSONRequestBody = ManagedUserRequestInviteRequest
+
+// ManagedUserInviteV2JSONRequestBody defines body for ManagedUserInviteV2 for application/json ContentType.
+type ManagedUserInviteV2JSONRequestBody = ManagedUserInviteInputV2
+
+// ManagedUserUpdateJSONRequestBody defines body for ManagedUserUpdate for application/json ContentType.
+type ManagedUserUpdateJSONRequestBody = ManagedUserUpdateInputBody
+
 // OrganizationUpdateJSONRequestBody defines body for OrganizationUpdate for application/json ContentType.
 type OrganizationUpdateJSONRequestBody = OrganizationUpdateRequest
 
@@ -7519,6 +7920,9 @@ type OrganizationAccountLimitSetJSONRequestBody = OrganizationAccountLimitReques
 
 // OrganizationKeyCreateJSONRequestBody defines body for OrganizationKeyCreate for application/json ContentType.
 type OrganizationKeyCreateJSONRequestBody = OrganizationKeyCreateRequest
+
+// ManagedUserRequestRoleChangeJSONRequestBody defines body for ManagedUserRequestRoleChange for application/json ContentType.
+type ManagedUserRequestRoleChangeJSONRequestBody = ManagedUserRequestRoleChangeRequest
 
 // StackDependencyCreateJSONRequestBody defines body for StackDependencyCreate for application/json ContentType.
 type StackDependencyCreateJSONRequestBody = StackDependencyInput
@@ -9035,6 +9439,13 @@ type ClientInterface interface {
 	// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
 	AvailableSelfServicePlans(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AvailableUserGroups List Available Groups
+	//
+	// The groups the identity provider reported for the account's managed users at their latest sign-in, in name order: the names a managed user group can match.
+	//
+	// Corresponds with GET /available-user-groups (the `AvailableUserGroups` operationId).
+	AvailableUserGroups(ctx context.Context, params *AvailableUserGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AwarenessSourceSurvey Awareness Source Survey
 	//
 	// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -9155,6 +9566,159 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /id (the `Id` operationId).
 	Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroups List User Groups
+	//
+	// The account's managed user groups, oldest first. A group is the account's: its members are the account's managed users whose latest sign-in reported its name, and it reaches no other account.
+	//
+	// Corresponds with GET /managed-user-groups (the `ManagedUserGroups` operationId).
+	ManagedUserGroups(ctx context.Context, params *ManagedUserGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupCreateV2WithBody Create User Group
+	//
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+	ManagedUserGroupCreateV2WithBody(ctx context.Context, params *ManagedUserGroupCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupCreateV2 Create User Group
+	//
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+	ManagedUserGroupCreateV2(ctx context.Context, params *ManagedUserGroupCreateV2Params, body ManagedUserGroupCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupDelete Delete User Group
+	//
+	// Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
+	//
+	// Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
+	ManagedUserGroupDelete(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroup Get User Group
+	//
+	// The account's managed user group; a group of another account answers 404.
+	//
+	// Corresponds with GET /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroup` operationId).
+	ManagedUserGroup(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupUpdateV2WithBody Update User Group
+	//
+	// Set the description of the account's managed user group.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+	ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupUpdateV2 Update User Group
+	//
+	// Set the description of the account's managed user group.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+	ManagedUserGroupUpdateV2(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupManagedUsers Managed user group managed users
+	//
+	// The managed users of the account whose latest sign-in reported the group's name, oldest first.
+	//
+	// Corresponds with GET /managed-user-groups/{managedUserGroupId}/managed-users (the `ManagedUserGroupManagedUsers` operationId).
+	ManagedUserGroupManagedUsers(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserRequestInviteWithBody Request Invite
+	//
+	// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+	ManagedUserRequestInviteWithBody(ctx context.Context, params *ManagedUserRequestInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserRequestInvite Request Invite
+	//
+	// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+	ManagedUserRequestInvite(ctx context.Context, params *ManagedUserRequestInviteParams, body ManagedUserRequestInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUsers List Managed Users
+	//
+	// The account's managed users, oldest first: the organization's members the account admits, invited or signed in. A member another account admits appears here only once this account admits it too.
+	//
+	// Corresponds with GET /managed-users (the `ManagedUsers` operationId).
+	ManagedUsers(ctx context.Context, params *ManagedUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserInviteV2WithBody Invite Managed User
+	//
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+	ManagedUserInviteV2WithBody(ctx context.Context, params *ManagedUserInviteV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserInviteV2 Invite Managed User
+	//
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+	ManagedUserInviteV2(ctx context.Context, params *ManagedUserInviteV2Params, body ManagedUserInviteV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserDelete Delete Managed User
+	//
+	// Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
+	//
+	// Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
+	ManagedUserDelete(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUser Get Managed User
+	//
+	// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+	//
+	// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
+	ManagedUser(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserUpdateWithBody Update Managed User
+	//
+	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+	ManagedUserUpdateWithBody(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserUpdate Update Managed User
+	//
+	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+	ManagedUserUpdate(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserPersonalApiKeys Managed user personal api keys
+	//
+	// The managed user's personal API keys in the account, oldest first, including those disabled as DEPROVISIONED.
+	//
+	// Corresponds with GET /managed-users/{managedUserId}/personal-api-keys (the `ManagedUserPersonalApiKeys` operationId).
+	ManagedUserPersonalApiKeys(ctx context.Context, managedUserId string, params *ManagedUserPersonalApiKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserResendInvite Resend Invite
+	//
+	// Resend the managed user's invitation, which moves its sentAt to now and so restarts its 24 hours; nothing is delivered. A managed user who has accepted their invitation, or has none, answers 409 invalid-state.
+	//
+	// Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
+	ManagedUserResendInvite(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MarkedForDeletion Marked For Deletion
 	//
@@ -9453,6 +10017,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /sessions/{sessionId} (the `SessionDelete` operationId).
 	SessionDelete(ctx context.Context, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserRequestRoleChangeWithBody Request Role Change
+	//
+	// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+	ManagedUserRequestRoleChangeWithBody(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserRequestRoleChange Request Role Change
+	//
+	// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+	ManagedUserRequestRoleChange(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, body ManagedUserRequestRoleChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDependencyCreateWithBody Create Dependency
 	//
@@ -11030,6 +11612,23 @@ func (c *Client) AvailableSelfServicePlans(ctx context.Context, params *Availabl
 	return c.Client.Do(req)
 }
 
+// AvailableUserGroups List Available Groups
+//
+// The groups the identity provider reported for the account's managed users at their latest sign-in, in name order: the names a managed user group can match.
+//
+// Corresponds with GET /available-user-groups (the `AvailableUserGroups` operationId).
+func (c *Client) AvailableUserGroups(ctx context.Context, params *AvailableUserGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAvailableUserGroupsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AwarenessSourceSurvey Awareness Source Survey
 //
 // The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -11291,6 +11890,349 @@ func (c *Client) EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatu
 // Corresponds with GET /id (the `Id` operationId).
 func (c *Client) Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewIdRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroups List User Groups
+//
+// The account's managed user groups, oldest first. A group is the account's: its members are the account's managed users whose latest sign-in reported its name, and it reaches no other account.
+//
+// Corresponds with GET /managed-user-groups (the `ManagedUserGroups` operationId).
+func (c *Client) ManagedUserGroups(ctx context.Context, params *ManagedUserGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupCreateV2WithBody Create User Group
+//
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+func (c *Client) ManagedUserGroupCreateV2WithBody(ctx context.Context, params *ManagedUserGroupCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupCreateV2RequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupCreateV2 Create User Group
+//
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+func (c *Client) ManagedUserGroupCreateV2(ctx context.Context, params *ManagedUserGroupCreateV2Params, body ManagedUserGroupCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupCreateV2Request(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupDelete Delete User Group
+//
+// Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
+//
+// Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
+func (c *Client) ManagedUserGroupDelete(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupDeleteRequest(c.Server, managedUserGroupId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroup Get User Group
+//
+// The account's managed user group; a group of another account answers 404.
+//
+// Corresponds with GET /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroup` operationId).
+func (c *Client) ManagedUserGroup(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupRequest(c.Server, managedUserGroupId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupUpdateV2WithBody Update User Group
+//
+// Set the description of the account's managed user group.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+func (c *Client) ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupUpdateV2RequestWithBody(c.Server, managedUserGroupId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupUpdateV2 Update User Group
+//
+// Set the description of the account's managed user group.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+func (c *Client) ManagedUserGroupUpdateV2(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupUpdateV2Request(c.Server, managedUserGroupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupManagedUsers Managed user group managed users
+//
+// The managed users of the account whose latest sign-in reported the group's name, oldest first.
+//
+// Corresponds with GET /managed-user-groups/{managedUserGroupId}/managed-users (the `ManagedUserGroupManagedUsers` operationId).
+func (c *Client) ManagedUserGroupManagedUsers(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupManagedUsersRequest(c.Server, managedUserGroupId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserRequestInviteWithBody Request Invite
+//
+// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+func (c *Client) ManagedUserRequestInviteWithBody(ctx context.Context, params *ManagedUserRequestInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserRequestInviteRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserRequestInvite Request Invite
+//
+// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+func (c *Client) ManagedUserRequestInvite(ctx context.Context, params *ManagedUserRequestInviteParams, body ManagedUserRequestInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserRequestInviteRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUsers List Managed Users
+//
+// The account's managed users, oldest first: the organization's members the account admits, invited or signed in. A member another account admits appears here only once this account admits it too.
+//
+// Corresponds with GET /managed-users (the `ManagedUsers` operationId).
+func (c *Client) ManagedUsers(ctx context.Context, params *ManagedUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUsersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserInviteV2WithBody Invite Managed User
+//
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+func (c *Client) ManagedUserInviteV2WithBody(ctx context.Context, params *ManagedUserInviteV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserInviteV2RequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserInviteV2 Invite Managed User
+//
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+func (c *Client) ManagedUserInviteV2(ctx context.Context, params *ManagedUserInviteV2Params, body ManagedUserInviteV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserInviteV2Request(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserDelete Delete Managed User
+//
+// Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
+//
+// Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
+func (c *Client) ManagedUserDelete(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserDeleteRequest(c.Server, managedUserId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUser Get Managed User
+//
+// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+//
+// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
+func (c *Client) ManagedUser(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserRequest(c.Server, managedUserId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserUpdateWithBody Update Managed User
+//
+// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+func (c *Client) ManagedUserUpdateWithBody(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserUpdateRequestWithBody(c.Server, managedUserId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserUpdate Update Managed User
+//
+// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+func (c *Client) ManagedUserUpdate(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserUpdateRequest(c.Server, managedUserId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserPersonalApiKeys Managed user personal api keys
+//
+// The managed user's personal API keys in the account, oldest first, including those disabled as DEPROVISIONED.
+//
+// Corresponds with GET /managed-users/{managedUserId}/personal-api-keys (the `ManagedUserPersonalApiKeys` operationId).
+func (c *Client) ManagedUserPersonalApiKeys(ctx context.Context, managedUserId string, params *ManagedUserPersonalApiKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserPersonalApiKeysRequest(c.Server, managedUserId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserResendInvite Resend Invite
+//
+// Resend the managed user's invitation, which moves its sentAt to now and so restarts its 24 hours; nothing is delivered. A managed user who has accepted their invitation, or has none, answers 409 invalid-state.
+//
+// Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
+func (c *Client) ManagedUserResendInvite(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserResendInviteRequest(c.Server, managedUserId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -11949,6 +12891,44 @@ func (c *Client) Sessions(ctx context.Context, params *SessionsParams, reqEditor
 // Corresponds with DELETE /sessions/{sessionId} (the `SessionDelete` operationId).
 func (c *Client) SessionDelete(ctx context.Context, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSessionDeleteRequest(c.Server, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserRequestRoleChangeWithBody Request Role Change
+//
+// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+func (c *Client) ManagedUserRequestRoleChangeWithBody(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserRequestRoleChangeRequestWithBody(c.Server, spaceId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserRequestRoleChange Request Role Change
+//
+// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+func (c *Client) ManagedUserRequestRoleChange(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, body ManagedUserRequestRoleChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserRequestRoleChangeRequest(c.Server, spaceId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -15091,6 +16071,72 @@ func NewAvailableSelfServicePlansRequest(server string, params *AvailableSelfSer
 	return req, nil
 }
 
+// NewAvailableUserGroupsRequest constructs an http.Request for the AvailableUserGroups method
+func NewAvailableUserGroupsRequest(server string, params *AvailableUserGroupsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/available-user-groups")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAwarenessSourceSurveyRequest constructs an http.Request for the AwarenessSourceSurvey method
 func NewAwarenessSourceSurveyRequest(server string) (*http.Request, error) {
 	var err error
@@ -15525,6 +16571,728 @@ func NewIdRequest(server string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserGroupsRequest constructs an http.Request for the ManagedUserGroups method
+func NewManagedUserGroupsRequest(server string, params *ManagedUserGroupsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserGroupCreateV2Request calls the generic ManagedUserGroupCreateV2 builder with application/json body
+func NewManagedUserGroupCreateV2Request(server string, params *ManagedUserGroupCreateV2Params, body ManagedUserGroupCreateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserGroupCreateV2RequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewManagedUserGroupCreateV2RequestWithBody constructs an http.Request for the ManagedUserGroupCreateV2 method, with any body, and a specified content type
+func NewManagedUserGroupCreateV2RequestWithBody(server string, params *ManagedUserGroupCreateV2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewManagedUserGroupDeleteRequest constructs an http.Request for the ManagedUserGroupDelete method
+func NewManagedUserGroupDeleteRequest(server string, managedUserGroupId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserGroupId", managedUserGroupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserGroupRequest constructs an http.Request for the ManagedUserGroup method
+func NewManagedUserGroupRequest(server string, managedUserGroupId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserGroupId", managedUserGroupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserGroupUpdateV2Request calls the generic ManagedUserGroupUpdateV2 builder with application/json body
+func NewManagedUserGroupUpdateV2Request(server string, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserGroupUpdateV2RequestWithBody(server, managedUserGroupId, "application/json", bodyReader)
+}
+
+// NewManagedUserGroupUpdateV2RequestWithBody constructs an http.Request for the ManagedUserGroupUpdateV2 method, with any body, and a specified content type
+func NewManagedUserGroupUpdateV2RequestWithBody(server string, managedUserGroupId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserGroupId", managedUserGroupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewManagedUserGroupManagedUsersRequest constructs an http.Request for the ManagedUserGroupManagedUsers method
+func NewManagedUserGroupManagedUsersRequest(server string, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserGroupId", managedUserGroupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups/%s/managed-users", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserRequestInviteRequest calls the generic ManagedUserRequestInvite builder with application/json body
+func NewManagedUserRequestInviteRequest(server string, params *ManagedUserRequestInviteParams, body ManagedUserRequestInviteJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserRequestInviteRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewManagedUserRequestInviteRequestWithBody constructs an http.Request for the ManagedUserRequestInvite method, with any body, and a specified content type
+func NewManagedUserRequestInviteRequestWithBody(server string, params *ManagedUserRequestInviteParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-invite-requests")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewManagedUsersRequest constructs an http.Request for the ManagedUsers method
+func NewManagedUsersRequest(server string, params *ManagedUsersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserInviteV2Request calls the generic ManagedUserInviteV2 builder with application/json body
+func NewManagedUserInviteV2Request(server string, params *ManagedUserInviteV2Params, body ManagedUserInviteV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserInviteV2RequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewManagedUserInviteV2RequestWithBody constructs an http.Request for the ManagedUserInviteV2 method, with any body, and a specified content type
+func NewManagedUserInviteV2RequestWithBody(server string, params *ManagedUserInviteV2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewManagedUserDeleteRequest constructs an http.Request for the ManagedUserDelete method
+func NewManagedUserDeleteRequest(server string, managedUserId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserRequest constructs an http.Request for the ManagedUser method
+func NewManagedUserRequest(server string, managedUserId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserUpdateRequest calls the generic ManagedUserUpdate builder with application/json body
+func NewManagedUserUpdateRequest(server string, managedUserId string, body ManagedUserUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserUpdateRequestWithBody(server, managedUserId, "application/json", bodyReader)
+}
+
+// NewManagedUserUpdateRequestWithBody constructs an http.Request for the ManagedUserUpdate method, with any body, and a specified content type
+func NewManagedUserUpdateRequestWithBody(server string, managedUserId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewManagedUserPersonalApiKeysRequest constructs an http.Request for the ManagedUserPersonalApiKeys method
+func NewManagedUserPersonalApiKeysRequest(server string, managedUserId string, params *ManagedUserPersonalApiKeysParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s/personal-api-keys", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserResendInviteRequest constructs an http.Request for the ManagedUserResendInvite method
+func NewManagedUserResendInviteRequest(server string, managedUserId string, params *ManagedUserResendInviteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s/resend-invite", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -16852,6 +18620,68 @@ func NewSessionDeleteRequest(server string, sessionId string) (*http.Request, er
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewManagedUserRequestRoleChangeRequest calls the generic ManagedUserRequestRoleChange builder with application/json body
+func NewManagedUserRequestRoleChangeRequest(server string, spaceId string, params *ManagedUserRequestRoleChangeParams, body ManagedUserRequestRoleChangeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserRequestRoleChangeRequestWithBody(server, spaceId, params, "application/json", bodyReader)
+}
+
+// NewManagedUserRequestRoleChangeRequestWithBody constructs an http.Request for the ManagedUserRequestRoleChange method, with any body, and a specified content type
+func NewManagedUserRequestRoleChangeRequestWithBody(server string, spaceId string, params *ManagedUserRequestRoleChangeParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "spaceId", spaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/%s/role-change-requests", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -21513,6 +23343,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
 	AvailableSelfServicePlansWithResponse(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*AvailableSelfServicePlansResponse, error)
 
+	// AvailableUserGroupsWithResponse List Available Groups
+	//
+	// The groups the identity provider reported for the account's managed users at their latest sign-in, in name order: the names a managed user group can match.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /available-user-groups (the `AvailableUserGroups` operationId).
+	AvailableUserGroupsWithResponse(ctx context.Context, params *AvailableUserGroupsParams, reqEditors ...RequestEditorFn) (*AvailableUserGroupsResponse, error)
+
 	// AwarenessSourceSurveyWithResponse Awareness Source Survey
 	//
 	// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -21647,6 +23486,177 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /id (the `Id` operationId).
 	IdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*IdResponse, error)
+
+	// ManagedUserGroupsWithResponse List User Groups
+	//
+	// The account's managed user groups, oldest first. A group is the account's: its members are the account's managed users whose latest sign-in reported its name, and it reaches no other account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-user-groups (the `ManagedUserGroups` operationId).
+	ManagedUserGroupsWithResponse(ctx context.Context, params *ManagedUserGroupsParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupsResponse, error)
+
+	// ManagedUserGroupCreateV2WithBodyWithResponse Create User Group
+	//
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+	ManagedUserGroupCreateV2WithBodyWithResponse(ctx context.Context, params *ManagedUserGroupCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupCreateV2Response, error)
+
+	// ManagedUserGroupCreateV2WithResponse Create User Group
+	//
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+	ManagedUserGroupCreateV2WithResponse(ctx context.Context, params *ManagedUserGroupCreateV2Params, body ManagedUserGroupCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupCreateV2Response, error)
+
+	// ManagedUserGroupDeleteWithResponse Delete User Group
+	//
+	// Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
+	ManagedUserGroupDeleteWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupDeleteResponse, error)
+
+	// ManagedUserGroupWithResponse Get User Group
+	//
+	// The account's managed user group; a group of another account answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroup` operationId).
+	ManagedUserGroupWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupResponse, error)
+
+	// ManagedUserGroupUpdateV2WithBodyWithResponse Update User Group
+	//
+	// Set the description of the account's managed user group.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+	ManagedUserGroupUpdateV2WithBodyWithResponse(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error)
+
+	// ManagedUserGroupUpdateV2WithResponse Update User Group
+	//
+	// Set the description of the account's managed user group.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+	ManagedUserGroupUpdateV2WithResponse(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error)
+
+	// ManagedUserGroupManagedUsersWithResponse Managed user group managed users
+	//
+	// The managed users of the account whose latest sign-in reported the group's name, oldest first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-user-groups/{managedUserGroupId}/managed-users (the `ManagedUserGroupManagedUsers` operationId).
+	ManagedUserGroupManagedUsersWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupManagedUsersResponse, error)
+
+	// ManagedUserRequestInviteWithBodyWithResponse Request Invite
+	//
+	// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+	ManagedUserRequestInviteWithBodyWithResponse(ctx context.Context, params *ManagedUserRequestInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserRequestInviteResponse, error)
+
+	// ManagedUserRequestInviteWithResponse Request Invite
+	//
+	// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+	ManagedUserRequestInviteWithResponse(ctx context.Context, params *ManagedUserRequestInviteParams, body ManagedUserRequestInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserRequestInviteResponse, error)
+
+	// ManagedUsersWithResponse List Managed Users
+	//
+	// The account's managed users, oldest first: the organization's members the account admits, invited or signed in. A member another account admits appears here only once this account admits it too.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-users (the `ManagedUsers` operationId).
+	ManagedUsersWithResponse(ctx context.Context, params *ManagedUsersParams, reqEditors ...RequestEditorFn) (*ManagedUsersResponse, error)
+
+	// ManagedUserInviteV2WithBodyWithResponse Invite Managed User
+	//
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+	ManagedUserInviteV2WithBodyWithResponse(ctx context.Context, params *ManagedUserInviteV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserInviteV2Response, error)
+
+	// ManagedUserInviteV2WithResponse Invite Managed User
+	//
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+	ManagedUserInviteV2WithResponse(ctx context.Context, params *ManagedUserInviteV2Params, body ManagedUserInviteV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserInviteV2Response, error)
+
+	// ManagedUserDeleteWithResponse Delete Managed User
+	//
+	// Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
+	ManagedUserDeleteWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserDeleteResponse, error)
+
+	// ManagedUserWithResponse Get Managed User
+	//
+	// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
+	ManagedUserWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserResponse, error)
+
+	// ManagedUserUpdateWithBodyWithResponse Update Managed User
+	//
+	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+	ManagedUserUpdateWithBodyWithResponse(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error)
+
+	// ManagedUserUpdateWithResponse Update Managed User
+	//
+	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+	ManagedUserUpdateWithResponse(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error)
+
+	// ManagedUserPersonalApiKeysWithResponse Managed user personal api keys
+	//
+	// The managed user's personal API keys in the account, oldest first, including those disabled as DEPROVISIONED.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-users/{managedUserId}/personal-api-keys (the `ManagedUserPersonalApiKeys` operationId).
+	ManagedUserPersonalApiKeysWithResponse(ctx context.Context, managedUserId string, params *ManagedUserPersonalApiKeysParams, reqEditors ...RequestEditorFn) (*ManagedUserPersonalApiKeysResponse, error)
+
+	// ManagedUserResendInviteWithResponse Resend Invite
+	//
+	// Resend the managed user's invitation, which moves its sentAt to now and so restarts its 24 hours; nothing is delivered. A managed user who has accepted their invitation, or has none, answers 409 invalid-state.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
+	ManagedUserResendInviteWithResponse(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*ManagedUserResendInviteResponse, error)
 
 	// MarkedForDeletionWithResponse Marked For Deletion
 	//
@@ -21993,6 +24003,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /sessions/{sessionId} (the `SessionDelete` operationId).
 	SessionDeleteWithResponse(ctx context.Context, sessionId string, reqEditors ...RequestEditorFn) (*SessionDeleteResponse, error)
+
+	// ManagedUserRequestRoleChangeWithBodyWithResponse Request Role Change
+	//
+	// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+	ManagedUserRequestRoleChangeWithBodyWithResponse(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserRequestRoleChangeResponse, error)
+
+	// ManagedUserRequestRoleChangeWithResponse Request Role Change
+	//
+	// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+	ManagedUserRequestRoleChangeWithResponse(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, body ManagedUserRequestRoleChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserRequestRoleChangeResponse, error)
 
 	// StackDependencyCreateWithBodyWithResponse Create Dependency
 	//
@@ -25520,6 +27548,101 @@ func (r AvailableSelfServicePlansResponse) ContentType() string {
 	return ""
 }
 
+// AvailableUserGroupsResponse200Headers the declared response headers of an HTTP 200 response for AvailableUserGroups
+type AvailableUserGroupsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AvailableUserGroupsResponse429Headers the declared response headers of an HTTP 429 response for AvailableUserGroups
+type AvailableUserGroupsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AvailableUserGroupsResponse503Headers the declared response headers of an HTTP 503 response for AvailableUserGroups
+type AvailableUserGroupsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AvailableUserGroupsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AvailableUserGroupsPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AvailableUserGroupsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AvailableUserGroupsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AvailableUserGroupsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AvailableUserGroupsResponse) GetJSON200() *AvailableUserGroupsPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AvailableUserGroupsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AvailableUserGroupsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AvailableUserGroupsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AvailableUserGroupsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AvailableUserGroupsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AvailableUserGroupsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AvailableUserGroupsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AvailableUserGroupsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AwarenessSourceSurveyResponse200Headers the declared response headers of an HTTP 200 response for AwarenessSourceSurvey
 type AwarenessSourceSurveyResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -26531,6 +28654,1385 @@ func (r IdResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r IdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserGroupsResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroups
+type ManagedUserGroupsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupsResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserGroups
+type ManagedUserGroupsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupsResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserGroups
+type ManagedUserGroupsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserGroupPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupsResponse) GetJSON200() *ManagedUserGroupPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ManagedUserGroupsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserGroupCreateV2Response201Headers the declared response headers of an HTTP 201 response for ManagedUserGroupCreateV2
+type ManagedUserGroupCreateV2Response201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupCreateV2Response429Headers the declared response headers of an HTTP 429 response for ManagedUserGroupCreateV2
+type ManagedUserGroupCreateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupCreateV2Response503Headers the declared response headers of an HTTP 503 response for ManagedUserGroupCreateV2
+type ManagedUserGroupCreateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupCreateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ManagedUserGroup
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ManagedUserGroupCreateV2Response201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupCreateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupCreateV2Response503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ManagedUserGroupCreateV2Response) GetJSON201() *ManagedUserGroup {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserGroupCreateV2Response) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserGroupCreateV2Response) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupCreateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupCreateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupCreateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupCreateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupCreateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupCreateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupCreateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserGroupDeleteResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroupDelete
+type ManagedUserGroupDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupDeleteResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserGroupDelete
+type ManagedUserGroupDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupDeleteResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserGroupDelete
+type ManagedUserGroupDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserGroup
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupDeleteResponse) GetJSON200() *ManagedUserGroup {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserGroupDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserGroupResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroup
+type ManagedUserGroupResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserGroup
+type ManagedUserGroupResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserGroup
+type ManagedUserGroupResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserGroup
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupResponse) GetJSON200() *ManagedUserGroup {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserGroupResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserGroupUpdateV2Response200Headers the declared response headers of an HTTP 200 response for ManagedUserGroupUpdateV2
+type ManagedUserGroupUpdateV2Response200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupUpdateV2Response429Headers the declared response headers of an HTTP 429 response for ManagedUserGroupUpdateV2
+type ManagedUserGroupUpdateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupUpdateV2Response503Headers the declared response headers of an HTTP 503 response for ManagedUserGroupUpdateV2
+type ManagedUserGroupUpdateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupUpdateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserGroup
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupUpdateV2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupUpdateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupUpdateV2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupUpdateV2Response) GetJSON200() *ManagedUserGroup {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserGroupUpdateV2Response) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupUpdateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupUpdateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupUpdateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupUpdateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupUpdateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupUpdateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupUpdateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserGroupManagedUsersResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroupManagedUsers
+type ManagedUserGroupManagedUsersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupManagedUsersResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserGroupManagedUsers
+type ManagedUserGroupManagedUsersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupManagedUsersResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserGroupManagedUsers
+type ManagedUserGroupManagedUsersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupManagedUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupManagedUsersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupManagedUsersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupManagedUsersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupManagedUsersResponse) GetJSON200() *ManagedUserPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ManagedUserGroupManagedUsersResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserGroupManagedUsersResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupManagedUsersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupManagedUsersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupManagedUsersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupManagedUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupManagedUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupManagedUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupManagedUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserRequestInviteResponse201Headers the declared response headers of an HTTP 201 response for ManagedUserRequestInvite
+type ManagedUserRequestInviteResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserRequestInviteResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserRequestInvite
+type ManagedUserRequestInviteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserRequestInviteResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserRequestInvite
+type ManagedUserRequestInviteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserRequestInviteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *bool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ManagedUserRequestInviteResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserRequestInviteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserRequestInviteResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ManagedUserRequestInviteResponse) GetJSON201() *bool {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserRequestInviteResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserRequestInviteResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserRequestInviteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserRequestInviteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserRequestInviteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserRequestInviteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserRequestInviteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserRequestInviteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserRequestInviteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUsersResponse200Headers the declared response headers of an HTTP 200 response for ManagedUsers
+type ManagedUsersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUsersResponse429Headers the declared response headers of an HTTP 429 response for ManagedUsers
+type ManagedUsersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUsersResponse503Headers the declared response headers of an HTTP 503 response for ManagedUsers
+type ManagedUsersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUsersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUsersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUsersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUsersResponse) GetJSON200() *ManagedUserPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ManagedUsersResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUsersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUsersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUsersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserInviteV2Response201Headers the declared response headers of an HTTP 201 response for ManagedUserInviteV2
+type ManagedUserInviteV2Response201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserInviteV2Response429Headers the declared response headers of an HTTP 429 response for ManagedUserInviteV2
+type ManagedUserInviteV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserInviteV2Response503Headers the declared response headers of an HTTP 503 response for ManagedUserInviteV2
+type ManagedUserInviteV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserInviteV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ManagedUser
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ManagedUserInviteV2Response201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserInviteV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserInviteV2Response503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ManagedUserInviteV2Response) GetJSON201() *ManagedUser {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserInviteV2Response) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserInviteV2Response) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserInviteV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserInviteV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserInviteV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserInviteV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserInviteV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserInviteV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserInviteV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserDeleteResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserDelete
+type ManagedUserDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserDeleteResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserDelete
+type ManagedUserDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserDeleteResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserDelete
+type ManagedUserDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUser
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserDeleteResponse) GetJSON200() *ManagedUser {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserResponse200Headers the declared response headers of an HTTP 200 response for ManagedUser
+type ManagedUserResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserResponse429Headers the declared response headers of an HTTP 429 response for ManagedUser
+type ManagedUserResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserResponse503Headers the declared response headers of an HTTP 503 response for ManagedUser
+type ManagedUserResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUser
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserResponse) GetJSON200() *ManagedUser {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserUpdateResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserUpdate
+type ManagedUserUpdateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserUpdateResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserUpdate
+type ManagedUserUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserUpdateResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserUpdate
+type ManagedUserUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUser
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserUpdateResponse) GetJSON200() *ManagedUser {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserPersonalApiKeysResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserPersonalApiKeys
+type ManagedUserPersonalApiKeysResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserPersonalApiKeysResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserPersonalApiKeys
+type ManagedUserPersonalApiKeysResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserPersonalApiKeysResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserPersonalApiKeys
+type ManagedUserPersonalApiKeysResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserPersonalApiKeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKeyPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserPersonalApiKeysResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserPersonalApiKeysResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserPersonalApiKeysResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserPersonalApiKeysResponse) GetJSON200() *ApiKeyPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ManagedUserPersonalApiKeysResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserPersonalApiKeysResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserPersonalApiKeysResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserPersonalApiKeysResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserPersonalApiKeysResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserPersonalApiKeysResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserPersonalApiKeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserPersonalApiKeysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserPersonalApiKeysResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserResendInviteResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserResendInvite
+type ManagedUserResendInviteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserResendInviteResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserResendInvite
+type ManagedUserResendInviteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserResendInviteResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserResendInvite
+type ManagedUserResendInviteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserResendInviteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUser
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserResendInviteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserResendInviteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserResendInviteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserResendInviteResponse) GetJSON200() *ManagedUser {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserResendInviteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserResendInviteResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserResendInviteResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserResendInviteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserResendInviteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserResendInviteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserResendInviteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserResendInviteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserResendInviteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserResendInviteResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -29668,6 +33170,115 @@ func (r SessionDeleteResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SessionDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserRequestRoleChangeResponse201Headers the declared response headers of an HTTP 201 response for ManagedUserRequestRoleChange
+type ManagedUserRequestRoleChangeResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserRequestRoleChangeResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserRequestRoleChange
+type ManagedUserRequestRoleChangeResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserRequestRoleChangeResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserRequestRoleChange
+type ManagedUserRequestRoleChangeResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserRequestRoleChangeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ManagedUserRequestRoleChangeResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserRequestRoleChangeResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserRequestRoleChangeResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ManagedUserRequestRoleChangeResponse) GetJSON201() *bool {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserRequestRoleChangeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserRequestRoleChangeResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserRequestRoleChangeResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserRequestRoleChangeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserRequestRoleChangeResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserRequestRoleChangeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserRequestRoleChangeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserRequestRoleChangeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserRequestRoleChangeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserRequestRoleChangeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -37819,6 +41430,21 @@ func (c *ClientWithResponses) AvailableSelfServicePlansWithResponse(ctx context.
 	return ParseAvailableSelfServicePlansResponse(rsp)
 }
 
+// AvailableUserGroupsWithResponse List Available Groups
+//
+// The groups the identity provider reported for the account's managed users at their latest sign-in, in name order: the names a managed user group can match.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /available-user-groups (the `AvailableUserGroups` operationId).
+func (c *ClientWithResponses) AvailableUserGroupsWithResponse(ctx context.Context, params *AvailableUserGroupsParams, reqEditors ...RequestEditorFn) (*AvailableUserGroupsResponse, error) {
+	rsp, err := c.AvailableUserGroups(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAvailableUserGroupsResponse(rsp)
+}
+
 // AwarenessSourceSurveyWithResponse Awareness Source Survey
 //
 // The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -38042,6 +41668,291 @@ func (c *ClientWithResponses) IdWithResponse(ctx context.Context, reqEditors ...
 		return nil, err
 	}
 	return ParseIdResponse(rsp)
+}
+
+// ManagedUserGroupsWithResponse List User Groups
+//
+// The account's managed user groups, oldest first. A group is the account's: its members are the account's managed users whose latest sign-in reported its name, and it reaches no other account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-user-groups (the `ManagedUserGroups` operationId).
+func (c *ClientWithResponses) ManagedUserGroupsWithResponse(ctx context.Context, params *ManagedUserGroupsParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupsResponse, error) {
+	rsp, err := c.ManagedUserGroups(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupsResponse(rsp)
+}
+
+// ManagedUserGroupCreateV2WithBodyWithResponse Create User Group
+//
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+func (c *ClientWithResponses) ManagedUserGroupCreateV2WithBodyWithResponse(ctx context.Context, params *ManagedUserGroupCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupCreateV2Response, error) {
+	rsp, err := c.ManagedUserGroupCreateV2WithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupCreateV2Response(rsp)
+}
+
+// ManagedUserGroupCreateV2WithResponse Create User Group
+//
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-user-groups (the `ManagedUserGroupCreateV2` operationId).
+func (c *ClientWithResponses) ManagedUserGroupCreateV2WithResponse(ctx context.Context, params *ManagedUserGroupCreateV2Params, body ManagedUserGroupCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupCreateV2Response, error) {
+	rsp, err := c.ManagedUserGroupCreateV2(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupCreateV2Response(rsp)
+}
+
+// ManagedUserGroupDeleteWithResponse Delete User Group
+//
+// Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
+func (c *ClientWithResponses) ManagedUserGroupDeleteWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupDeleteResponse, error) {
+	rsp, err := c.ManagedUserGroupDelete(ctx, managedUserGroupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupDeleteResponse(rsp)
+}
+
+// ManagedUserGroupWithResponse Get User Group
+//
+// The account's managed user group; a group of another account answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroup` operationId).
+func (c *ClientWithResponses) ManagedUserGroupWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupResponse, error) {
+	rsp, err := c.ManagedUserGroup(ctx, managedUserGroupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupResponse(rsp)
+}
+
+// ManagedUserGroupUpdateV2WithBodyWithResponse Update User Group
+//
+// Set the description of the account's managed user group.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithBodyWithResponse(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error) {
+	rsp, err := c.ManagedUserGroupUpdateV2WithBody(ctx, managedUserGroupId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupUpdateV2Response(rsp)
+}
+
+// ManagedUserGroupUpdateV2WithResponse Update User Group
+//
+// Set the description of the account's managed user group.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
+func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithResponse(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error) {
+	rsp, err := c.ManagedUserGroupUpdateV2(ctx, managedUserGroupId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupUpdateV2Response(rsp)
+}
+
+// ManagedUserGroupManagedUsersWithResponse Managed user group managed users
+//
+// The managed users of the account whose latest sign-in reported the group's name, oldest first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-user-groups/{managedUserGroupId}/managed-users (the `ManagedUserGroupManagedUsers` operationId).
+func (c *ClientWithResponses) ManagedUserGroupManagedUsersWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupManagedUsersResponse, error) {
+	rsp, err := c.ManagedUserGroupManagedUsers(ctx, managedUserGroupId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupManagedUsersResponse(rsp)
+}
+
+// ManagedUserRequestInviteWithBodyWithResponse Request Invite
+//
+// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+func (c *ClientWithResponses) ManagedUserRequestInviteWithBodyWithResponse(ctx context.Context, params *ManagedUserRequestInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserRequestInviteResponse, error) {
+	rsp, err := c.ManagedUserRequestInviteWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserRequestInviteResponse(rsp)
+}
+
+// ManagedUserRequestInviteWithResponse Request Invite
+//
+// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-user-invite-requests (the `ManagedUserRequestInvite` operationId).
+func (c *ClientWithResponses) ManagedUserRequestInviteWithResponse(ctx context.Context, params *ManagedUserRequestInviteParams, body ManagedUserRequestInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserRequestInviteResponse, error) {
+	rsp, err := c.ManagedUserRequestInvite(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserRequestInviteResponse(rsp)
+}
+
+// ManagedUsersWithResponse List Managed Users
+//
+// The account's managed users, oldest first: the organization's members the account admits, invited or signed in. A member another account admits appears here only once this account admits it too.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-users (the `ManagedUsers` operationId).
+func (c *ClientWithResponses) ManagedUsersWithResponse(ctx context.Context, params *ManagedUsersParams, reqEditors ...RequestEditorFn) (*ManagedUsersResponse, error) {
+	rsp, err := c.ManagedUsers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUsersResponse(rsp)
+}
+
+// ManagedUserInviteV2WithBodyWithResponse Invite Managed User
+//
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+func (c *ClientWithResponses) ManagedUserInviteV2WithBodyWithResponse(ctx context.Context, params *ManagedUserInviteV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserInviteV2Response, error) {
+	rsp, err := c.ManagedUserInviteV2WithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserInviteV2Response(rsp)
+}
+
+// ManagedUserInviteV2WithResponse Invite Managed User
+//
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-users (the `ManagedUserInviteV2` operationId).
+func (c *ClientWithResponses) ManagedUserInviteV2WithResponse(ctx context.Context, params *ManagedUserInviteV2Params, body ManagedUserInviteV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserInviteV2Response, error) {
+	rsp, err := c.ManagedUserInviteV2(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserInviteV2Response(rsp)
+}
+
+// ManagedUserDeleteWithResponse Delete Managed User
+//
+// Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
+func (c *ClientWithResponses) ManagedUserDeleteWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserDeleteResponse, error) {
+	rsp, err := c.ManagedUserDelete(ctx, managedUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserDeleteResponse(rsp)
+}
+
+// ManagedUserWithResponse Get Managed User
+//
+// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
+func (c *ClientWithResponses) ManagedUserWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserResponse, error) {
+	rsp, err := c.ManagedUser(ctx, managedUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserResponse(rsp)
+}
+
+// ManagedUserUpdateWithBodyWithResponse Update Managed User
+//
+// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+func (c *ClientWithResponses) ManagedUserUpdateWithBodyWithResponse(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error) {
+	rsp, err := c.ManagedUserUpdateWithBody(ctx, managedUserId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserUpdateResponse(rsp)
+}
+
+// ManagedUserUpdateWithResponse Update Managed User
+//
+// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
+func (c *ClientWithResponses) ManagedUserUpdateWithResponse(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error) {
+	rsp, err := c.ManagedUserUpdate(ctx, managedUserId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserUpdateResponse(rsp)
+}
+
+// ManagedUserPersonalApiKeysWithResponse Managed user personal api keys
+//
+// The managed user's personal API keys in the account, oldest first, including those disabled as DEPROVISIONED.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-users/{managedUserId}/personal-api-keys (the `ManagedUserPersonalApiKeys` operationId).
+func (c *ClientWithResponses) ManagedUserPersonalApiKeysWithResponse(ctx context.Context, managedUserId string, params *ManagedUserPersonalApiKeysParams, reqEditors ...RequestEditorFn) (*ManagedUserPersonalApiKeysResponse, error) {
+	rsp, err := c.ManagedUserPersonalApiKeys(ctx, managedUserId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserPersonalApiKeysResponse(rsp)
+}
+
+// ManagedUserResendInviteWithResponse Resend Invite
+//
+// Resend the managed user's invitation, which moves its sentAt to now and so restarts its 24 hours; nothing is delivered. A managed user who has accepted their invitation, or has none, answers 409 invalid-state.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
+func (c *ClientWithResponses) ManagedUserResendInviteWithResponse(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*ManagedUserResendInviteResponse, error) {
+	rsp, err := c.ManagedUserResendInvite(ctx, managedUserId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserResendInviteResponse(rsp)
 }
 
 // MarkedForDeletionWithResponse Marked For Deletion
@@ -38604,6 +42515,36 @@ func (c *ClientWithResponses) SessionDeleteWithResponse(ctx context.Context, ses
 		return nil, err
 	}
 	return ParseSessionDeleteResponse(rsp)
+}
+
+// ManagedUserRequestRoleChangeWithBodyWithResponse Request Role Change
+//
+// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+func (c *ClientWithResponses) ManagedUserRequestRoleChangeWithBodyWithResponse(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserRequestRoleChangeResponse, error) {
+	rsp, err := c.ManagedUserRequestRoleChangeWithBody(ctx, spaceId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserRequestRoleChangeResponse(rsp)
+}
+
+// ManagedUserRequestRoleChangeWithResponse Request Role Change
+//
+// Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /spaces/{spaceId}/role-change-requests (the `ManagedUserRequestRoleChange` operationId).
+func (c *ClientWithResponses) ManagedUserRequestRoleChangeWithResponse(ctx context.Context, spaceId string, params *ManagedUserRequestRoleChangeParams, body ManagedUserRequestRoleChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserRequestRoleChangeResponse, error) {
+	rsp, err := c.ManagedUserRequestRoleChange(ctx, spaceId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserRequestRoleChangeResponse(rsp)
 }
 
 // StackDependencyCreateWithBodyWithResponse Create Dependency
@@ -43475,6 +47416,128 @@ func ParseAvailableSelfServicePlansResponse(rsp *http.Response) (*AvailableSelfS
 	return response, nil
 }
 
+// ParseAvailableUserGroupsResponse parses an HTTP response from a AvailableUserGroupsWithResponse call
+func ParseAvailableUserGroupsResponse(rsp *http.Response) (*AvailableUserGroupsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AvailableUserGroupsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AvailableUserGroupsPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AvailableUserGroupsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AvailableUserGroupsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AvailableUserGroupsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAwarenessSourceSurveyResponse parses an HTTP response from a AwarenessSourceSurveyWithResponse call
 func ParseAwarenessSourceSurveyResponse(rsp *http.Response) (*AwarenessSourceSurveyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -44776,6 +48839,1763 @@ func ParseIdResponse(rsp *http.Response) (*IdResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers IdResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserGroupsResponse parses an HTTP response from a ManagedUserGroupsWithResponse call
+func ParseManagedUserGroupsResponse(rsp *http.Response) (*ManagedUserGroupsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserGroupPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserGroupCreateV2Response parses an HTTP response from a ManagedUserGroupCreateV2WithResponse call
+func ParseManagedUserGroupCreateV2Response(rsp *http.Response) (*ManagedUserGroupCreateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupCreateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ManagedUserGroup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ManagedUserGroupCreateV2Response201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupCreateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupCreateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserGroupDeleteResponse parses an HTTP response from a ManagedUserGroupDeleteWithResponse call
+func ParseManagedUserGroupDeleteResponse(rsp *http.Response) (*ManagedUserGroupDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserGroup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserGroupResponse parses an HTTP response from a ManagedUserGroupWithResponse call
+func ParseManagedUserGroupResponse(rsp *http.Response) (*ManagedUserGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserGroup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserGroupUpdateV2Response parses an HTTP response from a ManagedUserGroupUpdateV2WithResponse call
+func ParseManagedUserGroupUpdateV2Response(rsp *http.Response) (*ManagedUserGroupUpdateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupUpdateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserGroup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupUpdateV2Response200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupUpdateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupUpdateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserGroupManagedUsersResponse parses an HTTP response from a ManagedUserGroupManagedUsersWithResponse call
+func ParseManagedUserGroupManagedUsersResponse(rsp *http.Response) (*ManagedUserGroupManagedUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupManagedUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupManagedUsersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupManagedUsersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupManagedUsersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserRequestInviteResponse parses an HTTP response from a ManagedUserRequestInviteWithResponse call
+func ParseManagedUserRequestInviteResponse(rsp *http.Response) (*ManagedUserRequestInviteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserRequestInviteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ManagedUserRequestInviteResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserRequestInviteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserRequestInviteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUsersResponse parses an HTTP response from a ManagedUsersWithResponse call
+func ParseManagedUsersResponse(rsp *http.Response) (*ManagedUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUsersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUsersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUsersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserInviteV2Response parses an HTTP response from a ManagedUserInviteV2WithResponse call
+func ParseManagedUserInviteV2Response(rsp *http.Response) (*ManagedUserInviteV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserInviteV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ManagedUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ManagedUserInviteV2Response201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserInviteV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserInviteV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserDeleteResponse parses an HTTP response from a ManagedUserDeleteWithResponse call
+func ParseManagedUserDeleteResponse(rsp *http.Response) (*ManagedUserDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserResponse parses an HTTP response from a ManagedUserWithResponse call
+func ParseManagedUserResponse(rsp *http.Response) (*ManagedUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserUpdateResponse parses an HTTP response from a ManagedUserUpdateWithResponse call
+func ParseManagedUserUpdateResponse(rsp *http.Response) (*ManagedUserUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserUpdateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserPersonalApiKeysResponse parses an HTTP response from a ManagedUserPersonalApiKeysWithResponse call
+func ParseManagedUserPersonalApiKeysResponse(rsp *http.Response) (*ManagedUserPersonalApiKeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserPersonalApiKeysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKeyPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserPersonalApiKeysResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserPersonalApiKeysResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserPersonalApiKeysResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserResendInviteResponse parses an HTTP response from a ManagedUserResendInviteWithResponse call
+func ParseManagedUserResendInviteResponse(rsp *http.Response) (*ManagedUserResendInviteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserResendInviteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserResendInviteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserResendInviteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserResendInviteResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -48723,6 +54543,142 @@ func ParseSessionDeleteResponse(rsp *http.Response) (*SessionDeleteResponse, err
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers SessionDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserRequestRoleChangeResponse parses an HTTP response from a ManagedUserRequestRoleChangeWithResponse call
+func ParseManagedUserRequestRoleChangeResponse(rsp *http.Response) (*ManagedUserRequestRoleChangeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserRequestRoleChangeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ManagedUserRequestRoleChangeResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserRequestRoleChangeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserRequestRoleChangeResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

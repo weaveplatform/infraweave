@@ -29,7 +29,16 @@
 // member without organization-admin answers 403 forbidden, an account,
 // member or key of another organization 404, a slug in use or a claim of
 // a claimed account or a deletion of the last 409, and input the service
-// or features domain refuses 422 validation-failed. OperatorServer is its partial of the operator API's
+// or features domain refuses 422 validation-failed. The Managed Users
+// operations, through the user and group services, invite, read, update,
+// remove and resend the invitation of the account's managed users, record
+// invite and role change requests, and manage its groups: a managed user
+// or group of another account answers 404, a second invitation of one
+// member or address 409 invalid-state, a group name in use 409
+// already-exists, any role binding or access rule 400 invalid-request, a
+// role change request from anything but a member 403, a seat beyond the
+// pool 403 limit-reached and input the service refuses 422
+// validation-failed. OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
 // organizationDelete, organizationBreakGlassSet and
@@ -56,7 +65,8 @@
 // # Dependencies
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
-// operator, orgadmin, organization, port, session and settings packages, accessapi,
+// group, member, operator, orgadmin, organization, port, session, settings and
+// user packages, accessapi,
 // featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.

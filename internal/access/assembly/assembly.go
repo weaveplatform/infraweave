@@ -16,12 +16,14 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
@@ -101,6 +103,8 @@ type Domain struct {
 	orgs     *operator.Service
 	orgAdmin *orgadmin.Service
 	settings *settings.Service
+	users    *user.Service
+	groups   *group.Service
 	manual   bool
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
@@ -179,6 +183,8 @@ func New(d Deps) (*Domain, error) {
 		settings: settings.NewService(
 			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
 		),
+		users:     user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
+		groups:    group.NewService(group.Deps{Store: store, Now: now}),
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil
@@ -190,7 +196,10 @@ func (d *Domain) API() AccessAPI {
 	if d == nil {
 		return AccessAPI{}
 	}
-	return http.NewServer(d.authn, d.keys, d.store, d.settings, d.orgAdmin)
+	return http.NewServer(http.Services{
+		Auth: d.authn, Keys: d.keys, Accounts: d.store, Settings: d.settings, Orgs: d.orgAdmin,
+		Users: d.users, Groups: d.groups,
+	})
 }
 
 // OperatorAPI is the domain's partial of the operator API's strict
