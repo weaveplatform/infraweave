@@ -15,7 +15,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -47,24 +49,33 @@ type keysDB interface {
 
 // rotateKeys rotates the data key, wrapped by p, once the active key is
 // olderThan old, and enqueues secrets.reseal in the same transaction, so a
-// rotation never commits without the job that retires the old key.
+// rotation never commits without the job that retires the old key. It
+// answers the new active key's ID, read in that transaction, or 0 when it
+// did not rotate.
 func rotateKeys(
 	ctx context.Context,
 	db keysDB,
 	q *queue.Queue,
 	p kek.Provider,
 	olderThan time.Duration,
-) (bool, error) {
-	var rotated bool
+) (uint32, error) {
+	var active uint32
 	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
-		var err error
-		if rotated, err = crypt.Rotate(ctx, tx.Q(ctx, db), p, olderThan); err != nil || !rotated {
+		rotated, err := crypt.Rotate(ctx, tx.Q(ctx, db), p, olderThan)
+		if err != nil || !rotated {
 			return err //nolint:wrapcheck // names the keyring
 		}
-		_, err = q.EnqueueTx(ctx, ResealValues, nil)
-		return err //nolint:wrapcheck // names the kind
+		if _, err := q.EnqueueTx(ctx, ResealValues, nil); err != nil {
+			return err //nolint:wrapcheck // names the kind
+		}
+		err = tx.Q(ctx, db).QueryRow(ctx,
+			`SELECT id FROM encryption_keys WHERE state = 'active'`).Scan(&active)
+		if err != nil {
+			return fmt.Errorf("%w: rotate: %w", crypt.ErrKeyring, sql.Unavailable(err))
+		}
+		return nil
 	})
-	return rotated, err //nolint:wrapcheck // as above
+	return active, err //nolint:wrapcheck // as above
 }
 
 // secretsTasks are the periodic secrets.rotate, which rotates nothing
@@ -84,13 +95,13 @@ func secretsTasks(
 			if c.Secrets.RotationInterval == 0 {
 				return nil
 			}
-			rotated, err := rotateKeys(ctx, db, q, p, c.Secrets.RotationInterval)
+			active, err := rotateKeys(ctx, db, q, p, c.Secrets.RotationInterval)
 			if errors.Is(err, crypt.ErrRotating) {
 				log.Debug("data key rotation skipped", "reason", err)
 				return nil
 			}
-			if rotated {
-				log.Info("data key rotated; secrets.reseal enqueued")
+			if active != 0 {
+				log.Info("data key rotated; secrets.reseal enqueued", "active_key", active)
 			}
 			return err
 		},
@@ -119,12 +130,14 @@ func SecretsRotate(ctx context.Context, c config.Config, w io.Writer) error {
 		return err
 	}
 	defer db.Close()
-	if _, err := rotateKeys(ctx, db.Primary(), queue.New(db.Primary()), provider, 0); err != nil {
+	active, err := rotateKeys(ctx, db.Primary(), queue.New(db.Primary()), provider, 0)
+	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintln(
+	_, _ = fmt.Fprintf(
 		w,
-		"rotated the data key; a scheduler reseals under it and deletes the old key",
+		"rotated the data key to key %d; a scheduler reseals under it and deletes the old key\n",
+		active,
 	)
 	return nil
 }
@@ -166,6 +179,11 @@ func GenerateKEK(file string) error {
 	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return fmt.Errorf("generate KEK: %w", err)
+	}
+	// Restricted before it holds the key: 0600 alone says nothing on
+	// Windows.
+	if err := private.Restrict(file); err != nil {
+		return errors.Join(fmt.Errorf("generate KEK: %w", err), f.Close(), os.Remove(file))
 	}
 	_, err = fmt.Fprintln(f, base64.StdEncoding.EncodeToString(key))
 	if err = errors.Join(err, f.Close()); err != nil {

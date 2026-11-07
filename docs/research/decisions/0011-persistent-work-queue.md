@@ -166,12 +166,15 @@ has no counterpart, because workers report over HTTP straight to the API
 - **Retry delay.** Exponential backoff with full jitter: a random delay in
   [1 s, min(15 min, 1 s * 2^(attempt-1))].
 - **Dead letters.** Dead jobs are kept 30 days (`queue.dead_retention`) with
-  their last error. Three operations of the operator API
+  their last error. Four operations of the operator API
   ([0021](0021-capability-scope-and-supersession.md)), outside the Spacelift
-  surface, list, retry and discard them: `GET /operator/v1/queue/jobs`,
+  surface, list, read, retry and discard them: `GET /operator/v1/queue/jobs`,
+  `GET /operator/v1/queue/jobs/{id}`,
   `POST /operator/v1/queue/jobs/{id}/retry` and
   `DELETE /operator/v1/queue/jobs/{id}`. A retry
-  resets `attempt` to zero. Jobs span every organization, so only operator
+  resets `attempt` to zero, and a discard cancels the job, which pruning
+  deletes; each answers the job as it was, and a job that is not dead
+  answers `404`. Jobs span every organization, so only operator
   principals reach them ([0007](0007-authorization-spaces-and-roles.md)).
 - **Feature check.** Before a handler runs, the claim checks the job kind's
   feature against the entitlement of the job's account, which is its

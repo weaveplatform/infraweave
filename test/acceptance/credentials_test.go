@@ -74,12 +74,15 @@ type querier interface {
 	Query(ctx context.Context, sql string) (string, error)
 }
 
-// seed inserts t's organization, account and key, or leaves them as they
-// are, so every replica's launch may seed.
+// seed inserts t's organization, with the Enterprise entitlement creating
+// an organization gives it while billing is off, its account and its key,
+// or leaves them as they are, so every replica's launch may seed.
 func (t tenant) seed(ctx context.Context, db querier) error {
 	digest := sha256.Sum256([]byte(t.secret()))
 	_, err := db.Query(ctx, fmt.Sprintf(`
 		INSERT INTO organizations (id, slug, name) VALUES ('%[1]s', '%[2]s', '%[2]s')
+			ON CONFLICT DO NOTHING;
+		INSERT INTO organization_entitlements (organization_id, tier) VALUES ('%[1]s', 'Enterprise')
 			ON CONFLICT DO NOTHING;
 		INSERT INTO accounts (organization_id, id, slug, name)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', '%[4]s') ON CONFLICT DO NOTHING;

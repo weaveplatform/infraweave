@@ -22,7 +22,8 @@ import (
 
 var _ operator.Store = (*Store)(nil)
 
-// CreateOrganization records org, its first account, its break-glass
+// CreateOrganization records org, its entitlement on the default tier
+// through the features domain, its first account, its break-glass
 // credential when bg is not nil, and e, in one transaction or none of
 // them.
 func (s *Store) CreateOrganization(
@@ -39,6 +40,11 @@ func (s *Store) CreateOrganization(
 				VALUES ($1, $2, $3, coalesce($4, now()))`,
 			org.ID, org.Slug, org.Name, nullTime(org.CreatedAt)); err != nil {
 			return classify(err, "organization")
+		}
+		if s.features != nil {
+			if err := s.features.CreateOrganization(ctx, org.ID); err != nil {
+				return fmt.Errorf("access: %w", err)
+			}
 		}
 		if _, err := q.Exec(
 			ctx,

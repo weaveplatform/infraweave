@@ -4,7 +4,9 @@ info:
   version: 0.1.0
   description: >-
     The installation operator's API (decision 0021): organizations, their
-    first accounts and their break-glass credentials. Only an operator
+    first accounts and their break-glass credentials; tiers, the billing
+    switch and each organization's tier and grants; the queue's dead jobs;
+    and the data key's rotation. Only an operator
     token, which an operator key from auth.operator.keys exchanges for at
     POST /api/v1/auth/token, reaches it; any other credential answers 401.
     Spacelift has no counterpart, so it is outside the parity surface.
@@ -18,3 +20,21 @@ tags:
     description: >-
       Organizations, each created with its first account, and each
       organization's break-glass credential.
+  - name: Tiers
+    description: >-
+      Tiers, each a set of features and a set of limit values. Enterprise
+      holds every feature and no limit, and is read-only.
+  - name: Billing
+    description: >-
+      The billing switch, which turns entitlement checks on, and the tier a
+      new organization gets.
+  - name: Entitlements
+    description: >-
+      Each organization's tier and the features and limit values granted it
+      beyond the tier.
+  - name: Queue
+    description: >-
+      The queue's dead jobs, across every organization.
+  - name: Secrets
+    description: >-
+      The data key that seals secrets at rest.

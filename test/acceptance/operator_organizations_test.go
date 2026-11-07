@@ -82,13 +82,18 @@ func (o *operatorSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^token "(\w+)" carries the claims of an operator token$`, o.claims)
 }
 
-// servers starts the scenario's two servers with the operator key in
+// operatorAuth is the auth settings that hold the operator key in
 // auth.operator.keys.
-func (o *operatorSteps) servers(ctx context.Context) error {
+func operatorAuth() map[string]any {
 	sum := sha256.Sum256([]byte(operatorSecret()))
-	o.a.s.w.auth = map[string]any{"operator": map[string]any{"keys": []map[string]any{{
+	return map[string]any{"operator": map[string]any{"keys": []map[string]any{{
 		"id": operatorKey, "secret_sha256": fmt.Sprintf("%x", sum),
 	}}}}
+}
+
+// servers starts the scenario's two servers with the operator key.
+func (o *operatorSteps) servers(ctx context.Context) error {
+	o.a.s.w.auth = operatorAuth()
 	return o.a.s.twoReplicas(ctx)
 }
 

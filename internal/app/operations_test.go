@@ -90,7 +90,7 @@ func TestUnitAPIOperations(t *testing.T) {
 	// The fs driver's routes are mounted, so a table pattern the driver
 	// does not serve fails the walk below.
 	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server),
-		Domains{Auth: byAddress{}}, nil, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
+		Domains{Auth: byAddress{}}, Platform{}, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
 	if !ok {
 		t.Fatal("API is not a chi router")
 	}
@@ -267,7 +267,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: 3}
 	c.RateLimit.Expensive = ratelimit.Limit{Rate: 1e-6, Burst: 1}
-	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, nil, Blobs{})
+	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, Platform{}, Blobs{})
 	const me = "192.0.2.1:1"
 
 	if rec := send(
@@ -312,7 +312,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 func TestUnitAPIDisabledCaller(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.DisabledCallers = []string{addressCaller("192.0.2.1")}
-	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, nil, Blobs{})
+	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, Platform{}, Blobs{})
 	rec := send(api, http.MethodGet, "/api/v1/stacks", "192.0.2.1:1", "")
 	wantTyped(t, rec, problem.APIDisabled)
 	if rec.Header().Get("Retry-After") == "" || rec.Header().Get("X-RateLimit-Limit") != "" {
@@ -398,7 +398,7 @@ func TestUnitGuardedAuthentication(t *testing.T) {
 // does not serve still answers 401.
 func TestUnitSignedURLRoutes(t *testing.T) {
 	c := config.Defaults().Server
-	h := API(discard(), c, memory(c), Domains{}, nil, Blobs{Routes: (&fs.Bucket{}).Routes})
+	h := API(discard(), c, memory(c), Domains{}, Platform{}, Blobs{Routes: (&fs.Bucket{}).Routes})
 	for _, method := range []string{http.MethodGet, http.MethodPut} {
 		rec := send(h, method, "/blobs/not-a-token", "198.51.100.7:1", "")
 		wantTyped(t, rec, problem.Forbidden)

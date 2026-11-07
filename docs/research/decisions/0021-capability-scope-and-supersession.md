@@ -274,7 +274,7 @@ tier still matches its seed.
 - **One tier per organization.** Every organization (decision 0007) holds
   exactly one tier, and every account of it has the organization's
   entitlement. A new organization gets the installation's default tier,
-  Enterprise unless the operator changes it.
+  Enterprise unless the operator names another with the billing switch.
 - **Grants.** The operator can grant an organization a feature its tier
   lacks, or set one of its limits to a value above or below the tier's.
   Grants belong to the organization, apply to all its accounts, and survive
@@ -348,15 +348,21 @@ unauthenticated`). `infraweavectl operator` wraps it with `organization`,
   the default tier and the break-glass credential (0006, 0007).
   **`organization delete`** deletes the organization and all its accounts.
   **`organization break-glass set`** replaces the break-glass credential.
-- **`tier`** and **`grant`** edit tiers and an organization's tier and
-  grants; **`billing`** sets the switch.
+- **`organization tier set`** gives an organization a tier.
+- **`tier`** creates, replaces and deletes tiers; **`grant`** grants and
+  revokes an organization's features and limit values (a limit grant's
+  value may be `unlimited`), and lists what they entitle it to.
+- **`billing set`** sets the switch and, optionally, the default tier.
 
 A change takes effect without a restart: each write bumps
 `organization_entitlements.entitlement_version` for the organization it touches and
 notifies `infraweave_invalidate`, and replicas rebuild their per-organization
 entitlement snapshot, which every account of the organization reads, as
-they do for authorization (decision 0007). Deleting a tier that an
-organization holds answers `409 invalid-state`.
+they do for authorization (decision 0007); replacing a tier bumps the
+version of every organization that holds it. Deleting a tier that an
+organization holds or that is the default tier, and editing or deleting
+Enterprise, answer `409 invalid-state`; revoking a grant the organization
+does not hold answers `404 not-found`.
 
 ### The organization API
 
@@ -659,11 +665,15 @@ acceptance feature that runs work therefore runs it on a private pool.
   - a seat beyond the limit answers `limit-reached`;
   - the Business to Starter+ downgrade above, then the upgrade back;
   - a tier change applies to a running server without a restart, in every
-    account of the organization;
+    account of the organization, on another replica than the one written;
+  - deleting a tier in use, and editing Enterprise, answer 409;
   - an account credential on the operator API answers 401;
   - `organization create` creates the organization with its first account,
     unclaimed, and the default tier; an organization token reaches the
     `Organization` tag and no account route.
+- **`test/acceptance/features/cli_operator.feature`**: `infraweavectl
+  operator` drives the operator API against `infraweave all`, printing each
+  answer, and a refused change's problem.
 - **`test/acceptance/features/platform_billing.feature`**: every Billing
   operation answers as the vendor-bound table says, and each mutation
   answers 403 `installation-unsupported`.

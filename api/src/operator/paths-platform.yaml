@@ -1,0 +1,287 @@
+# The installation's own maintenance, which no domain owns: the queue's dead
+# jobs (decision 0011) and the data key's rotation (decision 0013).
+components:
+  schemas:
+    DeadJob:
+      description: A job that exhausted its attempts or failed permanently (decision
+        0011).
+      type: object
+      required:
+        - id
+        - queue
+        - kind
+        - payload
+        - attempt
+        - lastError
+        - createdAt
+        - finishedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The job's ID.
+        queue:
+          type: string
+          description: The logical queue it ran on.
+        kind:
+          type: string
+          description: The job kind, <area>.<verb>.
+        payload:
+          description: The job's JSON payload.
+        account:
+          type: string
+          description: The ULID of the account the job ran for, when it ran for one.
+        uniqueKey:
+          type: string
+          description: The key that keeps its duplicates out, when it has one.
+        attempt:
+          type: integer
+          format: int32
+          description: The attempts it made.
+        lastError:
+          type: string
+          description: The error of its last attempt.
+        createdAt:
+          type: integer
+          format: int64
+          description: When it was enqueued, in Unix seconds.
+        finishedAt:
+          type: integer
+          format: int64
+          description: When it died, in Unix seconds.
+    DeadJobPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeadJob'
+        nextCursor:
+          type: string
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+    DataKey:
+      description: The data key that seals new values (decision 0013).
+      type: object
+      required:
+        - keyId
+      properties:
+        keyId:
+          type: integer
+          format: int64
+          description: The active data key's ID.
+paths:
+  /queue/jobs:
+    get:
+      summary: List dead jobs
+      description: Every organization's dead jobs, oldest first. They are kept for
+        queue.dead_retention.
+      operationId: deadJobs
+      x-infraweave-feature: operator
+      tags:
+        - Queue
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadJobPage'
+          description: One page of dead jobs.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '400':
+          $ref: '#/components/responses/InvalidCursor'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /queue/jobs/{id}:
+    get:
+      summary: Read a dead job
+      operationId: deadJob
+      x-infraweave-feature: operator
+      tags:
+        - Queue
+      x-infraweave-cost: standard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The job's ID.
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadJob'
+          description: The dead job.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      summary: Discard a dead job
+      description: Cancels the dead job, which pruning then deletes.
+      operationId: deadJobDiscard
+      x-infraweave-feature: operator
+      tags:
+        - Queue
+      x-infraweave-cost: standard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The job's ID.
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadJob'
+          description: The job as it was.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /queue/jobs/{id}/retry:
+    post:
+      summary: Retry a dead job
+      description: Makes the dead job pending again with its attempts reset.
+      operationId: deadJobRetry
+      x-infraweave-feature: operator
+      tags:
+        - Queue
+      x-infraweave-cost: standard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The job's ID.
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadJob'
+          description: The job as it was.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: A pending or running job holds its kind and unique key (invalid-state),
+            or a request with this Idempotency-Key is in flight.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/IdempotencyMismatch'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /secrets/rotate:
+    post:
+      summary: Rotate the data key
+      description: Makes a new data key active, as infraweave secrets rotate does.
+        New values seal under it; a scheduler reseals the old key's values and then
+        deletes it, and the old key opens them until it does.
+      operationId: secretsRotate
+      x-infraweave-feature: operator
+      tags:
+        - Secrets
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataKey'
+          description: The new active key.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '409':
+          description: The previous rotation's key is still retiring (invalid-state),
+            or a request with this Idempotency-Key is in flight.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/IdempotencyMismatch'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'

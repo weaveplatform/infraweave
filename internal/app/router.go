@@ -10,6 +10,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
@@ -42,9 +43,13 @@ type unimplemented struct{ api.UnimplementedStrict }
 
 // operatorServer is the operator API's strict server, composed as
 // apiServer is: each domain's partial at depth one, the 501 stubs at two.
+// The installation's own operations, which no domain owns, reach
+// platform.
 type operatorServer struct {
 	accessassembly.AccessOperatorAPI
+	featuresassembly.FeaturesOperatorAPI
 	unimplementedOperator
+	platform Platform
 }
 
 type unimplementedOperator struct {
@@ -67,7 +72,7 @@ var _ api.StrictServerInterface = apiServer{}
 // API is the API listener's handler: the API under BaseURL and the
 // operator API under OperatorBaseURL behind c's rate limits and
 // idempotency keys, whose state g holds, with each domain's operations
-// from d, queue depths read from queues and objects in b, and the fs
+// from d, the installation's own from p and objects in b, and the fs
 // driver's signed-URL routes beside them. Each API authenticates with its
 // own authenticator from d, so neither accepts the other's tokens. It
 // serves no probe; those are the admin listener's alone, and are never
@@ -77,7 +82,7 @@ func API(
 	c config.Server,
 	g Guards,
 	d Domains,
-	queues QueueStats,
+	p Platform,
 	b Blobs,
 ) http.Handler {
 	var gated Gated
@@ -90,7 +95,7 @@ func API(
 	}
 	d.Access.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
-		apiServer{AccessAPI: d.Access.API(), queues: queues, blobs: b.Objects},
+		apiServer{AccessAPI: d.Access.API(), queues: p.Queues, blobs: b.Objects},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,
@@ -103,7 +108,11 @@ func API(
 		ErrorHandlerFunc: problem.RequestError,
 	})
 	operator := operatorapi.NewStrictHandlerWithOptions(
-		operatorServer{AccessOperatorAPI: d.Access.OperatorAPI()},
+		operatorServer{
+			AccessOperatorAPI:   d.Access.OperatorAPI(),
+			FeaturesOperatorAPI: d.Features.OperatorAPI(d.Access.OrganizationID),
+			platform:            p,
+		},
 		nil,
 		operatorapi.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,

@@ -125,9 +125,30 @@ func binary(ctx context.Context) (string, error) {
 			built.err = fmt.Errorf("repository root: %w", err)
 			return
 		}
-		built.bin, built.err = BuildBinary(ctx, root, buildDir)
+		built.bin, built.err = BuildBinary(ctx, root, buildDir, "infraweave")
 	})
 	return built.bin, built.err
+}
+
+// The infraweavectl binary every test of this test binary runs.
+var builtCtl struct {
+	once sync.Once
+	bin  string
+	err  error
+}
+
+// ctlBinary builds infraweavectl once per test binary, beside infraweave.
+// The harness feature's nested runs run no scenario that needs it.
+func ctlBinary(ctx context.Context) (string, error) {
+	builtCtl.once.Do(func() {
+		root, err := filepath.Abs(repoRoot)
+		if err != nil {
+			builtCtl.err = fmt.Errorf("repository root: %w", err)
+			return
+		}
+		builtCtl.bin, builtCtl.err = BuildBinary(ctx, root, buildDir, "infraweavectl")
+	})
+	return builtCtl.bin, builtCtl.err
 }
 
 // dockerTags are the scenario's tags that need a Docker daemon: every

@@ -10,7 +10,11 @@
 // limit's use through the caller, and refuses one more beyond the
 // organization's pool or the account's limit, pool first. The replica
 // keeps a snapshot of each entitlement, the switch and the tiers, which
-// Invalidate and Flush drop.
+// Invalidate and Flush drop. The operator's edits run through Service too:
+// CheckTier holds a tier to the catalogue (gated features, each once, and
+// limits of zero or more), Enterprise cannot be edited or deleted
+// (ErrInvalidState), and OrganizationEntitlement is what an organization's
+// tier and grants entitle it to while billing is on, with its grants.
 //
 // # Input and output
 //

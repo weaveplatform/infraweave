@@ -13,7 +13,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
-	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
@@ -154,7 +153,7 @@ func TestAccDisablePersonalKeys(t *testing.T) {
 // accountFeatures is the features domain's rows as an account delete
 // sees them: it records each delete and whether it ran in a transaction.
 type accountFeatures struct {
-	featuresapi.Entitlements
+	entitled
 	deleted []kernel.AccountID
 	inTx    bool
 	err     error

@@ -11,7 +11,8 @@
 // It composes the serve, scheduler and all process modes (Mode). API mounts
 // the generated strict server (apiServer, which embeds
 // api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL, and the
-// operator API's (operatorServer) under OperatorBaseURL on the same
+// operator API's (operatorServer, which embeds the access and features
+// domains' operator partials) under OperatorBaseURL on the same
 // router, behind decision 0003's controls, each prefix authenticated by
 // its own authenticator (byPrefix); Guarded and
 // Operations put authentication, then the operator switch, the rate limits
@@ -54,7 +55,10 @@
 // platform's sealed columns and each domain's; every
 // domain appends to and subscribes on Run's one outbox. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
-// installation's own operation, which no domain owns. MigrateUp and MigrateStatus are
+// installation's own operation, which no domain owns, as are the operator
+// API's dead-job operations and its data key rotation, the same rotation
+// as infraweave secrets rotate; Platform holds what they reach. MigrateUp
+// and MigrateStatus are
 // infraweave migrate up and status; GenerateKEK, SecretsRotate and
 // SecretsRewrap are infraweave secrets generate-kek, rotate and rewrap.
 // Version and FIPS are the lines infraweave version prints, the second the

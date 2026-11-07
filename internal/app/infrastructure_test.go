@@ -55,7 +55,7 @@ func TestUnitMessageQueueStats(t *testing.T) {
 		c,
 		memory(c),
 		Domains{Auth: byAddress{}},
-		fakeStats{stats: depths()},
+		Platform{Queues: fakeStats{stats: depths()}},
 		Blobs{},
 	)
 
@@ -123,7 +123,7 @@ func TestUnitMessageQueueStatsProblems(t *testing.T) {
 		c,
 		memory(c),
 		Domains{Auth: byAddress{}},
-		fakeStats{stats: depths()},
+		Platform{Queues: fakeStats{stats: depths()}},
 		Blobs{},
 	)
 	for _, cursor := range []string{"not base64!", other} {
@@ -135,7 +135,7 @@ func TestUnitMessageQueueStatsProblems(t *testing.T) {
 		)
 	}
 	down := API(discard(), c, memory(c), Domains{Auth: byAddress{}},
-		fakeStats{err: fmt.Errorf("stats: %w", kernel.ErrUnavailable)}, Blobs{})
+		Platform{Queues: fakeStats{err: fmt.Errorf("stats: %w", kernel.ErrUnavailable)}}, Blobs{})
 	wantTyped(t, send(down, http.MethodGet, "/api/v1/message-queue-stats", "192.0.2.1:1", ""),
 		problem.ServiceUnavailable)
 	broken := API(
@@ -143,7 +143,7 @@ func TestUnitMessageQueueStatsProblems(t *testing.T) {
 		c,
 		memory(c),
 		Domains{Auth: byAddress{}},
-		fakeStats{err: errors.New("stats: broken")},
+		Platform{Queues: fakeStats{err: errors.New("stats: broken")}},
 		Blobs{},
 	)
 	if rec := send(

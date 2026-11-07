@@ -54,26 +54,47 @@ type Dead struct {
 	FinishedAt time.Time
 }
 
+// deadColumns are a dead job's, as Dead holds them.
+const deadColumns = `SELECT id, queue, kind, payload, account_id, coalesce(unique_key, ''),
+    attempt, coalesce(last_error, ''), created_at, finished_at FROM jobs`
+
 // ListDead lists up to limit dead jobs with IDs above after, oldest first;
 // the last ID listed is the next page's after.
 func (q *Queue) ListDead(ctx context.Context, after int64, limit int) ([]Dead, error) {
-	rows, err := tx.Q(ctx, q.q).Query(ctx, `
-SELECT id, queue, kind, payload, account_id, coalesce(unique_key, ''), attempt,
-    coalesce(last_error, ''), created_at, finished_at
-FROM jobs WHERE state = 'dead' AND id > $1 ORDER BY id LIMIT $2`, after, limit)
+	rows, err := tx.Q(ctx, q.q).Query(ctx,
+		deadColumns+` WHERE state = 'dead' AND id > $1 ORDER BY id LIMIT $2`, after, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list dead jobs: %w", sql.Unavailable(err))
 	}
-	dead, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Dead, error) {
-		var d Dead
-		err := r.Scan(&d.ID, &d.Queue, &d.Kind, &d.Payload, &d.Account, &d.UniqueKey, &d.Attempt,
-			&d.LastError, &d.CreatedAt, &d.FinishedAt)
-		return d, err //nolint:wrapcheck // wrapped below
-	})
+	dead, err := pgx.CollectRows(rows, scanDead)
 	if err != nil {
 		return nil, fmt.Errorf("list dead jobs: %w", sql.Unavailable(err))
 	}
 	return dead, nil
+}
+
+// ReadDead reads dead job id; one that does not exist or is not dead is
+// ErrNotDead.
+func (q *Queue) ReadDead(ctx context.Context, id int64) (Dead, error) {
+	rows, err := tx.Q(ctx, q.q).Query(ctx, deadColumns+` WHERE state = 'dead' AND id = $1`, id)
+	if err != nil {
+		return Dead{}, fmt.Errorf("read job %d: %w", id, sql.Unavailable(err))
+	}
+	d, err := pgx.CollectExactlyOneRow(rows, scanDead)
+	switch {
+	case noRows(err):
+		return Dead{}, fmt.Errorf("read job %d: %w", id, ErrNotDead)
+	case err != nil:
+		return Dead{}, fmt.Errorf("read job %d: %w", id, sql.Unavailable(err))
+	}
+	return d, nil
+}
+
+func scanDead(r pgx.CollectableRow) (Dead, error) {
+	var d Dead
+	err := r.Scan(&d.ID, &d.Queue, &d.Kind, &d.Payload, &d.Account, &d.UniqueKey, &d.Attempt,
+		&d.LastError, &d.CreatedAt, &d.FinishedAt)
+	return d, err //nolint:wrapcheck // its caller wraps it
 }
 
 // Retry makes dead job id pending again with its attempts reset, and

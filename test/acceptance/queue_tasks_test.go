@@ -91,6 +91,11 @@ func (q *queueSteps) twoInstances(ctx context.Context, lease int) error {
 	if err != nil {
 		return fmt.Errorf("instance config: %w", err)
 	}
+	if q.s.w.auth != nil {
+		if config, err = withSection(config, "auth", q.s.w.auth); err != nil {
+			return err
+		}
+	}
 	for range 2 {
 		if _, err := q.s.w.launch(ctx, "all", config); err != nil {
 			return err

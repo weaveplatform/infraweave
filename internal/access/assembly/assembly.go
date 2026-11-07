@@ -196,6 +196,23 @@ func (d *Domain) OperatorAPI() AccessOperatorAPI {
 	return http.NewOperatorServer(d.orgs)
 }
 
+// OrganizationID resolves an organization's slug for another domain's
+// operator operations, which name organizations as the operator does;
+// ok is false when no organization has it.
+func (d *Domain) OrganizationID(
+	ctx context.Context,
+	slug string,
+) (id kernel.OrganizationID, ok bool, err error) {
+	o, err := d.orgs.Get(ctx, slug)
+	switch {
+	case errors.Is(err, port.ErrNotFound):
+		return id, false, nil
+	case err != nil:
+		return id, false, fmt.Errorf("access: %w", err)
+	}
+	return o.ID, true, nil
+}
+
 // Routes mounts the domain's pages beside the APIs on r: the break-glass
 // login at accessapi.LoginPattern. A nil domain's answer 501, as its API
 // partial's operations do, so the routes the controls know of exist.

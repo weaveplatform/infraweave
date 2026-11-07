@@ -173,11 +173,8 @@ func (b *browserSteps) register(sc *godog.ScenarioContext) {
 // serversWithBudget starts the operator key's servers with an expensive
 // budget of burst that refills too slowly to matter in a scenario.
 func (b *browserSteps) serversWithBudget(ctx context.Context, burst int) error {
-	sum := sha256.Sum256([]byte(operatorSecret()))
 	s := b.a.s
-	s.w.auth = map[string]any{"operator": map[string]any{"keys": []map[string]any{{
-		"id": operatorKey, "secret_sha256": fmt.Sprintf("%x", sum),
-	}}}}
+	s.w.auth = operatorAuth()
 	rateLimit := map[string]any{"expensive": map[string]any{"rate": 1e-6, "burst": burst}}
 	for range 2 {
 		if err := s.start(ctx, rateLimit); err != nil {

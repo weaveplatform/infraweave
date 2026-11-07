@@ -175,7 +175,7 @@ func TestUnitBlobRoutes(t *testing.T) {
 		cfg.Server,
 		memory(cfg.Server),
 		Domains{Auth: byAddress{}},
-		nil,
+		Platform{},
 		Blobs{Routes: o.routes},
 	)
 	rec := httptest.NewRecorder()
