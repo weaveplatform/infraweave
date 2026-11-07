@@ -204,7 +204,9 @@ a binding change takes effect without a new token.
 - **Expiry.** An hourly periodic queue task (`authn.sessions.expire`,
   [0011](0011-persistent-work-queue.md)) deletes sessions 30 days after they
   end, so the audit trail can still name them meanwhile. The same task
-  deletes spent authorization codes and OAuth clients unused for 30 days.
+  deletes authorization requests a day after they end, which keeps a
+  replayed code able to name the grant to revoke, and OAuth clients unused
+  for 30 days.
 
 ### API keys and organization keys
 
@@ -390,17 +392,23 @@ server.
 |---|---|
 | `GET /.well-known/oauth-authorization-server` | [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) metadata: `issuer` the public URL; the three endpoints below; `response_types_supported: ["code"]`; `grant_types_supported: ["authorization_code", "refresh_token"]`; `code_challenge_methods_supported: ["S256"]`; `token_endpoint_auth_methods_supported: ["none"]`; `scopes_supported: ["mcp:read", "mcp:write"]` |
 | `POST /oauth/register` | [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591) dynamic client registration of public clients, without an initial access token. Every redirect URI must be a loopback URI ([RFC 8252](https://www.rfc-editor.org/rfc/rfc8252), `http` on `127.0.0.1`, `[::1]` or `localhost`, any port) or an `https` URI; anything else answers `invalid_redirect_uri` naming it. Registration is rate-limited by client address (decision 0003) |
-| `GET /oauth/authorize` | Authorization code with PKCE `S256` only: a request without `code_challenge`, or with `plain`, answers `invalid_request`. `resource` ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707)) is required and names one MCP surface. The server stores the request for 10 minutes and sends the browser to the console's consent page, through the organization's sign-in when there is no browser session |
-| `POST /oauth/token` | `authorization_code` with `code_verifier`, and `refresh_token`. A code is single-use and lives 60 seconds. Every refresh returns a new refresh token and spends the old one; presenting a spent refresh token revokes the whole grant |
+| `GET /oauth/authorize` | Authorization code with PKCE `S256` only: a request without `code_challenge`, or with `plain`, answers `invalid_request`. `resource` ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707)) is required and names one MCP surface. The server stores the request for 10 minutes and answers `302` to the console's consent page, `/consent/{id}`, which signs the member in first when there is no browser session. Until the client and redirect URI are known good, a refusal answers `400` with OAuth's JSON error (`401` for `invalid_client`); after, it redirects to the client with `error`, `error_description` and `state` |
+| `POST /oauth/token` | `authorization_code` with `code_verifier`, and `refresh_token`. A code is single-use and lives 60 seconds; redeeming it twice revokes the grant it made. Every refresh returns a new refresh token and spends the old one; presenting a spent refresh token revokes the whole grant. A refresh's `scope` narrows that access token alone, never the grant. Answers carry `Cache-Control: no-store` |
 
 - **Consent in the console.** The consent page is a console route
   ([0023](0023-console.md)) on the console's browser session. It shows the
-  client's name, its redirect host, the scopes and the account switcher, and
-  approves or denies through `POST /auth/oauth/requests/{id}/approve` and
-  `/deny`, cookie-authenticated with the `Origin` check above. The grant is for
-  the account chosen there: the member must be admitted to it, and its
-  redirect URI must be loopback or match that account's
-  `oauthRedirectAllowedHosts`.
+  client's name, its redirect host, the scopes and the account switcher,
+  which it reads through `GET /auth/oauth/requests/{id}`, and approves or
+  denies through `POST /auth/oauth/requests/{id}/approve` (with the
+  account) and `/deny`, cookie-authenticated with the `Origin` check above.
+  Approving and denying answer `redirectTo`, the client's redirect URI with
+  the code or `access_denied` and the state, where the page sends the
+  browser. Only a member's browser session reaches the three operations;
+  any other credential answers `403`. The grant is for the account chosen
+  there: the member must be admitted to it, and its redirect URI must be
+  loopback or match that account's `oauthRedirectAllowedHosts`, or the
+  approval answers `403`; a request already decided, or expired, answers
+  `404`.
 - **Redirect allowlist.** `oauthRedirectAllowedHosts` is an account setting,
   a list that account admins maintain, of entries a bare host or one
   leading `*.`, for `https` only, as Spacelift's OAuth redirect allowlist is
@@ -712,7 +720,10 @@ Departures from Spacelift, for the plan's deviations register:
   `test/acceptance/features/auth_api_keys.feature` (create, exchange, reset,
   disable, expiry, organization keys), `auth_sessions.feature` (list,
   delete, forced revocation, account switching, an empty switcher for a
-  member no account admits), `auth_mcp_oauth.feature` (a Go MCP client
+  member no account admits), `auth_oauth_server.feature` (registration,
+  consent in a browser session, redeeming, refreshing, a replayed code or
+  refresh token revoking the grant, the redirect allowlist at consent, and
+  removal from the account ending the grant), `auth_mcp_oauth.feature` (a Go MCP client
   registers, consents in a browser session, calls `/mcp`, refreshes, and is
   refused with a token for another resource), `oidc_federation.feature` (a
   real run's token verified against the served discovery document and JWKS,

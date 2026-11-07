@@ -23,7 +23,10 @@
 // the break-glass admin's or an organization key's session is, so API
 // key and run tokens are refused there.
 // AuthenticateOperator does so for the operator API, admitting operator
-// sessions alone, so neither API accepts the other's tokens. Every
+// sessions alone, so neither API accepts the other's tokens.
+// AuthenticateGrant does so for an MCP surface: it admits an OAuth access
+// token only when its session is an OAuth grant for that resource whose
+// scopes include the token's, and the principal holds the token's scopes. Every
 // refused credential is the one ErrUnauthenticated. Sessions, Revoke,
 // RevokeOthers and Logout list and revoke sessions; Expire is
 // authn.sessions.expire.

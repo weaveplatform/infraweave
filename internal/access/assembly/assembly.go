@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -105,6 +106,7 @@ type Domain struct {
 	settings *settings.Service
 	users    *user.Service
 	groups   *group.Service
+	oauth    *oauth.Service
 	manual   bool
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
@@ -171,6 +173,17 @@ func New(d Deps) (*Domain, error) {
 		Now:            now,
 	})
 	orgs := operator.NewService(operator.Deps{Store: store, Drop: auth.Cache().Drop, Now: now})
+	grants := oauth.NewService(oauth.Deps{
+		Store:      store,
+		Tokens:     tokens,
+		Admission:  store,
+		Drop:       auth.Cache().Drop,
+		PublicURL:  d.PublicURL,
+		AccessTTL:  d.Settings.Tokens.OAuthAccess.TTL,
+		RefreshTTL: d.Settings.Tokens.OAuthRefresh.TTL,
+		CodeTTL:    d.Settings.Tokens.OAuthCode.TTL,
+		Now:        now,
+	})
 	return &Domain{
 		store:  store,
 		tokens: tokens,
@@ -185,6 +198,7 @@ func New(d Deps) (*Domain, error) {
 		),
 		users:     user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups:    group.NewService(group.Deps{Store: store, Now: now}),
+		oauth:     grants,
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil
@@ -198,7 +212,7 @@ func (d *Domain) API() AccessAPI {
 	}
 	return http.NewServer(http.Services{
 		Auth: d.authn, Keys: d.keys, Accounts: d.store, Settings: d.settings, Orgs: d.orgAdmin,
-		Users: d.users, Groups: d.groups,
+		Users: d.users, Groups: d.groups, OAuth: d.oauth,
 	})
 }
 
@@ -239,17 +253,26 @@ func (d *Domain) Seats(
 	return d.store.Seats(ctx, org, acct) //nolint:wrapcheck // the store names itself
 }
 
-// Routes mounts the domain's pages beside the APIs on r: the break-glass
-// login at accessapi.LoginPattern. A nil domain's answer 501, as its API
-// partial's operations do, so the routes the controls know of exist.
+// Routes mounts the domain's pages and protocols beside the APIs on r:
+// the break-glass login at accessapi.LoginPattern and the authorization
+// server's endpoints at the OAuth patterns. A nil domain's answer 501, as
+// its API partial's operations do, so the routes the controls know of
+// exist.
 func (d *Domain) Routes(r chi.Router) {
 	if d == nil {
-		r.HandleFunc(accessapi.LoginPattern, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
-			problem.Write(w, problem.NotImplemented.New("No access domain serves the login."))
-		})
+		for _, p := range []string{
+			accessapi.LoginPattern, accessapi.OAuthMetadataPattern,
+			accessapi.OAuthRegisterPattern, accessapi.OAuthAuthorizePattern,
+			accessapi.OAuthTokenPattern,
+		} {
+			r.HandleFunc(p, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+				problem.Write(w, problem.NotImplemented.New("No access domain serves this route."))
+			})
+		}
 		return
 	}
 	http.NewLogin(d.authn, d.publicURL).Routes(r)
+	http.NewOAuth(d.oauth).Routes(r)
 }
 
 // Authenticator is the middleware that authenticates the API's requests.
@@ -300,15 +323,18 @@ func (d *Domain) AccountOrganization(
 	return a.OrganizationID, nil
 }
 
-// Cron is the domain's periodic tasks: authn.sessions.expire, hourly, and
-// authn.keys.rotate, daily, unless auth.signing.rotation is manual.
+// Cron is the domain's periodic tasks: authn.sessions.expire, hourly,
+// which also deletes the authorization server's ended requests and unused
+// clients, and authn.keys.rotate, daily, unless auth.signing.rotation is
+// manual.
 func (d *Domain) Cron() []cron.Task {
 	tasks := make([]cron.Task, 0, 2)
 	tasks = append(tasks, cron.Task{
 		Kind:  ExpireSessions,
 		Every: expireEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
-			return d.authn.Expire(ctx) //nolint:wrapcheck // names itself
+			//nolint:wrapcheck // each names itself
+			return errors.Join(d.authn.Expire(ctx), d.oauth.Expire(ctx))
 		},
 	})
 	if d.manual {

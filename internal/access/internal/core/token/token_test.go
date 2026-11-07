@@ -128,6 +128,18 @@ func TestUnitTokenClaims(t *testing.T) {
 	if err != nil || got != issued {
 		t.Fatalf("Verify = %+v, %v; want %+v", got, err, issued)
 	}
+	r.Kind, r.Scope = token.KindOAuth, "mcp:read mcp:write"
+	raw, issued, err = svc.Issue(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body := segment(t, raw, 1); body["scope"] != r.Scope || body["iw_kind"] != "oauth" {
+		t.Errorf("an OAuth token's claims = %v", body)
+	}
+	if got, err := svc.Verify(ctx, raw, audience); err != nil || got != issued ||
+		got.Scope != r.Scope {
+		t.Errorf("Verify an OAuth token = %+v, %v; want %+v", got, err, issued)
+	}
 
 	valid := func() jwt.Claims {
 		now := jwt.NewNumericDate(c.now())

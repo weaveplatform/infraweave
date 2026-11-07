@@ -316,15 +316,21 @@ func (f *fakes) Verify(_ context.Context, raw, aud string) (token.Claims, error)
 	if err := f.down("Verify"); err != nil {
 		return token.Claims{}, err
 	}
+	// A token is "<kind> <session> <aud>", then for an OAuth token its
+	// scopes joined by commas.
 	parts := strings.Split(raw, " ")
-	if len(parts) != 3 || parts[2] != aud {
+	if len(parts) < 3 || len(parts) > 4 || parts[2] != aud {
 		return token.Claims{}, token.ErrToken
 	}
 	id, err := kernel.ParseULID(parts[1])
 	if err != nil {
 		return token.Claims{}, token.ErrToken
 	}
-	return token.Claims{Kind: token.Kind(parts[0]), Session: id}, nil
+	c := token.Claims{Kind: token.Kind(parts[0]), Session: id}
+	if len(parts) == 4 {
+		c.Scope = strings.ReplaceAll(parts[3], ",", " ")
+	}
+	return c, nil
 }
 
 // world is a service over fakes holding one secret key of account acct.
@@ -666,5 +672,59 @@ func TestUnitRevocation(t *testing.T) {
 		if !errors.Is(err1, errDown) && !errors.Is(err2, errDown) {
 			t.Errorf("%s down = %v, %v", op, err1, err2)
 		}
+	}
+}
+
+func TestUnitAuthenticateGrant(t *testing.T) {
+	w := newWorld(t)
+	const resource = "https://iw.example.com/mcp"
+	member := kernel.NewMemberID()
+	grant := session.Session{
+		ID: kernel.NewULID(), OrganizationID: kernel.OrganizationID{ULID: kernel.NewULID()},
+		AccountID: w.acct, Channel: session.ChannelUnknown, ActorKind: kernel.PrincipalUser,
+		ActorID: member.ULID, MemberID: member, Login: "alice",
+		Scopes: []string{"mcp:read", "mcp:write"}, ExpiresAt: t0.Add(time.Hour),
+		ClientID: kernel.NewULID().String(), Resource: resource,
+	}
+	put := func(f func(*session.Session)) string {
+		ss := grant
+		ss.ID = kernel.NewULID()
+		f(&ss)
+		w.f.sessions[ss.ID] = ss
+		return fmt.Sprintf("%s %s %s mcp:read", token.KindOAuth, ss.ID, resource)
+	}
+	tok := put(func(*session.Session) {})
+	p, c, err := w.s.AuthenticateGrant(t.Context(), tok, resource)
+	if err != nil || p.MemberID != member || p.AccountID != w.acct ||
+		!slices.Equal(p.Scopes, []string{"mcp:read"}) || c.Kind != token.KindOAuth {
+		t.Errorf("a grant's token = %+v, %+v, %v", p, c, err)
+	}
+	for name, raw := range map[string]string{
+		"another resource": tok,
+		"an API token's":   fmt.Sprintf("%s %s %s", token.KindAPIKey, kernel.NewULID(), resource),
+		"a browser session's": put(func(ss *session.Session) {
+			ss.ClientID, ss.Resource = "", ""
+		}),
+		"a grant for another resource": put(func(ss *session.Session) {
+			ss.Resource = "https://iw.example.com/flows/mcp"
+		}),
+		"a revoked grant": put(func(ss *session.Session) { ss.RevokedAt = t0 }),
+		"a scope the grant lost": put(func(ss *session.Session) {
+			ss.Scopes = []string{"mcp:write"}
+		}),
+		"a user token's": strings.Replace(tok, string(token.KindOAuth),
+			string(token.KindUser), 1),
+	} {
+		aud := resource
+		if name == "another resource" {
+			aud = "https://iw.example.com/flows/mcp"
+		}
+		if _, _, err := w.s.AuthenticateGrant(t.Context(), raw, aud); !errors.Is(
+			err, authn.ErrUnauthenticated) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if _, err := authenticate(t, w.s, tok); !errors.Is(err, authn.ErrUnauthenticated) {
+		t.Errorf("a grant's token on the API: %v", err)
 	}
 }

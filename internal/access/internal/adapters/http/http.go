@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
@@ -36,6 +37,7 @@ type Server struct {
 	orgs     *orgadmin.Service
 	users    *managed.Service
 	groups   *group.Service
+	oauth    *oauth.Service
 }
 
 // Accounts reads an account; port.Tenancy is one.
@@ -44,7 +46,8 @@ type Accounts interface {
 }
 
 // Services are what the partial serves through: Orgs the Organization
-// tag, and Users and Groups the Managed Users tag.
+// tag, Users and Groups the Managed Users tag, and OAuth the consent
+// operations of the authorization server.
 type Services struct {
 	Auth     *authn.Service
 	Keys     *apikey.Service
@@ -53,13 +56,14 @@ type Services struct {
 	Orgs     *orgadmin.Service
 	Users    *managed.Service
 	Groups   *group.Service
+	OAuth    *oauth.Service
 }
 
 // NewServer returns the partial serving through sv.
 func NewServer(sv Services) Server {
 	return Server{
 		auth: sv.Auth, keys: sv.Keys, accounts: sv.Accounts, settings: sv.Settings, orgs: sv.Orgs,
-		users: sv.Users, groups: sv.Groups,
+		users: sv.Users, groups: sv.Groups, oauth: sv.OAuth,
 	}
 }
 

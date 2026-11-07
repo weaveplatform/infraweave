@@ -24,6 +24,11 @@ const (
 	// ImageObjectStore serves @objectstore: RustFS, the S3-compatible store
 	// decision 0010 names.
 	ImageObjectStore = "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"
+	// ObjectStoreReady is ImageObjectStore's readiness path, which answers
+	// 200 once its storage, IAM and locks are connected. /health answers
+	// 200 as soon as the listener is up, while S3 requests still answer
+	// 503 for a moment longer on a loaded host.
+	ObjectStoreReady = "/health/ready"
 	// ImageFakeGCS is the Cloud Storage emulator objectstoretest's gcs
 	// suite runs against.
 	ImageFakeGCS = "fsouza/fake-gcs-server:1.56.1@sha256:797ce226d62f947c009dc40246b30cfb456b8473d8241407f9d6f2c04e4d69ef"

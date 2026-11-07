@@ -70,6 +70,9 @@ type Request struct {
 	Session  kernel.ULID
 	Audience string
 	TTL      time.Duration
+	// Scope is an OAuth access token's scope claim, its scopes separated
+	// by spaces; empty leaves the claim out.
+	Scope string
 }
 
 // Claims are a verified token's claims.
@@ -79,6 +82,7 @@ type Claims struct {
 	Audience string
 	Session  kernel.ULID
 	Kind     Kind
+	Scope    string
 	IssuedAt time.Time
 	Expiry   time.Time
 }
@@ -87,7 +91,8 @@ type Claims struct {
 type wire struct {
 	jwt.Claims
 
-	Kind Kind `json:"iw_kind"` //nolint:tagliatelle // decision 0006's claim name
+	Kind  Kind   `json:"iw_kind"` //nolint:tagliatelle // decision 0006's claim name
+	Scope string `json:"scope,omitempty"`
 }
 
 // Service issues and verifies the api-token purpose's JWTs and rotates its
@@ -131,6 +136,7 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 		Audience: r.Audience,
 		Session:  r.Session,
 		Kind:     r.Kind,
+		Scope:    r.Scope,
 		IssuedAt: now,
 		Expiry:   now.Add(r.TTL),
 	}
@@ -151,7 +157,8 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 			NotBefore: jwt.NewNumericDate(now),
 			Expiry:    jwt.NewNumericDate(c.Expiry),
 		},
-		Kind: c.Kind,
+		Kind:  c.Kind,
+		Scope: c.Scope,
 	}).Serialize()
 	if err != nil {
 		return "", Claims{}, fmt.Errorf("issue token: %w", err)
@@ -266,6 +273,7 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 		Audience: audience,
 		Session:  session,
 		Kind:     w.Kind,
+		Scope:    w.Scope,
 		IssuedAt: w.IssuedAt.Time().UTC(),
 		Expiry:   w.Expiry.Time().UTC(),
 	}, nil

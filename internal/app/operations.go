@@ -202,6 +202,19 @@ var apiOperations = sync.OnceValue(func() Operations {
 		Public: true,
 		Cost:   ratelimit.Expensive,
 	}
+	// The authorization server for MCP clients takes no credential: a
+	// client registers, authorizes and redeems before it holds one. Each
+	// registration is an expensive draw on the client's address, because
+	// anyone may register (decision 0006), and none names a feature, so
+	// the protocol answers whatever an organization's tier holds; the
+	// consent operations, which grant, are the API's and gated there.
+	ops[http.MethodGet+" "+accessapi.OAuthMetadataPattern] = Operation{Public: true}
+	ops[http.MethodPost+" "+accessapi.OAuthRegisterPattern] = Operation{
+		Public: true,
+		Cost:   ratelimit.Expensive,
+	}
+	ops[http.MethodGet+" "+accessapi.OAuthAuthorizePattern] = Operation{Public: true}
+	ops[http.MethodPost+" "+accessapi.OAuthTokenPattern] = Operation{Public: true}
 	// The fs driver's signed URLs carry their credential in the token,
 	// which the driver verifies (decision 0005); a bearer check in front
 	// would answer 401 to every one. Each draws on the standard budget of

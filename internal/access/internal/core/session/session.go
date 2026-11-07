@@ -51,6 +51,11 @@ type Session struct {
 	SecretHash []byte
 	// ParentID is a CLI session's browser session, which it outlives.
 	ParentID kernel.ULID
+	// ClientID and Resource are an OAuth grant's client and the MCP
+	// resource its access tokens name as aud; empty for any other
+	// session.
+	ClientID string
+	Resource string
 }
 
 // Live reports whether the session authenticates at now: not revoked, and

@@ -56,9 +56,14 @@ func TestUnitAPIOperations(t *testing.T) {
 		"POST /api/v1/stacks":                              {Cost: ratelimit.Standard, Gate: gate("stacks")},
 		"DELETE /operator/v1/organizations/{organization}": {Cost: ratelimit.Standard, Gate: gate("operator")},
 		"GET /api/v1/viewer":                               {Cost: ratelimit.Standard, Organization: true, Gate: gate("viewer")},
+		"GET /api/v1/auth/oauth/requests/{requestId}":      {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
 		"GET /api/v1/auth/accounts":                        {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
 		"GET /admin-login/{organization}":                  {Public: true},
 		"POST /admin-login/{organization}":                 {Cost: ratelimit.Expensive, Public: true},
+		"GET /.well-known/oauth-authorization-server":      {Public: true},
+		"POST /oauth/register":                             {Cost: ratelimit.Expensive, Public: true},
+		"GET /oauth/authorize":                             {Public: true},
+		"POST /oauth/token":                                {Public: true},
 		"GET /blobs/{token}":                               {Public: true},
 		"PUT /blobs/{token}":                               {Public: true},
 	} {
@@ -70,7 +75,8 @@ func TestUnitAPIOperations(t *testing.T) {
 		f, known := features.Lookup(op.Gate.Feature)
 		switch {
 		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
-			strings.HasSuffix(key, " "+fs.Pattern):
+			strings.HasSuffix(key, " "+fs.Pattern),
+			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"):
 			if op.Gate.Feature != "" {
 				t.Errorf("%s names %s; a route outside the API documents names none",
 					key, op.Gate.Feature)

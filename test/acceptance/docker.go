@@ -107,9 +107,9 @@ type ObjectStore struct {
 	AccessKey, SecretKey string
 }
 
-// Healthy reports whether the store's health endpoint answers 200.
+// Healthy reports whether the store's readiness endpoint answers 200.
 func (o *ObjectStore) Healthy(ctx context.Context) (bool, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, o.Endpoint+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, o.Endpoint+ObjectStoreReady, nil)
 	if err != nil {
 		return false, fmt.Errorf("object store: %w", err)
 	}
@@ -362,7 +362,7 @@ func (d *Dependencies) ObjectStore(ctx context.Context) (*ObjectStore, error) {
 				"RUSTFS_ACCESS_KEY": storeAccessKey,
 				"RUSTFS_SECRET_KEY": storeSecretKey,
 			}),
-			testcontainers.WithWaitStrategy(wait.ForHTTP("/health").WithPort("9000/tcp")),
+			testcontainers.WithWaitStrategy(wait.ForHTTP(ObjectStoreReady).WithPort("9000/tcp")),
 		)
 		if c != nil {
 			d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })

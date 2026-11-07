@@ -47,7 +47,18 @@
 // authSessionAccount, is composed from the principal and the apikey
 // service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
 // that service's answers from its own rules (decision 0007's grant
-// views). OperatorServer is its partial of the operator API's
+// views). The OAuth consent operations, which the console's consent
+// page calls, read an authorization request, approve it for an account
+// that admits the caller's member, and deny it, approve and deny
+// answering where to send the browser: only a member's browser session
+// may call them, any other caller answering 403 forbidden, as does an
+// account that does not admit the member or a redirect host that is
+// neither loopback nor on the account's allowlist, and a request decided,
+// expired or unknown answers 404. OAuth serves the authorization server's
+// metadata, registration, authorization and token endpoints at
+// accessapi's OAuth patterns, which answer OAuth's JSON errors, 401 for
+// invalid_client and 400 otherwise, and never cache a token answer.
+// OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
 // organizationDelete, organizationBreakGlassSet and
@@ -74,8 +85,8 @@
 // # Dependencies
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
-// group, member, operator, orgadmin, organization, port, session, settings and
-// user packages, accessapi,
+// group, member, oauth, operator, orgadmin, organization, port, session,
+// settings and user packages, accessapi,
 // featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.

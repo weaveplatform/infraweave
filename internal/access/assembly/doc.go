@@ -12,7 +12,9 @@
 // organization's and an account's seats in use, for its seats read; Stream is
 // its migration stream and SealedColumns its sealed columns, which
 // internal/app registers in the declared graph's order. Settings are its
-// auth.* settings: the issuer, auth.tokens.api.ttl, auth.session's
+// auth.* settings: the issuer, auth.tokens.api.ttl, the authorization
+// server's auth.tokens.oauth_access.ttl, oauth_refresh.ttl and
+// oauth_code.ttl (an hour, 30 days and a minute), auth.session's
 // idle_timeout and max_age (12 hours and 7 days), and the signing
 // backend, rotation and kms_keys, and auth.oidc_api_keys' allowed_issuers
 // and ca_file, and auth.operator.keys, each a ULID and the lower-case hex
@@ -21,11 +23,13 @@
 // kms backend's keys, which internal/app opens. Authenticator is the
 // middleware internal/app puts in front of the API and
 // OperatorAuthenticator the one in front of the operator API; Routes
-// mounts the break-glass login at accessapi.LoginPattern;
+// mounts the break-glass login at accessapi.LoginPattern and the
+// authorization server for MCP clients at the OAuth patterns;
 // HashPassword and VerifyPassword are decision 0006's break-glass
 // password hash, which infraweave auth hash-password prints; WatchSessions keeps the
 // replica's session cache in step with infraweave_invalidate. Cron is its
-// periodic tasks: ExpireSessions, authn.sessions.expire, hourly, and
+// periodic tasks: ExpireSessions, authn.sessions.expire, hourly, which
+// also deletes ended authorization requests and unused OAuth clients, and
 // RotateKeys, authn.keys.rotate, daily unless rotation is manual.
 //
 // # Input and output
