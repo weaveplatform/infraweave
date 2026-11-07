@@ -10,7 +10,12 @@
 // Organizations it is given; it answers 422 validation-failed for a tier or
 // grant the catalogue refuses or a tier that does not exist, 409 for a
 // name in use, for Enterprise and for a tier in use, and 404 for what does
-// not exist.
+// not exist. Server is the domain's partial of the API's strict server:
+// tier, tierFeatures and seats answer from the caller's organization, with
+// the seats in use counted through the SeatCounter it is given;
+// billedExternally answers true, billingSubscription and onTrialUntil
+// null, the add-on and plan lists and evaluateFeatureFlags nothing, and
+// the five subscription mutations 403 installation-unsupported.
 //
 // # Input and output
 //
@@ -20,7 +25,7 @@
 // # Dependencies
 //
 // It imports the catalogue (internal/features), featuresapi, the domain's
-// features package for Refusal and the operator service, internal/kernel,
-// platform/gen/operator, platform/httpkit/page and
+// features package for Refusal and the service, internal/kernel,
+// platform/gen/api, platform/gen/operator, platform/httpkit/page and
 // platform/httpkit/problem. The features domain's assembly constructs it.
 package http

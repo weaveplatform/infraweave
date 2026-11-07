@@ -284,17 +284,10 @@ func (s *Service) AllowOrganization(
 // holding names the tiers that hold feature, smallest first: fewest
 // features, then name.
 func (s *Service) holding(ctx context.Context, feature string) ([]string, error) {
-	s.mu.Lock()
-	ts, gen := s.tiers, s.gen
-	s.mu.Unlock()
-	if ts == nil {
-		var err error
-		if ts, err = s.store.Tiers(ctx); err != nil {
-			return nil, err //nolint:wrapcheck // as above
-		}
-		s.keep(gen, func() { s.tiers = ts })
+	ts, err := s.contents(ctx)
+	if err != nil {
+		return nil, err
 	}
-	ts = slices.Clone(ts)
 	slices.SortFunc(ts, func(a, b features.Tier) int {
 		return cmp.Or(
 			cmp.Compare(len(a.Features), len(b.Features)),
@@ -308,6 +301,22 @@ func (s *Service) holding(ctx context.Context, feature string) ([]string, error)
 		}
 	}
 	return out, nil
+}
+
+// contents is the replica's snapshot of every tier's content, a copy the
+// caller may reorder.
+func (s *Service) contents(ctx context.Context) ([]features.Tier, error) {
+	s.mu.Lock()
+	ts, gen := s.tiers, s.gen
+	s.mu.Unlock()
+	if ts == nil {
+		var err error
+		if ts, err = s.store.Tiers(ctx); err != nil {
+			return nil, err //nolint:wrapcheck // as above
+		}
+		s.keep(gen, func() { s.tiers = ts })
+	}
+	return slices.Clone(ts), nil
 }
 
 // CheckLimit admits one more limit in acct, or refuses it with a

@@ -6,7 +6,8 @@
 // is its partial of the API's strict server, aliased AccessAPI, and
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI; OrganizationID finds an organization's ID by its
-// slug, for the features domain's operator partial; Stream is
+// slug, for the features domain's operator partial, and Seats counts an
+// organization's and an account's seats in use, for its seats read; Stream is
 // its migration stream and SealedColumns its sealed columns, which
 // internal/app registers in the declared graph's order. Settings are its
 // auth.* settings: the issuer, auth.tokens.api.ttl, auth.session's

@@ -155,7 +155,8 @@
         "lowestTier": "Free",
         "phase": "P3b",
         "also": "P18b (`usage`)",
-        "state": "missing"
+        "state": "partial",
+        "notes": "Thirteen operations are served (P3b): the reads answer from the organization's entitlement with decision 0021's local meaning, and the five subscription mutations answer `installation-unsupported`, so no scenario shows them succeed; `usage` arrives with P18b"
       }
     },
     {
@@ -307,7 +308,8 @@
         "feature": "`console`",
         "lowestTier": "Free",
         "phase": "P3b",
-        "state": "missing"
+        "state": "implemented",
+        "notes": "`evaluateFeatureFlags` answers an empty set, as Spacelift SaaS does"
       }
     },
     {

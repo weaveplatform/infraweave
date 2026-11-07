@@ -548,6 +548,108 @@ func (e AwsIntegrationKind) Valid() bool {
 	}
 }
 
+// Defines values for BillingAddonType.
+const (
+	ADDITIONALPUBLICWORKER BillingAddonType = "ADDITIONAL_PUBLIC_WORKER"
+	UNLIMITEDSEATS         BillingAddonType = "UNLIMITED_SEATS"
+)
+
+// Valid indicates whether the value is a known member of the BillingAddonType enum.
+func (e BillingAddonType) Valid() bool {
+	switch e {
+	case ADDITIONALPUBLICWORKER:
+		return true
+	case UNLIMITEDSEATS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BillingCycleInterval.
+const (
+	MONTHLY BillingCycleInterval = "MONTHLY"
+	YEARLY  BillingCycleInterval = "YEARLY"
+)
+
+// Valid indicates whether the value is a known member of the BillingCycleInterval enum.
+func (e BillingCycleInterval) Valid() bool {
+	switch e {
+	case MONTHLY:
+		return true
+	case YEARLY:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BillingTier.
+const (
+	CLOUD            BillingTier = "CLOUD"
+	ENTERPRISE       BillingTier = "ENTERPRISE"
+	FREE             BillingTier = "FREE"
+	V3CLOUD          BillingTier = "V3_CLOUD"
+	V3FREE           BillingTier = "V3_FREE"
+	V4BUSINESS       BillingTier = "V4_BUSINESS"
+	V4ENTERPRISE     BillingTier = "V4_ENTERPRISE"
+	V4FREE           BillingTier = "V4_FREE"
+	V4STARTER        BillingTier = "V4_STARTER"
+	V4STARTERPLUS    BillingTier = "V4_STARTER_PLUS"
+	V5BUSINESS       BillingTier = "V5_BUSINESS"
+	V5ENTERPRISE     BillingTier = "V5_ENTERPRISE"
+	V5ENTERPRISEPLUS BillingTier = "V5_ENTERPRISE_PLUS"
+	V5FREE           BillingTier = "V5_FREE"
+	V5STARTER        BillingTier = "V5_STARTER"
+	V5STARTERPLUS    BillingTier = "V5_STARTER_PLUS"
+	V5STARTERPLUS2   BillingTier = "V5_STARTER_PLUS_2"
+	V5STRATEGIC      BillingTier = "V5_STRATEGIC"
+)
+
+// Valid indicates whether the value is a known member of the BillingTier enum.
+func (e BillingTier) Valid() bool {
+	switch e {
+	case CLOUD:
+		return true
+	case ENTERPRISE:
+		return true
+	case FREE:
+		return true
+	case V3CLOUD:
+		return true
+	case V3FREE:
+		return true
+	case V4BUSINESS:
+		return true
+	case V4ENTERPRISE:
+		return true
+	case V4FREE:
+		return true
+	case V4STARTER:
+		return true
+	case V4STARTERPLUS:
+		return true
+	case V5BUSINESS:
+		return true
+	case V5ENTERPRISE:
+		return true
+	case V5ENTERPRISEPLUS:
+		return true
+	case V5FREE:
+		return true
+	case V5STARTER:
+		return true
+	case V5STARTERPLUS:
+		return true
+	case V5STARTERPLUS2:
+		return true
+	case V5STRATEGIC:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CloudFormationOutputKind.
 const (
 	CloudFormationOutputKindCloudFormationOutput CloudFormationOutputKind = "CloudFormationOutput"
@@ -1712,6 +1814,39 @@ func (e StackVendor) Valid() bool {
 	}
 }
 
+// Defines values for StripeSubscriptionStatus.
+const (
+	Active            StripeSubscriptionStatus = "active"
+	Cancelled         StripeSubscriptionStatus = "cancelled"
+	Incomplete        StripeSubscriptionStatus = "incomplete"
+	IncompleteExpired StripeSubscriptionStatus = "incomplete_expired"
+	PastDue           StripeSubscriptionStatus = "past_due"
+	Unknown           StripeSubscriptionStatus = "unknown"
+	Unpaid            StripeSubscriptionStatus = "unpaid"
+)
+
+// Valid indicates whether the value is a known member of the StripeSubscriptionStatus enum.
+func (e StripeSubscriptionStatus) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Cancelled:
+		return true
+	case Incomplete:
+		return true
+	case IncompleteExpired:
+		return true
+	case PastDue:
+		return true
+	case Unknown:
+		return true
+	case Unpaid:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TerraformModuleKind.
 const (
 	TerraformModuleKindTerraformModule TerraformModuleKind = "TerraformModule"
@@ -2332,6 +2467,158 @@ type AzureIntegrationStackAttachment struct {
 	Write bool `json:"write"`
 }
 
+// BillingAddon BillingAddon represents an addon that can be bought along with the plan.
+type BillingAddon struct {
+	// MonthlyPrice Monthly price of the addon in cents.
+	MonthlyPrice int32 `json:"monthlyPrice"`
+
+	// Name BillingAddonType represents the addon types that are available to be subscribed to.
+	// This only applies to the V4_STARTER tier.
+	Name BillingAddonType `json:"name"`
+
+	// Tiers Tiers that are eligible for buying the addon.
+	Tiers []BillingTier `json:"tiers"`
+
+	// YearlyPrice Yearly price of the addon in cents.
+	YearlyPrice int32 `json:"yearlyPrice"`
+}
+
+// BillingAddonPage One page of a cursor-paginated list (decision 0003).
+type BillingAddonPage struct {
+	Items []BillingAddon `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// BillingAddonType BillingAddonType represents the addon types that are available to be subscribed to.
+// This only applies to the V4_STARTER tier.
+type BillingAddonType string
+
+// BillingCycleInterval BillingCycleInterval represents the billing cycle interval for a subscription.
+// This only applies to the V4_STARTER tier.
+type BillingCycleInterval string
+
+// BillingInfo BillingInfo represents account billing details stored in Stripe
+type BillingInfo struct {
+	// Address Billing address
+	Address string `json:"address"`
+
+	// City Billing city
+	City string `json:"city"`
+
+	// CompanyName Company name
+	CompanyName string `json:"companyName"`
+
+	// Country Country code (ISO 3166-1 alpha2)
+	Country string `json:"country"`
+
+	// Email Billing email
+	Email string `json:"email"`
+
+	// FullName Full name of the billing contact
+	FullName string `json:"fullName"`
+
+	// State State (US-only)
+	State string `json:"state"`
+
+	// TaxIDType Tax ID type (e.g., eu_vat, us_ein)
+	TaxIDType *string `json:"taxIDType,omitempty"`
+
+	// TaxIDValue Tax ID value
+	TaxIDValue *string `json:"taxIDValue,omitempty"`
+
+	// ZipCode Zip code
+	ZipCode string `json:"zipCode"`
+}
+
+// BillingPlan BillingPlan represents a tier that can be bought.
+type BillingPlan struct {
+	// MonthlyPrice Monthly price of the plan in cents.
+	MonthlyPrice int32 `json:"monthlyPrice"`
+
+	// Tier The billing tier names the subscription operations take.
+	Tier BillingTier `json:"tier"`
+
+	// YearlyPrice Yearly price of the plan in cents.
+	YearlyPrice int32 `json:"yearlyPrice"`
+}
+
+// BillingPlanPage One page of a cursor-paginated list (decision 0003).
+type BillingPlanPage struct {
+	Items []BillingPlan `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// BillingSubscription defines model for BillingSubscription.
+type BillingSubscription struct {
+	// Addons Addons of the subscription.
+	Addons []BillingSubscriptionAddon `json:"addons"`
+
+	// BillingAmount Price amount for the subscription. In cents.
+	BillingAmount *int32 `json:"billingAmount,omitempty"`
+
+	// BillingCycleStart Timestamp of start of the current billing cycle
+	BillingCycleStart *int32 `json:"billingCycleStart,omitempty"`
+
+	// BillingInfo BillingInfo represents account billing details stored in Stripe
+	BillingInfo *BillingInfo `json:"billingInfo,omitempty"`
+
+	// BillingInterval BillingCycleInterval represents the billing cycle interval for a subscription.
+	// This only applies to the V4_STARTER tier.
+	BillingInterval *BillingCycleInterval `json:"billingInterval,omitempty"`
+
+	// BillingRenewalDate Timestamp of the renewal date of the subscription
+	BillingRenewalDate *int32 `json:"billingRenewalDate,omitempty"`
+
+	// IsActive isActive describes if the account has active (premium) subscription
+	IsActive bool `json:"isActive"`
+
+	// SelfServePortalUrl URL to Stripe-hosted portal which allows to manage subscription
+	SelfServePortalUrl string `json:"selfServePortalUrl"`
+
+	// Status StripeSubscriptionStatus represents all states of a Stripe subscription.
+	// https://docs.stripe.com/api/subscriptions/object#subscription_object-status
+	// the convention of casing is kept to match the Stripe API.
+	Status StripeSubscriptionStatus `json:"status"`
+}
+
+// BillingSubscriptionAddon defines model for BillingSubscriptionAddon.
+type BillingSubscriptionAddon struct {
+	// Name BillingAddonType represents the addon types that are available to be subscribed to.
+	// This only applies to the V4_STARTER tier.
+	Name BillingAddonType `json:"name"`
+}
+
+// BillingSubscriptionCreateRequest The arguments of billingSubscriptionCreate not carried in the path.
+type BillingSubscriptionCreateRequest struct {
+	Addons *[]BillingAddonType `json:"addons,omitempty"`
+	Input  SubscriptionInput   `json:"input"`
+
+	// Interval BillingCycleInterval represents the billing cycle interval for a subscription.
+	// This only applies to the V4_STARTER tier.
+	Interval        *BillingCycleInterval `json:"interval,omitempty"`
+	PaymentMethodID string                `json:"paymentMethodID"`
+
+	// Tier The billing tier names the subscription operations take.
+	Tier *BillingTier `json:"tier,omitempty"`
+}
+
+// BillingSubscriptionUpdateTierRequest The arguments of billingSubscriptionUpdateTier not carried in the path.
+type BillingSubscriptionUpdateTierRequest struct {
+	// Interval BillingCycleInterval represents the billing cycle interval for a subscription.
+	// This only applies to the V4_STARTER tier.
+	Interval *BillingCycleInterval `json:"interval,omitempty"`
+
+	// Tier The billing tier names the subscription operations take.
+	Tier BillingTier `json:"tier"`
+}
+
+// BillingTier The billing tier names the subscription operations take.
+type BillingTier string
+
 // BlueprintRef A reference to a Blueprint; fetch it with GET /blueprints/{blueprintId}.
 type BlueprintRef struct {
 	Id string `json:"id"`
@@ -2751,6 +3038,57 @@ type EnvironmentVariable struct {
 
 	// Value Value of an environment variable
 	Value string `json:"value"`
+}
+
+// FeatureFlagBoolEvaluation Used to evaluate a boolean flag.
+type FeatureFlagBoolEvaluation struct {
+	// DefaultValue The default value to be returned if no value is set for the flag.
+	DefaultValue bool `json:"defaultValue"`
+
+	// Name The name of the flag.
+	Name string `json:"name"`
+}
+
+// FeatureFlagEvaluation Represents an individual flag that you want to evaluate. Only one of intEvaluation
+// or boolEvaluation should be provided, depending on the type of flag you're evaluating.
+type FeatureFlagEvaluation struct {
+	// BoolEvaluation Used to evaluate a boolean flag.
+	BoolEvaluation *FeatureFlagBoolEvaluation `json:"boolEvaluation,omitempty"`
+
+	// IntEvaluation Used to evaluate an int flag.
+	IntEvaluation *FeatureFlagIntEvaluation `json:"intEvaluation,omitempty"`
+}
+
+// FeatureFlagEvaluationInput The input to the evaluateFeatureFlags request. Used to evaluate feature flags in Self-Hosted instances.
+type FeatureFlagEvaluationInput struct {
+	// Flags The set of flags to evaluate.
+	Flags []FeatureFlagEvaluation `json:"flags"`
+}
+
+// FeatureFlagEvaluationResult The result of evaluating a feature flag.
+type FeatureFlagEvaluationResult struct {
+	// Name The name of the flag.
+	Name string `json:"name"`
+
+	// Value The value of the flag.
+	Value string `json:"value"`
+}
+
+// FeatureFlagEvaluationResultPage One page of a cursor-paginated list (decision 0003).
+type FeatureFlagEvaluationResultPage struct {
+	Items []FeatureFlagEvaluationResult `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// FeatureFlagIntEvaluation Used to evaluate an int flag.
+type FeatureFlagIntEvaluation struct {
+	// DefaultValue The default value to be returned if no value is set for the flag.
+	DefaultValue int32 `json:"defaultValue"`
+
+	// Name The name of the flag.
+	Name string `json:"name"`
 }
 
 // FederationProvider All supported federation providers.
@@ -4435,6 +4773,24 @@ type SearchSuggestionsPossibleValuesString struct {
 	Values []string `json:"values"`
 }
 
+// SeatLimit A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
+type SeatLimit struct {
+	// InUse The seats in use.
+	InUse int64 `json:"inUse"`
+
+	// Limit The limit. Absent when there is no limit.
+	Limit *int64 `json:"limit,omitempty"`
+}
+
+// Seats The seats of the caller's account: the pooled seats limit of its organization with the organization's use, and the account's own limit with its use when one is set (decision 0021, DV-080).
+type Seats struct {
+	// Account A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
+	Account *SeatLimit `json:"account,omitempty"`
+
+	// Organization A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
+	Organization SeatLimit `json:"organization"`
+}
+
 // SecurityKey SecurityKey represents hardware device that supports the FIDO2 protocol.
 type SecurityKey struct {
 	// CreatedAt Timestamp representing the security key registration.
@@ -5731,6 +6087,57 @@ type StringMap struct {
 	Entries []KeyValuePairType `json:"entries"`
 }
 
+// StripeSubscriptionStatus StripeSubscriptionStatus represents all states of a Stripe subscription.
+// https://docs.stripe.com/api/subscriptions/object#subscription_object-status
+// the convention of casing is kept to match the Stripe API.
+type StripeSubscriptionStatus string
+
+// SubscriptionInput defines model for SubscriptionInput.
+type SubscriptionInput struct {
+	// Address Address visible on invoice
+	Address string `json:"address"`
+
+	// City City visible on invoice
+	City string `json:"city"`
+
+	// CompanyName Company name
+	CompanyName *string `json:"companyName,omitempty"`
+
+	// Country ISO-3166-1 alpha-2 code of the country
+	Country string `json:"country"`
+
+	// Email Billing email
+	Email string `json:"email"`
+
+	// FullName Full name of the representative
+	FullName string `json:"fullName"`
+
+	// State State name (US-only)
+	State *string `json:"state,omitempty"`
+
+	// TaxIDType Tax ID type (e.g., eu_vat, us_ein)
+	TaxIDType *string `json:"taxIDType,omitempty"`
+
+	// TaxIDValue Tax ID value
+	TaxIDValue *string `json:"taxIDValue,omitempty"`
+
+	// ZipCode Zip code
+	ZipCode string `json:"zipCode"`
+}
+
+// SubscriptionUpdateV2Input defines model for SubscriptionUpdateV2Input.
+type SubscriptionUpdateV2Input struct {
+	// Addons addons that the subscription should have (can be ignored because it has not implemented yet).
+	Addons *[]BillingAddonType `json:"addons,omitempty"`
+
+	// Interval BillingCycleInterval represents the billing cycle interval for a subscription.
+	// This only applies to the V4_STARTER tier.
+	Interval *BillingCycleInterval `json:"interval,omitempty"`
+
+	// Tier The billing tier names the subscription operations take.
+	Tier BillingTier `json:"tier"`
+}
+
 // TaskCreateRequest The arguments of taskCreate not carried in the path.
 type TaskCreateRequest struct {
 	// Command Command that will be run.
@@ -5847,6 +6254,24 @@ type TerragruntRuntimeConfig struct {
 
 // TerragruntTool TerragruntTool defines the underlying tool run by Terragrunt.
 type TerragruntTool string
+
+// Tier A tier as the operator defines it (decision 0021, DV-079), in place of the BillingTier enum.
+type Tier struct {
+	// Features The features the tier holds, as infraweave names them, sorted.
+	Features []string `json:"features"`
+
+	// Limits The tier's value of each limit, by limit name. A limit absent from the map has no limit.
+	Limits map[string]int64 `json:"limits"`
+	Name   string           `json:"name"`
+}
+
+// TierFeaturePage One page of a cursor-paginated list (decision 0003).
+type TierFeaturePage struct {
+	Items []string `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
 
 // User The user, or the API key, a token acts as.
 type User struct {
@@ -6317,6 +6742,53 @@ type ApiKeyUserParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AvailableBillingAddonsParams defines parameters for AvailableBillingAddons.
+type AvailableBillingAddonsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// AvailableSelfServicePlansParams defines parameters for AvailableSelfServicePlans.
+type AvailableSelfServicePlansParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// BillingSubscriptionCreateParams defines parameters for BillingSubscriptionCreate.
+type BillingSubscriptionCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BillingSubscriptionUpdateInfoParams defines parameters for BillingSubscriptionUpdateInfo.
+type BillingSubscriptionUpdateInfoParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BillingSubscriptionUpdateTierParams defines parameters for BillingSubscriptionUpdateTier.
+type BillingSubscriptionUpdateTierParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// EvaluateFeatureFlagsParams defines parameters for EvaluateFeatureFlags.
+type EvaluateFeatureFlagsParams struct {
+	Input FeatureFlagEvaluationInput `form:"input" json:"input"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // MessageQueueStatsParams defines parameters for MessageQueueStats.
 type MessageQueueStatsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -6693,6 +7165,15 @@ type StateUploadUrlParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// TierFeaturesParams defines parameters for TierFeatures.
+type TierFeaturesParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // ApiKeyEnableNonAdminManagersJSONRequestBody defines body for ApiKeyEnableNonAdminManagers for application/json ContentType.
 type ApiKeyEnableNonAdminManagersJSONRequestBody = ApiKeyEnableNonAdminManagersRequest
 
@@ -6725,6 +7206,18 @@ type AuthSessionAccountJSONRequestBody = AuthSessionAccountRequest
 
 // ApiKeyUserJSONRequestBody defines body for ApiKeyUser for application/json ContentType.
 type ApiKeyUserJSONRequestBody = ApiKeyUserRequest
+
+// BillingSubscriptionCreateJSONRequestBody defines body for BillingSubscriptionCreate for application/json ContentType.
+type BillingSubscriptionCreateJSONRequestBody = BillingSubscriptionCreateRequest
+
+// BillingSubscriptionUpdateV2JSONRequestBody defines body for BillingSubscriptionUpdateV2 for application/json ContentType.
+type BillingSubscriptionUpdateV2JSONRequestBody = SubscriptionUpdateV2Input
+
+// BillingSubscriptionUpdateInfoJSONRequestBody defines body for BillingSubscriptionUpdateInfo for application/json ContentType.
+type BillingSubscriptionUpdateInfoJSONRequestBody = SubscriptionInput
+
+// BillingSubscriptionUpdateTierJSONRequestBody defines body for BillingSubscriptionUpdateTier for application/json ContentType.
+type BillingSubscriptionUpdateTierJSONRequestBody = BillingSubscriptionUpdateTierRequest
 
 // StackDependencyCreateJSONRequestBody defines body for StackDependencyCreate for application/json ContentType.
 type StackDependencyCreateJSONRequestBody = StackDependencyInput
@@ -8227,6 +8720,20 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AvailableBillingAddons Available Billing Addons
+	//
+	// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+	//
+	// Corresponds with GET /available-billing-addons (the `AvailableBillingAddons` operationId).
+	AvailableBillingAddons(ctx context.Context, params *AvailableBillingAddonsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AvailableSelfServicePlans Available Self Service Plans
+	//
+	// An empty list: infraweave sells no plans (decision 0021, DV-080).
+	//
+	// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
+	AvailableSelfServicePlans(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AwarenessSourceSurvey Awareness Source Survey
 	//
 	// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -8234,12 +8741,112 @@ type ClientInterface interface {
 	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 	AwarenessSourceSurvey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BilledExternally Billed Externally
+	//
+	// true: no Stripe subscription exists (decision 0021, DV-080).
+	//
+	// Corresponds with GET /billed-externally (the `BilledExternally` operationId).
+	BilledExternally(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionDelete Billing Subscription Delete
+	//
+	// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Corresponds with DELETE /billing-subscription (the `BillingSubscriptionDelete` operationId).
+	BillingSubscriptionDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscription Billing Subscription
+	//
+	// null: no Stripe subscription exists (decision 0021, DV-080).
+	//
+	// Corresponds with GET /billing-subscription (the `BillingSubscription` operationId).
+	BillingSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionCreateWithBody Billing Subscription Create
+	//
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+	BillingSubscriptionCreateWithBody(ctx context.Context, params *BillingSubscriptionCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionCreate Billing Subscription Create
+	//
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+	BillingSubscriptionCreate(ctx context.Context, params *BillingSubscriptionCreateParams, body BillingSubscriptionCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionUpdateV2WithBody Billing Subscription Update V2
+	//
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+	BillingSubscriptionUpdateV2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionUpdateV2 Billing Subscription Update V2
+	//
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+	BillingSubscriptionUpdateV2(ctx context.Context, body BillingSubscriptionUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionUpdateInfoWithBody Billing Subscription Update Info
+	//
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+	BillingSubscriptionUpdateInfoWithBody(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionUpdateInfo Billing Subscription Update Info
+	//
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+	BillingSubscriptionUpdateInfo(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, body BillingSubscriptionUpdateInfoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionUpdateTierWithBody Billing Subscription Update Tier
+	//
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+	BillingSubscriptionUpdateTierWithBody(ctx context.Context, params *BillingSubscriptionUpdateTierParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BillingSubscriptionUpdateTier Billing Subscription Update Tier
+	//
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+	BillingSubscriptionUpdateTier(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 	//
 	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
 	//
 	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 	DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EvaluateFeatureFlags Evaluate Feature Flags
+	//
+	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+	//
+	// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
+	EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Id Id
 	//
@@ -8278,12 +8885,26 @@ type ClientInterface interface {
 	// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
 	OauthRedirectAllowedHosts(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// OnTrialUntil On Trial Until
+	//
+	// null: an infraweave account is never on a trial (decision 0021, DV-080).
+	//
+	// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
+	OnTrialUntil(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PersonalApiKeysEnabled Personal Api Keys Enabled
 	//
 	// Whether the account's members may create personal API keys; true until an account admin turns it off.
 	//
 	// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
 	PersonalApiKeysEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Seats Seats
+	//
+	// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+	//
+	// Corresponds with GET /seats (the `Seats` operationId).
+	Seats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SecurityEmail Security Email
 	//
@@ -9168,6 +9789,20 @@ type ClientInterface interface {
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// Tier Tier
+	//
+	// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+	//
+	// Corresponds with GET /tier (the `Tier` operationId).
+	Tier(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TierFeatures Tier Features
+	//
+	// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+	//
+	// Corresponds with GET /tier-features (the `TierFeatures` operationId).
+	TierFeatures(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Type Type
 	//
 	// The type of the caller's account, always ORG.
@@ -9842,6 +10477,40 @@ func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body 
 	return c.Client.Do(req)
 }
 
+// AvailableBillingAddons Available Billing Addons
+//
+// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+//
+// Corresponds with GET /available-billing-addons (the `AvailableBillingAddons` operationId).
+func (c *Client) AvailableBillingAddons(ctx context.Context, params *AvailableBillingAddonsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAvailableBillingAddonsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AvailableSelfServicePlans Available Self Service Plans
+//
+// An empty list: infraweave sells no plans (decision 0021, DV-080).
+//
+// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
+func (c *Client) AvailableSelfServicePlans(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAvailableSelfServicePlansRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AwarenessSourceSurvey Awareness Source Survey
 //
 // The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -9859,6 +10528,209 @@ func (c *Client) AwarenessSourceSurvey(ctx context.Context, reqEditors ...Reques
 	return c.Client.Do(req)
 }
 
+// BilledExternally Billed Externally
+//
+// true: no Stripe subscription exists (decision 0021, DV-080).
+//
+// Corresponds with GET /billed-externally (the `BilledExternally` operationId).
+func (c *Client) BilledExternally(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBilledExternallyRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionDelete Billing Subscription Delete
+//
+// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Corresponds with DELETE /billing-subscription (the `BillingSubscriptionDelete` operationId).
+func (c *Client) BillingSubscriptionDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionDeleteRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscription Billing Subscription
+//
+// null: no Stripe subscription exists (decision 0021, DV-080).
+//
+// Corresponds with GET /billing-subscription (the `BillingSubscription` operationId).
+func (c *Client) BillingSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionCreateWithBody Billing Subscription Create
+//
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+func (c *Client) BillingSubscriptionCreateWithBody(ctx context.Context, params *BillingSubscriptionCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionCreate Billing Subscription Create
+//
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+func (c *Client) BillingSubscriptionCreate(ctx context.Context, params *BillingSubscriptionCreateParams, body BillingSubscriptionCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionUpdateV2WithBody Billing Subscription Update V2
+//
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+func (c *Client) BillingSubscriptionUpdateV2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionUpdateV2RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionUpdateV2 Billing Subscription Update V2
+//
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+func (c *Client) BillingSubscriptionUpdateV2(ctx context.Context, body BillingSubscriptionUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionUpdateV2Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionUpdateInfoWithBody Billing Subscription Update Info
+//
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+func (c *Client) BillingSubscriptionUpdateInfoWithBody(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionUpdateInfoRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionUpdateInfo Billing Subscription Update Info
+//
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+func (c *Client) BillingSubscriptionUpdateInfo(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, body BillingSubscriptionUpdateInfoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionUpdateInfoRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionUpdateTierWithBody Billing Subscription Update Tier
+//
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+func (c *Client) BillingSubscriptionUpdateTierWithBody(ctx context.Context, params *BillingSubscriptionUpdateTierParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionUpdateTierRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BillingSubscriptionUpdateTier Billing Subscription Update Tier
+//
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+func (c *Client) BillingSubscriptionUpdateTier(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBillingSubscriptionUpdateTierRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 //
 // The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -9866,6 +10738,23 @@ func (c *Client) AwarenessSourceSurvey(ctx context.Context, reqEditors ...Reques
 // Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDefaultPrivateWorkerPoolRunnerImageRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EvaluateFeatureFlags Evaluate Feature Flags
+//
+// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+//
+// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
+func (c *Client) EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEvaluateFeatureFlagsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -9963,6 +10852,23 @@ func (c *Client) OauthRedirectAllowedHosts(ctx context.Context, params *OauthRed
 	return c.Client.Do(req)
 }
 
+// OnTrialUntil On Trial Until
+//
+// null: an infraweave account is never on a trial (decision 0021, DV-080).
+//
+// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
+func (c *Client) OnTrialUntil(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOnTrialUntilRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PersonalApiKeysEnabled Personal Api Keys Enabled
 //
 // Whether the account's members may create personal API keys; true until an account admin turns it off.
@@ -9970,6 +10876,23 @@ func (c *Client) OauthRedirectAllowedHosts(ctx context.Context, params *OauthRed
 // Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
 func (c *Client) PersonalApiKeysEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPersonalApiKeysEnabledRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Seats Seats
+//
+// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+//
+// Corresponds with GET /seats (the `Seats` operationId).
+func (c *Client) Seats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSeatsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -11913,6 +12836,40 @@ func (c *Client) StateUploadUrl(ctx context.Context, params *StateUploadUrlParam
 	return c.Client.Do(req)
 }
 
+// Tier Tier
+//
+// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+//
+// Corresponds with GET /tier (the `Tier` operationId).
+func (c *Client) Tier(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTierRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TierFeatures Tier Features
+//
+// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+//
+// Corresponds with GET /tier-features (the `TierFeatures` operationId).
+func (c *Client) TierFeatures(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTierFeaturesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Type Type
 //
 // The type of the caller's account, always ORG.
@@ -13015,6 +13972,138 @@ func NewApiKeyUserRequestWithBody(server string, params *ApiKeyUserParams, conte
 	return req, nil
 }
 
+// NewAvailableBillingAddonsRequest constructs an http.Request for the AvailableBillingAddons method
+func NewAvailableBillingAddonsRequest(server string, params *AvailableBillingAddonsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/available-billing-addons")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAvailableSelfServicePlansRequest constructs an http.Request for the AvailableSelfServicePlans method
+func NewAvailableSelfServicePlansRequest(server string, params *AvailableSelfServicePlansParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/available-self-service-plans")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAwarenessSourceSurveyRequest constructs an http.Request for the AwarenessSourceSurvey method
 func NewAwarenessSourceSurveyRequest(server string) (*http.Request, error) {
 	var err error
@@ -13042,6 +14131,292 @@ func NewAwarenessSourceSurveyRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewBilledExternallyRequest constructs an http.Request for the BilledExternally method
+func NewBilledExternallyRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billed-externally")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBillingSubscriptionDeleteRequest constructs an http.Request for the BillingSubscriptionDelete method
+func NewBillingSubscriptionDeleteRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billing-subscription")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBillingSubscriptionRequest constructs an http.Request for the BillingSubscription method
+func NewBillingSubscriptionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billing-subscription")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBillingSubscriptionCreateRequest calls the generic BillingSubscriptionCreate builder with application/json body
+func NewBillingSubscriptionCreateRequest(server string, params *BillingSubscriptionCreateParams, body BillingSubscriptionCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBillingSubscriptionCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewBillingSubscriptionCreateRequestWithBody constructs an http.Request for the BillingSubscriptionCreate method, with any body, and a specified content type
+func NewBillingSubscriptionCreateRequestWithBody(server string, params *BillingSubscriptionCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billing-subscription")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBillingSubscriptionUpdateV2Request calls the generic BillingSubscriptionUpdateV2 builder with application/json body
+func NewBillingSubscriptionUpdateV2Request(server string, body BillingSubscriptionUpdateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBillingSubscriptionUpdateV2RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewBillingSubscriptionUpdateV2RequestWithBody constructs an http.Request for the BillingSubscriptionUpdateV2 method, with any body, and a specified content type
+func NewBillingSubscriptionUpdateV2RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billing-subscription")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewBillingSubscriptionUpdateInfoRequest calls the generic BillingSubscriptionUpdateInfo builder with application/json body
+func NewBillingSubscriptionUpdateInfoRequest(server string, params *BillingSubscriptionUpdateInfoParams, body BillingSubscriptionUpdateInfoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBillingSubscriptionUpdateInfoRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewBillingSubscriptionUpdateInfoRequestWithBody constructs an http.Request for the BillingSubscriptionUpdateInfo method, with any body, and a specified content type
+func NewBillingSubscriptionUpdateInfoRequestWithBody(server string, params *BillingSubscriptionUpdateInfoParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billing-subscription/update-info")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBillingSubscriptionUpdateTierRequest calls the generic BillingSubscriptionUpdateTier builder with application/json body
+func NewBillingSubscriptionUpdateTierRequest(server string, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBillingSubscriptionUpdateTierRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewBillingSubscriptionUpdateTierRequestWithBody constructs an http.Request for the BillingSubscriptionUpdateTier method, with any body, and a specified content type
+func NewBillingSubscriptionUpdateTierRequestWithBody(server string, params *BillingSubscriptionUpdateTierParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/billing-subscription/update-tier")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewDefaultPrivateWorkerPoolRunnerImageRequest constructs an http.Request for the DefaultPrivateWorkerPoolRunnerImage method
 func NewDefaultPrivateWorkerPoolRunnerImageRequest(server string) (*http.Request, error) {
 	var err error
@@ -13059,6 +14434,78 @@ func NewDefaultPrivateWorkerPoolRunnerImageRequest(server string) (*http.Request
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEvaluateFeatureFlagsRequest constructs an http.Request for the EvaluateFeatureFlags method
+func NewEvaluateFeatureFlagsRequest(server string, params *EvaluateFeatureFlagsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/evaluate-feature-flags")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -13282,6 +14729,33 @@ func NewOauthRedirectAllowedHostsRequest(server string, params *OauthRedirectAll
 	return req, nil
 }
 
+// NewOnTrialUntilRequest constructs an http.Request for the OnTrialUntil method
+func NewOnTrialUntilRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/on-trial-until")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPersonalApiKeysEnabledRequest constructs an http.Request for the PersonalApiKeysEnabled method
 func NewPersonalApiKeysEnabledRequest(server string) (*http.Request, error) {
 	var err error
@@ -13292,6 +14766,33 @@ func NewPersonalApiKeysEnabledRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/personal-api-keys-enabled")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSeatsRequest constructs an http.Request for the Seats method
+func NewSeatsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/seats")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -17575,6 +19076,99 @@ func NewStateUploadUrlRequest(server string, params *StateUploadUrlParams) (*htt
 	return req, nil
 }
 
+// NewTierRequest constructs an http.Request for the Tier method
+func NewTierRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tier")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTierFeaturesRequest constructs an http.Request for the TierFeatures method
+func NewTierFeaturesRequest(server string, params *TierFeaturesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tier-features")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewTypeRequest constructs an http.Request for the Type method
 func NewTypeRequest(server string) (*http.Request, error) {
 	var err error
@@ -18008,6 +19602,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUserWithResponse(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUserResponse, error)
 
+	// AvailableBillingAddonsWithResponse Available Billing Addons
+	//
+	// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /available-billing-addons (the `AvailableBillingAddons` operationId).
+	AvailableBillingAddonsWithResponse(ctx context.Context, params *AvailableBillingAddonsParams, reqEditors ...RequestEditorFn) (*AvailableBillingAddonsResponse, error)
+
+	// AvailableSelfServicePlansWithResponse Available Self Service Plans
+	//
+	// An empty list: infraweave sells no plans (decision 0021, DV-080).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
+	AvailableSelfServicePlansWithResponse(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*AvailableSelfServicePlansResponse, error)
+
 	// AwarenessSourceSurveyWithResponse Awareness Source Survey
 	//
 	// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -18017,6 +19629,105 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 	AwarenessSourceSurveyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwarenessSourceSurveyResponse, error)
 
+	// BilledExternallyWithResponse Billed Externally
+	//
+	// true: no Stripe subscription exists (decision 0021, DV-080).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /billed-externally (the `BilledExternally` operationId).
+	BilledExternallyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BilledExternallyResponse, error)
+
+	// BillingSubscriptionDeleteWithResponse Billing Subscription Delete
+	//
+	// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /billing-subscription (the `BillingSubscriptionDelete` operationId).
+	BillingSubscriptionDeleteWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BillingSubscriptionDeleteResponse, error)
+
+	// BillingSubscriptionWithResponse Billing Subscription
+	//
+	// null: no Stripe subscription exists (decision 0021, DV-080).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /billing-subscription (the `BillingSubscription` operationId).
+	BillingSubscriptionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BillingSubscriptionResponse, error)
+
+	// BillingSubscriptionCreateWithBodyWithResponse Billing Subscription Create
+	//
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+	BillingSubscriptionCreateWithBodyWithResponse(ctx context.Context, params *BillingSubscriptionCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionCreateResponse, error)
+
+	// BillingSubscriptionCreateWithResponse Billing Subscription Create
+	//
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+	BillingSubscriptionCreateWithResponse(ctx context.Context, params *BillingSubscriptionCreateParams, body BillingSubscriptionCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionCreateResponse, error)
+
+	// BillingSubscriptionUpdateV2WithBodyWithResponse Billing Subscription Update V2
+	//
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+	BillingSubscriptionUpdateV2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateV2Response, error)
+
+	// BillingSubscriptionUpdateV2WithResponse Billing Subscription Update V2
+	//
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+	BillingSubscriptionUpdateV2WithResponse(ctx context.Context, body BillingSubscriptionUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateV2Response, error)
+
+	// BillingSubscriptionUpdateInfoWithBodyWithResponse Billing Subscription Update Info
+	//
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+	BillingSubscriptionUpdateInfoWithBodyWithResponse(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateInfoResponse, error)
+
+	// BillingSubscriptionUpdateInfoWithResponse Billing Subscription Update Info
+	//
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+	BillingSubscriptionUpdateInfoWithResponse(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, body BillingSubscriptionUpdateInfoJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateInfoResponse, error)
+
+	// BillingSubscriptionUpdateTierWithBodyWithResponse Billing Subscription Update Tier
+	//
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+	BillingSubscriptionUpdateTierWithBodyWithResponse(ctx context.Context, params *BillingSubscriptionUpdateTierParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateTierResponse, error)
+
+	// BillingSubscriptionUpdateTierWithResponse Billing Subscription Update Tier
+	//
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+	BillingSubscriptionUpdateTierWithResponse(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateTierResponse, error)
+
 	// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 	//
 	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -18025,6 +19736,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 	DefaultPrivateWorkerPoolRunnerImageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DefaultPrivateWorkerPoolRunnerImageResponse, error)
+
+	// EvaluateFeatureFlagsWithResponse Evaluate Feature Flags
+	//
+	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
+	EvaluateFeatureFlagsWithResponse(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*EvaluateFeatureFlagsResponse, error)
 
 	// IdWithResponse Id
 	//
@@ -18073,6 +19793,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
 	OauthRedirectAllowedHostsWithResponse(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*OauthRedirectAllowedHostsResponse, error)
 
+	// OnTrialUntilWithResponse On Trial Until
+	//
+	// null: an infraweave account is never on a trial (decision 0021, DV-080).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
+	OnTrialUntilWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OnTrialUntilResponse, error)
+
 	// PersonalApiKeysEnabledWithResponse Personal Api Keys Enabled
 	//
 	// Whether the account's members may create personal API keys; true until an account admin turns it off.
@@ -18081,6 +19810,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
 	PersonalApiKeysEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PersonalApiKeysEnabledResponse, error)
+
+	// SeatsWithResponse Seats
+	//
+	// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /seats (the `Seats` operationId).
+	SeatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SeatsResponse, error)
 
 	// SecurityEmailWithResponse Security Email
 	//
@@ -19058,6 +20796,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrlWithResponse(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error)
+
+	// TierWithResponse Tier
+	//
+	// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /tier (the `Tier` operationId).
+	TierWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*TierResponse, error)
+
+	// TierFeaturesWithResponse Tier Features
+	//
+	// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /tier-features (the `TierFeatures` operationId).
+	TierFeaturesWithResponse(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*TierFeaturesResponse, error)
 
 	// TypeWithResponse Type
 	//
@@ -21437,6 +23193,196 @@ func (r ApiKeyUserResponse) ContentType() string {
 	return ""
 }
 
+// AvailableBillingAddonsResponse200Headers the declared response headers of an HTTP 200 response for AvailableBillingAddons
+type AvailableBillingAddonsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AvailableBillingAddonsResponse429Headers the declared response headers of an HTTP 429 response for AvailableBillingAddons
+type AvailableBillingAddonsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AvailableBillingAddonsResponse503Headers the declared response headers of an HTTP 503 response for AvailableBillingAddons
+type AvailableBillingAddonsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AvailableBillingAddonsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingAddonPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AvailableBillingAddonsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AvailableBillingAddonsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AvailableBillingAddonsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AvailableBillingAddonsResponse) GetJSON200() *BillingAddonPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AvailableBillingAddonsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AvailableBillingAddonsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AvailableBillingAddonsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AvailableBillingAddonsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AvailableBillingAddonsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AvailableBillingAddonsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AvailableBillingAddonsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AvailableBillingAddonsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AvailableSelfServicePlansResponse200Headers the declared response headers of an HTTP 200 response for AvailableSelfServicePlans
+type AvailableSelfServicePlansResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AvailableSelfServicePlansResponse429Headers the declared response headers of an HTTP 429 response for AvailableSelfServicePlans
+type AvailableSelfServicePlansResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AvailableSelfServicePlansResponse503Headers the declared response headers of an HTTP 503 response for AvailableSelfServicePlans
+type AvailableSelfServicePlansResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AvailableSelfServicePlansResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingPlanPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AvailableSelfServicePlansResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AvailableSelfServicePlansResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AvailableSelfServicePlansResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AvailableSelfServicePlansResponse) GetJSON200() *BillingPlanPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AvailableSelfServicePlansResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AvailableSelfServicePlansResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AvailableSelfServicePlansResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AvailableSelfServicePlansResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AvailableSelfServicePlansResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AvailableSelfServicePlansResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AvailableSelfServicePlansResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AvailableSelfServicePlansResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AwarenessSourceSurveyResponse200Headers the declared response headers of an HTTP 200 response for AwarenessSourceSurvey
 type AwarenessSourceSurveyResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -21525,6 +23471,664 @@ func (r AwarenessSourceSurveyResponse) ContentType() string {
 	return ""
 }
 
+// BilledExternallyResponse200Headers the declared response headers of an HTTP 200 response for BilledExternally
+type BilledExternallyResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BilledExternallyResponse429Headers the declared response headers of an HTTP 429 response for BilledExternally
+type BilledExternallyResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BilledExternallyResponse503Headers the declared response headers of an HTTP 503 response for BilledExternally
+type BilledExternallyResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BilledExternallyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BilledExternallyResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BilledExternallyResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BilledExternallyResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BilledExternallyResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BilledExternallyResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BilledExternallyResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BilledExternallyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BilledExternallyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BilledExternallyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BilledExternallyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BilledExternallyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BillingSubscriptionDeleteResponse200Headers the declared response headers of an HTTP 200 response for BillingSubscriptionDelete
+type BillingSubscriptionDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionDeleteResponse429Headers the declared response headers of an HTTP 429 response for BillingSubscriptionDelete
+type BillingSubscriptionDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionDeleteResponse503Headers the declared response headers of an HTTP 503 response for BillingSubscriptionDelete
+type BillingSubscriptionDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BillingSubscriptionDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingSubscription
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BillingSubscriptionDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BillingSubscriptionDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BillingSubscriptionDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BillingSubscriptionDeleteResponse) GetJSON200() *BillingSubscription {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BillingSubscriptionDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BillingSubscriptionDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BillingSubscriptionDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BillingSubscriptionDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BillingSubscriptionDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BillingSubscriptionDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BillingSubscriptionDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BillingSubscriptionResponse200Headers the declared response headers of an HTTP 200 response for BillingSubscription
+type BillingSubscriptionResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionResponse429Headers the declared response headers of an HTTP 429 response for BillingSubscription
+type BillingSubscriptionResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionResponse503Headers the declared response headers of an HTTP 503 response for BillingSubscription
+type BillingSubscriptionResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BillingSubscriptionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 **BillingSubscription
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BillingSubscriptionResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BillingSubscriptionResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BillingSubscriptionResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BillingSubscriptionResponse) GetJSON200() **BillingSubscription {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BillingSubscriptionResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BillingSubscriptionResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BillingSubscriptionResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BillingSubscriptionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BillingSubscriptionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BillingSubscriptionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BillingSubscriptionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BillingSubscriptionCreateResponse200Headers the declared response headers of an HTTP 200 response for BillingSubscriptionCreate
+type BillingSubscriptionCreateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionCreateResponse429Headers the declared response headers of an HTTP 429 response for BillingSubscriptionCreate
+type BillingSubscriptionCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionCreateResponse503Headers the declared response headers of an HTTP 503 response for BillingSubscriptionCreate
+type BillingSubscriptionCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BillingSubscriptionCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingSubscription
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BillingSubscriptionCreateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BillingSubscriptionCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BillingSubscriptionCreateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BillingSubscriptionCreateResponse) GetJSON200() *BillingSubscription {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BillingSubscriptionCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BillingSubscriptionCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BillingSubscriptionCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BillingSubscriptionCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BillingSubscriptionCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BillingSubscriptionCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BillingSubscriptionCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BillingSubscriptionCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BillingSubscriptionCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BillingSubscriptionUpdateV2Response200Headers the declared response headers of an HTTP 200 response for BillingSubscriptionUpdateV2
+type BillingSubscriptionUpdateV2Response200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionUpdateV2Response429Headers the declared response headers of an HTTP 429 response for BillingSubscriptionUpdateV2
+type BillingSubscriptionUpdateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionUpdateV2Response503Headers the declared response headers of an HTTP 503 response for BillingSubscriptionUpdateV2
+type BillingSubscriptionUpdateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type BillingSubscriptionUpdateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingSubscription
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BillingSubscriptionUpdateV2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BillingSubscriptionUpdateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BillingSubscriptionUpdateV2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BillingSubscriptionUpdateV2Response) GetJSON200() *BillingSubscription {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BillingSubscriptionUpdateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BillingSubscriptionUpdateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BillingSubscriptionUpdateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BillingSubscriptionUpdateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BillingSubscriptionUpdateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BillingSubscriptionUpdateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BillingSubscriptionUpdateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BillingSubscriptionUpdateInfoResponse200Headers the declared response headers of an HTTP 200 response for BillingSubscriptionUpdateInfo
+type BillingSubscriptionUpdateInfoResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionUpdateInfoResponse429Headers the declared response headers of an HTTP 429 response for BillingSubscriptionUpdateInfo
+type BillingSubscriptionUpdateInfoResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionUpdateInfoResponse503Headers the declared response headers of an HTTP 503 response for BillingSubscriptionUpdateInfo
+type BillingSubscriptionUpdateInfoResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BillingSubscriptionUpdateInfoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingSubscription
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BillingSubscriptionUpdateInfoResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BillingSubscriptionUpdateInfoResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BillingSubscriptionUpdateInfoResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BillingSubscriptionUpdateInfoResponse) GetJSON200() *BillingSubscription {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BillingSubscriptionUpdateInfoResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BillingSubscriptionUpdateInfoResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BillingSubscriptionUpdateInfoResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BillingSubscriptionUpdateInfoResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BillingSubscriptionUpdateInfoResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BillingSubscriptionUpdateInfoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BillingSubscriptionUpdateInfoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BillingSubscriptionUpdateInfoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BillingSubscriptionUpdateInfoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BillingSubscriptionUpdateTierResponse200Headers the declared response headers of an HTTP 200 response for BillingSubscriptionUpdateTier
+type BillingSubscriptionUpdateTierResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionUpdateTierResponse429Headers the declared response headers of an HTTP 429 response for BillingSubscriptionUpdateTier
+type BillingSubscriptionUpdateTierResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BillingSubscriptionUpdateTierResponse503Headers the declared response headers of an HTTP 503 response for BillingSubscriptionUpdateTier
+type BillingSubscriptionUpdateTierResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BillingSubscriptionUpdateTierResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingSubscription
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BillingSubscriptionUpdateTierResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BillingSubscriptionUpdateTierResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BillingSubscriptionUpdateTierResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BillingSubscriptionUpdateTierResponse) GetJSON200() *BillingSubscription {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BillingSubscriptionUpdateTierResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BillingSubscriptionUpdateTierResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BillingSubscriptionUpdateTierResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BillingSubscriptionUpdateTierResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BillingSubscriptionUpdateTierResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BillingSubscriptionUpdateTierResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BillingSubscriptionUpdateTierResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BillingSubscriptionUpdateTierResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BillingSubscriptionUpdateTierResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // DefaultPrivateWorkerPoolRunnerImageResponse200Headers the declared response headers of an HTTP 200 response for DefaultPrivateWorkerPoolRunnerImage
 type DefaultPrivateWorkerPoolRunnerImageResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -21607,6 +24211,101 @@ func (r DefaultPrivateWorkerPoolRunnerImageResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DefaultPrivateWorkerPoolRunnerImageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EvaluateFeatureFlagsResponse200Headers the declared response headers of an HTTP 200 response for EvaluateFeatureFlags
+type EvaluateFeatureFlagsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// EvaluateFeatureFlagsResponse429Headers the declared response headers of an HTTP 429 response for EvaluateFeatureFlags
+type EvaluateFeatureFlagsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// EvaluateFeatureFlagsResponse503Headers the declared response headers of an HTTP 503 response for EvaluateFeatureFlags
+type EvaluateFeatureFlagsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type EvaluateFeatureFlagsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FeatureFlagEvaluationResultPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *EvaluateFeatureFlagsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EvaluateFeatureFlagsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *EvaluateFeatureFlagsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EvaluateFeatureFlagsResponse) GetJSON200() *FeatureFlagEvaluationResultPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r EvaluateFeatureFlagsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r EvaluateFeatureFlagsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r EvaluateFeatureFlagsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r EvaluateFeatureFlagsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r EvaluateFeatureFlagsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EvaluateFeatureFlagsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EvaluateFeatureFlagsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EvaluateFeatureFlagsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22067,6 +24766,94 @@ func (r OauthRedirectAllowedHostsResponse) ContentType() string {
 	return ""
 }
 
+// OnTrialUntilResponse200Headers the declared response headers of an HTTP 200 response for OnTrialUntil
+type OnTrialUntilResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OnTrialUntilResponse429Headers the declared response headers of an HTTP 429 response for OnTrialUntil
+type OnTrialUntilResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OnTrialUntilResponse503Headers the declared response headers of an HTTP 503 response for OnTrialUntil
+type OnTrialUntilResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OnTrialUntilResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 **int32
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OnTrialUntilResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OnTrialUntilResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OnTrialUntilResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OnTrialUntilResponse) GetJSON200() **int32 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OnTrialUntilResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OnTrialUntilResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OnTrialUntilResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OnTrialUntilResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OnTrialUntilResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OnTrialUntilResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OnTrialUntilResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // PersonalApiKeysEnabledResponse200Headers the declared response headers of an HTTP 200 response for PersonalApiKeysEnabled
 type PersonalApiKeysEnabledResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -22149,6 +24936,94 @@ func (r PersonalApiKeysEnabledResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PersonalApiKeysEnabledResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SeatsResponse200Headers the declared response headers of an HTTP 200 response for Seats
+type SeatsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SeatsResponse429Headers the declared response headers of an HTTP 429 response for Seats
+type SeatsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SeatsResponse503Headers the declared response headers of an HTTP 503 response for Seats
+type SeatsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SeatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Seats
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SeatsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SeatsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SeatsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SeatsResponse) GetJSON200() *Seats {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SeatsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SeatsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SeatsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SeatsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SeatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SeatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SeatsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -29732,6 +32607,189 @@ func (r StateUploadUrlResponse) ContentType() string {
 	return ""
 }
 
+// TierResponse200Headers the declared response headers of an HTTP 200 response for Tier
+type TierResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TierResponse429Headers the declared response headers of an HTTP 429 response for Tier
+type TierResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TierResponse503Headers the declared response headers of an HTTP 503 response for Tier
+type TierResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TierResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Tier
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TierResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TierResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TierResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TierResponse) GetJSON200() *Tier {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TierResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TierResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TierResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TierResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TierResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TierResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TierResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// TierFeaturesResponse200Headers the declared response headers of an HTTP 200 response for TierFeatures
+type TierFeaturesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TierFeaturesResponse429Headers the declared response headers of an HTTP 429 response for TierFeatures
+type TierFeaturesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TierFeaturesResponse503Headers the declared response headers of an HTTP 503 response for TierFeatures
+type TierFeaturesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TierFeaturesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TierFeaturePage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TierFeaturesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TierFeaturesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TierFeaturesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TierFeaturesResponse) GetJSON200() *TierFeaturePage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r TierFeaturesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TierFeaturesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TierFeaturesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TierFeaturesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TierFeaturesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TierFeaturesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TierFeaturesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TierFeaturesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // TypeResponse200Headers the declared response headers of an HTTP 200 response for Type
 type TypeResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -30453,6 +33511,36 @@ func (c *ClientWithResponses) ApiKeyUserWithResponse(ctx context.Context, params
 	return ParseApiKeyUserResponse(rsp)
 }
 
+// AvailableBillingAddonsWithResponse Available Billing Addons
+//
+// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /available-billing-addons (the `AvailableBillingAddons` operationId).
+func (c *ClientWithResponses) AvailableBillingAddonsWithResponse(ctx context.Context, params *AvailableBillingAddonsParams, reqEditors ...RequestEditorFn) (*AvailableBillingAddonsResponse, error) {
+	rsp, err := c.AvailableBillingAddons(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAvailableBillingAddonsResponse(rsp)
+}
+
+// AvailableSelfServicePlansWithResponse Available Self Service Plans
+//
+// An empty list: infraweave sells no plans (decision 0021, DV-080).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
+func (c *ClientWithResponses) AvailableSelfServicePlansWithResponse(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*AvailableSelfServicePlansResponse, error) {
+	rsp, err := c.AvailableSelfServicePlans(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAvailableSelfServicePlansResponse(rsp)
+}
+
 // AwarenessSourceSurveyWithResponse Awareness Source Survey
 //
 // The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
@@ -30468,6 +33556,171 @@ func (c *ClientWithResponses) AwarenessSourceSurveyWithResponse(ctx context.Cont
 	return ParseAwarenessSourceSurveyResponse(rsp)
 }
 
+// BilledExternallyWithResponse Billed Externally
+//
+// true: no Stripe subscription exists (decision 0021, DV-080).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /billed-externally (the `BilledExternally` operationId).
+func (c *ClientWithResponses) BilledExternallyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BilledExternallyResponse, error) {
+	rsp, err := c.BilledExternally(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBilledExternallyResponse(rsp)
+}
+
+// BillingSubscriptionDeleteWithResponse Billing Subscription Delete
+//
+// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /billing-subscription (the `BillingSubscriptionDelete` operationId).
+func (c *ClientWithResponses) BillingSubscriptionDeleteWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BillingSubscriptionDeleteResponse, error) {
+	rsp, err := c.BillingSubscriptionDelete(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionDeleteResponse(rsp)
+}
+
+// BillingSubscriptionWithResponse Billing Subscription
+//
+// null: no Stripe subscription exists (decision 0021, DV-080).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /billing-subscription (the `BillingSubscription` operationId).
+func (c *ClientWithResponses) BillingSubscriptionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BillingSubscriptionResponse, error) {
+	rsp, err := c.BillingSubscription(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionResponse(rsp)
+}
+
+// BillingSubscriptionCreateWithBodyWithResponse Billing Subscription Create
+//
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+func (c *ClientWithResponses) BillingSubscriptionCreateWithBodyWithResponse(ctx context.Context, params *BillingSubscriptionCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionCreateResponse, error) {
+	rsp, err := c.BillingSubscriptionCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionCreateResponse(rsp)
+}
+
+// BillingSubscriptionCreateWithResponse Billing Subscription Create
+//
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /billing-subscription (the `BillingSubscriptionCreate` operationId).
+func (c *ClientWithResponses) BillingSubscriptionCreateWithResponse(ctx context.Context, params *BillingSubscriptionCreateParams, body BillingSubscriptionCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionCreateResponse, error) {
+	rsp, err := c.BillingSubscriptionCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionCreateResponse(rsp)
+}
+
+// BillingSubscriptionUpdateV2WithBodyWithResponse Billing Subscription Update V2
+//
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+func (c *ClientWithResponses) BillingSubscriptionUpdateV2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateV2Response, error) {
+	rsp, err := c.BillingSubscriptionUpdateV2WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionUpdateV2Response(rsp)
+}
+
+// BillingSubscriptionUpdateV2WithResponse Billing Subscription Update V2
+//
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /billing-subscription (the `BillingSubscriptionUpdateV2` operationId).
+func (c *ClientWithResponses) BillingSubscriptionUpdateV2WithResponse(ctx context.Context, body BillingSubscriptionUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateV2Response, error) {
+	rsp, err := c.BillingSubscriptionUpdateV2(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionUpdateV2Response(rsp)
+}
+
+// BillingSubscriptionUpdateInfoWithBodyWithResponse Billing Subscription Update Info
+//
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+func (c *ClientWithResponses) BillingSubscriptionUpdateInfoWithBodyWithResponse(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateInfoResponse, error) {
+	rsp, err := c.BillingSubscriptionUpdateInfoWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionUpdateInfoResponse(rsp)
+}
+
+// BillingSubscriptionUpdateInfoWithResponse Billing Subscription Update Info
+//
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /billing-subscription/update-info (the `BillingSubscriptionUpdateInfo` operationId).
+func (c *ClientWithResponses) BillingSubscriptionUpdateInfoWithResponse(ctx context.Context, params *BillingSubscriptionUpdateInfoParams, body BillingSubscriptionUpdateInfoJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateInfoResponse, error) {
+	rsp, err := c.BillingSubscriptionUpdateInfo(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionUpdateInfoResponse(rsp)
+}
+
+// BillingSubscriptionUpdateTierWithBodyWithResponse Billing Subscription Update Tier
+//
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+func (c *ClientWithResponses) BillingSubscriptionUpdateTierWithBodyWithResponse(ctx context.Context, params *BillingSubscriptionUpdateTierParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateTierResponse, error) {
+	rsp, err := c.BillingSubscriptionUpdateTierWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionUpdateTierResponse(rsp)
+}
+
+// BillingSubscriptionUpdateTierWithResponse Billing Subscription Update Tier
+//
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
+func (c *ClientWithResponses) BillingSubscriptionUpdateTierWithResponse(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateTierResponse, error) {
+	rsp, err := c.BillingSubscriptionUpdateTier(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBillingSubscriptionUpdateTierResponse(rsp)
+}
+
 // DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 //
 // The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -30481,6 +33734,21 @@ func (c *ClientWithResponses) DefaultPrivateWorkerPoolRunnerImageWithResponse(ct
 		return nil, err
 	}
 	return ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp)
+}
+
+// EvaluateFeatureFlagsWithResponse Evaluate Feature Flags
+//
+// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
+func (c *ClientWithResponses) EvaluateFeatureFlagsWithResponse(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*EvaluateFeatureFlagsResponse, error) {
+	rsp, err := c.EvaluateFeatureFlags(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEvaluateFeatureFlagsResponse(rsp)
 }
 
 // IdWithResponse Id
@@ -30560,6 +33828,21 @@ func (c *ClientWithResponses) OauthRedirectAllowedHostsWithResponse(ctx context.
 	return ParseOauthRedirectAllowedHostsResponse(rsp)
 }
 
+// OnTrialUntilWithResponse On Trial Until
+//
+// null: an infraweave account is never on a trial (decision 0021, DV-080).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
+func (c *ClientWithResponses) OnTrialUntilWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OnTrialUntilResponse, error) {
+	rsp, err := c.OnTrialUntil(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOnTrialUntilResponse(rsp)
+}
+
 // PersonalApiKeysEnabledWithResponse Personal Api Keys Enabled
 //
 // Whether the account's members may create personal API keys; true until an account admin turns it off.
@@ -30573,6 +33856,21 @@ func (c *ClientWithResponses) PersonalApiKeysEnabledWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePersonalApiKeysEnabledResponse(rsp)
+}
+
+// SeatsWithResponse Seats
+//
+// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /seats (the `Seats` operationId).
+func (c *ClientWithResponses) SeatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SeatsResponse, error) {
+	rsp, err := c.Seats(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSeatsResponse(rsp)
 }
 
 // SecurityEmailWithResponse Security Email
@@ -32180,6 +35478,36 @@ func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParseStateUploadUrlResponse(rsp)
+}
+
+// TierWithResponse Tier
+//
+// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /tier (the `Tier` operationId).
+func (c *ClientWithResponses) TierWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*TierResponse, error) {
+	rsp, err := c.Tier(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTierResponse(rsp)
+}
+
+// TierFeaturesWithResponse Tier Features
+//
+// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /tier-features (the `TierFeatures` operationId).
+func (c *ClientWithResponses) TierFeaturesWithResponse(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*TierFeaturesResponse, error) {
+	rsp, err := c.TierFeatures(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTierFeaturesResponse(rsp)
 }
 
 // TypeWithResponse Type
@@ -35231,6 +38559,250 @@ func ParseApiKeyUserResponse(rsp *http.Response) (*ApiKeyUserResponse, error) {
 	return response, nil
 }
 
+// ParseAvailableBillingAddonsResponse parses an HTTP response from a AvailableBillingAddonsWithResponse call
+func ParseAvailableBillingAddonsResponse(rsp *http.Response) (*AvailableBillingAddonsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AvailableBillingAddonsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingAddonPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AvailableBillingAddonsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AvailableBillingAddonsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AvailableBillingAddonsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAvailableSelfServicePlansResponse parses an HTTP response from a AvailableSelfServicePlansWithResponse call
+func ParseAvailableSelfServicePlansResponse(rsp *http.Response) (*AvailableSelfServicePlansResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AvailableSelfServicePlansResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingPlanPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AvailableSelfServicePlansResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AvailableSelfServicePlansResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AvailableSelfServicePlansResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAwarenessSourceSurveyResponse parses an HTTP response from a AwarenessSourceSurveyWithResponse call
 func ParseAwarenessSourceSurveyResponse(rsp *http.Response) (*AwarenessSourceSurveyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -35346,6 +38918,853 @@ func ParseAwarenessSourceSurveyResponse(rsp *http.Response) (*AwarenessSourceSur
 	return response, nil
 }
 
+// ParseBilledExternallyResponse parses an HTTP response from a BilledExternallyWithResponse call
+func ParseBilledExternallyResponse(rsp *http.Response) (*BilledExternallyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BilledExternallyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BilledExternallyResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BilledExternallyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BilledExternallyResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBillingSubscriptionDeleteResponse parses an HTTP response from a BillingSubscriptionDeleteWithResponse call
+func ParseBillingSubscriptionDeleteResponse(rsp *http.Response) (*BillingSubscriptionDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BillingSubscriptionDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BillingSubscriptionDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BillingSubscriptionDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BillingSubscriptionDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBillingSubscriptionResponse parses an HTTP response from a BillingSubscriptionWithResponse call
+func ParseBillingSubscriptionResponse(rsp *http.Response) (*BillingSubscriptionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BillingSubscriptionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest *BillingSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BillingSubscriptionResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BillingSubscriptionResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BillingSubscriptionResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBillingSubscriptionCreateResponse parses an HTTP response from a BillingSubscriptionCreateWithResponse call
+func ParseBillingSubscriptionCreateResponse(rsp *http.Response) (*BillingSubscriptionCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BillingSubscriptionCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BillingSubscriptionCreateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BillingSubscriptionCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BillingSubscriptionCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBillingSubscriptionUpdateV2Response parses an HTTP response from a BillingSubscriptionUpdateV2WithResponse call
+func ParseBillingSubscriptionUpdateV2Response(rsp *http.Response) (*BillingSubscriptionUpdateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BillingSubscriptionUpdateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BillingSubscriptionUpdateV2Response200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BillingSubscriptionUpdateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BillingSubscriptionUpdateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBillingSubscriptionUpdateInfoResponse parses an HTTP response from a BillingSubscriptionUpdateInfoWithResponse call
+func ParseBillingSubscriptionUpdateInfoResponse(rsp *http.Response) (*BillingSubscriptionUpdateInfoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BillingSubscriptionUpdateInfoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BillingSubscriptionUpdateInfoResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BillingSubscriptionUpdateInfoResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BillingSubscriptionUpdateInfoResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBillingSubscriptionUpdateTierResponse parses an HTTP response from a BillingSubscriptionUpdateTierWithResponse call
+func ParseBillingSubscriptionUpdateTierResponse(rsp *http.Response) (*BillingSubscriptionUpdateTierResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BillingSubscriptionUpdateTierResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BillingSubscriptionUpdateTierResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BillingSubscriptionUpdateTierResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BillingSubscriptionUpdateTierResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseDefaultPrivateWorkerPoolRunnerImageResponse parses an HTTP response from a DefaultPrivateWorkerPoolRunnerImageWithResponse call
 func ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp *http.Response) (*DefaultPrivateWorkerPoolRunnerImageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -35448,6 +39867,128 @@ func ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp *http.Response) (*Defa
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers DefaultPrivateWorkerPoolRunnerImageResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEvaluateFeatureFlagsResponse parses an HTTP response from a EvaluateFeatureFlagsWithResponse call
+func ParseEvaluateFeatureFlagsResponse(rsp *http.Response) (*EvaluateFeatureFlagsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EvaluateFeatureFlagsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FeatureFlagEvaluationResultPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers EvaluateFeatureFlagsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers EvaluateFeatureFlagsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers EvaluateFeatureFlagsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -36050,6 +40591,121 @@ func ParseOauthRedirectAllowedHostsResponse(rsp *http.Response) (*OauthRedirectA
 	return response, nil
 }
 
+// ParseOnTrialUntilResponse parses an HTTP response from a OnTrialUntilWithResponse call
+func ParseOnTrialUntilResponse(rsp *http.Response) (*OnTrialUntilResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OnTrialUntilResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest *int32
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OnTrialUntilResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OnTrialUntilResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OnTrialUntilResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParsePersonalApiKeysEnabledResponse parses an HTTP response from a PersonalApiKeysEnabledWithResponse call
 func ParsePersonalApiKeysEnabledResponse(rsp *http.Response) (*PersonalApiKeysEnabledResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -36152,6 +40808,121 @@ func ParsePersonalApiKeysEnabledResponse(rsp *http.Response) (*PersonalApiKeysEn
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers PersonalApiKeysEnabledResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSeatsResponse parses an HTTP response from a SeatsWithResponse call
+func ParseSeatsResponse(rsp *http.Response) (*SeatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SeatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Seats
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SeatsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SeatsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SeatsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -45781,6 +50552,243 @@ func ParseStateUploadUrlResponse(rsp *http.Response) (*StateUploadUrlResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StateUploadUrlResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTierResponse parses an HTTP response from a TierWithResponse call
+func ParseTierResponse(rsp *http.Response) (*TierResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TierResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tier
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TierResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TierResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TierResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTierFeaturesResponse parses an HTTP response from a TierFeaturesWithResponse call
+func ParseTierFeaturesResponse(rsp *http.Response) (*TierFeaturesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TierFeaturesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TierFeaturePage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TierFeaturesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TierFeaturesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TierFeaturesResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

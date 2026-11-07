@@ -211,6 +211,11 @@ func TestAccSeats(t *testing.T) {
 			want,
 		)
 	}
+	// The seats read leaves no key out, so seed's key now counts too.
+	if u, err := s.Seats(ctx, x.org, x.acct); err != nil ||
+		u != (featuresapi.Usage{Organization: 4, Account: 3}) {
+		t.Errorf("Seats = %+v, %v", u, err)
+	}
 	// A key that holds its seat, and a personal key, are not checked.
 	for _, id := range []kernel.ULID{x.key, personal} {
 		if err := s.TouchAPIKey(ctx, id); err != nil || f.calls != 1 {
@@ -249,6 +254,14 @@ func TestAccSeatsUnavailable(t *testing.T) {
 		if err == nil || errors.Is(err, port.ErrNotFound) {
 			t.Errorf("a %s use in an aborted transaction = %v", name, err)
 		}
+	}
+	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+		_, _ = tx.Q(ctx, db).Exec(ctx, `SELECT 1/0`)
+		_, err := s.Seats(ctx, x.org, x.acct)
+		return err
+	})
+	if err == nil || !strings.Contains(err.Error(), "count seats") {
+		t.Errorf("a seats read in an aborted transaction = %v", err)
 	}
 	// The key is read, then the count fails.
 	s = pg.New(db).WithFeatures(failingCount{db: db})

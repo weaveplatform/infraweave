@@ -224,7 +224,7 @@ func (s *Store) Grants(ctx context.Context, org kernel.OrganizationID) (core.Gra
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM organization_entitlements WHERE organization_id = $1),
 			ARRAY(SELECT feature FROM organization_feature_grants
-				WHERE organization_id = $1 ORDER BY 1)`, org).Scan(&exists, &g.Features)
+				WHERE organization_id = $1 ORDER BY feature COLLATE "C")`, org).Scan(&exists, &g.Features)
 	if err != nil {
 		return g, fmt.Errorf("features: %w", sql.Unavailable(err))
 	}

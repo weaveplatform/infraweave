@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -20,6 +22,8 @@ func (s *servedSteps) registerFeatures(sc *godog.ScenarioContext) {
 	)
 	sc.Step(`^the problem names the feature "([a-z-]+)"$`, s.namesFeature)
 	sc.Step(`^"([A-Z]+) ([^"]+)" on the API listener answers (\d+)$`, s.apiAnswers)
+	sc.Step(`^"([A-Z]+) ([^"]+)" on the API listener answers '([^']*)'$`, s.apiAnswersJSON)
+	sc.Step(`^the tier features read on the API listener (hold|lack) "([a-z-]+)"$`, s.tierFeatures)
 	sc.Step(
 		`^the home organization is on the Free tier with billing on, its 2 seats taken$`,
 		s.seatsTaken,
@@ -99,6 +103,44 @@ func (s *servedSteps) apiAnswers(ctx context.Context, method, path, code string)
 			code,
 			resp.body,
 		)
+	}
+	return nil
+}
+
+func (s *servedSteps) apiAnswersJSON(ctx context.Context, method, path, want string) error {
+	resp, err := s.send(ctx, method, "API", path)
+	if err != nil {
+		return err
+	}
+	return answered(resp, method+" "+path, want)
+}
+
+// tierFeatures reads every page of the entitlement and checks that it
+// holds or lacks feature.
+func (s *servedSteps) tierFeatures(ctx context.Context, which, feature string) error {
+	var held []string
+	path := "/api/v1/tier-features"
+	for {
+		resp, err := s.send(ctx, http.MethodGet, "API", path)
+		if err != nil {
+			return err
+		}
+		var page struct {
+			Items      []string `json:"items"`
+			NextCursor *string  `json:"nextCursor"`
+		}
+		if resp.status != http.StatusOK || json.Unmarshal(resp.body, &page) != nil {
+			return fmt.Errorf("%w: GET %s answered %d: %s", errStep, path, resp.status, resp.body)
+		}
+		held = append(held, page.Items...)
+		if page.NextCursor == nil {
+			break
+		}
+		path = "/api/v1/tier-features?cursor=" + url.QueryEscape(*page.NextCursor)
+	}
+	if slices.Contains(held, feature) != (which == "hold") {
+		return fmt.Errorf("%w: the tier features are %v, which do not %s %q", errStep, held,
+			which, feature)
 	}
 	return nil
 }

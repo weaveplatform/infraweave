@@ -736,10 +736,10 @@
     {
       "id": "DV-080",
       "group": "Scope, tiers and clients: decision 0021",
-      "spacelift": "Billing mutations change a Stripe subscription",
-      "infraweave": "Billing mutations answer `403` `installation-unsupported`; reads answer with local meaning (`billedExternally: true`, `usage` over a trailing 30 days, empty add-on lists)",
+      "spacelift": "Billing mutations change a Stripe subscription, and `seats` answers users and API keys against separate limits, `-1` for none",
+      "infraweave": "Billing mutations answer `403` `installation-unsupported`; reads answer with local meaning (`billedExternally: true`, `billingSubscription` and `onTrialUntil` `null`, `usage` over a trailing 30 days, empty add-on and plan lists). `seats` answers `organization`, the pooled `seats` limit with the organization's use, and `account`, the account's limit with its use, when one is set; members and API keys share one count, and a limit is absent when there is none",
       "why": "A fake success looks like progress in a test and fails in production",
-      "impact": "Billing automation receives an explicit refusal",
+      "impact": "Billing automation receives an explicit refusal; clients that read `seats` read `organization` and `account` in place of `user` and `apiKey`",
       "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
     },
     {

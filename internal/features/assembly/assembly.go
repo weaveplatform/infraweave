@@ -83,6 +83,23 @@ func New(d Deps) *Domain {
 	return &Domain{entitlements: entitlement.New(pg.New(d.DB), inTx, d.Settings.Disabled)}
 }
 
+// FeaturesAPI is the domain's partial of the API's strict server, which
+// internal/app embeds under this alias.
+type FeaturesAPI = http.Server
+
+// SeatCounter counts the seats in use in an organization and an account,
+// which the access domain owns.
+type SeatCounter = http.SeatCounter
+
+// API is the domain's partial of the API's strict server, counting seats
+// through seats; a nil domain's serves nothing it can answer.
+func (d *Domain) API(seats SeatCounter) FeaturesAPI {
+	if d == nil {
+		return FeaturesAPI{}
+	}
+	return http.NewServer(d.entitlements, seats)
+}
+
 // FeaturesOperatorAPI is the domain's partial of the operator API's strict
 // server, which internal/app embeds under this alias.
 type FeaturesOperatorAPI = http.OperatorServer

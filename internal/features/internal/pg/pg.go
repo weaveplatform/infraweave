@@ -136,7 +136,7 @@ SELECT e.tier, e.entitlement_version,
       SELECT feature FROM tier_features WHERE tier = e.tier
       UNION
       SELECT feature FROM organization_feature_grants WHERE organization_id = e.organization_id
-    ) f ORDER BY 1),
+    ) f ORDER BY f.feature COLLATE "C"),
   coalesce((SELECT jsonb_object_agg(l.limit_name, l.value) FROM (
       SELECT limit_name, CASE WHEN g.limit_name IS NULL THEN t.value ELSE g.value END AS value
       FROM (SELECT limit_name, value FROM tier_limits WHERE tier = e.tier) t
@@ -195,13 +195,16 @@ func (s *Store) Billing(ctx context.Context) (bool, error) {
 	return on, nil
 }
 
-// tiers reads every tier's content.
+// tiers reads every tier's content. Names sort in byte order, as Go's
+// comparisons and the tier list's cursors do; the database's collation
+// may put "modules" before "module-sharing", or a name with a space
+// elsewhere, and a page would then skip or repeat a tier.
 const tiers = `
 SELECT t.name,
-  ARRAY(SELECT feature FROM tier_features f WHERE f.tier = t.name ORDER BY 1),
+  ARRAY(SELECT feature FROM tier_features f WHERE f.tier = t.name ORDER BY feature COLLATE "C"),
   coalesce((SELECT jsonb_object_agg(limit_name, value) FROM tier_limits l
             WHERE l.tier = t.name), '{}')
-FROM tiers t ORDER BY t.name`
+FROM tiers t ORDER BY t.name COLLATE "C"`
 
 // Tiers reads every tier's content, in name order.
 func (s *Store) Tiers(ctx context.Context) ([]features.Tier, error) {

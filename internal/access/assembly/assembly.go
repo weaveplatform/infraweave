@@ -213,6 +213,17 @@ func (d *Domain) OrganizationID(
 	return o.ID, true, nil
 }
 
+// Seats counts the seats in use in org and in acct for another domain's
+// reads: each active member and each API key holding a seat, as the seats
+// limit counts them.
+func (d *Domain) Seats(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	acct kernel.AccountID,
+) (featuresapi.Usage, error) {
+	return d.store.Seats(ctx, org, acct) //nolint:wrapcheck // the store names itself
+}
+
 // Routes mounts the domain's pages beside the APIs on r: the break-glass
 // login at accessapi.LoginPattern. A nil domain's answer 501, as its API
 // partial's operations do, so the routes the controls know of exist.

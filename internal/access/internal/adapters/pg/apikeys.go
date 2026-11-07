@@ -48,11 +48,12 @@ const SeatWindow = 30 * 24 * time.Hour
 // once, however many of the organization's accounts admit it, and each
 // other live key that is not personal and was used within the window. A
 // personal key rides on its owner's seat. Leaving $4 out lets two first
-// uses of one key share its seat rather than the second count the first.
+// uses of one key share its seat rather than the second count the first;
+// a NULL $4 leaves no key out, as the seats read counts them.
 const seats = `
 WITH keys AS (
   SELECT k.account_id FROM api_keys k JOIN accounts a ON a.id = k.account_id
-  WHERE a.organization_id = $1 AND k.id <> $4 AND k.deleted_at IS NULL
+  WHERE a.organization_id = $1 AND k.id IS DISTINCT FROM $4 AND k.deleted_at IS NULL
     AND k.disabled_at IS NULL AND NOT k.is_personal
     AND (k.expires_at IS NULL OR k.expires_at > now())
     AND k.last_used_at > now() - $3::interval)
@@ -112,13 +113,32 @@ func (s *Store) takeSeat(ctx context.Context, id kernel.ULID) error {
 	//nolint:wrapcheck // the features domain names the refusal
 	return s.features.CheckLimit(ctx, org, acct, featuresapi.Seats,
 		func(ctx context.Context) (featuresapi.Usage, error) {
-			var u featuresapi.Usage
-			if err := tx.Q(ctx, s.db).QueryRow(ctx, seats, org, acct, SeatWindow, id).
-				Scan(&u.Organization, &u.Account); err != nil {
-				return u, fmt.Errorf("access: count seats: %w", sql.Unavailable(err))
-			}
-			return u, nil
+			return s.countSeats(ctx, org, acct, id)
 		})
+}
+
+// Seats counts the seats in use in org and in acct.
+func (s *Store) Seats(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	acct kernel.AccountID,
+) (featuresapi.Usage, error) {
+	return s.countSeats(ctx, org, acct, kernel.ULID{})
+}
+
+// countSeats is the seats query leaving out the key except, none when zero.
+func (s *Store) countSeats(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	acct kernel.AccountID,
+	except kernel.ULID,
+) (featuresapi.Usage, error) {
+	var u featuresapi.Usage
+	if err := tx.Q(ctx, s.db).QueryRow(ctx, seats, org, acct, SeatWindow, except).
+		Scan(&u.Organization, &u.Account); err != nil {
+		return u, fmt.Errorf("access: count seats: %w", sql.Unavailable(err))
+	}
+	return u, nil
 }
 
 // CreateAPIKey inserts k. A new key takes no seat until its first use.

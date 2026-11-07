@@ -33,6 +33,7 @@ const OperatorBaseURL = "/operator/v1"
 // blobs.
 type apiServer struct {
 	accessassembly.AccessAPI
+	featuresassembly.FeaturesAPI
 	unimplemented
 	queues QueueStats
 	blobs  *blobs.Objects
@@ -95,7 +96,12 @@ func API(
 	}
 	d.Access.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
-		apiServer{AccessAPI: d.Access.API(), queues: p.Queues, blobs: b.Objects},
+		apiServer{
+			AccessAPI:   d.Access.API(),
+			FeaturesAPI: d.Features.API(d.Access.Seats),
+			queues:      p.Queues,
+			blobs:       b.Objects,
+		},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,

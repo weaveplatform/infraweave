@@ -28,3 +28,37 @@ Feature: Features the installation switches off
     Then the sibling key's first use through B answers a 403 problem "limit-reached"
     And the problem names the limit "seats" of the organization at 2
     And the home key is exchanged through A for token "h"
+
+  @op:tierFeatures @case:success
+  Scenario: The entitlement lists the organization's tier and grants
+    Given two infraweave servers, A and B, on one database, with an operator key
+    When the operator key is exchanged through A for token "op"
+    And the home key is exchanged through B for token "h"
+    And token "op" creates the tier "Gold" with the feature "usage" through A
+    And token "op" gives the home organization the tier "Gold" through A
+    And token "op" grants the home organization the feature "stacks" through A
+    And token "op" turns billing on through A
+    Then "GET /api/v1/tier-features" through B with token "h" eventually answers '{"items":["stacks","usage"]}'
+
+  @op:tierFeatures @op:evaluateFeatureFlags @case:success
+  Scenario: A switched-off feature leaves the entitlement, and no Spacelift flag is set
+    Given a running infraweave server whose features.disabled is "stacks"
+    Then the tier features read on the API listener lack "stacks"
+    And the tier features read on the API listener hold "usage"
+    And "GET /api/v1/evaluate-feature-flags?input=%7B%22flags%22%3A%5B%5D%7D" on the API listener answers '{"items":[]}'
+
+  @op:tierFeatures @case:success
+  Scenario: With nothing switched off the entitlement holds every feature
+    Given a running infraweave server
+    Then the tier features read on the API listener hold "stacks"
+
+  @op:evaluateFeatureFlags @case:denial
+  Scenario: With the console switched off its flags are refused
+    Given a running infraweave server whose features.disabled is "console"
+    Then "GET /api/v1/evaluate-feature-flags?input=%7B%22flags%22%3A%5B%5D%7D" on the API listener answers a 403 problem "feature-disabled"
+    And the problem names the feature "console"
+
+  @op:evaluateFeatureFlags @case:failure
+  Scenario: A cursor of another list is refused
+    Given a running infraweave server
+    Then "GET /api/v1/evaluate-feature-flags?input=%7B%22flags%22%3A%5B%5D%7D&cursor=nope" on the API listener answers a 400 problem "invalid-cursor"

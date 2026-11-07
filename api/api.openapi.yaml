@@ -1165,6 +1165,96 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /available-billing-addons:
+    get:
+      description: >-
+        An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+      operationId: availableBillingAddons
+      x-infraweave-feature: usage
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingAddonPage'
+          description: The availableBillingAddons result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Available Billing Addons
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Available Billing Addons.bru
+      x-graphql:
+        field: availableBillingAddons
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
+  /available-self-service-plans:
+    get:
+      description: >-
+        An empty list: infraweave sells no plans (decision 0021, DV-080).
+      operationId: availableSelfServicePlans
+      x-infraweave-feature: usage
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingPlanPage'
+          description: The availableSelfServicePlans result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Available Self Service Plans
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Available Self Service Plans.bru
+      x-graphql:
+        field: availableSelfServicePlans
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
   /awareness-source-survey:
     get:
       description: >-
@@ -1203,6 +1293,346 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /billed-externally:
+    get:
+      description: >-
+        true: no Stripe subscription exists (decision 0021, DV-080).
+      operationId: billedExternally
+      x-infraweave-feature: usage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The billedExternally result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billed Externally
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Billed Externally.bru
+      x-graphql:
+        field: billedExternally
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - rate-limit
+      x-rest-style: read
+  /billing-subscription:
+    delete:
+      description: >-
+        Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+      operationId: billingSubscriptionDelete
+      x-infraweave-feature: usage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSubscription'
+          description: The billingSubscriptionDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billing Subscription Delete
+      tags:
+        - Billing
+      x-bruno: Danger Zone/Billing Subscription Delete.bru
+      x-graphql:
+        field: billingSubscriptionDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - rate-limit
+      x-rest-style: singleton
+    get:
+      description: >-
+        null: no Stripe subscription exists (decision 0021, DV-080).
+      operationId: billingSubscription
+      x-infraweave-feature: usage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BillingSubscription'
+                nullable: true
+                x-go-type: '*BillingSubscription'
+          description: The billingSubscription result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billing Subscription
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Billing Subscription.bru
+      x-graphql:
+        field: billingSubscription
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - rate-limit
+      x-rest-style: singleton
+    post:
+      description: >-
+        Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+      operationId: billingSubscriptionCreate
+      x-infraweave-feature: usage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              input:
+                address: example
+                city: example
+                country: example
+                email: example
+                fullName: example
+                zipCode: example
+              paymentMethodID: example
+            schema:
+              $ref: '#/components/schemas/BillingSubscriptionCreateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSubscription'
+          description: The billingSubscriptionCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billing Subscription Create
+      tags:
+        - Billing
+      x-bruno: Danger Zone/Billing Subscription Create.bru
+      x-graphql:
+        field: billingSubscriptionCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+    put:
+      description: >-
+        Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+      operationId: billingSubscriptionUpdateV2
+      x-infraweave-feature: usage
+      requestBody:
+        content:
+          application/json:
+            example:
+              tier: FREE
+            schema:
+              $ref: '#/components/schemas/SubscriptionUpdateV2Input'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSubscription'
+          description: The billingSubscriptionUpdateV2 result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billing Subscription Update V2
+      tags:
+        - Billing
+      x-bruno: Danger Zone/Billing Subscription Update V2.bru
+      x-graphql:
+        field: billingSubscriptionUpdateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - rate-limit
+      x-rest-style: singleton
+  /billing-subscription/update-info:
+    post:
+      description: >-
+        Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+      operationId: billingSubscriptionUpdateInfo
+      x-infraweave-feature: usage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              address: example
+              city: example
+              country: example
+              email: example
+              fullName: example
+              zipCode: example
+            schema:
+              $ref: '#/components/schemas/SubscriptionInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSubscription'
+          description: The billingSubscriptionUpdateInfo result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billing Subscription Update Info
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Billing Subscription Update Info.bru
+      x-graphql:
+        field: billingSubscriptionUpdateInfo
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /billing-subscription/update-tier:
+    post:
+      description: >-
+        Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+      operationId: billingSubscriptionUpdateTier
+      x-infraweave-feature: usage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              tier: FREE
+            schema:
+              $ref: '#/components/schemas/BillingSubscriptionUpdateTierRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSubscription'
+          description: The billingSubscriptionUpdateTier result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Billing Subscription Update Tier
+      tags:
+        - Billing
+      x-bruno: Danger Zone/Billing Subscription Update Tier.bru
+      x-graphql:
+        field: billingSubscriptionUpdateTier
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
   /default-private-worker-pool-runner-image:
     get:
       description: >-
@@ -1239,6 +1669,58 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /evaluate-feature-flags:
+    get:
+      description: >-
+        An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+      operationId: evaluateFeatureFlags
+      x-infraweave-feature: console
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEvaluationInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEvaluationResultPage'
+          description: The evaluateFeatureFlags result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Evaluate Feature Flags
+      tags:
+        - Feature Flags
+      x-bruno: Advanced/Feature Flags/Evaluate Feature Flags.bru
+      x-graphql:
+        field: evaluateFeatureFlags
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
         - rate-limit
       x-rest-style: read
   /id:
@@ -1441,6 +1923,48 @@ paths:
         - cursor-pagination
         - rate-limit
       x-rest-style: read
+  /on-trial-until:
+    get:
+      description: >-
+        null: an infraweave account is never on a trial (decision 0021, DV-080).
+      operationId: onTrialUntil
+      x-infraweave-feature: usage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                format: int32
+                nullable: true
+                type: integer
+                x-go-type: '*int32'
+          description: The onTrialUntil result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: On Trial Until
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/On Trial Until.bru
+      x-graphql:
+        field: onTrialUntil
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
+        - rate-limit
+      x-rest-style: read
   /personal-api-keys-enabled:
     get:
       description: >-
@@ -1477,6 +2001,45 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /seats:
+    get:
+      description: >-
+        The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+      operationId: seats
+      x-infraweave-feature: usage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seats'
+          description: The seats result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Seats
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Seats.bru
+      x-graphql:
+        field: seats
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-080
         - rate-limit
       x-rest-style: read
   /security-email:
@@ -5626,6 +6189,90 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /tier:
+    get:
+      description: >-
+        The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+      operationId: tier
+      x-infraweave-feature: usage
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tier'
+          description: The tier result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Tier
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Tier.bru
+      x-graphql:
+        field: tier
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-079
+        - rate-limit
+      x-rest-style: read
+  /tier-features:
+    get:
+      description: >-
+        The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+      operationId: tierFeatures
+      x-infraweave-feature: usage
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TierFeaturePage'
+          description: The tierFeatures result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Tier Features
+      tags:
+        - Billing
+      x-bruno: Advanced/Billing/Tier Features.bru
+      x-graphql:
+        field: tierFeatures
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-079
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
   /type:
     get:
       description: The type of the caller's account, always ORG.
@@ -6708,6 +7355,263 @@ components:
         - write
       type: object
       x-graphql-type: AzureIntegrationStackAttachment
+    BillingAddon:
+      description: BillingAddon represents an addon that can be bought along with the plan.
+      properties:
+        monthlyPrice:
+          description: Monthly price of the addon in cents.
+          format: int32
+          type: integer
+        name:
+          $ref: '#/components/schemas/BillingAddonType'
+        tiers:
+          description: Tiers that are eligible for buying the addon.
+          items:
+            $ref: '#/components/schemas/BillingTier'
+          type: array
+        yearlyPrice:
+          description: Yearly price of the addon in cents.
+          format: int32
+          type: integer
+      required:
+        - monthlyPrice
+        - name
+        - tiers
+        - yearlyPrice
+      type: object
+      x-graphql-type: BillingAddon
+    BillingAddonPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/BillingAddon'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    BillingAddonType:
+      description: |-
+        BillingAddonType represents the addon types that are available to be subscribed to.
+        This only applies to the V4_STARTER tier.
+      enum:
+        - ADDITIONAL_PUBLIC_WORKER
+        - UNLIMITED_SEATS
+      type: string
+      x-graphql-type: BillingAddonType
+    BillingCycleInterval:
+      description: |-
+        BillingCycleInterval represents the billing cycle interval for a subscription.
+        This only applies to the V4_STARTER tier.
+      enum:
+        - MONTHLY
+        - YEARLY
+      type: string
+      x-graphql-type: BillingCycleInterval
+    BillingInfo:
+      description: BillingInfo represents account billing details stored in Stripe
+      properties:
+        address:
+          description: Billing address
+          type: string
+        city:
+          description: Billing city
+          type: string
+        companyName:
+          description: Company name
+          type: string
+        country:
+          description: Country code (ISO 3166-1 alpha2)
+          type: string
+        email:
+          description: Billing email
+          type: string
+        fullName:
+          description: Full name of the billing contact
+          type: string
+        state:
+          description: State (US-only)
+          type: string
+        taxIDType:
+          description: Tax ID type (e.g., eu_vat, us_ein)
+          nullable: true
+          type: string
+        taxIDValue:
+          description: Tax ID value
+          nullable: true
+          type: string
+        zipCode:
+          description: Zip code
+          type: string
+      required:
+        - address
+        - city
+        - companyName
+        - country
+        - email
+        - fullName
+        - state
+        - zipCode
+      type: object
+      x-graphql-type: BillingInfo
+    BillingPlan:
+      description: BillingPlan represents a tier that can be bought.
+      properties:
+        monthlyPrice:
+          description: Monthly price of the plan in cents.
+          format: int32
+          type: integer
+        tier:
+          $ref: '#/components/schemas/BillingTier'
+        yearlyPrice:
+          description: Yearly price of the plan in cents.
+          format: int32
+          type: integer
+      required:
+        - monthlyPrice
+        - tier
+        - yearlyPrice
+      type: object
+      x-graphql-type: BillingPlan
+    BillingPlanPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/BillingPlan'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    BillingSubscription:
+      properties:
+        addons:
+          description: Addons of the subscription.
+          items:
+            $ref: '#/components/schemas/BillingSubscriptionAddon'
+          type: array
+        billingAmount:
+          description: Price amount for the subscription. In cents.
+          format: int32
+          nullable: true
+          type: integer
+        billingCycleStart:
+          description: Timestamp of start of the current billing cycle
+          format: int32
+          nullable: true
+          type: integer
+        billingInfo:
+          $ref: '#/components/schemas/BillingInfo'
+        billingInterval:
+          $ref: '#/components/schemas/BillingCycleInterval'
+        billingRenewalDate:
+          description: Timestamp of the renewal date of the subscription
+          format: int32
+          nullable: true
+          type: integer
+        isActive:
+          description: isActive describes if the account has active (premium) subscription
+          type: boolean
+        selfServePortalUrl:
+          description: URL to Stripe-hosted portal which allows to manage subscription
+          type: string
+        status:
+          $ref: '#/components/schemas/StripeSubscriptionStatus'
+      required:
+        - addons
+        - isActive
+        - selfServePortalUrl
+        - status
+      type: object
+      x-graphql-type: BillingSubscription
+    BillingSubscriptionAddon:
+      properties:
+        name:
+          $ref: '#/components/schemas/BillingAddonType'
+      required:
+        - name
+      type: object
+      x-graphql-type: BillingSubscriptionAddon
+    BillingSubscriptionCreateRequest:
+      description: The arguments of billingSubscriptionCreate not carried in the path.
+      properties:
+        addons:
+          items:
+            $ref: '#/components/schemas/BillingAddonType'
+          nullable: true
+          type: array
+        input:
+          $ref: '#/components/schemas/SubscriptionInput'
+        interval:
+          $ref: '#/components/schemas/BillingCycleInterval'
+        paymentMethodID:
+          type: string
+        tier:
+          $ref: '#/components/schemas/BillingTier'
+      required:
+        - input
+        - paymentMethodID
+      type: object
+      x-graphql-args-of: billingSubscriptionCreate
+    BillingSubscriptionUpdateTierRequest:
+      description: The arguments of billingSubscriptionUpdateTier not carried in the path.
+      properties:
+        interval:
+          $ref: '#/components/schemas/BillingCycleInterval'
+        tier:
+          $ref: '#/components/schemas/BillingTier'
+      required:
+        - tier
+      type: object
+      x-graphql-args-of: billingSubscriptionUpdateTier
+    BillingTier:
+      description: The billing tier names the subscription operations take.
+      enum:
+        - FREE
+        - CLOUD
+        - ENTERPRISE
+        - V3_FREE
+        - V3_CLOUD
+        - V4_FREE
+        - V4_STARTER
+        - V4_STARTER_PLUS
+        - V4_BUSINESS
+        - V4_ENTERPRISE
+        - V5_FREE
+        - V5_STARTER
+        - V5_STARTER_PLUS
+        - V5_STARTER_PLUS_2
+        - V5_BUSINESS
+        - V5_ENTERPRISE
+        - V5_ENTERPRISE_PLUS
+        - V5_STRATEGIC
+      type: string
+      x-enum-descriptions:
+        CLOUD: Cloud billing tier.
+        ENTERPRISE: Enterprise billing tier.
+        FREE: Free billing tier.
+        V3_CLOUD: Cloud billing tier.
+        V3_FREE: Free billing tier.
+        V4_BUSINESS: BUSINESS Billing tier.
+        V4_ENTERPRISE: BUSINESS Billing tier.
+        V4_FREE: Free Billing tier.
+        V4_STARTER: Starter Billing tier.
+        V4_STARTER_PLUS: Starter Plus Billing tier.
+        V5_BUSINESS: Business Billing tier (V5).
+        V5_ENTERPRISE: Enterprise Billing tier (V5).
+        V5_ENTERPRISE_PLUS: Enterprise Plus Billing tier (V5).
+        V5_FREE: Free Billing tier (V5).
+        V5_STARTER: Starter Billing tier (V5).
+        V5_STARTER_PLUS: Starter Plus Billing tier (V5).
+        V5_STARTER_PLUS_2: Starter Plus 2 Billing tier (V5).
+        V5_STRATEGIC: Strategic Billing tier (V5).
+      x-graphql-type: BillingTier
     BlueprintRef:
       description: A reference to a Blueprint; fetch it with GET /blueprints/{blueprintId}.
       properties:
@@ -7363,6 +8267,85 @@ components:
         - value
       type: object
       x-graphql-type: EnvironmentVariable
+    FeatureFlagBoolEvaluation:
+      description: Used to evaluate a boolean flag.
+      properties:
+        defaultValue:
+          description: The default value to be returned if no value is set for the flag.
+          type: boolean
+        name:
+          description: The name of the flag.
+          type: string
+      required:
+        - defaultValue
+        - name
+      type: object
+      x-graphql-type: FeatureFlagBoolEvaluation
+    FeatureFlagEvaluation:
+      description: |-
+        Represents an individual flag that you want to evaluate. Only one of intEvaluation
+        or boolEvaluation should be provided, depending on the type of flag you're evaluating.
+      properties:
+        boolEvaluation:
+          $ref: '#/components/schemas/FeatureFlagBoolEvaluation'
+        intEvaluation:
+          $ref: '#/components/schemas/FeatureFlagIntEvaluation'
+      type: object
+      x-graphql-type: FeatureFlagEvaluation
+    FeatureFlagEvaluationInput:
+      description: The input to the evaluateFeatureFlags request. Used to evaluate feature flags in Self-Hosted instances.
+      properties:
+        flags:
+          description: The set of flags to evaluate.
+          items:
+            $ref: '#/components/schemas/FeatureFlagEvaluation'
+          type: array
+      required:
+        - flags
+      type: object
+      x-graphql-type: FeatureFlagEvaluationInput
+    FeatureFlagEvaluationResult:
+      description: The result of evaluating a feature flag.
+      properties:
+        name:
+          description: The name of the flag.
+          type: string
+        value:
+          description: The value of the flag.
+          type: string
+      required:
+        - name
+        - value
+      type: object
+      x-graphql-type: FeatureFlagEvaluationResult
+    FeatureFlagEvaluationResultPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/FeatureFlagEvaluationResult'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    FeatureFlagIntEvaluation:
+      description: Used to evaluate an int flag.
+      properties:
+        defaultValue:
+          description: The default value to be returned if no value is set for the flag.
+          format: int32
+          type: integer
+        name:
+          description: The name of the flag.
+          type: string
+      required:
+        - defaultValue
+        - name
+      type: object
+      x-graphql-type: FeatureFlagIntEvaluation
     FederationProvider:
       description: All supported federation providers.
       enum:
@@ -10319,6 +11302,32 @@ components:
         - values
       type: object
       x-graphql-type: SearchSuggestionsPossibleValuesString
+    SeatLimit:
+      description: >-
+        A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
+      properties:
+        inUse:
+          description: The seats in use.
+          format: int64
+          type: integer
+        limit:
+          description: The limit. Absent when there is no limit.
+          format: int64
+          type: integer
+      required:
+        - inUse
+      type: object
+    Seats:
+      description: >-
+        The seats of the caller's account: the pooled seats limit of its organization with the organization's use, and the account's own limit with its use when one is set (decision 0021, DV-080).
+      properties:
+        account:
+          $ref: '#/components/schemas/SeatLimit'
+        organization:
+          $ref: '#/components/schemas/SeatLimit'
+      required:
+        - organization
+      type: object
     SecurityKey:
       description: SecurityKey represents hardware device that supports the FIDO2 protocol.
       properties:
@@ -12435,6 +13444,82 @@ components:
         - entries
       type: object
       x-graphql-type: StringMap
+    StripeSubscriptionStatus:
+      description: |-
+        StripeSubscriptionStatus represents all states of a Stripe subscription.
+        https://docs.stripe.com/api/subscriptions/object#subscription_object-status
+        the convention of casing is kept to match the Stripe API.
+      enum:
+        - active
+        - cancelled
+        - incomplete
+        - incomplete_expired
+        - past_due
+        - unpaid
+        - unknown
+      type: string
+      x-graphql-type: StripeSubscriptionStatus
+    SubscriptionInput:
+      properties:
+        address:
+          description: Address visible on invoice
+          type: string
+        city:
+          description: City visible on invoice
+          type: string
+        companyName:
+          description: Company name
+          nullable: true
+          type: string
+        country:
+          description: ISO-3166-1 alpha-2 code of the country
+          type: string
+        email:
+          description: Billing email
+          type: string
+        fullName:
+          description: Full name of the representative
+          type: string
+        state:
+          description: State name (US-only)
+          nullable: true
+          type: string
+        taxIDType:
+          description: Tax ID type (e.g., eu_vat, us_ein)
+          nullable: true
+          type: string
+        taxIDValue:
+          description: Tax ID value
+          nullable: true
+          type: string
+        zipCode:
+          description: Zip code
+          type: string
+      required:
+        - address
+        - city
+        - country
+        - email
+        - fullName
+        - zipCode
+      type: object
+      x-graphql-type: SubscriptionInput
+    SubscriptionUpdateV2Input:
+      properties:
+        addons:
+          description: addons that the subscription should have (can be ignored because it has not implemented yet).
+          items:
+            $ref: '#/components/schemas/BillingAddonType'
+          nullable: true
+          type: array
+        interval:
+          $ref: '#/components/schemas/BillingCycleInterval'
+        tier:
+          $ref: '#/components/schemas/BillingTier'
+      required:
+        - tier
+      type: object
+      x-graphql-type: SubscriptionUpdateV2Input
     TaskCreateRequest:
       description: The arguments of taskCreate not carried in the path.
       properties:
@@ -12632,6 +13717,41 @@ components:
         OPEN_TOFU: OpenTofu.
         TERRAFORM_FOSS: The open source licensed version of Terraform.
       x-graphql-type: TerragruntTool
+    Tier:
+      description: >-
+        A tier as the operator defines it (decision 0021, DV-079), in place of the BillingTier enum.
+      properties:
+        features:
+          description: The features the tier holds, as infraweave names them, sorted.
+          items:
+            type: string
+          type: array
+        limits:
+          additionalProperties:
+            format: int64
+            type: integer
+          description: The tier's value of each limit, by limit name. A limit absent from the map has no limit.
+          type: object
+        name:
+          type: string
+      required:
+        - features
+        - limits
+        - name
+      type: object
+    TierFeaturePage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            type: string
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
     User:
       description: The user, or the API key, a token acts as.
       properties:
