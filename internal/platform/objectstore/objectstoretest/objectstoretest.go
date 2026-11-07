@@ -426,7 +426,10 @@ func signedMethod(t *testing.T, e env) {
 // signature; a URL with none of them carries it in its last path segment.
 var signatureParams = []string{"X-Amz-Signature", "X-Goog-Signature", "sig"}
 
-// tamper changes one character of s's signature.
+// tamper changes one character of s's signature. The new character is a
+// digit of another value, never the same letter in the other case: Cloud
+// Storage reads its hex signature without regard to case, so turning an
+// 'a' into an 'A' would leave the signature valid.
 func tamper(t *testing.T, s objectstore.Signed) objectstore.Signed {
 	t.Helper()
 	u, err := url.Parse(s.URL)
@@ -435,9 +438,9 @@ func tamper(t *testing.T, s objectstore.Signed) objectstore.Signed {
 	}
 	flip := func(v string) string {
 		i := len(v) / 2
-		c := byte('A')
-		if v[i] == 'A' {
-			c = 'B'
+		c := byte('0')
+		if v[i] == '0' {
+			c = '1'
 		}
 		return v[:i] + string(c) + v[i+1:]
 	}
