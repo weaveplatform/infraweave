@@ -13,6 +13,7 @@ import (
 
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -24,7 +25,7 @@ import (
 // platform's first, since every domain's tables may reference it, then each
 // domain's after the streams of every domain it imports (decision 0004).
 func Streams() []migrate.Stream {
-	return []migrate.Stream{schema.Stream(), accessassembly.Stream()}
+	return []migrate.Stream{schema.Stream(), featuresassembly.Stream(), accessassembly.Stream()}
 }
 
 // SealedColumns are the sealed columns of every stream Streams registers,

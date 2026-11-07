@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
@@ -64,6 +65,9 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 // Deps are what the access domain takes from the platform.
 type Deps struct {
 	DB pg.DB
+	// Features is the features domain's entitlements, whose rows of an
+	// organization go with the organization.
+	Features featuresapi.Entitlements
 	// Keys seals the signing keys' private halves; crypt.Keyring is one.
 	Keys pg.Sealer
 	// KMS are the opened keys of auth.signing.kms_keys, in its order,
@@ -108,7 +112,7 @@ func New(d Deps) (*Domain, error) {
 		now = time.Now
 	}
 	manual := d.Settings.Signing.Rotation == RotationManual
-	store := pg.New(d.DB)
+	store := pg.New(d.DB).WithFeatures(d.Features)
 	refs := make([]string, 0, len(d.KMS))
 	for _, k := range d.KMS {
 		refs = append(refs, k.Ref())

@@ -207,6 +207,11 @@ func (s *Store) DeleteOrganization(
 				return fmt.Errorf("access: %w", sql.Unavailable(err))
 			}
 		}
+		if s.features != nil {
+			if err := s.features.DeleteOrganization(ctx, id); err != nil {
+				return fmt.Errorf("access: %w", err)
+			}
+		}
 		tag, err := q.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, id)
 		if err != nil {
 			return fmt.Errorf("access: %w", sql.Unavailable(err))

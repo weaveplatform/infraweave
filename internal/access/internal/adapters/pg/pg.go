@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -48,12 +49,24 @@ type DB interface {
 }
 
 // Store is port.Tenancy on PostgreSQL.
-type Store struct{ db DB }
+type Store struct {
+	db DB
+	// features holds the features domain's rows of each organization;
+	// nil leaves them to whoever holds them.
+	features featuresapi.Entitlements
+}
 
 var _ port.Tenancy = (*Store)(nil)
 
 // New returns the store on db.
 func New(db DB) *Store { return &Store{db: db} }
+
+// WithFeatures returns s deleting an organization's rows in the features
+// domain, through f, in the transaction that deletes the organization.
+func (s *Store) WithFeatures(f featuresapi.Entitlements) *Store {
+	s.features = f
+	return s
+}
 
 // Organization reads the organization id.
 func (s *Store) Organization(

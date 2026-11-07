@@ -219,6 +219,18 @@ linters:
         # one rule per domain, which allows the shared packages, the
         # domain's own tree and the api/ of each domain its row names, and
         # denies the rest of internal/.
+        graph-features:
+          list-mode: lax
+          files:
+            - "**/internal/features/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: features imports no domain; it sits at the bottom of the declared graph
+          allow:
+            - github.com/weaveplatform/infraweave/internal/features/
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
         graph-access:
           list-mode: lax
           files:
@@ -228,6 +240,7 @@ linters:
               desc: access imports only the api/ packages its row of the declared graph names
           allow:
             - github.com/weaveplatform/infraweave/internal/access/
+            - github.com/weaveplatform/infraweave/internal/features/api$
             - github.com/weaveplatform/infraweave/internal/kernel$
             - github.com/weaveplatform/infraweave/internal/kernel/
             - github.com/weaveplatform/infraweave/internal/platform/

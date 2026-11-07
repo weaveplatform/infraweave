@@ -10,8 +10,9 @@
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then
 // deletes its sessions, API keys, members and their identities, its
-// break-glass credential, its accounts and itself, as every foreign key
-// restricts. A unique violation on a slug is port.ErrSlugTaken and a
+// break-glass credential, its accounts, its rows in the features domain
+// through the featuresapi.Entitlements WithFeatures gives, and itself, as
+// every foreign key restricts. A unique violation on a slug is port.ErrSlugTaken and a
 // break-glass credential of no organization port.ErrNotFound. Store also
 // implements port.BreakGlass, whose sign-in writes the session and its
 // trail entry in one transaction, and session.Admission, from
@@ -35,7 +36,8 @@
 //
 // # Dependencies
 //
-// It imports the access domain's core packages and ports, internal/kernel,
+// It imports the access domain's core packages and ports, featuresapi,
+// internal/kernel,
 // pgx, and platform/sql, platform/sql/migrate, platform/sql/notify,
 // platform/tx, platform/audit for the organization trail,
 // platform/crypt for the sealed column and platform/crypt/signer for the
