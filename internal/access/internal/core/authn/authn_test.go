@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,24 @@ type fakes struct {
 	// touches.
 	orgKeys    map[kernel.ULID]apikey.OrganizationKey
 	orgTouched int
+	// owners are the personal keys' owners each account admits as
+	// active members.
+	owners map[kernel.MemberID]apikey.Owner
+}
+
+func (f *fakes) KeyOwner(
+	_ context.Context,
+	_ kernel.AccountID,
+	member kernel.MemberID,
+) (apikey.Owner, error) {
+	if err := f.down("KeyOwner"); err != nil {
+		return apikey.Owner{}, err
+	}
+	o, ok := f.owners[member]
+	if !ok {
+		return apikey.Owner{}, port.ErrNotFound
+	}
+	return o, nil
 }
 
 func (f *fakes) OrganizationKey(_ context.Context, id kernel.ULID) (apikey.OrganizationKey, error) {
@@ -326,6 +345,7 @@ func newWorld(t *testing.T) *world {
 		orgs:     map[kernel.Slug]orgCred{},
 		admits:   map[kernel.MemberID][]session.Admitted{},
 		orgKeys:  map[kernel.ULID]apikey.OrganizationKey{},
+		owners:   map[kernel.MemberID]apikey.Owner{},
 	}
 	w := &world{
 		f:      f,
@@ -458,6 +478,40 @@ func TestUnitExchangeRefused(t *testing.T) {
 			len(w.f.sessions),
 			w.f.touched,
 		)
+	}
+}
+
+// TestUnitExchangePersonal checks that a personal key's session acts as
+// its owner in the key's account, and that the exchange refuses the key
+// once the account no longer admits the owner as an active member.
+func TestUnitExchangePersonal(t *testing.T) {
+	w := newWorld(t)
+	owner := kernel.NewMemberID()
+	k := w.f.keys[w.key]
+	k.Owner, k.Teams = owner, []string{}
+	w.f.keys[w.key] = k
+	w.f.owners[owner] = apikey.Owner{Login: "alice", Name: "Alice", Teams: []string{"dev"}}
+
+	raw, c := w.exchange(t)
+	s := w.f.sessions[c.Session]
+	if s.ActorKind != kernel.PrincipalAPIKey || s.ActorID != w.key || s.MemberID != owner ||
+		s.Login != "alice" || s.Name != "Alice" || !slices.Equal(s.Teams, []string{"dev"}) {
+		t.Errorf("session = %+v", s)
+	}
+	if p, err := authenticate(t, w.s, raw); err != nil || p.MemberID != owner ||
+		p.Login != "alice" || p.Human() {
+		t.Errorf("principal = %+v, %v", p, err)
+	}
+
+	delete(w.f.owners, owner)
+	if _, err := w.s.Exchange(t.Context(), w.key.String(), w.secret, ""); !errors.Is(
+		err, authn.ErrUnauthenticated) {
+		t.Errorf("an owner the account no longer admits = %v", err)
+	}
+	w.f.fail = "KeyOwner"
+	if _, err := w.s.Exchange(t.Context(), w.key.String(), w.secret, ""); !errors.Is(
+		err, errDown) {
+		t.Errorf("KeyOwner down = %v", err)
 	}
 }
 

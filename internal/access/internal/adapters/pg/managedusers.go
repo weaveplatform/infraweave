@@ -296,6 +296,17 @@ func (s *Store) Remove(
 ) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
+		// A personal key's creation holds a share lock on the admission, so
+		// locking it first lets the key commit before the keys are
+		// disabled below, or find no admission.
+		tag, err := q.Exec(ctx, `SELECT 1 FROM account_users
+			WHERE account_id = $1 AND member_id = $2 FOR UPDATE`, acct, id)
+		if err != nil {
+			return fmt.Errorf("access: lock managed user: %w", sql.Unavailable(err))
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("%w: managed user %s", port.ErrNotFound, id)
+		}
 		if _, err := q.Exec(ctx, `DELETE FROM account_invitations
 			WHERE account_id = $1 AND member_id = $2`, acct, id); err != nil {
 			return fmt.Errorf("access: delete invitations: %w", sql.Unavailable(err))
@@ -319,17 +330,10 @@ func (s *Store) Remove(
 		for _, ss := range revoked {
 			ids = append(ids, ss.ID)
 		}
-		tag, err := q.Exec(
-			ctx,
+		if _, err := q.Exec(ctx,
 			`DELETE FROM account_users WHERE account_id = $1 AND member_id = $2`,
-			acct,
-			id,
-		)
-		if err != nil {
+			acct, id); err != nil {
 			return fmt.Errorf("access: remove managed user: %w", sql.Unavailable(err))
-		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("%w: managed user %s", port.ErrNotFound, id)
 		}
 		return bumpAuthz(ctx, q, acct)
 	})

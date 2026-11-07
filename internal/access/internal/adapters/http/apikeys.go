@@ -218,8 +218,10 @@ func (s Server) onKey(
 
 // keyError is err as the problem it answers: 404 for a key the caller's
 // account does not hold, 422 for input the service refuses, 403 for a key
-// or a run managing keys where only people may, and err itself otherwise,
-// which the store marks when the database is unreachable.
+// or a run managing keys where only people may, and for a personal key
+// that is not a member's own or that the account turns off, and err
+// itself otherwise, which the store marks when the database is
+// unreachable.
 func keyError(err error, id string) error {
 	switch {
 	case errors.Is(err, port.ErrNotFound):
@@ -227,7 +229,8 @@ func keyError(err error, id string) error {
 		return problem.NotFound.Error(fmt.Sprintf("No API key %q in this account.", id))
 	case errors.Is(err, apikey.ErrInvalid):
 		return problem.ValidationFailed.Error(err.Error()) //nolint:wrapcheck // as above
-	case errors.Is(err, apikey.ErrNonHuman):
+	case errors.Is(err, apikey.ErrNonHuman), errors.Is(err, apikey.ErrNoOwner),
+		errors.Is(err, apikey.ErrPersonalOff):
 		return problem.Forbidden.Error(err.Error()) //nolint:wrapcheck // as above
 	}
 	return err
@@ -247,6 +250,7 @@ func apiKey(k apikey.Key, secret string) api.ApiKey {
 		Disabled:      !k.DisabledAt.IsZero(),
 		Id:            k.ID.String(),
 		IsMachineUser: k.Machine,
+		IsPersonal:    k.Personal(),
 		Name:          k.Name,
 		TeamCount:     int32(min(len(k.Teams), 1<<31-1)), //nolint:gosec // clamped
 		Teams:         nonNil(k.Teams),
@@ -257,6 +261,9 @@ func apiKey(k apikey.Key, secret string) api.ApiKey {
 	}
 	if secret != "" {
 		out.Secret = &secret
+	}
+	if k.Personal() {
+		out.Owner = &k.OwnerLogin
 	}
 	if k.DisabledReason != "" {
 		r := api.ApiKeyDisabledReason(k.DisabledReason)

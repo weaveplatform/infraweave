@@ -281,12 +281,6 @@
       "originIntegrationInstallURL",
       "originIntegrationUpdate"
     ],
-    "Personal API Keys": [
-      "personalApiKeyCreate",
-      "personalApiKeyDisable",
-      "personalApiKeys",
-      "personalApiKeysCount"
-    ],
     "Plugins": [
       "plugin",
       "pluginDelete",

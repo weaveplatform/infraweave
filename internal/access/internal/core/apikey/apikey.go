@@ -47,6 +47,10 @@ type Key struct {
 	OIDC    OIDC
 	Teams   []string
 	Machine bool
+	// Owner is a personal key's member, whose principal in the key's
+	// account its tokens act as; zero for a key of the account.
+	Owner      kernel.MemberID
+	OwnerLogin string
 	// Creator is the login of the principal that created the key.
 	Creator        string
 	ExpiresAt      time.Time
@@ -73,6 +77,10 @@ type Mapping struct {
 	Name  string
 	Value string
 }
+
+// Personal reports whether the key is a member's rather than the
+// account's.
+func (k Key) Personal() bool { return !k.Owner.IsZero() }
 
 // Usable reports whether the key may exchange at now: neither disabled,
 // deleted nor expired.

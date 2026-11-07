@@ -105,6 +105,14 @@ type APIKeys interface {
 	// use that takes the key a seat may be refused with a
 	// *featuresapi.LimitError, and the exchange then issues no token.
 	TouchAPIKey(ctx context.Context, id kernel.ULID) error
+	// KeyOwner reads member as acct admits them, for a personal key's
+	// session; ErrNotFound unless acct admits member and member is
+	// active.
+	KeyOwner(
+		ctx context.Context,
+		acct kernel.AccountID,
+		member kernel.MemberID,
+	) (apikey.Owner, error)
 }
 
 // OrganizationKeys reads organization keys for the exchange.

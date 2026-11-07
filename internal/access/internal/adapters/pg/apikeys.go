@@ -3,6 +3,7 @@ package pg
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,8 +23,10 @@ var _ apikey.Store = (*Store)(nil)
 const keyColumns = `a.organization_id, k.account_id, k.id, k.name, k.description, k.type,
 	k.secret_hash, coalesce(k.oidc_issuer, ''), coalesce(k.oidc_client_id, ''),
 	coalesce(k.oidc_subject_expression, ''), coalesce(k.oidc_claim_mapping, '[]'::jsonb),
-	k.teams, k.is_machine, k.creator, k.expires_at, k.disabled_at,
-	coalesce(k.disabled_reason, ''), k.last_used_at, k.created_at, k.deleted_at`
+	k.teams, k.is_machine, k.owner_user_id,
+	coalesce((SELECT m.login FROM members m WHERE m.id = k.owner_user_id), ''), k.creator,
+	k.expires_at, k.disabled_at, coalesce(k.disabled_reason, ''), k.last_used_at, k.created_at,
+	k.deleted_at`
 
 // mapping is a claim mapping entry as oidc_claim_mapping stores it.
 type mapping struct {
@@ -170,20 +173,113 @@ func (s *Store) AccountAPIKeys(
 	after kernel.ULID,
 	limit int,
 ) ([]apikey.Key, error) {
+	return s.keyPage(ctx, "API keys", `TRUE`, acct, after, limit)
+}
+
+// AccountPersonalAPIKeys reads a page of the account's personal keys that
+// are not deleted, in ID order.
+func (s *Store) AccountPersonalAPIKeys(
+	ctx context.Context,
+	acct kernel.AccountID,
+	after kernel.ULID,
+	limit int,
+) ([]apikey.Key, error) {
+	return s.keyPage(ctx, "personal API keys", `k.is_personal`, acct, after, limit)
+}
+
+// keyPage reads up to limit ($3) of the keys of account $1 that are not
+// deleted and match cond, in ID order from the first after $2; cond may
+// name further arguments from $4.
+func (s *Store) keyPage(
+	ctx context.Context,
+	what, cond string,
+	args ...any,
+) ([]apikey.Key, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+keyColumns+`
 		FROM api_keys k JOIN accounts a ON a.id = k.account_id
 		WHERE k.account_id = $1 AND k.deleted_at IS NULL AND ($2::uuid IS NULL OR k.id > $2)
-		ORDER BY k.id LIMIT $3`, acct, after, limit)
+			AND `+cond+`
+		ORDER BY k.id LIMIT $3`, args...)
 	if err != nil {
-		return nil, fmt.Errorf("access: list API keys: %w", sql.Unavailable(err))
+		return nil, fmt.Errorf("access: list %s: %w", what, sql.Unavailable(err))
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (apikey.Key, error) {
 		return scanKey(r)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("access: list API keys: %w", sql.Unavailable(err))
+		return nil, fmt.Errorf("access: list %s: %w", what, sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// CreatePersonalAPIKey inserts the personal key k after reading, under a
+// share lock on the account, its admission of k.Owner and the member,
+// the account's personalApiKeysEnabled and the owner's state. Turning the
+// setting off locks the account, removing the owner their admission and
+// deactivating them the member, so each waits for the key or the key for
+// it, and none misses a key created beside it.
+func (s *Store) CreatePersonalAPIKey(ctx context.Context, k apikey.Key) (apikey.Key, error) {
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		q := tx.Q(ctx, s.db)
+		var on, active bool
+		err := q.QueryRow(ctx, `SELECT coalesce(st.personal_api_keys, true),
+				m.status = 'active', m.login
+			FROM accounts a
+			JOIN account_users u ON u.account_id = a.id AND u.member_id = $2
+			JOIN members m ON m.id = u.member_id
+			LEFT JOIN account_settings st ON st.account_id = a.id
+			WHERE a.id = $1 FOR SHARE OF a, u, m`, k.AccountID, k.Owner).
+			Scan(&on, &active, &k.OwnerLogin)
+		if errors.Is(err, pgx.ErrNoRows) || err == nil && !active {
+			return apikey.ErrNoOwner
+		}
+		if err != nil {
+			return fmt.Errorf("access: read the owner: %w", sql.Unavailable(err))
+		}
+		if !on {
+			return apikey.ErrPersonalOff
+		}
+		if _, err := q.Exec(ctx, `
+			INSERT INTO api_keys (account_id, id, name, description, type, secret_hash, teams,
+				is_personal, owner_user_id, creator, expires_at, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, '{}', true, $7, $8, $9, $10)`,
+			k.AccountID, k.ID, k.Name, k.Description, k.Type, k.SecretHash, k.Owner, k.Creator,
+			nullTime(k.ExpiresAt), k.CreatedAt); err != nil {
+			return fmt.Errorf("access: insert: %w", sql.Unavailable(err))
+		}
+		return nil
+	})
+	if err != nil {
+		return apikey.Key{}, fmt.Errorf("create personal API key %s: %w", k.ID, err)
+	}
+	return k, nil
+}
+
+// CountPersonalAPIKeys counts the account's personal keys that are
+// neither disabled nor deleted.
+func (s *Store) CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID) (int, error) {
+	var n int
+	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT count(*) FROM api_keys
+		WHERE account_id = $1 AND is_personal AND disabled_at IS NULL AND deleted_at IS NULL`,
+		acct).Scan(&n); err != nil {
+		return 0, fmt.Errorf("access: count personal API keys: %w", sql.Unavailable(err))
+	}
+	return n, nil
+}
+
+// KeyOwner reads member as acct admits them, with the groups their latest
+// sign-in to acct reported as teams.
+func (s *Store) KeyOwner(
+	ctx context.Context,
+	acct kernel.AccountID,
+	member kernel.MemberID,
+) (apikey.Owner, error) {
+	var o apikey.Owner
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT m.login, m.name, u.latest_groups
+		FROM account_users u JOIN members m ON m.id = u.member_id
+		WHERE u.account_id = $1 AND u.member_id = $2 AND m.status = 'active'`, acct, member).
+		Scan(&o.Login, &o.Name, &o.Teams)
+	return o, read(err, "admitted member", member.ULID)
 }
 
 // AccountAPIKey reads the account's key id unless it is deleted.
@@ -231,7 +327,7 @@ func (s *Store) ResetAPIKey(
 	id kernel.ULID,
 	hash []byte,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "reset", id, `secret_hash = $3`, acct, id, hash)
+	return s.revokeKey(ctx, "reset", id, `secret_hash = $3`, `TRUE`, acct, id, hash)
 }
 
 // DisableAPIKey disables the account's key and revokes its sessions. A
@@ -242,9 +338,24 @@ func (s *Store) DisableAPIKey(
 	id kernel.ULID,
 	reason string,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "disable", id, `disabled_at = coalesce(disabled_at, now()),
-		disabled_reason = coalesce(disabled_reason, $3)`, acct, id, reason)
+	return s.revokeKey(ctx, "disable", id, disabled, `TRUE`, acct, id, reason)
 }
+
+// DisablePersonalAPIKey is DisableAPIKey of a personal key; a key of the
+// account's own is not found.
+func (s *Store) DisablePersonalAPIKey(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	reason string,
+) (apikey.Key, []kernel.ULID, error) {
+	return s.revokeKey(ctx, "disable", id, disabled, `is_personal`, acct, id, reason)
+}
+
+// disabled disables a key for reason $3, keeping the time and reason it
+// was first disabled with.
+const disabled = `disabled_at = coalesce(disabled_at, now()),
+	disabled_reason = coalesce(disabled_reason, $3)`
 
 // DeleteAPIKey marks the account's key deleted and revokes its sessions.
 func (s *Store) DeleteAPIKey(
@@ -252,7 +363,7 @@ func (s *Store) DeleteAPIKey(
 	acct kernel.AccountID,
 	id kernel.ULID,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "delete", id, `deleted_at = now()`, acct, id)
+	return s.revokeKey(ctx, "delete", id, `deleted_at = now()`, `TRUE`, acct, id)
 }
 
 // SetNonAdminManagers records the account's setting.
@@ -269,13 +380,14 @@ func (s *Store) SetNonAdminManagers(ctx context.Context, acct kernel.AccountID, 
 }
 
 // revokeKey applies set, with args, to the account's key unless it is
-// deleted, and revokes every live session of the key in the same
-// transaction, so no token of the old key outlives the change's commit.
+// deleted or fails cond, and revokes every live session of the key in the
+// same transaction, so no token of the old key outlives the change's
+// commit.
 func (s *Store) revokeKey(
 	ctx context.Context,
 	what string,
 	id kernel.ULID,
-	set string,
+	set, cond string,
 	args ...any,
 ) (apikey.Key, []kernel.ULID, error) {
 	var (
@@ -286,7 +398,7 @@ func (s *Store) revokeKey(
 		q := tx.Q(ctx, s.db)
 		var err error
 		k, err = scanKey(q.QueryRow(ctx, `WITH k AS (UPDATE api_keys SET `+set+`
-			WHERE account_id = $1 AND id = $2 AND deleted_at IS NULL RETURNING *)
+			WHERE account_id = $1 AND id = $2 AND deleted_at IS NULL AND `+cond+` RETURNING *)
 			SELECT `+keyColumns+` FROM k JOIN accounts a ON a.id = k.account_id`, args...))
 		if err != nil {
 			return read(err, "API key", id)
@@ -312,8 +424,8 @@ func scanKey(r pgx.Row) (apikey.Key, error) {
 	)
 	err := r.Scan(&k.OrganizationID, &k.AccountID, &k.ID, &k.Name, &k.Description, &k.Type,
 		&k.SecretHash, &k.OIDC.Issuer, &k.OIDC.ClientID, &k.OIDC.SubjectExpression, &claims,
-		&k.Teams, &k.Machine, &k.Creator, &expires, &off, &k.DisabledReason, &used,
-		&k.CreatedAt, &deleted)
+		&k.Teams, &k.Machine, &k.Owner, &k.OwnerLogin, &k.Creator, &expires, &off,
+		&k.DisabledReason, &used, &k.CreatedAt, &deleted)
 	if err != nil {
 		return apikey.Key{}, err //nolint:wrapcheck // the callers name the read
 	}

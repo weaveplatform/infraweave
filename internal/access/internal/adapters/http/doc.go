@@ -38,7 +38,12 @@
 // already-exists, any role binding or access rule 400 invalid-request, a
 // role change request from anything but a member 403, a seat beyond the
 // pool 403 limit-reached and input the service refuses 422
-// validation-failed. OperatorServer is its partial of the operator API's
+// validation-failed. The Personal API Keys operations create a personal
+// key owned by the calling member, answering 403 forbidden to any other
+// caller or while the account turns personal keys off, and list, count
+// and disable the account's personal keys, a key of the account's own
+// answering 404 to the disable; every ApiKey answer names a personal
+// key's owner. OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
 // organizationDelete, organizationBreakGlassSet and

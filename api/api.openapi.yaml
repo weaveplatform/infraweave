@@ -3547,6 +3547,142 @@ paths:
       x-infraweave-access: organization-admin
       x-infraweave-cost: standard
       x-upstream: none
+  /personal-api-keys:
+    get:
+      description: >-
+        The account's personal API keys, oldest first, each naming its owner. Deleted keys are left out.
+      operationId: personalApiKeys
+      x-infraweave-feature: personal-api-keys
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyPage'
+          description: The personalApiKeys result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Personal API Keys
+      tags:
+        - Personal API Keys
+      x-bruno: Personal API Keys/List Personal API Keys.bru
+      x-graphql:
+        field: personalApiKeys
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+      operationId: personalApiKeyCreate
+      x-infraweave-feature: personal-api-keys
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: Created via the API
+              name: example-personal-key
+            schema:
+              $ref: '#/components/schemas/PersonalApiKeyInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Personal API Key
+      tags:
+        - Personal API Keys
+      x-bruno: Personal API Keys/Create Personal API Key.bru
+      x-graphql:
+        field: personalApiKeyCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /personal-api-keys-count:
+    get:
+      description: The number of the account's personal API keys that are neither disabled nor deleted.
+      operationId: personalApiKeysCount
+      x-infraweave-feature: personal-api-keys
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                format: int32
+                type: integer
+          description: The personalApiKeysCount result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Count Personal API Keys
+      tags:
+        - Personal API Keys
+      x-bruno: Personal API Keys/Count Personal API Keys.bru
+      x-graphql:
+        field: personalApiKeysCount
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /personal-api-keys-enabled:
     get:
       description: >-
@@ -3585,6 +3721,59 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /personal-api-keys/{personalApiKeyId}/disable:
+    post:
+      description: >-
+        Disable one of the account's personal API keys and end every session of it. A key that is not personal answers 404.
+      operationId: personalApiKeyDisable
+      x-infraweave-feature: personal-api-keys
+      parameters:
+        - in: path
+          name: personalApiKeyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The personalApiKeyDisable result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Revoke Personal API Key
+      tags:
+        - Personal API Keys
+      x-bruno: Danger Zone/Revoke Personal API Key.bru
+      x-graphql:
+        field: personalApiKeyDisable
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
   /seats:
     get:
       description: >-
@@ -11413,6 +11602,24 @@ components:
         - startCursor
       type: object
       x-graphql-type: PageInfo
+    PersonalApiKeyInput:
+      properties:
+        description:
+          description: Free-form description of the key.
+          nullable: true
+          type: string
+        expiresAt:
+          description: Unix timestamp after which the key stops working; it must be in the future.
+          format: int32
+          nullable: true
+          type: integer
+        name:
+          description: Human-readable name of the key.
+          type: string
+      required:
+        - name
+      type: object
+      x-graphql-type: PersonalApiKeyInput
     PlanPoliciesOutcome:
       description: The outcome of a collection of plan policies for a Run.
       properties:

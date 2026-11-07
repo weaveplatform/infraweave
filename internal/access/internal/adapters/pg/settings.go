@@ -56,6 +56,13 @@ func (s *Store) SetPersonalAPIKeys(
 ) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		// A personal key's creation holds a share lock on the account, so
+		// it either commits before the setting changes, and is disabled
+		// below, or reads the new setting.
+		if _, err := tx.Q(ctx, s.db).Exec(ctx,
+			`SELECT 1 FROM accounts WHERE id = $1 FOR NO KEY UPDATE`, acct); err != nil {
+			return fmt.Errorf("access: lock account: %w", sql.Unavailable(err))
+		}
 		if err := s.upsert(ctx, acct, "personal_api_keys", enabled); err != nil {
 			return err
 		}

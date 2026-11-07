@@ -627,7 +627,7 @@
         "feature": "`personal-api-keys`",
         "lowestTier": "Free",
         "phase": "P3b",
-        "state": "missing"
+        "state": "implemented"
       }
     },
     {

@@ -4015,6 +4015,18 @@ type PageInfo struct {
 	StartCursor string `json:"startCursor"`
 }
 
+// PersonalApiKeyInput defines model for PersonalApiKeyInput.
+type PersonalApiKeyInput struct {
+	// Description Free-form description of the key.
+	Description *string `json:"description,omitempty"`
+
+	// ExpiresAt Unix timestamp after which the key stops working; it must be in the future.
+	ExpiresAt *int32 `json:"expiresAt,omitempty"`
+
+	// Name Human-readable name of the key.
+	Name string `json:"name"`
+}
+
 // PlanPoliciesOutcome The outcome of a collection of plan policies for a Run.
 type PlanPoliciesOutcome struct {
 	// CreatedAt Unix timestamp representing plan policy evaluation time.
@@ -7470,6 +7482,27 @@ type OrganizationUsageParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// PersonalApiKeysParams defines parameters for PersonalApiKeys.
+type PersonalApiKeysParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PersonalApiKeyCreateParams defines parameters for PersonalApiKeyCreate.
+type PersonalApiKeyCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// PersonalApiKeyDisableParams defines parameters for PersonalApiKeyDisable.
+type PersonalApiKeyDisableParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // SessionsParams defines parameters for Sessions.
 type SessionsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -7920,6 +7953,9 @@ type OrganizationAccountLimitSetJSONRequestBody = OrganizationAccountLimitReques
 
 // OrganizationKeyCreateJSONRequestBody defines body for OrganizationKeyCreate for application/json ContentType.
 type OrganizationKeyCreateJSONRequestBody = OrganizationKeyCreateRequest
+
+// PersonalApiKeyCreateJSONRequestBody defines body for PersonalApiKeyCreate for application/json ContentType.
+type PersonalApiKeyCreateJSONRequestBody = PersonalApiKeyInput
 
 // ManagedUserRequestRoleChangeJSONRequestBody defines body for ManagedUserRequestRoleChange for application/json ContentType.
 type ManagedUserRequestRoleChangeJSONRequestBody = ManagedUserRequestRoleChangeRequest
@@ -9975,12 +10011,51 @@ type ClientInterface interface {
 	// Corresponds with GET /organization/usage (the `OrganizationUsage` operationId).
 	OrganizationUsage(ctx context.Context, params *OrganizationUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PersonalApiKeys List Personal API Keys
+	//
+	// The account's personal API keys, oldest first, each naming its owner. Deleted keys are left out.
+	//
+	// Corresponds with GET /personal-api-keys (the `PersonalApiKeys` operationId).
+	PersonalApiKeys(ctx context.Context, params *PersonalApiKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PersonalApiKeyCreateWithBody Create Personal API Key
+	//
+	// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+	PersonalApiKeyCreateWithBody(ctx context.Context, params *PersonalApiKeyCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PersonalApiKeyCreate Create Personal API Key
+	//
+	// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+	PersonalApiKeyCreate(ctx context.Context, params *PersonalApiKeyCreateParams, body PersonalApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PersonalApiKeysCount Count Personal API Keys
+	//
+	// The number of the account's personal API keys that are neither disabled nor deleted.
+	//
+	// Corresponds with GET /personal-api-keys-count (the `PersonalApiKeysCount` operationId).
+	PersonalApiKeysCount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PersonalApiKeysEnabled Personal Api Keys Enabled
 	//
 	// Whether the account's members may create personal API keys; true until an account admin turns it off.
 	//
 	// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
 	PersonalApiKeysEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PersonalApiKeyDisable Revoke Personal API Key
+	//
+	// Disable one of the account's personal API keys and end every session of it. A key that is not personal answers 404.
+	//
+	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
+	PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Seats Seats
 	//
@@ -12798,6 +12873,78 @@ func (c *Client) OrganizationUsage(ctx context.Context, params *OrganizationUsag
 	return c.Client.Do(req)
 }
 
+// PersonalApiKeys List Personal API Keys
+//
+// The account's personal API keys, oldest first, each naming its owner. Deleted keys are left out.
+//
+// Corresponds with GET /personal-api-keys (the `PersonalApiKeys` operationId).
+func (c *Client) PersonalApiKeys(ctx context.Context, params *PersonalApiKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPersonalApiKeysRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PersonalApiKeyCreateWithBody Create Personal API Key
+//
+// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+func (c *Client) PersonalApiKeyCreateWithBody(ctx context.Context, params *PersonalApiKeyCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPersonalApiKeyCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PersonalApiKeyCreate Create Personal API Key
+//
+// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+func (c *Client) PersonalApiKeyCreate(ctx context.Context, params *PersonalApiKeyCreateParams, body PersonalApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPersonalApiKeyCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PersonalApiKeysCount Count Personal API Keys
+//
+// The number of the account's personal API keys that are neither disabled nor deleted.
+//
+// Corresponds with GET /personal-api-keys-count (the `PersonalApiKeysCount` operationId).
+func (c *Client) PersonalApiKeysCount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPersonalApiKeysCountRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PersonalApiKeysEnabled Personal Api Keys Enabled
 //
 // Whether the account's members may create personal API keys; true until an account admin turns it off.
@@ -12805,6 +12952,23 @@ func (c *Client) OrganizationUsage(ctx context.Context, params *OrganizationUsag
 // Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
 func (c *Client) PersonalApiKeysEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPersonalApiKeysEnabledRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PersonalApiKeyDisable Revoke Personal API Key
+//
+// Disable one of the account's personal API keys and end every session of it. A key that is not personal answers 404.
+//
+// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
+func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPersonalApiKeyDisableRequest(c.Server, personalApiKeyId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -18417,6 +18581,154 @@ func NewOrganizationUsageRequest(server string, params *OrganizationUsageParams)
 	return req, nil
 }
 
+// NewPersonalApiKeysRequest constructs an http.Request for the PersonalApiKeys method
+func NewPersonalApiKeysRequest(server string, params *PersonalApiKeysParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/personal-api-keys")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPersonalApiKeyCreateRequest calls the generic PersonalApiKeyCreate builder with application/json body
+func NewPersonalApiKeyCreateRequest(server string, params *PersonalApiKeyCreateParams, body PersonalApiKeyCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPersonalApiKeyCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPersonalApiKeyCreateRequestWithBody constructs an http.Request for the PersonalApiKeyCreate method, with any body, and a specified content type
+func NewPersonalApiKeyCreateRequestWithBody(server string, params *PersonalApiKeyCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/personal-api-keys")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewPersonalApiKeysCountRequest constructs an http.Request for the PersonalApiKeysCount method
+func NewPersonalApiKeysCountRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/personal-api-keys-count")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPersonalApiKeysEnabledRequest constructs an http.Request for the PersonalApiKeysEnabled method
 func NewPersonalApiKeysEnabledRequest(server string) (*http.Request, error) {
 	var err error
@@ -18439,6 +18751,55 @@ func NewPersonalApiKeysEnabledRequest(server string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPersonalApiKeyDisableRequest constructs an http.Request for the PersonalApiKeyDisable method
+func NewPersonalApiKeyDisableRequest(server string, personalApiKeyId string, params *PersonalApiKeyDisableParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "personalApiKeyId", personalApiKeyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/personal-api-keys/%s/disable", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -23949,6 +24310,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /organization/usage (the `OrganizationUsage` operationId).
 	OrganizationUsageWithResponse(ctx context.Context, params *OrganizationUsageParams, reqEditors ...RequestEditorFn) (*OrganizationUsageResponse, error)
 
+	// PersonalApiKeysWithResponse List Personal API Keys
+	//
+	// The account's personal API keys, oldest first, each naming its owner. Deleted keys are left out.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /personal-api-keys (the `PersonalApiKeys` operationId).
+	PersonalApiKeysWithResponse(ctx context.Context, params *PersonalApiKeysParams, reqEditors ...RequestEditorFn) (*PersonalApiKeysResponse, error)
+
+	// PersonalApiKeyCreateWithBodyWithResponse Create Personal API Key
+	//
+	// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+	PersonalApiKeyCreateWithBodyWithResponse(ctx context.Context, params *PersonalApiKeyCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PersonalApiKeyCreateResponse, error)
+
+	// PersonalApiKeyCreateWithResponse Create Personal API Key
+	//
+	// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+	PersonalApiKeyCreateWithResponse(ctx context.Context, params *PersonalApiKeyCreateParams, body PersonalApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*PersonalApiKeyCreateResponse, error)
+
+	// PersonalApiKeysCountWithResponse Count Personal API Keys
+	//
+	// The number of the account's personal API keys that are neither disabled nor deleted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /personal-api-keys-count (the `PersonalApiKeysCount` operationId).
+	PersonalApiKeysCountWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PersonalApiKeysCountResponse, error)
+
 	// PersonalApiKeysEnabledWithResponse Personal Api Keys Enabled
 	//
 	// Whether the account's members may create personal API keys; true until an account admin turns it off.
@@ -23957,6 +24354,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
 	PersonalApiKeysEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PersonalApiKeysEnabledResponse, error)
+
+	// PersonalApiKeyDisableWithResponse Revoke Personal API Key
+	//
+	// Disable one of the account's personal API keys and end every session of it. A key that is not personal answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
+	PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error)
 
 	// SeatsWithResponse Seats
 	//
@@ -32634,6 +33040,291 @@ func (r OrganizationUsageResponse) ContentType() string {
 	return ""
 }
 
+// PersonalApiKeysResponse200Headers the declared response headers of an HTTP 200 response for PersonalApiKeys
+type PersonalApiKeysResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeysResponse429Headers the declared response headers of an HTTP 429 response for PersonalApiKeys
+type PersonalApiKeysResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeysResponse503Headers the declared response headers of an HTTP 503 response for PersonalApiKeys
+type PersonalApiKeysResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PersonalApiKeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKeyPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PersonalApiKeysResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PersonalApiKeysResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PersonalApiKeysResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PersonalApiKeysResponse) GetJSON200() *ApiKeyPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r PersonalApiKeysResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PersonalApiKeysResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PersonalApiKeysResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PersonalApiKeysResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PersonalApiKeysResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PersonalApiKeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PersonalApiKeysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PersonalApiKeysResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PersonalApiKeyCreateResponse201Headers the declared response headers of an HTTP 201 response for PersonalApiKeyCreate
+type PersonalApiKeyCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeyCreateResponse429Headers the declared response headers of an HTTP 429 response for PersonalApiKeyCreate
+type PersonalApiKeyCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeyCreateResponse503Headers the declared response headers of an HTTP 503 response for PersonalApiKeyCreate
+type PersonalApiKeyCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PersonalApiKeyCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ApiKey
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *PersonalApiKeyCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PersonalApiKeyCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PersonalApiKeyCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r PersonalApiKeyCreateResponse) GetJSON201() *ApiKey {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PersonalApiKeyCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PersonalApiKeyCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PersonalApiKeyCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PersonalApiKeyCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PersonalApiKeyCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PersonalApiKeyCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PersonalApiKeyCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PersonalApiKeyCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PersonalApiKeyCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PersonalApiKeysCountResponse200Headers the declared response headers of an HTTP 200 response for PersonalApiKeysCount
+type PersonalApiKeysCountResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeysCountResponse429Headers the declared response headers of an HTTP 429 response for PersonalApiKeysCount
+type PersonalApiKeysCountResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeysCountResponse503Headers the declared response headers of an HTTP 503 response for PersonalApiKeysCount
+type PersonalApiKeysCountResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PersonalApiKeysCountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *int32
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PersonalApiKeysCountResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PersonalApiKeysCountResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PersonalApiKeysCountResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PersonalApiKeysCountResponse) GetJSON200() *int32 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PersonalApiKeysCountResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PersonalApiKeysCountResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PersonalApiKeysCountResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PersonalApiKeysCountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PersonalApiKeysCountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PersonalApiKeysCountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PersonalApiKeysCountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // PersonalApiKeysEnabledResponse200Headers the declared response headers of an HTTP 200 response for PersonalApiKeysEnabled
 type PersonalApiKeysEnabledResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -32716,6 +33407,115 @@ func (r PersonalApiKeysEnabledResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PersonalApiKeysEnabledResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PersonalApiKeyDisableResponse200Headers the declared response headers of an HTTP 200 response for PersonalApiKeyDisable
+type PersonalApiKeyDisableResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeyDisableResponse429Headers the declared response headers of an HTTP 429 response for PersonalApiKeyDisable
+type PersonalApiKeyDisableResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeyDisableResponse503Headers the declared response headers of an HTTP 503 response for PersonalApiKeyDisable
+type PersonalApiKeyDisableResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PersonalApiKeyDisableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKey
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PersonalApiKeyDisableResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PersonalApiKeyDisableResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PersonalApiKeyDisableResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PersonalApiKeyDisableResponse) GetJSON200() *ApiKey {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PersonalApiKeyDisableResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PersonalApiKeyDisableResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PersonalApiKeyDisableResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PersonalApiKeyDisableResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PersonalApiKeyDisableResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PersonalApiKeyDisableResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PersonalApiKeyDisableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PersonalApiKeyDisableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PersonalApiKeyDisableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PersonalApiKeyDisableResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42426,6 +43226,66 @@ func (c *ClientWithResponses) OrganizationUsageWithResponse(ctx context.Context,
 	return ParseOrganizationUsageResponse(rsp)
 }
 
+// PersonalApiKeysWithResponse List Personal API Keys
+//
+// The account's personal API keys, oldest first, each naming its owner. Deleted keys are left out.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /personal-api-keys (the `PersonalApiKeys` operationId).
+func (c *ClientWithResponses) PersonalApiKeysWithResponse(ctx context.Context, params *PersonalApiKeysParams, reqEditors ...RequestEditorFn) (*PersonalApiKeysResponse, error) {
+	rsp, err := c.PersonalApiKeys(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePersonalApiKeysResponse(rsp)
+}
+
+// PersonalApiKeyCreateWithBodyWithResponse Create Personal API Key
+//
+// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+func (c *ClientWithResponses) PersonalApiKeyCreateWithBodyWithResponse(ctx context.Context, params *PersonalApiKeyCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PersonalApiKeyCreateResponse, error) {
+	rsp, err := c.PersonalApiKeyCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePersonalApiKeyCreateResponse(rsp)
+}
+
+// PersonalApiKeyCreateWithResponse Create Personal API Key
+//
+// Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /personal-api-keys (the `PersonalApiKeyCreate` operationId).
+func (c *ClientWithResponses) PersonalApiKeyCreateWithResponse(ctx context.Context, params *PersonalApiKeyCreateParams, body PersonalApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*PersonalApiKeyCreateResponse, error) {
+	rsp, err := c.PersonalApiKeyCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePersonalApiKeyCreateResponse(rsp)
+}
+
+// PersonalApiKeysCountWithResponse Count Personal API Keys
+//
+// The number of the account's personal API keys that are neither disabled nor deleted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /personal-api-keys-count (the `PersonalApiKeysCount` operationId).
+func (c *ClientWithResponses) PersonalApiKeysCountWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PersonalApiKeysCountResponse, error) {
+	rsp, err := c.PersonalApiKeysCount(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePersonalApiKeysCountResponse(rsp)
+}
+
 // PersonalApiKeysEnabledWithResponse Personal Api Keys Enabled
 //
 // Whether the account's members may create personal API keys; true until an account admin turns it off.
@@ -42439,6 +43299,21 @@ func (c *ClientWithResponses) PersonalApiKeysEnabledWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePersonalApiKeysEnabledResponse(rsp)
+}
+
+// PersonalApiKeyDisableWithResponse Revoke Personal API Key
+//
+// Disable one of the account's personal API keys and end every session of it. A key that is not personal answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
+func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error) {
+	rsp, err := c.PersonalApiKeyDisable(ctx, personalApiKeyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePersonalApiKeyDisableResponse(rsp)
 }
 
 // SeatsWithResponse Seats
@@ -53852,6 +54727,372 @@ func ParseOrganizationUsageResponse(rsp *http.Response) (*OrganizationUsageRespo
 	return response, nil
 }
 
+// ParsePersonalApiKeysResponse parses an HTTP response from a PersonalApiKeysWithResponse call
+func ParsePersonalApiKeysResponse(rsp *http.Response) (*PersonalApiKeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PersonalApiKeysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKeyPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PersonalApiKeysResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PersonalApiKeysResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PersonalApiKeysResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePersonalApiKeyCreateResponse parses an HTTP response from a PersonalApiKeyCreateWithResponse call
+func ParsePersonalApiKeyCreateResponse(rsp *http.Response) (*PersonalApiKeyCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PersonalApiKeyCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ApiKey
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers PersonalApiKeyCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers PersonalApiKeyCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PersonalApiKeyCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePersonalApiKeysCountResponse parses an HTTP response from a PersonalApiKeysCountWithResponse call
+func ParsePersonalApiKeysCountResponse(rsp *http.Response) (*PersonalApiKeysCountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PersonalApiKeysCountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest int32
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PersonalApiKeysCountResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PersonalApiKeysCountResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PersonalApiKeysCountResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParsePersonalApiKeysEnabledResponse parses an HTTP response from a PersonalApiKeysEnabledWithResponse call
 func ParsePersonalApiKeysEnabledResponse(rsp *http.Response) (*PersonalApiKeysEnabledResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -53954,6 +55195,142 @@ func ParsePersonalApiKeysEnabledResponse(rsp *http.Response) (*PersonalApiKeysEn
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers PersonalApiKeysEnabledResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePersonalApiKeyDisableResponse parses an HTTP response from a PersonalApiKeyDisableWithResponse call
+func ParsePersonalApiKeyDisableResponse(rsp *http.Response) (*PersonalApiKeyDisableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PersonalApiKeyDisableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKey
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PersonalApiKeyDisableResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PersonalApiKeyDisableResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PersonalApiKeyDisableResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
