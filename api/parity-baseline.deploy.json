@@ -215,29 +215,13 @@
       "stackCreateFromIntent"
     ],
     "Managed Users": [
-      "availableUserGroups",
-      "managedUser",
-      "managedUserDelete",
-      "managedUserGroup",
-      "managedUserGroupCreateV2",
-      "managedUserGroupDelete",
       "managedUserGroupIntegration",
       "managedUserGroupIntegrationCreate",
       "managedUserGroupIntegrationDelete",
       "managedUserGroupIntegrationUpdate",
       "managedUserGroupIntegrations",
-      "managedUserGroupManagedUsers",
-      "managedUserGroupUpdateV2",
       "managedUserGroupUserRoleBindings",
-      "managedUserGroups",
-      "managedUserInviteV2",
-      "managedUserPersonalApiKeys",
-      "managedUserRequestInvite",
-      "managedUserRequestRoleChange",
-      "managedUserResendInvite",
-      "managedUserUpdate",
-      "managedUserUserRoleBindings",
-      "managedUsers"
+      "managedUserUserRoleBindings"
     ],
     "Modules": [
       "module",

@@ -181,6 +181,8 @@ var deleteAccount = []string{
 		WHERE parent_session_id IN (SELECT id FROM sessions WHERE account_id = $1)`,
 	`DELETE FROM sessions WHERE account_id = $1`,
 	`DELETE FROM api_keys WHERE account_id = $1`,
+	`DELETE FROM account_invitations WHERE account_id = $1`,
+	`DELETE FROM managed_user_groups WHERE account_id = $1`,
 	`DELETE FROM account_users WHERE account_id = $1`,
 	`DELETE FROM account_settings WHERE account_id = $1`,
 }

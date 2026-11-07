@@ -8,6 +8,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -492,14 +493,18 @@ func orgAccountView(a account.Account) api.OrganizationAccount {
 	}
 }
 
+// memberStatuses are the served names of a member's statuses.
+var memberStatuses = map[member.Status]api.OrganizationMemberStatus{
+	member.Active:      api.OrganizationMemberStatusACTIVE,
+	member.Pending:     api.OrganizationMemberStatusPENDING,
+	member.Deactivated: api.OrganizationMemberStatusDEACTIVATED,
+}
+
 func memberView(m orgadmin.Member) api.OrganizationMember {
-	status := api.OrganizationMemberStatusDEACTIVATED
-	if m.Active {
-		status = api.OrganizationMemberStatusACTIVE
-	}
 	return api.OrganizationMember{
 		Id: m.ID.String(), Login: m.Login, Name: m.Name, Email: m.Email,
-		OrganizationAdmin: m.Admin, Status: status, CreatedAt: m.CreatedAt.Unix(),
+		OrganizationAdmin: m.Admin, Status: memberStatuses[m.Status],
+		CreatedAt: m.CreatedAt.Unix(),
 	}
 }
 

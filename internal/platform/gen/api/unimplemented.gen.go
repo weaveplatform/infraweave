@@ -118,6 +118,10 @@ func (UnimplementedStrict) AvailableSelfServicePlans(context.Context, AvailableS
 	return nil, &problem.NotImplementedError{OperationID: "availableSelfServicePlans", Route: "GET /available-self-service-plans"}
 }
 
+func (UnimplementedStrict) AvailableUserGroups(context.Context, AvailableUserGroupsRequestObject) (AvailableUserGroupsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "availableUserGroups", Route: "GET /available-user-groups"}
+}
+
 func (UnimplementedStrict) AwarenessSourceSurvey(context.Context, AwarenessSourceSurveyRequestObject) (AwarenessSourceSurveyResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "awarenessSourceSurvey", Route: "GET /awareness-source-survey"}
 }
@@ -160,6 +164,62 @@ func (UnimplementedStrict) EvaluateFeatureFlags(context.Context, EvaluateFeature
 
 func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
+}
+
+func (UnimplementedStrict) ManagedUserGroups(context.Context, ManagedUserGroupsRequestObject) (ManagedUserGroupsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroups", Route: "GET /managed-user-groups"}
+}
+
+func (UnimplementedStrict) ManagedUserGroupCreateV2(context.Context, ManagedUserGroupCreateV2RequestObject) (ManagedUserGroupCreateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupCreateV2", Route: "POST /managed-user-groups"}
+}
+
+func (UnimplementedStrict) ManagedUserGroupDelete(context.Context, ManagedUserGroupDeleteRequestObject) (ManagedUserGroupDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupDelete", Route: "DELETE /managed-user-groups/{managedUserGroupId}"}
+}
+
+func (UnimplementedStrict) ManagedUserGroup(context.Context, ManagedUserGroupRequestObject) (ManagedUserGroupResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroup", Route: "GET /managed-user-groups/{managedUserGroupId}"}
+}
+
+func (UnimplementedStrict) ManagedUserGroupUpdateV2(context.Context, ManagedUserGroupUpdateV2RequestObject) (ManagedUserGroupUpdateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupUpdateV2", Route: "PUT /managed-user-groups/{managedUserGroupId}"}
+}
+
+func (UnimplementedStrict) ManagedUserGroupManagedUsers(context.Context, ManagedUserGroupManagedUsersRequestObject) (ManagedUserGroupManagedUsersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupManagedUsers", Route: "GET /managed-user-groups/{managedUserGroupId}/managed-users"}
+}
+
+func (UnimplementedStrict) ManagedUserRequestInvite(context.Context, ManagedUserRequestInviteRequestObject) (ManagedUserRequestInviteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserRequestInvite", Route: "POST /managed-user-invite-requests"}
+}
+
+func (UnimplementedStrict) ManagedUsers(context.Context, ManagedUsersRequestObject) (ManagedUsersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUsers", Route: "GET /managed-users"}
+}
+
+func (UnimplementedStrict) ManagedUserInviteV2(context.Context, ManagedUserInviteV2RequestObject) (ManagedUserInviteV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserInviteV2", Route: "POST /managed-users"}
+}
+
+func (UnimplementedStrict) ManagedUserDelete(context.Context, ManagedUserDeleteRequestObject) (ManagedUserDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserDelete", Route: "DELETE /managed-users/{managedUserId}"}
+}
+
+func (UnimplementedStrict) ManagedUser(context.Context, ManagedUserRequestObject) (ManagedUserResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUser", Route: "GET /managed-users/{managedUserId}"}
+}
+
+func (UnimplementedStrict) ManagedUserUpdate(context.Context, ManagedUserUpdateRequestObject) (ManagedUserUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserUpdate", Route: "PUT /managed-users/{managedUserId}"}
+}
+
+func (UnimplementedStrict) ManagedUserPersonalApiKeys(context.Context, ManagedUserPersonalApiKeysRequestObject) (ManagedUserPersonalApiKeysResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserPersonalApiKeys", Route: "GET /managed-users/{managedUserId}/personal-api-keys"}
+}
+
+func (UnimplementedStrict) ManagedUserResendInvite(context.Context, ManagedUserResendInviteRequestObject) (ManagedUserResendInviteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserResendInvite", Route: "POST /managed-users/{managedUserId}/resend-invite"}
 }
 
 func (UnimplementedStrict) MarkedForDeletion(context.Context, MarkedForDeletionRequestObject) (MarkedForDeletionResponseObject, error) {
@@ -280,6 +340,10 @@ func (UnimplementedStrict) Sessions(context.Context, SessionsRequestObject) (Ses
 
 func (UnimplementedStrict) SessionDelete(context.Context, SessionDeleteRequestObject) (SessionDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "sessionDelete", Route: "DELETE /sessions/{sessionId}"}
+}
+
+func (UnimplementedStrict) ManagedUserRequestRoleChange(context.Context, ManagedUserRequestRoleChangeRequestObject) (ManagedUserRequestRoleChangeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserRequestRoleChange", Route: "POST /spaces/{spaceId}/role-change-requests"}
 }
 
 func (UnimplementedStrict) StackDependencyCreate(context.Context, StackDependencyCreateRequestObject) (StackDependencyCreateResponseObject, error) {

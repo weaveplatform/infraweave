@@ -516,7 +516,7 @@
         "lowestTier": "Free; `seats` 2 on Free and Starter",
         "phase": "P3b",
         "also": "P4b (role bindings), P18 (group integrations)",
-        "state": "missing",
+        "state": "partial",
         "notes": "A managed user is an organization member as one account sees it; group integrations give a Slack channel access rules (report 14 section 4.3)"
       }
     },

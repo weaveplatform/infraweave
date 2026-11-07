@@ -145,9 +145,13 @@ components:
         - status
       type: object
     OrganizationMemberStatus:
-      description: Whether the member may sign in; a deactivated member holds no seat.
+      description: >-
+        Whether the member may sign in: ACTIVE once they have, PENDING while an
+        invitation awaits them, DEACTIVATED once an organization admin
+        deactivated them. A deactivated member holds no seat.
       enum:
         - ACTIVE
+        - PENDING
         - DEACTIVATED
       type: string
     OrganizationMemberPage:

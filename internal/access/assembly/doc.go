@@ -1,12 +1,13 @@
 // Package assembly constructs the access domain: decision 0007's tenancy
 // (organizations, accounts, members and the members each account admits),
 // decision 0006's identity (API keys, sessions, tokens, signing keys and
-// the break-glass credential), and the account settings no other domain
-// owns. New builds the domain on its Deps; API
+// the break-glass credential), the account settings no other domain
+// owns, and each account's managed users and groups. New builds the domain on its Deps; API
 // is its partial of the API's strict server, aliased AccessAPI, and
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI, the API's partial serving the Organization tag
-// through the orgadmin service; OrganizationID finds an organization's ID by its
+// through the orgadmin service and the Managed Users tag through the user
+// and group services; OrganizationID finds an organization's ID by its
 // slug, for the features domain's operator partial, and Seats counts an
 // organization's and an account's seats in use, for its seats read; Stream is
 // its migration stream and SealedColumns its sealed columns, which
@@ -37,7 +38,8 @@
 //
 // It imports accessapi, featuresapi, whose Entitlements Deps.Features
 // carries for the organization and account deletes and the account limits, the access domain's adapters (oidc among them) and
-// its apikey, authn, breakglass, operator, orgadmin, session, settings and token packages, platform/cron and platform/queue for its
+// its apikey, authn, breakglass, group, operator, orgadmin, session,
+// settings, token and user packages, platform/cron and platform/queue for its
 // tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
 // platform/sql/notify, platform/httpkit/problem and chi. Only
 // internal/app and cmd/ import it, as the

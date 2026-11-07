@@ -182,6 +182,10 @@ var deleteOrganization = []string{
 		WHERE organization_id = $1 AND parent_session_id IS NOT NULL`,
 	`DELETE FROM sessions WHERE organization_id = $1`,
 	`DELETE FROM api_keys WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
+	`DELETE FROM account_invitations
+		WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
+	`DELETE FROM managed_user_groups
+		WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
 	`DELETE FROM account_users WHERE organization_id = $1`,
 	`DELETE FROM member_identities WHERE organization_id = $1`,
 	`DELETE FROM organization_keys WHERE organization_id = $1`,

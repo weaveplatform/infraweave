@@ -9,6 +9,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
@@ -56,7 +57,7 @@ type Member struct {
 	Login     string
 	Name      string
 	Email     string
-	Active    bool
+	Status    member.Status
 	Admin     bool
 	CreatedAt time.Time
 }
@@ -452,7 +453,7 @@ func (s *Service) Deactivate(ctx context.Context, by Actor, id string) (Member, 
 		return Member{}, err //nolint:wrapcheck // the store names the write
 	}
 	s.drop(ids)
-	m.Active = false
+	m.Status = member.Deactivated
 	return m, nil
 }
 

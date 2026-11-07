@@ -44,12 +44,12 @@ func (s *Store) APIKey(ctx context.Context, id kernel.ULID) (apikey.Key, error) 
 const SeatWindow = 30 * 24 * time.Hour
 
 // seats counts decision 0021's seats in organization $1 and account $2 as
-// the first use of key $4 in SeatWindow ($3) finds them: each active member
-// once, however many of the organization's accounts admit it, and each
-// other live key that is not personal and was used within the window. A
-// personal key rides on its owner's seat. Leaving $4 out lets two first
-// uses of one key share its seat rather than the second count the first;
-// a NULL $4 leaves no key out, as the seats read counts them.
+// the first use of key $4 in SeatWindow ($3) finds them: each active or
+// pending member once, however many of the organization's accounts admit
+// it, and each other live key that is not personal and was used within
+// the window. A personal key rides on its owner's seat. Leaving $4 out lets
+// two first uses of one key share its seat rather than the second count
+// the first; a NULL $4 leaves no key out, as the seats read counts them.
 const seats = `
 WITH keys AS (
   SELECT k.account_id FROM api_keys k JOIN accounts a ON a.id = k.account_id
@@ -60,10 +60,10 @@ WITH keys AS (
 SELECT
   (SELECT count(DISTINCT u.member_id) FROM account_users u
      JOIN members m ON m.id = u.member_id
-     WHERE u.organization_id = $1 AND m.status = 'active')
+     WHERE u.organization_id = $1 AND m.status IN ('active', 'pending'))
     + (SELECT count(*) FROM keys),
   (SELECT count(*) FROM account_users u JOIN members m ON m.id = u.member_id
-     WHERE u.account_id = $2 AND m.status = 'active')
+     WHERE u.account_id = $2 AND m.status IN ('active', 'pending'))
     + (SELECT count(*) FROM keys WHERE account_id = $2)`
 
 // TouchAPIKey records a use of the key id: it sets last_used_at unless it
