@@ -36,6 +36,11 @@ type Operation struct {
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
 	Public bool
+	// Organization marks an operation whose x-infraweave-access is
+	// organization: it serves any session of an organization, with an
+	// account or none, such as the viewer or the account switcher. Every
+	// other operation needs a credential of an account (decision 0006).
+	Organization bool
 	// Body is the request body of an operation whose JSON body schema sets
 	// additionalProperties: false, which strictBodies checks before the
 	// handler; nil for every other operation, whose body the generated
@@ -66,11 +71,20 @@ func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 				}
 			}
 			style, _ := op.Extensions["x-rest-style"].(string)
+			org := false
+			if v, ok := op.Extensions["x-infraweave-access"]; ok {
+				if v != "organization" {
+					return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
+						errSpec, method, path, v)
+				}
+				org = true
+			}
 			ops[method+" "+base+path] = Operation{
-				Cost:   cost,
-				Search: style == "search" || strings.HasSuffix(path, "/search"),
-				Public: op.Security != nil && len(*op.Security) == 0,
-				Body:   strictBody(op),
+				Cost:         cost,
+				Search:       style == "search" || strings.HasSuffix(path, "/search"),
+				Public:       op.Security != nil && len(*op.Security) == 0,
+				Organization: org,
+				Body:         strictBody(op),
 			}
 		}
 	}
@@ -113,6 +127,15 @@ var apiOperations = sync.OnceValue(func() Operations {
 		}
 		maps.Copy(ops, some)
 	}
+	// The break-glass login is a page, not an operation of either API, but
+	// the same controls stand in front of it: no credential, and each
+	// sign-in an expensive draw on the client's address, which slows a
+	// password guesser to the expensive class's rate.
+	ops[http.MethodGet+" "+accessapi.LoginPattern] = Operation{Public: true}
+	ops[http.MethodPost+" "+accessapi.LoginPattern] = Operation{
+		Public: true,
+		Cost:   ratelimit.Expensive,
+	}
 	return ops
 })
 
@@ -154,9 +177,9 @@ func Guarded(
 	}
 	r = middleware.NewRouter(log,
 		middleware.AccessLog(log),
-		auth.Middleware(func(req *http.Request) bool {
+		auth.Middleware(func(req *http.Request) accessapi.Access {
 			op, _ := resolve(req)
-			return op.Public
+			return op.access()
 		}),
 		ratelimit.Disabled(g.Switch, caller),
 		ratelimit.Middleware(c.RateLimit, g.Buckets, caller,
@@ -175,6 +198,17 @@ func Guarded(
 		}),
 	)
 	return r
+}
+
+// access is the credential the operation needs.
+func (o Operation) access() accessapi.Access {
+	switch {
+	case o.Public:
+		return accessapi.Public
+	case o.Organization:
+		return accessapi.Organization
+	}
+	return accessapi.Account
 }
 
 // jsonType is the media type every request body of the API is.
@@ -220,10 +254,12 @@ func caller(r *http.Request) string {
 // that needs a credential answers 401.
 type refuseAll struct{}
 
-func (refuseAll) Middleware(public func(*http.Request) bool) func(http.Handler) http.Handler {
+func (refuseAll) Middleware(
+	access func(*http.Request) accessapi.Access,
+) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if public(r) {
+			if access(r) == accessapi.Public {
 				next.ServeHTTP(w, r)
 				return
 			}

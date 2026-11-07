@@ -12,9 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
@@ -28,7 +33,12 @@ var (
 	errDown = fmt.Errorf("down: %w", kernel.ErrUnavailable)
 )
 
-const audience = "http://infraweave.test/api/v1"
+const (
+	publicURL = "http://infraweave.test"
+	audience  = publicURL + "/api/v1"
+	idle      = 12 * time.Hour
+	maxAge    = 7 * 24 * time.Hour
+)
 
 // store is the ports and tokens in memory; a token is its kind, session
 // and audience joined by spaces.
@@ -36,6 +46,10 @@ type store struct {
 	accounts map[kernel.AccountID]account.Account
 	keys     map[kernel.ULID]apikey.Key
 	sessions map[kernel.ULID]session.Session
+	orgs     map[kernel.Slug]organization.Organization
+	creds    map[kernel.Slug]*breakglass.Credential
+	trail    []kernel.OrganizationAuditEntry
+	admits   map[kernel.MemberID][]session.Admitted
 	down     bool
 }
 
@@ -64,9 +78,102 @@ func (s *store) Account(_ context.Context, id kernel.AccountID) (account.Account
 
 func (s *store) TouchAPIKey(context.Context, kernel.ULID) error { return s.err() }
 
+// CreateSession first revokes the member's live sessions in ss's channel,
+// as the store does.
 func (s *store) CreateSession(_ context.Context, ss session.Session) error {
+	if err := s.err(); err != nil {
+		return err
+	}
+	if !ss.MemberID.IsZero() && ss.Channel != session.ChannelUnknown {
+		for id, o := range s.sessions {
+			if o.MemberID == ss.MemberID && o.Channel == ss.Channel && o.RevokedAt.IsZero() {
+				o.RevokedAt = t0
+				s.sessions[id] = o
+			}
+		}
+	}
 	s.sessions[ss.ID] = ss
+	return nil
+}
+
+func (s *store) SessionBySecret(_ context.Context, hash []byte) (session.Session, error) {
+	if err := s.err(); err != nil {
+		return session.Session{}, err
+	}
+	for _, ss := range s.sessions {
+		if ss.SecretHash != nil && string(ss.SecretHash) == string(hash) {
+			return ss, nil
+		}
+	}
+	return session.Session{}, port.ErrNotFound
+}
+
+func (s *store) TouchSession(context.Context, kernel.ULID, time.Time) error { return s.err() }
+
+func (s *store) EndSession(_ context.Context, id kernel.ULID) (session.Session, error) {
+	if err := s.err(); err != nil {
+		return session.Session{}, err
+	}
+	ss, ok := s.sessions[id]
+	if !ok {
+		return session.Session{}, port.ErrNotFound
+	}
+	ss.RevokedAt = t0
+	s.sessions[id] = ss
+	return ss, nil
+}
+
+func (s *store) BreakGlassCredential(
+	_ context.Context,
+	slug kernel.Slug,
+) (organization.Organization, *breakglass.Credential, error) {
+	if err := s.err(); err != nil {
+		return organization.Organization{}, nil, err
+	}
+	o, ok := s.orgs[slug]
+	if !ok {
+		return organization.Organization{}, nil, port.ErrNotFound
+	}
+	return o, s.creds[slug], nil
+}
+
+func (s *store) SignIn(
+	ctx context.Context,
+	ss session.Session,
+	e kernel.OrganizationAuditEntry,
+) error {
+	s.trail = append(s.trail, e)
+	return s.CreateSession(ctx, ss)
+}
+
+func (s *store) RefuseSignIn(_ context.Context, e kernel.OrganizationAuditEntry) error {
+	s.trail = append(s.trail, e)
 	return s.err()
+}
+
+func (s *store) Accounts(
+	_ context.Context,
+	_ kernel.OrganizationID,
+	member kernel.MemberID,
+) ([]session.Admitted, error) {
+	return s.admits[member], s.err()
+}
+
+func (s *store) Admits(
+	_ context.Context,
+	_ kernel.OrganizationID,
+	member kernel.MemberID,
+	acct kernel.AccountID,
+) (session.Admitted, bool, error) {
+	if err := s.err(); err != nil {
+		return session.Admitted{}, false, err
+	}
+	for _, a := range s.admits[member] {
+		if a.ID == acct {
+			return a, true, nil
+		}
+	}
+	return session.Admitted{}, false, nil
 }
 
 func (s *store) Session(_ context.Context, id kernel.ULID) (session.Session, error) {
@@ -186,9 +293,35 @@ type world struct {
 // public is the route class that takes no credential.
 const public = "/auth/token"
 
+// organizationRoutes are the operations of x-infraweave-access:
+// organization in the spec.
+var organizationRoutes = []string{
+	"/viewer",
+	"/auth/logout",
+	"/auth/accounts",
+	"/auth/session/account",
+}
+
+// access classes a request's route as internal/app does from the spec.
+func access(r *http.Request) accessapi.Access {
+	switch {
+	case r.URL.Path == public:
+		return accessapi.Public
+	case slices.Contains(organizationRoutes, r.URL.Path):
+		return accessapi.Organization
+	}
+	return accessapi.Account
+}
+
 func newWorld(t *testing.T) *world {
 	t.Helper()
-	st := &store{keys: map[kernel.ULID]apikey.Key{}, sessions: map[kernel.ULID]session.Session{}}
+	st := &store{
+		keys:     map[kernel.ULID]apikey.Key{},
+		sessions: map[kernel.ULID]session.Session{},
+		orgs:     map[kernel.Slug]organization.Organization{},
+		creds:    map[kernel.Slug]*breakglass.Credential{},
+		admits:   map[kernel.MemberID][]session.Admitted{},
+	}
 	w := &world{
 		st:     st,
 		acct:   kernel.NewAccountID(),
@@ -206,6 +339,7 @@ func newWorld(t *testing.T) *world {
 	}
 	auth := authn.New(authn.Deps{
 		Keys: st, Sessions: st, Tokens: st, Audience: audience, TTL: 10 * time.Hour,
+		BreakGlass: st, Admission: st, Idle: idle, MaxAge: maxAge,
 		Now: func() time.Time { return t0 },
 	})
 	keys := apikey.NewService(apikey.Deps{
@@ -219,23 +353,49 @@ func newWorld(t *testing.T) *world {
 			ResponseErrorHandlerFunc: problem.ResponseError,
 		},
 	)
-	mw := NewAuthenticator(auth).Middleware(func(r *http.Request) bool {
-		return r.URL.Path == public
-	})
-	w.h = mw(api.Handler(strict))
+	r := chi.NewRouter()
+	NewLogin(auth, publicURL).Routes(r)
+	r.Mount("/", NewAuthenticator(auth, publicURL).Middleware(access)(api.Handler(strict)))
+	w.h = r
 	return w
 }
 
 func (w *world) do(t *testing.T, method, target, bearer, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	return w.send(t, method, target, body, func(req *http.Request) {
+		if bearer != "" {
+			req.Header.Set("Authorization", bearer)
+		}
+	})
+}
+
+// browse sends a JSON request with the session cookie secret and, when
+// it is not empty, the Origin header origin.
+func (w *world) browse(
+	t *testing.T,
+	method, target, secret, origin, body string,
+) *httptest.ResponseRecorder {
+	t.Helper()
+	return w.send(t, method, target, body, func(req *http.Request) {
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: secret})
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+	})
+}
+
+func (w *world) send(
+	t *testing.T,
+	method, target, body string,
+	set func(*http.Request),
+) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), method, target, strings.NewReader(body))
 	req.RemoteAddr = "192.0.2.9:4000"
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if bearer != "" {
-		req.Header.Set("Authorization", bearer)
-	}
+	set(req)
 	rec := httptest.NewRecorder()
 	w.h.ServeHTTP(rec, req)
 	return rec
@@ -336,7 +496,7 @@ func TestUnitMiddleware(t *testing.T) {
 		"good, lower scheme": {"bearer" + strings.TrimPrefix(good, "Bearer"), http.StatusOK},
 	} {
 		t.Run(name, func(t *testing.T) {
-			rec := w.do(t, http.MethodGet, "/viewer", c.bearer, "")
+			rec := w.do(t, http.MethodGet, "/sessions", c.bearer, "")
 			if rec.Code != c.want {
 				t.Fatalf("%d %s, want %d", rec.Code, rec.Body, c.want)
 			}
@@ -344,6 +504,11 @@ func TestUnitMiddleware(t *testing.T) {
 				wantUnauthenticated(t, rec, true)
 			}
 		})
+	}
+	// An organization route admits a session of no account.
+	if rec := w.do(t, http.MethodGet, "/viewer",
+		fmt.Sprintf("Bearer api_key %s %s", other.ID, audience), ""); rec.Code != http.StatusOK {
+		t.Errorf("no account on an organization route: %d", rec.Code)
 	}
 	// A public route takes no credential and ignores a bad one.
 	if rec := w.do(t, http.MethodPost, public, "Bearer garbage",
@@ -484,7 +649,10 @@ func TestUnitNoPrincipal(t *testing.T) {
 	_, e3 := s.SessionDelete(ctx, api.SessionDeleteRequestObject{})
 	_, e4 := s.SessionDeleteAll(ctx, api.SessionDeleteAllRequestObject{})
 	_, e5 := s.Logout(ctx, api.LogoutRequestObject{})
-	for i, err := range []error{e1, e2, e3, e4, e5} {
+	_, e6 := s.CliConfirmationToken(ctx, api.CliConfirmationTokenRequestObject{})
+	_, e7 := s.AuthAccounts(ctx, api.AuthAccountsRequestObject{})
+	_, e8 := s.AuthSessionAccount(ctx, api.AuthSessionAccountRequestObject{})
+	for i, err := range []error{e1, e2, e3, e4, e5, e6, e7, e8} {
 		if pe, ok := errors.AsType[*problem.Error](
 			err,
 		); !ok ||

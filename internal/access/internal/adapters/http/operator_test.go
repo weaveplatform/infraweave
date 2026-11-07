@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
@@ -185,11 +186,24 @@ func newOpWorld(t *testing.T) *opWorld {
 		RequestErrorHandlerFunc:  problem.RequestError,
 		ResponseErrorHandlerFunc: problem.ResponseError,
 	}
-	isPublic := func(r *http.Request) bool { return r.URL.Path == "/api"+public }
+	isPublic := func(r *http.Request) accessapi.Access {
+		if r.URL.Path == "/api"+public {
+			return accessapi.Public
+		}
+		return accessapi.Account
+	}
 	mux := http.NewServeMux()
-	mux.Handle("/api/", NewAuthenticator(auth).Middleware(isPublic)(api.HandlerWithOptions(
-		api.NewStrictHandlerWithOptions(full{Server: NewServer(auth, keys, base.st)}, nil, opts),
-		api.ChiServerOptions{BaseURL: "/api"})))
+	mux.Handle(
+		"/api/",
+		NewAuthenticator(auth, publicURL).Middleware(isPublic)(api.HandlerWithOptions(
+			api.NewStrictHandlerWithOptions(
+				full{Server: NewServer(auth, keys, base.st)},
+				nil,
+				opts,
+			),
+			api.ChiServerOptions{BaseURL: "/api"},
+		)),
+	)
 	mux.Handle(
 		"/operator/",
 		NewOperatorAuthenticator(auth).Middleware(isPublic)(opapi.HandlerWithOptions(

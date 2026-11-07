@@ -1,7 +1,9 @@
 // Package port holds the access domain's ports: the interfaces its core
 // needs from its adapters, and the errors those adapters return through
-// them, so the core never imports an adapter (decision 0004). OIDC
-// verifies an issuer's JWT for an OIDC API key.
+// them, so the core never imports an adapter (decision 0004). Tenancy,
+// Sessions and APIKeys read and write tenancy, sessions and keys;
+// BreakGlass reads an organization's break-glass credential and records
+// its sign-ins; OIDC verifies an issuer's JWT for an OIDC API key.
 //
 // # Input and output
 //

@@ -92,7 +92,7 @@ func classify(err error, what string) error {
 }
 
 // read turns no row into port.ErrNotFound naming the ID.
-func read(err error, what string, id kernel.ULID) error {
+func read(err error, what string, id any) error {
 	switch {
 	case err == nil:
 		return nil

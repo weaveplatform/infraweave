@@ -61,6 +61,7 @@ func TestUnitExchangeOperator(t *testing.T) {
 	if _, _, err := s.Authenticate(
 		t.Context(),
 		g.Token,
+		false,
 	); !errors.Is(
 		err,
 		authn.ErrUnauthenticated,

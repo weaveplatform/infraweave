@@ -3,7 +3,12 @@
 // AccessAPI alias: POST /auth/token (apiKeyUser) exchanges a secret API
 // key for an API token; viewer answers the caller; sessions,
 // sessionDelete, sessionDeleteAll and logout list and revoke the caller's
-// account's sessions; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
+// account's sessions, logout clearing a browser session's cookie;
+// cliConfirmationToken seals a CLI token from a member's browser session
+// to the CLI's key, answering 403 to any other credential and 422 naming
+// pubKey to a key it cannot seal to; authAccounts and authSessionAccount
+// list the accounts that admit the caller's member and switch to one,
+// any other answering 404; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
 // apiKeyReset, apiKeyDelete and apiKeyEnableNonAdminManagers manage the
 // account's API keys, where a key of another account answers 404 and
 // input the service refuses 422 validation-failed; id, name, type and
@@ -16,10 +21,14 @@
 // slug in use answers 409 already-exists, an organization that does not
 // exist 404 and input the service refuses 422 validation-failed naming
 // each field; no answer carries a password hash. Authenticator is
-// accessapi.Authenticator: the middleware that turns a bearer token into
-// the request's principal, or answers 401 unauthenticated with
-// WWW-Authenticate: Bearer; NewAuthenticator's admits API tokens and
-// NewOperatorAuthenticator's operator tokens.
+// accessapi.Authenticator: the middleware that turns a bearer token, or
+// a browser session's cookie, into the request's principal, or answers
+// 401 unauthenticated with WWW-Authenticate: Bearer; a cookie
+// authenticates a write only with an Origin of the public URL.
+// NewAuthenticator's admits API tokens and cookies and
+// NewOperatorAuthenticator's operator tokens alone. Login serves the
+// break-glass login's form and sign-in at accessapi.LoginPattern, which
+// sets the session's __Host- cookie and answers 303 to the console.
 //
 // # Input and output
 //
@@ -29,9 +38,9 @@
 //
 // # Dependencies
 //
-// It imports the access domain's apikey, authn, breakglass, operator,
-// organization, port and session packages and accessapi, internal/kernel,
-// the generated servers of both APIs, and platform/httpkit's page,
-// problem and ratelimit. Only the access domain's assembly imports
+// It imports the access domain's apikey, authn, breakglass, loopback,
+// operator, organization, port and session packages and accessapi,
+// internal/kernel, chi, the generated servers of both APIs, and
+// platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.
 package http

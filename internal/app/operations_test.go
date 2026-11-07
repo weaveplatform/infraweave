@@ -15,6 +15,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
@@ -50,6 +51,10 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /api/v1/stacks":                               {Cost: ratelimit.Standard},
 		"POST /api/v1/stacks":                              {Cost: ratelimit.Standard},
 		"DELETE /operator/v1/organizations/{organization}": {Cost: ratelimit.Standard},
+		"GET /api/v1/viewer":                               {Cost: ratelimit.Standard, Organization: true},
+		"GET /api/v1/auth/accounts":                        {Cost: ratelimit.Standard, Organization: true},
+		"GET /admin-login/{organization}":                  {Public: true},
+		"POST /admin-login/{organization}":                 {Cost: ratelimit.Expensive, Public: true},
 	} {
 		if ops[key] != want {
 			t.Errorf("%s: %+v, want %+v", key, ops[key], want)
@@ -91,6 +96,33 @@ func TestUnitOperationsOf(t *testing.T) {
 		}), "")
 		if !errors.Is(err, errSpec) {
 			t.Errorf("x-infraweave-cost %v: %v", bad, err)
+		}
+	}
+	ops, err = operationsOf(doc("/me", &openapi3.Operation{
+		Extensions: map[string]any{"x-infraweave-access": "organization"},
+	}), "")
+	if err != nil || !ops["POST /me"].Organization {
+		t.Errorf("x-infraweave-access organization: %+v %v", ops, err)
+	}
+	for _, bad := range []any{"account", true} {
+		_, err := operationsOf(doc("/things", &openapi3.Operation{
+			Extensions: map[string]any{"x-infraweave-access": bad},
+		}), "")
+		if !errors.Is(err, errSpec) {
+			t.Errorf("x-infraweave-access %v: %v", bad, err)
+		}
+	}
+}
+
+func TestUnitOperationAccess(t *testing.T) {
+	for op, want := range map[Operation]accessapi.Access{
+		{}:                                 accessapi.Account,
+		{Organization: true}:               accessapi.Organization,
+		{Public: true}:                     accessapi.Public,
+		{Public: true, Organization: true}: accessapi.Public,
+	} {
+		if got := op.access(); got != want {
+			t.Errorf("%+v: %v, want %v", op, got, want)
 		}
 	}
 }

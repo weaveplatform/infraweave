@@ -84,6 +84,7 @@ func API(
 	if b.Routes != nil {
 		b.Routes(r)
 	}
+	d.Access.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
 		apiServer{AccessAPI: d.Access.API(), queues: queues, blobs: b.Objects},
 		nil,
@@ -117,10 +118,12 @@ func API(
 // and every other with api; a nil one refuses every credential.
 type byPrefix struct{ api, operator accessapi.Authenticator }
 
-func (b byPrefix) Middleware(public func(*http.Request) bool) func(http.Handler) http.Handler {
+func (b byPrefix) Middleware(
+	access func(*http.Request) accessapi.Access,
+) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		api := orRefuse(b.api).Middleware(public)(next)
-		operator := orRefuse(b.operator).Middleware(public)(next)
+		api := orRefuse(b.api).Middleware(access)(next)
+		operator := orRefuse(b.operator).Middleware(access)(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if p := routePath(
 				r,

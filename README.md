@@ -106,7 +106,8 @@ A request that needs PostgreSQL while it is unreachable answers
 `503 service-unavailable` with `Retry-After: 2`, which `pkg/sdk` retries;
 any other unexpected failure answers `500`.
 
-Every route but `POST /auth/token` takes a bearer token
+Every route but `POST /auth/token` takes a bearer token or a browser
+session's cookie
 ([decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)).
 An API key exchanges there: `{"id", "secret"}` answers the reference's
 `User`, whose `jwt` is an API token for `auth.tokens.api.ttl`, never past
@@ -135,6 +136,43 @@ session of another account answers `404`. Each replica trusts a session it
 read for 60 seconds, and a revocation reaches every replica at once through
 `NOTIFY infraweave_invalidate, 'session:<id>'`. The hourly
 `authn.sessions.expire` task deletes sessions 30 days after they end.
+
+#### Browser sessions
+
+A browser session is named by the cookie `__Host-infraweave_session`
+(`HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`), an opaque 32-byte secret
+of which only the SHA-256 is stored. It ends after `auth.session.idle_timeout`
+without a request, or at `auth.session.max_age` whatever its use. A cookie
+authenticates `GET`, `HEAD` and `OPTIONS`; a `POST`, `PUT`, `PATCH` or
+`DELETE` carries it as a credential only with an `Origin` equal to
+`server.public_url`'s, and otherwise answers `401 unauthenticated`.
+`POST /auth/logout` with a cookie also clears it.
+
+- **Break-glass sign-in.** `GET /admin-login/<organization>` answers a form,
+  and a `POST` of its `login` and `password`, with the public URL's
+  `Origin`, checks them against the credential the operator set. Success
+  sets the cookie and answers `303` to `/`; a wrong login or password, or an
+  organization with no credential, answers one `401 unauthenticated`. Each
+  attempt draws from the client address's expensive budget, and each is on
+  the organization's trail as `organization.break_glass_sign_in` with actor
+  kind `break_glass`. The session is an organization admin in no account:
+  `GET /viewer` and the organization's routes admit it, and every account
+  route answers it `401`.
+- **CLI tokens.** `POST /auth/cli-confirmation-tokens` with `{"pubKey"}`, an
+  RSA public key of at least 2048 bits in PEM or base64url PEM, answers the
+  CLI's token sealed to that key as `<key>.<token>`, spacectl's loopback
+  envelope. Its session is channel `INFRAWEAVECTL`, in the browser session's
+  account, and ends with the browser session's absolute expiry, but survives
+  its logout and account switches. Only a member's browser session issues
+  one: any other credential answers `403 forbidden`, and a key that cannot
+  be sealed to answers `422 validation-failed` naming `pubKey`.
+- **Switching accounts.** `GET /auth/accounts` lists the accounts whose
+  `account_users` admit the caller's member, and `POST /auth/session/account`
+  with `{"account"}` replaces the caller's session with one for that account
+  in the same channel and with the same absolute expiry: a browser session
+  gets a new cookie, a token session a new `jwt`. An account that does not
+  admit the member answers `404`. A member no account admits holds a session
+  of no account, which lists no account.
 
 #### The operator API
 
@@ -195,6 +233,8 @@ To bootstrap an installation:
 | `server.public_url` | | `INFRAWEAVE_SERVER_PUBLIC_URL` | required by `serve` and `all`: the http or https origin clients reach infraweave at, such as `https://infraweave.example.com` |
 | `auth.api_issuer` | | `INFRAWEAVE_AUTH_API_ISSUER` | `server.public_url`: the `iss` of every API token |
 | `auth.tokens.api.ttl` | | `INFRAWEAVE_AUTH_TOKENS_API_TTL` | `10h`: the lifetime of the token an API key or operator key exchanges for; must be positive |
+| `auth.session.idle_timeout` | | `INFRAWEAVE_AUTH_SESSION_IDLE_TIMEOUT` | `12h`: how long a browser session lasts without a request; must be positive |
+| `auth.session.max_age` | | `INFRAWEAVE_AUTH_SESSION_MAX_AGE` | `168h`: a browser session's absolute lifetime, which its CLI tokens share; must be positive |
 | `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring; `kms` signs through the KMS keys of `auth.signing.kms_keys`, whose private halves never enter infraweave |
 | `auth.signing.rotation` | | `INFRAWEAVE_AUTH_SIGNING_ROTATION` | `automatic`: the daily `authn.keys.rotate` task replaces each local signing key every 90 days, and moves to a KMS key added to `auth.signing.kms_keys`; `manual` never replaces one, and is refused with `kms` |
 | `auth.oidc_api_keys.allowed_issuers` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_ALLOWED_ISSUERS` (comma-separated) | none: an OIDC API key may name any `https` issuer; when set, only these, at creation and at every exchange |

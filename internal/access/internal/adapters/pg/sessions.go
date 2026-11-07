@@ -23,7 +23,7 @@ var (
 // sessionColumns are what scanSession reads, in its order.
 const sessionColumns = `organization_id, account_id, id, channel, actor_kind, actor_id,
 	member_id, login, name, email, admin, teams, scopes, coalesce(host(ip_address), ''),
-	created_at, expires_at, idle_expires_at, revoked_at`
+	created_at, expires_at, idle_expires_at, revoked_at, secret_hash, parent_session_id`
 
 // Each write's transaction may fail to begin or commit with pgx's own
 // error, which the writes mark as kernel.ErrUnavailable when PostgreSQL is
@@ -47,12 +47,13 @@ func (s *Store) CreateSession(ctx context.Context, ss session.Session) error {
 		if _, err := q.Exec(ctx, `
 			INSERT INTO sessions (organization_id, account_id, id, channel, actor_kind,
 				actor_id, member_id, login, name, email, admin, teams, scopes, ip_address,
-				expires_at, idle_expires_at)
+				expires_at, idle_expires_at, secret_hash, parent_session_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-				NULLIF($14, '')::inet, $15, $16)`,
+				NULLIF($14, '')::inet, $15, $16, $17, $18)`,
 			ss.OrganizationID, ss.AccountID, ss.ID, ss.Channel, ss.ActorKind, ss.ActorID,
 			ss.MemberID, ss.Login, ss.Name, ss.Email, ss.Admin, nonNil(ss.Teams),
-			nonNil(ss.Scopes), ss.IPAddress, ss.ExpiresAt, idle); err != nil {
+			nonNil(ss.Scopes), ss.IPAddress, ss.ExpiresAt, idle, ss.SecretHash,
+			ss.ParentID); err != nil {
 			return fmt.Errorf("access: insert session: %w", sql.Unavailable(err))
 		}
 		return nil
@@ -68,6 +69,46 @@ func (s *Store) Session(ctx context.Context, id kernel.ULID) (session.Session, e
 	ss, err := scanSession(tx.Q(ctx, s.db).QueryRow(ctx,
 		`SELECT `+sessionColumns+` FROM sessions WHERE id = $1`, id))
 	return ss, read(err, "session", id)
+}
+
+// SessionBySecret reads the browser session whose cookie secret hashes
+// to hash.
+func (s *Store) SessionBySecret(ctx context.Context, hash []byte) (session.Session, error) {
+	ss, err := scanSession(tx.Q(ctx, s.db).QueryRow(ctx,
+		`SELECT `+sessionColumns+` FROM sessions WHERE secret_hash = $1`, hash))
+	return ss, read(err, "session", "by its secret")
+}
+
+// TouchSession records a use of the session id and moves its idle end to
+// idle. A revoked session stays as it is.
+func (s *Store) TouchSession(ctx context.Context, id kernel.ULID, idle time.Time) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE sessions
+		SET last_seen_at = now(), idle_expires_at = $2
+		WHERE id = $1 AND revoked_at IS NULL`, id, idle); err != nil {
+		return fmt.Errorf("access: touch session %s: %w", id, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// EndSession revokes the session id, whatever its account or none.
+// Ending an ended session succeeds and sends the message again.
+func (s *Store) EndSession(ctx context.Context, id kernel.ULID) (session.Session, error) {
+	var ss session.Session
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		q := tx.Q(ctx, s.db)
+		var err error
+		ss, err = scanSession(q.QueryRow(ctx, `UPDATE sessions
+			SET revoked_at = coalesce(revoked_at, now())
+			WHERE id = $1 RETURNING `+sessionColumns, id))
+		if err != nil {
+			return read(err, "session", id)
+		}
+		return send(ctx, q, id)
+	})
+	if err != nil {
+		return session.Session{}, fmt.Errorf("end session %s: %w", id, sql.Unavailable(err))
+	}
+	return ss, nil
 }
 
 // Sessions reads a page of the account's live sessions in ID order.
@@ -196,7 +237,8 @@ func scanSession(r pgx.Row) (session.Session, error) {
 	)
 	err := r.Scan(&ss.OrganizationID, &ss.AccountID, &ss.ID, &ss.Channel, &ss.ActorKind,
 		&ss.ActorID, &ss.MemberID, &ss.Login, &ss.Name, &ss.Email, &ss.Admin, &ss.Teams,
-		&ss.Scopes, &ss.IPAddress, &ss.CreatedAt, &ss.ExpiresAt, &idle, &revoked)
+		&ss.Scopes, &ss.IPAddress, &ss.CreatedAt, &ss.ExpiresAt, &idle, &revoked, &ss.SecretHash,
+		&ss.ParentID)
 	if err != nil {
 		return session.Session{}, err //nolint:wrapcheck // the callers name the read
 	}

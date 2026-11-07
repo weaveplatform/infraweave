@@ -7,6 +7,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -59,6 +60,30 @@ type Sessions interface {
 	// ExpireSessions deletes the sessions that ended before before, and
 	// reports how many.
 	ExpireSessions(ctx context.Context, before time.Time) (int64, error)
+	// SessionBySecret reads the browser session whose cookie secret
+	// hashes to hash.
+	SessionBySecret(ctx context.Context, hash []byte) (session.Session, error)
+	// TouchSession records a use of the session id and moves its idle end
+	// to idle.
+	TouchSession(ctx context.Context, id kernel.ULID, idle time.Time) error
+	// EndSession revokes the session id, whatever its account or none.
+	EndSession(ctx context.Context, id kernel.ULID) (session.Session, error)
+}
+
+// BreakGlass reads break-glass credentials and records sign-ins on the
+// organization's trail.
+type BreakGlass interface {
+	// BreakGlassCredential reads the organization slug names and its
+	// credential, nil when it has none.
+	BreakGlassCredential(
+		ctx context.Context,
+		slug kernel.Slug,
+	) (organization.Organization, *breakglass.Credential, error)
+	// SignIn records s, a break-glass session, and e, its trail entry, in
+	// one transaction.
+	SignIn(ctx context.Context, s session.Session, e kernel.OrganizationAuditEntry) error
+	// RefuseSignIn records e, a refused sign-in's trail entry.
+	RefuseSignIn(ctx context.Context, e kernel.OrganizationAuditEntry) error
 }
 
 // OIDC verifies a JWT that an OIDC API key's caller presents.

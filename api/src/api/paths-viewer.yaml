@@ -33,6 +33,7 @@ paths:
         field: viewer
         operation: query
         type: Query
+      x-infraweave-access: organization
       x-infraweave-cost: standard
       x-infraweave-divergence:
         - rate-limit

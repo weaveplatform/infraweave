@@ -23,6 +23,44 @@ components:
         - secret
       type: object
       x-graphql-args-of: apiKeyUser
+    AuthAccount:
+      description: An account that admits the caller's member, which the account switcher offers.
+      properties:
+        id:
+          description: The account's ID.
+          type: string
+        name:
+          description: The account's display name.
+          type: string
+        slug:
+          description: The account's slug, unique across the installation.
+          type: string
+      required:
+        - id
+        - name
+        - slug
+      type: object
+    AuthSessionAccountRequest:
+      additionalProperties: false
+      description: The account to switch the caller's session to.
+      properties:
+        account:
+          description: The ID of an account that admits the caller's member.
+          type: string
+      required:
+        - account
+      type: object
+    CliConfirmationTokenRequest:
+      additionalProperties: false
+      description: The arguments of cliConfirmationToken not carried in the path.
+      properties:
+        pubKey:
+          description: The CLI's RSA public key of at least 2048 bits, PEM-encoded, or that PEM in base64url.
+          type: string
+      required:
+        - pubKey
+      type: object
+      x-graphql-args-of: cliConfirmationToken
     FederationProvider:
       description: All supported federation providers.
       enum:
@@ -273,9 +311,98 @@ components:
       type: object
       x-graphql-type: User
 paths:
+  /auth/accounts:
+    get:
+      description: The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+      operationId: authAccounts
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AuthAccount'
+                type: array
+          description: The accounts the caller may switch to.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Auth Accounts
+      tags:
+        - Auth
+      x-infraweave-access: organization
+      x-infraweave-cost: standard
+      x-upstream: none
+  /auth/cli-confirmation-tokens:
+    post:
+      description: |-
+        Issue a CLI token from the caller's browser session, sealed to the CLI's public key. The token's session
+        is channel INFRAWEAVECTL, in the browser session's account, and ends with the browser session's absolute
+        expiry; it survives that session's logout and account switches. The answer is <key>.<token>: an
+        AES-256 key wrapped with RSA-OAEP over SHA-512, then the token in AES-CBC with a leading IV and PKCS#7
+        padding, each in unpadded base64url, which the browser hands to the CLI's loopback listener as its key
+        and token query parameters.
+      operationId: cliConfirmationToken
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CliConfirmationTokenRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The sealed token, <key>.<token>.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Cli Confirmation Token
+      tags:
+        - Auth
+      x-bruno: Advanced/CLI/Cli Confirmation Token.bru
+      x-graphql:
+        field: cliConfirmationToken
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
   /auth/logout:
     post:
-      description: End the current session.
+      description: End the current session. A browser session's answer also clears its cookie.
       operationId: logout
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -287,6 +414,10 @@ paths:
                 $ref: '#/components/schemas/Session'
           description: The logout result.
           headers:
+            Set-Cookie:
+              description: Clears a browser session's cookie.
+              schema:
+                type: string
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -311,11 +442,64 @@ paths:
         field: logout
         operation: mutation
         type: Mutation
+      x-infraweave-access: organization
       x-infraweave-cost: standard
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /auth/session/account:
+    post:
+      description: |-
+        Replace the caller's session with a new one for an account that admits its member, in the same channel
+        and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
+        and carries no jwt; any other carries the new token. An account that does not admit the member answers
+        404, as does a credential that is not a member's.
+      operationId: authSessionAccount
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthSessionAccountRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: The caller in the new session.
+          headers:
+            Set-Cookie:
+              description: A browser session's new cookie.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Auth Session Account
+      tags:
+        - Auth
+      x-infraweave-access: organization
+      x-infraweave-cost: standard
+      x-upstream: none
   /auth/token:
     post:
       description: Exchange a secret API key for an API token, which the Users jwt carries until validUntil.
