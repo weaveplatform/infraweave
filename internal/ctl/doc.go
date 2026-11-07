@@ -14,7 +14,9 @@
 //
 // It reads the arguments, the environment, standard input and the profiles
 // file, by default config.yaml under the user configuration directory's
-// infraweavectl, which profile set writes readable by its owner only. Every
+// infraweavectl, which profile set writes readable by its owner only:
+// mode 0600, or on Windows, where a mode cannot say it, a protected DACL
+// that allows the user alone. Every
 // call goes to the server through pkg/sdk's Client.Do, and each command
 // prints the answer's body, indented JSON, to standard output; a list
 // command follows every cursor and prints one array. An answer of 400 or
@@ -22,7 +24,7 @@
 //
 // # Dependencies
 //
-// It imports pkg/sdk and internal/platform/buildinfo, cobra, viper and
-// yaml.v3, and no pkg/client package or server code: depguard's ctl rule
+// It imports pkg/sdk and internal/platform/buildinfo, cobra, viper,
+// yaml.v3 and, on Windows, golang.org/x/sys/windows, and no pkg/client package or server code: depguard's ctl rule
 // holds it to the API's public client.
 package ctl
