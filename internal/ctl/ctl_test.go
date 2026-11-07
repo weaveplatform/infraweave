@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -201,8 +202,10 @@ func TestUnitProfiles(t *testing.T) {
 		"  dev\thttp://localhost:8080/\n* prod\thttps://iw.example.com\n" {
 		t.Errorf("list = %q", out)
 	}
+	// Windows has no permission bits for the mode to show; its user
+	// profile's ACL keeps the file to its owner.
 	info, err := os.Stat(c.config)
-	if err != nil || info.Mode().Perm() != 0o600 {
+	if err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o600) {
 		t.Errorf("profiles file %v, %v; want mode 0600", info, err)
 	}
 	f, err := readFile(c.config)
