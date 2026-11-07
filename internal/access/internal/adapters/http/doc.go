@@ -43,7 +43,11 @@
 // caller or while the account turns personal keys off, and list, count
 // and disable the account's personal keys, a key of the account's own
 // answering 404 to the disable; every ApiKey answer names a personal
-// key's owner. OperatorServer is its partial of the operator API's
+// key's owner. Every User answer, of apiKeyUser, viewer and
+// authSessionAccount, is composed from the principal and the apikey
+// service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
+// that service's answers from its own rules (decision 0007's grant
+// views). OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
 // organizationDelete, organizationBreakGlassSet and

@@ -50,6 +50,8 @@
 // member while it reads personalApiKeysEnabled and the owner's state,
 // and turning the setting off, removing the member and deactivating them
 // lock the same rows first, so none misses a key created beside it;
+// PersonalCreatable reads the same rule without the locks, and KeysOf the
+// keys a caller created and owns, for the User view;
 // KeyOwner reads an admitted active owner with their latest_groups as
 // teams. A key's first use in SeatWindow takes it a
 // seat, checked against the seats limit through the same Entitlements in

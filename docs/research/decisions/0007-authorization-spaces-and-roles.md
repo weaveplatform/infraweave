@@ -297,6 +297,18 @@ the same evaluator with an explaining variant that returns each grant's
 source (`RESIDENT`, `PROPAGATED`, `INHERITED`), backing binding and, for an
 inherited grant, the synthetic `space-reader` role.
 
+The rule extends to every field of a view that says what the caller may do
+or holds, whether a role action decides it or a precondition of one
+operation does: the field is the owning service's answer from the rule its
+operation enforces, never a copy of that rule in the view. A view that
+gathers several such fields, such as `User`, is composed by the HTTP
+adapter from each owner's answer. `User.canCreatePersonalApiKey` is the
+`apikey` service's reading of `personalApiKeyCreate`'s rule (a member's own
+session, admitted and active, with `personalApiKeysEnabled` on), the same
+query the creation runs under its locks, and `User.apiKeys` and
+`ownedApiKeys` are that service's too; `User.admin` and `User.actions` are
+the evaluator's.
+
 ### Snapshots and caching
 
 - Each replica holds, per account, an immutable snapshot of the space tree

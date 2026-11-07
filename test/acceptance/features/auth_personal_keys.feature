@@ -3,7 +3,9 @@ Feature: Personal API keys
   A personal API key is a member's own in one account (decision 0006). Its
   token acts as the owner in the key's account, with the owner's login and
   teams, so it never exceeds them. Only a member's own session creates one,
-  and only while the account's personalApiKeysEnabled is on. Removing the
+  and only while the account's personalApiKeysEnabled is on; the viewer's
+  canCreatePersonalApiKey answers that same rule, and its apiKeys and
+  ownedApiKeys name the keys the caller created and owns. Removing the
   owner from the account, or deactivating them, disables the key as
   DEPROVISIONED and ends its sessions, and its exchange answers 401 like any
   refused key's (capture C123). A personal key rides on its owner's seat.
@@ -16,11 +18,20 @@ Feature: Personal API keys
 
   @op:personalApiKeyCreate @op:personalApiKeys @op:personalApiKeysCount @op:personalApiKeyDisable @op:managedUserPersonalApiKeys @case:success @case:failure
   Scenario: A member creates a personal key, which the account lists, counts and disables
+    When the browser sends "GET /api/v1/viewer" through B
+    Then the answer's canCreatePersonalApiKey is 'true'
+    And the answer's ownedApiKeys are the keys ""
     When the browser sends "POST /api/v1/personal-api-keys" with '{"name":"laptop","description":"mine"}' through A
     Then it answers 201
     And the answer's isPersonal is 'true'
     And the answer's owner is '"alice"'
     And the answer's key is the key "laptop"
+    When the browser sends "GET /api/v1/viewer" through B
+    Then the answer's ownedApiKeys are the keys "laptop"
+    And the answer's apiKeys are the keys "laptop"
+    When token "h" sends "GET /api/v1/viewer" through A
+    Then the answer's canCreatePersonalApiKey is 'false'
+    And the answer's ownedApiKeys are the keys ""
     When token "h" sends "GET /api/v1/personal-api-keys" through B
     Then the answer lists the keys "laptop"
     When token "h" sends "GET /api/v1/managed-users/{alice}/personal-api-keys" through A
@@ -79,3 +90,5 @@ Feature: Personal API keys
     When token "h" sends "POST /api/v1/account/set-personal-api-keys-enabled" with '{"enabled":false}' through B
     And the browser sends "POST /api/v1/personal-api-keys" with '{"name":"laptop"}' through A
     Then it answers a 403 problem "forbidden"
+    When the browser sends "GET /api/v1/viewer" through B
+    Then the answer's canCreatePersonalApiKey is 'false'

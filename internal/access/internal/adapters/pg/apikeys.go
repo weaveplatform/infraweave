@@ -212,33 +212,104 @@ func (s *Store) keyPage(
 	return out, nil
 }
 
-// CreatePersonalAPIKey inserts the personal key k after reading, under a
-// share lock on the account, its admission of k.Owner and the member,
-// the account's personalApiKeysEnabled and the owner's state. Turning the
-// setting off locks the account, removing the owner their admission and
-// deactivating them the member, so each waits for the key or the key for
-// it, and none misses a key created beside it.
+// personalOwner is the rule a personal key's creation passes, for member
+// in acct: the account admits member as an active member, else
+// apikey.ErrNoOwner, and turns personal keys on, else
+// apikey.ErrPersonalOff. It answers the member's login. With lock it
+// share-locks the account, the admission and the member, which turning
+// the setting off, removing the member and deactivating them lock first,
+// so a creation and any of those wait for each other; without, it is the
+// same rule read for a view.
+func personalOwner(
+	ctx context.Context,
+	q tx.Querier,
+	acct kernel.AccountID,
+	member kernel.MemberID,
+	lock bool,
+) (string, error) {
+	query := `SELECT coalesce(st.personal_api_keys, true), m.status = 'active', m.login
+		FROM accounts a
+		JOIN account_users u ON u.account_id = a.id AND u.member_id = $2
+		JOIN members m ON m.id = u.member_id
+		LEFT JOIN account_settings st ON st.account_id = a.id
+		WHERE a.id = $1`
+	if lock {
+		query += ` FOR SHARE OF a, u, m`
+	}
+	var (
+		on, active bool
+		login      string
+	)
+	err := q.QueryRow(ctx, query, acct, member).Scan(&on, &active, &login)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows) || err == nil && !active:
+		return "", apikey.ErrNoOwner
+	case err != nil:
+		return "", fmt.Errorf("access: read the owner: %w", sql.Unavailable(err))
+	case !on:
+		return "", apikey.ErrPersonalOff
+	}
+	return login, nil
+}
+
+// PersonalCreatable reads whether member could create a personal key in
+// acct now: personalOwner's rule, without its locks.
+func (s *Store) PersonalCreatable(
+	ctx context.Context,
+	acct kernel.AccountID,
+	member kernel.MemberID,
+) error {
+	_, err := personalOwner(ctx, tx.Q(ctx, s.db), acct, member, false)
+	return err
+}
+
+// KeysOf reads the IDs of acct's keys that are not deleted, in ID order:
+// those login created, and the personal keys member owns.
+func (s *Store) KeysOf(
+	ctx context.Context,
+	acct kernel.AccountID,
+	login string,
+	member kernel.MemberID,
+) ([]kernel.ULID, []kernel.ULID, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, creator = $2,
+			coalesce(owner_user_id = $3, false)
+		FROM api_keys WHERE account_id = $1 AND deleted_at IS NULL
+			AND (creator = $2 OR owner_user_id = $3)
+		ORDER BY id`, acct, login, member)
+	if err != nil {
+		return nil, nil, fmt.Errorf("access: read the caller's keys: %w", sql.Unavailable(err))
+	}
+	var (
+		created, owned []kernel.ULID
+		id             kernel.ULID
+		mine, theirs   bool
+	)
+	_, err = pgx.ForEachRow(rows, []any{&id, &mine, &theirs}, func() error {
+		if mine {
+			created = append(created, id)
+		}
+		if theirs {
+			owned = append(owned, id)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("access: read the caller's keys: %w", sql.Unavailable(err))
+	}
+	return created, owned, nil
+}
+
+// CreatePersonalAPIKey inserts the personal key k after personalOwner's
+// rule, locked, passes for k.Owner, so none of the writes that disable
+// personal keys misses one created beside it.
 func (s *Store) CreatePersonalAPIKey(ctx context.Context, k apikey.Key) (apikey.Key, error) {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
-		var on, active bool
-		err := q.QueryRow(ctx, `SELECT coalesce(st.personal_api_keys, true),
-				m.status = 'active', m.login
-			FROM accounts a
-			JOIN account_users u ON u.account_id = a.id AND u.member_id = $2
-			JOIN members m ON m.id = u.member_id
-			LEFT JOIN account_settings st ON st.account_id = a.id
-			WHERE a.id = $1 FOR SHARE OF a, u, m`, k.AccountID, k.Owner).
-			Scan(&on, &active, &k.OwnerLogin)
-		if errors.Is(err, pgx.ErrNoRows) || err == nil && !active {
-			return apikey.ErrNoOwner
-		}
+		login, err := personalOwner(ctx, q, k.AccountID, k.Owner, true)
 		if err != nil {
-			return fmt.Errorf("access: read the owner: %w", sql.Unavailable(err))
+			return err
 		}
-		if !on {
-			return apikey.ErrPersonalOff
-		}
+		k.OwnerLogin = login
 		if _, err := q.Exec(ctx, `
 			INSERT INTO api_keys (account_id, id, name, description, type, secret_hash, teams,
 				is_personal, owner_user_id, creator, expires_at, created_at)

@@ -25,7 +25,10 @@ func (p *personalSteps) register(sc *godog.ScenarioContext) {
 		return nil
 	})
 	sc.Step(`^the answer is '([^']*)'$`, p.is)
-	sc.Step(`^the answer lists the keys "([^"]*)"$`, p.lists)
+	sc.Step(`^the answer lists the keys "([^"]*)"$`, func(want string) error {
+		return p.names("items", want)
+	})
+	sc.Step(`^the answer's (apiKeys|ownedApiKeys) are the keys "([^"]*)"$`, p.names)
 }
 
 // keep names the last answer's key, with the secret only its creation
@@ -55,20 +58,20 @@ func (p *personalSteps) is(want string) error {
 	return nil
 }
 
-// lists checks the last answer, a page of keys, against the named keys,
-// comma-separated, in the page's order.
-func (p *personalSteps) lists(want string) error {
-	var page struct {
-		Items []struct {
-			ID string `json:"id"`
-		} `json:"items"`
+// names checks the last answer's field, a list of keys or of references
+// to them, against the named keys, comma-separated, in the list's order.
+func (p *personalSteps) names(field, want string) error {
+	var body map[string]json.RawMessage
+	var keys []struct {
+		ID string `json:"id"`
 	}
 	r := p.o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &page) != nil {
+	if r.status != http.StatusOK || json.Unmarshal(r.body, &body) != nil ||
+		json.Unmarshal(body[field], &keys) != nil {
 		return fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
 	}
-	got := make([]string, 0, len(page.Items))
-	for _, k := range page.Items {
+	got := make([]string, 0, len(keys))
+	for _, k := range keys {
 		got = append(got, k.ID)
 	}
 	var ids []string

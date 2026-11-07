@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +73,39 @@ func (s *store) DisablePersonalAPIKey(
 	return s.DisableAPIKey(ctx, acct, id, reason)
 }
 
+func (s *store) PersonalCreatable(
+	_ context.Context,
+	_ kernel.AccountID,
+	member kernel.MemberID,
+) error {
+	if _, ok := s.owners[member]; !ok {
+		return apikey.ErrNoOwner
+	}
+	if s.personalOff {
+		return apikey.ErrPersonalOff
+	}
+	return s.err()
+}
+
+func (s *store) KeysOf(
+	ctx context.Context,
+	acct kernel.AccountID,
+	login string,
+	member kernel.MemberID,
+) ([]kernel.ULID, []kernel.ULID, error) {
+	keys, err := s.AccountAPIKeys(ctx, acct, kernel.ULID{}, len(s.keys))
+	var created, owned []kernel.ULID
+	for _, k := range keys {
+		if k.Creator == login {
+			created = append(created, k.ID)
+		}
+		if k.Personal() && k.Owner == member {
+			owned = append(owned, k.ID)
+		}
+	}
+	return created, owned, err
+}
+
 func (s *store) KeyOwner(
 	_ context.Context,
 	_ kernel.AccountID,
@@ -109,6 +143,14 @@ func TestUnitPersonalAPIKeys(t *testing.T) {
 	w := newWorld(t)
 	bearer := "Bearer " + w.exchange(t).Jwt
 	_, alice := w.memberToken(w.acct)
+	if v := decode[api.User](
+		t,
+		w.do(t, http.MethodGet, "/viewer", alice, ""),
+	); !v.CanCreatePersonalApiKey ||
+		len(v.OwnedApiKeys) != 0 ||
+		len(v.ApiKeys) != 0 {
+		t.Errorf("alice's viewer before her key: %+v", v)
+	}
 
 	rec := w.do(t, http.MethodPost, "/personal-api-keys", alice,
 		`{"name":"laptop","description":"mine","expiresAt":2000000000}`)
@@ -122,6 +164,23 @@ func TestUnitPersonalAPIKeys(t *testing.T) {
 		fmt.Sprintf(`{"id":%q,"secret":%q}`, k.Id, *k.Secret))
 	if u := decode[api.User](t, rec); rec.Code != http.StatusOK || u.Name != "Alice" {
 		t.Errorf("the personal key's exchange: %d %+v", rec.Code, u)
+	}
+
+	mine := []api.ApiKeyRef{{Id: k.Id}}
+	if v := decode[api.User](
+		t,
+		w.do(t, http.MethodGet, "/viewer", alice, ""),
+	); !v.CanCreatePersonalApiKey ||
+		!slices.Equal(v.OwnedApiKeys, mine) ||
+		!slices.Equal(v.ApiKeys, mine) {
+		t.Errorf("alice's viewer: %+v", v)
+	}
+	if v := decode[api.User](
+		t,
+		w.do(t, http.MethodGet, "/viewer", bearer, ""),
+	); v.CanCreatePersonalApiKey ||
+		len(v.OwnedApiKeys) != 0 {
+		t.Errorf("the API key's viewer: %+v", v)
 	}
 
 	list := decode[api.ApiKeyPage](t, w.do(t, http.MethodGet, "/personal-api-keys", bearer, ""))
@@ -165,13 +224,19 @@ func TestUnitPersonalAPIKeyRefusals(t *testing.T) {
 		http.StatusForbidden {
 		t.Errorf("with personal keys off: %d %s", rec.Code, rec.Body)
 	}
+	if v := decode[api.User](
+		t,
+		w.do(t, http.MethodGet, "/viewer", alice, ""),
+	); v.CanCreatePersonalApiKey {
+		t.Errorf("alice's viewer with personal keys off: %+v", v)
+	}
 	w.st.personalOff = false
 	if rec := w.do(t, http.MethodPost, "/personal-api-keys", alice, `{"name":""}`); rec.Code !=
 		http.StatusUnprocessableEntity {
 		t.Errorf("no name: %d %s", rec.Code, rec.Body)
 	}
 	w.st.down = true
-	for _, path := range []string{"/personal-api-keys", "/personal-api-keys-count"} {
+	for _, path := range []string{"/personal-api-keys", "/personal-api-keys-count", "/viewer"} {
 		if rec := w.do(t, http.MethodGet, path, alice, ""); rec.Code !=
 			http.StatusServiceUnavailable {
 			t.Errorf("%s with the store down: %d %s", path, rec.Code, rec.Body)

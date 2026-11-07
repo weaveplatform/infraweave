@@ -1225,6 +1225,10 @@ Spaces and the evaluator decide every route from here on: deny by default,
    middleware. `api/api_test.go` fails on an operation without both.
    Every resource the API returns carries `allowedActions`, computed by the
    evaluator that enforces them ([0023](../research/decisions/0023-console.md)). Records DV-108.
+   The `User` view's `admin` and `actions` join its composition in the
+   HTTP adapter as the evaluator's answers, beside the `apikey` service's
+   `apiKeys`, `ownedApiKeys` and `canCreatePersonalApiKey` (decision
+   0007's grant views).
 5. Every list and search filters with `Reachable` as
    `space_id = ANY($n)`; `role_actions` data source support through
    `GET` of the catalogue.

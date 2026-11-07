@@ -45,8 +45,8 @@ func (s *Service) CreatePersonal(
 	p kernel.Principal,
 	in PersonalInput,
 ) (Key, string, error) {
-	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
-		return Key{}, "", ErrNoOwner
+	if err := creator(p); err != nil {
+		return Key{}, "", err
 	}
 	secret := NewSecret()
 	k := Key{
@@ -75,6 +75,51 @@ func (s *Service) CreatePersonal(
 		return Key{}, "", err //nolint:wrapcheck // the store names the write
 	}
 	return k, secret, nil
+}
+
+// Held is what the API key domain answers of a principal on the User
+// view, from the rules its operations enforce, so the view never claims
+// what the operations would refuse.
+type Held struct {
+	// Created are the keys of the account the principal created.
+	Created []kernel.ULID
+	// Owned are the principal's personal keys in the account.
+	Owned []kernel.ULID
+	// CanCreatePersonal is whether CreatePersonal would accept the
+	// principal now.
+	CanCreatePersonal bool
+}
+
+// Held reads what p holds of the API key domain in p's account; a
+// principal in no account holds nothing.
+func (s *Service) Held(ctx context.Context, p kernel.Principal) (Held, error) {
+	var h Held
+	if p.AccountID.IsZero() {
+		return h, nil
+	}
+	var err error
+	h.Created, h.Owned, err = s.d.Store.KeysOf(ctx, p.AccountID, p.Login, p.MemberID)
+	if err != nil {
+		return Held{}, err //nolint:wrapcheck // the store names the read
+	}
+	if creator(p) != nil {
+		return h, nil
+	}
+	switch err := s.d.Store.PersonalCreatable(ctx, p.AccountID, p.MemberID); {
+	case err == nil:
+		h.CanCreatePersonal = true
+	case !errors.Is(err, ErrNoOwner) && !errors.Is(err, ErrPersonalOff):
+		return Held{}, err //nolint:wrapcheck // as above
+	}
+	return h, nil
+}
+
+// creator refuses a principal that is not a member's own session.
+func creator(p kernel.Principal) error {
+	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
+		return ErrNoOwner
+	}
+	return nil
 }
 
 // Personal is up to limit of the personal keys of p's account, from the

@@ -61,6 +61,18 @@ func TestAccPersonalAPIKeys(t *testing.T) {
 	if n, err := x.s.CountPersonalAPIKeys(ctx, x.acct); err != nil || n != 1 {
 		t.Errorf("count = %d, %v", n, err)
 	}
+	if err := x.s.PersonalCreatable(ctx, x.acct, x.member); err != nil {
+		t.Errorf("alice may create another: %v", err)
+	}
+	created, owned, err := x.s.KeysOf(ctx, x.acct, "alice", x.member)
+	if err != nil || !slices.Equal(created, []kernel.ULID{k.ID}) ||
+		!slices.Equal(owned, []kernel.ULID{k.ID}) {
+		t.Errorf("alice's keys = %v, %v, %v", created, owned, err)
+	}
+	created, owned, err = x.s.KeysOf(ctx, x.acct, "test", kernel.MemberID{})
+	if err != nil || !slices.Equal(created, []kernel.ULID{x.key}) || owned != nil {
+		t.Errorf("the seeded key's creator's keys = %v, %v, %v", created, owned, err)
+	}
 
 	o, err := x.s.KeyOwner(ctx, x.acct, x.member)
 	if err != nil || o.Login != "alice" || o.Name != "Alice" ||
@@ -102,6 +114,9 @@ func TestAccPersonalAPIKeyRefusals(t *testing.T) {
 			err, apikey.ErrNoOwner) {
 			t.Errorf("%s: %v", name, err)
 		}
+		if err := x.s.PersonalCreatable(ctx, x.acct, owner); !errors.Is(err, apikey.ErrNoOwner) {
+			t.Errorf("%s may create: %v", name, err)
+		}
 	}
 	if _, err := x.s.SetPersonalAPIKeys(ctx, x.acct, false, false); err != nil {
 		t.Fatal(err)
@@ -109,6 +124,10 @@ func TestAccPersonalAPIKeyRefusals(t *testing.T) {
 	if _, err := x.s.CreatePersonalAPIKey(ctx, personal(x, x.member)); !errors.Is(
 		err, apikey.ErrPersonalOff) {
 		t.Errorf("with personal keys off: %v", err)
+	}
+	if err := x.s.PersonalCreatable(ctx, x.acct, x.member); !errors.Is(
+		err, apikey.ErrPersonalOff) {
+		t.Errorf("may create with personal keys off: %v", err)
 	}
 	if _, err := x.s.KeyOwner(ctx, x.acct, dave); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("a deactivated owner: %v", err)

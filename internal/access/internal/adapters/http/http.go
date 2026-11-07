@@ -94,14 +94,16 @@ func (s Server) ApiKeyUser(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store marks an unreachable database
 	}
-	return api.ApiKeyUser200JSONResponse{
-		Body: user(g.Session.Principal(), g.Token, g.Claims.Expiry),
-	}, nil
+	u, err := s.userOf(ctx, g.Session.Principal(), g.Token, g.Claims.Expiry)
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKeyUser200JSONResponse{Body: u}, nil
 }
 
 // Viewer is the caller, with the token it presented; a browser session
 // presents none.
-func (Server) Viewer(
+func (s Server) Viewer(
 	ctx context.Context,
 	_ api.ViewerRequestObject,
 ) (api.ViewerResponseObject, error) {
@@ -110,7 +112,11 @@ func (Server) Viewer(
 		return nil, err
 	}
 	r := from(ctx)
-	return api.Viewer200JSONResponse{Body: user(p, r.token, r.expiry)}, nil
+	u, err := s.userOf(ctx, p, r.token, r.expiry)
+	if err != nil {
+		return nil, err
+	}
+	return api.Viewer200JSONResponse{Body: u}, nil
 }
 
 // Sessions lists the live sessions of the caller's account, oldest first.
@@ -233,9 +239,38 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 	return p, nil
 }
 
-// user is p in the reference's User shape, with token as its jwt. The
-// lists of what arrives with later phases (space actions, API keys and
-// security keys) are empty, never absent, as the shape requires.
+// userOf is p in the reference's User shape, with token as its jwt. Each
+// field another domain decides is that domain's answer from the rule its
+// operations enforce (decision 0007's grant views), never a copy of the
+// rule here: the API keys p created and owns and whether p may create a
+// personal key are the apikey service's.
+func (s Server) userOf(
+	ctx context.Context,
+	p kernel.Principal,
+	token string,
+	until time.Time,
+) (api.User, error) {
+	u := user(p, token, until)
+	h, err := s.keys.Held(ctx, p)
+	if err != nil {
+		return api.User{}, err //nolint:wrapcheck // the store marks an unreachable database
+	}
+	u.ApiKeys, u.OwnedApiKeys = keyRefs(h.Created), keyRefs(h.Owned)
+	u.CanCreatePersonalApiKey = h.CanCreatePersonal
+	return u, nil
+}
+
+func keyRefs(ids []kernel.ULID) []api.ApiKeyRef {
+	out := make([]api.ApiKeyRef, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, api.ApiKeyRef{Id: id.String()})
+	}
+	return out
+}
+
+// user is the part of the User shape the principal alone decides. The
+// lists of what arrives with later phases (space actions and security
+// keys) are empty, never absent, as the shape requires.
 func user(p kernel.Principal, token string, until time.Time) api.User {
 	id := p.Login
 	if p.Kind == kernel.PrincipalAPIKey {
