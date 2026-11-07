@@ -20,14 +20,17 @@ type mem struct {
 	keys     map[kernel.ULID]Key
 	sessions map[kernel.ULID][]kernel.ULID
 	managers map[kernel.AccountID]bool
-	err      error
+	// peopleOnly is the accounts that let only people manage keys.
+	peopleOnly map[kernel.AccountID]bool
+	err        error
 }
 
 func newMem() *mem {
 	return &mem{
-		keys:     map[kernel.ULID]Key{},
-		sessions: map[kernel.ULID][]kernel.ULID{},
-		managers: map[kernel.AccountID]bool{},
+		keys:       map[kernel.ULID]Key{},
+		sessions:   map[kernel.ULID][]kernel.ULID{},
+		managers:   map[kernel.AccountID]bool{},
+		peopleOnly: map[kernel.AccountID]bool{},
 	}
 }
 
@@ -140,6 +143,10 @@ func (m *mem) DeleteAPIKey(
 func (m *mem) SetNonAdminManagers(_ context.Context, acct kernel.AccountID, enable bool) error {
 	m.managers[acct] = enable
 	return m.err
+}
+
+func (m *mem) NonHumanKeyManagers(_ context.Context, acct kernel.AccountID) (bool, error) {
+	return !m.peopleOnly[acct], m.err
 }
 
 type world struct {
@@ -393,5 +400,52 @@ func TestUnitIssuerAllowed(t *testing.T) {
 	if !IssuerAllowed(allowed, "https://idp.example.com") ||
 		IssuerAllowed(allowed, "https://other.example.com") {
 		t.Error("the allowlist is not applied")
+	}
+}
+
+// TestUnitServiceNonHumans checks that, in an account that lets only
+// people manage keys, a key's every change is ErrNonHuman and reaches no
+// key, while its reads and a member's changes go through.
+func TestUnitServiceNonHumans(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld()
+	k, _, err := w.svc.Create(ctx, w.me, Input{Name: "ci"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.st.peopleOnly[w.me.AccountID] = true
+	name := "renamed"
+	for op, err := range map[string]error{
+		"create": func() error { _, _, err := w.svc.Create(ctx, w.me, Input{Name: "x"}); return err }(),
+		"update": func() error {
+			_, err := w.svc.Update(ctx, w.me, k.ID, Change{Name: &name})
+			return err
+		}(),
+		"reset":    func() error { _, _, err := w.svc.Reset(ctx, w.me, k.ID); return err }(),
+		"disable":  func() error { _, err := w.svc.Disable(ctx, w.me, k.ID); return err }(),
+		"delete":   func() error { _, err := w.svc.Delete(ctx, w.me, k.ID); return err }(),
+		"managers": func() error { _, err := w.svc.SetNonAdminManagers(ctx, w.me, true); return err }(),
+	} {
+		if !errors.Is(err, ErrNonHuman) {
+			t.Errorf("%s by a key = %v, want ErrNonHuman", op, err)
+		}
+	}
+	if got, err := w.svc.Get(
+		ctx,
+		w.me,
+		k.ID,
+	); err != nil || got.Name != "ci" ||
+		len(w.st.keys) != 1 {
+		t.Errorf("after the refusals: %+v, %v, %d keys", got, err, len(w.st.keys))
+	}
+	member := w.me
+	member.Kind = kernel.PrincipalUser
+	if _, err := w.svc.Update(ctx, member, k.ID, Change{Name: &name}); err != nil {
+		t.Errorf("a member's update = %v", err)
+	}
+	w.st.peopleOnly[w.me.AccountID] = false
+	w.st.err = errors.New("down")
+	if _, err := w.svc.Delete(ctx, w.me, k.ID); !errors.Is(err, w.st.err) {
+		t.Errorf("a delete with the store down = %v", err)
 	}
 }

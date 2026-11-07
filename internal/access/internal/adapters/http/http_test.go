@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -54,6 +55,8 @@ type store struct {
 	down     bool
 	// full refuses a key's use as the seats limit would.
 	full *featuresapi.LimitError
+	// peopleOnly lets only people manage API keys.
+	peopleOnly bool
 }
 
 func (s *store) err() error {
@@ -292,6 +295,7 @@ type stubs struct{ api.UnimplementedStrict }
 // world is the adapter over a store holding one secret key.
 type world struct {
 	st     *store
+	cfg    *configs
 	h      http.Handler
 	acct   kernel.AccountID
 	key    kernel.ULID
@@ -353,8 +357,12 @@ func newWorld(t *testing.T) *world {
 	keys := apikey.NewService(apikey.Deps{
 		Store: st, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
+	w.cfg = &configs{s: settings.Defaults()}
+	cfg := settings.NewService(settings.Deps{
+		Store: w.cfg, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
+	})
 	strict := api.NewStrictHandlerWithOptions(
-		full{Server: NewServer(auth, keys, st)},
+		full{Server: NewServer(auth, keys, st, cfg)},
 		nil,
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,

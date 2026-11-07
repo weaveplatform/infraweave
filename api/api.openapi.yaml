@@ -71,6 +71,484 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: override
+  /account/can-be-deleted:
+    get:
+      description: >-
+        Whether accountConfirmDelete would delete the account now: true while the account is marked for deletion and is not its organization's last account. infraweave sets no waiting period, so a mark allows deletion at once.
+      operationId: accountCanBeDeleted
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountCanBeDeleted result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Can Be Deleted
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Can Be Deleted.bru
+      x-graphql:
+        field: accountCanBeDeleted
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: singleton
+  /account/can-be-deleted-at:
+    get:
+      description: >-
+        When the account can be deleted, in Unix seconds: the time of its deletion mark, as infraweave sets no waiting period; 0 while the account is not marked.
+      operationId: accountCanBeDeletedAt
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                format: int32
+                type: integer
+          description: The accountCanBeDeletedAt result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Can Be Deleted At
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Can Be Deleted At.bru
+      x-graphql:
+        field: accountCanBeDeletedAt
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: singleton
+  /account/confirm-delete:
+    post:
+      description: >-
+        Delete the caller's account and everything it holds: its API keys, sessions, admitted members and account limits, in one transaction. Members stay in the organization. An account not marked for deletion, or the organization's last account, answers 409 invalid-state.
+      operationId: accountConfirmDelete
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountConfirmDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Confirm Delete
+      tags:
+        - Account Settings
+      x-bruno: Danger Zone/Account Confirm Delete.bru
+      x-graphql:
+        field: accountConfirmDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/request-personal-api-keys-enabling:
+    post:
+      description: >-
+        Ask the account's admins to enable personal API keys. The request is recorded in the account's audit trail; no message is delivered.
+      operationId: accountRequestPersonalApiKeysEnabling
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountRequestPersonalApiKeysEnabling result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Request Personal Api Keys Enabling
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Request Personal Api Keys Enabling.bru
+      x-graphql:
+        field: accountRequestPersonalApiKeysEnabling
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/set-o-auth-redirect-allowlist:
+    post:
+      description: >-
+        Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+      operationId: accountSetOAuthRedirectAllowlist
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              hosts:
+                - example
+            schema:
+              $ref: '#/components/schemas/AccountSetOAuthRedirectAllowlistRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: The accountSetOAuthRedirectAllowlist result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Set OAuth Redirect Allowlist
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Set OAuth Redirect Allowlist.bru
+      x-graphql:
+        field: accountSetOAuthRedirectAllowlist
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/set-personal-api-keys-enabled:
+    post:
+      description: >-
+        Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+      operationId: accountSetPersonalApiKeysEnabled
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              disableExistingKeys: false
+              enabled: false
+            schema:
+              $ref: '#/components/schemas/AccountSetPersonalApiKeysEnabledRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountSetPersonalApiKeysEnabled result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Set Personal Api Keys Enabled
+      tags:
+        - Account Settings
+      x-bruno: Danger Zone/Account Set Personal Api Keys Enabled.bru
+      x-graphql:
+        field: accountSetPersonalApiKeysEnabled
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/toggle-api-key-management-from-non-humans:
+    post:
+      description: >-
+        Flip whether non-human sessions, API keys, may manage API keys, and answer the new value. Off by default: while off, an API key that creates, updates, resets, disables or deletes a key answers 403 forbidden. Only a human session, a member's or the break-glass admin's, may flip it.
+      operationId: accountToggleAPIKeyManagementFromNonHumans
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountToggleAPIKeyManagementFromNonHumans result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Toggle APIKey Management From Non Humans
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Toggle APIKey Management From Non Humans.bru
+      x-graphql:
+        field: accountToggleAPIKeyManagementFromNonHumans
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/toggle-deletion-mark:
+    post:
+      description: >-
+        Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+      operationId: accountToggleDeletionMark
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountToggleDeletionMarkRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountToggleDeletionMark result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Toggle Deletion Mark
+      tags:
+        - Account Settings
+      x-bruno: Danger Zone/Account Toggle Deletion Mark.bru
+      x-graphql:
+        field: accountToggleDeletionMark
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/update-awareness-source-survey:
+    post:
+      description: >-
+        Record the account's answer to the survey of how it heard of the product, and answer it.
+      operationId: accountUpdateAwarenessSourceSurvey
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              completed: false
+            schema:
+              $ref: '#/components/schemas/AccountUpdateAwarenessSourceSurveyRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwarenessSourceSurvey'
+          description: The accountUpdateAwarenessSourceSurvey result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Update Awareness Source Survey
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Update Awareness Source Survey.bru
+      x-graphql:
+        field: accountUpdateAwarenessSourceSurvey
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/update-security-email:
+    post:
+      description: >-
+        Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+      operationId: accountUpdateSecurityEmail
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              securityEmail: example
+            schema:
+              $ref: '#/components/schemas/AccountUpdateSecurityEmailRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The accountUpdateSecurityEmail result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Update Security Email
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Update Security Email.bru
+      x-graphql:
+        field: accountUpdateSecurityEmail
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
   /api-keys:
     get:
       description: List of all API keys for the account.
@@ -170,6 +648,82 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: create
+  /api-keys-manageable-by-non-humans:
+    get:
+      description: >-
+        Whether non-human sessions, API keys, may manage API keys; false until an account admin turns it on.
+      operationId: apiKeysManageableByNonHumans
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The apiKeysManageableByNonHumans result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Api Keys Manageable By Non Humans
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Api Keys Manageable By Non Humans.bru
+      x-graphql:
+        field: apiKeysManageableByNonHumans
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /api-keys-managed-by-non-admins:
+    get:
+      description: >-
+        Whether admins of spaces below the account's top space may manage API keys, as apiKeyEnableNonAdminManagers sets it.
+      operationId: apiKeysManagedByNonAdmins
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The apiKeysManagedByNonAdmins result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: API Keys Managed By Non-Admins
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Api Keys Managed By Non Root Admins.bru
+      x-graphql:
+        field: apiKeysManagedByNonAdmins
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /api-keys/{apiKeyId}:
     delete:
       description: Delete an API key.
@@ -611,6 +1165,44 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /awareness-source-survey:
+    get:
+      description: >-
+        The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
+      operationId: awarenessSourceSurvey
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwarenessSourceSurvey'
+          description: The awarenessSourceSurvey result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Awareness Source Survey
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Awareness Source Survey.bru
+      x-graphql:
+        field: awarenessSourceSurvey
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /default-private-worker-pool-runner-image:
     get:
       description: >-
@@ -680,6 +1272,43 @@ paths:
       x-bruno: Advanced/Account/Id.bru
       x-graphql:
         field: id
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /marked-for-deletion:
+    get:
+      description: Whether the account is marked for deletion.
+      operationId: markedForDeletion
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The markedForDeletion result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Marked For Deletion
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Marked For Deletion.bru
+      x-graphql:
+        field: markedForDeletion
         operation: query
         type: Query
       x-infraweave-cost: standard
@@ -763,6 +1392,125 @@ paths:
       x-bruno: Advanced/Account/Name.bru
       x-graphql:
         field: name
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /oauth-redirect-allowed-hosts:
+    get:
+      description: The account's OAuth redirect host allowlist, in the order it was set.
+      operationId: oauthRedirectAllowedHosts
+      x-infraweave-feature: account-settings
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OauthRedirectAllowedHostsPage'
+          description: The oauthRedirectAllowedHosts result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Oauth Redirect Allowed Hosts
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Oauth Redirect Allowed Hosts.bru
+      x-graphql:
+        field: oauthRedirectAllowedHosts
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
+  /personal-api-keys-enabled:
+    get:
+      description: >-
+        Whether the account's members may create personal API keys; true until an account admin turns it off.
+      operationId: personalApiKeysEnabled
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The personalApiKeysEnabled result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Personal Api Keys Enabled
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Personal Api Keys Enabled.bru
+      x-graphql:
+        field: personalApiKeysEnabled
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /security-email:
+    get:
+      description: >-
+        The account's security contact address; empty until an account admin sets it.
+      operationId: securityEmail
+      x-infraweave-feature: account-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The securityEmail result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Security Email
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Sessions and Security Keys/Security Email.bru
+      x-graphql:
+        field: securityEmail
         operation: query
         type: Query
       x-infraweave-cost: standard
@@ -5115,6 +5863,40 @@ components:
           OIDC-compliant identity provider.
         SECRET: Classic API key with a secret.
       x-graphql-type: APIKeyType
+    AccountSetOAuthRedirectAllowlistRequest:
+      description: The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
+      properties:
+        hosts:
+          items:
+            type: string
+          type: array
+      required:
+        - hosts
+      type: object
+      x-graphql-args-of: accountSetOAuthRedirectAllowlist
+    AccountSetPersonalApiKeysEnabledRequest:
+      description: The arguments of accountSetPersonalApiKeysEnabled not carried in the path.
+      properties:
+        disableExistingKeys:
+          nullable: true
+          type: boolean
+        enabled:
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-args-of: accountSetPersonalApiKeysEnabled
+    AccountToggleDeletionMarkRequest:
+      description: The arguments of accountToggleDeletionMark not carried in the path.
+      properties:
+        description:
+          nullable: true
+          type: string
+        reason:
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: accountToggleDeletionMark
     AccountType:
       description: >-
         The type of the account's owner, as the reference enumerates GitHub account types. An infraweave account belongs to an organization, so it is always ORG.
@@ -5128,6 +5910,27 @@ components:
         UNKNOWN: Invalid "zero value" for the account type.
         USER: Individual user account.
       x-graphql-type: AccountType
+    AccountUpdateAwarenessSourceSurveyRequest:
+      description: The arguments of accountUpdateAwarenessSourceSurvey not carried in the path.
+      properties:
+        completed:
+          type: boolean
+        response:
+          nullable: true
+          type: string
+      required:
+        - completed
+      type: object
+      x-graphql-args-of: accountUpdateAwarenessSourceSurvey
+    AccountUpdateSecurityEmailRequest:
+      description: The arguments of accountUpdateSecurityEmail not carried in the path.
+      properties:
+        securityEmail:
+          type: string
+      required:
+        - securityEmail
+      type: object
+      x-graphql-args-of: accountUpdateSecurityEmail
     Action:
       description: Action represents an action that a user can perform.
       enum:
@@ -5583,6 +6386,17 @@ components:
       required:
         - account
       type: object
+    AwarenessSourceSurvey:
+      properties:
+        completed:
+          type: boolean
+        response:
+          nullable: true
+          type: string
+      required:
+        - completed
+      type: object
+      x-graphql-type: AwarenessSourceSurvey
     AwsIntegration:
       description: |-
         AwsIntegration is an integration with AWS
@@ -7240,6 +8054,19 @@ components:
         - type
       type: object
       x-graphql-type: ModuleResource
+    OauthRedirectAllowedHostsPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            type: string
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
     ObservabilityProcessingStatus:
       description: |-
         ObservabilityProcessingStatus says how far a run's observability data got

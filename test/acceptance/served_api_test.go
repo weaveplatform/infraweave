@@ -64,7 +64,9 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	(&keySteps{a: auth, keys: map[string]*createdKey{}}).register(sc)
 	(&accountSteps{a: auth}).register(sc)
 	(&operatorSteps{a: auth}).register(sc)
-	(&browserSteps{a: auth, jar: newJar()}).register(sc)
+	browser := &browserSteps{a: auth, jar: newJar()}
+	browser.register(sc)
+	(&settingsSteps{a: auth, b: browser}).register(sc)
 	(&kmsSteps{s: s}).register(sc)
 }
 

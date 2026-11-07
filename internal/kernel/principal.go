@@ -96,3 +96,9 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 func (p Principal) Caller() string {
 	return string(p.Kind) + ":" + p.ActorID.String()
 }
+
+// Human reports whether a person acts: a member signed in, or an
+// organization's break-glass admin. Every other kind is a key or a run.
+func (p Principal) Human() bool {
+	return p.Kind == PrincipalUser || p.Kind == PrincipalBreakGlass
+}

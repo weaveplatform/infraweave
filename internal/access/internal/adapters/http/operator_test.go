@@ -197,7 +197,7 @@ func newOpWorld(t *testing.T) *opWorld {
 		"/api/",
 		NewAuthenticator(auth, publicURL).Middleware(isPublic)(api.HandlerWithOptions(
 			api.NewStrictHandlerWithOptions(
-				full{Server: NewServer(auth, keys, base.st)},
+				full{Server: NewServer(auth, keys, base.st, nil)},
 				nil,
 				opts,
 			),

@@ -1912,8 +1912,36 @@ type APIKeyInputOIDC struct {
 // APIKeyType APIKeyType represents the type of an API key.
 type APIKeyType string
 
+// AccountSetOAuthRedirectAllowlistRequest The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
+type AccountSetOAuthRedirectAllowlistRequest struct {
+	Hosts []string `json:"hosts"`
+}
+
+// AccountSetPersonalApiKeysEnabledRequest The arguments of accountSetPersonalApiKeysEnabled not carried in the path.
+type AccountSetPersonalApiKeysEnabledRequest struct {
+	DisableExistingKeys *bool `json:"disableExistingKeys,omitempty"`
+	Enabled             bool  `json:"enabled"`
+}
+
+// AccountToggleDeletionMarkRequest The arguments of accountToggleDeletionMark not carried in the path.
+type AccountToggleDeletionMarkRequest struct {
+	Description *string `json:"description,omitempty"`
+	Reason      *string `json:"reason,omitempty"`
+}
+
 // AccountType The type of the account's owner, as the reference enumerates GitHub account types. An infraweave account belongs to an organization, so it is always ORG.
 type AccountType string
+
+// AccountUpdateAwarenessSourceSurveyRequest The arguments of accountUpdateAwarenessSourceSurvey not carried in the path.
+type AccountUpdateAwarenessSourceSurveyRequest struct {
+	Completed bool    `json:"completed"`
+	Response  *string `json:"response,omitempty"`
+}
+
+// AccountUpdateSecurityEmailRequest The arguments of accountUpdateSecurityEmail not carried in the path.
+type AccountUpdateSecurityEmailRequest struct {
+	SecurityEmail string `json:"securityEmail"`
+}
 
 // Action Action represents an action that a user can perform.
 type Action string
@@ -2085,6 +2113,12 @@ type AuthAccount struct {
 type AuthSessionAccountRequest struct {
 	// Account The ID of an account that admits the caller's member.
 	Account string `json:"account"`
+}
+
+// AwarenessSourceSurvey defines model for AwarenessSourceSurvey.
+type AwarenessSourceSurvey struct {
+	Completed bool    `json:"completed"`
+	Response  *string `json:"response,omitempty"`
 }
 
 // AwsIntegration AwsIntegration is an integration with AWS
@@ -3118,6 +3152,14 @@ type ModuleRepositoryMetadata struct {
 type ModuleResource struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
+}
+
+// OauthRedirectAllowedHostsPage One page of a cursor-paginated list (decision 0003).
+type OauthRedirectAllowedHostsPage struct {
+	Items []string `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
 // ObservabilityProcessingStatus ObservabilityProcessingStatus says how far a run's observability data got
@@ -6182,6 +6224,54 @@ type NotFound = Problem
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
 
+// AccountConfirmDeleteParams defines parameters for AccountConfirmDelete.
+type AccountConfirmDeleteParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountRequestPersonalApiKeysEnablingParams defines parameters for AccountRequestPersonalApiKeysEnabling.
+type AccountRequestPersonalApiKeysEnablingParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountSetOAuthRedirectAllowlistParams defines parameters for AccountSetOAuthRedirectAllowlist.
+type AccountSetOAuthRedirectAllowlistParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountSetPersonalApiKeysEnabledParams defines parameters for AccountSetPersonalApiKeysEnabled.
+type AccountSetPersonalApiKeysEnabledParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountToggleAPIKeyManagementFromNonHumansParams defines parameters for AccountToggleAPIKeyManagementFromNonHumans.
+type AccountToggleAPIKeyManagementFromNonHumansParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountToggleDeletionMarkParams defines parameters for AccountToggleDeletionMark.
+type AccountToggleDeletionMarkParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountUpdateAwarenessSourceSurveyParams defines parameters for AccountUpdateAwarenessSourceSurvey.
+type AccountUpdateAwarenessSourceSurveyParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AccountUpdateSecurityEmailParams defines parameters for AccountUpdateSecurityEmail.
+type AccountUpdateSecurityEmailParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // ApiKeysParams defines parameters for ApiKeys.
 type ApiKeysParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -6229,6 +6319,15 @@ type ApiKeyUserParams struct {
 
 // MessageQueueStatsParams defines parameters for MessageQueueStats.
 type MessageQueueStatsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// OauthRedirectAllowedHostsParams defines parameters for OauthRedirectAllowedHosts.
+type OauthRedirectAllowedHostsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 
@@ -6596,6 +6695,21 @@ type StateUploadUrlParams struct {
 
 // ApiKeyEnableNonAdminManagersJSONRequestBody defines body for ApiKeyEnableNonAdminManagers for application/json ContentType.
 type ApiKeyEnableNonAdminManagersJSONRequestBody = ApiKeyEnableNonAdminManagersRequest
+
+// AccountSetOAuthRedirectAllowlistJSONRequestBody defines body for AccountSetOAuthRedirectAllowlist for application/json ContentType.
+type AccountSetOAuthRedirectAllowlistJSONRequestBody = AccountSetOAuthRedirectAllowlistRequest
+
+// AccountSetPersonalApiKeysEnabledJSONRequestBody defines body for AccountSetPersonalApiKeysEnabled for application/json ContentType.
+type AccountSetPersonalApiKeysEnabledJSONRequestBody = AccountSetPersonalApiKeysEnabledRequest
+
+// AccountToggleDeletionMarkJSONRequestBody defines body for AccountToggleDeletionMark for application/json ContentType.
+type AccountToggleDeletionMarkJSONRequestBody = AccountToggleDeletionMarkRequest
+
+// AccountUpdateAwarenessSourceSurveyJSONRequestBody defines body for AccountUpdateAwarenessSourceSurvey for application/json ContentType.
+type AccountUpdateAwarenessSourceSurveyJSONRequestBody = AccountUpdateAwarenessSourceSurveyRequest
+
+// AccountUpdateSecurityEmailJSONRequestBody defines body for AccountUpdateSecurityEmail for application/json ContentType.
+type AccountUpdateSecurityEmailJSONRequestBody = AccountUpdateSecurityEmailRequest
 
 // ApiKeyCreateJSONRequestBody defines body for ApiKeyCreate for application/json ContentType.
 type ApiKeyCreateJSONRequestBody = ApiKeyInput
@@ -7828,6 +7942,131 @@ type ClientInterface interface {
 	// Corresponds with PUT /account/api-key-non-admin-managers (the `ApiKeyEnableNonAdminManagers` operationId).
 	ApiKeyEnableNonAdminManagers(ctx context.Context, body ApiKeyEnableNonAdminManagersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AccountCanBeDeleted Account Can Be Deleted
+	//
+	// Whether accountConfirmDelete would delete the account now: true while the account is marked for deletion and is not its organization's last account. infraweave sets no waiting period, so a mark allows deletion at once.
+	//
+	// Corresponds with GET /account/can-be-deleted (the `AccountCanBeDeleted` operationId).
+	AccountCanBeDeleted(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountCanBeDeletedAt Account Can Be Deleted At
+	//
+	// When the account can be deleted, in Unix seconds: the time of its deletion mark, as infraweave sets no waiting period; 0 while the account is not marked.
+	//
+	// Corresponds with GET /account/can-be-deleted-at (the `AccountCanBeDeletedAt` operationId).
+	AccountCanBeDeletedAt(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountConfirmDelete Account Confirm Delete
+	//
+	// Delete the caller's account and everything it holds: its API keys, sessions, admitted members and account limits, in one transaction. Members stay in the organization. An account not marked for deletion, or the organization's last account, answers 409 invalid-state.
+	//
+	// Corresponds with POST /account/confirm-delete (the `AccountConfirmDelete` operationId).
+	AccountConfirmDelete(ctx context.Context, params *AccountConfirmDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountRequestPersonalApiKeysEnabling Account Request Personal Api Keys Enabling
+	//
+	// Ask the account's admins to enable personal API keys. The request is recorded in the account's audit trail; no message is delivered.
+	//
+	// Corresponds with POST /account/request-personal-api-keys-enabling (the `AccountRequestPersonalApiKeysEnabling` operationId).
+	AccountRequestPersonalApiKeysEnabling(ctx context.Context, params *AccountRequestPersonalApiKeysEnablingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetOAuthRedirectAllowlistWithBody Account Set OAuth Redirect Allowlist
+	//
+	// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+	AccountSetOAuthRedirectAllowlistWithBody(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetOAuthRedirectAllowlist Account Set OAuth Redirect Allowlist
+	//
+	// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+	AccountSetOAuthRedirectAllowlist(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetPersonalApiKeysEnabledWithBody Account Set Personal Api Keys Enabled
+	//
+	// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+	AccountSetPersonalApiKeysEnabledWithBody(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetPersonalApiKeysEnabled Account Set Personal Api Keys Enabled
+	//
+	// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+	AccountSetPersonalApiKeysEnabled(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, body AccountSetPersonalApiKeysEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountToggleAPIKeyManagementFromNonHumans Account Toggle APIKey Management From Non Humans
+	//
+	// Flip whether non-human sessions, API keys, may manage API keys, and answer the new value. Off by default: while off, an API key that creates, updates, resets, disables or deletes a key answers 403 forbidden. Only a human session, a member's or the break-glass admin's, may flip it.
+	//
+	// Corresponds with POST /account/toggle-api-key-management-from-non-humans (the `AccountToggleAPIKeyManagementFromNonHumans` operationId).
+	AccountToggleAPIKeyManagementFromNonHumans(ctx context.Context, params *AccountToggleAPIKeyManagementFromNonHumansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountToggleDeletionMarkWithBody Account Toggle Deletion Mark
+	//
+	// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+	AccountToggleDeletionMarkWithBody(ctx context.Context, params *AccountToggleDeletionMarkParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountToggleDeletionMark Account Toggle Deletion Mark
+	//
+	// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+	AccountToggleDeletionMark(ctx context.Context, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateAwarenessSourceSurveyWithBody Account Update Awareness Source Survey
+	//
+	// Record the account's answer to the survey of how it heard of the product, and answer it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+	AccountUpdateAwarenessSourceSurveyWithBody(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateAwarenessSourceSurvey Account Update Awareness Source Survey
+	//
+	// Record the account's answer to the survey of how it heard of the product, and answer it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+	AccountUpdateAwarenessSourceSurvey(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateSecurityEmailWithBody Account Update Security Email
+	//
+	// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+	AccountUpdateSecurityEmailWithBody(ctx context.Context, params *AccountUpdateSecurityEmailParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateSecurityEmail Account Update Security Email
+	//
+	// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+	AccountUpdateSecurityEmail(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ApiKeys List API Keys
 	//
 	// List of all API keys for the account.
@@ -7852,6 +8091,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api-keys (the `ApiKeyCreate` operationId).
 	ApiKeyCreate(ctx context.Context, params *ApiKeyCreateParams, body ApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeysManageableByNonHumans Api Keys Manageable By Non Humans
+	//
+	// Whether non-human sessions, API keys, may manage API keys; false until an account admin turns it on.
+	//
+	// Corresponds with GET /api-keys-manageable-by-non-humans (the `ApiKeysManageableByNonHumans` operationId).
+	ApiKeysManageableByNonHumans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeysManagedByNonAdmins API Keys Managed By Non-Admins
+	//
+	// Whether admins of spaces below the account's top space may manage API keys, as apiKeyEnableNonAdminManagers sets it.
+	//
+	// Corresponds with GET /api-keys-managed-by-non-admins (the `ApiKeysManagedByNonAdmins` operationId).
+	ApiKeysManagedByNonAdmins(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeyDelete Delete API Key
 	//
@@ -7974,6 +8227,13 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AwarenessSourceSurvey Awareness Source Survey
+	//
+	// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
+	//
+	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
+	AwarenessSourceSurvey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 	//
 	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -7987,6 +8247,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /id (the `Id` operationId).
 	Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MarkedForDeletion Marked For Deletion
+	//
+	// Whether the account is marked for deletion.
+	//
+	// Corresponds with GET /marked-for-deletion (the `MarkedForDeletion` operationId).
+	MarkedForDeletion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MessageQueueStats Message Queue Stats
 	//
@@ -8003,6 +8270,27 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /name (the `Name` operationId).
 	Name(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OauthRedirectAllowedHosts Oauth Redirect Allowed Hosts
+	//
+	// The account's OAuth redirect host allowlist, in the order it was set.
+	//
+	// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
+	OauthRedirectAllowedHosts(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PersonalApiKeysEnabled Personal Api Keys Enabled
+	//
+	// Whether the account's members may create personal API keys; true until an account admin turns it off.
+	//
+	// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
+	PersonalApiKeysEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SecurityEmail Security Email
+	//
+	// The account's security contact address; empty until an account admin sets it.
+	//
+	// Corresponds with GET /security-email (the `SecurityEmail` operationId).
+	SecurityEmail(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SessionDeleteAll Session Delete All
 	//
@@ -8939,6 +9227,281 @@ func (c *Client) ApiKeyEnableNonAdminManagers(ctx context.Context, body ApiKeyEn
 	return c.Client.Do(req)
 }
 
+// AccountCanBeDeleted Account Can Be Deleted
+//
+// Whether accountConfirmDelete would delete the account now: true while the account is marked for deletion and is not its organization's last account. infraweave sets no waiting period, so a mark allows deletion at once.
+//
+// Corresponds with GET /account/can-be-deleted (the `AccountCanBeDeleted` operationId).
+func (c *Client) AccountCanBeDeleted(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountCanBeDeletedRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountCanBeDeletedAt Account Can Be Deleted At
+//
+// When the account can be deleted, in Unix seconds: the time of its deletion mark, as infraweave sets no waiting period; 0 while the account is not marked.
+//
+// Corresponds with GET /account/can-be-deleted-at (the `AccountCanBeDeletedAt` operationId).
+func (c *Client) AccountCanBeDeletedAt(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountCanBeDeletedAtRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountConfirmDelete Account Confirm Delete
+//
+// Delete the caller's account and everything it holds: its API keys, sessions, admitted members and account limits, in one transaction. Members stay in the organization. An account not marked for deletion, or the organization's last account, answers 409 invalid-state.
+//
+// Corresponds with POST /account/confirm-delete (the `AccountConfirmDelete` operationId).
+func (c *Client) AccountConfirmDelete(ctx context.Context, params *AccountConfirmDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountConfirmDeleteRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountRequestPersonalApiKeysEnabling Account Request Personal Api Keys Enabling
+//
+// Ask the account's admins to enable personal API keys. The request is recorded in the account's audit trail; no message is delivered.
+//
+// Corresponds with POST /account/request-personal-api-keys-enabling (the `AccountRequestPersonalApiKeysEnabling` operationId).
+func (c *Client) AccountRequestPersonalApiKeysEnabling(ctx context.Context, params *AccountRequestPersonalApiKeysEnablingParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountRequestPersonalApiKeysEnablingRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetOAuthRedirectAllowlistWithBody Account Set OAuth Redirect Allowlist
+//
+// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+func (c *Client) AccountSetOAuthRedirectAllowlistWithBody(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetOAuthRedirectAllowlistRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetOAuthRedirectAllowlist Account Set OAuth Redirect Allowlist
+//
+// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+func (c *Client) AccountSetOAuthRedirectAllowlist(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetOAuthRedirectAllowlistRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetPersonalApiKeysEnabledWithBody Account Set Personal Api Keys Enabled
+//
+// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+func (c *Client) AccountSetPersonalApiKeysEnabledWithBody(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetPersonalApiKeysEnabledRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetPersonalApiKeysEnabled Account Set Personal Api Keys Enabled
+//
+// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+func (c *Client) AccountSetPersonalApiKeysEnabled(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, body AccountSetPersonalApiKeysEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetPersonalApiKeysEnabledRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountToggleAPIKeyManagementFromNonHumans Account Toggle APIKey Management From Non Humans
+//
+// Flip whether non-human sessions, API keys, may manage API keys, and answer the new value. Off by default: while off, an API key that creates, updates, resets, disables or deletes a key answers 403 forbidden. Only a human session, a member's or the break-glass admin's, may flip it.
+//
+// Corresponds with POST /account/toggle-api-key-management-from-non-humans (the `AccountToggleAPIKeyManagementFromNonHumans` operationId).
+func (c *Client) AccountToggleAPIKeyManagementFromNonHumans(ctx context.Context, params *AccountToggleAPIKeyManagementFromNonHumansParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountToggleAPIKeyManagementFromNonHumansRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountToggleDeletionMarkWithBody Account Toggle Deletion Mark
+//
+// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+func (c *Client) AccountToggleDeletionMarkWithBody(ctx context.Context, params *AccountToggleDeletionMarkParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountToggleDeletionMarkRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountToggleDeletionMark Account Toggle Deletion Mark
+//
+// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+func (c *Client) AccountToggleDeletionMark(ctx context.Context, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountToggleDeletionMarkRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateAwarenessSourceSurveyWithBody Account Update Awareness Source Survey
+//
+// Record the account's answer to the survey of how it heard of the product, and answer it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+func (c *Client) AccountUpdateAwarenessSourceSurveyWithBody(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateAwarenessSourceSurveyRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateAwarenessSourceSurvey Account Update Awareness Source Survey
+//
+// Record the account's answer to the survey of how it heard of the product, and answer it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+func (c *Client) AccountUpdateAwarenessSourceSurvey(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateAwarenessSourceSurveyRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateSecurityEmailWithBody Account Update Security Email
+//
+// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+func (c *Client) AccountUpdateSecurityEmailWithBody(ctx context.Context, params *AccountUpdateSecurityEmailParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateSecurityEmailRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateSecurityEmail Account Update Security Email
+//
+// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+func (c *Client) AccountUpdateSecurityEmail(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateSecurityEmailRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ApiKeys List API Keys
 //
 // List of all API keys for the account.
@@ -8984,6 +9547,40 @@ func (c *Client) ApiKeyCreateWithBody(ctx context.Context, params *ApiKeyCreateP
 // Corresponds with POST /api-keys (the `ApiKeyCreate` operationId).
 func (c *Client) ApiKeyCreate(ctx context.Context, params *ApiKeyCreateParams, body ApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewApiKeyCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeysManageableByNonHumans Api Keys Manageable By Non Humans
+//
+// Whether non-human sessions, API keys, may manage API keys; false until an account admin turns it on.
+//
+// Corresponds with GET /api-keys-manageable-by-non-humans (the `ApiKeysManageableByNonHumans` operationId).
+func (c *Client) ApiKeysManageableByNonHumans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeysManageableByNonHumansRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeysManagedByNonAdmins API Keys Managed By Non-Admins
+//
+// Whether admins of spaces below the account's top space may manage API keys, as apiKeyEnableNonAdminManagers sets it.
+//
+// Corresponds with GET /api-keys-managed-by-non-admins (the `ApiKeysManagedByNonAdmins` operationId).
+func (c *Client) ApiKeysManagedByNonAdmins(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeysManagedByNonAdminsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -9245,6 +9842,23 @@ func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body 
 	return c.Client.Do(req)
 }
 
+// AwarenessSourceSurvey Awareness Source Survey
+//
+// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
+//
+// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
+func (c *Client) AwarenessSourceSurvey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwarenessSourceSurveyRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 //
 // The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -9269,6 +9883,23 @@ func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEdi
 // Corresponds with GET /id (the `Id` operationId).
 func (c *Client) Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewIdRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MarkedForDeletion Marked For Deletion
+//
+// Whether the account is marked for deletion.
+//
+// Corresponds with GET /marked-for-deletion (the `MarkedForDeletion` operationId).
+func (c *Client) MarkedForDeletion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMarkedForDeletionRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -9305,6 +9936,57 @@ func (c *Client) MessageQueueStats(ctx context.Context, params *MessageQueueStat
 // Corresponds with GET /name (the `Name` operationId).
 func (c *Client) Name(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewNameRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OauthRedirectAllowedHosts Oauth Redirect Allowed Hosts
+//
+// The account's OAuth redirect host allowlist, in the order it was set.
+//
+// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
+func (c *Client) OauthRedirectAllowedHosts(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOauthRedirectAllowedHostsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PersonalApiKeysEnabled Personal Api Keys Enabled
+//
+// Whether the account's members may create personal API keys; true until an account admin turns it off.
+//
+// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
+func (c *Client) PersonalApiKeysEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPersonalApiKeysEnabledRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SecurityEmail Security Email
+//
+// The account's security contact address; empty until an account admin sets it.
+//
+// Corresponds with GET /security-email (the `SecurityEmail` operationId).
+func (c *Client) SecurityEmail(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSecurityEmailRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -11305,6 +11987,461 @@ func NewApiKeyEnableNonAdminManagersRequestWithBody(server string, contentType s
 	return req, nil
 }
 
+// NewAccountCanBeDeletedRequest constructs an http.Request for the AccountCanBeDeleted method
+func NewAccountCanBeDeletedRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/can-be-deleted")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAccountCanBeDeletedAtRequest constructs an http.Request for the AccountCanBeDeletedAt method
+func NewAccountCanBeDeletedAtRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/can-be-deleted-at")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAccountConfirmDeleteRequest constructs an http.Request for the AccountConfirmDelete method
+func NewAccountConfirmDeleteRequest(server string, params *AccountConfirmDeleteParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/confirm-delete")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountRequestPersonalApiKeysEnablingRequest constructs an http.Request for the AccountRequestPersonalApiKeysEnabling method
+func NewAccountRequestPersonalApiKeysEnablingRequest(server string, params *AccountRequestPersonalApiKeysEnablingParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/request-personal-api-keys-enabling")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountSetOAuthRedirectAllowlistRequest calls the generic AccountSetOAuthRedirectAllowlist builder with application/json body
+func NewAccountSetOAuthRedirectAllowlistRequest(server string, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountSetOAuthRedirectAllowlistRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountSetOAuthRedirectAllowlistRequestWithBody constructs an http.Request for the AccountSetOAuthRedirectAllowlist method, with any body, and a specified content type
+func NewAccountSetOAuthRedirectAllowlistRequestWithBody(server string, params *AccountSetOAuthRedirectAllowlistParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/set-o-auth-redirect-allowlist")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountSetPersonalApiKeysEnabledRequest calls the generic AccountSetPersonalApiKeysEnabled builder with application/json body
+func NewAccountSetPersonalApiKeysEnabledRequest(server string, params *AccountSetPersonalApiKeysEnabledParams, body AccountSetPersonalApiKeysEnabledJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountSetPersonalApiKeysEnabledRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountSetPersonalApiKeysEnabledRequestWithBody constructs an http.Request for the AccountSetPersonalApiKeysEnabled method, with any body, and a specified content type
+func NewAccountSetPersonalApiKeysEnabledRequestWithBody(server string, params *AccountSetPersonalApiKeysEnabledParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/set-personal-api-keys-enabled")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountToggleAPIKeyManagementFromNonHumansRequest constructs an http.Request for the AccountToggleAPIKeyManagementFromNonHumans method
+func NewAccountToggleAPIKeyManagementFromNonHumansRequest(server string, params *AccountToggleAPIKeyManagementFromNonHumansParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/toggle-api-key-management-from-non-humans")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountToggleDeletionMarkRequest calls the generic AccountToggleDeletionMark builder with application/json body
+func NewAccountToggleDeletionMarkRequest(server string, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountToggleDeletionMarkRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountToggleDeletionMarkRequestWithBody constructs an http.Request for the AccountToggleDeletionMark method, with any body, and a specified content type
+func NewAccountToggleDeletionMarkRequestWithBody(server string, params *AccountToggleDeletionMarkParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/toggle-deletion-mark")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountUpdateAwarenessSourceSurveyRequest calls the generic AccountUpdateAwarenessSourceSurvey builder with application/json body
+func NewAccountUpdateAwarenessSourceSurveyRequest(server string, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountUpdateAwarenessSourceSurveyRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountUpdateAwarenessSourceSurveyRequestWithBody constructs an http.Request for the AccountUpdateAwarenessSourceSurvey method, with any body, and a specified content type
+func NewAccountUpdateAwarenessSourceSurveyRequestWithBody(server string, params *AccountUpdateAwarenessSourceSurveyParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/update-awareness-source-survey")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountUpdateSecurityEmailRequest calls the generic AccountUpdateSecurityEmail builder with application/json body
+func NewAccountUpdateSecurityEmailRequest(server string, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountUpdateSecurityEmailRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountUpdateSecurityEmailRequestWithBody constructs an http.Request for the AccountUpdateSecurityEmail method, with any body, and a specified content type
+func NewAccountUpdateSecurityEmailRequestWithBody(server string, params *AccountUpdateSecurityEmailParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/update-security-email")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewApiKeysRequest constructs an http.Request for the ApiKeys method
 func NewApiKeysRequest(server string, params *ApiKeysParams) (*http.Request, error) {
 	var err error
@@ -11421,6 +12558,60 @@ func NewApiKeyCreateRequestWithBody(server string, params *ApiKeyCreateParams, c
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewApiKeysManageableByNonHumansRequest constructs an http.Request for the ApiKeysManageableByNonHumans method
+func NewApiKeysManageableByNonHumansRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-keys-manageable-by-non-humans")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewApiKeysManagedByNonAdminsRequest constructs an http.Request for the ApiKeysManagedByNonAdmins method
+func NewApiKeysManagedByNonAdminsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-keys-managed-by-non-admins")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -11824,6 +13015,33 @@ func NewApiKeyUserRequestWithBody(server string, params *ApiKeyUserParams, conte
 	return req, nil
 }
 
+// NewAwarenessSourceSurveyRequest constructs an http.Request for the AwarenessSourceSurvey method
+func NewAwarenessSourceSurveyRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/awareness-source-survey")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDefaultPrivateWorkerPoolRunnerImageRequest constructs an http.Request for the DefaultPrivateWorkerPoolRunnerImage method
 func NewDefaultPrivateWorkerPoolRunnerImageRequest(server string) (*http.Request, error) {
 	var err error
@@ -11861,6 +13079,33 @@ func NewIdRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/id")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMarkedForDeletionRequest constructs an http.Request for the MarkedForDeletion method
+func NewMarkedForDeletionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/marked-for-deletion")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11954,6 +13199,126 @@ func NewNameRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/name")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOauthRedirectAllowedHostsRequest constructs an http.Request for the OauthRedirectAllowedHosts method
+func NewOauthRedirectAllowedHostsRequest(server string, params *OauthRedirectAllowedHostsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/oauth-redirect-allowed-hosts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPersonalApiKeysEnabledRequest constructs an http.Request for the PersonalApiKeysEnabled method
+func NewPersonalApiKeysEnabledRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/personal-api-keys-enabled")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSecurityEmailRequest constructs an http.Request for the SecurityEmail method
+func NewSecurityEmailRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/security-email")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -16332,6 +17697,141 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /account/api-key-non-admin-managers (the `ApiKeyEnableNonAdminManagers` operationId).
 	ApiKeyEnableNonAdminManagersWithResponse(ctx context.Context, body ApiKeyEnableNonAdminManagersJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyEnableNonAdminManagersResponse, error)
 
+	// AccountCanBeDeletedWithResponse Account Can Be Deleted
+	//
+	// Whether accountConfirmDelete would delete the account now: true while the account is marked for deletion and is not its organization's last account. infraweave sets no waiting period, so a mark allows deletion at once.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /account/can-be-deleted (the `AccountCanBeDeleted` operationId).
+	AccountCanBeDeletedWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AccountCanBeDeletedResponse, error)
+
+	// AccountCanBeDeletedAtWithResponse Account Can Be Deleted At
+	//
+	// When the account can be deleted, in Unix seconds: the time of its deletion mark, as infraweave sets no waiting period; 0 while the account is not marked.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /account/can-be-deleted-at (the `AccountCanBeDeletedAt` operationId).
+	AccountCanBeDeletedAtWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AccountCanBeDeletedAtResponse, error)
+
+	// AccountConfirmDeleteWithResponse Account Confirm Delete
+	//
+	// Delete the caller's account and everything it holds: its API keys, sessions, admitted members and account limits, in one transaction. Members stay in the organization. An account not marked for deletion, or the organization's last account, answers 409 invalid-state.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/confirm-delete (the `AccountConfirmDelete` operationId).
+	AccountConfirmDeleteWithResponse(ctx context.Context, params *AccountConfirmDeleteParams, reqEditors ...RequestEditorFn) (*AccountConfirmDeleteResponse, error)
+
+	// AccountRequestPersonalApiKeysEnablingWithResponse Account Request Personal Api Keys Enabling
+	//
+	// Ask the account's admins to enable personal API keys. The request is recorded in the account's audit trail; no message is delivered.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/request-personal-api-keys-enabling (the `AccountRequestPersonalApiKeysEnabling` operationId).
+	AccountRequestPersonalApiKeysEnablingWithResponse(ctx context.Context, params *AccountRequestPersonalApiKeysEnablingParams, reqEditors ...RequestEditorFn) (*AccountRequestPersonalApiKeysEnablingResponse, error)
+
+	// AccountSetOAuthRedirectAllowlistWithBodyWithResponse Account Set OAuth Redirect Allowlist
+	//
+	// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+	AccountSetOAuthRedirectAllowlistWithBodyWithResponse(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetOAuthRedirectAllowlistResponse, error)
+
+	// AccountSetOAuthRedirectAllowlistWithResponse Account Set OAuth Redirect Allowlist
+	//
+	// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+	AccountSetOAuthRedirectAllowlistWithResponse(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetOAuthRedirectAllowlistResponse, error)
+
+	// AccountSetPersonalApiKeysEnabledWithBodyWithResponse Account Set Personal Api Keys Enabled
+	//
+	// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+	AccountSetPersonalApiKeysEnabledWithBodyWithResponse(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetPersonalApiKeysEnabledResponse, error)
+
+	// AccountSetPersonalApiKeysEnabledWithResponse Account Set Personal Api Keys Enabled
+	//
+	// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+	AccountSetPersonalApiKeysEnabledWithResponse(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, body AccountSetPersonalApiKeysEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetPersonalApiKeysEnabledResponse, error)
+
+	// AccountToggleAPIKeyManagementFromNonHumansWithResponse Account Toggle APIKey Management From Non Humans
+	//
+	// Flip whether non-human sessions, API keys, may manage API keys, and answer the new value. Off by default: while off, an API key that creates, updates, resets, disables or deletes a key answers 403 forbidden. Only a human session, a member's or the break-glass admin's, may flip it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/toggle-api-key-management-from-non-humans (the `AccountToggleAPIKeyManagementFromNonHumans` operationId).
+	AccountToggleAPIKeyManagementFromNonHumansWithResponse(ctx context.Context, params *AccountToggleAPIKeyManagementFromNonHumansParams, reqEditors ...RequestEditorFn) (*AccountToggleAPIKeyManagementFromNonHumansResponse, error)
+
+	// AccountToggleDeletionMarkWithBodyWithResponse Account Toggle Deletion Mark
+	//
+	// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+	AccountToggleDeletionMarkWithBodyWithResponse(ctx context.Context, params *AccountToggleDeletionMarkParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountToggleDeletionMarkResponse, error)
+
+	// AccountToggleDeletionMarkWithResponse Account Toggle Deletion Mark
+	//
+	// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+	AccountToggleDeletionMarkWithResponse(ctx context.Context, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountToggleDeletionMarkResponse, error)
+
+	// AccountUpdateAwarenessSourceSurveyWithBodyWithResponse Account Update Awareness Source Survey
+	//
+	// Record the account's answer to the survey of how it heard of the product, and answer it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+	AccountUpdateAwarenessSourceSurveyWithBodyWithResponse(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateAwarenessSourceSurveyResponse, error)
+
+	// AccountUpdateAwarenessSourceSurveyWithResponse Account Update Awareness Source Survey
+	//
+	// Record the account's answer to the survey of how it heard of the product, and answer it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+	AccountUpdateAwarenessSourceSurveyWithResponse(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateAwarenessSourceSurveyResponse, error)
+
+	// AccountUpdateSecurityEmailWithBodyWithResponse Account Update Security Email
+	//
+	// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+	AccountUpdateSecurityEmailWithBodyWithResponse(ctx context.Context, params *AccountUpdateSecurityEmailParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateSecurityEmailResponse, error)
+
+	// AccountUpdateSecurityEmailWithResponse Account Update Security Email
+	//
+	// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+	AccountUpdateSecurityEmailWithResponse(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateSecurityEmailResponse, error)
+
 	// ApiKeysWithResponse List API Keys
 	//
 	// List of all API keys for the account.
@@ -16358,6 +17858,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api-keys (the `ApiKeyCreate` operationId).
 	ApiKeyCreateWithResponse(ctx context.Context, params *ApiKeyCreateParams, body ApiKeyCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyCreateResponse, error)
+
+	// ApiKeysManageableByNonHumansWithResponse Api Keys Manageable By Non Humans
+	//
+	// Whether non-human sessions, API keys, may manage API keys; false until an account admin turns it on.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api-keys-manageable-by-non-humans (the `ApiKeysManageableByNonHumans` operationId).
+	ApiKeysManageableByNonHumansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ApiKeysManageableByNonHumansResponse, error)
+
+	// ApiKeysManagedByNonAdminsWithResponse API Keys Managed By Non-Admins
+	//
+	// Whether admins of spaces below the account's top space may manage API keys, as apiKeyEnableNonAdminManagers sets it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api-keys-managed-by-non-admins (the `ApiKeysManagedByNonAdmins` operationId).
+	ApiKeysManagedByNonAdminsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ApiKeysManagedByNonAdminsResponse, error)
 
 	// ApiKeyDeleteWithResponse Delete API Key
 	//
@@ -16490,6 +18008,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUserWithResponse(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUserResponse, error)
 
+	// AwarenessSourceSurveyWithResponse Awareness Source Survey
+	//
+	// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
+	AwarenessSourceSurveyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwarenessSourceSurveyResponse, error)
+
 	// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 	//
 	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -16507,6 +18034,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /id (the `Id` operationId).
 	IdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*IdResponse, error)
+
+	// MarkedForDeletionWithResponse Marked For Deletion
+	//
+	// Whether the account is marked for deletion.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /marked-for-deletion (the `MarkedForDeletion` operationId).
+	MarkedForDeletionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*MarkedForDeletionResponse, error)
 
 	// MessageQueueStatsWithResponse Message Queue Stats
 	//
@@ -16527,6 +18063,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /name (the `Name` operationId).
 	NameWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*NameResponse, error)
+
+	// OauthRedirectAllowedHostsWithResponse Oauth Redirect Allowed Hosts
+	//
+	// The account's OAuth redirect host allowlist, in the order it was set.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
+	OauthRedirectAllowedHostsWithResponse(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*OauthRedirectAllowedHostsResponse, error)
+
+	// PersonalApiKeysEnabledWithResponse Personal Api Keys Enabled
+	//
+	// Whether the account's members may create personal API keys; true until an account admin turns it off.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
+	PersonalApiKeysEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PersonalApiKeysEnabledResponse, error)
+
+	// SecurityEmailWithResponse Security Email
+	//
+	// The account's security contact address; empty until an account admin sets it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /security-email (the `SecurityEmail` operationId).
+	SecurityEmailWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SecurityEmailResponse, error)
 
 	// SessionDeleteAllWithResponse Session Delete All
 	//
@@ -17603,6 +19166,998 @@ func (r ApiKeyEnableNonAdminManagersResponse) ContentType() string {
 	return ""
 }
 
+// AccountCanBeDeletedResponse200Headers the declared response headers of an HTTP 200 response for AccountCanBeDeleted
+type AccountCanBeDeletedResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountCanBeDeletedResponse429Headers the declared response headers of an HTTP 429 response for AccountCanBeDeleted
+type AccountCanBeDeletedResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountCanBeDeletedResponse503Headers the declared response headers of an HTTP 503 response for AccountCanBeDeleted
+type AccountCanBeDeletedResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountCanBeDeletedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountCanBeDeletedResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountCanBeDeletedResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountCanBeDeletedResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountCanBeDeletedResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountCanBeDeletedResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountCanBeDeletedResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountCanBeDeletedResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountCanBeDeletedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountCanBeDeletedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountCanBeDeletedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountCanBeDeletedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountCanBeDeletedAtResponse200Headers the declared response headers of an HTTP 200 response for AccountCanBeDeletedAt
+type AccountCanBeDeletedAtResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountCanBeDeletedAtResponse429Headers the declared response headers of an HTTP 429 response for AccountCanBeDeletedAt
+type AccountCanBeDeletedAtResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountCanBeDeletedAtResponse503Headers the declared response headers of an HTTP 503 response for AccountCanBeDeletedAt
+type AccountCanBeDeletedAtResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountCanBeDeletedAtResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *int32
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountCanBeDeletedAtResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountCanBeDeletedAtResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountCanBeDeletedAtResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountCanBeDeletedAtResponse) GetJSON200() *int32 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountCanBeDeletedAtResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountCanBeDeletedAtResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountCanBeDeletedAtResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountCanBeDeletedAtResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountCanBeDeletedAtResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountCanBeDeletedAtResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountCanBeDeletedAtResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountConfirmDeleteResponse200Headers the declared response headers of an HTTP 200 response for AccountConfirmDelete
+type AccountConfirmDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountConfirmDeleteResponse429Headers the declared response headers of an HTTP 429 response for AccountConfirmDelete
+type AccountConfirmDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountConfirmDeleteResponse503Headers the declared response headers of an HTTP 503 response for AccountConfirmDelete
+type AccountConfirmDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountConfirmDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountConfirmDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountConfirmDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountConfirmDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountConfirmDeleteResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountConfirmDeleteResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountConfirmDeleteResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountConfirmDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountConfirmDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountConfirmDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountConfirmDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountConfirmDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountConfirmDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountConfirmDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountRequestPersonalApiKeysEnablingResponse200Headers the declared response headers of an HTTP 200 response for AccountRequestPersonalApiKeysEnabling
+type AccountRequestPersonalApiKeysEnablingResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountRequestPersonalApiKeysEnablingResponse429Headers the declared response headers of an HTTP 429 response for AccountRequestPersonalApiKeysEnabling
+type AccountRequestPersonalApiKeysEnablingResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountRequestPersonalApiKeysEnablingResponse503Headers the declared response headers of an HTTP 503 response for AccountRequestPersonalApiKeysEnabling
+type AccountRequestPersonalApiKeysEnablingResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountRequestPersonalApiKeysEnablingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountRequestPersonalApiKeysEnablingResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountRequestPersonalApiKeysEnablingResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountRequestPersonalApiKeysEnablingResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountRequestPersonalApiKeysEnablingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountRequestPersonalApiKeysEnablingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountRequestPersonalApiKeysEnablingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountRequestPersonalApiKeysEnablingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountSetOAuthRedirectAllowlistResponse200Headers the declared response headers of an HTTP 200 response for AccountSetOAuthRedirectAllowlist
+type AccountSetOAuthRedirectAllowlistResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetOAuthRedirectAllowlistResponse429Headers the declared response headers of an HTTP 429 response for AccountSetOAuthRedirectAllowlist
+type AccountSetOAuthRedirectAllowlistResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetOAuthRedirectAllowlistResponse503Headers the declared response headers of an HTTP 503 response for AccountSetOAuthRedirectAllowlist
+type AccountSetOAuthRedirectAllowlistResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountSetOAuthRedirectAllowlistResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]string
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountSetOAuthRedirectAllowlistResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountSetOAuthRedirectAllowlistResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountSetOAuthRedirectAllowlistResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountSetOAuthRedirectAllowlistResponse) GetJSON200() *[]string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountSetOAuthRedirectAllowlistResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountSetOAuthRedirectAllowlistResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountSetOAuthRedirectAllowlistResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountSetOAuthRedirectAllowlistResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountSetOAuthRedirectAllowlistResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountSetOAuthRedirectAllowlistResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountSetOAuthRedirectAllowlistResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountSetOAuthRedirectAllowlistResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountSetOAuthRedirectAllowlistResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountSetPersonalApiKeysEnabledResponse200Headers the declared response headers of an HTTP 200 response for AccountSetPersonalApiKeysEnabled
+type AccountSetPersonalApiKeysEnabledResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetPersonalApiKeysEnabledResponse429Headers the declared response headers of an HTTP 429 response for AccountSetPersonalApiKeysEnabled
+type AccountSetPersonalApiKeysEnabledResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetPersonalApiKeysEnabledResponse503Headers the declared response headers of an HTTP 503 response for AccountSetPersonalApiKeysEnabled
+type AccountSetPersonalApiKeysEnabledResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountSetPersonalApiKeysEnabledResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountSetPersonalApiKeysEnabledResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountSetPersonalApiKeysEnabledResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountSetPersonalApiKeysEnabledResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountSetPersonalApiKeysEnabledResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountSetPersonalApiKeysEnabledResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountSetPersonalApiKeysEnabledResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountSetPersonalApiKeysEnabledResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountSetPersonalApiKeysEnabledResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountSetPersonalApiKeysEnabledResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountSetPersonalApiKeysEnabledResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountSetPersonalApiKeysEnabledResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountSetPersonalApiKeysEnabledResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountSetPersonalApiKeysEnabledResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountToggleAPIKeyManagementFromNonHumansResponse200Headers the declared response headers of an HTTP 200 response for AccountToggleAPIKeyManagementFromNonHumans
+type AccountToggleAPIKeyManagementFromNonHumansResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountToggleAPIKeyManagementFromNonHumansResponse429Headers the declared response headers of an HTTP 429 response for AccountToggleAPIKeyManagementFromNonHumans
+type AccountToggleAPIKeyManagementFromNonHumansResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountToggleAPIKeyManagementFromNonHumansResponse503Headers the declared response headers of an HTTP 503 response for AccountToggleAPIKeyManagementFromNonHumans
+type AccountToggleAPIKeyManagementFromNonHumansResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountToggleAPIKeyManagementFromNonHumansResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountToggleAPIKeyManagementFromNonHumansResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountToggleAPIKeyManagementFromNonHumansResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountToggleAPIKeyManagementFromNonHumansResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountToggleAPIKeyManagementFromNonHumansResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountToggleDeletionMarkResponse200Headers the declared response headers of an HTTP 200 response for AccountToggleDeletionMark
+type AccountToggleDeletionMarkResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountToggleDeletionMarkResponse429Headers the declared response headers of an HTTP 429 response for AccountToggleDeletionMark
+type AccountToggleDeletionMarkResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountToggleDeletionMarkResponse503Headers the declared response headers of an HTTP 503 response for AccountToggleDeletionMark
+type AccountToggleDeletionMarkResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountToggleDeletionMarkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountToggleDeletionMarkResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountToggleDeletionMarkResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountToggleDeletionMarkResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountToggleDeletionMarkResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountToggleDeletionMarkResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountToggleDeletionMarkResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountToggleDeletionMarkResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountToggleDeletionMarkResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountToggleDeletionMarkResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountToggleDeletionMarkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountToggleDeletionMarkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountToggleDeletionMarkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountToggleDeletionMarkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountUpdateAwarenessSourceSurveyResponse200Headers the declared response headers of an HTTP 200 response for AccountUpdateAwarenessSourceSurvey
+type AccountUpdateAwarenessSourceSurveyResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateAwarenessSourceSurveyResponse429Headers the declared response headers of an HTTP 429 response for AccountUpdateAwarenessSourceSurvey
+type AccountUpdateAwarenessSourceSurveyResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateAwarenessSourceSurveyResponse503Headers the declared response headers of an HTTP 503 response for AccountUpdateAwarenessSourceSurvey
+type AccountUpdateAwarenessSourceSurveyResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountUpdateAwarenessSourceSurveyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwarenessSourceSurvey
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountUpdateAwarenessSourceSurveyResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountUpdateAwarenessSourceSurveyResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountUpdateAwarenessSourceSurveyResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetJSON200() *AwarenessSourceSurvey {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountUpdateAwarenessSourceSurveyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountUpdateAwarenessSourceSurveyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountUpdateAwarenessSourceSurveyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountUpdateAwarenessSourceSurveyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountUpdateSecurityEmailResponse200Headers the declared response headers of an HTTP 200 response for AccountUpdateSecurityEmail
+type AccountUpdateSecurityEmailResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateSecurityEmailResponse429Headers the declared response headers of an HTTP 429 response for AccountUpdateSecurityEmail
+type AccountUpdateSecurityEmailResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateSecurityEmailResponse503Headers the declared response headers of an HTTP 503 response for AccountUpdateSecurityEmail
+type AccountUpdateSecurityEmailResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountUpdateSecurityEmailResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountUpdateSecurityEmailResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountUpdateSecurityEmailResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountUpdateSecurityEmailResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountUpdateSecurityEmailResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountUpdateSecurityEmailResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountUpdateSecurityEmailResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountUpdateSecurityEmailResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountUpdateSecurityEmailResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountUpdateSecurityEmailResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountUpdateSecurityEmailResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountUpdateSecurityEmailResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountUpdateSecurityEmailResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountUpdateSecurityEmailResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ApiKeysResponse200Headers the declared response headers of an HTTP 200 response for ApiKeys
 type ApiKeysResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -17794,6 +20349,182 @@ func (r ApiKeyCreateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ApiKeyCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeysManageableByNonHumansResponse200Headers the declared response headers of an HTTP 200 response for ApiKeysManageableByNonHumans
+type ApiKeysManageableByNonHumansResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeysManageableByNonHumansResponse429Headers the declared response headers of an HTTP 429 response for ApiKeysManageableByNonHumans
+type ApiKeysManageableByNonHumansResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeysManageableByNonHumansResponse503Headers the declared response headers of an HTTP 503 response for ApiKeysManageableByNonHumans
+type ApiKeysManageableByNonHumansResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeysManageableByNonHumansResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeysManageableByNonHumansResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeysManageableByNonHumansResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeysManageableByNonHumansResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeysManageableByNonHumansResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeysManageableByNonHumansResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeysManageableByNonHumansResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeysManageableByNonHumansResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeysManageableByNonHumansResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeysManageableByNonHumansResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeysManageableByNonHumansResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeysManageableByNonHumansResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeysManagedByNonAdminsResponse200Headers the declared response headers of an HTTP 200 response for ApiKeysManagedByNonAdmins
+type ApiKeysManagedByNonAdminsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeysManagedByNonAdminsResponse429Headers the declared response headers of an HTTP 429 response for ApiKeysManagedByNonAdmins
+type ApiKeysManagedByNonAdminsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeysManagedByNonAdminsResponse503Headers the declared response headers of an HTTP 503 response for ApiKeysManagedByNonAdmins
+type ApiKeysManagedByNonAdminsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeysManagedByNonAdminsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeysManagedByNonAdminsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeysManagedByNonAdminsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeysManagedByNonAdminsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeysManagedByNonAdminsResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeysManagedByNonAdminsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeysManagedByNonAdminsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeysManagedByNonAdminsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeysManagedByNonAdminsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeysManagedByNonAdminsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeysManagedByNonAdminsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeysManagedByNonAdminsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -18706,6 +21437,94 @@ func (r ApiKeyUserResponse) ContentType() string {
 	return ""
 }
 
+// AwarenessSourceSurveyResponse200Headers the declared response headers of an HTTP 200 response for AwarenessSourceSurvey
+type AwarenessSourceSurveyResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwarenessSourceSurveyResponse429Headers the declared response headers of an HTTP 429 response for AwarenessSourceSurvey
+type AwarenessSourceSurveyResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwarenessSourceSurveyResponse503Headers the declared response headers of an HTTP 503 response for AwarenessSourceSurvey
+type AwarenessSourceSurveyResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwarenessSourceSurveyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwarenessSourceSurvey
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwarenessSourceSurveyResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwarenessSourceSurveyResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwarenessSourceSurveyResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwarenessSourceSurveyResponse) GetJSON200() *AwarenessSourceSurvey {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwarenessSourceSurveyResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwarenessSourceSurveyResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwarenessSourceSurveyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwarenessSourceSurveyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwarenessSourceSurveyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwarenessSourceSurveyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwarenessSourceSurveyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // DefaultPrivateWorkerPoolRunnerImageResponse200Headers the declared response headers of an HTTP 200 response for DefaultPrivateWorkerPoolRunnerImage
 type DefaultPrivateWorkerPoolRunnerImageResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -18876,6 +21695,94 @@ func (r IdResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r IdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// MarkedForDeletionResponse200Headers the declared response headers of an HTTP 200 response for MarkedForDeletion
+type MarkedForDeletionResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// MarkedForDeletionResponse429Headers the declared response headers of an HTTP 429 response for MarkedForDeletion
+type MarkedForDeletionResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// MarkedForDeletionResponse503Headers the declared response headers of an HTTP 503 response for MarkedForDeletion
+type MarkedForDeletionResponse503Headers struct {
+	RetryAfter *int
+}
+
+type MarkedForDeletionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *MarkedForDeletionResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *MarkedForDeletionResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *MarkedForDeletionResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MarkedForDeletionResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r MarkedForDeletionResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r MarkedForDeletionResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r MarkedForDeletionResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MarkedForDeletionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MarkedForDeletionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MarkedForDeletionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MarkedForDeletionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19059,6 +21966,277 @@ func (r NameResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r NameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OauthRedirectAllowedHostsResponse200Headers the declared response headers of an HTTP 200 response for OauthRedirectAllowedHosts
+type OauthRedirectAllowedHostsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OauthRedirectAllowedHostsResponse429Headers the declared response headers of an HTTP 429 response for OauthRedirectAllowedHosts
+type OauthRedirectAllowedHostsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OauthRedirectAllowedHostsResponse503Headers the declared response headers of an HTTP 503 response for OauthRedirectAllowedHosts
+type OauthRedirectAllowedHostsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OauthRedirectAllowedHostsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OauthRedirectAllowedHostsPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OauthRedirectAllowedHostsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OauthRedirectAllowedHostsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OauthRedirectAllowedHostsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OauthRedirectAllowedHostsResponse) GetJSON200() *OauthRedirectAllowedHostsPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r OauthRedirectAllowedHostsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OauthRedirectAllowedHostsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OauthRedirectAllowedHostsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OauthRedirectAllowedHostsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OauthRedirectAllowedHostsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OauthRedirectAllowedHostsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OauthRedirectAllowedHostsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OauthRedirectAllowedHostsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PersonalApiKeysEnabledResponse200Headers the declared response headers of an HTTP 200 response for PersonalApiKeysEnabled
+type PersonalApiKeysEnabledResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeysEnabledResponse429Headers the declared response headers of an HTTP 429 response for PersonalApiKeysEnabled
+type PersonalApiKeysEnabledResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PersonalApiKeysEnabledResponse503Headers the declared response headers of an HTTP 503 response for PersonalApiKeysEnabled
+type PersonalApiKeysEnabledResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PersonalApiKeysEnabledResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PersonalApiKeysEnabledResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PersonalApiKeysEnabledResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PersonalApiKeysEnabledResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PersonalApiKeysEnabledResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PersonalApiKeysEnabledResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PersonalApiKeysEnabledResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PersonalApiKeysEnabledResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PersonalApiKeysEnabledResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PersonalApiKeysEnabledResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PersonalApiKeysEnabledResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PersonalApiKeysEnabledResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SecurityEmailResponse200Headers the declared response headers of an HTTP 200 response for SecurityEmail
+type SecurityEmailResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SecurityEmailResponse429Headers the declared response headers of an HTTP 429 response for SecurityEmail
+type SecurityEmailResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SecurityEmailResponse503Headers the declared response headers of an HTTP 503 response for SecurityEmail
+type SecurityEmailResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SecurityEmailResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SecurityEmailResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SecurityEmailResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SecurityEmailResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SecurityEmailResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SecurityEmailResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SecurityEmailResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SecurityEmailResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SecurityEmailResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SecurityEmailResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SecurityEmailResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SecurityEmailResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26766,6 +29944,231 @@ func (c *ClientWithResponses) ApiKeyEnableNonAdminManagersWithResponse(ctx conte
 	return ParseApiKeyEnableNonAdminManagersResponse(rsp)
 }
 
+// AccountCanBeDeletedWithResponse Account Can Be Deleted
+//
+// Whether accountConfirmDelete would delete the account now: true while the account is marked for deletion and is not its organization's last account. infraweave sets no waiting period, so a mark allows deletion at once.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /account/can-be-deleted (the `AccountCanBeDeleted` operationId).
+func (c *ClientWithResponses) AccountCanBeDeletedWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AccountCanBeDeletedResponse, error) {
+	rsp, err := c.AccountCanBeDeleted(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountCanBeDeletedResponse(rsp)
+}
+
+// AccountCanBeDeletedAtWithResponse Account Can Be Deleted At
+//
+// When the account can be deleted, in Unix seconds: the time of its deletion mark, as infraweave sets no waiting period; 0 while the account is not marked.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /account/can-be-deleted-at (the `AccountCanBeDeletedAt` operationId).
+func (c *ClientWithResponses) AccountCanBeDeletedAtWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AccountCanBeDeletedAtResponse, error) {
+	rsp, err := c.AccountCanBeDeletedAt(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountCanBeDeletedAtResponse(rsp)
+}
+
+// AccountConfirmDeleteWithResponse Account Confirm Delete
+//
+// Delete the caller's account and everything it holds: its API keys, sessions, admitted members and account limits, in one transaction. Members stay in the organization. An account not marked for deletion, or the organization's last account, answers 409 invalid-state.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/confirm-delete (the `AccountConfirmDelete` operationId).
+func (c *ClientWithResponses) AccountConfirmDeleteWithResponse(ctx context.Context, params *AccountConfirmDeleteParams, reqEditors ...RequestEditorFn) (*AccountConfirmDeleteResponse, error) {
+	rsp, err := c.AccountConfirmDelete(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountConfirmDeleteResponse(rsp)
+}
+
+// AccountRequestPersonalApiKeysEnablingWithResponse Account Request Personal Api Keys Enabling
+//
+// Ask the account's admins to enable personal API keys. The request is recorded in the account's audit trail; no message is delivered.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/request-personal-api-keys-enabling (the `AccountRequestPersonalApiKeysEnabling` operationId).
+func (c *ClientWithResponses) AccountRequestPersonalApiKeysEnablingWithResponse(ctx context.Context, params *AccountRequestPersonalApiKeysEnablingParams, reqEditors ...RequestEditorFn) (*AccountRequestPersonalApiKeysEnablingResponse, error) {
+	rsp, err := c.AccountRequestPersonalApiKeysEnabling(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountRequestPersonalApiKeysEnablingResponse(rsp)
+}
+
+// AccountSetOAuthRedirectAllowlistWithBodyWithResponse Account Set OAuth Redirect Allowlist
+//
+// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+func (c *ClientWithResponses) AccountSetOAuthRedirectAllowlistWithBodyWithResponse(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetOAuthRedirectAllowlistResponse, error) {
+	rsp, err := c.AccountSetOAuthRedirectAllowlistWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetOAuthRedirectAllowlistResponse(rsp)
+}
+
+// AccountSetOAuthRedirectAllowlistWithResponse Account Set OAuth Redirect Allowlist
+//
+// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
+func (c *ClientWithResponses) AccountSetOAuthRedirectAllowlistWithResponse(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetOAuthRedirectAllowlistResponse, error) {
+	rsp, err := c.AccountSetOAuthRedirectAllowlist(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetOAuthRedirectAllowlistResponse(rsp)
+}
+
+// AccountSetPersonalApiKeysEnabledWithBodyWithResponse Account Set Personal Api Keys Enabled
+//
+// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+func (c *ClientWithResponses) AccountSetPersonalApiKeysEnabledWithBodyWithResponse(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetPersonalApiKeysEnabledResponse, error) {
+	rsp, err := c.AccountSetPersonalApiKeysEnabledWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetPersonalApiKeysEnabledResponse(rsp)
+}
+
+// AccountSetPersonalApiKeysEnabledWithResponse Account Set Personal Api Keys Enabled
+//
+// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-personal-api-keys-enabled (the `AccountSetPersonalApiKeysEnabled` operationId).
+func (c *ClientWithResponses) AccountSetPersonalApiKeysEnabledWithResponse(ctx context.Context, params *AccountSetPersonalApiKeysEnabledParams, body AccountSetPersonalApiKeysEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetPersonalApiKeysEnabledResponse, error) {
+	rsp, err := c.AccountSetPersonalApiKeysEnabled(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetPersonalApiKeysEnabledResponse(rsp)
+}
+
+// AccountToggleAPIKeyManagementFromNonHumansWithResponse Account Toggle APIKey Management From Non Humans
+//
+// Flip whether non-human sessions, API keys, may manage API keys, and answer the new value. Off by default: while off, an API key that creates, updates, resets, disables or deletes a key answers 403 forbidden. Only a human session, a member's or the break-glass admin's, may flip it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/toggle-api-key-management-from-non-humans (the `AccountToggleAPIKeyManagementFromNonHumans` operationId).
+func (c *ClientWithResponses) AccountToggleAPIKeyManagementFromNonHumansWithResponse(ctx context.Context, params *AccountToggleAPIKeyManagementFromNonHumansParams, reqEditors ...RequestEditorFn) (*AccountToggleAPIKeyManagementFromNonHumansResponse, error) {
+	rsp, err := c.AccountToggleAPIKeyManagementFromNonHumans(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountToggleAPIKeyManagementFromNonHumansResponse(rsp)
+}
+
+// AccountToggleDeletionMarkWithBodyWithResponse Account Toggle Deletion Mark
+//
+// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+func (c *ClientWithResponses) AccountToggleDeletionMarkWithBodyWithResponse(ctx context.Context, params *AccountToggleDeletionMarkParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountToggleDeletionMarkResponse, error) {
+	rsp, err := c.AccountToggleDeletionMarkWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountToggleDeletionMarkResponse(rsp)
+}
+
+// AccountToggleDeletionMarkWithResponse Account Toggle Deletion Mark
+//
+// Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
+func (c *ClientWithResponses) AccountToggleDeletionMarkWithResponse(ctx context.Context, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountToggleDeletionMarkResponse, error) {
+	rsp, err := c.AccountToggleDeletionMark(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountToggleDeletionMarkResponse(rsp)
+}
+
+// AccountUpdateAwarenessSourceSurveyWithBodyWithResponse Account Update Awareness Source Survey
+//
+// Record the account's answer to the survey of how it heard of the product, and answer it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+func (c *ClientWithResponses) AccountUpdateAwarenessSourceSurveyWithBodyWithResponse(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateAwarenessSourceSurveyResponse, error) {
+	rsp, err := c.AccountUpdateAwarenessSourceSurveyWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateAwarenessSourceSurveyResponse(rsp)
+}
+
+// AccountUpdateAwarenessSourceSurveyWithResponse Account Update Awareness Source Survey
+//
+// Record the account's answer to the survey of how it heard of the product, and answer it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
+func (c *ClientWithResponses) AccountUpdateAwarenessSourceSurveyWithResponse(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateAwarenessSourceSurveyResponse, error) {
+	rsp, err := c.AccountUpdateAwarenessSourceSurvey(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateAwarenessSourceSurveyResponse(rsp)
+}
+
+// AccountUpdateSecurityEmailWithBodyWithResponse Account Update Security Email
+//
+// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+func (c *ClientWithResponses) AccountUpdateSecurityEmailWithBodyWithResponse(ctx context.Context, params *AccountUpdateSecurityEmailParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateSecurityEmailResponse, error) {
+	rsp, err := c.AccountUpdateSecurityEmailWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateSecurityEmailResponse(rsp)
+}
+
+// AccountUpdateSecurityEmailWithResponse Account Update Security Email
+//
+// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
+func (c *ClientWithResponses) AccountUpdateSecurityEmailWithResponse(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateSecurityEmailResponse, error) {
+	rsp, err := c.AccountUpdateSecurityEmail(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateSecurityEmailResponse(rsp)
+}
+
 // ApiKeysWithResponse List API Keys
 //
 // List of all API keys for the account.
@@ -26809,6 +30212,36 @@ func (c *ClientWithResponses) ApiKeyCreateWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseApiKeyCreateResponse(rsp)
+}
+
+// ApiKeysManageableByNonHumansWithResponse Api Keys Manageable By Non Humans
+//
+// Whether non-human sessions, API keys, may manage API keys; false until an account admin turns it on.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api-keys-manageable-by-non-humans (the `ApiKeysManageableByNonHumans` operationId).
+func (c *ClientWithResponses) ApiKeysManageableByNonHumansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ApiKeysManageableByNonHumansResponse, error) {
+	rsp, err := c.ApiKeysManageableByNonHumans(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeysManageableByNonHumansResponse(rsp)
+}
+
+// ApiKeysManagedByNonAdminsWithResponse API Keys Managed By Non-Admins
+//
+// Whether admins of spaces below the account's top space may manage API keys, as apiKeyEnableNonAdminManagers sets it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api-keys-managed-by-non-admins (the `ApiKeysManagedByNonAdmins` operationId).
+func (c *ClientWithResponses) ApiKeysManagedByNonAdminsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ApiKeysManagedByNonAdminsResponse, error) {
+	rsp, err := c.ApiKeysManagedByNonAdmins(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeysManagedByNonAdminsResponse(rsp)
 }
 
 // ApiKeyDeleteWithResponse Delete API Key
@@ -27020,6 +30453,21 @@ func (c *ClientWithResponses) ApiKeyUserWithResponse(ctx context.Context, params
 	return ParseApiKeyUserResponse(rsp)
 }
 
+// AwarenessSourceSurveyWithResponse Awareness Source Survey
+//
+// The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
+func (c *ClientWithResponses) AwarenessSourceSurveyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwarenessSourceSurveyResponse, error) {
+	rsp, err := c.AwarenessSourceSurvey(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwarenessSourceSurveyResponse(rsp)
+}
+
 // DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 //
 // The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
@@ -27048,6 +30496,21 @@ func (c *ClientWithResponses) IdWithResponse(ctx context.Context, reqEditors ...
 		return nil, err
 	}
 	return ParseIdResponse(rsp)
+}
+
+// MarkedForDeletionWithResponse Marked For Deletion
+//
+// Whether the account is marked for deletion.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /marked-for-deletion (the `MarkedForDeletion` operationId).
+func (c *ClientWithResponses) MarkedForDeletionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*MarkedForDeletionResponse, error) {
+	rsp, err := c.MarkedForDeletion(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMarkedForDeletionResponse(rsp)
 }
 
 // MessageQueueStatsWithResponse Message Queue Stats
@@ -27080,6 +30543,51 @@ func (c *ClientWithResponses) NameWithResponse(ctx context.Context, reqEditors .
 		return nil, err
 	}
 	return ParseNameResponse(rsp)
+}
+
+// OauthRedirectAllowedHostsWithResponse Oauth Redirect Allowed Hosts
+//
+// The account's OAuth redirect host allowlist, in the order it was set.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
+func (c *ClientWithResponses) OauthRedirectAllowedHostsWithResponse(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*OauthRedirectAllowedHostsResponse, error) {
+	rsp, err := c.OauthRedirectAllowedHosts(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOauthRedirectAllowedHostsResponse(rsp)
+}
+
+// PersonalApiKeysEnabledWithResponse Personal Api Keys Enabled
+//
+// Whether the account's members may create personal API keys; true until an account admin turns it off.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /personal-api-keys-enabled (the `PersonalApiKeysEnabled` operationId).
+func (c *ClientWithResponses) PersonalApiKeysEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PersonalApiKeysEnabledResponse, error) {
+	rsp, err := c.PersonalApiKeysEnabled(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePersonalApiKeysEnabledResponse(rsp)
+}
+
+// SecurityEmailWithResponse Security Email
+//
+// The account's security contact address; empty until an account admin sets it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /security-email (the `SecurityEmail` operationId).
+func (c *ClientWithResponses) SecurityEmailWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SecurityEmailResponse, error) {
+	rsp, err := c.SecurityEmail(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSecurityEmailResponse(rsp)
 }
 
 // SessionDeleteAllWithResponse Session Delete All
@@ -28819,6 +32327,1268 @@ func ParseApiKeyEnableNonAdminManagersResponse(rsp *http.Response) (*ApiKeyEnabl
 	return response, nil
 }
 
+// ParseAccountCanBeDeletedResponse parses an HTTP response from a AccountCanBeDeletedWithResponse call
+func ParseAccountCanBeDeletedResponse(rsp *http.Response) (*AccountCanBeDeletedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountCanBeDeletedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountCanBeDeletedResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountCanBeDeletedResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountCanBeDeletedResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountCanBeDeletedAtResponse parses an HTTP response from a AccountCanBeDeletedAtWithResponse call
+func ParseAccountCanBeDeletedAtResponse(rsp *http.Response) (*AccountCanBeDeletedAtResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountCanBeDeletedAtResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest int32
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountCanBeDeletedAtResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountCanBeDeletedAtResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountCanBeDeletedAtResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountConfirmDeleteResponse parses an HTTP response from a AccountConfirmDeleteWithResponse call
+func ParseAccountConfirmDeleteResponse(rsp *http.Response) (*AccountConfirmDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountConfirmDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountConfirmDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountConfirmDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountConfirmDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountRequestPersonalApiKeysEnablingResponse parses an HTTP response from a AccountRequestPersonalApiKeysEnablingWithResponse call
+func ParseAccountRequestPersonalApiKeysEnablingResponse(rsp *http.Response) (*AccountRequestPersonalApiKeysEnablingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountRequestPersonalApiKeysEnablingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountRequestPersonalApiKeysEnablingResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountRequestPersonalApiKeysEnablingResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountRequestPersonalApiKeysEnablingResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountSetOAuthRedirectAllowlistResponse parses an HTTP response from a AccountSetOAuthRedirectAllowlistWithResponse call
+func ParseAccountSetOAuthRedirectAllowlistResponse(rsp *http.Response) (*AccountSetOAuthRedirectAllowlistResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountSetOAuthRedirectAllowlistResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountSetOAuthRedirectAllowlistResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountSetOAuthRedirectAllowlistResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountSetOAuthRedirectAllowlistResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountSetPersonalApiKeysEnabledResponse parses an HTTP response from a AccountSetPersonalApiKeysEnabledWithResponse call
+func ParseAccountSetPersonalApiKeysEnabledResponse(rsp *http.Response) (*AccountSetPersonalApiKeysEnabledResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountSetPersonalApiKeysEnabledResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountSetPersonalApiKeysEnabledResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountSetPersonalApiKeysEnabledResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountSetPersonalApiKeysEnabledResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountToggleAPIKeyManagementFromNonHumansResponse parses an HTTP response from a AccountToggleAPIKeyManagementFromNonHumansWithResponse call
+func ParseAccountToggleAPIKeyManagementFromNonHumansResponse(rsp *http.Response) (*AccountToggleAPIKeyManagementFromNonHumansResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountToggleAPIKeyManagementFromNonHumansResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountToggleAPIKeyManagementFromNonHumansResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountToggleAPIKeyManagementFromNonHumansResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountToggleAPIKeyManagementFromNonHumansResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountToggleDeletionMarkResponse parses an HTTP response from a AccountToggleDeletionMarkWithResponse call
+func ParseAccountToggleDeletionMarkResponse(rsp *http.Response) (*AccountToggleDeletionMarkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountToggleDeletionMarkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountToggleDeletionMarkResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountToggleDeletionMarkResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountToggleDeletionMarkResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountUpdateAwarenessSourceSurveyResponse parses an HTTP response from a AccountUpdateAwarenessSourceSurveyWithResponse call
+func ParseAccountUpdateAwarenessSourceSurveyResponse(rsp *http.Response) (*AccountUpdateAwarenessSourceSurveyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountUpdateAwarenessSourceSurveyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwarenessSourceSurvey
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountUpdateAwarenessSourceSurveyResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountUpdateAwarenessSourceSurveyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountUpdateAwarenessSourceSurveyResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountUpdateSecurityEmailResponse parses an HTTP response from a AccountUpdateSecurityEmailWithResponse call
+func ParseAccountUpdateSecurityEmailResponse(rsp *http.Response) (*AccountUpdateSecurityEmailResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountUpdateSecurityEmailResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountUpdateSecurityEmailResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountUpdateSecurityEmailResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountUpdateSecurityEmailResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseApiKeysResponse parses an HTTP response from a ApiKeysWithResponse call
 func ParseApiKeysResponse(rsp *http.Response) (*ApiKeysResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -29057,6 +33827,236 @@ func ParseApiKeyCreateResponse(rsp *http.Response) (*ApiKeyCreateResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ApiKeyCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeysManageableByNonHumansResponse parses an HTTP response from a ApiKeysManageableByNonHumansWithResponse call
+func ParseApiKeysManageableByNonHumansResponse(rsp *http.Response) (*ApiKeysManageableByNonHumansResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeysManageableByNonHumansResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeysManageableByNonHumansResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeysManageableByNonHumansResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeysManageableByNonHumansResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeysManagedByNonAdminsResponse parses an HTTP response from a ApiKeysManagedByNonAdminsWithResponse call
+func ParseApiKeysManagedByNonAdminsResponse(rsp *http.Response) (*ApiKeysManagedByNonAdminsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeysManagedByNonAdminsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeysManagedByNonAdminsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeysManagedByNonAdminsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeysManagedByNonAdminsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -30231,6 +35231,121 @@ func ParseApiKeyUserResponse(rsp *http.Response) (*ApiKeyUserResponse, error) {
 	return response, nil
 }
 
+// ParseAwarenessSourceSurveyResponse parses an HTTP response from a AwarenessSourceSurveyWithResponse call
+func ParseAwarenessSourceSurveyResponse(rsp *http.Response) (*AwarenessSourceSurveyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwarenessSourceSurveyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwarenessSourceSurvey
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwarenessSourceSurveyResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwarenessSourceSurveyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwarenessSourceSurveyResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseDefaultPrivateWorkerPoolRunnerImageResponse parses an HTTP response from a DefaultPrivateWorkerPoolRunnerImageWithResponse call
 func ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp *http.Response) (*DefaultPrivateWorkerPoolRunnerImageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -30448,6 +35563,121 @@ func ParseIdResponse(rsp *http.Response) (*IdResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers IdResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseMarkedForDeletionResponse parses an HTTP response from a MarkedForDeletionWithResponse call
+func ParseMarkedForDeletionResponse(rsp *http.Response) (*MarkedForDeletionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MarkedForDeletionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers MarkedForDeletionResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers MarkedForDeletionResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers MarkedForDeletionResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -30685,6 +35915,358 @@ func ParseNameResponse(rsp *http.Response) (*NameResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers NameResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOauthRedirectAllowedHostsResponse parses an HTTP response from a OauthRedirectAllowedHostsWithResponse call
+func ParseOauthRedirectAllowedHostsResponse(rsp *http.Response) (*OauthRedirectAllowedHostsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OauthRedirectAllowedHostsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OauthRedirectAllowedHostsPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OauthRedirectAllowedHostsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OauthRedirectAllowedHostsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OauthRedirectAllowedHostsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePersonalApiKeysEnabledResponse parses an HTTP response from a PersonalApiKeysEnabledWithResponse call
+func ParsePersonalApiKeysEnabledResponse(rsp *http.Response) (*PersonalApiKeysEnabledResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PersonalApiKeysEnabledResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PersonalApiKeysEnabledResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PersonalApiKeysEnabledResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PersonalApiKeysEnabledResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSecurityEmailResponse parses an HTTP response from a SecurityEmailWithResponse call
+func ParseSecurityEmailResponse(rsp *http.Response) (*SecurityEmailResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SecurityEmailResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SecurityEmailResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SecurityEmailResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SecurityEmailResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

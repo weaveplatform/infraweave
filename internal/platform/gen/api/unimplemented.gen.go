@@ -18,12 +18,60 @@ func (UnimplementedStrict) ApiKeyEnableNonAdminManagers(context.Context, ApiKeyE
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyEnableNonAdminManagers", Route: "PUT /account/api-key-non-admin-managers"}
 }
 
+func (UnimplementedStrict) AccountCanBeDeleted(context.Context, AccountCanBeDeletedRequestObject) (AccountCanBeDeletedResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountCanBeDeleted", Route: "GET /account/can-be-deleted"}
+}
+
+func (UnimplementedStrict) AccountCanBeDeletedAt(context.Context, AccountCanBeDeletedAtRequestObject) (AccountCanBeDeletedAtResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountCanBeDeletedAt", Route: "GET /account/can-be-deleted-at"}
+}
+
+func (UnimplementedStrict) AccountConfirmDelete(context.Context, AccountConfirmDeleteRequestObject) (AccountConfirmDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountConfirmDelete", Route: "POST /account/confirm-delete"}
+}
+
+func (UnimplementedStrict) AccountRequestPersonalApiKeysEnabling(context.Context, AccountRequestPersonalApiKeysEnablingRequestObject) (AccountRequestPersonalApiKeysEnablingResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountRequestPersonalApiKeysEnabling", Route: "POST /account/request-personal-api-keys-enabling"}
+}
+
+func (UnimplementedStrict) AccountSetOAuthRedirectAllowlist(context.Context, AccountSetOAuthRedirectAllowlistRequestObject) (AccountSetOAuthRedirectAllowlistResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountSetOAuthRedirectAllowlist", Route: "POST /account/set-o-auth-redirect-allowlist"}
+}
+
+func (UnimplementedStrict) AccountSetPersonalApiKeysEnabled(context.Context, AccountSetPersonalApiKeysEnabledRequestObject) (AccountSetPersonalApiKeysEnabledResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountSetPersonalApiKeysEnabled", Route: "POST /account/set-personal-api-keys-enabled"}
+}
+
+func (UnimplementedStrict) AccountToggleAPIKeyManagementFromNonHumans(context.Context, AccountToggleAPIKeyManagementFromNonHumansRequestObject) (AccountToggleAPIKeyManagementFromNonHumansResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountToggleAPIKeyManagementFromNonHumans", Route: "POST /account/toggle-api-key-management-from-non-humans"}
+}
+
+func (UnimplementedStrict) AccountToggleDeletionMark(context.Context, AccountToggleDeletionMarkRequestObject) (AccountToggleDeletionMarkResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountToggleDeletionMark", Route: "POST /account/toggle-deletion-mark"}
+}
+
+func (UnimplementedStrict) AccountUpdateAwarenessSourceSurvey(context.Context, AccountUpdateAwarenessSourceSurveyRequestObject) (AccountUpdateAwarenessSourceSurveyResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountUpdateAwarenessSourceSurvey", Route: "POST /account/update-awareness-source-survey"}
+}
+
+func (UnimplementedStrict) AccountUpdateSecurityEmail(context.Context, AccountUpdateSecurityEmailRequestObject) (AccountUpdateSecurityEmailResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountUpdateSecurityEmail", Route: "POST /account/update-security-email"}
+}
+
 func (UnimplementedStrict) ApiKeys(context.Context, ApiKeysRequestObject) (ApiKeysResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeys", Route: "GET /api-keys"}
 }
 
 func (UnimplementedStrict) ApiKeyCreate(context.Context, ApiKeyCreateRequestObject) (ApiKeyCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyCreate", Route: "POST /api-keys"}
+}
+
+func (UnimplementedStrict) ApiKeysManageableByNonHumans(context.Context, ApiKeysManageableByNonHumansRequestObject) (ApiKeysManageableByNonHumansResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeysManageableByNonHumans", Route: "GET /api-keys-manageable-by-non-humans"}
+}
+
+func (UnimplementedStrict) ApiKeysManagedByNonAdmins(context.Context, ApiKeysManagedByNonAdminsRequestObject) (ApiKeysManagedByNonAdminsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeysManagedByNonAdmins", Route: "GET /api-keys-managed-by-non-admins"}
 }
 
 func (UnimplementedStrict) ApiKeyDelete(context.Context, ApiKeyDeleteRequestObject) (ApiKeyDeleteResponseObject, error) {
@@ -62,6 +110,10 @@ func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUser", Route: "POST /auth/token"}
 }
 
+func (UnimplementedStrict) AwarenessSourceSurvey(context.Context, AwarenessSourceSurveyRequestObject) (AwarenessSourceSurveyResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awarenessSourceSurvey", Route: "GET /awareness-source-survey"}
+}
+
 func (UnimplementedStrict) DefaultPrivateWorkerPoolRunnerImage(context.Context, DefaultPrivateWorkerPoolRunnerImageRequestObject) (DefaultPrivateWorkerPoolRunnerImageResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "defaultPrivateWorkerPoolRunnerImage", Route: "GET /default-private-worker-pool-runner-image"}
 }
@@ -70,12 +122,28 @@ func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObjec
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
 }
 
+func (UnimplementedStrict) MarkedForDeletion(context.Context, MarkedForDeletionRequestObject) (MarkedForDeletionResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "markedForDeletion", Route: "GET /marked-for-deletion"}
+}
+
 func (UnimplementedStrict) MessageQueueStats(context.Context, MessageQueueStatsRequestObject) (MessageQueueStatsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "messageQueueStats", Route: "GET /message-queue-stats"}
 }
 
 func (UnimplementedStrict) Name(context.Context, NameRequestObject) (NameResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "name", Route: "GET /name"}
+}
+
+func (UnimplementedStrict) OauthRedirectAllowedHosts(context.Context, OauthRedirectAllowedHostsRequestObject) (OauthRedirectAllowedHostsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "oauthRedirectAllowedHosts", Route: "GET /oauth-redirect-allowed-hosts"}
+}
+
+func (UnimplementedStrict) PersonalApiKeysEnabled(context.Context, PersonalApiKeysEnabledRequestObject) (PersonalApiKeysEnabledResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "personalApiKeysEnabled", Route: "GET /personal-api-keys-enabled"}
+}
+
+func (UnimplementedStrict) SecurityEmail(context.Context, SecurityEmailRequestObject) (SecurityEmailResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "securityEmail", Route: "GET /security-email"}
 }
 
 func (UnimplementedStrict) SessionDeleteAll(context.Context, SessionDeleteAllRequestObject) (SessionDeleteAllResponseObject, error) {

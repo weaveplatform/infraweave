@@ -16,6 +16,10 @@ import (
 // error names the field.
 var ErrInvalid = errors.New("invalid API key")
 
+// ErrNonHuman reports a key or a run managing API keys in an account whose
+// setting lets only people manage them.
+var ErrNonHuman = errors.New("API keys and runs may not manage API keys in this account")
+
 // DisabledByAdmin is the disabled_reason of a key an account admin
 // disabled.
 const DisabledByAdmin = "ADMIN"
@@ -63,6 +67,9 @@ type Store interface {
 	// SetNonAdminManagers records the account's
 	// apiKeyEnableNonAdminManagers setting.
 	SetNonAdminManagers(ctx context.Context, acct kernel.AccountID, enable bool) error
+	// NonHumanKeyManagers reads whether the account lets API keys and runs
+	// manage API keys.
+	NonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error)
 }
 
 // Deps are what the service needs.
@@ -105,6 +112,9 @@ type Change struct {
 // Create records a key of p's account, created by p, and returns it with
 // its secret, which is never readable again; an OIDC key has none.
 func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Key, string, error) {
+	if err := s.manages(ctx, p); err != nil {
+		return Key{}, "", err
+	}
 	k := Key{
 		OrganizationID: p.OrganizationID,
 		AccountID:      p.AccountID,
@@ -164,6 +174,9 @@ func (s *Service) Update(
 	id kernel.ULID,
 	c Change,
 ) (Key, error) {
+	if err := s.manages(ctx, p); err != nil {
+		return Key{}, err
+	}
 	var errs []error
 	if c.Name != nil {
 		n := strings.TrimSpace(*c.Name)
@@ -205,6 +218,9 @@ func (s *Service) Reset(
 	p kernel.Principal,
 	id kernel.ULID,
 ) (Key, string, error) {
+	if err := s.manages(ctx, p); err != nil {
+		return Key{}, "", err
+	}
 	k, err := s.Get(ctx, p, id)
 	if err != nil {
 		return Key{}, "", err
@@ -220,6 +236,9 @@ func (s *Service) Reset(
 // Disable disables the key id of p's account and revokes every session of
 // the key. Disabling a disabled key keeps its first reason.
 func (s *Service) Disable(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, error) {
+	if err := s.manages(ctx, p); err != nil {
+		return Key{}, err
+	}
 	k, _, err := s.revoked("")(s.d.Store.DisableAPIKey(ctx, p.AccountID, id, DisabledByAdmin))
 	return k, err
 }
@@ -227,6 +246,9 @@ func (s *Service) Disable(ctx context.Context, p kernel.Principal, id kernel.ULI
 // Delete deletes the key id of p's account and revokes every session of
 // the key. The row stays, deleted, while sessions and audit name it.
 func (s *Service) Delete(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, error) {
+	if err := s.manages(ctx, p); err != nil {
+		return Key{}, err
+	}
 	k, _, err := s.revoked("")(s.d.Store.DeleteAPIKey(ctx, p.AccountID, id))
 	return k, err
 }
@@ -238,6 +260,9 @@ func (s *Service) SetNonAdminManagers(
 	p kernel.Principal,
 	enable bool,
 ) (bool, error) {
+	if err := s.manages(ctx, p); err != nil {
+		return false, err
+	}
 	if err := s.d.Store.SetNonAdminManagers(ctx, p.AccountID, enable); err != nil {
 		return false, err //nolint:wrapcheck // as above
 	}
@@ -317,4 +342,21 @@ func nonNil[T any](s []T) []T {
 		return []T{}
 	}
 	return s
+}
+
+// manages refuses p changing API keys when p is a key or a run and its
+// account lets only people manage them: a key that could create keys could
+// mint itself a successor no admin chose.
+func (s *Service) manages(ctx context.Context, p kernel.Principal) error {
+	if p.Human() {
+		return nil
+	}
+	on, err := s.d.Store.NonHumanKeyManagers(ctx, p.AccountID)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	if !on {
+		return ErrNonHuman
+	}
+	return nil
 }

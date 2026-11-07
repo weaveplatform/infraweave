@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -92,12 +93,13 @@ type Deps struct {
 
 // Domain is the access domain, constructed once per process.
 type Domain struct {
-	store  *pg.Store
-	tokens *token.Service
-	authn  *authn.Service
-	keys   *apikey.Service
-	orgs   *operator.Service
-	manual bool
+	store    *pg.Store
+	tokens   *token.Service
+	authn    *authn.Service
+	keys     *apikey.Service
+	orgs     *operator.Service
+	settings *settings.Service
+	manual   bool
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
 	publicURL string
@@ -163,11 +165,14 @@ func New(d Deps) (*Domain, error) {
 	})
 	orgs := operator.NewService(operator.Deps{Store: store, Drop: auth.Cache().Drop, Now: now})
 	return &Domain{
-		store:     store,
-		tokens:    tokens,
-		authn:     auth,
-		keys:      keys,
-		orgs:      orgs,
+		store:  store,
+		tokens: tokens,
+		authn:  auth,
+		keys:   keys,
+		orgs:   orgs,
+		settings: settings.NewService(
+			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
+		),
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil
@@ -179,7 +184,7 @@ func (d *Domain) API() AccessAPI {
 	if d == nil {
 		return AccessAPI{}
 	}
-	return http.NewServer(d.authn, d.keys, d.store)
+	return http.NewServer(d.authn, d.keys, d.store, d.settings)
 }
 
 // OperatorAPI is the domain's partial of the operator API's strict

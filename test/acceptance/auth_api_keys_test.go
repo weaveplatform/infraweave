@@ -159,6 +159,25 @@ func (k *keySteps) register(sc *godog.ScenarioContext) {
 		`^setting non-admin API key managers through ([AB]) with token "(\w+)" to (true|false) answers (true|false)$`,
 		k.managers,
 	)
+	sc.Step(`^the (home|sibling|stranger) account lets API keys manage API keys$`, k.nonHumans)
+}
+
+// nonHumans turns on the account's setting that lets API keys manage API
+// keys, which only a member may turn on through the API, so these
+// scenarios' keys may manage keys; account_settings.feature covers the
+// setting itself.
+func (k *keySteps) nonHumans(ctx context.Context, who string) error {
+	t := tenants[who]
+	db, err := k.a.s.w.querier(ctx)
+	if err != nil {
+		return err
+	}
+	if err := t.seed(ctx, db); err != nil {
+		return err
+	}
+	_, err = db.Query(ctx, fmt.Sprintf(`INSERT INTO account_settings
+		(account_id, api_key_non_human_managers) VALUES ('%s', true)`, uuidOf(t.account)))
+	return err //nolint:wrapcheck // the querier names the query
 }
 
 // servers starts the scenario's two servers trusting the shared issuer's
