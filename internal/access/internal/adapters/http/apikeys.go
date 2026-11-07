@@ -8,6 +8,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
@@ -217,10 +218,15 @@ func (s Server) onKey(
 }
 
 // keyError is err as the problem it answers: 404 for a key the caller's
-// account does not hold, 422 for input the service refuses, and err
-// itself otherwise, which the store marks when the database is
-// unreachable.
+// account does not hold, 422 for input the service refuses, 403 for a key
+// the seats limit refuses, and err itself otherwise, which the store marks
+// when the database is unreachable.
 func keyError(err error, id string) error {
+	if le, ok := errors.AsType[*featuresapi.LimitError](err); ok {
+		return &problem.Error{
+			Problem: problem.NewLimitReached(le.Limit, string(le.Scope), le.Value),
+		}
+	}
 	switch {
 	case errors.Is(err, port.ErrNotFound):
 		//nolint:wrapcheck // a problem, answered as it is

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -15,6 +16,8 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/features"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
@@ -46,6 +49,9 @@ type Operation struct {
 	// handler; nil for every other operation, whose body the generated
 	// handler decodes leniently.
 	Body *openapi3.RequestBody
+	// Gate is the operation's x-infraweave-feature, a capability of the
+	// catalogue, and the options its request body's properties name.
+	Gate featuresapi.Gate
 }
 
 // Operations maps "METHOD pattern", a method and the chi route pattern it is
@@ -56,7 +62,10 @@ var errSpec = errors.New("invalid operation in the API")
 
 // operationsOf reads each operation of doc, mounted under base. A missing
 // x-infraweave-cost is standard, as decision 0003 says; one that names no
-// class fails, so a typo in the spec cannot silently cost standard.
+// class fails, so a typo in the spec cannot silently cost standard. Every
+// operation names its capability in x-infraweave-feature (decision 0021),
+// and one that names none, or a name the catalogue holds as no capability,
+// fails, so no operation goes ungated.
 func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 	ops := Operations{}
 	for path, item := range doc.Paths.Map() {
@@ -79,16 +88,62 @@ func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 				}
 				org = true
 			}
+			gate, err := gateOf(op)
+			if err != nil {
+				return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
+			}
 			ops[method+" "+base+path] = Operation{
 				Cost:         cost,
 				Search:       style == "search" || strings.HasSuffix(path, "/search"),
 				Public:       op.Security != nil && len(*op.Security) == 0,
 				Organization: org,
 				Body:         strictBody(op),
+				Gate:         gate,
 			}
 		}
 	}
 	return ops, nil
+}
+
+var errFeature = errors.New("names no feature of its kind")
+
+// gateOf reads op's capability, and the options its JSON body's top-level
+// properties carry as x-infraweave-feature: {feature, value}, where no
+// value means any value but null.
+func gateOf(op *openapi3.Operation) (featuresapi.Gate, error) {
+	name, _ := op.Extensions["x-infraweave-feature"].(string)
+	if f, ok := features.Lookup(name); !ok || f.Kind != features.Capability {
+		return featuresapi.Gate{}, fmt.Errorf("x-infraweave-feature %q %w", name, errFeature)
+	}
+	g := featuresapi.Gate{Feature: name}
+	if op.RequestBody == nil || op.RequestBody.Value == nil {
+		return g, nil
+	}
+	mt := op.RequestBody.Value.Content.Get(jsonType)
+	if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
+		return g, nil
+	}
+	props := mt.Schema.Value.Properties
+	for _, prop := range slices.Sorted(maps.Keys(props)) {
+		ref := props[prop]
+		ext, ok := ref.Extensions["x-infraweave-feature"].(map[string]any)
+		if !ok && ref.Value != nil {
+			ext, ok = ref.Value.Extensions["x-infraweave-feature"].(map[string]any)
+		}
+		if !ok {
+			continue
+		}
+		option, _ := ext["feature"].(string)
+		if f, ok := features.Lookup(option); !ok || f.Kind != features.Option {
+			return featuresapi.Gate{}, fmt.Errorf("property %s's x-infraweave-feature %q %w",
+				prop, option, errFeature)
+		}
+		value, _ := ext["value"].(string)
+		g.Options = append(g.Options, featuresapi.OptionGate{
+			Property: prop, Value: value, Feature: option,
+		})
+	}
+	return g, nil
 }
 
 // strictBody is op's request body when its JSON schema forbids properties
@@ -130,7 +185,8 @@ var apiOperations = sync.OnceValue(func() Operations {
 	// The break-glass login is a page, not an operation of either API, but
 	// the same controls stand in front of it: no credential, and each
 	// sign-in an expensive draw on the client's address, which slows a
-	// password guesser to the expensive class's rate.
+	// password guesser to the expensive class's rate. It names no feature,
+	// so no switch-off or tier can lock the break-glass admin out.
 	ops[http.MethodGet+" "+accessapi.LoginPattern] = Operation{Public: true}
 	ops[http.MethodPost+" "+accessapi.LoginPattern] = Operation{
 		Public: true,
@@ -148,6 +204,10 @@ type Guards struct {
 	Keys    idempotency.Store
 }
 
+// Gated builds the feature middleware from a resolver of each request's
+// gate; the features domain's Middleware is one.
+type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Handler) http.Handler
+
 // Guarded is an API listener router: request ID and recovery, the access
 // log, authentication, then decision 0003's controls in front of every
 // route registered on it, so a request a control rejects is logged too.
@@ -158,13 +218,17 @@ type Guards struct {
 // keys on the caller, the principal's <kind>:<actor ID> (decision 0006),
 // or the client's address on a public route. ops names the operations its
 // routes serve; a request no operation serves, such as a 404, still
-// authenticates and draws from the standard budget.
+// authenticates and draws from the standard budget. gated, when not nil,
+// builds decision 0021's feature middleware, which runs right after
+// authentication, so a refused feature costs no budget and stores no
+// idempotent answer; it gates every operation that names a capability.
 func Guarded(
 	log *slog.Logger,
 	c config.Server,
 	ops Operations,
 	g Guards,
 	auth accessapi.Authenticator,
+	gated Gated,
 ) *chi.Mux {
 	var r *chi.Mux
 	resolve := func(req *http.Request) (Operation, bool) {
@@ -175,11 +239,20 @@ func Guarded(
 	if auth == nil {
 		auth = refuseAll{}
 	}
+	if gated == nil {
+		gated = func(func(*http.Request) (featuresapi.Gate, bool)) func(http.Handler) http.Handler {
+			return func(next http.Handler) http.Handler { return next }
+		}
+	}
 	r = middleware.NewRouter(log,
 		middleware.AccessLog(log),
 		auth.Middleware(func(req *http.Request) accessapi.Access {
 			op, _ := resolve(req)
 			return op.access()
+		}),
+		gated(func(req *http.Request) (featuresapi.Gate, bool) {
+			op, ok := resolve(req)
+			return op.Gate, ok && op.Gate.Feature != ""
 		}),
 		ratelimit.Disabled(g.Switch, caller),
 		ratelimit.Middleware(c.RateLimit, g.Buckets, caller,

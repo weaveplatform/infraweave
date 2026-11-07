@@ -103,7 +103,9 @@ var errNotListening = errors.New("the queue's listening connection is down")
 // workers with the platform's handlers, the outbox's fan-out and
 // consumption and blob.delete over store, the one full objectstore.Store
 // of the process, and the ticker over periodic_tasks, after registering the
-// periodic tasks in the database. Their
+// periodic tasks in the database. ent decides whether a job's account may
+// run its kind's feature, so a downgraded organization's jobs complete as
+// skipped. Their
 // wake-ups come through l, which the caller runs. A registration that fails
 // fails startup. The returned stop ends the ticker, then the workers, which
 // finish or hand back their jobs within queue.shutdown_grace (decision
@@ -119,6 +121,7 @@ func startScheduler(
 	events *outbox.Outbox,
 	store objectstore.Store,
 	domainTasks []cron.Task,
+	ent queue.Entitlements,
 	log *slog.Logger,
 	health *observe.Health,
 ) (stop func(), err error) {
@@ -153,7 +156,7 @@ func startScheduler(
 		}
 		return nil
 	})
-	workers := queue.NewWorkers(q, reg, c.Queue, queue.AllowAll{}, wake.C, log, owner())
+	workers := queue.NewWorkers(q, reg, c.Queue, ent, wake.C, log, owner())
 	ticker := cron.NewTicker(db.Primary(), c.Queue.SchedulerTick, log, tasks)
 
 	// The roles run on contexts of their own: ctx ends when the shutdown

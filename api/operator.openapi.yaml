@@ -20,6 +20,7 @@ paths:
       summary: List organizations
       description: The installation's organizations, oldest first.
       operationId: organizations
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -54,6 +55,7 @@ paths:
       description: >-
         Creates an organization with its first account, unclaimed, in one transaction, and its break-glass credential when the body names one.
       operationId: organizationCreate
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -104,6 +106,7 @@ paths:
     get:
       summary: Read an organization
       operationId: organization
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -137,6 +140,7 @@ paths:
       description: >-
         Deletes the organization and its accounts with everything the access domain holds for them: members, API keys, sessions and the break-glass credential. Every session it held stops at once.
       operationId: organizationDelete
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -171,6 +175,7 @@ paths:
       description: >-
         Sets or replaces the organization's break-glass credential. Organization admins can neither read nor change it.
       operationId: organizationBreakGlassSet
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -216,6 +221,7 @@ paths:
       description: >-
         Removes the organization's break-glass credential, so no break-glass sign-in works until the operator sets one.
       operationId: organizationBreakGlassDelete
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -531,6 +537,28 @@ components:
           type: string
           description: >-
             The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
+        feature:
+          type: string
+          description: >-
+            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+        tiers:
+          type: array
+          items:
+            type: string
+          description: >-
+            For feature-not-in-tier, the tiers that include the feature, smallest first.
+        limit:
+          type: string
+          description: The limit of limit-reached, such as seats.
+        scope:
+          type: string
+          enum: [organization, account]
+          description: >-
+            For limit-reached, whether the organization's pool or the account's limit was reached.
+        value:
+          type: integer
+          format: int64
+          description: For limit-reached, that scope's limit.
   securitySchemes:
     bearerAuth:
       type: http

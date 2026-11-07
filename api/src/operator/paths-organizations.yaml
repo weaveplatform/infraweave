@@ -150,6 +150,7 @@ paths:
       summary: List organizations
       description: The installation's organizations, oldest first.
       operationId: organizations
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -185,6 +186,7 @@ paths:
         Creates an organization with its first account, unclaimed, in one
         transaction, and its break-glass credential when the body names one.
       operationId: organizationCreate
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -237,6 +239,7 @@ paths:
     get:
       summary: Read an organization
       operationId: organization
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -272,6 +275,7 @@ paths:
         domain holds for them: members, API keys, sessions and the
         break-glass credential. Every session it held stops at once.
       operationId: organizationDelete
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -307,6 +311,7 @@ paths:
         Sets or replaces the organization's break-glass credential.
         Organization admins can neither read nor change it.
       operationId: organizationBreakGlassSet
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:
@@ -353,6 +358,7 @@ paths:
         Removes the organization's break-glass credential, so no break-glass
         sign-in works until the operator sets one.
       operationId: organizationBreakGlassDelete
+      x-infraweave-feature: operator
       tags: [Organizations]
       x-infraweave-cost: standard
       parameters:

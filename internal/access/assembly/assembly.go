@@ -2,6 +2,7 @@ package assembly
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	nethttp "net/http"
 	"os"
@@ -16,9 +17,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
@@ -230,6 +233,23 @@ func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
 			}
 		}
 	}
+}
+
+// AccountOrganization is the organization that holds acct, for work
+// outside a request that knows only its account, as a queued job does;
+// the zero ID when no account acct exists.
+func (d *Domain) AccountOrganization(
+	ctx context.Context,
+	acct kernel.AccountID,
+) (kernel.OrganizationID, error) {
+	a, err := d.store.Account(ctx, acct)
+	switch {
+	case errors.Is(err, port.ErrNotFound):
+		return kernel.OrganizationID{}, nil
+	case err != nil:
+		return kernel.OrganizationID{}, err //nolint:wrapcheck // the store names the read
+	}
+	return a.OrganizationID, nil
 }
 
 // Cron is the domain's periodic tasks: authn.sessions.expire, hourly, and

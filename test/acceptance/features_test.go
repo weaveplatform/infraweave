@@ -253,6 +253,9 @@ type world struct {
 	// auth is the auth settings every server of the scenario starts with;
 	// nil keeps the defaults.
 	auth map[string]any
+	// features is the features settings every server of the scenario
+	// starts with; nil keeps the defaults.
+	features map[string]any
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -383,6 +386,11 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	}
 	if w.auth != nil {
 		if config, err = withSection(config, "auth", w.auth); err != nil {
+			return nil, err
+		}
+	}
+	if w.features != nil {
+		if config, err = withSection(config, "features", w.features); err != nil {
 			return nil, err
 		}
 	}

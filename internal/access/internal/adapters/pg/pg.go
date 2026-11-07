@@ -51,8 +51,9 @@ type DB interface {
 // Store is port.Tenancy on PostgreSQL.
 type Store struct {
 	db DB
-	// features holds the features domain's rows of each organization;
-	// nil leaves them to whoever holds them.
+	// features holds the features domain's rows of each organization and
+	// its limits; nil leaves the rows to whoever holds them and checks no
+	// limit.
 	features featuresapi.Entitlements
 }
 
@@ -62,7 +63,9 @@ var _ port.Tenancy = (*Store)(nil)
 func New(db DB) *Store { return &Store{db: db} }
 
 // WithFeatures returns s deleting an organization's rows in the features
-// domain, through f, in the transaction that deletes the organization.
+// domain, through f, in the transaction that deletes the organization, and
+// checking the seats limit through f in the transaction that creates an
+// API key.
 func (s *Store) WithFeatures(f featuresapi.Entitlements) *Store {
 	s.features = f
 	return s

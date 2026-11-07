@@ -6,14 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
+	core "github.com/weaveplatform/infraweave/internal/features/internal/features"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -181,4 +186,142 @@ func (s *Store) AccountLimit(
 		return 0, false, fmt.Errorf("features: %w", sql.Unavailable(err))
 	}
 	return value, true, nil
+}
+
+// Billing reads the billing switch.
+func (s *Store) Billing(ctx context.Context) (bool, error) {
+	var on bool
+	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT enabled FROM billing`).Scan(&on); err != nil {
+		return false, fmt.Errorf("features: %w", sql.Unavailable(err))
+	}
+	return on, nil
+}
+
+// tiers reads every tier's content.
+const tiers = `
+SELECT t.name,
+  ARRAY(SELECT feature FROM tier_features f WHERE f.tier = t.name ORDER BY 1),
+  coalesce((SELECT jsonb_object_agg(limit_name, value) FROM tier_limits l
+            WHERE l.tier = t.name), '{}')
+FROM tiers t ORDER BY t.name`
+
+// Tiers reads every tier's content, in name order.
+func (s *Store) Tiers(ctx context.Context) ([]features.Tier, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, tiers)
+	if err != nil {
+		return nil, fmt.Errorf("features: %w", sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (features.Tier, error) {
+		var t features.Tier
+		err := r.Scan(&t.Name, &t.Features, &t.Limits)
+		return t, err //nolint:wrapcheck // CollectRows' caller wraps it
+	})
+	if err != nil {
+		return nil, fmt.Errorf("features: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// Seed installs each of seeds as a tier the first time, and later replaces
+// a seeded tier's content only while it equals what the last seed gave it.
+// It holds a lock on tiers that keeps replicas starting together, and any
+// tier edit, from interleaving.
+func (s *Store) Seed(ctx context.Context, seeds []features.Tier) error {
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		q := tx.Q(ctx, s.db)
+		if _, err := q.Exec(ctx, `LOCK TABLE tiers IN SHARE ROW EXCLUSIVE MODE`); err != nil {
+			return fmt.Errorf("features: %w", sql.Unavailable(err))
+		}
+		current, err := s.Tiers(ctx)
+		if err != nil {
+			return err
+		}
+		changed := false
+		for _, seed := range seeds {
+			applied, err := s.seed(ctx, seed, current)
+			if err != nil {
+				return err
+			}
+			changed = changed || applied
+		}
+		if !changed {
+			return nil
+		}
+		// Delivered on commit, so a replica already serving drops the
+		// tiers and entitlements it read before this release's seeds.
+		if err := notify.Notify(ctx, q, notify.Invalidate, core.TiersKey); err != nil {
+			return fmt.Errorf("features: %w", sql.Unavailable(err))
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("seed the tiers: %w", err)
+	}
+	return nil
+}
+
+// seed applies one seeded tier, given every tier's current content, and
+// reports whether it wrote one whose content differs from what was there.
+func (s *Store) seed(
+	ctx context.Context,
+	seed features.Tier,
+	current []features.Tier,
+) (bool, error) {
+	q := tx.Q(ctx, s.db)
+	var last features.Tier
+	err := q.QueryRow(ctx, `SELECT features, limits FROM tier_seeds WHERE tier = $1`, seed.Name).
+		Scan(&last.Features, &last.Limits)
+	seeded := err == nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return false, fmt.Errorf("features: %w", sql.Unavailable(err))
+	}
+	i := slices.IndexFunc(current, func(t features.Tier) bool { return t.Name == seed.Name })
+	switch {
+	case seeded && i < 0:
+		// The operator deleted it.
+		return false, nil
+	case seeded && !same(current[i], last):
+		// The operator edited it.
+		return false, nil
+	case !seeded && i >= 0:
+		// The operator made a tier of the same name first; it stays theirs.
+		return false, nil
+	case seeded && same(last, seed):
+		return false, nil
+	}
+	stmts := []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO tiers (name) VALUES ($1) ON CONFLICT DO NOTHING`, []any{seed.Name}},
+		{`DELETE FROM tier_features WHERE tier = $1`, []any{seed.Name}},
+		{`DELETE FROM tier_limits WHERE tier = $1`, []any{seed.Name}},
+		{
+			`INSERT INTO tier_features (tier, feature) SELECT $1, unnest($2::text[])`,
+			[]any{seed.Name, seed.Features},
+		},
+		{`INSERT INTO tier_limits (tier, limit_name, value)
+			SELECT $1, key, value::bigint FROM jsonb_each_text($2)`, []any{seed.Name, seed.Limits}},
+		{
+			`INSERT INTO tier_seeds (tier, features, limits) VALUES ($1, $2, $3)
+			ON CONFLICT (tier) DO UPDATE
+			SET features = EXCLUDED.features, limits = EXCLUDED.limits, seeded_at = now()`,
+			[]any{seed.Name, seed.Features, seed.Limits},
+		},
+	}
+	for _, st := range stmts {
+		if _, err := q.Exec(ctx, st.sql, st.args...); err != nil {
+			return false, fmt.Errorf("features: %w", sql.Unavailable(err))
+		}
+	}
+	return true, nil
+}
+
+// same reports whether two tiers' contents are equal.
+func same(a, b features.Tier) bool {
+	return slices.Equal(
+		slices.Sorted(slices.Values(a.Features)),
+		slices.Sorted(slices.Values(b.Features)),
+	) &&
+		maps.Equal(a.Limits, b.Limits)
 }

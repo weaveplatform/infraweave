@@ -12,7 +12,11 @@
 // deletes its sessions, API keys, members and their identities, its
 // break-glass credential, its accounts, its rows in the features domain
 // through the featuresapi.Entitlements WithFeatures gives, and itself, as
-// every foreign key restricts. A unique violation on a slug is port.ErrSlugTaken and a
+// every foreign key restricts. Creating an API key checks the seats limit
+// through the same Entitlements in the inserting transaction, counting
+// each active member once and each live key that is not personal and was
+// created or used within SeatWindow. A unique violation on a slug is
+// port.ErrSlugTaken and a
 // break-glass credential of no organization port.ErrNotFound. Store also
 // implements port.BreakGlass, whose sign-in writes the session and its
 // trail entry in one transaction, and session.Admission, from

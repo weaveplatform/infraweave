@@ -22,6 +22,10 @@ type Entitlement struct {
 	Limits   map[string]int64
 }
 
+// Seats is the limit on members and API keys (decision 0021), which access
+// counts.
+const Seats = "seats"
+
 // Usage is a counted thing's use at the moment of a creation: across the
 // organization's accounts, and in the account the creation is for.
 type Usage struct {
@@ -50,6 +54,22 @@ type LimitError struct {
 
 func (e *LimitError) Error() string {
 	return fmt.Sprintf("features: %s reached its %s limit of %d", e.Limit, e.Scope, e.Value)
+}
+
+// Gate is what a request needs of the catalogue: Feature, the capability
+// its operation's x-infraweave-feature names, and Options, the gated
+// values its body may set.
+type Gate struct {
+	Feature string
+	Options []OptionGate
+}
+
+// OptionGate is one gated value: a request body whose top-level Property
+// is Value needs the option Feature.
+type OptionGate struct {
+	Property string
+	Value    string
+	Feature  string
 }
 
 // Entitlements is what other domains call of the features domain. Each

@@ -50,6 +50,7 @@ func (l *logs) String() string {
 
 type harness struct {
 	q    *queue.Queue
+	w    *queue.Workers
 	pool *pgxpool.Pool
 	logs *logs
 	stop func()
@@ -80,8 +81,8 @@ func start(
 		wake = sub.C
 		wg.Go(func() { l.Run(ctx) })
 	}
-	w := queue.NewWorkers(h.q, reg, cfg, ent, wake, log, "test-replica")
-	wg.Go(func() { w.Run(ctx) })
+	h.w = queue.NewWorkers(h.q, reg, cfg, ent, wake, log, "test-replica")
+	wg.Go(func() { h.w.Run(ctx) })
 	var once sync.Once
 	h.stop = func() {
 		once.Do(func() {
@@ -320,8 +321,8 @@ func TestAccWorkersUnregisteredKindAndSkipped(t *testing.T) {
 		t.Errorf("skipped job %+v; handler ran %d times, want only for the installation job",
 			read(t, h.pool, skipped), ran.Load())
 	}
-	if !strings.Contains(h.logs.String(), "job skipped") {
-		t.Error("the skip was not logged")
+	if !strings.Contains(h.logs.String(), "job skipped") || h.w.Skipped() != 1 {
+		t.Errorf("the skip was not logged and counted once: %d", h.w.Skipped())
 	}
 	if r := read(t, h.pool, unknown); r.State != "pending" || r.Attempt != 0 {
 		t.Errorf("a kind no handler is registered for: %+v", r)

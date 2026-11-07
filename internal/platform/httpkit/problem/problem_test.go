@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -43,7 +44,7 @@ func TestUnitResponseErrorNotImplemented(t *testing.T) {
 	)
 	p := decode(t, rec)
 	if rec.Code != http.StatusNotImplemented ||
-		p != NotImplemented.New("stacks (GET /stacks) is not implemented yet") ||
+		!reflect.DeepEqual(p, NotImplemented.New("stacks (GET /stacks) is not implemented yet")) ||
 		p.Detail != "stacks (GET /stacks) is not implemented yet" {
 		t.Errorf("got %d %+v", rec.Code, p)
 	}
@@ -201,5 +202,50 @@ func TestUnitResponseErrorUnavailable(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable || p.Type != TypePrefix+"service-unavailable" ||
 		rec.Header().Get("Retry-After") != "2" || strings.Contains(p.Detail, "10.0.0.7") {
 		t.Errorf("got %d %v %+v", rec.Code, rec.Header(), p)
+	}
+}
+
+// TestUnitProblemMembers checks the extension members of decision 0021's
+// refusals, and that a limit of 0 still names its value.
+func TestUnitProblemMembers(t *testing.T) {
+	p := FeatureNotInTier.New("no")
+	p.Feature, p.Tiers = "policies", []string{"Starter", "Business"}
+	l := NewLimitReached("seats", "account", 0)
+	for _, c := range []struct {
+		p    Problem
+		want []string
+		not  []string
+	}{
+		{p, []string{`"feature":"policies"`, `"tiers":["Starter","Business"]`}, []string{`"limit"`, `"value"`}},
+		{l, []string{`"limit":"seats"`, `"scope":"account"`, `"value":0`}, []string{`"feature"`, `"tiers"`}},
+	} {
+		b, err := json.Marshal(c.p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, w := range c.want {
+			if !strings.Contains(string(b), w) {
+				t.Errorf("%s lacks %s", b, w)
+			}
+		}
+		for _, n := range c.not {
+			if strings.Contains(string(b), n) {
+				t.Errorf("%s carries %s", b, n)
+			}
+		}
+	}
+}
+
+func TestUnitNewLimitReached(t *testing.T) {
+	for scope, detail := range map[string]string{
+		"organization": "The organization has reached its seats limit of 2.",
+		"account":      "This account has reached its seats limit of 2.",
+	} {
+		p := NewLimitReached("seats", scope, 2)
+		typed := p.Status == http.StatusForbidden && p.Type == LimitReached.New("").Type
+		members := p.Limit == "seats" && p.Scope == scope && p.Value != nil && *p.Value == 2
+		if !typed || !members || p.Detail != detail {
+			t.Errorf("%s: %+v", scope, p)
+		}
 	}
 }

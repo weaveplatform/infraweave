@@ -5,6 +5,7 @@ paths:
     get:
       description: Current user, if any.
       operationId: viewer
+      x-infraweave-feature: viewer
       responses:
         "200":
           content:

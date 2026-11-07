@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -168,6 +169,8 @@ type Workers struct {
 	// waiting, when set, is called each time a queue's pool waits; tests
 	// use it to enqueue only once a pool is idle.
 	waiting func(Name)
+	// skipped counts decision 0011's infraweave.features.skipped.
+	skipped atomic.Int64
 }
 
 // NewWorkers runs reg's handlers on q's jobs as cfg says. wake delivers
@@ -322,6 +325,11 @@ func (w *Workers) recover(ctx context.Context) {
 	}
 }
 
+// Skipped is infraweave.features.skipped: how many jobs these workers
+// completed without running because their account's entitlement lacks
+// their kind's feature.
+func (w *Workers) Skipped() int64 { return w.skipped.Load() }
+
 // run runs one claimed job and records its outcome.
 func (w *Workers) run(base context.Context, j Job) {
 	r := w.reg.kinds[j.Kind]
@@ -331,6 +339,7 @@ func (w *Workers) run(base context.Context, j Job) {
 	if r.feature != "" && !j.Account.IsZero() {
 		ok, err := w.ent.Allowed(base, j.Account, r.feature)
 		if err == nil && !ok {
+			w.skipped.Add(1)
 			log.Info("job skipped: feature outside the account's entitlement", "feature", r.feature)
 			w.record(log, "skipped", w.q.Complete(settle, j))
 			return

@@ -135,6 +135,7 @@ OAPI_CODEGEN := github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.2
 SPECS := $(patsubst api/src/%/info.yaml,%,$(wildcard api/src/*/info.yaml))
 
 DATA_VIEW := docs/implementation/tiers.md
+CATALOGUE := internal/features/catalogue.gen.go
 
 ## generate: bundle the specs, generate each strict chi server, Go client and 501 stubs, and render the docs/data view
 generate: bundle
@@ -144,11 +145,11 @@ generate: bundle
 		$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-$$s.yaml api/$$s.openapi.yaml || exit 1; \
 		$(GO) run ./tools/stubgen internal/platform/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
 	done
-	$(GO) run ./tools/dataview docs/data $(DATA_VIEW)
+	$(GO) run ./tools/dataview docs/data $(DATA_VIEW) $(CATALOGUE)
 
 ## verify-generate: fail if the committed bundles, generated code or docs/data view differ from what make generate writes
 verify-generate: generate
-	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) || \
+	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) $(CATALOGUE) || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
 ## reference: regenerate each product's OpenAPI reference and coverage report from its snapshots

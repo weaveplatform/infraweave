@@ -80,7 +80,11 @@ func API(
 	queues QueueStats,
 	b Blobs,
 ) http.Handler {
-	r := Guarded(log, c, apiOperations(), g, byPrefix{api: d.Auth, operator: d.OperatorAuth})
+	var gated Gated
+	if d.Features != nil {
+		gated = d.Features.Middleware
+	}
+	r := Guarded(log, c, apiOperations(), g, byPrefix{api: d.Auth, operator: d.OperatorAuth}, gated)
 	if b.Routes != nil {
 		b.Routes(r)
 	}

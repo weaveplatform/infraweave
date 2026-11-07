@@ -32,6 +32,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `intent` | capability | The Intent tag and the hosted `intent` tool | ✓ | ✓ | ✓ | ✓ | ✓ | P25b |
 | `managed-users` | capability | The Managed Users tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
 | `opentofu-migration` | capability | The OpenTofu Migration tag, `openTofuMigrate`, `openTofuMigrationQueueClean` and `stackMigrateVendorAll` | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
+| `operator` | capability | The operator API, `api/operator.openapi.yaml`, which answers to the installation rather than an organization | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
 | `organization` | capability | The served `Organization` tag, outside the parity surface: the organization, its accounts, members, identity linking, account limits and usage across accounts; its identity provider operations carry `oidc-sso` or `saml-sso`, by provider kind | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
 | `origin-integration` | capability | The Origin Integration tag | ✓ | ✓ | ✓ | ✓ | ✓ | P19b |
 | `personal-api-keys` | capability | The Personal API Keys tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
@@ -95,7 +96,7 @@ Every limit is pooled across an organization's accounts. An empty cell means no 
 | `ai-budget` | spend of the installation's default AI integration across the organization's accounts, in USD per 30 days | 10 | | | | | P25 |
 | `private-workers` | registered private workers | 0 | 0 | 2 | 3 | | P8 |
 | `public-worker-slots` | runs in flight on the public worker pool; a run beyond it waits | 1 | 1 | 2 | 2 | | P14 |
-| `seats` | members, each counted once however many accounts admit it, and API keys as Spacelift counts them | 2 | 2 | | | | P3b |
+| `seats` | active members, each counted once however many accounts admit it, and API keys that are not personal, for 30 days from creation or last use | 2 | 2 | | | | P3b |
 
 ## Summary by phase
 

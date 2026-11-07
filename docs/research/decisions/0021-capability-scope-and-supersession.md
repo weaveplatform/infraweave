@@ -205,7 +205,11 @@ generator reads with it. There are three kinds:
   option names its field. The catalogue covers Deploy; Flows, as
   `flows-engine`, `flows-apps`, `flows-agents`, `flows-data-tables`,
   `flows-forms` and `flows-mcp-tools`; the `console`; and each IaC vendor,
-  as an option on `StackVendor` such as `vendor-opentofu`. Flows has no
+  as an option on `StackVendor` such as `vendor-opentofu`. The operator
+  API's operations carry `operator`, which no entitlement check refuses,
+  because an operator principal belongs to no organization;
+  `features.disabled` rejects it as it rejects `billing`, and every tier
+  holds it. Flows has no
   switch of its own: it turns off like any other feature, and every Flows
   feature requires `flows-engine`.
 - **Names.** Feature names are infraweave's own: lower-case English words
