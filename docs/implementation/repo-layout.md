@@ -137,6 +137,7 @@ infraweave/
 │   │   │   ├── worker/            (P8)
 │   │   │   └── operator/          (P3)
 │   │   ├── observe/               slog, OpenTelemetry, /metrics, readiness on its own port (P2, P18b)
+│   │   ├── private/               keeps a secret's file to its owner: mode 0600, a protected DACL on Windows
 │   │   └── testkit/               fake clock, fake object store, HTTP recorder helpers
 │   ├── iac/                       pure IaC vendor knowledge shared by server and agent (P5, P9, P20, P20b)
 │   │   ├── iac.go registry.go     Vendor: Kind, ValidateSettings, Workflow, ParsePlan; Kind → Vendor
@@ -481,7 +482,7 @@ only refuses more.
 | `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave/agent.go`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/pkg/flows/app/v1$`, `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}$` |
 | `devtools` (rule 8) | everything except `**/tools/**`, `**/internal/devtools/**`, and the tests of `api/` and `test/acceptance/`, which check the committed documents with `specref` | deny | `$m/internal/devtools` |
 | `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
-| `ctl` (rule 10) | `**/internal/ctl/**`, `**/cmd/infraweavectl/**` | lax: deny, then allow | deny `$m/internal` and `$m/pkg/client`; allow `$m/internal/ctl$` and `$m/internal/platform/buildinfo$` |
+| `ctl` (rule 10) | `**/internal/ctl/**`, `**/cmd/infraweavectl/**` | lax: deny, then allow | deny `$m/internal` and `$m/pkg/client`; allow `$m/internal/ctl$`, `$m/internal/platform/buildinfo$` and `$m/internal/platform/private$` |
 
 Rule 2 is the declared graph below: one rule per domain, which allows
 `$m/internal/platform/`, `kernel` and `iac`, its own tree and the `api/`

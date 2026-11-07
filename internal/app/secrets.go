@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -178,6 +179,11 @@ func GenerateKEK(file string) error {
 	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return fmt.Errorf("generate KEK: %w", err)
+	}
+	// Restricted before it holds the key: 0600 alone says nothing on
+	// Windows.
+	if err := private.Restrict(file); err != nil {
+		return errors.Join(fmt.Errorf("generate KEK: %w", err), f.Close(), os.Remove(file))
 	}
 	_, err = fmt.Fprintln(f, base64.StdEncoding.EncodeToString(key))
 	if err = errors.Join(err, f.Close()); err != nil {

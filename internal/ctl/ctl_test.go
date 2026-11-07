@@ -17,6 +17,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
@@ -201,11 +202,8 @@ func TestUnitProfiles(t *testing.T) {
 		"  dev\thttp://localhost:8080/\n* prod\thttps://iw.example.com\n" {
 		t.Errorf("list = %q", out)
 	}
-	if err := isPrivate(c.config); err != nil {
-		t.Errorf("the profiles file is not its owner's alone: %v", err)
-	}
-	if err := private(filepath.Join(t.TempDir(), "none")); err == nil {
-		t.Error("restricted a file that does not exist")
+	if err := private.Check(c.config); err != nil {
+		t.Error(err)
 	}
 	f, err := readFile(c.config)
 	if err != nil || f.Current != "prod" ||

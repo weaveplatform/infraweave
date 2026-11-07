@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 )
 
 // configFlag names the profiles file. It is not a setting, so it is never
@@ -72,7 +74,7 @@ func readFile(path string) (File, error) {
 }
 
 // writeFile replaces the profiles file whole, readable by its owner only
-// (private), since it holds secrets. It writes a temporary file and renames it, so a
+// (private.Restrict), since it holds secrets. It writes a temporary file and renames it, so a
 // failed write leaves the old file.
 func writeFile(path string, f File) error {
 	b, err := yaml.Marshal(f)
@@ -89,9 +91,9 @@ func writeFile(path string, f File) error {
 	}
 	defer os.Remove(tmp.Name())
 	// Restricted before it holds a secret; the rename keeps the restriction.
-	if err := private(tmp.Name()); err != nil {
+	if err := private.Restrict(tmp.Name()); err != nil {
 		tmp.Close()
-		return err
+		return fmt.Errorf("write %s: %w", path, err)
 	}
 	if _, err := tmp.Write(b); err != nil {
 		tmp.Close()

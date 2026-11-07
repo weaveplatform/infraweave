@@ -278,6 +278,7 @@ linters:
           allow:
             - github.com/weaveplatform/infraweave/internal/ctl$
             - github.com/weaveplatform/infraweave/internal/platform/buildinfo$
+            - github.com/weaveplatform/infraweave/internal/platform/private$
     forbidigo:
       analyze-types: true
       forbid:
