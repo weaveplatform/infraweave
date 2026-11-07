@@ -87,8 +87,8 @@ func TestUnitAPIOperations(t *testing.T) {
 		[]featuresapi.OptionGate{{Property: "oidc", Feature: "oidc-api-keys"}}) {
 		t.Errorf("apiKeyCreate's options: %+v", g.Options)
 	}
-	// The fs driver's routes are mounted, so a pattern they serve that the
-	// table lacks, or the reverse, fails the walk below.
+	// The fs driver's routes are mounted, so a table pattern the driver
+	// does not serve fails the walk below.
 	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server),
 		Domains{Auth: byAddress{}}, nil, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
 	if !ok {
