@@ -525,3 +525,48 @@ func TestAccBilling(t *testing.T) {
 		t.Error("a second billing row was accepted")
 	}
 }
+
+// TestAccByteOrder checks that names read in byte order, as Go compares
+// them, whatever the database's collation: "module-sharing" before
+// "modules", and "Gold Plus" before "Gold-Plus" before "GoldPlus".
+func TestAccByteOrder(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	named := []string{"GoldPlus", "Gold-Plus", "Gold Plus", root.Enterprise}
+	seeds := make([]root.Tier, 0, len(named))
+	for _, n := range named {
+		seeds = append(seeds, root.Tier{
+			Name: n, Features: []string{"modules", "module-sharing"}, Limits: map[string]int64{},
+		})
+	}
+	if err := s.Seed(ctx, seeds); err != nil {
+		t.Fatal(err)
+	}
+	ts, err := s.Tiers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(ts))
+	for _, tier := range ts {
+		names = append(names, tier.Name)
+		if !slices.IsSorted(tier.Features) {
+			t.Errorf("%s's features read as %v", tier.Name, tier.Features)
+		}
+	}
+	if !slices.IsSorted(names) || len(names) != len(named) {
+		t.Errorf("the tiers read as %v", names)
+	}
+	org := kernel.NewOrganizationID()
+	if err := s.CreateOrganization(ctx, org); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"modules", "module-sharing"} {
+		if err := s.GrantFeature(ctx, org, f); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if g, err := s.Grants(ctx, org); err != nil || !slices.IsSorted(g.Features) {
+		t.Errorf("the grants read as %v, %v", g.Features, err)
+	}
+}

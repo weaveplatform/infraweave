@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -22,8 +23,16 @@ type platformSteps struct {
 
 func (p *platformSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
-		`^token "(\w+)" creates the tier "([^"]+)" with the feature "([a-z-]+)" through ([AB])$`,
+		`^token "(\w+)" creates the tier "([^"]+)" with the feature "([a-z-]+)"(?: and (\d+) seats)? through ([AB])$`,
 		p.createTier,
+	)
+	sc.Step(
+		`^"([A-Z]+) ([^"]+)" through ([AB]) with token "(\w+)" eventually answers '([^']*)'$`,
+		p.eventuallyJSON,
+	)
+	sc.Step(
+		`^the tier read through ([AB]) with token "(\w+)" is the tier "([^"]+)" as token "(\w+)" reads it through ([AB])$`,
+		p.tierAsOperator,
 	)
 	sc.Step(
 		`^token "(\w+)" gives the home organization the tier "([^"]+)" through ([AB])$`,
@@ -74,11 +83,73 @@ func (p *platformSteps) ok(
 	return r, nil
 }
 
-func (p *platformSteps) createTier(ctx context.Context, tok, name, feature, replica string) error {
+// createTier creates a tier of one feature and, when seats is set, that
+// many seats.
+func (p *platformSteps) createTier(
+	ctx context.Context,
+	tok, name, feature, seats, replica string,
+) error {
+	limits := map[string]int64{}
+	if seats != "" {
+		n, err := strconv.ParseInt(seats, 10, 64)
+		if err != nil {
+			return fmt.Errorf("%w: seats %q: %w", errStep, seats, err)
+		}
+		limits["seats"] = n
+	}
 	_, err := p.ok(ctx, replica, tok, http.MethodPost, "/operator/v1/tiers", map[string]any{
-		"name": name, "features": []string{feature}, "limits": map[string]int64{},
+		"name": name, "features": []string{feature}, "limits": limits,
 	}, http.StatusCreated)
 	return err
+}
+
+// eventuallyJSON waits for a replica to answer 200 with want, as
+// eventuallyProblem waits for a problem.
+func (p *platformSteps) eventuallyJSON(
+	ctx context.Context,
+	method, path, replica, tok, want string,
+) error {
+	return Eventually(ctx, method+" "+path+" to answer "+want,
+		func(ctx context.Context) (bool, error) {
+			r, err := p.a.do(ctx, replica, tok, method, path, nil)
+			if err != nil {
+				return false, err
+			}
+			return answered(r, method+" "+path, want) == nil, nil
+		})
+}
+
+// tierAsOperator checks that the account's tier read is the tier name as
+// the operator API reads it: its name, features and limits.
+func (p *platformSteps) tierAsOperator(
+	ctx context.Context,
+	replica, tok, name, opTok, opReplica string,
+) error {
+	type tier struct {
+		Name     string           `json:"name"`
+		Features []string         `json:"features"`
+		Limits   map[string]int64 `json:"limits"`
+	}
+	var got, want tier
+	for _, read := range []struct {
+		replica, tok, path string
+		into               *tier
+	}{
+		{replica, tok, "/api/v1/tier", &got},
+		{opReplica, opTok, "/operator/v1/tiers/" + name, &want},
+	} {
+		r, err := p.ok(ctx, read.replica, read.tok, http.MethodGet, read.path, nil, http.StatusOK)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(r.body, read.into); err != nil {
+			return fmt.Errorf("%w: %s answered %s: %w", errStep, read.path, r.body, err)
+		}
+	}
+	if want.Name != name || !reflect.DeepEqual(got, want) {
+		return fmt.Errorf("%w: the tier read is %+v, want %+v", errStep, got, want)
+	}
+	return nil
 }
 
 func (p *platformSteps) setTier(ctx context.Context, tok, tier, replica string) error {

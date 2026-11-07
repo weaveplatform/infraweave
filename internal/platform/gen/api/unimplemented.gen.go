@@ -110,12 +110,52 @@ func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUser", Route: "POST /auth/token"}
 }
 
+func (UnimplementedStrict) AvailableBillingAddons(context.Context, AvailableBillingAddonsRequestObject) (AvailableBillingAddonsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "availableBillingAddons", Route: "GET /available-billing-addons"}
+}
+
+func (UnimplementedStrict) AvailableSelfServicePlans(context.Context, AvailableSelfServicePlansRequestObject) (AvailableSelfServicePlansResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "availableSelfServicePlans", Route: "GET /available-self-service-plans"}
+}
+
 func (UnimplementedStrict) AwarenessSourceSurvey(context.Context, AwarenessSourceSurveyRequestObject) (AwarenessSourceSurveyResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "awarenessSourceSurvey", Route: "GET /awareness-source-survey"}
 }
 
+func (UnimplementedStrict) BilledExternally(context.Context, BilledExternallyRequestObject) (BilledExternallyResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billedExternally", Route: "GET /billed-externally"}
+}
+
+func (UnimplementedStrict) BillingSubscriptionDelete(context.Context, BillingSubscriptionDeleteRequestObject) (BillingSubscriptionDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionDelete", Route: "DELETE /billing-subscription"}
+}
+
+func (UnimplementedStrict) BillingSubscription(context.Context, BillingSubscriptionRequestObject) (BillingSubscriptionResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSubscription", Route: "GET /billing-subscription"}
+}
+
+func (UnimplementedStrict) BillingSubscriptionCreate(context.Context, BillingSubscriptionCreateRequestObject) (BillingSubscriptionCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionCreate", Route: "POST /billing-subscription"}
+}
+
+func (UnimplementedStrict) BillingSubscriptionUpdateV2(context.Context, BillingSubscriptionUpdateV2RequestObject) (BillingSubscriptionUpdateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionUpdateV2", Route: "PUT /billing-subscription"}
+}
+
+func (UnimplementedStrict) BillingSubscriptionUpdateInfo(context.Context, BillingSubscriptionUpdateInfoRequestObject) (BillingSubscriptionUpdateInfoResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionUpdateInfo", Route: "POST /billing-subscription/update-info"}
+}
+
+func (UnimplementedStrict) BillingSubscriptionUpdateTier(context.Context, BillingSubscriptionUpdateTierRequestObject) (BillingSubscriptionUpdateTierResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionUpdateTier", Route: "POST /billing-subscription/update-tier"}
+}
+
 func (UnimplementedStrict) DefaultPrivateWorkerPoolRunnerImage(context.Context, DefaultPrivateWorkerPoolRunnerImageRequestObject) (DefaultPrivateWorkerPoolRunnerImageResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "defaultPrivateWorkerPoolRunnerImage", Route: "GET /default-private-worker-pool-runner-image"}
+}
+
+func (UnimplementedStrict) EvaluateFeatureFlags(context.Context, EvaluateFeatureFlagsRequestObject) (EvaluateFeatureFlagsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "evaluateFeatureFlags", Route: "GET /evaluate-feature-flags"}
 }
 
 func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
@@ -138,8 +178,16 @@ func (UnimplementedStrict) OauthRedirectAllowedHosts(context.Context, OauthRedir
 	return nil, &problem.NotImplementedError{OperationID: "oauthRedirectAllowedHosts", Route: "GET /oauth-redirect-allowed-hosts"}
 }
 
+func (UnimplementedStrict) OnTrialUntil(context.Context, OnTrialUntilRequestObject) (OnTrialUntilResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "onTrialUntil", Route: "GET /on-trial-until"}
+}
+
 func (UnimplementedStrict) PersonalApiKeysEnabled(context.Context, PersonalApiKeysEnabledRequestObject) (PersonalApiKeysEnabledResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeysEnabled", Route: "GET /personal-api-keys-enabled"}
+}
+
+func (UnimplementedStrict) Seats(context.Context, SeatsRequestObject) (SeatsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "seats", Route: "GET /seats"}
 }
 
 func (UnimplementedStrict) SecurityEmail(context.Context, SecurityEmailRequestObject) (SecurityEmailResponseObject, error) {
@@ -444,6 +492,14 @@ func (UnimplementedStrict) WebhooksIntegrationUpdate(context.Context, WebhooksIn
 
 func (UnimplementedStrict) StateUploadUrl(context.Context, StateUploadUrlRequestObject) (StateUploadUrlResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stateUploadUrl", Route: "POST /state/upload-url"}
+}
+
+func (UnimplementedStrict) Tier(context.Context, TierRequestObject) (TierResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tier", Route: "GET /tier"}
+}
+
+func (UnimplementedStrict) TierFeatures(context.Context, TierFeaturesRequestObject) (TierFeaturesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tierFeatures", Route: "GET /tier-features"}
 }
 
 func (UnimplementedStrict) Type(context.Context, TypeRequestObject) (TypeResponseObject, error) {

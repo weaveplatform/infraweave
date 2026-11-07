@@ -15,6 +15,12 @@
 // limits of zero or more), Enterprise cannot be edited or deleted
 // (ErrInvalidState), and OrganizationEntitlement is what an organization's
 // tier and grants entitle it to while billing is on, with its grants.
+// The account-facing reads answer with decision 0021's local meaning:
+// OrganizationTier is the tier an organization is on as the operator
+// defines it, Enterprise while billing is off; Entitled is its
+// entitlement's features; Seats is its pooled seats limit and an
+// account's own, with the use the caller counted, and no limit while
+// billing is off.
 //
 // # Input and output
 //

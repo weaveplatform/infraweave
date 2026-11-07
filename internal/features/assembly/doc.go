@@ -5,7 +5,8 @@
 // Middleware is the chi middleware internal/app runs after authentication;
 // OperatorAPI is its partial of the operator API's strict server, aliased
 // FeaturesOperatorAPI, over the Organizations that finds an organization
-// by its slug;
+// by its slug; API is its partial of the API's strict server, aliased
+// FeaturesAPI, over the SeatCounter that counts an organization's seats;
 // WatchEntitlements drops the replica's snapshots on infraweave_invalidate;
 // Stream is its migration stream, which internal/app registers ahead of
 // access'; Settings are its features.* settings, features.disabled the

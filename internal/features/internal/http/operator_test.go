@@ -26,6 +26,23 @@ func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, schema.Stream(), pg.Stream
 // organization "acme" on the default tier, and the pool.
 func operated(t *testing.T) (OperatorServer, *pgxpool.Pool, kernel.OrganizationID) {
 	t.Helper()
+	svc, db, acme := seeded(t)
+	orgs := func(_ context.Context, slug string) (kernel.OrganizationID, bool, error) {
+		switch slug {
+		case "acme":
+			return acme, true, nil
+		case "down":
+			return kernel.OrganizationID{}, false, errDown
+		}
+		return kernel.OrganizationID{}, false, nil
+	}
+	return NewOperatorServer(svc, orgs), db, acme
+}
+
+// seeded returns the service over a seeded database, with the
+// organization "acme" on the default tier, and the pool.
+func seeded(t *testing.T) (*core.Service, *pgxpool.Pool, kernel.OrganizationID) {
+	t.Helper()
 	ctx := t.Context()
 	db, err := pgxpool.New(ctx, sqltest.DSN(t))
 	if err != nil {
@@ -43,16 +60,7 @@ func operated(t *testing.T) (OperatorServer, *pgxpool.Pool, kernel.OrganizationI
 	if err := svc.CreateOrganization(ctx, acme); err != nil {
 		t.Fatal(err)
 	}
-	orgs := func(_ context.Context, slug string) (kernel.OrganizationID, bool, error) {
-		switch slug {
-		case "acme":
-			return acme, true, nil
-		case "down":
-			return kernel.OrganizationID{}, false, errDown
-		}
-		return kernel.OrganizationID{}, false, nil
-	}
-	return NewOperatorServer(svc, orgs), db, acme
+	return svc, db, acme
 }
 
 // wantType checks that err is a problem of typ.

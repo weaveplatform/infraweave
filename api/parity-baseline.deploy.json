@@ -66,19 +66,6 @@
       "oauthUser"
     ],
     "Billing": [
-      "availableBillingAddons",
-      "availableSelfServicePlans",
-      "billedExternally",
-      "billingSubscription",
-      "billingSubscriptionCreate",
-      "billingSubscriptionDelete",
-      "billingSubscriptionUpdateInfo",
-      "billingSubscriptionUpdateTier",
-      "billingSubscriptionUpdateV2",
-      "onTrialUntil",
-      "seats",
-      "tier",
-      "tierFeatures",
       "usage"
     ],
     "Blob Storage": [
@@ -161,9 +148,6 @@
       "externalIntegrationCreate",
       "externalIntegrationDelete",
       "externalIntegrations"
-    ],
-    "Feature Flags": [
-      "evaluateFeatureFlags"
     ],
     "Flows": [
       "flowsInstances",

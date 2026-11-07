@@ -1,0 +1,137 @@
+# Scaffolded by `specref scaffold --tag Feature Flags` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    FeatureFlagBoolEvaluation:
+      description: Used to evaluate a boolean flag.
+      properties:
+        defaultValue:
+          description: The default value to be returned if no value is set for the flag.
+          type: boolean
+        name:
+          description: The name of the flag.
+          type: string
+      required:
+        - defaultValue
+        - name
+      type: object
+      x-graphql-type: FeatureFlagBoolEvaluation
+    FeatureFlagEvaluation:
+      description: |-
+        Represents an individual flag that you want to evaluate. Only one of intEvaluation
+        or boolEvaluation should be provided, depending on the type of flag you're evaluating.
+      properties:
+        boolEvaluation:
+          $ref: '#/components/schemas/FeatureFlagBoolEvaluation'
+        intEvaluation:
+          $ref: '#/components/schemas/FeatureFlagIntEvaluation'
+      type: object
+      x-graphql-type: FeatureFlagEvaluation
+    FeatureFlagEvaluationInput:
+      description: The input to the evaluateFeatureFlags request. Used to evaluate feature flags in Self-Hosted instances.
+      properties:
+        flags:
+          description: The set of flags to evaluate.
+          items:
+            $ref: '#/components/schemas/FeatureFlagEvaluation'
+          type: array
+      required:
+        - flags
+      type: object
+      x-graphql-type: FeatureFlagEvaluationInput
+    FeatureFlagEvaluationResult:
+      description: The result of evaluating a feature flag.
+      properties:
+        name:
+          description: The name of the flag.
+          type: string
+        value:
+          description: The value of the flag.
+          type: string
+      required:
+        - name
+        - value
+      type: object
+      x-graphql-type: FeatureFlagEvaluationResult
+    FeatureFlagEvaluationResultPage:
+      description: One page of a cursor-paginated list (decision 0003).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/FeatureFlagEvaluationResult'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    FeatureFlagIntEvaluation:
+      description: Used to evaluate an int flag.
+      properties:
+        defaultValue:
+          description: The default value to be returned if no value is set for the flag.
+          format: int32
+          type: integer
+        name:
+          description: The name of the flag.
+          type: string
+      required:
+        - defaultValue
+        - name
+      type: object
+      x-graphql-type: FeatureFlagIntEvaluation
+paths:
+  /evaluate-feature-flags:
+    get:
+      description: >-
+        An empty set: infraweave holds no vendor-set flags. Its own features
+        are the operator's to switch (decision 0021).
+      operationId: evaluateFeatureFlags
+      x-infraweave-feature: console
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEvaluationInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagEvaluationResultPage'
+          description: The evaluateFeatureFlags result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Evaluate Feature Flags
+      tags:
+        - Feature Flags
+      x-bruno: Advanced/Feature Flags/Evaluate Feature Flags.bru
+      x-graphql:
+        field: evaluateFeatureFlags
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read

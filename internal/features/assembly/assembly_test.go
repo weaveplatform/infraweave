@@ -45,10 +45,13 @@ func TestAccDomain(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	e := New(Deps{
+	d := New(Deps{
 		DB:       db,
 		Settings: Settings{Disabled: []string{"scans"}},
-	}).Entitlements()
+	})
+	_ = d.API(nil)
+	_ = (*Domain)(nil).API(nil)
+	e := d.Entitlements()
 	org := kernel.NewOrganizationID()
 	if _, err := db.Exec(ctx, `UPDATE billing SET default_tier = 'Starter'`); err != nil {
 		t.Fatal(err)

@@ -26,7 +26,8 @@
 // and revokes their sessions. A key's first use in SeatWindow takes it a
 // seat, checked against the seats limit through the same Entitlements in
 // the transaction that records the use, counting each active member once
-// and each other live key that is not personal and was used in the window.
+// and each other live key that is not personal and was used in the window;
+// Seats counts the same for the seats read, leaving out no key.
 // A unique violation on a slug is
 // port.ErrSlugTaken and a
 // break-glass credential of no organization port.ErrNotFound. Store also
