@@ -3,8 +3,8 @@
 // values, organization entitlements, the organization's feature and limit
 // grants, account limits, the seeded tiers' record and the billing switch,
 // with 00003 adding its default tier, NULL for Enterprise; the
-// organization and account IDs carry no foreign keys because the domain
-// sits below access. Store creates and deletes an organization's
+// organization and account IDs carry no foreign keys, since no key crosses
+// domains (decision 0004). Store creates and deletes an organization's
 // and account's rows, reads an entitlement, under FOR UPDATE for a limit
 // check, reads the billing switch and every tier, and seeds the tiers a
 // release ships, leaving any the operator changed. A new organization gets

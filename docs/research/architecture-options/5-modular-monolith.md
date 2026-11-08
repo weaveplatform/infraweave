@@ -95,17 +95,16 @@ Rules 2 to 9 are depguard rules in `.golangci.yml`; rule 1 is the compiler's
 `internal` rule. The section
 [Tests and enforcement](#tests-and-enforcement) lists every depguard entry.
 
-The schema follows the same graph. A domain's tables may reference the
-tables of a domain whose `api/` package it imports, and no others, so `runs`
-may reference `stacks` but `stacks` never references `runs`. Every
-cross-domain foreign key is `ON DELETE RESTRICT`: deleting a row never
-removes or rewrites another domain's rows behind its code, and the
-referencing domain removes its own rows first, through the owner's `api/`
-or in response to the owner's event. Migration streams run in dependency
-order, each after the streams of every domain it imports, so a referenced
-table exists before the reference. `TestAccSchemaDependencies` reads the
-per-domain depguard rules and fails on a key against the graph, a cascading
-key, a cycle or a stream registered too early (decision 0004).
+The schema has no edges between domains. A domain's tables reference its
+own tables and the platform's, and hold another domain's IDs as plain
+columns, so each stream applies on the platform stream alone. The owner's
+`api/` keeps what a key would: a hold (`SELECT … FOR KEY SHARE` in the
+caller's transaction) when the ID is written, a guard the holder registers,
+which the owner asks after locking the row `FOR UPDATE` before a delete or
+move, and a purge per domain when an account or organization is deleted.
+`TestAccSchemaDependencies` fails on a key or view between two domains, a
+cycle in the declared graph or a stream registered before the platform's
+(decision 0004).
 
 ## Repository root
 
@@ -610,10 +609,11 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id kernel.Slug
 ```
 
 A stack's response carries `state`, `blocked`, `blocker` and `lockedBy`. The
-first three are runs-owned and come from `runsapi.StackStatus`; only
-`lockedBy` (the human lock) is a stacks column. A list filtered by state
-joins across two domains, which `runsapi.StackStatus` answers from
-`runs`' stack-by-run-state view (see the friction list). Configuration elements and contexts are a separate domain
+first three are runs-owned; `lockedBy` (the human lock) is a stacks
+column. Each run transition writes the stack's `state` and `blocked`
+through `stacksapi` in its transaction, so a list filtered, sorted or
+counted by state reads `stacks`' own table, and `runsapi.StackStatus`
+answers the blocker's details (see the friction list). Configuration elements and contexts are a separate domain
 because they attach to stacks and contexts alike, through polymorphic
 owners ([28, section 12.1](../reference/28-data-model.md#121-shapes-that-recur));
 a registry module's elements and attachments are `registry`'s rows, since
@@ -1074,13 +1074,12 @@ authorization (decision 0007). A limit is pooled: `Limits.Check` counts the
 thing across the organization's accounts and then against the account's
 own limit, if an organization admin set one.
 
-The foreign keys follow the graph. `organizations.tier` in `access`
-references `features`' `tiers` with `ON DELETE RESTRICT`, because `access`
-imports `featuresapi`; deleting a tier an organization holds is refused by
-PostgreSQL as well as by the handler's `409 invalid-state`.
-`organization_grants` and `account_limits` hold their IDs without a key,
-because `features` does not import `access`; the `features` consumers of
-`OrganizationDeleted` and `AccountDeleted` remove them. The
+No key crosses the two domains. `organization_entitlements.tier` is
+`features`' own key to `tiers`, so deleting a tier an organization holds is
+refused by PostgreSQL as well as by the handler's `409 invalid-state`.
+`organization_entitlements`, `organization_grants` and `account_limits`
+hold organization and account IDs as plain columns, and `features`' purge
+removes them when `access` deletes the organization or account. The
 callers' problems are decision 0022's `feature-disabled`,
 `feature-not-in-tier` (with the tiers that include the feature) and
 `limit-reached` (with the limit and its value), written by
@@ -1188,8 +1187,8 @@ Flows is a domain like the others, last in the declared graph: it imports
 `runsapi`, `stacksapi`, `templatesapi`, `accessapi` and `featuresapi`, and
 no Deploy domain imports `flows`. Its tables live in their own PostgreSQL
 schema, `flows`, with their own migration stream registered after every
-domain it imports, so `flows_projects.account_id` can reference
-`access`' accounts with `ON DELETE RESTRICT`. Flows belongs to the
+domain it imports; `flows_projects.account_id` is a plain column, and
+`flows`' purge removes the account's projects. Flows belongs to the
 account, which takes the place of Spacelift Flows' organization: its
 projects and UUIDs remain its own, its members, teams and service accounts
 are the account's, and Spacelift Flows' organization admin is the account
@@ -1433,8 +1432,7 @@ edges that the order cannot satisfy: `stacks` reads `runsapi.StackStatus`;
 `stateapi.Versions` at handover; `workers` claims and reports through
 `runsapi.Scheduler` and `runsapi.Reports`; `access` evaluates `LOGIN`
 policies through `policiesapi.Evaluator`. Those are set with `SetX` calls
-after construction, so they add no edge to the declared graph and no
-foreign key. The same step binds `platform/httpkit/dispatch` to the
+after construction, so they add no edge to the declared graph. The same step binds `platform/httpkit/dispatch` to the
 composed router for `flows` and `intelligence`. The same order registers the migration
 streams, so a stream always runs after the streams of the domains it
 imports. The function stays a linear list of about 270 lines.
@@ -1517,7 +1515,7 @@ drift.
 | Expression tables | `platform/expr`: the function library, rendering rules, shell quoting, cost limits, the same `now` and seed giving the same result |
 | Catalogue coverage | `features/internal/catalogue`: every operation of every served document and every gated field names a catalogue entry |
 | App contract | `pkg/flows/appsdk/apptest` runs a fixture app; `TestUnitAppContractCompatible` runs `buf breaking` against the last release |
-| Schema graph | `TestAccSchemaDependencies`: each stream applied in registration order, foreign keys and views checked against the per-domain depguard rules |
+| Schema graph | `TestAccSchemaDependencies`: each stream applied in registration order and alone on the platform's, with no foreign key or view between two domains |
 | Rule entries | `TestUnitDepguardFixtures`: every domain directory has its graph rule and its `constructors` and `shared-below-domains` entries, and its `core-not-adapters` entry if it is a hexagon |
 | Acceptance | `test/acceptance/`: the binary in `all` mode plus a `launcher` and a `flows-agent`, real PostgreSQL, the object store drivers' emulators, a real OpenTofu run |
 | FIPS | the unit and acceptance suites again under `GODEBUG=fips140=only`, a blocking job |
@@ -1657,7 +1655,7 @@ earlier in the order:
 | `expressions` | none; `internal/app` hands it every domain's `Surfaces()` | |
 
 A back edge is a call to a domain constructed later, set after
-construction; it adds no import and no foreign key. Intent operations and
+construction; it adds no import. Intent operations and
 scan runs reach worker pools through `runsapi`, so `intelligence` and
 `resources` import `runs` rather than `workers`' protocol.
 
@@ -1892,9 +1890,9 @@ new files and 5 edited.
 
 Managed stacks are created through `stacksapi.Stacks.Create` with a
 `managedBy` reference; `stacks` gains a read-only check for managed stacks,
-the only edit to an existing domain. The `templates` tables reference
-`stacks` with `ON DELETE RESTRICT`, so its stream registers after the
-stacks stream. About 20 new files and 6 edited.
+the only edit to an existing domain. A deployment holds its stacks
+through `stacksapi` and registers a stack guard, so a deployed stack
+cannot be deleted from under it. About 20 new files and 6 edited.
 
 ## Package mapping
 
@@ -1963,9 +1961,10 @@ Placement choices settled in this file:
   OPA are platform**, because several domains use each and none of them
   carry business rules. Sealed formats are split from the keyring so the
   worker side can seal and open without holding a key it should not.
-- **One migration stream per domain, foreign keys along the declared
-  graph.** A key goes only from a domain to one it imports, never cascades,
-  and streams run in dependency order; Flows gets its own schema as well as
+- **One migration stream per domain, no foreign keys between domains.**
+  Holds, guards and purges through the owner's `api/` keep what a key
+  would, each stream applies on the platform's alone, and each domain's
+  store tests run on its own stream; Flows gets its own schema as well as
   its own stream.
 - **`features` sits at the bottom of the graph**, so a limit check is a
   synchronous call inside the creating transaction, and
@@ -1984,9 +1983,9 @@ Placement choices settled in this file:
 Where this layout rubs against the system:
 
 - **Stack reads cross into runs.** Stack state, blocker and run lock are
-  runs data; a stack list filtered or sorted by state needs a read view
-  across two schemas, the one sanctioned cross-domain read. The view lives
-  in the `runs` stream and is served through `runsapi.StackStatus`.
+  runs data; a stack list filtered or sorted by state reads a projection
+  that each run transition writes into `stacks`' table through `stacksapi`,
+  and a stack read asks `runsapi.StackStatus` for the rest.
 - **Run creation reads the stack row inside its transaction**
   (`LockForRun`), a cross-domain transaction that couples `runs` to the
   stacks schema's locking.
@@ -2006,9 +2005,10 @@ Where this layout rubs against the system:
 - **The declared graph is lint data with a schema test behind it.** One
   graph rule per domain is about 150 of the 270 depguard entries, and
   every new import edge between domains is a reviewed edit to
-  `.golangci.yml`. Foreign keys make the graph harder to bend later: a
-  domain that must reference a table against the import direction has to
-  move the table, or the code, rather than add a key.
+  `.golangci.yml`. With no keys between domains, the schema does not
+  harden the graph: an edge can be reversed by moving code alone, and each
+  held ID costs a hold, a guard and a purge in code that a key would have
+  given for free.
 - **The agent's platform list grows with each shared format.** Sealing,
   expressions, observability and the admin listener joined `buildinfo`,
   `rego` and `httpkit/client`; each new

@@ -11596,7 +11596,7 @@
       "files": [
         "docs/implementation/repo-layout.md"
       ],
-      "by": "DES-10.15 moves the console's embedded build to `internal/platform/httpkit/console`, where `embed.FS` can reach the Vite output, so the layout no longer says `internal/app` embeds it.",
+      "by": "DES-10.15 moves the console's embedded build to `internal/platform/httpkit/console`, where `embed.FS` can reach the Vite output, so the layout no longer says `internal/app` embeds it. Decision 0004 forbids foreign keys and views between domains: a domain holds another's rows through its `api/`, with holds, guards and purges.",
       "evidence": [
         {
           "file": "docs/implementation/repo-layout.md",
@@ -11614,7 +11614,7 @@
           "file": "docs/implementation/repo-layout.md",
           "present": [
             "Generated clients, the SDK over them, and the Flows app SDK; nothing under `pkg/` imports `internal/`",
-            "a foreign key across domains follows the import direction",
+            "another domain's ID is a plain column protected by a hold and a guard",
             "`api/proto/flows/app/v1/`"
           ],
           "absent": [
@@ -12244,7 +12244,7 @@
           "file": "docs/research/decisions/0004-repository-architecture.md",
           "present": [
             "organization's tier, grants, pooled limits and account limits",
-            "account IDs without foreign keys, since `access` sits above it"
+            "account IDs as plain columns, and its purge removes them"
           ]
         },
         {
@@ -12924,7 +12924,8 @@
       "severity": "missing",
       "finding": "the stack-by-run-state read view had no owning stream, and `TestAccSchemaDependencies` read only `pg_constraint`, so the view escaped the graph",
       "change": "The view lives in the `runs` stream behind `runsapi.StackStatus`, and the schema check reads views from `pg_depend`",
-      "status": "folded",
+      "status": "superseded",
+      "by": "Decision 0004 forbids foreign keys and views between domains: a domain holds another's rows through its `api/`, with holds, guards and purges. Each run transition writes the stack's state into `stacks`' table through `stacksapi`, so no view is needed, and the schema check still reads views from `pg_depend`.",
       "files": [
         "docs/research/decisions/0004-repository-architecture.md",
         "docs/research/architecture-options/5-modular-monolith.md",
@@ -12934,13 +12935,14 @@
         {
           "file": "docs/research/decisions/0004-repository-architecture.md",
           "present": [
-            "Views count as references"
+            "or a view in `pg_depend`",
+            "Stack state is a projection"
           ]
         },
         {
           "file": "docs/implementation/repo-layout.md",
           "present": [
-            "which lives in the\n  `runs` stream and is served through `runsapi.StackStatus`"
+            "state projection through `stacksapi`"
           ]
         }
       ]
@@ -13260,7 +13262,7 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "a stack holds its VCS integration's ID without a foreign key"
+            "holds its VCS\n   integration's ID as a plain column"
           ]
         }
       ]
@@ -13354,7 +13356,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "`internal/platform/crypt/signer` signs with a local key",
-            "the stack-by-run-state read view",
+            "Each transition writes the stack's `state` and",
             "assumed on the worker by `internal/agent/cloudauth`",
             "Serving in `internal/platform/httpkit/console`",
             "a scan run reaches its pool through `runsapi`"

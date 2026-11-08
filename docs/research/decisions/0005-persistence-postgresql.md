@@ -105,16 +105,16 @@ Every stateful feature needs a store, and several records wait on this one:
 | Concern | Rule |
 |---|---|
 | Identifiers | ULIDs generated in Go (`github.com/oklog/ulid/v2`, monotonic within a millisecond), stored in `uuid` columns and rendered as 26-character ULID text on the wire. Runs, worker pools and stacks carry the ULIDs that report 28 records ([28 section 1.2](../reference/28-data-model.md#12-identity-and-tenancy)) |
-| Slugs | Slug-addressed entities (stacks, modules, spaces, contexts, policies, templates, blueprints) keep a ULID key and a `slug text` with `unique (account_id, slug)`. A reslug updates one column; foreign keys reference the ULID |
+| Slugs | Slug-addressed entities (stacks, modules, spaces, contexts, policies, templates, blueprints) keep a ULID key and a `slug text` with `unique (account_id, slug)`. A reslug updates one column; foreign keys and held IDs reference the ULID |
 | Tenancy | Every account-scoped table carries `account_id uuid not null`, and its primary or unique keys lead with it. One installation hosts many accounts ([0007](0007-authorization-spaces-and-roles.md)). A table is account-scoped unless its table comment begins `global:` and gives the reason, such as `global: the migration runner's record of applied files` |
 | Spaces | Space-scoped tables carry `space_id uuid not null` with an index. The space tree and reachability are [0007](0007-authorization-spaces-and-roles.md)'s |
 | Time | `timestamptz` only. Conversion to the Unix seconds that Spacelift's fields use happens in handlers. The database clock (`now()`) is the clock for leases, expiries and timers |
 | Enumerations | `text` with a `CHECK` constraint, not PostgreSQL enum types, so adding a value is an ordinary migration |
 | Documents | `jsonb` for vendor configuration, runtime configuration and other nested inputs that are read whole |
 | Labels | `text[]` with a GIN index, matched with `@>` and `&&` for auto-attachment and filters ([28 section 12.1](../reference/28-data-model.md#121-shapes-that-recur)) |
-| Polymorphic owners | One nullable foreign-key column per owner kind (`stack_id`, `context_id`, ...) with a `CHECK` that exactly one is set. Report 28's `owner_kind` and `owner_id` sketch would lose real foreign keys and cascades. An owner whose domain imports the attachment's in [0004](0004-repository-architecture.md)'s graph keeps the rows itself: a registry module's configuration elements and attachments are `registry`'s, referencing the context, policy or integration |
+| Polymorphic owners | One nullable foreign-key column per owner kind (`stack_id`, `context_id`, ...) with a `CHECK` that exactly one is set. Report 28's `owner_kind` and `owner_id` sketch would lose real foreign keys and cascades. A column is a foreign key when the owner is in the attachment's domain, and a held ID otherwise ([0004](0004-repository-architecture.md)). An owner whose domain imports the attachment's in 0004's graph keeps the rows itself: a registry module's configuration elements and attachments are `registry`'s, holding the context, policy or integration's ID |
 | Attachments | Their own ULID, a unique `(left, right)` constraint and `is_autoattached`, as report 28 derives |
-| Soft delete | `deleted_at timestamptz` only where the schema exposes `deleted` (stacks, worker pools, template versions). Everything else is deleted, with `ON DELETE` rules chosen per foreign key inside a domain; a key that crosses domains follows [0004](0004-repository-architecture.md)'s dependency direction and never cascades |
+| Soft delete | `deleted_at timestamptz` only where the schema exposes `deleted` (stacks, worker pools, template versions). Everything else is deleted, with `ON DELETE` rules chosen per foreign key inside a domain. No key crosses domains: a held ID is protected by [0004](0004-repository-architecture.md)'s holds and guards, and removed by its purges |
 | Secrets | `bytea` columns named `<name>_sealed`, written and read only through [0013](0013-secrets-at-rest.md) |
 | Foreign keys | Every foreign key column is indexed |
 | Optimistic concurrency | Mutable aggregates with concurrent writers carry `version bigint`. A conditional `UPDATE ... WHERE version = $n` detects a lost update. Runs use `state_version` ([0008](0008-run-execution-and-worker-protocol.md)) |
@@ -134,11 +134,10 @@ in the same database, in the `flows` PostgreSQL schema that
   the tables of platform packages, such as the shared idempotency keys. Every
   domain's tables may reference the platform's, and the platform's reference
   none, so it is registered first. Within a stream, files are named
-  `NNNNN_snake_case.sql` (five digits, gap-free). The composition root
-  registers the streams in the domains' dependency order, and the runner
-  applies them in that order, so a stream may refer to tables of the streams
-  registered before it, along the foreign-key rule of
-  [0004](0004-repository-architecture.md).
+  `NNNNN_snake_case.sql` (five digits, gap-free). A domain's stream refers
+  to no other domain's tables ([0004](0004-repository-architecture.md)), so
+  it applies on the platform stream alone, and the composition root
+  registers the domains' streams in construction order.
   The runner is infraweave's own, in `internal/platform/sql/migrate`, about two
   hundred lines.
 - **Forward only.** There are no down migrations. A bad migration is corrected

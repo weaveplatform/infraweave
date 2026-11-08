@@ -349,7 +349,7 @@ rule, and the domain that owns its rule otherwise.
 | Domain logic | `internal/<domain>/internal/core/...` (hexagon) or `internal/<domain>/internal/<domain>/` (flat) | Core never imports adapters |
 | Rules with no I/O | a package of their own inside the owning domain | The run transition table, priority levels, policy combination and version numbering are tested as tables |
 | HTTP handlers | `internal/<domain>/internal/.../http` | A strict-server partial for the domain's operations; hand-written chi routes for protocols that are not the REST API |
-| SQL | `internal/<domain>/internal/.../pg` | The domain's store and its `migrations/` stream; a foreign key across domains follows the import direction, with `ON DELETE RESTRICT` ([0004](../research/decisions/0004-repository-architecture.md)) |
+| SQL | `internal/<domain>/internal/.../pg` | The domain's store and its `migrations/` stream; foreign keys stay within the domain or point at the platform's tables, and another domain's ID is a plain column protected by a hold and a guard ([0004](../research/decisions/0004-repository-architecture.md)) |
 | Provider shapes | one package per provider inside the owning domain | Each VCS provider's webhook and API shapes stay in `vcs/internal/adapters/<provider>` behind one normalised event |
 | Infrastructure | `internal/platform/...` | Anything with no business rule: SQL, unit of work, outbox and event envelope, queue, cron, object storage, encryption and sealed formats, the expression engine, HTTP kit, OPA runtime, generated servers, observability |
 | Value types across domain APIs | `internal/kernel/...` | Parsing only, no I/O |
@@ -365,9 +365,14 @@ Further rules:
 
 - **Consistency draws the boundary.** The `runs` domain owns every table a run
   transition writes, including the stack's run lock and run state, and commits
-  a transition in one transaction. A stack list filtered by run state reads
-  across the two schemas through one sanctioned read view, which lives in the
-  `runs` stream and is served through `runsapi.StackStatus`.
+  a transition in one transaction. The transition also writes the stack's
+  state projection through `stacksapi`, so a stack list filters, sorts and
+  counts by run state from `stacks`' own table.
+- **No foreign keys between domains.** A domain holds another's row through
+  its `api/` (`Hold`, `FOR KEY SHARE` in the caller's transaction), guards
+  its own rows' deletes and moves with the guards other domains register,
+  and purges its rows of a deleted account or organization as queue jobs
+  ([0004](../research/decisions/0004-repository-architecture.md#repository-shape-a-modular-monolith)).
 - **Cross-domain effects.** Queries, authorisation and policy decisions are
   synchronous calls on `api/` interfaces. Consequences are events appended to
   the outbox in the producer's transaction. `policies` owns the input
@@ -517,9 +522,9 @@ The 19 domains in construction order, which `internal/app/domains.go`
 follows and in which the migration streams run
 ([0004](../research/decisions/0004-repository-architecture.md)). Each domain
 imports the `api/` packages its row names, all of them earlier in the
-order, so the graph is acyclic; its tables may reference only those
-domains' tables. A back edge is a call to a domain constructed later, set
-after construction; it adds no import and no foreign key.
+order, so the graph is acyclic. Its tables reference no other domain's. A
+back edge is a call to a domain constructed later, set after construction;
+it adds no import.
 
 | Domain | Imports the `api/` of | Back edges bound in `internal/app` |
 |---|---|---|

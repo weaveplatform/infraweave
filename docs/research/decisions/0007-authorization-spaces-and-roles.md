@@ -131,9 +131,13 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   system roles, and binds `space-admin` on the top space to the member the
   creating organization admin names, a row of `role_bindings` written in
   the creation's transaction, so an account an organization admin
-  creates is claimed at creation. Deleting an account deletes its data;
-  deleting the last account of an organization answers `409`, problem
-  `invalid-state`, and deleting an organization deletes its accounts.
+  creates is claimed at creation. Deleting an account deletes its data:
+  the account answers `404` and its sessions and keys stop at once, and
+  each domain then purges its rows in the background
+  ([0004](0004-repository-architecture.md#repository-shape-a-modular-monolith)).
+  Deleting the last account of an organization answers `409`, problem
+  `invalid-state`, and deleting an organization deletes its accounts the
+  same way.
 - **Organization roles reach only the organization's own operations.** The
   `Organization` tag and the reference's `SSO` tag need
   `organization-admin`, reads included, because both describe what every

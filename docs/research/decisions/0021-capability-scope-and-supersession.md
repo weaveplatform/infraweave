@@ -321,10 +321,10 @@ tier still matches its seed.
 - **Tables.** The `features` domain owns
   `organization_entitlements(organization_id, tier, entitlement_version)`,
   the organization's grants and `account_limits`. They carry the
-  organization's and account's IDs without a foreign key, because
-  `features` sits below `access`, which owns the organizations and accounts
-  (0004); `access` creates and deletes the rows through `features`' `api/`
-  in the transaction that creates or deletes the organization or account.
+  organization's and account's IDs as plain columns, since no key crosses
+  domains (0004). `access` creates the rows through `features`' `api/` in
+  the transaction that creates the organization or account, and `features`'
+  purge removes them when the organization or account is deleted.
 
 ### Billing
 

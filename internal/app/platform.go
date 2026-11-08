@@ -21,9 +21,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 )
 
-// Streams are the migration streams in the declared graph's order: the
-// platform's first, since every domain's tables may reference it, then each
-// domain's after the streams of every domain it imports (decision 0004).
+// Streams are the migration streams: the platform's first, since every
+// domain's tables may reference it, then each domain's in construction
+// order. No domain's stream references another's, so each also applies on
+// the platform's alone, as the domains' store tests migrate it (decision
+// 0004).
 func Streams() []migrate.Stream {
 	return []migrate.Stream{schema.Stream(), featuresassembly.Stream(), accessassembly.Stream()}
 }
