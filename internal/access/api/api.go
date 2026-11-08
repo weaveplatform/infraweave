@@ -105,12 +105,15 @@ type Authorizer interface {
 	Actions(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]Action, error)
 }
 
-// SpaceGuard is a domain's say in changes to an account's space tree
-// (decision 0007 § "Spaces"): a domain whose rows name spaces registers
-// one, and the tree refuses a delete or a move it objects to. Both
-// methods run inside the change's transaction, which the context
-// carries, after the tree is locked, so what they read cannot change
-// before the change commits.
+// SpaceGuard is a domain's say in changes to an account's space tree: a
+// domain whose rows name spaces registers one, and the tree refuses a
+// delete or a move it objects to. Both methods run inside the change's
+// transaction, which the context carries, after the tree and the changed
+// spaces are locked FOR UPDATE. That lock waits for every transaction
+// holding one of those spaces, and each method's statement then sees what
+// it committed, so a row written under a hold is never missed.
+//
+// ref: decisions 0004 and 0007
 type SpaceGuard interface {
 	// SpaceInUse reports whether a row of the domain names space, which
 	// refuses its deletion.
@@ -118,6 +121,21 @@ type SpaceGuard interface {
 	// LostOnMove lists each stack that would no longer reach an entity
 	// it reaches today if m were made, which refuses it.
 	LostOnMove(ctx context.Context, m SpaceMove) ([]LostReach, error)
+}
+
+// ErrNoSpace reports a space the account lacks.
+var ErrNoSpace = errors.New("no such space")
+
+// Spaces is what a domain that stores a space's ID calls, since no foreign
+// key reaches another domain's table. Hold locks the account's space in
+// the caller's transaction, which the context carries, so no delete or
+// move removes it before that transaction commits; a space the account
+// lacks is ErrNoSpace. The holding domain also registers a SpaceGuard,
+// which a delete or move asks after waiting for every hold.
+//
+// ref: decision 0004
+type Spaces interface {
+	Hold(ctx context.Context, acct kernel.AccountID, space kernel.ULID) error
 }
 
 // SpaceMove is a proposed move of Space, with every space below it, to a

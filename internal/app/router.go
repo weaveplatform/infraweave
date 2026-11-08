@@ -15,6 +15,8 @@ import (
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
+	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
 // BaseURL is the API's prefix, the server URL of api/api.openapi.yaml.
@@ -34,6 +36,8 @@ const OperatorBaseURL = "/operator/v1"
 type apiServer struct {
 	accessassembly.AccessAPI
 	featuresassembly.FeaturesAPI
+	vendorsassembly.VendorsAPI
+	stacksassembly.StacksAPI
 	unimplemented
 	queues QueueStats
 	blobs  *blobs.Objects
@@ -104,6 +108,8 @@ func API(
 		apiServer{
 			AccessAPI:   d.Access.API(),
 			FeaturesAPI: d.Features.API(d.Access.Seats),
+			VendorsAPI:  d.Vendors.API(),
+			StacksAPI:   d.Stacks.API(),
 			queues:      p.Queues,
 			blobs:       b.Objects,
 		},

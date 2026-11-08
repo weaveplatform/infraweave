@@ -106,7 +106,8 @@ with its dependency rules as written there. In summary:
     a new statement of the same transaction. The lock waits for every
     transaction that holds the row, and the guard's statement then sees what
     they committed, so a hold and a delete cannot both succeed. A guard that
-    answers in use refuses the delete with the owner's `409`.
+    answers in use refuses the delete with the owner's refusal, such as
+    the `422` a space delete answers.
   - **Purges.** Deleting an account or an organization is asynchronous.
     `access` marks it deleting, revokes its sessions and keys, and answers
     `404` for it from then on; it then enqueues one purge job per domain

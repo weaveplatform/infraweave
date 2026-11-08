@@ -14,6 +14,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
 // Domains are the business domains, constructed in the declared graph's
@@ -23,6 +25,8 @@ import (
 type Domains struct {
 	Features *featuresassembly.Domain
 	Access   *accessassembly.Domain
+	Vendors  *vendorsassembly.Domain
+	Stacks   *stacksassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
 	Auth accessapi.Authenticator
 	// OperatorAuth authenticates the operator API's requests, admitting
@@ -56,9 +60,13 @@ func newDomains(
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
+	stacks := stacksassembly.New(stacksassembly.Deps{DB: db.Primary()})
+	access.GuardSpaces(stacks.SpaceGuard())
 	return Domains{
 		Features:     features,
 		Access:       access,
+		Vendors:      vendorsassembly.New(),
+		Stacks:       stacks,
 		Auth:         access.Authenticator(),
 		OperatorAuth: access.OperatorAuthenticator(),
 	}, nil

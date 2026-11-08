@@ -93,6 +93,8 @@ func (f *spaceTree) UpdateSpace(
 	return out, err
 }
 
+func (*spaceTree) HoldSpace(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
 func (f *spaceTree) DeleteSpace(
 	ctx context.Context,
 	acct kernel.AccountID,

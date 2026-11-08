@@ -13,8 +13,10 @@
 // a path parameter, a body field or a query parameter, or none; a domain
 // resolves its
 // entities' spaces for it with a SpaceOf, ErrNoSubject for an entity the
-// account lacks. SpaceGuard is what a domain whose rows name spaces registers, so the
-// space tree refuses a delete or a move that would strand them. Action is
+// account lacks. Spaces is what a domain that stores a space's ID calls to
+// hold the space in its transaction, ErrNoSpace for one the account lacks,
+// and SpaceGuard is what such a domain registers, so the space tree
+// refuses a delete or a move that would strand its rows. Action is
 // decision 0007's action catalogue: the reference's Action enum, which
 // specref generates into actions.gen.go from the introspection snapshot
 // and actions.yaml's rows (subject, fallback, disabled, deprecated), then
@@ -32,7 +34,7 @@
 // It imports internal/kernel and the standard library. internal/app
 // imports it; the access domain's HTTP adapter implements it, its authz
 // package implements Authorizer, its oauth
-// package serves the OAuth patterns, its space package consults each
-// SpaceGuard, and its role package builds the system roles from the
+// package serves the OAuth patterns, its space package implements Spaces
+// and consults each SpaceGuard, and its role package builds the system roles from the
 // catalogue.
 package api
