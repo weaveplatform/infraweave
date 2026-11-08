@@ -389,8 +389,11 @@ func newWorld(t *testing.T) *world {
 	strict := api.NewStrictHandlerWithOptions(
 		full{Server: NewServer(Services{
 			Auth: auth, Keys: keys, Authz: w.authz, Accounts: st, Settings: cfg,
-			Spaces: space.NewService(w.tree, w.authz, func() time.Time { return t0 }),
-			OAuth:  grants,
+			Spaces: space.NewService(space.Deps{
+				Store: w.tree, Authz: w.authz, Drop: func(kernel.AccountID) {},
+				Now: func() time.Time { return t0 },
+			}),
+			OAuth: grants,
 		})},
 		nil,
 		api.StrictHTTPServerOptions{

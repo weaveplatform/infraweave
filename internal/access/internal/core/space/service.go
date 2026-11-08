@@ -86,15 +86,27 @@ func (d *Denied) Error() string { return d.Reason }
 type Service struct {
 	store Store
 	authz Authorizer
+	drop  func(kernel.AccountID)
 	now   func() time.Time
 
 	mu     sync.RWMutex
 	guards []accessapi.SpaceGuard
 }
 
-// NewService returns the service over store, deciding with authz.
-func NewService(store Store, authz Authorizer, now func() time.Time) *Service {
-	return &Service{store: store, authz: authz, now: now}
+// Deps are what the service needs. Drop forgets this replica's
+// authorization snapshot of an account after a change of its tree, so
+// the answer to the change, and the caller's next request here, see it
+// before the change's message arrives.
+type Deps struct {
+	Store Store
+	Authz Authorizer
+	Drop  func(kernel.AccountID)
+	Now   func() time.Time
+}
+
+// NewService returns the service over d.
+func NewService(d Deps) *Service {
+	return &Service{store: d.Store, authz: d.Authz, drop: d.Drop, now: d.Now}
 }
 
 // Guard registers g, which every later delete and move consults.
@@ -208,6 +220,7 @@ func (s *Service) Create(
 	if err := s.store.CreateSpace(ctx, in); err != nil {
 		return Space{}, err //nolint:wrapcheck // the store names the write
 	}
+	s.drop(p.AccountID)
 	return in, nil
 }
 
@@ -229,8 +242,7 @@ func (s *Service) Update(
 		return Space{}, err
 	}
 	guards := s.registered()
-	//nolint:wrapcheck // the store names the write
-	return s.store.UpdateSpace(ctx, p.AccountID, slug, parent,
+	out, err := s.store.UpdateSpace(ctx, p.AccountID, slug, parent,
 		func(ctx context.Context, cur, pa Space, m *accessapi.SpaceMove) (Space, error) {
 			if err := s.administers(ctx, p, r, cur); err != nil {
 				return Space{}, err
@@ -251,6 +263,11 @@ func (s *Service) Update(
 			cur.InheritEntities = in.InheritEntities
 			return cur, nil
 		})
+	if err != nil {
+		return Space{}, err //nolint:wrapcheck // the store names the write
+	}
+	s.drop(p.AccountID)
+	return out, nil
 }
 
 // reshape decides the parts of an update beyond the name, description and
@@ -361,5 +378,6 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string) (
 	if err != nil {
 		return Space{}, err //nolint:wrapcheck // the store names the write
 	}
+	s.drop(p.AccountID)
 	return gone, nil
 }

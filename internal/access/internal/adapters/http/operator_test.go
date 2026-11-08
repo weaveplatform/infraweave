@@ -201,7 +201,10 @@ func newOpWorld(t *testing.T) *opWorld {
 			api.NewStrictHandlerWithOptions(
 				full{Server: NewServer(Services{
 					Auth: auth, Keys: keys, Authz: base.authz, Accounts: base.st,
-					Spaces: space.NewService(base.tree, base.authz, func() time.Time { return t0 }),
+					Spaces: space.NewService(space.Deps{
+						Store: base.tree, Authz: base.authz, Drop: func(kernel.AccountID) {},
+						Now: func() time.Time { return t0 },
+					}),
 				})},
 				nil,
 				opts,

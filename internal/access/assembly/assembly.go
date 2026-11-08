@@ -225,10 +225,12 @@ func New(d Deps) (*Domain, error) {
 		settings: settings.NewService(
 			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
 		),
-		users:     user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
-		groups:    group.NewService(group.Deps{Store: store, Now: now}),
-		oauth:     grants,
-		spaces:    space.NewService(store, decide, now),
+		users:  user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
+		groups: group.NewService(group.Deps{Store: store, Now: now}),
+		oauth:  grants,
+		spaces: space.NewService(
+			space.Deps{Store: store, Authz: decide, Drop: decide.Drop, Now: now},
+		),
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil

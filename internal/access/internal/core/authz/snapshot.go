@@ -74,6 +74,12 @@ type Snapshot struct {
 	groups   map[string]kernel.ULID
 }
 
+// holds reports whether space is in the snapshot's tree.
+func (s *Snapshot) holds(space kernel.ULID) bool {
+	_, ok := s.parent[space]
+	return ok
+}
+
 // Build is the snapshot of d. A binding whose role or space d lacks is
 // left out, as the foreign keys make it impossible.
 func Build(d Data) *Snapshot {

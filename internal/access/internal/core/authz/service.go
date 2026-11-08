@@ -96,6 +96,42 @@ func decide[T any](
 	return f(snap, whoOf(p)), nil
 }
 
+// decideIn is decide for a check of space. A snapshot that does not hold
+// space is older than the space when the account's authz_version has
+// moved since it was built, whether because this replica created the
+// space or another did and its message has not arrived, so it is rebuilt
+// before f reads it; otherwise a caller that has just created a space
+// would be refused it until the message arrived.
+func decideIn[T any](
+	ctx context.Context,
+	s *Service,
+	p kernel.Principal,
+	space kernel.ULID,
+	f func(*Snapshot, Who) T,
+) (T, error) {
+	var zero T
+	if p.AccountID.IsZero() {
+		return zero, nil
+	}
+	snap, err := s.Snapshot(ctx, p.AccountID)
+	if err != nil {
+		return zero, err
+	}
+	if !snap.holds(space) {
+		versions, err := s.store.AuthzVersions(ctx, []kernel.AccountID{p.AccountID})
+		if err != nil {
+			return zero, fmt.Errorf("authorization version of account %s: %w", p.AccountID, err)
+		}
+		if v, ok := versions[p.AccountID]; !ok || v != snap.version {
+			s.Drop(p.AccountID)
+			if snap, err = s.Snapshot(ctx, p.AccountID); err != nil {
+				return zero, err
+			}
+		}
+	}
+	return f(snap, whoOf(p)), nil
+}
+
 // Authorize decides whether p may perform action in space.
 func (s *Service) Authorize(
 	ctx context.Context,
@@ -103,7 +139,7 @@ func (s *Service) Authorize(
 	action accessapi.Action,
 	space kernel.ULID,
 ) (bool, error) {
-	return decide(ctx, s, p, func(snap *Snapshot, w Who) bool {
+	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) bool {
 		return snap.Authorize(w, action, space)
 	})
 }
@@ -125,7 +161,7 @@ func (s *Service) Explain(
 	p kernel.Principal,
 	space kernel.ULID,
 ) ([]Grant, error) {
-	return decide(ctx, s, p, func(snap *Snapshot, w Who) []Grant {
+	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) []Grant {
 		return snap.Explain(w, space)
 	})
 }
@@ -146,7 +182,7 @@ func (s *Service) Actions(
 	p kernel.Principal,
 	space kernel.ULID,
 ) ([]accessapi.Action, error) {
-	return decide(ctx, s, p, func(snap *Snapshot, w Who) []accessapi.Action {
+	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) []accessapi.Action {
 		return snap.Actions(w, space)
 	})
 }
