@@ -348,15 +348,22 @@ The phase that creates a domain wires it into the
 - `internal/app/domains.go` constructs it at its place in the construction
   order, its migration stream registers at the same place, and
   `internal/app/router.go` embeds its `<Domain>Deploy` alias.
-- Each import edge whose other end already exists lands with it, and so does
-  any foreign key along that edge, which follows the import direction with
-  `ON DELETE RESTRICT`. An edge to a domain that arrives later lands with that
-  later phase.
+- Each import edge whose other end already exists lands with it. An edge to
+  a domain that arrives later lands with that later phase.
+- Its tables hold other domains' IDs as plain columns, never foreign keys.
+  Each such column comes with a hold on the owner's `api/` where the row is
+  written, a guard registered with the owner for its deletes and moves, and
+  the domain's purge for a deleted account or organization
+  ([0004](../research/decisions/0004-repository-architecture.md#repository-shape-a-modular-monolith)).
+  Its store tests migrate the platform stream and its own, and fake the
+  other domains' `api/`; the hold and guard race is tested in
+  `internal/app`.
 - A back edge, a call to a domain constructed later, is bound in
   `internal/app` by the first phase that makes the call.
 
 `TestUnitDepguardFixtures` fails on a domain directory without its rule
-entries, and `TestAccSchemaDependencies` on a key or view against the graph.
+entries, and `TestAccSchemaDependencies` on a key or view between two
+domains.
 
 ## P0: Specification reference
 
@@ -754,10 +761,10 @@ needs from its first database connection.
    applies each stream in registration order to a fresh database and reads
    the `graph-<domain>` rules from `.golangci.yml`. It fails when a foreign
    key in `pg_constraint`, or a view's dependency in `pg_depend`, goes from
-   one domain to a domain it may not import, when a cross-domain key
-   cascades or sets null on delete, when the graph has a cycle, and when a
-   stream registers before one it depends on. Fixture streams and rules
-   prove each failure.
+   one domain's relation to another's or from the platform to a domain, when
+   the graph has a cycle, when a stream registers before the platform's, and
+   when a domain's stream does not apply on the platform stream alone.
+   Fixture streams and rules prove each failure.
 4. Move decision 0003's stores to PostgreSQL in
    `internal/platform/httpkit/middleware`: `idempotency_keys` (body sealed
    from P2b; plaintext behind the store interface until then),
@@ -1156,7 +1163,7 @@ use.
 9. The [domain wiring](#adding-a-domain) of `features`,
    which imports no domain and goes first in `domains.go` and the
    migration order, ahead of `access`; its tables carry organization and
-   account IDs without foreign keys. `access`' edge to `features` lands
+   account IDs as plain columns. `access`' edge to `features` lands
    here: `access` checks its features and limits through `featuresapi`
    ([declared graph](repo-layout.md#declared-graph)).
 
@@ -1277,7 +1284,7 @@ caller can do something.
    Legacy `SpaceAccessRule` inputs stored as bindings
    with `origin = access_rule`. `stacks` imports
    `access` in the [declared graph](repo-layout.md#declared-graph), so a
-   stack binding holds the stack's ID without a foreign key, `stacks`
+   stack binding holds the stack's ID as a plain column, `stacks`
    removes a deleted stack's bindings through `accessapi`, and the stack
    binding operations and `stacksWithAccessToSpace`, which name stacks,
    are `stacks`' over `accessapi`. Feature: `authz_bindings.feature`.
@@ -1333,11 +1340,22 @@ update semantics, input strictness and search every later family reuses.
 7. The [domain wiring](#adding-a-domain) of `vendors` and
    `stacks`, in that order after `access` in `domains.go` and the migration
    order. `vendors` imports `features` and `access`; `stacks` imports
-   `features`, `access` and `vendors`, and its tables reference `access`'
-   spaces; a stack holds its VCS integration's ID without a foreign key,
-   since `vcs` imports `stacks`. The `stacks` edge to `workers` lands with P8, and `stacks`'
+   `features`, `access` and `vendors`. A stack holds its space's ID through
+   `accessapi.Spaces.Hold` and registers a space guard, and holds its VCS
+   integration's ID as a plain column, since `vcs` imports `stacks`. The
+   `stacks` edge to `workers` lands with P8, and `stacks`'
    `runsapi.StackStatus` back edge with P7
    ([declared graph](repo-layout.md#declared-graph)).
+8. Account and organization deletion becomes
+   [decision 0004](../research/decisions/0004-repository-architecture.md#repository-shape-a-modular-monolith)'s
+   purge: `access` marks the account or organization deleting, revokes its
+   sessions and keys and answers `404` for it, then enqueues the purge job
+   of each domain that registered one (`features` and `stacks` here), and
+   deletes its own rows once all have finished. Each purge deletes in
+   batches and can be repeated. The nightly integrity task counts held IDs
+   whose row is gone, per column, as a metric. Feature:
+   `account_settings.feature` gains a deletion that leaves no stack or
+   entitlement row of the account.
 
 **Exit criteria**
 - The Stacks operations of task 1 and the Version Catalog operations of
@@ -1422,10 +1440,10 @@ queued; nothing executes them until P8.
 **Tasks**
 1. `internal/runs` (hexagon) with its migration stream: `runs`,
    `run_state_transitions`, `stack_run_locks`, `stack_run_state`,
-   `stack_outputs`, and the stack-by-run-state read view over `stacks` and
-   `stack_run_state`, the one sanctioned read across two schemas, which
-   `runsapi.StackStatus` serves to stack reads and to stack lists filtered
-   or sorted by state
+   `stack_outputs`. Each transition writes the stack's `state` and
+   `blocked` through `stacksapi` in its transaction, so stack lists filter,
+   sort and count by state from `stacks`' own table, and
+   `runsapi.StackStatus` serves the blocker and the run lock to stack reads
    ([0004](../research/decisions/0004-repository-architecture.md#constraints)).
    `internal/kernel/run.go` holds the 22 `RunState`
    values (`PENDING` absent, `UNKNOWN` never assigned), `RunType`,
@@ -1458,7 +1476,7 @@ queued; nothing executes them until P8.
    and its `policies` edge with P13. `stacks`
    reads run state through `runsapi.StackStatus`, a back edge that
    `internal/app` sets after construction (`SetStackStatus`), adding no
-   import and no foreign key
+   import
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
@@ -1534,8 +1552,8 @@ container runs a stub runner until P9.
    `runs` to `workers` (`runs`' `run_assignments` references `workers`).
    The protocol claims and reports through `runsapi.Scheduler` and
    `runsapi.Reports`, back edges that `internal/app` sets after
-   construction (`SetScheduler`, `SetReports`), adding no import and no
-   foreign key ([declared graph](repo-layout.md#declared-graph)).
+   construction (`SetScheduler`, `SetReports`), adding no import
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - `worker_protocol.feature` (`@postgres`, `@objectstore`): a launcher
@@ -1644,7 +1662,7 @@ through the backend.
    lands with P13 and its `registry` edge with P17. The handover asks
    `vcsapi.Sources` for the source archive URL, a back edge that
    `internal/app` sets after construction (`SetSources`), adding no import
-   and no foreign key ([declared graph](repo-layout.md#declared-graph)).
+   ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
 - `runs_terraform.feature` and `runs_tofu.feature` (`@postgres`,
@@ -1868,7 +1886,7 @@ the tooling around evaluation: samples, captures, simulation and templates.
    the entries of its account switcher, which is empty when none does.
    `access` evaluates them through `policiesapi.Evaluator`, a back edge
    that `internal/app` sets after construction (`SetEvaluator`), adding no
-   import and no foreign key
+   import
    ([declared graph](repo-layout.md#declared-graph)). Feature:
    `policy_login.feature`, `authz_login_policy.feature`.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
@@ -1968,7 +1986,8 @@ run and the discovery document cloud providers verify it against.
 3. Wiring ([domain wiring](#adding-a-domain)): `cloud`'s
    graph rule and shared-rule entries, its place after `state` in
    `domains.go` and the migration order, and its edges to `features`,
-   `access` and `stacks`, with foreign keys from attachments to stacks.
+   `access` and `stacks`; attachments hold their stacks through
+   `stacksapi`, with a stack guard and a purge.
    `internal/app` binds the `cloudapi.Credentials` back edge after
    construction for `runs` to read at handover
    ([declared graph](repo-layout.md#declared-graph)).
@@ -2014,7 +2033,8 @@ with output references and external dependencies.
 2. Wiring ([domain wiring](#adding-a-domain)):
    `schedules`' graph rule and shared-rule entries, its place after `vcs`
    in `domains.go` and the migration order, and its edges to `features`,
-   `access`, `stacks` and `runs`, with foreign keys to stacks; scheduled
+   `access`, `stacks` and `runs`, holding their stacks through `stacksapi`
+   with a stack guard and a purge; scheduled
    and drift runs start through `runsapi.Runs`
    ([declared graph](repo-layout.md#declared-graph)).
 3. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
@@ -2080,9 +2100,9 @@ Terraform module registry protocol and `terraform login`.
    edges to `features`, `access`, `workers`, `configuration`, `policies`,
    `runs` and `cloud`. A module's configuration elements and its context,
    policy and cloud integration attachments are `registry`'s rows, with
-   foreign keys to `modules` and to the context, policy or integration,
-   because `registry` imports those domains; a module holds its VCS
-   integration's ID without a foreign key, as a stack does, and `vcs`
+   foreign keys to `modules` and holds on the context, policy or
+   integration, because `registry` imports those domains; a module holds
+   its VCS integration's ID as a plain column, as a stack does, and `vcs`
    serves `moduleAttachableVcsIntegrations` over `registryapi`. The waiting
    `vcs`→`registry` edge lands here too: `vcs` routes tag pushes to
    `registryapi.Modules` once the push policy sets the version
@@ -2181,7 +2201,7 @@ The Flows engine (P18c) adds its own consumer of the same fan-out.
    graph rule and shared-rule entries, `core-not-adapters` included, its
    place after `schedules` in `domains.go` and the migration order, and its
    edges to `features`, `access`, `workers`, `stacks`, `runs`, `policies`
-   and `vcs`, with foreign keys from stack webhooks to stacks;
+   and `vcs`, stack webhooks holding their stacks through `stacksapi`;
    `worker_usage` reads `worker_pool_samples` through `workersapi`
    ([declared graph](repo-layout.md#declared-graph)).
 3. HTTP delivery: signatures, secret headers, rule headers, timeouts, no
@@ -2596,8 +2616,8 @@ ServiceNow and Backstage integrations that attach to them.
 2. Wiring ([domain wiring](#adding-a-domain)):
    `templates`' graph rule and shared-rule entries, its place after
    `events` in `domains.go` and the migration order, and its edges to
-   `features`, `access`, `stacks` and `runs`, with foreign keys from
-   deployments to the stacks they create. The `flows`→`templates` edge of
+   `features`, `access`, `stacks` and `runs`, deployments holding the
+   stacks they create through `stacksapi`. The `flows`→`templates` edge of
    P18d's Deploy Template and Deploy Blueprint blocks lands here if P18c
    has landed, and with P18c otherwise
    ([declared graph](repo-layout.md#declared-graph)).
@@ -2653,8 +2673,8 @@ capability gates.
 2. Wiring ([domain wiring](#adding-a-domain)):
    `resources`' graph rule and shared-rule entries, its place after
    `templates` in `domains.go` and the migration order, and its edges to
-   `features`, `access`, `stacks`, `runs`, `state` and `workers`, with
-   foreign keys from managed entities to stacks and runs
+   `features`, `access`, `stacks`, `runs`, `state` and `workers`, managed
+   entities holding their stacks and runs through those domains' `api/`
    ([declared graph](repo-layout.md#declared-graph)).
 3. `metrics` and `metricsRange` (Spaces tag) for the console's overview,
    answering `AccountMetrics` (the reference's `SpaceliftMetrics`). Every
@@ -2926,8 +2946,8 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    `domains.go` and the migration order, and its edges to `features`,
    `access`, `workers`, `stacks`, `runs` and `cloud`, and to `policies` if
    P13 has landed (P13 adds it otherwise); `stackCreateFromIntent` creates
-   its stack through `stacksapi`, and P25b's Intent attachments hold the
-   foreign keys to cloud integrations, worker pools and policies
+   its stack through `stacksapi`, and P25b's Intent attachments hold their
+   cloud integrations, worker pools and policies through those domains' `api/`
    ([declared graph](repo-layout.md#declared-graph)).
 3. Account controls: `aiEnabled`, `accountSetAiEnabled`,
    `aiTermsAccepted` and `aiTermsLatestVersion` (the reference's

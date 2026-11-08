@@ -242,11 +242,11 @@ agent host in `internal/agent`.
 | Pros | Cons |
 |---|---|
 | A run transition (run row, transition, stack run lock, queue item, receipts, outbox event) is one transaction inside one domain | `runs` holds about a fifth of the hand-written code and is touched by P7, P9, P10, P13 and P16 |
-| The Go compiler enforces the domain boundary through nested `internal/`; one depguard rule per domain declares the graph that foreign keys follow | Stack state is runs data; a stack list filtered by state needs a read view across two schemas |
+| The Go compiler enforces the domain boundary through nested `internal/`; one depguard rule per domain declares the graph, and no foreign key crosses it | Stack state is runs data; a stack list filtered by state reads a projection runs writes through `stacksapi` |
 | Policies own the input contract and return decisions as data, so policy hooks form no cycle | Six back edges (stacks to runs; runs to vcs, cloud and state; workers to runs; access to policies) are bound after construction |
 | `internal/agent` imports no domain and no persistence, so `cmd/infraweave-agent` is a short `main.go` | About 325 packages, about 40 thin ones under the 90% floor; 26 depguard rules and about 270 entries, most of them the graph |
 | Each domain contributes `Routes`, `Consumers`, `Cron` and `Surfaces`, which map straight onto `serve` and `scheduler` | Long import paths and every constructor package named `assembly`, so imports need aliases |
-| A late domain is a new directory plus about 6 edits; Flows has its own schema and can be extracted | Foreign keys along the graph make a key against the import direction a move, not an edit |
+| A late domain is a new directory plus about 6 edits; Flows has its own schema and can be extracted | A held ID costs a hold, a guard and a purge in code that a foreign key would give |
 | The event model, sealing and expressions are platform, `features` sits at the bottom of the graph, and Flows triggers are one more fan-out consumer | The agent's platform allow-list holds seven packages, and `featuresapi` is one of the widest dependencies |
 
 **Roadmap verdict.** Fits the spine phase by phase: P1 to P6 add one
@@ -316,9 +316,10 @@ Notes:
 - Clean is Fair on process modes because the worker side is a second axis across
   the rings.
 - The modular monolith is Fair on extractability: a domain's `api/` seam
-  is ready, but its foreign keys along the graph, the shared `jobs` table
-  and, for Flows, the fan-out transaction that inserts a trigger's first
-  event all bind it to the one database.
+  is ready and no foreign key crosses it, but the holds taken in the
+  caller's transaction, the shared `jobs` table and, for Flows, the fan-out
+  transaction that inserts a trigger's first event all bind it to the one
+  database.
 
 ### The accepted design
 
@@ -525,10 +526,10 @@ it leads the roadmap table outright, rates Good on all four rows of the
 accepted design, and is rated Poor on nothing. Hexagonal narrows the gap,
 because its single core reaches the cross-cutting concerns as easily, but it
 keeps its Poor ratings on shared hotspots and extractability and its Fair
-ratings on Flows separability and late domains. Decision 0004's foreign keys
-along the dependency direction cost option 5 its lead on lint burden: the
-declared graph adds about 150 depguard entries, in exchange for references
-PostgreSQL checks and a schema that cannot drift from the code's graph.
+ratings on Flows separability and late domains. Decision 0004's declared
+graph costs option 5 its lead on lint burden: it adds about 150 depguard
+entries, in exchange for an import graph the compiler and the linter hold,
+and a schema check that keeps every key and view inside its domain.
 
 Three refinements from the other options carry over, because they fit
 inside option 5 without changing its rules:
@@ -560,8 +561,8 @@ inside option 5 without changing its rules:
 - **The compiler and one declared graph do the enforcement.** Nested
   `internal/` directories make a domain's insides unreachable. One depguard
   rule per domain names the `api/` packages it imports, and
-  `TestAccSchemaDependencies` holds foreign keys and migration order to the
-  same rules, with every cross-domain key `ON DELETE RESTRICT`
+  `TestAccSchemaDependencies` fails on any foreign key or view between two
+  domains, whose references are held through the owner's `api/` instead
   ([5-modular-monolith.md](5-modular-monolith.md#tests-and-enforcement)).
 - **One event model, no bridge.** The envelope, kind registry and emit path
   are platform packages below every domain, and a Flows trigger is one
@@ -602,8 +603,8 @@ inside option 5 without changing its rules:
   their own `api/`. Lifecycle and every table a transition writes stay in
   `runs`, so the transition keeps its one transaction.
 - **A requirement to deploy Flows or Intelligence separately.** The
-  domains' `api/` seams make extraction feasible, after dropping their
-  foreign keys to `access`, moving their work off the shared `jobs` table
+  domains' `api/` seams make extraction feasible, after turning their
+  holds on `access` into remote checks, moving their work off the shared `jobs` table
   and, for Flows, replacing the fan-out transaction with delivery of
   published events; if it becomes a launch requirement rather than
   an option, option 4's published-event context map is the better starting
@@ -612,11 +613,11 @@ inside option 5 without changing its rules:
   and 0018 make one event model the design. If the two had to version
   their events apart, the shared envelope in the platform would become a
   translation layer, and option 4's published languages would fit better.
-- **References against the import direction.** If two domains keep
-  needing keys to each other's tables, the graph forces a table or code
-  to move, or the domains to merge. If that recurs, the foreign-key rule is
-  the thing to revisit, not the domain layout, and that needs its own
-  decision.
+- **Guards that multiply.** Every held ID adds a guard to its owner's
+  delete and move, and a purge to account deletion. If one owner gathers
+  many guards, or a guard's query grows slow, the owner's deletes slow with
+  it; that is the point to revisit the hold protocol, not the domain
+  layout, and it needs its own decision.
 - **Domains landing without their depguard entries.** Rules 4 and 6 name
   each domain. A domain directory without its graph rule or those entries
   fails `TestUnitDepguardFixtures`, and one with tables but no graph rule

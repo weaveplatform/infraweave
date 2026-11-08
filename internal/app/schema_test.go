@@ -40,24 +40,17 @@ func declaredGraph(rules map[string]depguardRule) map[string][]string {
 	return graph
 }
 
-// mayReference reports whether a table of from may reference one of to:
-// within a stream, from a domain to the platform, and from a domain to a
-// domain it imports.
-func mayReference(graph map[string][]string, from, to string) bool {
-	switch {
-	case from == to:
-		return true
-	case from == schema.Name:
-		return false
-	case to == schema.Name:
-		return true
-	}
-	return slices.Contains(graph[from], to)
+// mayReference reports whether a relation of from may reference one of to:
+// within a stream, and from a domain to the platform. A domain holds
+// another domain's rows through that domain's api/, never by a key or view
+// (decision 0004).
+func mayReference(from, to string) bool {
+	return from == to || to == schema.Name
 }
 
-// graphProblems checks the declared graph and the streams' order against
-// it, without a database: a cycle, a stream that names no domain, and a
-// stream registered before the platform's or before a domain it imports.
+// graphProblems checks the declared graph and the streams' order without a
+// database: a cycle, a stream that names no domain, and a stream
+// registered before the platform's.
 func graphProblems(streams []migrate.Stream, graph map[string][]string) []string {
 	var out []string
 	const (
@@ -102,17 +95,54 @@ func graphProblems(streams []migrate.Stream, graph map[string][]string) []string
 				fmt.Sprintf("stream %s names no domain of the declared graph", s.Name),
 			)
 		}
-		for _, dep := range append([]string{schema.Name}, graph[s.Name]...) {
-			if j, ok := at[dep]; ok && j > i {
-				out = append(
-					out,
-					fmt.Sprintf(
-						"stream %s is registered before %s, which it may reference",
-						s.Name,
-						dep,
-					),
-				)
-			}
+		if j, ok := at[schema.Name]; ok && j > i {
+			out = append(
+				out,
+				fmt.Sprintf(
+					"stream %s is registered before %s, which it may reference",
+					s.Name,
+					schema.Name,
+				),
+			)
+		}
+	}
+	return out
+}
+
+// aloneProblems applies each domain's stream on the platform's alone, each
+// to a database from empty, so a domain's store tests can migrate only
+// those two streams.
+func aloneProblems(t *testing.T, empty func(testing.TB) string, streams []migrate.Stream) []string {
+	t.Helper()
+	var base []migrate.Stream
+	for _, s := range streams {
+		if s.Name == schema.Name {
+			base = append(base, s)
+		}
+	}
+	var out []string
+	for _, s := range streams {
+		if s.Name == schema.Name {
+			continue
+		}
+		cfg, err := pgx.ParseConfig(empty(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := migrate.Up(
+			t.Context(),
+			cfg,
+			"schema-check",
+			append(slices.Clone(base), s),
+		); err != nil {
+			out = append(
+				out,
+				fmt.Sprintf(
+					"stream %s does not apply on the platform stream alone: %v",
+					s.Name,
+					err,
+				),
+			)
 		}
 	}
 	return out
@@ -149,21 +179,22 @@ WHERE d.classid = 'pg_rewrite'::regclass AND d.refclassid = 'pg_class'::regclass
   AND v.oid <> t.oid AND t.relnamespace = 'public'::regnamespace
 ORDER BY 1, 2, 3`
 
-// schemaDependencyProblems applies streams one at a time to the empty
-// database at url, attributes the relations each creates to its stream, and
-// checks every reference between streams against graph: it must follow the
-// graph, and a foreign key must neither cascade nor set a value on delete
-// (decision 0004).
+// schemaDependencyProblems applies streams one at a time to a database from
+// empty, attributes the relations each creates to its stream, and checks
+// every reference between streams: none may go from one domain to another
+// or from the platform to a domain, and a domain's key to the platform must
+// neither cascade nor set a value on delete (decision 0004). It then
+// applies each domain's stream alone on the platform's.
 func schemaDependencyProblems(
 	t *testing.T,
-	url string,
+	empty func(testing.TB) string,
 	streams []migrate.Stream,
 	graph map[string][]string,
 ) []string {
 	t.Helper()
 	out := graphProblems(streams, graph)
 	ctx := t.Context()
-	cfg, err := pgx.ParseConfig(url)
+	cfg, err := pgx.ParseConfig(empty(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,9 +231,9 @@ func schemaDependencyProblems(
 		a, b := owner[from], owner[to]
 		switch {
 		case a == "" || b == "" || a == b:
-		case !mayReference(graph, a, b):
-			out = append(out, fmt.Sprintf("%s: %s (%s) references %s (%s), which %s may not import",
-				name, from, a, to, b, a))
+		case !mayReference(a, b):
+			out = append(out, fmt.Sprintf("%s: %s (%s) references %s (%s), another domain's",
+				name, from, a, to, b))
 		case onDelete != "" && onDelete != "r" && onDelete != "a":
 			out = append(
 				out,
@@ -220,7 +251,7 @@ func schemaDependencyProblems(
 	}); err != nil {
 		t.Fatal(err)
 	}
-	return out
+	return append(out, aloneProblems(t, empty, streams)...)
 }
 
 // conventions are decision 0005's schema conventions as queries; each row
@@ -280,11 +311,12 @@ func schemaConventionProblems(t *testing.T, url string) []string {
 	return out
 }
 
-// TestAccSchemaDependencies holds every registered stream's tables and
-// views to the declared graph in .golangci.yml (decision 0004).
+// TestAccSchemaDependencies keeps every registered stream's keys and views
+// inside its own domain, and checks the declared graph in .golangci.yml
+// (decision 0004).
 func TestAccSchemaDependencies(t *testing.T) {
 	graph := declaredGraph(readDepguardRules(t, "../../.golangci.yml"))
-	if got := schemaDependencyProblems(t, sqltest.Empty(t), Streams(), graph); len(got) != 0 {
+	if got := schemaDependencyProblems(t, sqltest.Empty, Streams(), graph); len(got) != 0 {
 		t.Errorf("schema dependencies:\n%s", strings.Join(got, "\n"))
 	}
 }
@@ -307,7 +339,7 @@ func fixtureStream(name string, sql ...string) migrate.Stream {
 
 // TestAccSchemaDependencyFixtures proves each failure of the dependency
 // check on fixture streams and rules: platform, then domain a, then b,
-// which imports a.
+// whose code imports a, which still gives b no key to a's tables.
 func TestAccSchemaDependencyFixtures(t *testing.T) {
 	rules := map[string]depguardRule{
 		"graph-a": {
@@ -329,36 +361,38 @@ func TestAccSchemaDependencyFixtures(t *testing.T) {
 		want    []string
 	}{
 		{
-			name: "references along the graph",
+			name: "references within a domain and to the platform",
 			streams: []migrate.Stream{platform, a, fixtureStream("b",
-				"CREATE TABLE b (id int PRIMARY KEY, a int REFERENCES a ON DELETE RESTRICT, p int REFERENCES p);"+
+				"CREATE TABLE b (id int PRIMARY KEY, p int REFERENCES p ON DELETE RESTRICT);"+
 					"CREATE TABLE b2 (id int REFERENCES b ON DELETE CASCADE);"+
-					"CREATE VIEW bv AS SELECT a.id FROM a JOIN p ON p.id = a.p;")},
+					"CREATE VIEW bv AS SELECT b.id FROM b JOIN p ON p.id = b.p;")},
 		},
 		{
-			name: "a reference against the graph",
-			streams: []migrate.Stream{
-				platform, fixtureStream("b", "CREATE TABLE b (id int PRIMARY KEY);"),
-				fixtureStream("a", "CREATE TABLE a (id int PRIMARY KEY, b int REFERENCES b);"),
+			name:    "a key to another domain",
+			streams: []migrate.Stream{platform, a, fixtureStream("b", "CREATE TABLE b (a int REFERENCES a ON DELETE RESTRICT);")},
+			want: []string{
+				"b_a_fkey: b (b) references a (a), another domain's",
+				`stream b does not apply on the platform stream alone: migrate: b 00001_f1: ERROR: relation "a" does not exist (SQLSTATE 42P01)`,
 			},
-			graph: map[string][]string{"a": {}, "b": {}},
-			want:  []string{"a_b_fkey: a (a) references b (b), which a may not import"},
 		},
 		{
-			name:    "a view against the graph",
+			name:    "a view of another domain",
 			streams: []migrate.Stream{platform, fixtureStream("b", "CREATE TABLE b (id int);"), fixtureStream("a", "CREATE VIEW av AS SELECT id FROM b;")},
 			graph:   map[string][]string{"a": {}, "b": {}},
-			want:    []string{"view av: av (a) references b (b), which a may not import"},
+			want: []string{
+				"view av: av (a) references b (b), another domain's",
+				`stream a does not apply on the platform stream alone: migrate: a 00001_f1: ERROR: relation "b" does not exist (SQLSTATE 42P01)`,
+			},
 		},
 		{
-			name:    "a cross-domain key that cascades",
-			streams: []migrate.Stream{platform, a, fixtureStream("b", "CREATE TABLE b (a int REFERENCES a ON DELETE CASCADE);")},
-			want:    []string{"b_a_fkey: b (b) references a (a) with an ON DELETE action that rewrites rows; use RESTRICT"},
+			name:    "a key to the platform that cascades",
+			streams: []migrate.Stream{platform, fixtureStream("a", "CREATE TABLE a (p int REFERENCES p ON DELETE CASCADE);")},
+			want:    []string{"a_p_fkey: a (a) references p (platform) with an ON DELETE action that rewrites rows; use RESTRICT"},
 		},
 		{
-			name:    "a cross-domain key that sets null",
-			streams: []migrate.Stream{platform, a, fixtureStream("b", "CREATE TABLE b (a int REFERENCES a ON DELETE SET NULL);")},
-			want:    []string{"b_a_fkey: b (b) references a (a) with an ON DELETE action that rewrites rows; use RESTRICT"},
+			name:    "a key to the platform that sets null",
+			streams: []migrate.Stream{platform, fixtureStream("a", "CREATE TABLE a (p int REFERENCES p ON DELETE SET NULL);")},
+			want:    []string{"a_p_fkey: a (a) references p (platform) with an ON DELETE action that rewrites rows; use RESTRICT"},
 		},
 		{
 			name: "the platform referencing a domain",
@@ -368,13 +402,14 @@ func TestAccSchemaDependencyFixtures(t *testing.T) {
 			},
 			want: []string{
 				"stream a is registered before platform, which it may reference",
-				"p_a_fkey: p (platform) references a (a), which platform may not import",
+				"p_a_fkey: p (platform) references a (a), another domain's",
+				`stream a does not apply on the platform stream alone: migrate: platform 00001_f1: ERROR: relation "a" does not exist (SQLSTATE 42P01)`,
 			},
 		},
 		{
-			name:    "a stream before one it imports",
-			streams: []migrate.Stream{platform, fixtureStream("b", "SELECT 1;"), a},
-			want:    []string{"stream b is registered before a, which it may reference"},
+			name:    "a stream that writes another domain's table",
+			streams: []migrate.Stream{platform, a, fixtureStream("b", "INSERT INTO a (id) VALUES (1);")},
+			want:    []string{`stream b does not apply on the platform stream alone: migrate: b 00001_f1: ERROR: relation "a" does not exist (SQLSTATE 42P01)`},
 		},
 		{
 			name:    "a cycle",
@@ -398,7 +433,7 @@ func TestAccSchemaDependencyFixtures(t *testing.T) {
 			if tc.graph != nil {
 				g = tc.graph
 			}
-			got := schemaDependencyProblems(t, sqltest.Empty(t), tc.streams, g)
+			got := schemaDependencyProblems(t, sqltest.Empty, tc.streams, g)
 			if strings.Join(got, "\n") != strings.Join(tc.want, "\n") {
 				t.Errorf(
 					"got:\n%s\nwant:\n%s",

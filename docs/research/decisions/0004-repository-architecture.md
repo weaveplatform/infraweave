@@ -50,9 +50,7 @@ complete repository shapes against these domains and compare them.
 
 infraweave uses option 5 of the architecture options,
 [the modular monolith](../architecture-options/5-modular-monolith.md),
-with its dependency rules as written there, except its "no cross-domain
-foreign keys" rule, which the dependency-direction rule below replaces. In
-summary:
+with its dependency rules as written there. In summary:
 
 | Tree | Holds | May import |
 |---|---|---|
@@ -80,28 +78,52 @@ summary:
   owns every table a run transition writes, including the stack's run lock
   and run state, and commits a transition in one transaction
   ([run execution path](../architecture-options/5-modular-monolith.md#run-execution-path)).
-- **Foreign keys follow the code's dependency direction.** A domain's tables
-  may reference the tables of a domain whose `api/` package its code
-  imports, and no others. So `runs` may reference `stacks`, because `runs`
-  imports `stacks/api`, but `stacks` never references `runs`.
-  - **One declared graph.** Which domain may import which is written once,
-    as one depguard rule per domain in `.golangci.yml` that lists the other
-    domains' `api/` packages it may import. depguard enforces it on code,
-    and the schema check below reads the same rules for tables, so code and
-    schema cannot disagree.
-  - **The graph is acyclic.** Back edges (below) are bound in
-    `internal/app`, not imported, so they add no edge. A cycle in the
-    declared rules fails the schema check.
-  - **Migration streams run in dependency order.** The composition root
-    registers each domain's stream after the streams of every domain it
-    imports, so a referenced table always exists before the reference
-    ([0005](0005-persistence-postgresql.md#migrations)).
-  - **Cross-domain references never cascade.** A foreign key from one
-    domain's table to another's uses `ON DELETE RESTRICT`, so deleting a row
-    never removes or rewrites another domain's rows behind its code. The
-    referencing domain removes its own rows first, through its `api/` or in
-    response to the owning domain's event. Within a domain, `ON DELETE`
-    rules are chosen per key, as 0005 says.
+  The same transaction writes the stack's state projection through
+  `stacksapi`, so stack lists filter, sort and count by state from
+  `stacks`' own table.
+- **One declared graph.** Which domain may import which is written once, as
+  one depguard rule per domain in `.golangci.yml` that lists the other
+  domains' `api/` packages it may import. Back edges (below) are bound in
+  `internal/app`, not imported, so they add no edge, and the graph is
+  acyclic; a cycle in the declared rules fails the schema check.
+- **No foreign keys between domains.** A domain's tables reference its own
+  tables and the platform's (`blob_objects`, `events`), and hold another
+  domain's IDs as plain columns. No view reads another domain's table. Each
+  domain's migration stream therefore applies on the platform stream alone,
+  and its store tests migrate only those two streams. The guarantees a key
+  would give are kept in code, through the owning domain's `api/`, in the
+  caller's transaction:
+  - **Holds.** A domain that stores another domain's ID first holds the
+    referenced row: a call such as `accessapi.Spaces.Hold` takes
+    `SELECT … FOR KEY SHARE` on it in the caller's transaction and answers
+    `not-found` when it is gone. That is the lock PostgreSQL's own key
+    check takes, so the row cannot be deleted, or its key changed, before
+    the caller commits.
+  - **Guards.** The owner keeps no list of who holds its rows: each
+    holding domain registers a guard on the owner's `api/`, as `stacks`
+    registers an `accessapi.SpaceGuard`. Before the owner deletes
+    or moves a row, it locks the row `FOR UPDATE`, then asks every guard in
+    a new statement of the same transaction. The lock waits for every
+    transaction that holds the row, and the guard's statement then sees what
+    they committed, so a hold and a delete cannot both succeed. A guard that
+    answers in use refuses the delete with the owner's `409`.
+  - **Purges.** Deleting an account or an organization is asynchronous.
+    `access` marks it deleting, revokes its sessions and keys, and answers
+    `404` for it from then on; it then enqueues one purge job per domain
+    that registered a purge. Each purge deletes the domain's rows of that
+    account in batches, as queue jobs ([0011](0011-persistent-work-queue.md)),
+    and reports done. `access` deletes its own rows once every purge has.
+    A purge removes rows the account owns whatever guards would say, since
+    nothing outside the account can hold them.
+  - **Reads across domains.** A list that filters by another domain's data
+    takes an ID set from that domain's `api/`, as stack search takes the
+    caller's reachable spaces from `accessapi`. Data a list must also sort
+    or count by is kept as a projection in the reading domain's tables,
+    written through the reader's `api/` in the writer's transaction when
+    the writer imports the reader, as `runs` writes a stack's state through
+    `stacksapi`.
+  - **Within a domain**, foreign keys stay, and `ON DELETE` rules are
+    chosen per key, as [0005](0005-persistence-postgresql.md) says.
 - **Cross-domain effects.** Queries, authorization and policy decisions are
   synchronous calls on `api/` interfaces. Consequences are events appended
   to a transactional outbox in the producer's transaction. The `policies`
@@ -145,7 +167,7 @@ summary:
   import its `api/`, and it imports no domain. It also holds each
   organization's tier, grants, pooled limits and account limits, because
   the entitlement is computed from them; its tables carry organization and
-  account IDs without foreign keys, since `access` sits above it. The tenancy of decision
+  account IDs as plain columns, and its purge removes them. The tenancy of decision
   [0007](0007-authorization-spaces-and-roles.md) (organizations, accounts,
   members, identity providers, sessions, keys, the break-glass credential
   and the OAuth authorization server of
@@ -254,14 +276,31 @@ file, carries most of the boundary. The
 [recommendation](../architecture-options/README.md#recommendation) lists
 what makes it hold.
 
-**Foreign keys along the dependency direction, not none at all.** With no
-cross-domain foreign keys, a run would hold a stack ID that nothing checks,
-and every orphan would be found by application code or not at all. A domain
-that imports another already depends on its contract, so a reference in
-the same direction adds no new coupling, and PostgreSQL then guarantees the
-reference. Keys against the import direction stay forbidden, because they
-would make the imported domain's schema depend on its caller's, and a
-cascade would let one domain change rows another owns.
+**No foreign keys between domains, with holds, guards and purges in their
+place.** Keys along the import direction were weighed and rejected for
+three reasons:
+- **Deletion.** A key from `stacks` to `access`' spaces and accounts must
+  not cascade, or one domain would remove rows another owns. Without a
+  cascade, deleting an account fails on every domain's rows, and `access`,
+  which imports none of those domains, cannot remove them first. An
+  asynchronous purge per domain is the only order that works, and it needs
+  no key.
+- **Test isolation.** With keys, a domain's store tests must migrate every
+  stream it references, so a test of `stacks` would carry `access`' schema
+  and seed data. Without them each domain tests on its own stream, with
+  fakes of the other domains' `api/`.
+- **Schema coupling.** A key ties a domain's migrations to another
+  domain's table and key shape, which then cannot change without both
+  streams moving together.
+
+A key's two guarantees remain. A hold takes the same `FOR KEY SHARE` lock
+PostgreSQL's key check takes, so an insert cannot reference a row being
+deleted. A guard, asked after the owner's `FOR UPDATE` lock, sees every
+committed hold, so a delete cannot orphan a row. What is lost is the check
+on rows written outside the code, such as a manual `INSERT`; the
+integrity task under Constraints counts such orphans. One schema with keys
+everywhere, owned by no domain, would keep every key but give up the
+separable domains this decision is for.
 
 For topology, the [process topology](../architecture-options/README.md#process-topology)
 section weighs one binary against separate binaries and separate services.
@@ -296,9 +335,15 @@ change.
   `policiesapi.Evaluator`. The
   [declared graph](../../implementation/repo-layout.md#declared-graph)
   lists every edge, the back edges and the construction order.
-- **The stack-by-run-state read view** lives in the `runs` migration stream
-  and is served through `runsapi.StackStatus`; it is the one sanctioned
-  read across two schemas, and the schema check holds it to the graph.
+- **Stack state is a projection.** A stack's `state` and `blocked` are
+  written into `stacks`' table through `stacksapi` by each run transition,
+  in its transaction, so stack lists filter, sort and count by state
+  without reading `runs`' tables. The blocker's details and the run lock
+  are read through `runsapi.StackStatus`.
+- **Orphans written outside the code go unseen** until the nightly
+  integrity task counts them: for each ID column that names another
+  domain's row, the rows whose ID the owner's `api/` no longer knows. It
+  reports a count per column as a metric and deletes nothing.
 - **The binary on worker hosts carries server code** it never executes. If
   image size or a customer's review requires it, `cmd/infraweave-agent` links
   only `internal/agent`.
@@ -336,14 +381,18 @@ change.
   `internal/platform/gen/<spec>` paths.
 - `TestAccSchemaDependencies` applies each domain's migration stream in
   registration order to a fresh database and attributes the tables that
-  appear to that stream's domain. It reads the per-domain depguard rules
-  from `.golangci.yml` and fails when a foreign key in `pg_constraint` goes
-  from one domain to a domain that domain may not import, when a
-  cross-domain key cascades or sets null on delete, when the declared
-  graph has a cycle, or when a stream is registered before a stream it
-  depends on. Views count as references: a view that reads another
-  domain's table must follow the graph, which the check reads from
-  `pg_depend`.
+  appear to that stream's domain. It fails when a foreign key in
+  `pg_constraint`, or a view in `pg_depend`, goes from one domain's
+  relation to another domain's, when the platform's relations reference a
+  domain's, when the declared graph in the per-domain depguard rules has a
+  cycle, or when a stream is registered before the platform's. It also
+  applies each domain's stream alone on the platform stream, and fails when
+  one does not apply.
+- For each guard, a test in `internal/app` opens a hold in one
+  transaction, starts the owner's delete in another, commits the hold, and
+  expects the delete to be refused. `access`' account deletion scenario
+  expects every domain's rows of the account gone once the purges
+  complete.
 - `internal/app/router.go` asserts that each composed server satisfies its
   generated interface, so `make build` fails on an operation with two
   owners.
