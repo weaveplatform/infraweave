@@ -965,8 +965,9 @@ members and the members each account admits.
    there only. `ApiKeyInput` has no
    `admin` field: a body that sets it answers `400 invalid-request`
    ([0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the key's `admin` reads whether it holds a
-   `space-admin` binding on the account's top space, which reads `false`
-   until P4b serves API key bindings. Feature: `auth_api_keys.feature` (`@postgres`,
+   `space-admin` binding on the account's top space, which P4 seeds the
+   `role_bindings` table for and reads; it reads `false` until P4b serves
+   API key bindings. Feature: `auth_api_keys.feature` (`@postgres`,
    `@oidc`). Records DV-013 and DV-014.
 4. `internal/access/internal/core/session` and the chi
    `authn.Middleware`: session rows, the `__Host-infraweave_session` cookie
@@ -1212,8 +1213,12 @@ Spaces and the evaluator decide every route from here on: deny by default,
 2. The action catalogue: `specref` generates
    `internal/access/api/actions.gen.go` from the 150-value `Action` enum and
    `internal/access/api/actions.yaml` gives each its subject, fallback and
-   flags; `make verify-reference` fails on a mismatch. The five system roles
-   are seeded per account.
+   flags; `make verify-reference` fails on a mismatch. The `roles`,
+   `role_actions` and `role_bindings` tables, with the five system roles
+   seeded per account. Claiming an account (P3b's organization admin) and
+   creating one write the `space-admin` binding on its top space as a row of
+   `role_bindings`, in the same transaction. An API key's `admin` reads
+   whether it holds `space-admin` on the account's top space (DV-013).
 3. `internal/access/internal/core/authz`: `Authorize` and `Reachable` over
    resident, propagated and inherited grants, the stack self-read, the
    in-run restriction; per-account snapshots rebuilt on `authz:<account>`.
@@ -1230,8 +1235,12 @@ Spaces and the evaluator decide every route from here on: deny by default,
    `apiKeys`, `ownedApiKeys` and `canCreatePersonalApiKey` (decision
    0007's grant views).
 5. Every list and search filters with `Reachable` as
-   `space_id = ANY($n)`; `role_actions` data source support through
-   `GET` of the catalogue.
+   `space_id = ANY($n)`.
+6. Generic search: `internal/kernel/search` predicate types and
+   `internal/platform/sql/search`, which compiles `SearchInput` predicates,
+   ordering and cursors to SQL under `Reachable`. Its first users are
+   `searchSpaces` and `searchSpacesSuggestions`; `role_actions` data source
+   support through `GET` of the catalogue.
 
 **Exit criteria**
 - The Spaces operations listed above, and P3's operations with their `403`
@@ -1263,9 +1272,10 @@ caller can do something.
    `userGroupRoleBinding*` (5), `apiKeyRoleBinding*` (5),
    `stackRoleBinding*` (5), `apiKeyApiKeyRoleBindings`,
    `managedUserUserRoleBindings`, `managedUserGroupUserRoleBindings`,
-   `stackRoleBindings`. Legacy `SpaceAccessRule` inputs stored as bindings
-   with `origin = access_rule`. An API key's `admin` reads whether it holds
-   `space-admin` on the account's top space (DV-013). `stacks` imports
+   `stackRoleBindings`, over P4's `role_bindings` table, which already
+   holds the `space-admin` binding claiming or creating an account writes.
+   Legacy `SpaceAccessRule` inputs stored as bindings
+   with `origin = access_rule`. `stacks` imports
    `access` in the [declared graph](repo-layout.md#declared-graph), so a
    stack binding holds the stack's ID without a foreign key, `stacks`
    removes a deleted stack's bindings through `accessapi`, and the stack
@@ -1311,9 +1321,7 @@ update semantics, input strictness and search every later family reuses.
    `additionalProperties: false`; label rules. Tests:
    `api_updates.feature`, `api_strictness.feature`. Records DV-085 to
    DV-089.
-4. Generic search: `internal/kernel/search` predicate types and
-   `internal/platform/sql/search`, which compiles `SearchInput` predicates,
-   ordering and cursors to SQL under `Reachable`. Operations: `searchStacks`,
+4. Stack search over P4's generic search: `searchStacks` and
    `searchStacksSuggestions`.
 5. Version Catalog in `internal/vendors`: `terraformVersions`,
    `terraformEffectiveVersion`, `openTofuVersions`,

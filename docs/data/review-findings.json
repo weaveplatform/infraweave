@@ -9597,7 +9597,7 @@
     {
       "id": "IMP-01.19",
       "finding": "P3 task 3 did not say how `ApiKeyInput.admin` is handled after 0006 followed 0021",
-      "change": "Rejected with `400 invalid-request`; `admin` reads a root `space-admin` binding from P4b",
+      "change": "Rejected with `400 invalid-request`; `admin` reads a top-space `space-admin` binding from P4's `role_bindings`",
       "status": "folded",
       "files": [
         "docs/implementation/plan.md"
@@ -9607,7 +9607,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "`admin` field: a body that sets it answers `400 invalid-request`",
-            "`space-admin` binding on the account's top space, which reads `false` until P4b serves API key bindings"
+            "`space-admin` binding on the account's top space, which P4 seeds the `role_bindings` table for and reads; it reads `false` until P4b serves API key bindings"
           ]
         }
       ]
@@ -9791,7 +9791,7 @@
     },
     {
       "id": "IMP-01.28",
-      "finding": "repo-layout lacked `kernel/search` and `platform/sql/search` (P5) and `resources/internal/scans` (P22b), and described `httpkit/strict` without the update semantics P5 puts there",
+      "finding": "repo-layout lacked `kernel/search` and `platform/sql/search` (P4) and `resources/internal/scans` (P22b), and described `httpkit/strict` without the update semantics P5 puts there",
       "change": "Added",
       "status": "folded",
       "files": [
@@ -9801,8 +9801,8 @@
         {
           "file": "docs/implementation/repo-layout.md",
           "present": [
-            "SearchInput predicate, order and cursor types (P5)",
-            "compiles SearchInput predicates to SQL under Reachable (P5)",
+            "SearchInput predicate, order and cursor types (P4)",
+            "compiles SearchInput predicates to SQL under Reachable (P4)",
             "merge-patch and If-Match for strict handlers (P5)"
           ]
         },
