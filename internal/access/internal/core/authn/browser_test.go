@@ -1,6 +1,7 @@
 package authn_test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -8,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -512,5 +514,62 @@ func TestUnitSwitchAccount(t *testing.T) {
 	w.f.fail = "Accounts"
 	if _, err := w.s.Accounts(t.Context(), p); !errors.Is(err, errDown) {
 		t.Errorf("Accounts down = %v", err)
+	}
+}
+
+// TestUnitAccountAdmin checks that an account session's Admin is decided
+// at each authentication, over what its session stores, and that a
+// session of no account keeps its own.
+func TestUnitAccountAdmin(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	var asked []kernel.PrincipalKind
+	var down error
+	w.admin = func(_ context.Context, p kernel.Principal) (bool, error) {
+		asked = append(asked, p.Kind)
+		return p.Kind == kernel.PrincipalAPIKey, down
+	}
+	w.s = w.replica()
+	raw, _ := w.exchange(t)
+	if p, err := authenticate(t, w.s, raw); err != nil || !p.Admin {
+		t.Errorf("an admin key = %+v, %v", p, err)
+	}
+	ss, secret := w.member(w.acct)
+	ss.Admin = true
+	w.f.sessions[ss.ID] = ss
+	if p, _, err := w.s.AuthenticateBrowser(
+		ctx,
+		secret,
+		authn.ReachAccount,
+	); err != nil ||
+		p.Admin {
+		t.Errorf("a member the bindings do not make admin = %+v, %v", p, err)
+	}
+	w.withOrg("acme", true)
+	b, err := w.s.SignInBreakGlass(ctx, "acme", bgLogin, bgPassword, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, _, err := w.s.AuthenticateBrowser(ctx, b.Secret,
+		authn.ReachOrganization); err != nil || !p.Admin {
+		t.Errorf("break-glass = %+v, %v", p, err)
+	}
+	if !slices.Equal(asked, []kernel.PrincipalKind{kernel.PrincipalAPIKey, kernel.PrincipalUser}) {
+		t.Errorf("decided for %v", asked)
+	}
+
+	down = errDown
+	if _, err := authenticate(t, w.s, raw); !errors.Is(err, errDown) {
+		t.Errorf("a failing decision on a token = %v", err)
+	}
+	if _, _, err := w.s.AuthenticateBrowser(
+		ctx,
+		secret,
+		authn.ReachAccount,
+	); !errors.Is(
+		err,
+		errDown,
+	) {
+		t.Errorf("a failing decision on a browser session = %v", err)
 	}
 }

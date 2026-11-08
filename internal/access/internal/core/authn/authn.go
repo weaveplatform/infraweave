@@ -74,6 +74,10 @@ type Deps struct {
 	BreakGlass port.BreakGlass
 	// Admission decides which accounts admit a member.
 	Admission session.Admission
+	// AccountAdmin decides whether an account session's actor is an
+	// account admin, which the account's bindings say and no session
+	// stores; nil keeps the session's stored Admin.
+	AccountAdmin func(ctx context.Context, p kernel.Principal) (bool, error)
 	// Idle and MaxAge are auth.session's idle_timeout and max_age, a
 	// browser session's limits.
 	Idle, MaxAge time.Duration
@@ -466,7 +470,24 @@ func (s *Service) authenticate(
 	if !ss.Live(s.d.Now()) || actors[c.Kind] != ss.ActorKind || !route(ss) {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
 	}
-	return ss.Principal(), c, nil
+	p, err := s.principal(ctx, ss)
+	return p, c, err
+}
+
+// principal is ss's principal, whose Admin, for a session of an account,
+// is decided from the account's bindings at this request rather than at
+// sign-in, so a binding's change applies to live sessions.
+func (s *Service) principal(ctx context.Context, ss session.Session) (kernel.Principal, error) {
+	p := ss.Principal()
+	if p.AccountID.IsZero() || s.d.AccountAdmin == nil {
+		return p, nil
+	}
+	admin, err := s.d.AccountAdmin(ctx, p)
+	if err != nil {
+		return kernel.Principal{}, fmt.Errorf("decide account admin: %w", err)
+	}
+	p.Admin = admin
+	return p, nil
 }
 
 // Sessions are up to limit of the live sessions of p's account, from the

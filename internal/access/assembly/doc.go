@@ -30,7 +30,12 @@
 // authorization server for MCP clients at the OAuth patterns;
 // HashPassword and VerifyPassword are decision 0006's break-glass
 // password hash, which infraweave auth hash-password prints; WatchSessions keeps the
-// replica's session cache in step with infraweave_invalidate. Cron is its
+// replica's session cache in step with infraweave_invalidate.
+// Authorizer is decision 0007's evaluator for every domain, from the
+// replica's per-account snapshots, which also decide each account
+// principal's Admin as it authenticates; WatchAuthorization keeps them in
+// step with infraweave_invalidate's authz:<account> messages and compares
+// their versions every 5 seconds for a lost one. Cron is its
 // periodic tasks: ExpireSessions, authn.sessions.expire, hourly, which
 // also deletes ended authorization requests and unused OAuth clients, and
 // RotateKeys, authn.keys.rotate, daily unless rotation is manual.
@@ -45,7 +50,7 @@
 //
 // It imports accessapi, featuresapi, whose Entitlements Deps.Features
 // carries for the organization and account deletes and the account limits, the access domain's adapters (oidc among them) and
-// its apikey, authn, breakglass, group, operator, orgadmin, session,
+// its apikey, authn, authz, breakglass, group, operator, orgadmin, session,
 // settings, space, token and user packages, platform/cron and platform/queue for its
 // tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
 // platform/sql/notify, platform/httpkit/problem and chi. Only

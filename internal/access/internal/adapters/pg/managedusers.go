@@ -209,15 +209,6 @@ func invitee(ctx context.Context, q tx.Querier, org kernel.OrganizationID, in us
 	return id, nil
 }
 
-// bumpAuthz marks acct's authorization changed, so replicas reload it.
-func bumpAuthz(ctx context.Context, q tx.Querier, acct kernel.AccountID) error {
-	if _, err := q.Exec(ctx, `UPDATE accounts SET authz_version = authz_version + 1
-		WHERE id = $1`, acct); err != nil {
-		return fmt.Errorf("access: bump authorization: %w", sql.Unavailable(err))
-	}
-	return nil
-}
-
 // SetSlackMemberID sets the managed user's Slack member, none when empty,
 // and records e.
 func (s *Store) SetSlackMemberID(
@@ -463,7 +454,7 @@ func (s *Store) CreateGroup(
 			}
 			return fmt.Errorf("access: create group: %w", sql.Unavailable(err))
 		}
-		return nil
+		return bumpAuthz(ctx, q, g.AccountID)
 	})
 	if err != nil {
 		return group.Group{}, fmt.Errorf("create group %q: %w", g.Name, err)
@@ -512,7 +503,7 @@ func (s *Store) DeleteGroup(
 		if tag.RowsAffected() == 0 {
 			return fmt.Errorf("%w: managed user group %s", port.ErrNotFound, id)
 		}
-		return nil
+		return bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("delete group %s: %w", id, err)

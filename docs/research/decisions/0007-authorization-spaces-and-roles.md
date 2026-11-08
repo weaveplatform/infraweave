@@ -234,7 +234,7 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   space_id, origin, created_at, created_by)`, unique `(actor_kind, actor_id,
   role_id, space_id)`, indexes `(space_id)` and `(actor_kind, actor_id)`.
 - **Actor kinds:** `user`, `group`, `api_key`, `stack`, `flows_project`. A
-  `group` binding names a row of `user_groups`, matched to session teams by
+  `group` binding names a row of `managed_user_groups`, matched to session teams by
   exact string, as Spacelift matches IdP groups.
 - **Origin** is `binding` for role bindings and `access_rule` for the legacy
   `SpaceAccessRule` inputs (V1 user, group and API key inputs, Terraform
@@ -293,7 +293,7 @@ pass it to SQL as `space_id = ANY($n)` so that the database never returns a
 row the caller may not see, and paging (decision 0003) stays exact.
 
 **In-run restriction.** A `run` principal can never perform the actions in
-`authz.RunTokenDenied`: `STACK_STATE_READ`, `STACK_STATE_DOWNLOAD`, every
+`authz.RunDenied`: `STACK_STATE_READ`, `STACK_STATE_DOWNLOAD`, every
 `RUN_*` action, `TASK_CREATE`, and reads of runs, tasks and logs. A stack with
 no binding gets only its implicit read. Write-only values are never readable
 by anyone (decision [0013](0013-secrets-at-rest.md)).
@@ -322,7 +322,7 @@ the evaluator's.
   (parent, `inherit_entities`), the roles with their actions, and the
   bindings indexed by actor. A check walks at most the depth of the tree.
 - Every write to `spaces`, `roles`, `role_actions`, `role_bindings`,
-  `user_groups` or the scheme bumps `accounts.authz_version` in the same
+  `managed_user_groups`, an admission or the scheme bumps `accounts.authz_version` in the same
   transaction and sends `authz:<account>` on `infraweave_invalidate`
   ([0005](0005-persistence-postgresql.md)). A replica rebuilds the snapshot on
   the message, and also compares the version every 5 seconds in case a
