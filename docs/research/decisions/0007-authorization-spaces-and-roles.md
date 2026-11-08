@@ -121,14 +121,16 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   as an organization admin.
 - **Claiming an account.** The first account starts unclaimed: no principal
   holds a binding in it. An organization admin claims it once, naming the
-  member that gets `space-admin` on its top space as an ordinary binding
-  that account admins can later remove. A claimed account stays claimed
+  member that gets `space-admin` on its top space as an ordinary binding,
+  a row of `role_bindings` written in the claim's transaction, that
+  account admins can later remove. A claimed account stays claimed
   (`accounts.claimed_at`), so removing every account admin later never
   reopens it to the organization role; claiming it again answers `409`,
   problem `invalid-state`.
 - **Creating an account** seeds its top space, its `legacy` space and its
   system roles, and binds `space-admin` on the top space to the member the
-  creating organization admin names, so an account an organization admin
+  creating organization admin names, a row of `role_bindings` written in
+  the creation's transaction, so an account an organization admin
   creates is claimed at creation. Deleting an account deletes its data;
   deleting the last account of an organization answers `409`, problem
   `invalid-state`, and deleting an organization deletes its accounts.
@@ -196,8 +198,8 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 
 - **Source.** The action catalogue is the `Action` enum of the committed
   introspection snapshot (150 values). `specref` generates
-  `internal/authz/actions.gen.go` from it, and a hand-maintained
-  `internal/authz/actions.yaml` gives each value its subject, legacy fallback
+  `internal/access/api/actions.gen.go` from it, and a hand-maintained
+  `internal/access/api/actions.yaml` gives each value its subject, legacy fallback
   (`reader`, `writer`, `admin`), and `disabled` and `deprecated` flags, from
   report 14's table
   ([3.3](../reference/14-spaces-rbac-and-identity.md#33-the-action-catalogue)).
@@ -468,7 +470,7 @@ Departures from Spacelift, for the plan's deviations register:
 
 ## Verification
 
-- `internal/authz` unit tests, table-driven from report 14's worked cases:
+- `internal/access/internal/core/authz` unit tests, table-driven from report 14's worked cases:
   an entity of another account answering as hidden;
   propagation from the top space; inheritance read-up through a chain and stopping
   at the first space without `inherit_entities`; an inherited grant folded to

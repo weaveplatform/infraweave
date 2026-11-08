@@ -93,7 +93,7 @@ infraweave/
 │   │   ├── vendor.go              VendorKind (P5)
 │   │   ├── audit.go               AuditEntry (P2c)
 │   │   ├── page.go                Cursor and Page of decision 0003
-│   │   ├── search/                SearchInput predicate, order and cursor types (P5)
+│   │   ├── search/                SearchInput predicate, order and cursor types (P4)
 │   │   └── vcsroutes/             provider API route tables shared by vcs and agent/vcsagent (P19b)
 │   ├── platform/                  infrastructure with no business rules
 │   │   ├── buildinfo/             version, commit, build date stamped by make build        ← internal/buildinfo
@@ -101,7 +101,7 @@ infraweave/
 │   │   │   ├── migrate/           embedded streams, schema_migrations keyed by stream, one advisory lock
 │   │   │   ├── notify/            LISTEN and NOTIFY fan-out between replicas (P2)
 │   │   │   ├── schema/            the platform stream: the platform packages' tables, registered first (P2)
-│   │   │   ├── search/            compiles SearchInput predicates to SQL under Reachable (P5)
+│   │   │   ├── search/            compiles SearchInput predicates to SQL under Reachable (P4)
 │   │   │   └── sqltest/           testcontainers PostgreSQL for store and domain tests, on a migrated template
 │   │   ├── tx/                    tx.Do(ctx, db, opts, fn), Q, AfterCommit; the unit of work on the context (P2)
 │   │   ├── audit/                 Record(ctx, kernel.AuditEntry) in the caller's transaction
