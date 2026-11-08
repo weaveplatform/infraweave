@@ -59,6 +59,9 @@ type Key struct {
 	LastUsedAt     time.Time
 	CreatedAt      time.Time
 	DeletedAt      time.Time
+	// Admin is whether the key holds space-admin on the account's top
+	// space, which makes it an account admin (DV-013).
+	Admin bool
 }
 
 // OIDC is an OIDC key's settings: the issuer whose tokens it takes, the

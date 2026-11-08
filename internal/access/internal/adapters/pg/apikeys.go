@@ -19,14 +19,19 @@ import (
 var _ apikey.Store = (*Store)(nil)
 
 // keyColumns are what scanKey reads, in its order, from api_keys as k
-// joined to accounts as a.
+// joined to accounts as a. The last is whether the key holds space-admin
+// on its account's top space, whose ID is the account's.
 const keyColumns = `a.organization_id, k.account_id, k.id, k.name, k.description, k.type,
 	k.secret_hash, coalesce(k.oidc_issuer, ''), coalesce(k.oidc_client_id, ''),
 	coalesce(k.oidc_subject_expression, ''), coalesce(k.oidc_claim_mapping, '[]'::jsonb),
 	k.teams, k.is_machine, k.owner_user_id,
 	coalesce((SELECT m.login FROM members m WHERE m.id = k.owner_user_id), ''), k.creator,
 	k.expires_at, k.disabled_at, coalesce(k.disabled_reason, ''), k.last_used_at, k.created_at,
-	k.deleted_at`
+	k.deleted_at, EXISTS (SELECT 1 FROM role_bindings b
+		JOIN roles r ON r.account_id = b.account_id AND r.id = b.role_id
+		WHERE b.account_id = k.account_id AND b.space_id = k.account_id
+			AND b.actor_kind = 'api_key' AND b.actor_id = k.id
+			AND r.slug = 'space-admin' AND r.is_system)`
 
 // mapping is a claim mapping entry as oidc_claim_mapping stores it.
 type mapping struct {
@@ -496,7 +501,7 @@ func scanKey(r pgx.Row) (apikey.Key, error) {
 	err := r.Scan(&k.OrganizationID, &k.AccountID, &k.ID, &k.Name, &k.Description, &k.Type,
 		&k.SecretHash, &k.OIDC.Issuer, &k.OIDC.ClientID, &k.OIDC.SubjectExpression, &claims,
 		&k.Teams, &k.Machine, &k.Owner, &k.OwnerLogin, &k.Creator, &expires, &off,
-		&k.DisabledReason, &used, &k.CreatedAt, &deleted)
+		&k.DisabledReason, &used, &k.CreatedAt, &deleted, &k.Admin)
 	if err != nil {
 		return apikey.Key{}, err //nolint:wrapcheck // the callers name the read
 	}

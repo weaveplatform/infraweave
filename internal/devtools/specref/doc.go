@@ -29,6 +29,11 @@
 // excluded and on a mapping no client calls. Its inventory is the SDK
 // identifier register.
 //
+// For Deploy, ActionsFile writes or checks decision 0007's action
+// catalogue, internal/access/api/actions.gen.go, from the schema's Action
+// enum and the hand-maintained actions.yaml, failing with ErrActions on a
+// value either lacks or a flag the schema contradicts.
+//
 // For any product, ScaffoldFile copies one reference tag into a
 // served-API fragment with decision 0003's conventions. Product.Parity and
 // ParityCheck decide decision 0016's outcome for each reference operation
@@ -61,7 +66,9 @@
 // and writes: the document and coverage report (GenerateDir), a fragment
 // under api/src/api (ScaffoldFile), report 29 and
 // docs/data/graphql-inventory.json or docs/data/flows-sdk-inventory.json
-// (Product.Inventory), and the parity baseline (WriteParityBaseline). Parity
+// (Product.Inventory), the parity baseline (WriteParityBaseline), and
+// internal/access/api/actions.gen.go from actions.yaml beside it
+// (ActionsFile). Parity
 // reads docs/data/renames.json and docs/data/supersessions.json, and its
 // states read docs/data/capabilities.json, cover/accept/cucumber.json and
 // the reference's terraform-operations.json; the check functions write
@@ -69,8 +76,9 @@
 //
 // # Dependencies
 //
-// It imports kin-openapi to build and validate the document, yaml.v3, and
-// go/ast to read the providers' Go source; flowctl's TypeScript and the SDK's
+// It imports kin-openapi to build and validate the document, yaml.v3,
+// go/ast to read the providers' Go source and go/format to format the
+// action catalogue; flowctl's TypeScript and the SDK's
 // declarations are read by its own small lexer and parser. The standard
 // library serves the rest. tools/specref runs it, and the api/ and
 // acceptance tests call its parity and reference checks.

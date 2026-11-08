@@ -136,8 +136,9 @@ SPECS := $(patsubst api/src/%/info.yaml,%,$(wildcard api/src/*/info.yaml))
 
 DATA_VIEW := docs/implementation/tiers.md
 CATALOGUE := internal/features/catalogue.gen.go
+ACTIONS := internal/access/api/actions.gen.go
 
-## generate: bundle the specs, generate each strict chi server, Go client and 501 stubs, and render the docs/data view
+## generate: bundle the specs, generate each strict chi server, Go client and 501 stubs, the action catalogue, and render the docs/data view
 generate: bundle
 	@for s in $(SPECS); do \
 		echo "generate $$s"; \
@@ -145,11 +146,12 @@ generate: bundle
 		$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-$$s.yaml api/$$s.openapi.yaml || exit 1; \
 		$(GO) run ./tools/stubgen internal/platform/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
 	done
+	$(GO) run ./tools/specref actions --generated $(ACTIONS)
 	$(GO) run ./tools/dataview docs/data $(DATA_VIEW) $(CATALOGUE)
 
 ## verify-generate: fail if the committed bundles, generated code or docs/data view differ from what make generate writes
 verify-generate: generate
-	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) $(CATALOGUE) || \
+	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) $(CATALOGUE) $(ACTIONS) || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
 ## reference: regenerate each product's OpenAPI reference and coverage report from its snapshots
@@ -160,12 +162,13 @@ reference:
 reference-inventory:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref inventory --product $$p || exit 1; done
 
-## verify-reference: fail if a committed reference, report 29 or an inventory register is not what the snapshots generate
+## verify-reference: fail if a committed reference, report 29, an inventory register or the action catalogue is not what the snapshots generate
 verify-reference:
 	@for p in $(PRODUCTS); do \
 		$(GO) run ./tools/specref check --product $$p && \
 		$(GO) run ./tools/specref inventory --check --product $$p || exit 1; \
 	done
+	$(GO) run ./tools/specref actions --check --generated $(ACTIONS)
 
 ## parity: print, for each product, every reference operation's outcome (served, served with divergence, superseded, missing) and the infraweave-only ones by tag, and how they differ from api/parity-baseline.<product>.json
 parity:

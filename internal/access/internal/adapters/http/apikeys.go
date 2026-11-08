@@ -238,10 +238,11 @@ func keyError(err error, id string) error {
 
 // apiKey is k in the reference's ApiKey shape, with secret when create or
 // reset has just made one. admin reads whether the key holds a space-admin
-// binding on the account's top space, which no key can until API key
-// bindings are served, and access rules and spaces are bindings too.
+// binding on the account's top space; access rules and spaces read empty
+// until API key bindings are served.
 func apiKey(k apikey.Key, secret string) api.ApiKey {
 	out := api.ApiKey{
+		Admin:         k.Admin,
 		AccessRules:   []api.SpaceAccessRule{},
 		CreatedAt:     unix(k.CreatedAt),
 		Creator:       k.Creator,

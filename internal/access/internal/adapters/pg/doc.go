@@ -14,9 +14,13 @@
 // managed_user_groups and a personal key's owner as a member of the
 // organization rather than an admission, so removing a managed user
 // keeps the keys it disables, and 00009 spaces and space_closure, with the
-// top space and legacy of every account that exists before it. Creating
-// an account, with its organization or by an organization admin, seeds
-// its top space and legacy in the same transaction.
+// top space and legacy of every account that exists before it, and 00010
+// roles, role_actions and role_bindings, with the system roles of every
+// account that exists before it. Creating an account, with its
+// organization or by an organization admin, seeds its top space, legacy
+// and system roles in the same transaction, and claiming or creating one
+// binds space-admin on its top space to the account admin it names. A
+// key's Admin reads whether it holds that binding.
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
@@ -27,13 +31,14 @@
 // deletes its sessions, API keys, organization keys and admins,
 // invitations, managed user groups, members
 // and their identities, its
-// break-glass credential, its accounts' settings and space trees, its accounts, its rows in the features domain
+// break-glass credential, its accounts' settings, role bindings, roles and
+// space trees, its accounts, its rows in the features domain
 // through the featuresapi.Entitlements WithFeatures gives, and itself, as
 // every foreign key restricts. Deleting an account takes its
 // organization's row lock, so two deletions never both remove an
 // organization's last two accounts, then deletes the account's sessions,
 // API keys, invitations, managed user groups, admissions, settings,
-// space tree and features rows and the account, and
+// role bindings, roles, space tree and features rows and the account, and
 // records its organization trail entry in the same transaction; turning
 // personal keys off with disableExistingKeys disables them for ACCOUNT
 // and revokes their sessions. orgadmin.Store's writes record their

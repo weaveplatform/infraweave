@@ -1,0 +1,160 @@
+# Each value of the reference's Action enum, in the snapshot's order: the
+# kind of entity whose space decides it (subject), the legacy access level
+# that grants it when no role does (fallback: reader, writer or admin), and
+# whether the schema marks it disabled or deprecated. Report 14 section 3.3
+# is the source. specref actions generates actions.gen.go from this file
+# and api/reference/spacelift/introspection.json, and fails when either
+# names a value the other lacks or a flag disagrees with the schema.
+#
+# STACK_SCHEDULED_DELETE_UPDATE's fallback is undocumented (report 14,
+# C117); it takes admin, as the other scheduling actions do.
+CONTEXT_CREATE: {subject: context, fallback: admin}
+CONTEXT_DELETE: {subject: context, fallback: admin}
+CONTEXT_UPDATE: {subject: context, fallback: admin}
+DRIFT_DETECTION_INTEGRATION_CREATE: {subject: drift_detection_integration, fallback: admin}
+DRIFT_DETECTION_INTEGRATION_UPDATE: {subject: drift_detection_integration, fallback: admin}
+DRIFT_DETECTION_INTEGRATION_DELETE: {subject: drift_detection_integration, fallback: admin}
+STACK_SCHEDULED_DELETE_CREATE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_DELETE_UPDATE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_DELETE_DELETE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_TASK_CREATE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_TASK_UPDATE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_TASK_DELETE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_RUN_CREATE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_RUN_UPDATE: {subject: stack, fallback: admin}
+STACK_SCHEDULED_RUN_DELETE: {subject: stack, fallback: admin}
+INTENT_DEPENDENCIES_ADD: {subject: intent_project, fallback: admin}
+INTENT_DEPENDENCIES_REMOVE: {subject: intent_project, fallback: admin}
+INTENT_POLICY_CREATE: {subject: intent_project, fallback: admin}
+INTENT_POLICY_DELETE: {subject: intent_project, fallback: admin}
+INTENT_POLICY_UPDATE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_CLOUD_INTEGRATION_ATTACH: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_CLOUD_INTEGRATION_DETACH: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_CONFIG_ADD: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_CONFIG_DELETE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_CONFIG_UPDATE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_CREATE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_DELETE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_LOCK: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_POLICY_ATTACH: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_POLICY_DETACH: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_UNLOCK: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_UPDATE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_ENABLE: {subject: intent_project, fallback: admin}
+INTENT_PROJECT_DISABLE: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_CREATE: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_DELETE: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_IMPORT: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_OPERATION_REVIEW: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_REFRESH: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_RESUME: {subject: intent_project, fallback: admin}
+INTENT_RESOURCE_UPDATE: {subject: intent_project, fallback: admin}
+INTENT_STATE_EJECT: {subject: intent_project, fallback: admin}
+INTENT_STATE_READ: {subject: intent_project, fallback: admin}
+MODULE_CREATE: {subject: module, fallback: admin}
+MODULE_DISABLE: {subject: module, fallback: admin}
+MODULE_ENABLE: {subject: module, fallback: admin}
+MODULE_PUBLISH: {subject: module, fallback: admin}
+MODULE_TRIGGER_VERSION: {subject: module, fallback: writer}
+MODULE_VERSION_DELETE: {subject: module, fallback: writer}
+MODULE_MARK_AS_BAD: {subject: module, fallback: writer}
+MODULE_UPLOAD_LOCAL_WORKSPACE: {subject: module, fallback: writer}
+MODULE_PROPOSE_LOCAL_WORKSPACE: {subject: module, fallback: writer}
+RUN_CANCEL: {subject: run, fallback: reader}
+RUN_CANCEL_BLOCKING: {subject: run, fallback: writer}
+RUN_COMMENT: {subject: run, fallback: reader}
+RUN_CONFIRM: {subject: run, fallback: writer}
+RUN_DISCARD: {subject: run, fallback: writer}
+RUN_PRIORITIZE_SET: {subject: run, fallback: writer}
+RUN_PROMOTE: {subject: run, fallback: writer}
+RUN_PROPOSE_LOCAL_WORKSPACE: {subject: run, fallback: writer}
+RUN_PROPOSE_WITH_OVERRIDES: {subject: run, fallback: writer}
+RUN_RETRY: {subject: run, fallback: reader}
+RUN_RETRY_BLOCKING: {subject: run, fallback: writer}
+RUN_REVIEW: {subject: run, fallback: writer}
+RUN_STOP: {subject: run, fallback: reader}
+RUN_STOP_BLOCKING: {subject: run, fallback: writer}
+RUN_KILL: {subject: run, fallback: reader}
+RUN_KILL_BLOCKING: {subject: run, fallback: writer}
+RUN_TARGETED_REPLAN: {subject: run, fallback: writer}
+RUN_TRIGGER: {subject: run, fallback: writer}
+RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG: {subject: run, fallback: admin}
+SPACE_ADMIN: {subject: space, fallback: admin}
+SPACE_READ: {subject: space, fallback: reader}
+SPACE_WRITE: {subject: space, fallback: writer}
+SPACE_SHARE_MODULE: {subject: space, fallback: writer}
+STACK_ADD_CONFIG: {subject: stack, fallback: writer}
+STACK_CREATE: {subject: stack, fallback: admin}
+STACK_DELETE: {subject: stack, fallback: admin}
+STACK_DELETE_CONFIG: {subject: stack, fallback: writer}
+STACK_DISABLE: {subject: stack, fallback: admin}
+STACK_ENABLE: {subject: stack, fallback: admin}
+STACK_LOCK: {subject: stack, fallback: writer}
+STACK_MANAGE: {subject: stack, fallback: admin}
+STACK_MANAGED_STATE_IMPORT: {subject: stack, fallback: admin}
+STACK_MANAGED_STATE_ROLLBACK: {subject: stack, fallback: admin}
+STACK_RESLUG: {subject: stack, fallback: admin}
+STACK_SET_CURRENT_COMMIT: {subject: stack, fallback: writer}
+STACK_SET_STAR: {subject: stack, fallback: reader}
+STACK_STATE_DOWNLOAD: {subject: stack, fallback: writer}
+STACK_SYNC_COMMIT: {subject: stack, fallback: writer}
+STACK_UNLOCK: {subject: stack, fallback: writer}
+STACK_UNLOCK_FORCE: {subject: stack, fallback: admin}
+STACK_UPDATE: {subject: stack, fallback: admin}
+STACK_UPLOAD_LOCAL_WORKSPACE: {subject: stack, fallback: writer}
+TASK_CREATE: {subject: run, fallback: writer}
+TERRAFORM_PROVIDER_CREATE: {subject: terraform_provider, fallback: admin}
+TERRAFORM_PROVIDER_DELETE: {subject: terraform_provider, fallback: admin}
+TERRAFORM_PROVIDER_SET_VISIBILITY: {subject: terraform_provider, fallback: admin}
+TERRAFORM_PROVIDER_UPDATE: {subject: terraform_provider, fallback: admin}
+TERRAFORM_PROVIDER_VERSION_CREATE: {subject: terraform_provider, fallback: writer}
+TERRAFORM_PROVIDER_VERSION_DELETE: {subject: terraform_provider, fallback: writer}
+TERRAFORM_PROVIDER_VERSION_PUBLISH: {subject: terraform_provider, fallback: writer}
+TERRAFORM_PROVIDER_VERSION_REGISTER_PLATFORM: {subject: terraform_provider, fallback: writer}
+TERRAFORM_PROVIDER_VERSION_REVOKE: {subject: terraform_provider, fallback: writer}
+TERRAFORM_PROVIDER_VERSION_UPDATE: {subject: terraform_provider, fallback: writer}
+WORKER_DRAIN_SET: {subject: worker_pool, fallback: admin}
+WORKER_POOL_CREATE: {subject: worker_pool, fallback: admin}
+WORKER_POOL_CYCLE: {subject: worker_pool, fallback: admin}
+WORKER_POOL_DELETE: {subject: worker_pool, fallback: admin}
+WORKER_POOL_RESET: {subject: worker_pool, fallback: admin}
+WORKER_POOL_UPDATE: {subject: worker_pool, fallback: admin}
+STACK_STATE_READ: {subject: stack, fallback: writer}
+STACK_WORKSPACE_LOCK: {subject: stack, fallback: admin}
+STACK_WORKSPACE_UNLOCK: {subject: stack, fallback: admin}
+REPO_CREATE: {subject: repo, fallback: admin}
+REPO_UPDATE: {subject: repo, fallback: writer}
+REPO_DELETE: {subject: repo, fallback: admin}
+REVISION_CREATE: {subject: repo, fallback: writer}
+CREATE_BLUEPRINTS_VERSIONED_GROUP: {subject: template, fallback: admin}
+UPDATE_BLUEPRINTS_VERSIONED_GROUP: {subject: template, fallback: admin}
+DELETE_BLUEPRINTS_VERSIONED_GROUP: {subject: template, fallback: admin}
+CREATE_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
+DELETE_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
+UPGRADE_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
+UPDATE_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin, deprecated: true}
+UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS: {subject: template_deployment, fallback: admin, deprecated: true}
+ROLLBACK_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
+TEST_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
+STACK_CONTEXT_ATTACH: {subject: stack, fallback: admin, disabled: true}
+STACK_CONTEXT_DETACH: {subject: stack, fallback: admin, disabled: true}
+STACK_POLICY_ATTACH: {subject: stack, fallback: admin, disabled: true}
+STACK_POLICY_DETACH: {subject: stack, fallback: admin, disabled: true}
+STACK_GCP_INTEGRATION_CREATE: {subject: stack, fallback: admin, disabled: true}
+STACK_GCP_INTEGRATION_DELETE: {subject: stack, fallback: admin, disabled: true}
+STACK_AWS_INTEGRATION_ATTACH: {subject: stack, fallback: admin, disabled: true}
+STACK_AWS_INTEGRATION_DETACH: {subject: stack, fallback: admin, disabled: true}
+STACK_AWS_INTEGRATION_UPDATE: {subject: stack, fallback: admin, disabled: true}
+STACK_AZURE_INTEGRATION_ATTACH: {subject: stack, fallback: admin, disabled: true}
+STACK_AZURE_INTEGRATION_DETACH: {subject: stack, fallback: admin, disabled: true}
+STACK_AZURE_INTEGRATION_UPDATE: {subject: stack, fallback: admin, disabled: true}
+STACK_ROLE_BINDING_CREATE: {subject: stack, fallback: admin, disabled: true}
+STACK_ROLE_BINDING_UPDATE: {subject: stack, fallback: admin, disabled: true}
+STACK_ROLE_BINDING_DELETE: {subject: stack, fallback: admin, disabled: true}
+STACK_WEBHOOK_CREATE: {subject: stack, fallback: admin, disabled: true}
+STACK_WEBHOOK_UPDATE: {subject: stack, fallback: admin, disabled: true}
+STACK_WEBHOOK_DELETE: {subject: stack, fallback: admin, disabled: true}
+AI_INTEGRATION_CREATE: {subject: ai_integration, fallback: admin}
+AI_INTEGRATION_UPDATE: {subject: ai_integration, fallback: admin}
+AI_INTEGRATION_DELETE: {subject: ai_integration, fallback: admin}
+AI_INTEGRATION_TOGGLE: {subject: ai_integration, fallback: admin}
