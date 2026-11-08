@@ -18067,10 +18067,15 @@ components:
           $ref: '#/components/schemas/StackConfigVendorKubernetesInput'
         opentofu:
           $ref: '#/components/schemas/StackConfigVendorOpenTofuInput'
+          # Choosing a vendor needs its option.
+          x-infraweave-feature:
+            feature: vendor-opentofu
         pulumi:
           $ref: '#/components/schemas/StackConfigVendorPulumiInput'
         terraform:
           $ref: '#/components/schemas/StackConfigVendorTerraformInput'
+          x-infraweave-feature:
+            feature: vendor-terraform
         terragrunt:
           $ref: '#/components/schemas/StackConfigVendorTerragruntInput'
       type: object

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
-	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
 
 // ContentType is the media type of every problem body.
@@ -292,17 +291,17 @@ func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 		Write(w, NotImplemented.New(nie.Error()))
 		return
 	}
-	if inv, ok := errors.AsType[*search.Invalid](err); ok {
-		Write(w, searchRefused(inv))
+	if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
+		Write(w, refused(inv))
 		return
 	}
 	Failure(w, err)
 }
 
-// searchRefused is validation-failed naming each field of a search input
-// the entity refused.
-func searchRefused(inv *search.Invalid) Problem {
-	p := ValidationFailed.New("The search names fields or constraints this list does not have.")
+// refused is validation-failed naming each field the rules of inv refused,
+// with inv's detail.
+func refused(inv *kernel.Invalid) Problem {
+	p := ValidationFailed.New(inv.Detail)
 	for _, e := range inv.Errors {
 		p.Errors = append(p.Errors, FieldError(e))
 	}

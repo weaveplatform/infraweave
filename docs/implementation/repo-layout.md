@@ -140,7 +140,9 @@ infraweave/
 │   │   ├── private/               keeps a secret's file to its owner: mode 0600, a protected DACL on Windows
 │   │   └── testkit/               fake clock, fake object store, HTTP recorder helpers
 │   ├── iac/                       pure IaC vendor knowledge shared by server and agent (P5, P9, P20, P20b)
-│   │   ├── iac.go registry.go     Vendor: Kind, ValidateSettings, Workflow, ParsePlan; Kind → Vendor
+│   │   ├── iac.go registry.go     Vendor: Kind, ValidateSettings, Workflow, ParsePlan; Kind → Vendor; a stack input's vendorConfig refused field by field
+│   │   ├── version/               Terraform and OpenTofu version constraints (P5)
+│   │   ├── internal/settings/     the field checks the vendors share (P5)
 │   │   ├── terraform/ opentofu/   settings validation (P5); plan parsing (P9)
 │   │   ├── terragrunt/ pulumi/ cloudformation/ kubernetes/ (P20); ansible/ (P20b)
 │   │   └── iactest/               contract suite every vendor passes (P5)
@@ -488,6 +490,7 @@ only refuses more.
 | `devtools` (rule 8) | everything except `**/tools/**`, `**/internal/devtools/**`, and the tests of `api/` and `test/acceptance/`, which check the committed documents with `specref` | deny | `$m/internal/devtools` |
 | `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
 | `ctl` (rule 10) | `**/internal/ctl/**`, `**/cmd/infraweavectl/**` | lax: deny, then allow | deny `$m/internal` and `$m/pkg/client`; allow `$m/internal/ctl$`, `$m/internal/platform/buildinfo$` and `$m/internal/platform/private$` |
+| `iac-pure` (rule 11) | `**/internal/iac/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/internal/iac$` and `/`, and `$m/internal/kernel$` and `/` |
 
 Rule 2 is the declared graph below: one rule per domain, which allows
 `$m/internal/platform/`, `kernel` and `iac`, its own tree and the `api/`
@@ -500,7 +503,9 @@ for a package that does not exist yet refuses nothing. A new domain adds its
 graph rule, and `TestUnitDepguardFixtures` fails on a domain directory that
 lacks it or that the shared rules do not name. `agent-isolation` allows rather than denies, so it needs
 no entry, and a new platform package stays out of the agent until the rule
-names it. `internal/agent` may import only `internal/kernel`, `internal/iac`,
+names it. `agent-isolation` allows all of `internal/iac`, so `iac-pure`
+holds `iac` to `kernel` and itself: an `iac` package cannot carry another
+import into the agent. `internal/agent` may import only `internal/kernel`, `internal/iac`,
 `pkg/flows/app/v1` and seven `platform` packages from outside its own tree:
 `buildinfo`, `observe` and `httpkit/serve` (every agent process mode logs,
 traces and answers its probes), `rego`, `httpkit/client`, `seal` (the runner
@@ -512,8 +517,9 @@ and `flows`.
 a module of its own with the repository's path, using the repository's
 `.golangci.yml`, so the fixtures cannot drift from the rules. Its packages
 break each rule once, and break the compiler's `internal` rule and the
-`time.Sleep` ban; the target fails unless the findings, reduced to file,
-rule and import, are exactly `test/depguard/expected.txt`. Deleting any rule,
+`time.Sleep` ban; a stub module in `stub/pgx` stands in for the driver, so
+the `pgx` denials fire without its dependencies. The target fails unless the
+findings, reduced to file, rule and import, are exactly `test/depguard/expected.txt`. Deleting any rule,
 or dropping the `$` from `$m/internal/platform/outbox$`, fails it.
 
 ### Declared graph

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	nethttp "net/http"
+	"strings"
 
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/features/internal/features"
@@ -71,8 +72,8 @@ var errTooLarge = errors.New("the body is over MaxBody")
 
 // needed is the features r needs: its operation's capability, then each
 // option whose value its body sets, where a gate with no value is set by
-// any value but null. The body is read and restored, and one that is not a
-// JSON object sets no option; the strict handler refuses it.
+// any value but null. The body is read and restored, and one that is not
+// JSON sets no option; the strict handler refuses it.
 func needed(r *nethttp.Request, g featuresapi.Gate) ([]string, error) {
 	needs := []string{g.Feature}
 	if len(g.Options) == 0 || r.Body == nil {
@@ -86,18 +87,32 @@ func needed(r *nethttp.Request, g featuresapi.Gate) ([]string, error) {
 		return nil, errTooLarge
 	}
 	r.Body = io.NopCloser(bytes.NewReader(body))
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(body, &fields) != nil {
+	var doc any
+	if json.Unmarshal(body, &doc) != nil {
 		return needs, nil
 	}
 	for _, o := range g.Options {
-		var v any
-		if raw, ok := fields[o.Property]; ok && json.Unmarshal(raw, &v) == nil && v != nil &&
-			(o.Value == "" || fmt.Sprint(v) == o.Value) {
+		if v := valueAt(doc, o.Pointer); v != nil && (o.Value == "" || fmt.Sprint(v) == o.Value) {
 			needs = append(needs, o.Feature)
 		}
 	}
 	return needs, nil
+}
+
+// pointerUnescape undoes a JSON Pointer reference token's escapes.
+var pointerUnescape = strings.NewReplacer("~1", "/", "~0", "~")
+
+// valueAt is the value of doc at pointer through its objects' members, or
+// nil when a member on the way is absent or not an object.
+func valueAt(doc any, pointer string) any {
+	for _, token := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		object, ok := doc.(map[string]any)
+		if !ok {
+			return nil
+		}
+		doc = object[pointerUnescape.Replace(token)]
+	}
+	return doc
 }
 
 func refusal(r *features.Refusal) problem.Problem {

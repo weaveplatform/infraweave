@@ -538,49 +538,49 @@
     {
       "id": "vendor-ansible",
       "kind": "option",
-      "field": "`StackVendor` Ansible",
+      "field": "`vendorConfig.ansible`",
       "lowestTier": "Free",
       "phase": "P20b"
     },
     {
       "id": "vendor-cloudformation",
       "kind": "option",
-      "field": "`StackVendor` CloudFormation",
+      "field": "`vendorConfig.cloudFormation`",
       "lowestTier": "Free",
       "phase": "P20"
     },
     {
       "id": "vendor-kubernetes",
       "kind": "option",
-      "field": "`StackVendor` Kubernetes",
+      "field": "`vendorConfig.kubernetes`",
       "lowestTier": "Free",
       "phase": "P20"
     },
     {
       "id": "vendor-opentofu",
       "kind": "option",
-      "field": "`StackVendor` OpenTofu",
+      "field": "`vendorConfig.opentofu`",
       "lowestTier": "Free",
       "phase": "P5"
     },
     {
       "id": "vendor-pulumi",
       "kind": "option",
-      "field": "`StackVendor` Pulumi",
+      "field": "`vendorConfig.pulumi`",
       "lowestTier": "Free",
       "phase": "P20"
     },
     {
       "id": "vendor-terraform",
       "kind": "option",
-      "field": "`StackVendor` Terraform",
+      "field": "`vendorConfig.terraform`",
       "lowestTier": "Free",
       "phase": "P5"
     },
     {
       "id": "vendor-terragrunt",
       "kind": "option",
-      "field": "`StackVendor` Terragrunt",
+      "field": "`vendorConfig.terragrunt`",
       "lowestTier": "Free",
       "phase": "P20"
     },

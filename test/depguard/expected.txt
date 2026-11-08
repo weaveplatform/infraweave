@@ -4,6 +4,10 @@ internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/pkg/sd
 internal/ctl/z/z.go ctl github.com/weaveplatform/infraweave/internal/kernel
 internal/ctl/z/z.go ctl github.com/weaveplatform/infraweave/pkg/client/api
 internal/features/up/up.go graph-features github.com/weaveplatform/infraweave/internal/access/api
+internal/iac/x/x.go iac-pure github.com/jackc/pgx/v5
+internal/iac/x/x.go iac-pure github.com/weaveplatform/infraweave/internal/platform/sql
+internal/iac/x/x.go iac-pure github.com/weaveplatform/infraweave/internal/stacks
+internal/iac/x/x.go shared-below-domains github.com/weaveplatform/infraweave/internal/stacks
 internal/platform/x/x.go shared-below-domains github.com/weaveplatform/infraweave/internal/stacks
 internal/runs/internal/core/core.go core-not-adapters github.com/weaveplatform/infraweave/internal/runs/internal/adapters
 internal/stacks/api/api.go api-packages github.com/weaveplatform/infraweave/internal/platform/outboxutil

@@ -39,54 +39,54 @@ func TestUnitCheck(t *testing.T) {
 		}},
 		{name: "unknown field", in: Input{Predicates: []Predicate{
 			{Field: "nope", Constraint: Constraint{StringEquals: []string{}}},
-		}}, want: []FieldError{{"/predicates/0/field", ReasonUnknownField, `The search has no field "nope".`}}},
+		}}, want: []FieldError{{Pointer: "/predicates/0/field", Reason: ReasonUnknownField, Message: `The search has no field "nope".`}}},
 		{name: "constraint of another type", in: Input{Predicates: []Predicate{
 			{Field: "name", Constraint: Constraint{StringEquals: []string{}}},
 			{Field: "name", Constraint: Constraint{BooleanEquals: []bool{true}}},
 		}}, want: []FieldError{{
-			"/predicates/1/constraint/booleanEquals", ReasonRule,
-			"booleanEquals does not apply to name, a STRING field.",
+			Pointer: "/predicates/1/constraint/booleanEquals", Reason: ReasonRule,
+			Message: "booleanEquals does not apply to name, a STRING field.",
 		}}},
 		{
 			name: "no constraint", in: Input{Predicates: []Predicate{{Field: "name"}}},
 			want: []FieldError{{
-				"/predicates/0/constraint", ReasonRule,
-				"A constraint sets exactly one member; this one sets 0.",
+				Pointer: "/predicates/0/constraint", Reason: ReasonRule,
+				Message: "A constraint sets exactly one member; this one sets 0.",
 			}},
 		},
 		{name: "two constraints", in: Input{Predicates: []Predicate{{Field: "name", Constraint: Constraint{
 			StringEquals: []string{"a"}, StringMatches: []string{"b"},
 		}}}}, want: []FieldError{{
-			"/predicates/0/constraint", ReasonRule,
-			"A constraint sets exactly one member; this one sets 2.",
+			Pointer: "/predicates/0/constraint", Reason: ReasonRule,
+			Message: "A constraint sets exactly one member; this one sets 2.",
 		}}},
 		{name: "enum value", in: Input{Predicates: []Predicate{
 			{Field: "state", Constraint: Constraint{EnumEquals: []string{"FAILED", "LOST"}}},
 		}}, want: []FieldError{{
-			"/predicates/0/constraint/enumEquals/1", ReasonEnum,
-			`"LOST" is not a value of state.`,
+			Pointer: "/predicates/0/constraint/enumEquals/1", Reason: ReasonEnum,
+			Message: `"LOST" is not a value of state.`,
 		}}},
 		{name: "window", in: Input{Predicates: []Predicate{
 			{Field: "createdAt", Constraint: Constraint{TimeInLast: "LAST2Y"}},
 		}}, want: []FieldError{{
-			"/predicates/0/constraint/timeInLast", ReasonEnum,
-			`"LAST2Y" is not a time window.`,
+			Pointer: "/predicates/0/constraint/timeInLast", Reason: ReasonEnum,
+			Message: `"LAST2Y" is not a time window.`,
 		}}},
 		{name: "orders", in: Input{OrderBy: []Order{
 			{Field: "gone"}, {Field: "locked"}, {Field: "name"}, {Field: "name", Desc: true},
 		}}, want: []FieldError{
-			{"/orderBy/0/field", ReasonUnknownField, `The search has no field "gone".`},
-			{"/orderBy/1/field", ReasonRule, "The field locked does not order a search."},
-			{"/orderBy/3/field", ReasonDuplicate, "The search is already ordered by name."},
+			{Pointer: "/orderBy/0/field", Reason: ReasonUnknownField, Message: `The search has no field "gone".`},
+			{Pointer: "/orderBy/1/field", Reason: ReasonRule, Message: "The field locked does not order a search."},
+			{Pointer: "/orderBy/3/field", Reason: ReasonDuplicate, Message: "The search is already ordered by name."},
 		}},
 		{
 			name: "previous without a cursor", in: Input{Page: Previous},
-			want: []FieldError{{"/after", ReasonRequired, "The PREVIOUS page is read from a cursor."}},
+			want: []FieldError{{Pointer: "/after", Reason: ReasonRequired, Message: "The PREVIOUS page is read from a cursor."}},
 		},
 		{name: "last ignores the cursor", in: Input{Page: Last, After: "c"}},
 		{
 			name: "unknown page", in: Input{Page: "MIDDLE"},
-			want: []FieldError{{"/requestedPage", ReasonEnum, `"MIDDLE" is not a page.`}},
+			want: []FieldError{{Pointer: "/requestedPage", Reason: ReasonEnum, Message: `"MIDDLE" is not a page.`}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -104,7 +104,10 @@ func TestUnitCheck(t *testing.T) {
 			if !reflect.DeepEqual(inv.Errors, tc.want) {
 				t.Errorf("Check errors = %+v, want %+v", inv.Errors, tc.want)
 			}
-			if inv.Error() != "search: "+tc.want[0].Pointer+": "+tc.want[0].Message {
+			if inv.Detail != invalidDetail {
+				t.Errorf("Detail = %q", inv.Detail)
+			}
+			if inv.Error() != "invalid: "+tc.want[0].Pointer+": "+tc.want[0].Message {
 				t.Errorf("Error() = %q", inv.Error())
 			}
 		})

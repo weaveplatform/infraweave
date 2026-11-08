@@ -10,9 +10,9 @@
 // kernel.ErrUnavailable, otherwise Internal's generic 500. RequestError and
 // ResponseError are the strict server's error handlers: an *Error answers
 // with the problem it carries, a NotImplementedError with a 501 naming the
-// operation, a *search.Invalid with 422 validation-failed and an errors
-// member, a FieldError for each field the search refused, and anything else
-// through Failure.
+// operation, a *kernel.Invalid, such as a refused search or vendor
+// setting, with 422 validation-failed and an errors member, a
+// FieldError for each field refused, and anything else through Failure.
 //
 // ref: decision 0022
 //
@@ -24,8 +24,8 @@
 //
 // # Dependencies
 //
-// It imports the standard library, internal/kernel, for ErrUnavailable, and
-// kernel/search, for the search inputs an entity refuses.
+// It imports the standard library and internal/kernel, for ErrUnavailable
+// and the inputs a rule refuses.
 // Every HTTP package imports it: the
 // generated server's stubs, the middleware, the page codec, internal/app and,
 // from P3, each domain's HTTP adapter.
