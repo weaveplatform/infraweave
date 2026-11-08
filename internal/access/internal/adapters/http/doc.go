@@ -48,11 +48,20 @@
 // service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
 // that service's answers from its own rules (decision 0007's grant
 // views), and actions the evaluator's actions on each space of the
-// account, through Spaces, where the caller holds any. Each ApiKey's
+// account where the caller holds any. Each ApiKey's
 // allowedActions is the apikey service's Actions, and a change its
 // managers' rule refuses answers 403 forbidden naming the action; each
 // Session's and ManagedUser's is the evaluator's account actions on its
-// kind. The OAuth consent operations, which the console's consent
+// kind. The Spaces operations, through space.Service, list the spaces
+// of the account the caller may read, by slug and filtered by the actions
+// input names, and read, create, change, move and delete one by slug;
+// allowNonAdminSpaceCreation and accountToggleAllowNonAdminSpaceCreation
+// read and flip the setting that service owns. A Space's accessLevel and
+// allowedActions are the evaluator's actions on it, and its parentSpace
+// the parent's slug, null for the top space. A parent the account lacks
+// answers 404, a change the service's rule withholds 403 forbidden naming
+// SPACE_ADMIN, and a missing name or a change the tree refuses 422
+// validation-failed naming each reason. The OAuth consent operations, which the console's consent
 // page calls, read an authorization request, approve it for an account
 // that admits the caller's member, and deny it, approve and deny
 // answering where to send the browser: only a member's browser session
@@ -82,7 +91,8 @@
 // sets the session's __Host- cookie and answers 303 to the console.
 // Require is accessapi.Requirer: it decides an operation's action on the
 // account's top space, in any space, or on the space of the entity a path
-// parameter or body field names, found through the lookups Subjects holds;
+// parameter, body field or query parameter names, found through the
+// lookups Subjects holds;
 // an entity the account lacks and one whose space the caller cannot read
 // answer one 404 not-found, an action the caller may not perform 403
 // forbidden naming it, and an entity kind no lookup is registered for 501.

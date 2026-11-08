@@ -47,9 +47,10 @@ func TestUnitSeed(t *testing.T) {
 
 // tree is an in-memory Store of one account's spaces.
 type tree struct {
-	acct   kernel.AccountID
-	spaces map[string]space.Space
-	err    error
+	acct    kernel.AccountID
+	spaces  map[string]space.Space
+	setting bool
+	err     error
 }
 
 func newTree(t *testing.T) (*tree, space.Space, space.Space) {
@@ -88,31 +89,32 @@ func (f *tree) CreateSpace(_ context.Context, s space.Space) error {
 	return nil
 }
 
-func (f *tree) MoveSpace(
+func (f *tree) UpdateSpace(
 	ctx context.Context,
 	acct kernel.AccountID,
 	slug, parentSlug string,
-	check func(context.Context, space.Space, space.Space, accessapi.SpaceMove) error,
-) error {
-	moved, err := f.Space(ctx, acct, slug)
+	edit func(context.Context, space.Space, space.Space, *accessapi.SpaceMove) (space.Space, error),
+) (space.Space, error) {
+	cur, err := f.Space(ctx, acct, slug)
 	if err != nil {
-		return err
+		return space.Space{}, err
 	}
-	parent, err := f.Space(ctx, acct, parentSlug)
+	var parent space.Space
+	if parentSlug != "" {
+		if parent, err = f.Space(ctx, acct, parentSlug); err != nil {
+			return space.Space{}, err
+		}
+	}
+	var m *accessapi.SpaceMove
+	if parentSlug != "" && parent.ID != cur.ParentID {
+		m = &accessapi.SpaceMove{Account: acct, Space: cur.ID}
+	}
+	out, err := edit(ctx, cur, parent, m)
 	if err != nil {
-		return err
+		return space.Space{}, err
 	}
-	if err := check(
-		ctx,
-		moved,
-		parent,
-		accessapi.SpaceMove{Account: acct, Space: moved.ID},
-	); err != nil {
-		return err
-	}
-	moved.ParentID = parent.ID
-	f.spaces[slug] = moved
-	return nil
+	f.spaces[slug] = out
+	return out, nil
 }
 
 func (f *tree) DeleteSpace(
@@ -130,6 +132,31 @@ func (f *tree) DeleteSpace(
 	}
 	delete(f.spaces, slug)
 	return nil
+}
+
+func (f *tree) NonAdminCreation(context.Context, kernel.AccountID) (bool, error) {
+	return f.setting, f.err
+}
+
+func (f *tree) ToggleNonAdminCreation(context.Context, kernel.AccountID) (bool, error) {
+	f.setting = !f.setting
+	return f.setting, f.err
+}
+
+// admins is a space.Authorizer granting SPACE_ADMIN on the spaces it
+// holds; err fails every decision.
+type admins struct {
+	on  map[kernel.ULID]bool
+	err error
+}
+
+func (a *admins) Authorize(
+	_ context.Context,
+	_ kernel.Principal,
+	act accessapi.Action,
+	sp kernel.ULID,
+) (bool, error) {
+	return act == accessapi.ActionSpaceAdmin && a.on[sp], a.err
 }
 
 // guard is a SpaceGuard that holds used and strands lost.
@@ -155,26 +182,80 @@ func refusal(t *testing.T, err error, want string) {
 	}
 }
 
+func denied(t *testing.T, err error, want string) {
+	t.Helper()
+	d, ok := errors.AsType[*space.Denied](err)
+	if !ok || d.Action != accessapi.ActionSpaceAdmin || !strings.Contains(d.Error(), want) {
+		t.Errorf("err = %v, want SPACE_ADMIN denied naming %q", err, want)
+	}
+}
+
+// world is a service over a tree whose caller is an account admin until
+// a test takes the top space's binding away.
+type world struct {
+	f           *tree
+	top, legacy space.Space
+	authz       *admins
+	svc         *space.Service
+	p           kernel.Principal
+	at          time.Time
+}
+
+func newWorld(t *testing.T) world {
+	t.Helper()
+	f, top, legacy := newTree(t)
+	authz := &admins{on: map[kernel.ULID]bool{top.ID: true}}
+	at := time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)
+	return world{
+		f:      f,
+		top:    top,
+		legacy: legacy,
+		authz:  authz,
+		at:     at,
+		svc:    space.NewService(f, authz, func() time.Time { return at }),
+		p: kernel.Principal{
+			Kind:      kernel.PrincipalUser,
+			ActorID:   kernel.NewULID(),
+			AccountID: f.acct,
+		},
+	}
+}
+
+// move moves slug below parent, keeping its other fields.
+func (w world) move(t *testing.T, slug, parent string) error {
+	t.Helper()
+	cur, err := w.svc.Space(t.Context(), w.f.acct, slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = w.svc.Update(t.Context(), w.p, slug, parent, cur)
+	return err
+}
+
+func (w world) del(t *testing.T, slug string) error {
+	t.Helper()
+	_, err := w.svc.Delete(t.Context(), w.p, slug)
+	return err
+}
+
 func TestUnitSpaceService(t *testing.T) {
 	ctx := t.Context()
-	f, top, legacy := newTree(t)
-	at := time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)
-	svc := space.NewService(f, func() time.Time { return at })
-
-	prod, err := svc.Create(ctx, f.acct, top.Slug, space.Space{
+	w := newWorld(t)
+	top, legacy := w.top, w.legacy
+	prod, err := w.svc.Create(ctx, w.p, top.Slug, space.Space{
 		Name: "Production", Labels: []string{"env"}, InheritEntities: true,
 	})
-	if err != nil || prod.ParentID != top.ID || prod.AccountID != f.acct ||
-		prod.Slug != space.SlugOf("Production", prod.ID) || !prod.CreatedAt.Equal(at) ||
+	if err != nil || prod.ParentID != top.ID || prod.AccountID != w.f.acct ||
+		prod.Slug != space.SlugOf("Production", prod.ID) || !prod.CreatedAt.Equal(w.at) ||
 		!prod.InheritEntities {
 		t.Fatalf("Create = %+v, %v", prod, err)
 	}
-	if _, err := svc.Create(ctx, f.acct, top.Slug, space.Space{}); !errors.Is(err, space.ErrName) {
+	if _, err := w.svc.Create(ctx, w.p, top.Slug, space.Space{}); !errors.Is(err, space.ErrName) {
 		t.Errorf("unnamed Create = %v, want ErrName", err)
 	}
-	if _, err := svc.Create(
+	if _, err := w.svc.Create(
 		ctx,
-		f.acct,
+		w.p,
 		"nope",
 		space.Space{Name: "x"},
 	); !errors.Is(
@@ -183,44 +264,183 @@ func TestUnitSpaceService(t *testing.T) {
 	) {
 		t.Errorf("Create below a missing parent = %v, want not found", err)
 	}
-	if got, err := svc.Spaces(ctx, f.acct); err != nil || len(got) != 3 {
+	if got, err := w.svc.Spaces(ctx, w.f.acct); err != nil || len(got) != 3 {
 		t.Errorf("Spaces = %v, %v", got, err)
 	}
 
-	if err := svc.Move(ctx, f.acct, prod.Slug, legacy.Slug); err != nil {
-		t.Errorf("Move = %v", err)
+	renamed, err := w.svc.Update(ctx, w.p, prod.Slug, legacy.Slug, space.Space{
+		Name: "Prod", Description: "live", Labels: []string{"tier"},
+	})
+	if err != nil || renamed.Name != "Prod" || renamed.Description != "live" ||
+		renamed.ParentID != legacy.ID || renamed.InheritEntities || renamed.Slug != prod.Slug {
+		t.Errorf("Update = %+v, %v", renamed, err)
 	}
-	refusal(t, svc.Move(ctx, f.acct, top.Slug, legacy.Slug), "top space acme cannot move")
-	refusal(t, svc.Delete(ctx, f.acct, top.Slug), "top space acme cannot be deleted")
-	refusal(t, svc.Delete(ctx, f.acct, legacy.Slug), "legacy space cannot be deleted")
+	if _, err := w.svc.Update(
+		ctx,
+		w.p,
+		prod.Slug,
+		top.Slug,
+		space.Space{},
+	); !errors.Is(
+		err,
+		space.ErrName,
+	) {
+		t.Errorf("unnamed Update = %v, want ErrName", err)
+	}
+	refusal(t, w.move(t, top.Slug, legacy.Slug), "top space acme cannot move")
+	_, err = w.svc.Update(ctx, w.p, top.Slug, "", space.Space{Name: "Acme", InheritEntities: true})
+	refusal(t, err, "top space acme has no parent to inherit from")
+	if got, err := w.svc.Update(
+		ctx,
+		w.p,
+		top.Slug,
+		"",
+		space.Space{Name: "Acme Corp"},
+	); err != nil ||
+		got.Name != "Acme Corp" {
+		t.Errorf("rename the top space = %+v, %v", got, err)
+	}
+	_, err = w.svc.Update(ctx, w.p, prod.Slug, "", space.Space{Name: "Prod"})
+	refusal(t, err, "space "+prod.Slug+" needs a parent space")
+	refusal(t, w.del(t, top.Slug), "top space acme cannot be deleted")
+	refusal(t, w.del(t, legacy.Slug), "legacy space cannot be deleted")
 
 	g := &guard{used: map[kernel.ULID]bool{prod.ID: true}, lost: []accessapi.LostReach{
 		{Stack: "web", Entity: "worker pool private"}, {Stack: "db", Entity: "context shared"},
 	}}
-	svc.Guard(g)
-	err = svc.Move(ctx, f.acct, prod.Slug, top.Slug)
+	w.svc.Guard(g)
+	err = w.move(t, prod.Slug, top.Slug)
 	refusal(t, err, "stack web would no longer reach worker pool private")
 	refusal(t, err, "stack db would no longer reach context shared")
-	refusal(t, svc.Delete(ctx, f.acct, prod.Slug), "space "+prod.Slug+" still holds entities")
+	refusal(t, w.del(t, prod.Slug), "space "+prod.Slug+" still holds entities")
+	if _, err := w.svc.Update(
+		ctx,
+		w.p,
+		prod.Slug,
+		legacy.Slug,
+		space.Space{Name: "P"},
+	); err != nil {
+		t.Errorf("a rename, which no guard sees = %v", err)
+	}
 
 	g.err = errors.New("stacks unreachable")
-	if err := svc.Move(ctx, f.acct, prod.Slug, top.Slug); !errors.Is(err, g.err) {
+	if err := w.move(t, prod.Slug, top.Slug); !errors.Is(err, g.err) {
 		t.Errorf("Move with a failing guard = %v", err)
 	}
-	if err := svc.Delete(ctx, f.acct, prod.Slug); !errors.Is(err, g.err) {
+	if err := w.del(t, prod.Slug); !errors.Is(err, g.err) {
 		t.Errorf("Delete with a failing guard = %v", err)
 	}
 
 	g.err, g.lost, g.used = nil, nil, nil
-	if err := svc.Move(ctx, f.acct, prod.Slug, top.Slug); err != nil {
+	if err := w.move(t, prod.Slug, top.Slug); err != nil {
 		t.Errorf("Move a guard allows = %v", err)
 	}
-	if err := svc.Delete(ctx, f.acct, prod.Slug); err != nil {
-		t.Errorf("Delete a guard allows = %v", err)
+	if gone, err := w.svc.Delete(ctx, w.p, prod.Slug); err != nil || gone.ID != prod.ID {
+		t.Errorf("Delete a guard allows = %+v, %v", gone, err)
 	}
 
-	f.err = errors.New("store down")
-	if _, err := svc.Create(ctx, f.acct, top.Slug, space.Space{Name: "x"}); !errors.Is(err, f.err) {
+	w.f.err = errors.New("store down")
+	if _, err := w.svc.Create(
+		ctx,
+		w.p,
+		top.Slug,
+		space.Space{Name: "x"},
+	); !errors.Is(
+		err,
+		w.f.err,
+	) {
 		t.Errorf("Create on a failing store = %v", err)
+	}
+}
+
+// TestUnitSpaceAdminBelowTop checks what an admin of a space below the top
+// space may do with the setting off and on.
+func TestUnitSpaceAdminBelowTop(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	team, err := w.svc.Create(ctx, w.p, w.top.Slug, space.Space{Name: "Team"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := w.svc.Create(ctx, w.p, w.top.Slug, space.Space{Name: "Other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.authz.on = map[kernel.ULID]bool{team.ID: true}
+
+	got, err := w.svc.Update(ctx, w.p, team.Slug, w.top.Slug, space.Space{
+		Name: "Team A", Description: "ours", Labels: []string{"x"},
+	})
+	if err != nil || got.Name != "Team A" || got.Description != "ours" {
+		t.Errorf("rename with the setting off = %+v, %v", got, err)
+	}
+	_, err = w.svc.Create(ctx, w.p, team.Slug, space.Space{Name: "Sub", InheritEntities: true})
+	denied(t, err, "Only account admins create spaces while allowNonAdminSpaceCreation is off")
+	denied(t, w.move(t, team.Slug, w.legacy.Slug), "Only account admins move spaces")
+	_, err = w.svc.Update(
+		ctx,
+		w.p,
+		team.Slug,
+		w.top.Slug,
+		space.Space{Name: "T", InheritEntities: true},
+	)
+	denied(t, err, "change their inheritance")
+	denied(t, w.del(t, team.Slug), "Only account admins delete spaces")
+	_, err = w.svc.Update(ctx, w.p, other.Slug, w.top.Slug, space.Space{Name: "Mine"})
+	denied(t, err, "You may not perform SPACE_ADMIN on space "+other.Slug)
+
+	if on, err := w.svc.ToggleNonAdminCreation(ctx, w.p); err != nil || !on {
+		t.Fatalf("ToggleNonAdminCreation = %t, %v", on, err)
+	}
+	if on, err := w.svc.NonAdminCreation(ctx, w.f.acct); err != nil || !on {
+		t.Errorf("NonAdminCreation = %t, %v", on, err)
+	}
+	_, err = w.svc.Create(ctx, w.p, team.Slug, space.Space{Name: "Sub"})
+	refusal(t, err, "a space an admin below the top space creates inherits its parent's entities")
+	sub, err := w.svc.Create(ctx, w.p, team.Slug, space.Space{Name: "Sub", InheritEntities: true})
+	if err != nil || sub.ParentID != team.ID || !sub.InheritEntities {
+		t.Fatalf("create below an administered space = %+v, %v", sub, err)
+	}
+	w.authz.on[sub.ID] = true
+	_, err = w.svc.Create(ctx, w.p, other.Slug, space.Space{Name: "No", InheritEntities: true})
+	denied(t, err, "on space "+other.Slug)
+	denied(t, w.move(t, sub.Slug, other.Slug), "on space "+other.Slug)
+	_, err = w.svc.Update(ctx, w.p, sub.Slug, team.Slug, space.Space{Name: "Sub"})
+	denied(t, err, "Only account admins stop space "+sub.Slug+" inheriting")
+	if got, err := w.svc.Update(ctx, w.p, team.Slug, w.top.Slug,
+		space.Space{Name: "Team", InheritEntities: true}); err != nil || !got.InheritEntities {
+		t.Errorf("start inheriting = %+v, %v", got, err)
+	}
+	second, err := w.svc.Create(
+		ctx,
+		w.p,
+		team.Slug,
+		space.Space{Name: "Second", InheritEntities: true},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.authz.on[second.ID] = true
+	if err := w.move(t, sub.Slug, second.Slug); err != nil {
+		t.Errorf("move between administered spaces = %v", err)
+	}
+	if gone, err := w.svc.Delete(ctx, w.p, sub.Slug); err != nil || gone.ID != sub.ID {
+		t.Errorf("delete an administered space = %+v, %v", gone, err)
+	}
+
+	w.authz.err = errors.New("snapshot unreadable")
+	for name, err := range map[string]error{
+		"create": func() error { _, err := w.svc.Create(ctx, w.p, team.Slug, space.Space{Name: "x"}); return err }(),
+		"update": w.move(t, team.Slug, w.top.Slug),
+		"delete": w.del(t, second.Slug),
+	} {
+		if !errors.Is(err, w.authz.err) {
+			t.Errorf("%s with a failing authorizer = %v", name, err)
+		}
+	}
+	w.authz.err = nil
+	w.f.err = errors.New("store down")
+	if err := w.del(t, second.Slug); !errors.Is(err, w.f.err) {
+		t.Errorf("delete when the setting cannot be read = %v", err)
 	}
 }

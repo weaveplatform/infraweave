@@ -70,6 +70,8 @@ func operationViolations(where string, op *openapi3.Operation) []string {
 		out = append(out, fmt.Sprintf("%s: account action %s on subject %s", where, action, raw))
 	case s.Kind == accessapi.SubjectPath && op.Parameters.GetByInAndName("path", s.Param) == nil:
 		out = append(out, fmt.Sprintf("%s: subject %s names no path parameter", where, raw))
+	case s.Kind == accessapi.SubjectQuery && op.Parameters.GetByInAndName("query", s.Param) == nil:
+		out = append(out, fmt.Sprintf("%s: subject %s names no query parameter", where, raw))
 	case s.Kind == accessapi.SubjectBody && op.RequestBody == nil:
 		out = append(out, fmt.Sprintf("%s: subject %s with no request body", where, raw))
 	}
@@ -164,6 +166,12 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-subject: path:id:stack
       responses: {"200": {description: ok}}
+  /noquery:
+    get:
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: query:space
+      parameters: [{name: space, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: ok}}
   /nobody:
     post:
       x-infraweave-action: STACK_CREATE
@@ -182,6 +190,7 @@ func TestUnitAPIAuthorizationFixture(t *testing.T) {
 		`GET /grammar: invalid x-infraweave-subject "space"`,
 		"GET /keys: API_KEY_READ is decided anywhere but the subject is account",
 		"GET /noparam: subject path:id:stack names no path parameter",
+		"GET /noquery: subject query:space names no query parameter",
 		`GET /orgless: subject organization with access "", public false`,
 		"GET /unknown names SPACE_FLY, which the catalogue lacks",
 		`GET /viewer: access "organization", public false with ACCOUNT_ADMIN, not AUTHENTICATED`,

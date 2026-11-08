@@ -18,6 +18,10 @@ const (
 	// a space unless the field's entity says otherwise:
 	// body:<field>[:<entity>], the field dotted through nested objects.
 	SubjectBody SubjectKind = "body"
+	// SubjectQuery is the space of the entity a query parameter names, a
+	// space unless the parameter's entity says otherwise:
+	// query:<param>[:<entity>].
+	SubjectQuery SubjectKind = "query"
 	// SubjectAccount is the account's top space.
 	SubjectAccount SubjectKind = "account"
 	// SubjectAny is any space of the account: the action is allowed where
@@ -31,12 +35,13 @@ const (
 	SubjectList SubjectKind = "list"
 )
 
-// EntitySpace is the entity a body subject names when it names none.
+// EntitySpace is the entity a body or query subject names when it names
+// none.
 const EntitySpace = "space"
 
-// Subject is a parsed x-infraweave-subject. Param is a path subject's
-// parameter, Field a body subject's dotted field, and Entity the kind of
-// entity either names.
+// Subject is a parsed x-infraweave-subject. Param is a path or query
+// subject's parameter, Field a body subject's dotted field, and Entity the
+// kind of entity each names.
 type Subject struct {
 	Kind   SubjectKind
 	Param  string
@@ -48,7 +53,8 @@ type Subject struct {
 var ErrSubject = errors.New("invalid x-infraweave-subject")
 
 // ParseSubject reads s: account, any, organization, list,
-// path:<param>:<entity> or body:<field>[:<entity>].
+// path:<param>:<entity>, body:<field>[:<entity>] or
+// query:<param>[:<entity>].
 func ParseSubject(s string) (Subject, error) {
 	parts := strings.Split(s, ":")
 	for _, p := range parts {
@@ -67,10 +73,16 @@ func ParseSubject(s string) (Subject, error) {
 		return Subject{Kind: kind, Field: parts[1], Entity: EntitySpace}, nil
 	case kind == SubjectBody && len(parts) == 3:
 		return Subject{Kind: kind, Field: parts[1], Entity: parts[2]}, nil
+	case kind == SubjectQuery && len(parts) == 2:
+		return Subject{Kind: kind, Param: parts[1], Entity: EntitySpace}, nil
+	case kind == SubjectQuery && len(parts) == 3:
+		return Subject{Kind: kind, Param: parts[1], Entity: parts[2]}, nil
 	}
 	return Subject{}, fmt.Errorf("%w %q", ErrSubject, s)
 }
 
 // Names reports whether the subject names an entity, whose space it
 // resolves before deciding.
-func (s Subject) Names() bool { return s.Kind == SubjectPath || s.Kind == SubjectBody }
+func (s Subject) Names() bool {
+	return s.Kind == SubjectPath || s.Kind == SubjectBody || s.Kind == SubjectQuery
+}

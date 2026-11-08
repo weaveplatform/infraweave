@@ -24,6 +24,55 @@ import (
 // spacesAt is when the spaces these tests create are created.
 var spacesAt = time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)
 
+// everything is a space.Authorizer allowing every action, so a test drives
+// a tree as its account's admin.
+type everything struct{}
+
+func (everything) Authorize(
+	context.Context,
+	kernel.Principal,
+	accessapi.Action,
+	kernel.ULID,
+) (bool, error) {
+	return true, nil
+}
+
+// adminTree drives each account's tree through the space service as the
+// account's admin.
+type adminTree struct{ svc *space.Service }
+
+func treeOf(s space.Store) adminTree {
+	return adminTree{space.NewService(s, everything{}, func() time.Time { return spacesAt })}
+}
+
+func admin(acct kernel.AccountID) kernel.Principal {
+	return kernel.Principal{Kind: kernel.PrincipalUser, ActorID: kernel.NewULID(), AccountID: acct}
+}
+
+func (a adminTree) Create(
+	ctx context.Context,
+	acct kernel.AccountID,
+	parent string,
+	in space.Space,
+) (space.Space, error) {
+	return a.svc.Create(ctx, admin(acct), parent, in)
+}
+
+// Move moves acct's space slug below parent, keeping its other fields.
+func (a adminTree) Move(ctx context.Context, acct kernel.AccountID, slug, parent string) error {
+	cur, err := a.svc.Space(ctx, acct, slug)
+	if err != nil {
+		return err
+	}
+	_, err = a.svc.Update(ctx, admin(acct), slug, parent, cur)
+	return err
+}
+
+func (a adminTree) Delete(ctx context.Context, acct kernel.AccountID, slug string) error {
+	_, err := a.svc.Delete(ctx, admin(acct), slug)
+	return err
+}
+
 // closureRow is one row of space_closure.
 type closureRow struct {
 	ancestor, descendant kernel.ULID
@@ -157,7 +206,7 @@ func TestAccSpaceSeeding(t *testing.T) {
 func TestAccSpaceTree(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "aviato")
-	svc := space.NewService(x.s, func() time.Time { return spacesAt })
+	svc := treeOf(x.s)
 	prod, err := svc.Create(ctx, x.acct, "aviato", space.Space{
 		Name:            "Production",
 		Description:     "live",
@@ -257,7 +306,7 @@ func TestAccSpaceTree(t *testing.T) {
 func TestAccClosureProperty(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "pied-piper")
-	svc := space.NewService(x.s, func() time.Time { return spacesAt })
+	svc := treeOf(x.s)
 	r := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // a reproducible test sequence
 	for i := range 200 {
 		spaces, err := x.s.Spaces(ctx, x.acct)
@@ -308,7 +357,7 @@ func TestAccSpaceDeletion(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	svc := space.NewService(x.s, func() time.Time { return spacesAt })
+	svc := treeOf(x.s)
 	if _, err := svc.Create(ctx, b.ID, "initech-two", space.Space{Name: "Dev"}); err != nil {
 		t.Fatal(err)
 	}
@@ -344,7 +393,7 @@ func TestAccSpaceDeletion(t *testing.T) {
 func TestAccSpaceStoreUnavailable(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "endframe")
-	svc := space.NewService(x.s, func() time.Time { return spacesAt })
+	svc := treeOf(x.s)
 	child, err := svc.Create(ctx, x.acct, "endframe", space.Space{Name: "Child"})
 	if err != nil {
 		t.Fatal(err)
@@ -353,11 +402,14 @@ func TestAccSpaceStoreUnavailable(t *testing.T) {
 		_, _ = tx.Q(ctx, x.db).Exec(ctx, `SELECT 1/0`)
 	}
 	for name, err := range map[string]error{
-		"move": x.s.MoveSpace(ctx, x.acct, child.Slug, space.LegacySlug,
-			func(ctx context.Context, _, _ space.Space, _ accessapi.SpaceMove) error {
-				abort(ctx)
-				return nil
-			}),
+		"move": func() error {
+			_, err := x.s.UpdateSpace(ctx, x.acct, child.Slug, space.LegacySlug,
+				func(ctx context.Context, cur, _ space.Space, _ *accessapi.SpaceMove) (space.Space, error) {
+					abort(ctx)
+					return cur, nil
+				})
+			return err
+		}(),
 		"delete": x.s.DeleteSpace(ctx, x.acct, child.Slug, func(ctx context.Context, _ space.Space) error {
 			abort(ctx)
 			return nil
@@ -374,17 +426,86 @@ func TestAccSpaceStoreUnavailable(t *testing.T) {
 	bg := context.Background()
 	o, a := tenant(t, "closed-spaces", "closed-spaces")
 	allow := func(context.Context, space.Space) error { return nil }
+	keep := func(_ context.Context, cur, _ space.Space, _ *accessapi.SpaceMove) (space.Space, error) {
+		return cur, nil
+	}
 	for name, err := range map[string]error{
 		"organization": s.CreateOrganization(bg, o, a, nil, created(o)),
 		"list":         func() error { _, err := s.Spaces(bg, x.acct); return err }(),
 		"read":         func() error { _, err := s.Space(bg, x.acct, "x"); return err }(),
 		"create":       s.CreateSpace(bg, child),
-		"move": s.MoveSpace(bg, x.acct, child.Slug, "x",
-			func(context.Context, space.Space, space.Space, accessapi.SpaceMove) error { return nil }),
-		"delete": s.DeleteSpace(bg, x.acct, child.Slug, allow),
+		"update": func() error {
+			_, err := s.UpdateSpace(bg, x.acct, child.Slug, "x", keep)
+			return err
+		}(),
+		"setting": func() error { _, err := s.NonAdminCreation(bg, x.acct); return err }(),
+		"toggle":  func() error { _, err := s.ToggleNonAdminCreation(bg, x.acct); return err }(),
+		"delete":  s.DeleteSpace(bg, x.acct, child.Slug, allow),
 	} {
 		if err == nil || errors.Is(err, port.ErrNotFound) {
 			t.Errorf("%s on a closed pool = %v", name, err)
 		}
+	}
+}
+
+// TestAccSpaceUpdate checks that an update writes a space's fields, a
+// refused one writes nothing, and the non-admin creation setting reads
+// false until toggled.
+func TestAccSpaceUpdate(t *testing.T) {
+	ctx := t.Context()
+	x := seed(t, pool(t), "raviga")
+	tr := treeOf(x.s)
+	dev, err := tr.Create(ctx, x.acct, "raviga", space.Space{Name: "Dev", Labels: []string{"a"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := tr.svc.Update(ctx, admin(x.acct), dev.Slug, space.LegacySlug, space.Space{
+		Name: "Development", Description: "shared", InheritEntities: true,
+	})
+	if err != nil || got.Name != "Development" || got.ParentID == dev.ParentID {
+		t.Fatalf("Update = %+v, %v", got, err)
+	}
+	read, err := x.s.Space(ctx, x.acct, dev.Slug)
+	if err != nil || read.Name != "Development" || read.Description != "shared" ||
+		!read.InheritEntities || len(read.Labels) != 0 || read.Labels == nil ||
+		read.ParentID != got.ParentID || read.Slug != dev.Slug {
+		t.Errorf("after the update: %+v, %v", read, err)
+	}
+	if _, err := x.s.UpdateSpace(ctx, x.acct, dev.Slug, "",
+		func(context.Context, space.Space, space.Space, *accessapi.SpaceMove) (space.Space, error) {
+			return space.Space{}, errors.New("refused")
+		}); err == nil {
+		t.Error("a refused update succeeded")
+	}
+	if again, _ := x.s.Space(ctx, x.acct, dev.Slug); again.Name != "Development" {
+		t.Errorf("a refused update wrote %+v", again)
+	}
+
+	for _, want := range []bool{false, true, false} {
+		if on, err := tr.svc.NonAdminCreation(ctx, x.acct); err != nil || on != want {
+			t.Errorf("NonAdminCreation = %t, %v; want %t", on, err, want)
+		}
+		if _, err := tr.svc.ToggleNonAdminCreation(ctx, admin(x.acct)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	none := kernel.NewAccountID()
+	if _, err := x.s.NonAdminCreation(ctx, none); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("the setting of no account = %v", err)
+	}
+	if _, err := x.s.ToggleNonAdminCreation(ctx, none); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("toggling the setting of no account = %v", err)
+	}
+	if _, err := x.s.UpdateSpace(
+		ctx,
+		x.acct,
+		dev.Slug,
+		"nope",
+		nil,
+	); !errors.Is(
+		err,
+		port.ErrNotFound,
+	) {
+		t.Errorf("an update below a missing space = %v", err)
 	}
 }

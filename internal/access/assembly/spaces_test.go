@@ -31,6 +31,22 @@ func (holder) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.Lost
 	return []accessapi.LostReach{{Stack: "web", Entity: "context shared"}}, nil
 }
 
+// everything is a space.Authorizer allowing every action.
+type everything struct{}
+
+func (everything) Authorize(
+	context.Context,
+	kernel.Principal,
+	accessapi.Action,
+	kernel.ULID,
+) (bool, error) {
+	return true, nil
+}
+
+func admin(acct kernel.AccountID) kernel.Principal {
+	return kernel.Principal{Kind: kernel.PrincipalUser, ActorID: kernel.NewULID(), AccountID: acct}
+}
+
 // devSpace is a domain over a fresh database whose one organization's
 // first account holds a space, Dev, under its top space.
 func devSpace(t *testing.T) (*Domain, *sql.DB, account.Account, space.Space) {
@@ -56,7 +72,10 @@ func devSpace(t *testing.T) (*Domain, *sql.DB, account.Account, space.Space) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	dev, err := d.spaces.Create(ctx, a.ID, "guarded", space.Space{Name: "Dev"})
+	// The account has no admin yet, so the tree is changed as the rule
+	// would let an account admin, through an authorizer allowing it.
+	d.spaces = space.NewService(d.store, everything{}, time.Now)
+	dev, err := d.spaces.Create(ctx, admin(a.ID), "guarded", space.Space{Name: "Dev"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,10 +89,9 @@ func TestAccGuardSpaces(t *testing.T) {
 	ctx := t.Context()
 	d, _, a, dev := devSpace(t)
 	d.GuardSpaces(holder{})
-	for name, err := range map[string]error{
-		"delete": d.spaces.Delete(ctx, a.ID, dev.Slug),
-		"move":   d.spaces.Move(ctx, a.ID, dev.Slug, space.LegacySlug),
-	} {
+	_, deleted := d.spaces.Delete(ctx, admin(a.ID), dev.Slug)
+	_, moved := d.spaces.Update(ctx, admin(a.ID), dev.Slug, space.LegacySlug, dev)
+	for name, err := range map[string]error{"delete": deleted, "move": moved} {
 		if _, ok := errors.AsType[*space.Refusal](err); !ok {
 			t.Errorf("%s a guard refuses = %v", name, err)
 		}

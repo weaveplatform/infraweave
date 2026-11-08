@@ -42,6 +42,10 @@ func (UnimplementedStrict) AccountSetPersonalApiKeysEnabled(context.Context, Acc
 	return nil, &problem.NotImplementedError{OperationID: "accountSetPersonalApiKeysEnabled", Route: "POST /account/set-personal-api-keys-enabled"}
 }
 
+func (UnimplementedStrict) AccountToggleAllowNonAdminSpaceCreation(context.Context, AccountToggleAllowNonAdminSpaceCreationRequestObject) (AccountToggleAllowNonAdminSpaceCreationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountToggleAllowNonAdminSpaceCreation", Route: "POST /account/toggle-allow-non-admin-space-creation"}
+}
+
 func (UnimplementedStrict) AccountToggleAPIKeyManagementFromNonHumans(context.Context, AccountToggleAPIKeyManagementFromNonHumansRequestObject) (AccountToggleAPIKeyManagementFromNonHumansResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "accountToggleAPIKeyManagementFromNonHumans", Route: "POST /account/toggle-api-key-management-from-non-humans"}
 }
@@ -56,6 +60,14 @@ func (UnimplementedStrict) AccountUpdateAwarenessSourceSurvey(context.Context, A
 
 func (UnimplementedStrict) AccountUpdateSecurityEmail(context.Context, AccountUpdateSecurityEmailRequestObject) (AccountUpdateSecurityEmailResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "accountUpdateSecurityEmail", Route: "POST /account/update-security-email"}
+}
+
+func (UnimplementedStrict) AllowNonAdminSpaceCreation(context.Context, AllowNonAdminSpaceCreationRequestObject) (AllowNonAdminSpaceCreationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "allowNonAdminSpaceCreation", Route: "GET /allow-non-admin-space-creation"}
+}
+
+func (UnimplementedStrict) ApiKeySessionsWithAccessToSpace(context.Context, ApiKeySessionsWithAccessToSpaceRequestObject) (ApiKeySessionsWithAccessToSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeySessionsWithAccessToSpace", Route: "GET /api-key-sessions-with-access-to-space"}
 }
 
 func (UnimplementedStrict) ApiKeys(context.Context, ApiKeysRequestObject) (ApiKeysResponseObject, error) {
@@ -74,6 +86,10 @@ func (UnimplementedStrict) ApiKeysManagedByNonAdmins(context.Context, ApiKeysMan
 	return nil, &problem.NotImplementedError{OperationID: "apiKeysManagedByNonAdmins", Route: "GET /api-keys-managed-by-non-admins"}
 }
 
+func (UnimplementedStrict) ApiKeysWithAccessToSpace(context.Context, ApiKeysWithAccessToSpaceRequestObject) (ApiKeysWithAccessToSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeysWithAccessToSpace", Route: "GET /api-keys-with-access-to-space"}
+}
+
 func (UnimplementedStrict) ApiKeyDelete(context.Context, ApiKeyDeleteRequestObject) (ApiKeyDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyDelete", Route: "DELETE /api-keys/{apiKeyId}"}
 }
@@ -88,6 +104,26 @@ func (UnimplementedStrict) ApiKeyUpdate(context.Context, ApiKeyUpdateRequestObje
 
 func (UnimplementedStrict) ApiKeyReset(context.Context, ApiKeyResetRequestObject) (ApiKeyResetResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyReset", Route: "POST /api-keys/{apiKeyId}/reset"}
+}
+
+func (UnimplementedStrict) AttachableAwsIntegrationsInSpace(context.Context, AttachableAwsIntegrationsInSpaceRequestObject) (AttachableAwsIntegrationsInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachableAwsIntegrationsInSpace", Route: "GET /attachable-aws-integrations-in-space"}
+}
+
+func (UnimplementedStrict) AttachableAzureIntegrationsInSpace(context.Context, AttachableAzureIntegrationsInSpaceRequestObject) (AttachableAzureIntegrationsInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachableAzureIntegrationsInSpace", Route: "GET /attachable-azure-integrations-in-space"}
+}
+
+func (UnimplementedStrict) AttachableExternalIntegrationInSpace(context.Context, AttachableExternalIntegrationInSpaceRequestObject) (AttachableExternalIntegrationInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachableExternalIntegrationInSpace", Route: "GET /attachable-external-integration-in-space"}
+}
+
+func (UnimplementedStrict) AttachableVCSIntegrationsForProviderInSpace(context.Context, AttachableVCSIntegrationsForProviderInSpaceRequestObject) (AttachableVCSIntegrationsForProviderInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachableVCSIntegrationsForProviderInSpace", Route: "GET /attachable-vcs-integrations-for-provider-in-space"}
+}
+
+func (UnimplementedStrict) AttachableWorkerPoolsInSpace(context.Context, AttachableWorkerPoolsInSpaceRequestObject) (AttachableWorkerPoolsInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachableWorkerPoolsInSpace", Route: "GET /attachable-worker-pools-in-space"}
 }
 
 func (UnimplementedStrict) AuthAccounts(context.Context, AuthAccountsRequestObject) (AuthAccountsResponseObject, error) {
@@ -178,6 +214,10 @@ func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObjec
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
 }
 
+func (UnimplementedStrict) IntegrationsCount(context.Context, IntegrationsCountRequestObject) (IntegrationsCountResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "integrationsCount", Route: "GET /integrations-count"}
+}
+
 func (UnimplementedStrict) ManagedUserGroups(context.Context, ManagedUserGroupsRequestObject) (ManagedUserGroupsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "managedUserGroups", Route: "GET /managed-user-groups"}
 }
@@ -240,6 +280,14 @@ func (UnimplementedStrict) MarkedForDeletion(context.Context, MarkedForDeletionR
 
 func (UnimplementedStrict) MessageQueueStats(context.Context, MessageQueueStatsRequestObject) (MessageQueueStatsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "messageQueueStats", Route: "GET /message-queue-stats"}
+}
+
+func (UnimplementedStrict) Metrics(context.Context, MetricsRequestObject) (MetricsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "metrics", Route: "GET /metrics"}
+}
+
+func (UnimplementedStrict) MetricsRange(context.Context, MetricsRangeRequestObject) (MetricsRangeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "metricsRange", Route: "GET /metrics-range"}
 }
 
 func (UnimplementedStrict) Name(context.Context, NameRequestObject) (NameResponseObject, error) {
@@ -370,6 +418,38 @@ func (UnimplementedStrict) SessionDelete(context.Context, SessionDeleteRequestOb
 	return nil, &problem.NotImplementedError{OperationID: "sessionDelete", Route: "DELETE /sessions/{sessionId}"}
 }
 
+func (UnimplementedStrict) SearchSpaceContexts(context.Context, SearchSpaceContextsRequestObject) (SearchSpaceContextsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchSpaceContexts", Route: "POST /space-contexts/search"}
+}
+
+func (UnimplementedStrict) SearchSpacePolicies(context.Context, SearchSpacePoliciesRequestObject) (SearchSpacePoliciesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchSpacePolicies", Route: "POST /space-policies/search"}
+}
+
+func (UnimplementedStrict) Spaces(context.Context, SpacesRequestObject) (SpacesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "spaces", Route: "GET /spaces"}
+}
+
+func (UnimplementedStrict) SpaceCreate(context.Context, SpaceCreateRequestObject) (SpaceCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "spaceCreate", Route: "POST /spaces"}
+}
+
+func (UnimplementedStrict) SearchSpaces(context.Context, SearchSpacesRequestObject) (SearchSpacesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchSpaces", Route: "POST /spaces/search"}
+}
+
+func (UnimplementedStrict) SpaceDelete(context.Context, SpaceDeleteRequestObject) (SpaceDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "spaceDelete", Route: "DELETE /spaces/{spaceId}"}
+}
+
+func (UnimplementedStrict) Space(context.Context, SpaceRequestObject) (SpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "space", Route: "GET /spaces/{spaceId}"}
+}
+
+func (UnimplementedStrict) SpaceUpdate(context.Context, SpaceUpdateRequestObject) (SpaceUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "spaceUpdate", Route: "PUT /spaces/{spaceId}"}
+}
+
 func (UnimplementedStrict) ManagedUserRequestRoleChange(context.Context, ManagedUserRequestRoleChangeRequestObject) (ManagedUserRequestRoleChangeResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "managedUserRequestRoleChange", Route: "POST /spaces/{spaceId}/role-change-requests"}
 }
@@ -420,6 +500,10 @@ func (UnimplementedStrict) Stacks(context.Context, StacksRequestObject) (StacksR
 
 func (UnimplementedStrict) StackCreate(context.Context, StackCreateRequestObject) (StackCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackCreate", Route: "POST /stacks"}
+}
+
+func (UnimplementedStrict) StacksWithAccessToSpace(context.Context, StacksWithAccessToSpaceRequestObject) (StacksWithAccessToSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stacksWithAccessToSpace", Route: "GET /stacks-with-access-to-space"}
 }
 
 func (UnimplementedStrict) SearchStacks(context.Context, SearchStacksRequestObject) (SearchStacksResponseObject, error) {
@@ -672,6 +756,18 @@ func (UnimplementedStrict) TierFeatures(context.Context, TierFeaturesRequestObje
 
 func (UnimplementedStrict) Type(context.Context, TypeRequestObject) (TypeResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "type", Route: "GET /type"}
+}
+
+func (UnimplementedStrict) UserGroupsWithAccessToSpace(context.Context, UserGroupsWithAccessToSpaceRequestObject) (UserGroupsWithAccessToSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupsWithAccessToSpace", Route: "GET /user-groups-with-access-to-space"}
+}
+
+func (UnimplementedStrict) UserSessionsWithAccessToSpace(context.Context, UserSessionsWithAccessToSpaceRequestObject) (UserSessionsWithAccessToSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userSessionsWithAccessToSpace", Route: "GET /user-sessions-with-access-to-space"}
+}
+
+func (UnimplementedStrict) UsersWithAccessToSpace(context.Context, UsersWithAccessToSpaceRequestObject) (UsersWithAccessToSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "usersWithAccessToSpace", Route: "GET /users-with-access-to-space"}
 }
 
 func (UnimplementedStrict) Viewer(context.Context, ViewerRequestObject) (ViewerResponseObject, error) {

@@ -16,13 +16,15 @@
 // keeps the keys it disables, and 00009 spaces and space_closure, with the
 // top space and legacy of every account that exists before it, and 00010
 // roles, role_actions and role_bindings, with the system roles of every
-// account that exists before it. Creating an account, with its
+// account that exists before it, and 00011 an account's
+// allow_non_admin_space_creation, false until toggled. Creating an account, with its
 // organization or by an organization admin, seeds its top space, legacy
 // and system roles in the same transaction, and claiming or creating one
 // binds space-admin on its top space to the account admin it names. A
-// key's Admin reads whether it holds that binding. Every write to
-// spaces, roles, role_actions, role_bindings or managed_user_groups, and
-// every admission, moves the account's authz_version and sends
+// key's Admin reads whether it holds that binding. Every write to the
+// space tree or a space's inheritance, to roles, role_actions,
+// role_bindings or managed_user_groups, and every admission, moves the
+// account's authz_version and sends
 // authz:<account> on infraweave_invalidate in its transaction; AuthzData
 // reads an account's authorization rows in one serializable transaction
 // and AuthzVersions the versions of the accounts a replica holds, as

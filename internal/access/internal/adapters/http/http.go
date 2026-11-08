@@ -35,7 +35,7 @@ type Server struct {
 	auth     *authn.Service
 	keys     *apikey.Service
 	authz    accessapi.Authorizer
-	spaces   Spaces
+	spaces   *space.Service
 	accounts Accounts
 	settings *settings.Service
 	orgs     *orgadmin.Service
@@ -49,20 +49,15 @@ type Accounts interface {
 	Account(ctx context.Context, id kernel.AccountID) (account.Account, error)
 }
 
-// Spaces lists an account's spaces, top first; space.Service is one.
-type Spaces interface {
-	Spaces(ctx context.Context, acct kernel.AccountID) ([]space.Space, error)
-}
-
 // Services are what the partial serves through: Orgs the Organization
 // tag, Users and Groups the Managed Users tag, OAuth the consent
-// operations of the authorization server, and Authz and Spaces the
-// actions each view lists.
+// operations of the authorization server, Spaces the Spaces tag, and
+// Authz the actions each view lists.
 type Services struct {
 	Auth     *authn.Service
 	Keys     *apikey.Service
 	Authz    accessapi.Authorizer
-	Spaces   Spaces
+	Spaces   *space.Service
 	Accounts Accounts
 	Settings *settings.Service
 	Orgs     *orgadmin.Service
