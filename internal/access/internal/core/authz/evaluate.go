@@ -229,3 +229,36 @@ func (s *Snapshot) Reachable(w Who, action accessapi.Action) []kernel.ULID {
 	}
 	return out
 }
+
+// Holds reports whether w may perform action in at least one space of
+// its account, as an anywhere action is decided.
+func (s *Snapshot) Holds(w Who, action accessapi.Action) bool {
+	return len(s.Reachable(w, action)) > 0
+}
+
+// Actions is every assignable catalogue action w may perform in space, in
+// the catalogue's order. An account action of infraweave's is decided on
+// the top space whatever space is asked, as nothing it acts on lives in
+// one, and an anywhere one wherever w holds it.
+func (s *Snapshot) Actions(w Who, space kernel.ULID) []accessapi.Action {
+	if _, ok := s.parent[space]; !ok || !s.in(w) {
+		return nil
+	}
+	var out []accessapi.Action
+	for _, a := range accessapi.Actions() {
+		var ok bool
+		switch {
+		case !a.Assignable():
+		case a.Anywhere:
+			ok = s.Holds(w, a.Action)
+		case a.Infraweave:
+			ok = s.Authorize(w, a.Action, s.top)
+		default:
+			ok = s.Authorize(w, a.Action, space)
+		}
+		if ok {
+			out = append(out, a.Action)
+		}
+	}
+	return out
+}

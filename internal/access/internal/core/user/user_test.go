@@ -412,22 +412,18 @@ func TestUnitUserRequests(t *testing.T) {
 		t.Errorf("a bad address: %v", err)
 	}
 
-	if err := w.svc.RequestRoleChange(ctx, w.p, "", user.RootSpace, "WRITE"); err != nil ||
+	if err := w.svc.RequestRoleChange(ctx, w.p, "", "legacy", "WRITE"); err != nil ||
 		w.s.trail[1].Action != user.ActionRequestRoleChange ||
-		w.s.trail[1].AffectedResource.ID != user.RootSpace {
+		w.s.trail[1].AffectedResource.ID != "legacy" {
 		t.Errorf("request role change: %v, %+v", err, w.s.trail)
 	}
-	if err := w.svc.RequestRoleChange(ctx, w.p, "", "elsewhere", "WRITE"); !errors.Is(err,
-		port.ErrNotFound) {
-		t.Errorf("a space that does not exist: %v", err)
-	}
-	if err := w.svc.RequestRoleChange(ctx, w.p, "", user.RootSpace, "OWNER"); !isField(err,
+	if err := w.svc.RequestRoleChange(ctx, w.p, "", "legacy", "OWNER"); !isField(err,
 		"requestedAccessLevel") {
 		t.Errorf("a level that does not exist: %v", err)
 	}
 	key := w.p
 	key.Kind = kernel.PrincipalAPIKey
-	if err := w.svc.RequestRoleChange(ctx, key, "", user.RootSpace, "READ"); !errors.Is(err,
+	if err := w.svc.RequestRoleChange(ctx, key, "", "legacy", "READ"); !errors.Is(err,
 		user.ErrNotMember) {
 		t.Errorf("an API key asks: %v", err)
 	}

@@ -42,6 +42,11 @@ components:
         admin:
           description: Whether the key holds a space-admin role binding on the account's top space.
           type: boolean
+        allowedActions:
+          description: The actions the caller may perform on the API key, from the rules that enforce them.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         createdAt:
           description: Creation timestamp.
           format: int32
@@ -118,6 +123,7 @@ components:
       required:
         - accessRules
         - admin
+        - allowedActions
         - createdAt
         - creator
         - deleted
@@ -164,7 +170,7 @@ components:
       description: |-
         A new API key. There is no admin field: a body that sets one answers
         400, and a key becomes an account admin through a space-admin role
-        binding on the account's top space (decision 0006).
+        binding on the account's top space.
       properties:
         description:
           description: Description of the API key
@@ -222,7 +228,7 @@ components:
       type: object
       x-graphql-type: ApiKeyOIDCSettings
     ApiKeyPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -327,6 +333,8 @@ paths:
         current permissions.
       operationId: apiKeyEnableNonAdminManagers
       x-infraweave-feature: api-keys
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       requestBody:
         content:
           application/json:
@@ -372,6 +380,8 @@ paths:
       description: List of all API keys for the account.
       operationId: apiKeys
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -414,6 +424,8 @@ paths:
       description: Create an API key.
       operationId: apiKeyCreate
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_CREATE
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -471,6 +483,8 @@ paths:
       description: Delete an API key.
       operationId: apiKeyDelete
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_DELETE
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -515,6 +529,8 @@ paths:
     get:
       operationId: apiKey
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -560,6 +576,8 @@ paths:
       description: Update an API key.
       operationId: apiKeyUpdate
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_UPDATE
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -616,6 +634,8 @@ paths:
       description: Reset the secret of an API key.
       operationId: apiKeyReset
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_RESET
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId

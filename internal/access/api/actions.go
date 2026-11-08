@@ -33,24 +33,31 @@ func (f Fallback) Within(level Fallback) bool {
 
 // ActionInfo is one catalogue row: the kind of entity whose space decides
 // the action, its fallback, and whether the schema disables or deprecates
-// it.
+// it. Infraweave marks an action the reference's enum lacks: an account
+// action on a resource that lives in no space (an API key, a session, a
+// managed user or group), decided on the account's top space, or, when
+// Anywhere, in any space where the caller holds it, as report 14 lets
+// the admin of any space read keys, users and groups.
 type ActionInfo struct {
 	Action     Action
 	Subject    string
 	Fallback   Fallback
 	Disabled   bool
 	Deprecated bool
+	Infraweave bool
+	Anywhere   bool
 }
 
 // Assignable reports whether a role may hold the action: a disabled or
 // deprecated one is refused (decision 0007).
 func (i ActionInfo) Assignable() bool { return !i.Disabled && !i.Deprecated }
 
-// Actions is the catalogue, in the reference's enum order.
+// Actions is the catalogue: the reference's enum in its order, then
+// infraweave's actions by name.
 func Actions() []ActionInfo { return slices.Clone(catalogue) }
 
 // ActionOf is a's catalogue row; ok is false for a pseudo-action or a
-// value the enum lacks.
+// value the catalogue lacks.
 func ActionOf(a Action) (info ActionInfo, ok bool) {
 	i := slices.IndexFunc(catalogue, func(i ActionInfo) bool { return i.Action == a })
 	if i < 0 {

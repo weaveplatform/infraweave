@@ -31,7 +31,7 @@ components:
       type: object
       x-graphql-type: MessageQueueStats
     MessageQueueStatsPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -52,6 +52,8 @@ paths:
         can only be fetched by admins.
       operationId: messageQueueStats
       x-infraweave-feature: infrastructure
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'

@@ -69,7 +69,7 @@ components:
       type: object
       x-graphql-type: AwarenessSourceSurvey
     OauthRedirectAllowedHostsPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -91,6 +91,8 @@ paths:
         at once.
       operationId: accountCanBeDeleted
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -131,6 +133,8 @@ paths:
         account is not marked.
       operationId: accountCanBeDeletedAt
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -173,6 +177,8 @@ paths:
         or the organization's last account, answers 409 invalid-state.
       operationId: accountConfirmDelete
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -219,6 +225,8 @@ paths:
         recorded in the account's audit trail; no message is delivered.
       operationId: accountRequestPersonalApiKeysEnabling
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -268,6 +276,8 @@ paths:
         built-in list of client hosts.
       operationId: accountSetOAuthRedirectAllowlist
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -326,6 +336,8 @@ paths:
         account is disabled and its sessions revoked.
       operationId: accountSetPersonalApiKeysEnabled
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -384,6 +396,8 @@ paths:
         admin's, may flip it.
       operationId: accountToggleAPIKeyManagementFromNonHumans
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -430,6 +444,8 @@ paths:
         or clear the mark; answers whether the account is now marked.
       operationId: accountToggleDeletionMark
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -481,6 +497,8 @@ paths:
         product, and answer it.
       operationId: accountUpdateAwarenessSourceSurvey
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -536,6 +554,8 @@ paths:
         it.
       operationId: accountUpdateSecurityEmail
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -590,6 +610,8 @@ paths:
         until an account admin turns it on.
       operationId: apiKeysManageableByNonHumans
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -629,6 +651,8 @@ paths:
         keys, as apiKeyEnableNonAdminManagers sets it.
       operationId: apiKeysManagedByNonAdmins
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -668,6 +692,8 @@ paths:
         not completed until accountUpdateAwarenessSourceSurvey records one.
       operationId: awarenessSourceSurvey
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -705,6 +731,8 @@ paths:
       description: Whether the account is marked for deletion.
       operationId: markedForDeletion
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -742,6 +770,8 @@ paths:
       description: The account's OAuth redirect host allowlist, in the order it was set.
       operationId: oauthRedirectAllowedHosts
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -787,6 +817,8 @@ paths:
         until an account admin turns it off.
       operationId: personalApiKeysEnabled
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -826,6 +858,8 @@ paths:
         sets it.
       operationId: securityEmail
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:

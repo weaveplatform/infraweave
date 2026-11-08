@@ -32,9 +32,13 @@ func (s Server) PersonalApiKeys(
 	if err != nil {
 		return nil, err
 	}
+	acts, err := s.keyActions(ctx)
+	if err != nil {
+		return nil, err
+	}
 	body := api.ApiKeyPage{Items: make([]api.ApiKey, 0, len(keys)), NextCursor: next}
 	for _, k := range keys {
-		body.Items = append(body.Items, apiKey(k, ""))
+		body.Items = append(body.Items, apiKey(k, "", acts))
 	}
 	return api.PersonalApiKeys200JSONResponse{Body: body}, nil
 }
@@ -60,7 +64,11 @@ func (s Server) PersonalApiKeyCreate(
 	if err != nil {
 		return nil, keyError(err, "")
 	}
-	return api.PersonalApiKeyCreate201JSONResponse{Body: apiKey(k, secret)}, nil
+	v, err := s.keyView(ctx, k, secret)
+	if err != nil {
+		return nil, err
+	}
+	return api.PersonalApiKeyCreate201JSONResponse{Body: v}, nil
 }
 
 // PersonalApiKeysCount counts the personal API keys of the caller's
@@ -96,5 +104,9 @@ func (s Server) PersonalApiKeyDisable(
 	if err != nil {
 		return nil, err
 	}
-	return api.PersonalApiKeyDisable200JSONResponse{Body: apiKey(k, "")}, nil
+	v, err := s.keyView(ctx, k, "")
+	if err != nil {
+		return nil, err
+	}
+	return api.PersonalApiKeyDisable200JSONResponse{Body: v}, nil
 }

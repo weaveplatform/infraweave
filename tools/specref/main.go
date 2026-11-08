@@ -249,7 +249,8 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s, err := specref.ScaffoldFile(filepath.Join(c.Dir, p.Spec), c.Tag, c.Out, c.Force)
+			s, err := specref.ScaffoldFile(filepath.Join(c.Dir, p.Spec), specref.ActionCatalogue,
+				c.Tag, c.Out, c.Force)
 			if err != nil {
 				return err
 			}

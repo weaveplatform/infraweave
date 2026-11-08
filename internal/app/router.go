@@ -90,7 +90,12 @@ func API(
 	if d.Features != nil {
 		gated = d.Features.Middleware
 	}
-	r := Guarded(log, c, apiOperations(), g, byPrefix{api: d.Auth, operator: d.OperatorAuth}, gated)
+	var require accessapi.Requirer
+	if d.Access != nil {
+		require = d.Access.Requirer()
+	}
+	r := Guarded(log, c, apiOperations(), g, byPrefix{api: d.Auth, operator: d.OperatorAuth},
+		require, gated)
 	if b.Routes != nil {
 		b.Routes(r)
 	}

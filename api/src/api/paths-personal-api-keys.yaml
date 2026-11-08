@@ -28,6 +28,8 @@ paths:
         Deleted keys are left out.
       operationId: personalApiKeys
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -76,6 +78,8 @@ paths:
         secret is answered once.
       operationId: personalApiKeyCreate
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -130,6 +134,8 @@ paths:
       description: The number of the account's personal API keys that are neither disabled nor deleted.
       operationId: personalApiKeysCount
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -170,6 +176,8 @@ paths:
         of it. A key that is not personal answers 404.
       operationId: personalApiKeyDisable
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: personalApiKeyId

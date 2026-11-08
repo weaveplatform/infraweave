@@ -67,8 +67,20 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /blobs/{token}":                               {Public: true},
 		"PUT /blobs/{token}":                               {Public: true},
 	} {
-		if !reflect.DeepEqual(ops[key], want) {
-			t.Errorf("%s: %+v, want %+v", key, ops[key], want)
+		got := ops[key]
+		got.Required = nil
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: %+v, want %+v", key, got, want)
+		}
+	}
+	// Every API operation names its action and subject; nothing else does.
+	if r := ops["POST "+BaseURL+"/stacks"].Required; r == nil ||
+		r.Action != accessapi.ActionStackCreate || r.Subject.Field != "input.space" {
+		t.Errorf("stackCreate requires %+v", r)
+	}
+	for key, op := range ops {
+		if api := strings.Contains(key, " "+BaseURL+"/"); api != (op.Required != nil) {
+			t.Errorf("%s requires %+v", key, op.Required)
 		}
 	}
 	for key, op := range ops {
@@ -121,7 +133,7 @@ func TestUnitOperationsOf(t *testing.T) {
 			Paths: openapi3.NewPaths(openapi3.WithPath(path, &openapi3.PathItem{Post: op})),
 		}
 	}
-	ops, err := operationsOf(doc("/things/search", &openapi3.Operation{}), "/v1")
+	ops, err := operationsOf(doc("/things/search", &openapi3.Operation{}), "/v1", false)
 	if err != nil ||
 		!reflect.DeepEqual(ops["POST /v1/things/search"],
 			Operation{Cost: ratelimit.Standard, Search: true, Gate: gate("stacks")}) {
@@ -129,7 +141,7 @@ func TestUnitOperationsOf(t *testing.T) {
 	}
 	ops, err = operationsOf(doc("/find", &openapi3.Operation{
 		Extensions: map[string]any{"x-infraweave-cost": "expensive", "x-rest-style": "search"},
-	}), "")
+	}), "", false)
 	if err != nil || !reflect.DeepEqual(ops["POST /find"],
 		Operation{Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")}) {
 		t.Errorf("x-rest-style search: %+v %v", ops, err)
@@ -137,27 +149,27 @@ func TestUnitOperationsOf(t *testing.T) {
 	for _, bad := range []any{"pricey", 3} {
 		_, err := operationsOf(doc("/things", &openapi3.Operation{
 			Extensions: map[string]any{"x-infraweave-cost": bad},
-		}), "")
+		}), "", false)
 		if !errors.Is(err, errSpec) {
 			t.Errorf("x-infraweave-cost %v: %v", bad, err)
 		}
 	}
 	ops, err = operationsOf(doc("/me", &openapi3.Operation{
 		Extensions: map[string]any{"x-infraweave-access": "organization"},
-	}), "")
+	}), "", false)
 	if err != nil || !ops["POST /me"].Organization {
 		t.Errorf("x-infraweave-access organization: %+v %v", ops, err)
 	}
 	ops, err = operationsOf(doc("/organization", &openapi3.Operation{
 		Extensions: map[string]any{"x-infraweave-access": "organization-admin"},
-	}), "")
+	}), "", false)
 	if op := ops["POST /organization"]; err != nil || !op.OrganizationAdmin || op.Organization {
 		t.Errorf("x-infraweave-access organization-admin: %+v %v", ops, err)
 	}
 	for _, bad := range []any{"account", true} {
 		_, err := operationsOf(doc("/things", &openapi3.Operation{
 			Extensions: map[string]any{"x-infraweave-access": bad},
-		}), "")
+		}), "", false)
 		if !errors.Is(err, errSpec) {
 			t.Errorf("x-infraweave-access %v: %v", bad, err)
 		}
@@ -165,9 +177,40 @@ func TestUnitOperationsOf(t *testing.T) {
 	for _, bad := range []any{"", "SCANS", "seats", "oidc-api-keys", 3} {
 		_, err := operationsOf(doc("/things", &openapi3.Operation{
 			Extensions: map[string]any{"x-infraweave-feature": bad},
-		}), "")
+		}), "", false)
 		if !errors.Is(err, errSpec) || !errors.Is(err, errFeature) {
 			t.Errorf("x-infraweave-feature %v: %v", bad, err)
+		}
+	}
+	// The API's operations each name an action and a subject.
+	ops, err = operationsOf(doc("/stacks/{stackId}/lock", &openapi3.Operation{
+		Extensions: map[string]any{
+			"x-infraweave-action": "STACK_LOCK", "x-infraweave-subject": "path:stackId:stack",
+		},
+	}), "", true)
+	want := &accessapi.Required{Action: accessapi.ActionStackLock, Subject: accessapi.Subject{
+		Kind: accessapi.SubjectPath, Param: "stackId", Entity: "stack",
+	}}
+	if err != nil || !reflect.DeepEqual(ops["POST /stacks/{stackId}/lock"].Required, want) {
+		t.Errorf("an action and subject: %+v %v", ops, err)
+	}
+	ops, err = operationsOf(doc("/me", &openapi3.Operation{
+		Extensions: map[string]any{
+			"x-infraweave-action": "AUTHENTICATED", "x-infraweave-subject": "organization",
+		},
+	}), "", true)
+	if err != nil || ops["POST /me"].Required.Action != accessapi.ActionAuthenticated {
+		t.Errorf("a pseudo-action: %+v %v", ops, err)
+	}
+	for name, ext := range map[string]map[string]any{
+		"no action":       {"x-infraweave-subject": "account"},
+		"unknown action":  {"x-infraweave-action": "SPACE_FLY", "x-infraweave-subject": "account"},
+		"no subject":      {"x-infraweave-action": "SPACE_READ"},
+		"invalid subject": {"x-infraweave-action": "SPACE_READ", "x-infraweave-subject": "space"},
+	} {
+		if _, err := operationsOf(doc("/things", &openapi3.Operation{Extensions: ext}), "",
+			true); !errors.Is(err, errSpec) {
+			t.Errorf("%s: %v", name, err)
 		}
 	}
 }
@@ -195,7 +238,7 @@ func TestUnitOperationOptions(t *testing.T) {
 	}}
 	ops, err := operationsOf(op(openapi3.Schemas{
 		"oidc": beside, "vcsChecks": inside.NewRef(), "name": openapi3.NewStringSchema().NewRef(),
-	}), "")
+	}), "", false)
 	want := []featuresapi.OptionGate{
 		{Property: "oidc", Feature: "oidc-api-keys"},
 		{Property: "vcsChecks", Value: "AGGREGATED", Feature: "aggregated-vcs-checks"},
@@ -209,6 +252,7 @@ func TestUnitOperationOptions(t *testing.T) {
 		if _, err := operationsOf(
 			op(openapi3.Schemas{"oidc": ref}),
 			"",
+			false,
 		); !errors.Is(
 			err,
 			errFeature,
@@ -222,7 +266,12 @@ func TestUnitOperationOptions(t *testing.T) {
 			RequestBody: &openapi3.RequestBodyRef{Value: openapi3.NewRequestBody()},
 		},
 	}))}
-	if ops, err := operationsOf(noBody, ""); err != nil || ops["POST /x"].Gate.Options != nil {
+	if ops, err := operationsOf(
+		noBody,
+		"",
+		false,
+	); err != nil ||
+		ops["POST /x"].Gate.Options != nil {
 		t.Errorf("a body with no JSON schema: %+v, %v", ops, err)
 	}
 }
@@ -347,7 +396,7 @@ func TestUnitGuardedIdempotency(t *testing.T) {
 	r := Guarded(discard(), config.Defaults().Server, Operations{
 		"POST /things":        {Cost: ratelimit.Standard},
 		"POST /things/search": {Cost: ratelimit.Expensive, Search: true},
-	}, memory(config.Defaults().Server), byAddress{}, nil)
+	}, memory(config.Defaults().Server), byAddress{}, nil, nil)
 	count := func(w http.ResponseWriter, _ *http.Request) {
 		runs++
 		w.WriteHeader(http.StatusCreated)
@@ -360,11 +409,14 @@ func TestUnitGuardedIdempotency(t *testing.T) {
 		send(r, http.MethodPost, path, me, "k-"+path)
 		send(r, http.MethodPost, path, me, "k-"+path)
 	}
-	// /things runs once; the search and the route no operation names run
-	// twice each; /nope never reaches a handler.
-	if runs != 5 {
-		t.Errorf("handlers ran %d times, want 5", runs)
+	// /things runs once and the search twice; the route no operation
+	// names is refused, as decision 0007 denies by default, and /nope
+	// never reaches a handler.
+	if runs != 3 {
+		t.Errorf("handlers ran %d times, want 3", runs)
 	}
+	rec := send(r, http.MethodPost, "/unlisted", me, "")
+	wantTyped(t, rec, problem.Forbidden)
 	if rec := send(r, http.MethodPost, "/nope", me, "k-/nope"); rec.Code != http.StatusNotFound ||
 		rec.Header().Get(idempotency.ReplayedHeader) != "" {
 		t.Errorf("a 404 was stored: %d %v", rec.Code, rec.Header())
@@ -387,7 +439,7 @@ func TestUnitGuardedAuthentication(t *testing.T) {
 	r := Guarded(discard(), c, Operations{
 		"POST /open":   {Cost: ratelimit.Standard, Public: true},
 		"GET /private": {Cost: ratelimit.Standard},
-	}, memory(c), nil, nil)
+	}, memory(c), nil, nil, nil)
 	ok := func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 	r.Post("/open", ok)
 	r.Get("/private", ok)
@@ -449,7 +501,7 @@ func TestUnitStrictBodies(t *testing.T) {
 	r := Guarded(discard(), config.Defaults().Server, Operations{
 		"POST /strict":  {Cost: ratelimit.Standard, Public: true, Body: strict},
 		"POST /lenient": {Cost: ratelimit.Standard, Public: true},
-	}, memory(config.Defaults().Server), nil, nil)
+	}, memory(config.Defaults().Server), nil, nil, nil)
 	ok := func(w http.ResponseWriter, r *http.Request) {
 		runs++
 		w.WriteHeader(http.StatusOK)

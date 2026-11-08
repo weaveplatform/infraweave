@@ -458,8 +458,9 @@ func newSecret() (string, string) {
 }
 
 // memberSession seeds the home organization's member with a browser
-// session in the home account, admitted to the accounts named, and has
-// the browser hold its cookie.
+// session in the home account, admitted to the accounts named and
+// space-admin on home's top space, as the member who claimed it is, and
+// has the browser hold its cookie.
 func (b *browserSteps) memberSession(ctx context.Context, admitted string) error {
 	db, err := b.a.s.w.querier(ctx)
 	if err != nil {
@@ -489,9 +490,13 @@ func (b *browserSteps) memberSession(ctx context.Context, admitted string) error
 				member_id, login, name, email, expires_at, idle_expires_at, secret_hash)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', 'WEB', 'user', '%[2]s', '%[2]s', 'alice', 'Alice',
 				'alice@example.com', date_trunc('second', now()) + interval '1 day',
-				now() + interval '12 hours', '\x%[5]s');`,
+				now() + interval '12 hours', '\x%[5]s');
+		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
+				created_by)
+			SELECT '%[3]s', gen_random_uuid(), 'user', '%[2]s', id, '%[3]s', 'binding', 'acceptance'
+			FROM roles WHERE account_id = '%[3]s' AND slug = 'space-admin';%[7]s`,
 		uuidOf(home.org), uuidOf(memberID), uuidOf(home.account), uuidOf(memberSession), hash,
-		strings.Join(rows, ", "))); err != nil {
+		strings.Join(rows, ", "), authzChanged(home.account))); err != nil {
 		return err //nolint:wrapcheck // the querier names the query
 	}
 	b.jar.hold(value)

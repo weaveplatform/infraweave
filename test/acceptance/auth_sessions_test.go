@@ -31,7 +31,7 @@ type authSteps struct {
 
 func (a *authSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
-		`^the (home|sibling|stranger) key is exchanged through ([AB]) for token "(\w+)"$`,
+		`^the (home|member|sibling|stranger) key is exchanged through ([AB]) for token "(\w+)"$`,
 		a.exchange,
 	)
 	sc.Step(

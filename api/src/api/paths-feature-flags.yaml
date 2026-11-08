@@ -54,7 +54,7 @@ components:
       type: object
       x-graphql-type: FeatureFlagEvaluationResult
     FeatureFlagEvaluationResultPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -86,9 +86,11 @@ paths:
     get:
       description: >-
         An empty set: infraweave holds no vendor-set flags. Its own features
-        are the operator's to switch (decision 0021).
+        are the operator's to switch.
       operationId: evaluateFeatureFlags
       x-infraweave-feature: console
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - content:
             application/json:

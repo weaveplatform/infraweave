@@ -89,6 +89,12 @@ func TestUnitService(t *testing.T) {
 	if got, err := svc.Explain(ctx, p, x.spaces["a"]); err != nil || len(got) != 1 {
 		t.Errorf("Explain = %+v, %v", got, err)
 	}
+	if ok, err := svc.Holds(ctx, p, accessapi.ActionApiKeyDelete); err != nil || !ok {
+		t.Errorf("Holds = %t, %v", ok, err)
+	}
+	if got, err := svc.Actions(ctx, p, x.spaces["a"]); err != nil || len(got) != 145 {
+		t.Errorf("Actions = %d, %v", len(got), err)
+	}
 	if err := svc.Refresh(ctx); err != nil || f.loads != 2 {
 		t.Fatalf("Refresh at the same version = %v, %d loads", err, f.loads)
 	}

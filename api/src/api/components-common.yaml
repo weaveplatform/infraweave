@@ -31,11 +31,16 @@ components:
             The request this problem answers, as urn:infraweave:request: and
             the request ID the X-Request-Id response header carries and the
             server logs.
+        action:
+          type: string
+          description: >-
+            For forbidden, when an action decided it, the action the caller
+            may not perform, a value of the Action enum or a pseudo-action.
         feature:
           type: string
           description: >-
             The feature of feature-disabled and feature-not-in-tier, a name
-            of the feature catalogue (decision 0021).
+            of the feature catalogue.
         tiers:
           type: array
           items:

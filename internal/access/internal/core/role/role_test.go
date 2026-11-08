@@ -60,8 +60,9 @@ func TestUnitSystemActions(t *testing.T) {
 			t.Errorf("space-writer holds %s: %t, want %t", a.Action, in(writer), want)
 		}
 	}
-	if len(reader) == 0 || len(writer) <= len(reader) || len(admin) != 130 {
-		t.Errorf("reader %d, writer %d, admin %d actions; want admin to hold the 130 assignable",
+	// The enum's 130 assignable values and infraweave's 15 account actions.
+	if len(reader) == 0 || len(writer) <= len(reader) || len(admin) != 145 {
+		t.Errorf("reader %d, writer %d, admin %d actions; want admin to hold the 145 assignable",
 			len(reader), len(writer), len(admin))
 	}
 	for slug, want := range map[string][]accessapi.Action{

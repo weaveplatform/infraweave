@@ -199,6 +199,11 @@ components:
         admin:
           description: Admin means that the user is an admin of the organization.
           type: boolean
+        allowedActions:
+          description: The actions the caller may perform on the session, from the rules that enforce them.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         channel:
           $ref: '#/components/schemas/SessionChannel'
         createdAt:
@@ -240,6 +245,7 @@ components:
           type: string
       required:
         - admin
+        - allowedActions
         - channel
         - createdAt
         - current
@@ -375,6 +381,8 @@ paths:
       description: The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
       operationId: authAccounts
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -414,6 +422,8 @@ paths:
         and token query parameters.
       operationId: cliConfirmationToken
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -466,6 +476,8 @@ paths:
       description: End the current session. A browser session's answer also clears its cookie.
       operationId: logout
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -518,6 +530,8 @@ paths:
         that is past its end, answers 404.
       operationId: authOAuthRequest
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - description: The authorization request's ID.
           in: path
@@ -563,6 +577,8 @@ paths:
         request that was approved or denied already, or that is past its end, answers 404.
       operationId: authOAuthRequestApprove
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - description: The authorization request's ID.
@@ -617,6 +633,8 @@ paths:
         was approved or denied already, or that is past its end, answers 404.
       operationId: authOAuthRequestDeny
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - description: The authorization request's ID.
@@ -666,6 +684,8 @@ paths:
         404, as does a credential that is not a member's.
       operationId: authSessionAccount
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -715,6 +735,8 @@ paths:
       description: Exchange a secret API key for an API token, which the Users jwt carries until validUntil.
       operationId: apiKeyUser
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:

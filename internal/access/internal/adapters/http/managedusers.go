@@ -67,13 +67,14 @@ var userStatuses = map[member.Status]api.UserStatus{
 	member.Deactivated: api.UserStatusINACTIVE,
 }
 
-// managedUser is u as Spacelift's ManagedUser. Role bindings and space
-// access arrive with P4b, so role is USER and the rules and counts are
-// empty; no identity provider is configured before P23's, so loginMethod
-// is EMPTY.
-func managedUser(u managed.User) api.ManagedUser {
+// managedUser is u as Spacelift's ManagedUser, with acts as its
+// allowedActions. Role bindings and space access arrive with P4b, so role
+// is USER and the rules and counts are empty; no identity provider is
+// configured before P23's, so loginMethod is EMPTY.
+func managedUser(u managed.User, acts []api.Action) api.ManagedUser {
 	out := api.ManagedUser{
 		AccessRules:          []api.SpaceAccessRule{},
+		AllowedActions:       acts,
 		GroupCount:           int32(min(u.GroupCount, 1<<31-1)), //nolint:gosec // clamped
 		Id:                   u.Member.ID.String(),
 		LatestGroups:         nonNil(u.LatestGroups),
@@ -116,12 +117,26 @@ func managedGroup(g group.Group) api.ManagedUserGroup {
 	}
 }
 
-func managedUsers(us []managed.User) []api.ManagedUser {
+func managedUsers(us []managed.User, acts []api.Action) []api.ManagedUser {
 	out := make([]api.ManagedUser, 0, len(us))
 	for _, u := range us {
-		out = append(out, managedUser(u))
+		out = append(out, managedUser(u, acts))
 	}
 	return out
+}
+
+// userView is managedUser of u with the actions the caller holds on a
+// managed user.
+func (s Server) userView(
+	ctx context.Context,
+	p kernel.Principal,
+	u managed.User,
+) (api.ManagedUser, error) {
+	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	if err != nil {
+		return api.ManagedUser{}, err
+	}
+	return managedUser(u, acts), nil
 }
 
 func userID(u managed.User) string { return u.Member.ID.String() }
@@ -146,8 +161,12 @@ func (s Server) ManagedUsers(
 	if err != nil {
 		return nil, err
 	}
+	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	if err != nil {
+		return nil, err
+	}
 	return api.ManagedUsers200JSONResponse{
-		Body: api.ManagedUserPage{Items: managedUsers(us), NextCursor: next},
+		Body: api.ManagedUserPage{Items: managedUsers(us, acts), NextCursor: next},
 	}, nil
 }
 
@@ -164,7 +183,11 @@ func (s Server) ManagedUser(
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
-	return api.ManagedUser200JSONResponse{Body: managedUser(u)}, nil
+	v, err := s.userView(ctx, p, u)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUser200JSONResponse{Body: v}, nil
 }
 
 // ManagedUserInviteV2 invites a person to the account.
@@ -184,7 +207,11 @@ func (s Server) ManagedUserInviteV2(
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
-	return api.ManagedUserInviteV2201JSONResponse{Body: managedUser(u)}, nil
+	v, err := s.userView(ctx, p, u)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUserInviteV2201JSONResponse{Body: v}, nil
 }
 
 // ManagedUserUpdate sets a managed user's Slack member.
@@ -201,7 +228,11 @@ func (s Server) ManagedUserUpdate(
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
-	return api.ManagedUserUpdate200JSONResponse{Body: managedUser(u)}, nil
+	v, err := s.userView(ctx, p, u)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUserUpdate200JSONResponse{Body: v}, nil
 }
 
 // ManagedUserDelete removes a managed user from the account and answers
@@ -218,7 +249,11 @@ func (s Server) ManagedUserDelete(
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
-	return api.ManagedUserDelete200JSONResponse{Body: managedUser(u)}, nil
+	v, err := s.userView(ctx, p, u)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUserDelete200JSONResponse{Body: v}, nil
 }
 
 // ManagedUserResendInvite restarts a pending managed user's invitation.
@@ -234,7 +269,11 @@ func (s Server) ManagedUserResendInvite(
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
-	return api.ManagedUserResendInvite200JSONResponse{Body: managedUser(u)}, nil
+	v, err := s.userView(ctx, p, u)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUserResendInvite200JSONResponse{Body: v}, nil
 }
 
 // ManagedUserRequestInvite records a request that the account's admins
@@ -290,9 +329,13 @@ func (s Server) ManagedUserPersonalApiKeys(
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
+	acts, err := s.keyActions(ctx)
+	if err != nil {
+		return nil, err
+	}
 	body := api.ApiKeyPage{Items: make([]api.ApiKey, 0, len(keys)), NextCursor: next}
 	for _, k := range keys {
-		body.Items = append(body.Items, apiKey(k, ""))
+		body.Items = append(body.Items, apiKey(k, "", acts))
 	}
 	return api.ManagedUserPersonalApiKeys200JSONResponse{Body: body}, nil
 }
@@ -407,8 +450,12 @@ func (s Server) ManagedUserGroupManagedUsers(
 	if err != nil {
 		return nil, managedError(err, "managed user group")
 	}
+	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	if err != nil {
+		return nil, err
+	}
 	return api.ManagedUserGroupManagedUsers200JSONResponse{
-		Body: api.ManagedUserPage{Items: managedUsers(us), NextCursor: next},
+		Body: api.ManagedUserPage{Items: managedUsers(us, acts), NextCursor: next},
 	}, nil
 }
 

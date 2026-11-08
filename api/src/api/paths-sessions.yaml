@@ -3,7 +3,7 @@
 components:
   schemas:
     SessionPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -21,6 +21,8 @@ paths:
       description: Invalidate all account sessions except for the session making the request. Returns the deleted sessions.
       operationId: sessionDeleteAll
       x-infraweave-feature: sessions
+      x-infraweave-action: SESSION_DELETE
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -59,6 +61,8 @@ paths:
         tier. An empty array will be returned for Starter tier accounts.
       operationId: sessions
       x-infraweave-feature: sessions
+      x-infraweave-action: SESSION_READ
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -102,6 +106,8 @@ paths:
       description: 'Invalidate a Session. NOTE: this functionality is not available in the Starter tier.'
       operationId: sessionDelete
       x-infraweave-feature: sessions
+      x-infraweave-action: SESSION_DELETE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: sessionId

@@ -45,9 +45,13 @@ func (s Server) ApiKeys(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store marks an unreachable database
 	}
+	acts, err := s.keyActions(ctx)
+	if err != nil {
+		return nil, err
+	}
 	body := api.ApiKeyPage{Items: make([]api.ApiKey, 0, min(len(keys), limit))}
 	for _, k := range keys[:min(len(keys), limit)] {
-		body.Items = append(body.Items, apiKey(k, ""))
+		body.Items = append(body.Items, apiKey(k, "", acts))
 	}
 	if len(keys) > limit {
 		last := keys[limit-1].ID.String()
@@ -93,7 +97,11 @@ func (s Server) ApiKeyCreate(
 	if err != nil {
 		return nil, keyError(err, "")
 	}
-	return api.ApiKeyCreate201JSONResponse{Body: apiKey(k, secret)}, nil
+	v, err := s.keyView(ctx, k, secret)
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKeyCreate201JSONResponse{Body: v}, nil
 }
 
 // ApiKey reads an API key of the caller's account; any other answers 404.
@@ -107,7 +115,11 @@ func (s Server) ApiKey(
 	if err != nil {
 		return nil, err
 	}
-	return api.ApiKey200JSONResponse{Body: apiKey(k, "")}, nil
+	v, err := s.keyView(ctx, k, "")
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKey200JSONResponse{Body: v}, nil
 }
 
 // ApiKeyUpdate changes the fields the body sets of an API key of the
@@ -134,7 +146,11 @@ func (s Server) ApiKeyUpdate(
 	if err != nil {
 		return nil, err
 	}
-	return api.ApiKeyUpdate200JSONResponse{Body: apiKey(k, "")}, nil
+	v, err := s.keyView(ctx, k, "")
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKeyUpdate200JSONResponse{Body: v}, nil
 }
 
 // ApiKeyReset replaces the secret of an API key of the caller's account,
@@ -156,7 +172,11 @@ func (s Server) ApiKeyReset(
 	if err != nil {
 		return nil, err
 	}
-	return api.ApiKeyReset200JSONResponse{Body: apiKey(k, secret)}, nil
+	v, err := s.keyView(ctx, k, secret)
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKeyReset200JSONResponse{Body: v}, nil
 }
 
 // ApiKeyDelete deletes an API key of the caller's account and revokes
@@ -171,7 +191,11 @@ func (s Server) ApiKeyDelete(
 	if err != nil {
 		return nil, err
 	}
-	return api.ApiKeyDelete200JSONResponse{Body: apiKey(k, "")}, nil
+	v, err := s.keyView(ctx, k, "")
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKeyDelete200JSONResponse{Body: v}, nil
 }
 
 // ApiKeyEnableNonAdminManagers records whether admins of spaces below the
@@ -218,11 +242,17 @@ func (s Server) onKey(
 
 // keyError is err as the problem it answers: 404 for a key the caller's
 // account does not hold, 422 for input the service refuses, 403 for a key
-// or a run managing keys where only people may, and for a personal key
-// that is not a member's own or that the account turns off, and err
-// itself otherwise, which the store marks when the database is
-// unreachable.
+// or a run managing keys where only people may, for a caller the
+// managers' rule refuses, naming the action, and for a personal key that
+// is not a member's own or that the account turns off, and err itself
+// otherwise, which the store marks when the database is unreachable.
 func keyError(err error, id string) error {
+	if d, ok := errors.AsType[*apikey.Denied](err); ok {
+		p := problem.Forbidden.New(fmt.Sprintf("You may not perform %s on this account's API keys.",
+			d.Action))
+		p.Action = string(d.Action)
+		return &problem.Error{Problem: p}
+	}
 	switch {
 	case errors.Is(err, port.ErrNotFound):
 		//nolint:wrapcheck // a problem, answered as it is
@@ -236,29 +266,53 @@ func keyError(err error, id string) error {
 	return err
 }
 
+// keyActions are the actions the caller may perform on a key of its
+// account, by the apikey service's rule, which names no key.
+func (s Server) keyActions(ctx context.Context) ([]api.Action, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	acts, err := s.keys.Actions(ctx, p)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store marks an unreachable database
+	}
+	return actions(acts), nil
+}
+
+// keyView is apiKey of k with the caller's keyActions.
+func (s Server) keyView(ctx context.Context, k apikey.Key, secret string) (api.ApiKey, error) {
+	acts, err := s.keyActions(ctx)
+	if err != nil {
+		return api.ApiKey{}, err
+	}
+	return apiKey(k, secret, acts), nil
+}
+
 // apiKey is k in the reference's ApiKey shape, with secret when create or
-// reset has just made one. admin reads whether the key holds a space-admin
-// binding on the account's top space; access rules and spaces read empty
-// until API key bindings are served.
-func apiKey(k apikey.Key, secret string) api.ApiKey {
+// reset has just made one, and acts as its allowedActions. admin reads
+// whether the key holds a space-admin binding on the account's top space;
+// access rules and spaces read empty until API key bindings are served.
+func apiKey(k apikey.Key, secret string, acts []api.Action) api.ApiKey {
 	out := api.ApiKey{
-		Admin:         k.Admin,
-		AccessRules:   []api.SpaceAccessRule{},
-		CreatedAt:     unix(k.CreatedAt),
-		Creator:       k.Creator,
-		Deleted:       !k.DeletedAt.IsZero(),
-		Description:   k.Description,
-		Disabled:      !k.DisabledAt.IsZero(),
-		Id:            k.ID.String(),
-		IsMachineUser: k.Machine,
-		IsPersonal:    k.Personal(),
-		Name:          k.Name,
-		TeamCount:     int32(min(len(k.Teams), 1<<31-1)), //nolint:gosec // clamped
-		Teams:         nonNil(k.Teams),
-		Type:          api.APIKeyType(k.Type),
-		DisabledAt:    optUnix(k.DisabledAt),
-		ExpiresAt:     optUnix(k.ExpiresAt),
-		LastUsedAt:    optUnix(k.LastUsedAt),
+		Admin:          k.Admin,
+		AllowedActions: acts,
+		AccessRules:    []api.SpaceAccessRule{},
+		CreatedAt:      unix(k.CreatedAt),
+		Creator:        k.Creator,
+		Deleted:        !k.DeletedAt.IsZero(),
+		Description:    k.Description,
+		Disabled:       !k.DisabledAt.IsZero(),
+		Id:             k.ID.String(),
+		IsMachineUser:  k.Machine,
+		IsPersonal:     k.Personal(),
+		Name:           k.Name,
+		TeamCount:      int32(min(len(k.Teams), 1<<31-1)), //nolint:gosec // clamped
+		Teams:          nonNil(k.Teams),
+		Type:           api.APIKeyType(k.Type),
+		DisabledAt:     optUnix(k.DisabledAt),
+		ExpiresAt:      optUnix(k.ExpiresAt),
+		LastUsedAt:     optUnix(k.LastUsedAt),
 	}
 	if secret != "" {
 		out.Secret = &secret

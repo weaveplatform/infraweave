@@ -80,6 +80,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	(&personalSteps{o: org, k: keys}).register(sc)
 	(&oauthSteps{o: org}).register(sc)
 	(&kmsSteps{s: s}).register(sc)
+	(&errorSteps{s: s}).register(sc)
 }
 
 // secretsWith is the secrets settings with kek as secrets.kek; nil

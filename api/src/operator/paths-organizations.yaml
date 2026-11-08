@@ -70,7 +70,7 @@ components:
           format: int64
           description: When the operator last set the credential, in Unix seconds.
     OrganizationPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       type: object
       required: [items]
       properties:

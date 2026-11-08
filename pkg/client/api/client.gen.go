@@ -62,6 +62,11 @@ const (
 	AIINTEGRATIONDELETE                      Action = "AI_INTEGRATION_DELETE"
 	AIINTEGRATIONTOGGLE                      Action = "AI_INTEGRATION_TOGGLE"
 	AIINTEGRATIONUPDATE                      Action = "AI_INTEGRATION_UPDATE"
+	APIKEYCREATE                             Action = "API_KEY_CREATE"
+	APIKEYDELETE                             Action = "API_KEY_DELETE"
+	APIKEYREAD                               Action = "API_KEY_READ"
+	APIKEYRESET                              Action = "API_KEY_RESET"
+	APIKEYUPDATE                             Action = "API_KEY_UPDATE"
 	CONTEXTCREATE                            Action = "CONTEXT_CREATE"
 	CONTEXTDELETE                            Action = "CONTEXT_DELETE"
 	CONTEXTUPDATE                            Action = "CONTEXT_UPDATE"
@@ -100,6 +105,14 @@ const (
 	INTENTRESOURCEUPDATE                     Action = "INTENT_RESOURCE_UPDATE"
 	INTENTSTATEEJECT                         Action = "INTENT_STATE_EJECT"
 	INTENTSTATEREAD                          Action = "INTENT_STATE_READ"
+	MANAGEDUSERDELETE                        Action = "MANAGED_USER_DELETE"
+	MANAGEDUSERGROUPCREATE                   Action = "MANAGED_USER_GROUP_CREATE"
+	MANAGEDUSERGROUPDELETE                   Action = "MANAGED_USER_GROUP_DELETE"
+	MANAGEDUSERGROUPREAD                     Action = "MANAGED_USER_GROUP_READ"
+	MANAGEDUSERGROUPUPDATE                   Action = "MANAGED_USER_GROUP_UPDATE"
+	MANAGEDUSERINVITE                        Action = "MANAGED_USER_INVITE"
+	MANAGEDUSERREAD                          Action = "MANAGED_USER_READ"
+	MANAGEDUSERUPDATE                        Action = "MANAGED_USER_UPDATE"
 	MODULECREATE                             Action = "MODULE_CREATE"
 	MODULEDISABLE                            Action = "MODULE_DISABLE"
 	MODULEENABLE                             Action = "MODULE_ENABLE"
@@ -133,6 +146,8 @@ const (
 	RUNTARGETEDREPLAN                        Action = "RUN_TARGETED_REPLAN"
 	RUNTRIGGER                               Action = "RUN_TRIGGER"
 	RUNTRIGGERWITHCUSTOMRUNTIMECONFIG        Action = "RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG"
+	SESSIONDELETE                            Action = "SESSION_DELETE"
+	SESSIONREAD                              Action = "SESSION_READ"
 	SPACEADMIN                               Action = "SPACE_ADMIN"
 	SPACEREAD                                Action = "SPACE_READ"
 	SPACESHAREMODULE                         Action = "SPACE_SHARE_MODULE"
@@ -213,6 +228,16 @@ func (e Action) Valid() bool {
 		return true
 	case AIINTEGRATIONUPDATE:
 		return true
+	case APIKEYCREATE:
+		return true
+	case APIKEYDELETE:
+		return true
+	case APIKEYREAD:
+		return true
+	case APIKEYRESET:
+		return true
+	case APIKEYUPDATE:
+		return true
 	case CONTEXTCREATE:
 		return true
 	case CONTEXTDELETE:
@@ -289,6 +314,22 @@ func (e Action) Valid() bool {
 		return true
 	case INTENTSTATEREAD:
 		return true
+	case MANAGEDUSERDELETE:
+		return true
+	case MANAGEDUSERGROUPCREATE:
+		return true
+	case MANAGEDUSERGROUPDELETE:
+		return true
+	case MANAGEDUSERGROUPREAD:
+		return true
+	case MANAGEDUSERGROUPUPDATE:
+		return true
+	case MANAGEDUSERINVITE:
+		return true
+	case MANAGEDUSERREAD:
+		return true
+	case MANAGEDUSERUPDATE:
+		return true
 	case MODULECREATE:
 		return true
 	case MODULEDISABLE:
@@ -354,6 +395,10 @@ func (e Action) Valid() bool {
 	case RUNTRIGGER:
 		return true
 	case RUNTRIGGERWITHCUSTOMRUNTIMECONFIG:
+		return true
+	case SESSIONDELETE:
+		return true
+	case SESSIONREAD:
 		return true
 	case SPACEADMIN:
 		return true
@@ -2198,7 +2243,7 @@ type AccountUpdateSecurityEmailRequest struct {
 	SecurityEmail string `json:"securityEmail"`
 }
 
-// Action Action represents an action that a user can perform.
+// Action Action represents an action that a user can perform. The values after AI_INTEGRATION_TOGGLE act on the account's API keys, sessions, managed users and groups, which belong to the account rather than to a space, so they are held on the account's top space.
 type Action string
 
 // AnsibleEntity Possible Ansible entity types.
@@ -2225,6 +2270,9 @@ type ApiKey struct {
 
 	// Admin Whether the key holds a space-admin role binding on the account's top space.
 	Admin bool `json:"admin"`
+
+	// AllowedActions The actions the caller may perform on the API key, from the rules that enforce them.
+	AllowedActions []Action `json:"allowedActions"`
 
 	// CreatedAt Creation timestamp.
 	CreatedAt int32 `json:"createdAt"`
@@ -2297,7 +2345,7 @@ type ApiKeyEnableNonAdminManagersRequest struct {
 
 // ApiKeyInput A new API key. There is no admin field: a body that sets one answers
 // 400, and a key becomes an account admin through a space-admin role
-// binding on the account's top space (decision 0006).
+// binding on the account's top space.
 type ApiKeyInput struct {
 	// Description Description of the API key
 	Description *string `json:"description,omitempty"`
@@ -2325,7 +2373,7 @@ type ApiKeyOIDCSettings struct {
 	SubjectExpression string `json:"subjectExpression"`
 }
 
-// ApiKeyPage One page of a cursor-paginated list (decision 0003).
+// ApiKeyPage One page of a cursor-paginated list.
 type ApiKeyPage struct {
 	Items []ApiKey `json:"items"`
 
@@ -2409,7 +2457,7 @@ type AuthSessionAccountRequest struct {
 	Account string `json:"account"`
 }
 
-// AvailableUserGroupsPage One page of a cursor-paginated list (decision 0003).
+// AvailableUserGroupsPage One page of a cursor-paginated list.
 type AvailableUserGroupsPage struct {
 	Items []string `json:"items"`
 
@@ -2488,7 +2536,7 @@ type AwsIntegration struct {
 // AwsIntegrationKind The concrete type, for union and interface responses.
 type AwsIntegrationKind string
 
-// AwsIntegrationPage One page of a cursor-paginated list (decision 0003).
+// AwsIntegrationPage One page of a cursor-paginated list.
 type AwsIntegrationPage struct {
 	Items []AwsIntegration `json:"items"`
 
@@ -2595,7 +2643,7 @@ type AzureIntegration struct {
 	UpdatedAt int32 `json:"updatedAt"`
 }
 
-// AzureIntegrationPage One page of a cursor-paginated list (decision 0003).
+// AzureIntegrationPage One page of a cursor-paginated list.
 type AzureIntegrationPage struct {
 	Items []AzureIntegration `json:"items"`
 
@@ -2650,7 +2698,7 @@ type BillingAddon struct {
 	YearlyPrice int32 `json:"yearlyPrice"`
 }
 
-// BillingAddonPage One page of a cursor-paginated list (decision 0003).
+// BillingAddonPage One page of a cursor-paginated list.
 type BillingAddonPage struct {
 	Items []BillingAddon `json:"items"`
 
@@ -2711,7 +2759,7 @@ type BillingPlan struct {
 	YearlyPrice int32 `json:"yearlyPrice"`
 }
 
-// BillingPlanPage One page of a cursor-paginated list (decision 0003).
+// BillingPlanPage One page of a cursor-paginated list.
 type BillingPlanPage struct {
 	Items []BillingPlan `json:"items"`
 
@@ -3009,7 +3057,7 @@ type Context struct {
 // ContextKind The concrete type, for union and interface responses.
 type ContextKind string
 
-// ContextPage One page of a cursor-paginated list (decision 0003).
+// ContextPage One page of a cursor-paginated list.
 type ContextPage struct {
 	Items []Context `json:"items"`
 
@@ -3241,7 +3289,7 @@ type FeatureFlagEvaluationResult struct {
 	Value string `json:"value"`
 }
 
-// FeatureFlagEvaluationResultPage One page of a cursor-paginated list (decision 0003).
+// FeatureFlagEvaluationResultPage One page of a cursor-paginated list.
 type FeatureFlagEvaluationResultPage struct {
 	Items []FeatureFlagEvaluationResult `json:"items"`
 
@@ -3589,6 +3637,9 @@ type ManagedUser struct {
 	// AccessRules List of permissions given explicitly to given user.
 	AccessRules []SpaceAccessRule `json:"accessRules"`
 
+	// AllowedActions The actions the caller may perform on the managed user, from the rules that enforce them.
+	AllowedActions []Action `json:"allowedActions"`
+
 	// GroupCount Number of groups in your identity provider that this user was a member of on last login.
 	GroupCount int32 `json:"groupCount"`
 
@@ -3659,7 +3710,7 @@ type ManagedUserGroupCreateInputV2 struct {
 	RoleBindings []RoleBindingInput `json:"roleBindings"`
 }
 
-// ManagedUserGroupPage One page of a cursor-paginated list (decision 0003).
+// ManagedUserGroupPage One page of a cursor-paginated list.
 type ManagedUserGroupPage struct {
 	Items []ManagedUserGroup `json:"items"`
 
@@ -3696,7 +3747,7 @@ type ManagedUserInviteInputV2 struct {
 	Username string `json:"username"`
 }
 
-// ManagedUserPage One page of a cursor-paginated list (decision 0003).
+// ManagedUserPage One page of a cursor-paginated list.
 type ManagedUserPage struct {
 	Items []ManagedUser `json:"items"`
 
@@ -3743,7 +3794,7 @@ type MessageQueueStats struct {
 	Visible int32 `json:"visible"`
 }
 
-// MessageQueueStatsPage One page of a cursor-paginated list (decision 0003).
+// MessageQueueStatsPage One page of a cursor-paginated list.
 type MessageQueueStatsPage struct {
 	Items []MessageQueueStats `json:"items"`
 
@@ -3803,7 +3854,7 @@ type ModuleResource struct {
 	Type string `json:"type"`
 }
 
-// OauthRedirectAllowedHostsPage One page of a cursor-paginated list (decision 0003).
+// OauthRedirectAllowedHostsPage One page of a cursor-paginated list.
 type OauthRedirectAllowedHostsPage struct {
 	Items []string `json:"items"`
 
@@ -3898,7 +3949,7 @@ type OrganizationAccountLimitRequest struct {
 	Value int64 `json:"value"`
 }
 
-// OrganizationAccountPage One page of a cursor-paginated list (decision 0003).
+// OrganizationAccountPage One page of a cursor-paginated list.
 type OrganizationAccountPage struct {
 	Items []OrganizationAccount `json:"items"`
 
@@ -3954,7 +4005,7 @@ type OrganizationKeyCreateRequest struct {
 	Name string `json:"name"`
 }
 
-// OrganizationKeyPage One page of a cursor-paginated list (decision 0003).
+// OrganizationKeyPage One page of a cursor-paginated list.
 type OrganizationKeyPage struct {
 	Items []OrganizationKey `json:"items"`
 
@@ -4003,7 +4054,7 @@ type OrganizationMember struct {
 	Status OrganizationMemberStatus `json:"status"`
 }
 
-// OrganizationMemberPage One page of a cursor-paginated list (decision 0003).
+// OrganizationMemberPage One page of a cursor-paginated list.
 type OrganizationMemberPage struct {
 	Items []OrganizationMember `json:"items"`
 
@@ -4020,7 +4071,7 @@ type OrganizationUpdateRequest struct {
 	Name string `json:"name"`
 }
 
-// OrganizationUsagePage One page of a cursor-paginated list (decision 0003).
+// OrganizationUsagePage One page of a cursor-paginated list.
 type OrganizationUsagePage struct {
 	Items []OrganizationAccountUsage `json:"items"`
 
@@ -4198,7 +4249,7 @@ type PolicyIntentProjectAttachment struct {
 	ProjectSpaceDetails SpaceRef `json:"projectSpaceDetails"`
 }
 
-// PolicyPage One page of a cursor-paginated list (decision 0003).
+// PolicyPage One page of a cursor-paginated list.
 type PolicyPage struct {
 	Items []Policy `json:"items"`
 
@@ -4237,10 +4288,13 @@ type PolicyType string
 
 // Problem An RFC 9457 problem detail. Every error response uses the status code and this body.
 type Problem struct {
+	// Action For forbidden, when an action decided it, the action the caller may not perform, a value of the Action enum or a pseudo-action.
+	Action *string `json:"action,omitempty"`
+
 	// Detail What went wrong with this request.
 	Detail *string `json:"detail,omitempty"`
 
-	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
 	Feature *string `json:"feature,omitempty"`
 
 	// Instance The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
@@ -4623,7 +4677,7 @@ type RunObservabilityStatus struct {
 	Traces ObservabilityProcessingStatus `json:"traces"`
 }
 
-// RunPage One page of a cursor-paginated list (decision 0003).
+// RunPage One page of a cursor-paginated list.
 type RunPage struct {
 	Items []Run `json:"items"`
 
@@ -5331,7 +5385,7 @@ type SeatLimit struct {
 	Limit *int64 `json:"limit,omitempty"`
 }
 
-// Seats The seats of the caller's account: the pooled seats limit of its organization with the organization's use, and the account's own limit with its use when one is set (decision 0021, DV-080).
+// Seats The seats of the caller's account: the pooled seats limit of its organization with the organization's use, and the account's own limit with its use when one is set.
 type Seats struct {
 	// Account A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
 	Account *SeatLimit `json:"account,omitempty"`
@@ -5362,6 +5416,9 @@ type SecurityKey struct {
 type Session struct {
 	// Admin Admin means that the user is an admin of the organization.
 	Admin bool `json:"admin"`
+
+	// AllowedActions The actions the caller may perform on the session, from the rules that enforce them.
+	AllowedActions []Action `json:"allowedActions"`
 
 	// Channel SessionChannel is the login path a session came through.
 	Channel SessionChannel `json:"channel"`
@@ -5403,7 +5460,7 @@ type Session struct {
 // SessionChannel SessionChannel is the login path a session came through.
 type SessionChannel string
 
-// SessionPage One page of a cursor-paginated list (decision 0003).
+// SessionPage One page of a cursor-paginated list.
 type SessionPage struct {
 	Items []Session `json:"items"`
 
@@ -6520,7 +6577,7 @@ type StackOutput struct {
 	Value *string `json:"value,omitempty"`
 }
 
-// StackPage One page of a cursor-paginated list (decision 0003).
+// StackPage One page of a cursor-paginated list.
 type StackPage struct {
 	Items []Stack `json:"items"`
 
@@ -6580,7 +6637,7 @@ type StackRoleBinding struct {
 // StackRoleBindingKind The concrete type, for union and interface responses.
 type StackRoleBindingKind string
 
-// StackRoleBindingPage One page of a cursor-paginated list (decision 0003).
+// StackRoleBindingPage One page of a cursor-paginated list.
 type StackRoleBindingPage struct {
 	Items []StackRoleBinding `json:"items"`
 
@@ -6813,7 +6870,7 @@ type TerragruntRuntimeConfig struct {
 // TerragruntTool TerragruntTool defines the underlying tool run by Terragrunt.
 type TerragruntTool string
 
-// Tier A tier as the operator defines it (decision 0021, DV-079), in place of the BillingTier enum.
+// Tier A tier as the operator defines it, in place of the BillingTier enum.
 type Tier struct {
 	// Features The features the tier holds, as infraweave names them, sorted.
 	Features []string `json:"features"`
@@ -6823,7 +6880,7 @@ type Tier struct {
 	Name   string           `json:"name"`
 }
 
-// TierFeaturePage One page of a cursor-paginated list (decision 0003).
+// TierFeaturePage One page of a cursor-paginated list.
 type TierFeaturePage struct {
 	Items []string `json:"items"`
 
@@ -7146,7 +7203,7 @@ type WorkerPool struct {
 // WorkerPoolKind The concrete type, for union and interface responses.
 type WorkerPoolKind string
 
-// WorkerPoolPage One page of a cursor-paginated list (decision 0003).
+// WorkerPoolPage One page of a cursor-paginated list.
 type WorkerPoolPage struct {
 	Items []WorkerPool `json:"items"`
 
@@ -9561,14 +9618,14 @@ type ClientInterface interface {
 
 	// AvailableBillingAddons Available Billing Addons
 	//
-	// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+	// An empty list: infraweave sells no add-ons.
 	//
 	// Corresponds with GET /available-billing-addons (the `AvailableBillingAddons` operationId).
 	AvailableBillingAddons(ctx context.Context, params *AvailableBillingAddonsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AvailableSelfServicePlans Available Self Service Plans
 	//
-	// An empty list: infraweave sells no plans (decision 0021, DV-080).
+	// An empty list: infraweave sells no plans.
 	//
 	// Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
 	AvailableSelfServicePlans(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9589,28 +9646,28 @@ type ClientInterface interface {
 
 	// BilledExternally Billed Externally
 	//
-	// true: no Stripe subscription exists (decision 0021, DV-080).
+	// true: no Stripe subscription exists.
 	//
 	// Corresponds with GET /billed-externally (the `BilledExternally` operationId).
 	BilledExternally(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// BillingSubscriptionDelete Billing Subscription Delete
 	//
-	// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Corresponds with DELETE /billing-subscription (the `BillingSubscriptionDelete` operationId).
 	BillingSubscriptionDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// BillingSubscription Billing Subscription
 	//
-	// null: no Stripe subscription exists (decision 0021, DV-080).
+	// null: no Stripe subscription exists.
 	//
 	// Corresponds with GET /billing-subscription (the `BillingSubscription` operationId).
 	BillingSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// BillingSubscriptionCreateWithBody Billing Subscription Create
 	//
-	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9619,7 +9676,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionCreate Billing Subscription Create
 	//
-	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9628,7 +9685,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionUpdateV2WithBody Billing Subscription Update V2
 	//
-	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9637,7 +9694,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionUpdateV2 Billing Subscription Update V2
 	//
-	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9646,7 +9703,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionUpdateInfoWithBody Billing Subscription Update Info
 	//
-	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9655,7 +9712,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionUpdateInfo Billing Subscription Update Info
 	//
-	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9664,7 +9721,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionUpdateTierWithBody Billing Subscription Update Tier
 	//
-	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9673,7 +9730,7 @@ type ClientInterface interface {
 
 	// BillingSubscriptionUpdateTier Billing Subscription Update Tier
 	//
-	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9689,7 +9746,7 @@ type ClientInterface interface {
 
 	// EvaluateFeatureFlags Evaluate Feature Flags
 	//
-	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
 	//
 	// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
 	EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9886,7 +9943,7 @@ type ClientInterface interface {
 
 	// OnTrialUntil On Trial Until
 	//
-	// null: an infraweave account is never on a trial (decision 0021, DV-080).
+	// null: an infraweave account is never on a trial.
 	//
 	// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
 	OnTrialUntil(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10157,7 +10214,7 @@ type ClientInterface interface {
 
 	// Seats Seats
 	//
-	// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+	// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
 	//
 	// Corresponds with GET /seats (the `Seats` operationId).
 	Seats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -11065,14 +11122,14 @@ type ClientInterface interface {
 
 	// Tier Tier
 	//
-	// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+	// The tier of the caller's organization, as the operator defines it. With billing off it is Enterprise, which every organization then has.
 	//
 	// Corresponds with GET /tier (the `Tier` operationId).
 	Tier(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TierFeatures Tier Features
 	//
-	// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+	// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off. With billing off it is every gated feature the operator has not switched off.
 	//
 	// Corresponds with GET /tier-features (the `TierFeatures` operationId).
 	TierFeatures(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -11837,7 +11894,7 @@ func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body 
 
 // AvailableBillingAddons Available Billing Addons
 //
-// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+// An empty list: infraweave sells no add-ons.
 //
 // Corresponds with GET /available-billing-addons (the `AvailableBillingAddons` operationId).
 func (c *Client) AvailableBillingAddons(ctx context.Context, params *AvailableBillingAddonsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11854,7 +11911,7 @@ func (c *Client) AvailableBillingAddons(ctx context.Context, params *AvailableBi
 
 // AvailableSelfServicePlans Available Self Service Plans
 //
-// An empty list: infraweave sells no plans (decision 0021, DV-080).
+// An empty list: infraweave sells no plans.
 //
 // Corresponds with GET /available-self-service-plans (the `AvailableSelfServicePlans` operationId).
 func (c *Client) AvailableSelfServicePlans(ctx context.Context, params *AvailableSelfServicePlansParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11905,7 +11962,7 @@ func (c *Client) AwarenessSourceSurvey(ctx context.Context, reqEditors ...Reques
 
 // BilledExternally Billed Externally
 //
-// true: no Stripe subscription exists (decision 0021, DV-080).
+// true: no Stripe subscription exists.
 //
 // Corresponds with GET /billed-externally (the `BilledExternally` operationId).
 func (c *Client) BilledExternally(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11922,7 +11979,7 @@ func (c *Client) BilledExternally(ctx context.Context, reqEditors ...RequestEdit
 
 // BillingSubscriptionDelete Billing Subscription Delete
 //
-// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Corresponds with DELETE /billing-subscription (the `BillingSubscriptionDelete` operationId).
 func (c *Client) BillingSubscriptionDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11939,7 +11996,7 @@ func (c *Client) BillingSubscriptionDelete(ctx context.Context, reqEditors ...Re
 
 // BillingSubscription Billing Subscription
 //
-// null: no Stripe subscription exists (decision 0021, DV-080).
+// null: no Stripe subscription exists.
 //
 // Corresponds with GET /billing-subscription (the `BillingSubscription` operationId).
 func (c *Client) BillingSubscription(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11956,7 +12013,7 @@ func (c *Client) BillingSubscription(ctx context.Context, reqEditors ...RequestE
 
 // BillingSubscriptionCreateWithBody Billing Subscription Create
 //
-// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type.
 //
@@ -11975,7 +12032,7 @@ func (c *Client) BillingSubscriptionCreateWithBody(ctx context.Context, params *
 
 // BillingSubscriptionCreate Billing Subscription Create
 //
-// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -11994,7 +12051,7 @@ func (c *Client) BillingSubscriptionCreate(ctx context.Context, params *BillingS
 
 // BillingSubscriptionUpdateV2WithBody Billing Subscription Update V2
 //
-// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type.
 //
@@ -12013,7 +12070,7 @@ func (c *Client) BillingSubscriptionUpdateV2WithBody(ctx context.Context, conten
 
 // BillingSubscriptionUpdateV2 Billing Subscription Update V2
 //
-// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -12032,7 +12089,7 @@ func (c *Client) BillingSubscriptionUpdateV2(ctx context.Context, body BillingSu
 
 // BillingSubscriptionUpdateInfoWithBody Billing Subscription Update Info
 //
-// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type.
 //
@@ -12051,7 +12108,7 @@ func (c *Client) BillingSubscriptionUpdateInfoWithBody(ctx context.Context, para
 
 // BillingSubscriptionUpdateInfo Billing Subscription Update Info
 //
-// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -12070,7 +12127,7 @@ func (c *Client) BillingSubscriptionUpdateInfo(ctx context.Context, params *Bill
 
 // BillingSubscriptionUpdateTierWithBody Billing Subscription Update Tier
 //
-// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type.
 //
@@ -12089,7 +12146,7 @@ func (c *Client) BillingSubscriptionUpdateTierWithBody(ctx context.Context, para
 
 // BillingSubscriptionUpdateTier Billing Subscription Update Tier
 //
-// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -12125,7 +12182,7 @@ func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEdi
 
 // EvaluateFeatureFlags Evaluate Feature Flags
 //
-// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
 //
 // Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
 func (c *Client) EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -12572,7 +12629,7 @@ func (c *Client) OauthRedirectAllowedHosts(ctx context.Context, params *OauthRed
 
 // OnTrialUntil On Trial Until
 //
-// null: an infraweave account is never on a trial (decision 0021, DV-080).
+// null: an infraweave account is never on a trial.
 //
 // Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
 func (c *Client) OnTrialUntil(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -13163,7 +13220,7 @@ func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId str
 
 // Seats Seats
 //
-// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
 //
 // Corresponds with GET /seats (the `Seats` operationId).
 func (c *Client) Seats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15151,7 +15208,7 @@ func (c *Client) StateUploadUrl(ctx context.Context, params *StateUploadUrlParam
 
 // Tier Tier
 //
-// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+// The tier of the caller's organization, as the operator defines it. With billing off it is Enterprise, which every organization then has.
 //
 // Corresponds with GET /tier (the `Tier` operationId).
 func (c *Client) Tier(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15168,7 +15225,7 @@ func (c *Client) Tier(ctx context.Context, reqEditors ...RequestEditorFn) (*http
 
 // TierFeatures Tier Features
 //
-// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off. With billing off it is every gated feature the operator has not switched off.
 //
 // Corresponds with GET /tier-features (the `TierFeatures` operationId).
 func (c *Client) TierFeatures(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -24063,7 +24120,7 @@ type ClientWithResponsesInterface interface {
 
 	// AvailableBillingAddonsWithResponse Available Billing Addons
 	//
-	// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+	// An empty list: infraweave sells no add-ons.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24072,7 +24129,7 @@ type ClientWithResponsesInterface interface {
 
 	// AvailableSelfServicePlansWithResponse Available Self Service Plans
 	//
-	// An empty list: infraweave sells no plans (decision 0021, DV-080).
+	// An empty list: infraweave sells no plans.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24099,7 +24156,7 @@ type ClientWithResponsesInterface interface {
 
 	// BilledExternallyWithResponse Billed Externally
 	//
-	// true: no Stripe subscription exists (decision 0021, DV-080).
+	// true: no Stripe subscription exists.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24108,7 +24165,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionDeleteWithResponse Billing Subscription Delete
 	//
-	// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24117,7 +24174,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionWithResponse Billing Subscription
 	//
-	// null: no Stripe subscription exists (decision 0021, DV-080).
+	// null: no Stripe subscription exists.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24126,7 +24183,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionCreateWithBodyWithResponse Billing Subscription Create
 	//
-	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24135,7 +24192,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionCreateWithResponse Billing Subscription Create
 	//
-	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24144,7 +24201,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionUpdateV2WithBodyWithResponse Billing Subscription Update V2
 	//
-	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24153,7 +24210,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionUpdateV2WithResponse Billing Subscription Update V2
 	//
-	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24162,7 +24219,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionUpdateInfoWithBodyWithResponse Billing Subscription Update Info
 	//
-	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24171,7 +24228,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionUpdateInfoWithResponse Billing Subscription Update Info
 	//
-	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24180,7 +24237,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionUpdateTierWithBodyWithResponse Billing Subscription Update Tier
 	//
-	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24189,7 +24246,7 @@ type ClientWithResponsesInterface interface {
 
 	// BillingSubscriptionUpdateTierWithResponse Billing Subscription Update Tier
 	//
-	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+	// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24207,7 +24264,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateFeatureFlagsWithResponse Evaluate Feature Flags
 	//
-	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24434,7 +24491,7 @@ type ClientWithResponsesInterface interface {
 
 	// OnTrialUntilWithResponse On Trial Until
 	//
-	// null: an infraweave account is never on a trial (decision 0021, DV-080).
+	// null: an infraweave account is never on a trial.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -24741,7 +24798,7 @@ type ClientWithResponsesInterface interface {
 
 	// SeatsWithResponse Seats
 	//
-	// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+	// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -25745,7 +25802,7 @@ type ClientWithResponsesInterface interface {
 
 	// TierWithResponse Tier
 	//
-	// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+	// The tier of the caller's organization, as the operator defines it. With billing off it is Enterprise, which every organization then has.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -25754,7 +25811,7 @@ type ClientWithResponsesInterface interface {
 
 	// TierFeaturesWithResponse Tier Features
 	//
-	// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+	// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off. With billing off it is every gated feature the operator has not switched off.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -42962,7 +43019,7 @@ func (c *ClientWithResponses) ApiKeyUserWithResponse(ctx context.Context, params
 
 // AvailableBillingAddonsWithResponse Available Billing Addons
 //
-// An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+// An empty list: infraweave sells no add-ons.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -42977,7 +43034,7 @@ func (c *ClientWithResponses) AvailableBillingAddonsWithResponse(ctx context.Con
 
 // AvailableSelfServicePlansWithResponse Available Self Service Plans
 //
-// An empty list: infraweave sells no plans (decision 0021, DV-080).
+// An empty list: infraweave sells no plans.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -43022,7 +43079,7 @@ func (c *ClientWithResponses) AwarenessSourceSurveyWithResponse(ctx context.Cont
 
 // BilledExternallyWithResponse Billed Externally
 //
-// true: no Stripe subscription exists (decision 0021, DV-080).
+// true: no Stripe subscription exists.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -43037,7 +43094,7 @@ func (c *ClientWithResponses) BilledExternallyWithResponse(ctx context.Context, 
 
 // BillingSubscriptionDeleteWithResponse Billing Subscription Delete
 //
-// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -43052,7 +43109,7 @@ func (c *ClientWithResponses) BillingSubscriptionDeleteWithResponse(ctx context.
 
 // BillingSubscriptionWithResponse Billing Subscription
 //
-// null: no Stripe subscription exists (decision 0021, DV-080).
+// null: no Stripe subscription exists.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -43067,7 +43124,7 @@ func (c *ClientWithResponses) BillingSubscriptionWithResponse(ctx context.Contex
 
 // BillingSubscriptionCreateWithBodyWithResponse Billing Subscription Create
 //
-// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43082,7 +43139,7 @@ func (c *ClientWithResponses) BillingSubscriptionCreateWithBodyWithResponse(ctx 
 
 // BillingSubscriptionCreateWithResponse Billing Subscription Create
 //
-// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43097,7 +43154,7 @@ func (c *ClientWithResponses) BillingSubscriptionCreateWithResponse(ctx context.
 
 // BillingSubscriptionUpdateV2WithBodyWithResponse Billing Subscription Update V2
 //
-// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43112,7 +43169,7 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateV2WithBodyWithResponse(ct
 
 // BillingSubscriptionUpdateV2WithResponse Billing Subscription Update V2
 //
-// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43127,7 +43184,7 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateV2WithResponse(ctx contex
 
 // BillingSubscriptionUpdateInfoWithBodyWithResponse Billing Subscription Update Info
 //
-// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43142,7 +43199,7 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateInfoWithBodyWithResponse(
 
 // BillingSubscriptionUpdateInfoWithResponse Billing Subscription Update Info
 //
-// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43157,7 +43214,7 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateInfoWithResponse(ctx cont
 
 // BillingSubscriptionUpdateTierWithBodyWithResponse Billing Subscription Update Tier
 //
-// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43172,7 +43229,7 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateTierWithBodyWithResponse(
 
 // BillingSubscriptionUpdateTierWithResponse Billing Subscription Update Tier
 //
-// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+// Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -43202,7 +43259,7 @@ func (c *ClientWithResponses) DefaultPrivateWorkerPoolRunnerImageWithResponse(ct
 
 // EvaluateFeatureFlagsWithResponse Evaluate Feature Flags
 //
-// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -43579,7 +43636,7 @@ func (c *ClientWithResponses) OauthRedirectAllowedHostsWithResponse(ctx context.
 
 // OnTrialUntilWithResponse On Trial Until
 //
-// null: an infraweave account is never on a trial (decision 0021, DV-080).
+// null: an infraweave account is never on a trial.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -44078,7 +44135,7 @@ func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Cont
 
 // SeatsWithResponse Seats
 //
-// The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -45730,7 +45787,7 @@ func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, pa
 
 // TierWithResponse Tier
 //
-// The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+// The tier of the caller's organization, as the operator defines it. With billing off it is Enterprise, which every organization then has.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -45745,7 +45802,7 @@ func (c *ClientWithResponses) TierWithResponse(ctx context.Context, reqEditors .
 
 // TierFeaturesWithResponse Tier Features
 //
-// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+// The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off. With billing off it is every gated feature the operator has not switched off.
 //
 // Returns a wrapper object for the known response body format(s).
 //

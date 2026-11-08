@@ -32,7 +32,10 @@
 // password hash, which infraweave auth hash-password prints; WatchSessions keeps the
 // replica's session cache in step with infraweave_invalidate.
 // Authorizer is decision 0007's evaluator for every domain, from the
-// replica's per-account snapshots, which also decide each account
+// replica's per-account snapshots; Requirer is the middleware deciding
+// each API operation's action on its subject, finding a space by its slug
+// and another domain's entity through the lookup ResolveSubjects
+// registers; which also decide each account
 // principal's Admin as it authenticates; WatchAuthorization keeps them in
 // step with infraweave_invalidate's authz:<account> messages and compares
 // their versions every 5 seconds for a lost one. Cron is its

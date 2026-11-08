@@ -47,7 +47,12 @@
 // authSessionAccount, is composed from the principal and the apikey
 // service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
 // that service's answers from its own rules (decision 0007's grant
-// views). The OAuth consent operations, which the console's consent
+// views), and actions the evaluator's actions on each space of the
+// account, through Spaces, where the caller holds any. Each ApiKey's
+// allowedActions is the apikey service's Actions, and a change its
+// managers' rule refuses answers 403 forbidden naming the action; each
+// Session's and ManagedUser's is the evaluator's account actions on its
+// kind. The OAuth consent operations, which the console's consent
 // page calls, read an authorization request, approve it for an account
 // that admits the caller's member, and deny it, approve and deny
 // answering where to send the browser: only a member's browser session
@@ -75,6 +80,14 @@
 // NewOperatorAuthenticator's operator tokens alone. Login serves the
 // break-glass login's form and sign-in at accessapi.LoginPattern, which
 // sets the session's __Host- cookie and answers 303 to the console.
+// Require is accessapi.Requirer: it decides an operation's action on the
+// account's top space, in any space, or on the space of the entity a path
+// parameter or body field names, found through the lookups Subjects holds;
+// an entity the account lacks and one whose space the caller cannot read
+// answer one 404 not-found, an action the caller may not perform 403
+// forbidden naming it, and an entity kind no lookup is registered for 501.
+// It reads at most a mebibyte of a body for its field and leaves the body
+// whole for the handler.
 //
 // # Input and output
 //
@@ -86,7 +99,7 @@
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
 // group, member, oauth, operator, orgadmin, organization, port, session,
-// settings and user packages, accessapi,
+// settings, space and user packages, accessapi,
 // featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's page, problem and ratelimit. Only the access domain's assembly imports
 // it.

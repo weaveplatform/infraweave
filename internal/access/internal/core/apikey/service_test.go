@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -28,7 +29,9 @@ type mem struct {
 	personalOff  map[kernel.AccountID]bool
 	unadmitted   map[kernel.MemberID]bool
 	creatableErr error
-	err          error
+	// managersErr fails NonAdminKeyManagers.
+	managersErr error
+	err         error
 }
 
 func newMem() *mem {
@@ -155,8 +158,34 @@ func (m *mem) NonHumanKeyManagers(_ context.Context, acct kernel.AccountID) (boo
 	return !m.peopleOnly[acct], m.err
 }
 
+func (m *mem) NonAdminKeyManagers(_ context.Context, acct kernel.AccountID) (bool, error) {
+	return m.managers[acct], m.managersErr
+}
+
+// role is an Authorizer: the caller holds every action on the top space
+// when top, every one in a space below when below; err fails Authorize
+// and holdsErr Holds.
+type role struct {
+	top, below    bool
+	err, holdsErr error
+}
+
+func (r *role) Authorize(
+	context.Context,
+	kernel.Principal,
+	accessapi.Action,
+	kernel.ULID,
+) (bool, error) {
+	return r.top, r.err
+}
+
+func (r *role) Holds(context.Context, kernel.Principal, accessapi.Action) (bool, error) {
+	return r.top || r.below, r.holdsErr
+}
+
 type world struct {
 	st      *mem
+	role    *role
 	svc     *Service
 	dropped []kernel.ULID
 	me      kernel.Principal
@@ -165,7 +194,8 @@ type world struct {
 
 func newWorld(allowed ...string) *world {
 	w := &world{
-		st: newMem(),
+		st:   newMem(),
+		role: &role{top: true},
 		me: kernel.Principal{
 			Kind: kernel.PrincipalAPIKey, OrganizationID: kernel.NewOrganizationID(),
 			AccountID: kernel.NewAccountID(), Login: "creator",
@@ -174,6 +204,7 @@ func newWorld(allowed ...string) *world {
 	}
 	w.svc = NewService(Deps{
 		Store:          w.st,
+		Authz:          w.role,
 		Drop:           func(id kernel.ULID) { w.dropped = append(w.dropped, id) },
 		AllowedIssuers: allowed,
 		Now:            func() time.Time { return t0 },
@@ -684,5 +715,66 @@ func TestUnitServiceHeld(t *testing.T) {
 	w.st.creatableErr, w.st.err = nil, errors.New("down")
 	if _, err := w.svc.Held(ctx, alice); !errors.Is(err, w.st.err) {
 		t.Errorf("the keys unreadable: %v", err)
+	}
+}
+
+// TestUnitServiceManagers checks the rule each change and allowedActions
+// share: the top space's admin manages keys; an admin of a space below
+// reads them, and manages them only while the account lets such admins;
+// a caller who holds the actions nowhere is Denied; and the authorizer's
+// and the store's failures pass through.
+func TestUnitServiceManagers(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld()
+	k, _, err := w.svc.Create(ctx, w.me, Input{Name: "deploy"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := []accessapi.Action{
+		accessapi.ActionApiKeyRead, accessapi.ActionApiKeyUpdate,
+		accessapi.ActionApiKeyReset, accessapi.ActionApiKeyDelete,
+	}
+	actions := func(want ...accessapi.Action) {
+		t.Helper()
+		if got, err := w.svc.Actions(ctx, w.me); err != nil || !slices.Equal(got, want) {
+			t.Errorf("actions = %v, %v, want %v", got, err, want)
+		}
+	}
+	actions(all...)
+
+	*w.role = role{below: true}
+	actions(accessapi.ActionApiKeyRead)
+	_, err = w.svc.Update(ctx, w.me, k.ID, Change{})
+	if d, ok := errors.AsType[*Denied](err); !ok || d.Action != accessapi.ActionApiKeyUpdate ||
+		!strings.Contains(err.Error(), "API_KEY_UPDATE") {
+		t.Errorf("an update by a space's admin = %v, want Denied", err)
+	}
+	w.st.managers[w.me.AccountID] = true
+	actions(all...)
+	if _, _, err := w.svc.Reset(ctx, w.me, k.ID); err != nil {
+		t.Errorf("a reset by a space's admin the account lets manage keys: %v", err)
+	}
+
+	*w.role = role{}
+	actions()
+	if _, err := w.svc.Delete(ctx, w.me, k.ID); !errors.As(err, new(*Denied)) {
+		t.Errorf("a delete by a caller with no binding = %v, want Denied", err)
+	}
+
+	w.st.peopleOnly[w.me.AccountID] = true
+	*w.role = role{top: true}
+	actions(accessapi.ActionApiKeyRead)
+
+	for name, fail := range map[string]func(){
+		"authorize": func() { *w.role = role{err: errMissing} },
+		"holds":     func() { *w.role = role{holdsErr: errMissing} },
+		"setting":   func() { *w.role = role{below: true}; w.st.managersErr = errMissing },
+	} {
+		w.st.peopleOnly[w.me.AccountID], w.st.managersErr = false, nil
+		*w.role = role{top: true}
+		fail()
+		if _, err := w.svc.Actions(ctx, w.me); !errors.Is(err, errMissing) {
+			t.Errorf("%s fails: actions = %v", name, err)
+		}
 	}
 }

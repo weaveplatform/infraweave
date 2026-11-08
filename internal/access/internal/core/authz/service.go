@@ -130,6 +130,27 @@ func (s *Service) Explain(
 	})
 }
 
+// Holds reports whether p may perform action in at least one space of
+// its account.
+func (s *Service) Holds(
+	ctx context.Context,
+	p kernel.Principal,
+	action accessapi.Action,
+) (bool, error) {
+	return decide(ctx, s, p, func(snap *Snapshot, w Who) bool { return snap.Holds(w, action) })
+}
+
+// Actions is every assignable action p may perform in space.
+func (s *Service) Actions(
+	ctx context.Context,
+	p kernel.Principal,
+	space kernel.ULID,
+) ([]accessapi.Action, error) {
+	return decide(ctx, s, p, func(snap *Snapshot, w Who) []accessapi.Action {
+		return snap.Actions(w, space)
+	})
+}
+
 // Admin reports whether p is an account admin of its account.
 func (s *Service) Admin(ctx context.Context, p kernel.Principal) (bool, error) {
 	return decide(ctx, s, p, (*Snapshot).Admin)

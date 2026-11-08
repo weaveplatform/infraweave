@@ -15,7 +15,10 @@
 // domains' operator partials) under OperatorBaseURL on the same
 // router, behind decision 0003's controls, each prefix authenticated by
 // its own authenticator (byPrefix); Guarded and
-// Operations put authentication, then the operator switch, the rate limits
+// Operations put authentication, then decision 0007's route table, which
+// answers 403 forbidden to a route the router serves and no operation
+// names and runs the access domain's Requirer on each API operation's
+// x-infraweave-action and x-infraweave-subject, then the operator switch, the rate limits
 // and idempotency keys in front of each route, and last strictBodies, which
 // answers 400 invalid-request to a JSON body its operation's schema
 // refuses when that schema sets additionalProperties false (decision

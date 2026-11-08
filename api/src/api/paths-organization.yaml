@@ -61,7 +61,7 @@ components:
         - slug
       type: object
     OrganizationAccountPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -155,7 +155,7 @@ components:
         - DEACTIVATED
       type: string
     OrganizationMemberPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -203,7 +203,7 @@ components:
         - name
       type: object
     OrganizationKeyPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -285,7 +285,7 @@ components:
         - limits
       type: object
     OrganizationUsagePage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -333,6 +333,8 @@ paths:
         The caller's organization.
       operationId: organization
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -368,6 +370,8 @@ paths:
         Rename the caller's organization; its slug never changes.
       operationId: organizationUpdate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       requestBody:
         content:
           application/json:
@@ -412,6 +416,8 @@ paths:
         The organization's accounts, oldest first.
       operationId: organizationAccounts
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -454,6 +460,8 @@ paths:
         answers 409 already-exists, and an admin that is no active member of the organization 422.
       operationId: organizationAccountCreate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -503,6 +511,8 @@ paths:
         sessions. Deleting the organization's last account answers 409 invalid-state.
       operationId: organizationAccountDelete
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
       responses:
@@ -544,6 +554,8 @@ paths:
         Rename an account of the organization; its slug never changes.
       operationId: organizationAccountUpdate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
       requestBody:
@@ -593,6 +605,8 @@ paths:
         account admits it. A claimed account stays claimed, so claiming it again answers 409 invalid-state.
       operationId: organizationAccountClaim
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -645,6 +659,8 @@ paths:
         no change. It answers the account's use of every limit.
       operationId: organizationAccountLimitClear
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
         - $ref: '#/components/parameters/OrganizationLimitName'
@@ -689,6 +705,8 @@ paths:
         validation-failed naming the limit. It answers the account's use of every limit.
       operationId: organizationAccountLimitSet
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
         - $ref: '#/components/parameters/OrganizationLimitName'
@@ -738,6 +756,8 @@ paths:
         The organization's keys, oldest first, with no secret.
       operationId: organizationKeys
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -779,6 +799,8 @@ paths:
         SHA-256 is stored. Its token reaches the Organization tag alone and takes no seat.
       operationId: organizationKeyCreate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -827,6 +849,8 @@ paths:
         Delete an organization key, revoking every session of its tokens.
       operationId: organizationKeyDelete
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationKeyID'
       responses:
@@ -868,6 +892,8 @@ paths:
         change.
       operationId: organizationKeyDisable
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationKeyID'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -913,6 +939,8 @@ paths:
         The organization's pooled limits as they apply now, and their use across its accounts.
       operationId: organizationLimits
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -949,6 +977,8 @@ paths:
         The organization's members, oldest first.
       operationId: organizationMembers
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -991,6 +1021,8 @@ paths:
         disabled as DEPROVISIONED, and it holds no seat. Deactivating a deactivated member is no change.
       operationId: organizationMemberDeactivate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationMemberID'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1037,6 +1069,8 @@ paths:
         is no change.
       operationId: organizationAdminRevoke
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationMemberID'
       responses:
@@ -1077,6 +1111,8 @@ paths:
         no account's data. Granting a role the member holds is no change.
       operationId: organizationAdminGrant
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationMemberID'
       responses:
@@ -1118,6 +1154,8 @@ paths:
         stack, run, state or secret.
       operationId: organizationUsage
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'

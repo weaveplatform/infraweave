@@ -35,7 +35,7 @@ components:
           type: string
           description: >-
             The feature of feature-disabled and feature-not-in-tier, a name
-            of the feature catalogue (decision 0021).
+            of the feature catalogue.
         tiers:
           type: array
           items:

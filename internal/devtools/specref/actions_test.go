@@ -22,6 +22,8 @@ const actionRows = `
 SPACE_READ: {subject: space, fallback: reader}
 STACK_WEBHOOK_CREATE: {subject: stack, fallback: admin, disabled: true}
 UPDATE_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin, deprecated: true}
+API_KEY_READ: {subject: api_key, fallback: admin, infraweave: true, anywhere: true}
+API_KEY_DELETE: {subject: api_key, fallback: admin, infraweave: true}
 `
 
 func parseActionSchema(t *testing.T, data string) *Schema {
@@ -50,11 +52,22 @@ func TestUnitActionsGolden(t *testing.T) {
 	golden(t, "actions.gen.go", got)
 	for _, want := range []string{
 		`Action = "SPACE_READ"`,
-		`{Action: ActionStackWebhookCreate, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false}`,
-		`{Action: ActionUpdateBlueprintDeployment, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: true}`,
+		`{Action: ActionStackWebhookCreate, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false, Infraweave: false, Anywhere: false}`,
+		`{Action: ActionUpdateBlueprintDeployment, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: true, Infraweave: false, Anywhere: false}`,
+		`{Action: ActionApiKeyRead, Subject: "api_key", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: true, Anywhere: true}`,
 	} {
 		if !strings.Contains(string(got), want) {
 			t.Errorf("actions.gen.go lacks %q", want)
+		}
+	}
+	// The enum's values come first, in its order, then infraweave's by name.
+	order := []string{
+		`Action = "SPACE_READ"`, `Action = "UPDATE_BLUEPRINT_DEPLOYMENT"`,
+		`Action = "API_KEY_DELETE"`, `Action = "API_KEY_READ"`,
+	}
+	for i := 1; i < len(order); i++ {
+		if strings.Index(string(got), order[i-1]) > strings.Index(string(got), order[i]) {
+			t.Errorf("%s follows %s", order[i-1], order[i])
 		}
 	}
 }
@@ -82,6 +95,18 @@ func TestUnitActionsMismatch(t *testing.T) {
 		"a disabled flag the schema lacks": {
 			strings.Replace(actionRows, "fallback: reader", "fallback: reader, disabled: true", 1),
 			"SPACE_READ is disabled: false in the schema",
+		},
+		"an infraweave row the enum holds": {
+			strings.Replace(actionRows, "fallback: reader}", "fallback: reader, infraweave: true}", 1),
+			"SPACE_READ is infraweave's but in the enum",
+		},
+		"an infraweave row with no subject": {
+			strings.Replace(actionRows, "API_KEY_DELETE: {subject: api_key, ", "API_KEY_DELETE: {", 1),
+			"API_KEY_DELETE has no subject",
+		},
+		"anywhere outside infraweave's": {
+			strings.Replace(actionRows, "fallback: reader}", "fallback: reader, anywhere: true}", 1),
+			"SPACE_READ is anywhere but not infraweave's",
 		},
 		"a deprecated flag missing": {
 			strings.Replace(actionRows, ", deprecated: true", "", 1),

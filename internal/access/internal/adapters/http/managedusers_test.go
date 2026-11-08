@@ -50,7 +50,7 @@ func TestUnitManagedError(t *testing.T) {
 // lastLoginTime.
 func TestUnitManagedUserSeen(t *testing.T) {
 	seen := time.Date(2026, 11, 7, 9, 0, 0, 0, time.UTC)
-	u := managedUser(managed.User{Member: member.Member{LastSeenAt: &seen}})
+	u := managedUser(managed.User{Member: member.Member{LastSeenAt: &seen}}, nil)
 	if u.LastLoginTime == nil || *u.LastLoginTime != unix(seen) {
 		t.Errorf("lastLoginTime = %v", u.LastLoginTime)
 	}

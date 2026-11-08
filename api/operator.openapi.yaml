@@ -4,7 +4,7 @@ info:
   title: infraweave operator API
   version: 0.1.0
   description: >-
-    The installation operator's API (decision 0021): organizations, their first accounts and their break-glass credentials; tiers, the billing switch and each organization's tier and grants; the queue's dead jobs; and the data key's rotation. Only an operator token, which an operator key from auth.operator.keys exchanges for at POST /api/v1/auth/token, reaches it; any other credential answers 401. Spacelift has no counterpart, so it is outside the parity surface.
+    The installation operator's API: organizations, their first accounts and their break-glass credentials; tiers, the billing switch and each organization's tier and grants; the queue's dead jobs; and the data key's rotation. Only an operator token, which an operator key from auth.operator.keys exchanges for at POST /api/v1/auth/token, reaches it; any other credential answers 401. Spacelift has no counterpart, so it is outside the parity surface.
 servers:
   - url: /operator/v1
     description: The operator API's prefix on the server's single listener.
@@ -1189,7 +1189,7 @@ components:
           type: string
           description: The account's display name.
     Billing:
-      description: The installation's billing switch and default tier (decision 0021).
+      description: The installation's billing switch and default tier.
       type: object
       required:
         - enabled
@@ -1242,7 +1242,7 @@ components:
           description: >-
             The password's PBKDF2-HMAC-SHA256 hash, $pbkdf2-sha256$i=<iterations>$<salt>$<hash> in unpadded standard base64, with at least 600,000 iterations and a 16-byte salt, as infraweave auth hash-password prints it.
     DataKey:
-      description: The data key that seals new values (decision 0013).
+      description: The data key that seals new values.
       type: object
       required:
         - keyId
@@ -1252,7 +1252,7 @@ components:
           format: int64
           description: The active data key's ID.
     DeadJob:
-      description: A job that exhausted its attempts or failed permanently (decision 0011).
+      description: A job that exhausted its attempts or failed permanently.
       type: object
       required:
         - id
@@ -1298,7 +1298,7 @@ components:
           format: int64
           description: When it died, in Unix seconds.
     DeadJobPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       type: object
       required:
         - items
@@ -1448,7 +1448,7 @@ components:
         breakGlass:
           $ref: '#/components/schemas/BreakGlassInput'
     OrganizationPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       type: object
       required: [items]
       properties:
@@ -1485,7 +1485,7 @@ components:
         feature:
           type: string
           description: >-
-            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
         tiers:
           type: array
           items:
@@ -1505,7 +1505,7 @@ components:
           format: int64
           description: For limit-reached, that scope's limit.
     Tier:
-      description: 'A tier: a set of features and a set of limit values (decision 0021).'
+      description: 'A tier: a set of features and a set of limit values.'
       type: object
       required:
         - name
@@ -1591,7 +1591,7 @@ components:
             format: int64
             minimum: 0
     TierPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       type: object
       required:
         - items

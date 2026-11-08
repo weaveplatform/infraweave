@@ -6,7 +6,7 @@ info:
     infraweave's infrastructure-as-code orchestration API: stacks, runs,
     policies, contexts and worker pools over REST. It starts from the
     reference specification in the repository's api/reference directory and
-    may diverge from it, as decision 0001 in docs/research/decisions sets out.
+    may diverge from it.
 servers:
   - url: /api/v1
     description: The versioned prefix on the server's single listener.

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -19,6 +20,16 @@ var ErrInvalid = errors.New("invalid API key")
 // ErrNonHuman reports a key or a run managing API keys in an account whose
 // setting lets only people manage them.
 var ErrNonHuman = errors.New("API keys and runs may not manage API keys in this account")
+
+// Denied reports a caller who may not perform Action on the account's
+// keys: one who holds it neither on the account's top space nor, where
+// the account lets the admins of the spaces below manage keys, in any
+// space.
+type Denied struct{ Action accessapi.Action }
+
+func (d *Denied) Error() string {
+	return fmt.Sprintf("you may not perform %s on this account's API keys", d.Action)
+}
 
 // DisabledByAdmin is the disabled_reason of a key an account admin
 // disabled.
@@ -70,6 +81,9 @@ type Store interface {
 	// NonHumanKeyManagers reads whether the account lets API keys and runs
 	// manage API keys.
 	NonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error)
+	// NonAdminKeyManagers reads the account's
+	// apiKeyEnableNonAdminManagers setting.
+	NonAdminKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error)
 	// CreatePersonalAPIKey inserts the personal key k and answers it with
 	// its owner's login. It is ErrPersonalOff while the account's
 	// personalApiKeysEnabled is off and ErrNoOwner unless the account
@@ -109,9 +123,22 @@ type Store interface {
 	) (Key, []kernel.ULID, error)
 }
 
+// Authorizer decides the caller's actions; the access domain's
+// authz.Service is one.
+type Authorizer interface {
+	Authorize(
+		ctx context.Context,
+		p kernel.Principal,
+		action accessapi.Action,
+		space kernel.ULID,
+	) (bool, error)
+	Holds(ctx context.Context, p kernel.Principal, action accessapi.Action) (bool, error)
+}
+
 // Deps are what the service needs.
 type Deps struct {
 	Store Store
+	Authz Authorizer
 	// Drop drops a revoked session from this replica's cache at once; the
 	// other replicas drop it on its invalidation.
 	Drop func(kernel.ULID)
@@ -149,7 +176,7 @@ type Change struct {
 // Create records a key of p's account, created by p, and returns it with
 // its secret, which is never readable again; an OIDC key has none.
 func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Key, string, error) {
-	if err := s.manages(ctx, p); err != nil {
+	if err := s.may(ctx, p, accessapi.ActionApiKeyCreate); err != nil {
 		return Key{}, "", err
 	}
 	k := Key{
@@ -211,7 +238,7 @@ func (s *Service) Update(
 	id kernel.ULID,
 	c Change,
 ) (Key, error) {
-	if err := s.manages(ctx, p); err != nil {
+	if err := s.may(ctx, p, accessapi.ActionApiKeyUpdate); err != nil {
 		return Key{}, err
 	}
 	var errs []error
@@ -255,7 +282,7 @@ func (s *Service) Reset(
 	p kernel.Principal,
 	id kernel.ULID,
 ) (Key, string, error) {
-	if err := s.manages(ctx, p); err != nil {
+	if err := s.may(ctx, p, accessapi.ActionApiKeyReset); err != nil {
 		return Key{}, "", err
 	}
 	k, err := s.Get(ctx, p, id)
@@ -273,7 +300,7 @@ func (s *Service) Reset(
 // Disable disables the key id of p's account and revokes every session of
 // the key. Disabling a disabled key keeps its first reason.
 func (s *Service) Disable(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, error) {
-	if err := s.manages(ctx, p); err != nil {
+	if err := s.may(ctx, p, accessapi.ActionApiKeyUpdate); err != nil {
 		return Key{}, err
 	}
 	k, _, err := s.revoked("")(s.d.Store.DisableAPIKey(ctx, p.AccountID, id, DisabledByAdmin))
@@ -283,7 +310,7 @@ func (s *Service) Disable(ctx context.Context, p kernel.Principal, id kernel.ULI
 // Delete deletes the key id of p's account and revokes every session of
 // the key. The row stays, deleted, while sessions and audit name it.
 func (s *Service) Delete(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, error) {
-	if err := s.manages(ctx, p); err != nil {
+	if err := s.may(ctx, p, accessapi.ActionApiKeyDelete); err != nil {
 		return Key{}, err
 	}
 	k, _, err := s.revoked("")(s.d.Store.DeleteAPIKey(ctx, p.AccountID, id))
@@ -304,6 +331,66 @@ func (s *Service) SetNonAdminManagers(
 		return false, err //nolint:wrapcheck // as above
 	}
 	return enable, nil
+}
+
+// keyActions are the actions on a key, which a key's allowedActions
+// lists those of.
+var keyActions = []accessapi.Action{
+	accessapi.ActionApiKeyRead,
+	accessapi.ActionApiKeyUpdate,
+	accessapi.ActionApiKeyReset,
+	accessapi.ActionApiKeyDelete,
+}
+
+// Actions are the actions on a key of p's account that p may perform, by
+// the rule each operation enforces. The rule names no key, so it is the
+// same for every key of the account.
+func (s *Service) Actions(ctx context.Context, p kernel.Principal) ([]accessapi.Action, error) {
+	out := []accessapi.Action{}
+	for _, a := range keyActions {
+		err := s.may(ctx, p, a)
+		_, denied := errors.AsType[*Denied](err)
+		switch {
+		case err == nil:
+			out = append(out, a)
+		case !denied && !errors.Is(err, ErrNonHuman):
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// may refuses p performing a on its account's keys unless p holds a on
+// the account's top space or, for a read or while the account lets the
+// admins of the spaces below manage keys, in any space. A change is also
+// refused to a key or a run the account does not let manage keys.
+func (s *Service) may(ctx context.Context, p kernel.Principal, a accessapi.Action) error {
+	if a != accessapi.ActionApiKeyRead {
+		if err := s.manages(ctx, p); err != nil {
+			return err
+		}
+	}
+	top, err := s.d.Authz.Authorize(ctx, p, a, p.AccountID.ULID)
+	if err != nil || top {
+		return err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	held, err := s.d.Authz.Holds(ctx, p, a)
+	switch {
+	case err != nil:
+		return err //nolint:wrapcheck // as above
+	case !held:
+		return &Denied{Action: a}
+	case a == accessapi.ActionApiKeyRead:
+		return nil
+	}
+	on, err := s.d.Store.NonAdminKeyManagers(ctx, p.AccountID)
+	switch {
+	case err != nil:
+		return err //nolint:wrapcheck // the store names the read
+	case !on:
+		return &Denied{Action: a}
+	}
+	return nil
 }
 
 // IssuerAllowed reports whether a key may name issuer: an absolute HTTPS

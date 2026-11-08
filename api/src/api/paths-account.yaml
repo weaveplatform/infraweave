@@ -26,6 +26,8 @@ paths:
         infraweave Terraform runner image.
       operationId: defaultPrivateWorkerPoolRunnerImage
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -63,6 +65,8 @@ paths:
       description: The ID of the caller's account.
       operationId: id
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -100,6 +104,8 @@ paths:
       description: The display name of the caller's account.
       operationId: name
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -137,6 +143,8 @@ paths:
       description: The type of the caller's account, always ORG.
       operationId: type
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
