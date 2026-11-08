@@ -166,6 +166,18 @@ in the same database, in the `flows` PostgreSQL schema that
   last use (expand, then contract). A file may raise `compatible_from` with the
   header `-- infraweave:compatible-from NNNNN`, which names a version of its
   own stream.
+- **Before the first release.** Until v0.1.0 ships, no database needs
+  upgrading, so each stream's files create every table in its final form. A
+  change edits the `CREATE TABLE` in place: no `ALTER TABLE`, no
+  `compatible-from` header, and no backfill of rows that existed before the
+  change. A database migrated before such an edit fails the checksum check
+  and is recreated. `TestUnitMigrationsFinalForm` in `internal/app` refuses
+  an `ALTER TABLE` or a `compatible-from` header in a registered stream. From
+  v0.1.0 the released files are immutable and the mixed-version rules above
+  apply.
+- **Comments.** A migration's comments stand on their own. A citation of a
+  decision or report goes on its own `-- ref:` line, and the same test
+  refuses one anywhere else.
 - **Refusing to start.** A binary refuses to start, and says why, when:
   - a stream's `compatible_from` is greater than the binary's newest
     embedded version of that stream (the binary is too old). A stream the

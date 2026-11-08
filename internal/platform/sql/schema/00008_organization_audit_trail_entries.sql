@@ -1,8 +1,9 @@
--- Decision 0015's organization trail: entries with an organization and no
--- account, such as the operator API's changes to an organization, so
+-- The organization trail: entries with an organization and no account,
+-- such as the operator API's changes to an organization, so
 -- audit_trail_entries stays account-scoped. Like that table it has no
 -- foreign key: the platform stream references no domain, and an
 -- organization's deletion is itself an entry that outlives it.
+-- ref: decision 0015
 CREATE TABLE organization_audit_trail_entries (
     organization_id uuid        NOT NULL,
     id              uuid        NOT NULL,

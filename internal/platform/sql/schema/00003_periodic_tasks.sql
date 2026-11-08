@@ -1,6 +1,7 @@
--- Decision 0011's periodic tasks: infraweave's own recurring work, such as
--- queue.prune. The scheduler ticker fires a due row as a job of the kind
--- the row names and moves next_run_at past now by whole intervals.
+-- Periodic tasks: infraweave's own recurring work, such as queue.prune.
+-- The scheduler ticker fires a due row as a job of the kind the row names
+-- and moves next_run_at past now by whole intervals.
+-- ref: decision 0011
 
 CREATE TABLE periodic_tasks (
     name        text        PRIMARY KEY,

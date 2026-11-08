@@ -1,5 +1,6 @@
--- Decision 0006's credentials: an account's API keys, the session behind
--- every token, and the installation's signing keys.
+-- Credentials: an account's API keys, the session behind every token, and
+-- the installation's signing keys.
+-- ref: decision 0006
 
 -- An API key belongs to one account, and its token works there only. Only
 -- the secret's SHA-256 is stored. There is no admin column: a key is an
@@ -17,7 +18,10 @@ CREATE TABLE api_keys (
     oidc_claim_mapping      jsonb,
     teams                   text[]      NOT NULL DEFAULT '{}',
     is_personal             boolean     NOT NULL DEFAULT false,
-    -- The account user a personal key acts as; it never exceeds them.
+    -- The member a personal key acts as; it never exceeds them. The key
+    -- names the member rather than their admission because it outlives
+    -- the admission: removing a managed user keeps their keys, disabled as
+    -- DEPROVISIONED.
     owner_user_id           uuid,
     is_machine              boolean     NOT NULL DEFAULT false,
     creator                 text        NOT NULL,
@@ -28,8 +32,7 @@ CREATE TABLE api_keys (
     created_at              timestamptz NOT NULL DEFAULT now(),
     deleted_at              timestamptz,
     PRIMARY KEY (account_id, id),
-    FOREIGN KEY (account_id, owner_user_id)
-        REFERENCES account_users (account_id, member_id) ON DELETE RESTRICT,
+    FOREIGN KEY (owner_user_id) REFERENCES members ON DELETE RESTRICT,
     -- A secret key has its hash; an OIDC key has its issuer, client and
     -- subject expression instead.
     CHECK (
@@ -43,6 +46,7 @@ CREATE TABLE api_keys (
 -- The exchange finds a key by ID alone, before it knows the account.
 CREATE UNIQUE INDEX api_keys_id ON api_keys (id);
 CREATE INDEX api_keys_owner ON api_keys (account_id, owner_user_id) WHERE owner_user_id IS NOT NULL;
+CREATE INDEX api_keys_owner_member ON api_keys (owner_user_id) WHERE owner_user_id IS NOT NULL;
 
 -- Every token but the federation, worker and run tokens has a session row,
 -- whose ID is the token's jti, so revoking the session revokes the token.
@@ -82,6 +86,8 @@ CREATE TABLE sessions (
     idle_expires_at      timestamptz,
     expires_at           timestamptz NOT NULL,
     revoked_at           timestamptz,
+    -- The MCP resource an OAuth grant's access tokens name as their aud.
+    oauth_resource       text,
     FOREIGN KEY (organization_id, account_id)
         REFERENCES accounts (organization_id, id) ON DELETE RESTRICT,
     FOREIGN KEY (organization_id, member_id)
@@ -99,7 +105,7 @@ CREATE UNIQUE INDEX sessions_secret ON sessions (secret_hash) WHERE secret_hash 
 -- authn.sessions.expire's scan for sessions 30 days past their end.
 CREATE INDEX sessions_expires ON sessions (expires_at);
 
--- The installation's signing keys (decision 0006). id is the kid. A key's
+-- The installation's signing keys. id is the kid. A key's
 -- private half is sealed under the keyring, or lives in a KMS that
 -- kms_key_ref names; never both.
 CREATE TABLE signing_keys (

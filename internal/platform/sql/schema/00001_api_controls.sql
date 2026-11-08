@@ -1,6 +1,7 @@
--- Decision 0003's controls, shared by every serve replica (decision 0005,
--- "The stores of 0003"). Each is keyed by the caller: a client address
--- until requests carry an authenticated principal.
+-- The API's controls, shared by every serve replica: idempotency keys,
+-- rate limits and disabled callers. Each is keyed by the caller: a client
+-- address until requests carry an authenticated principal.
+-- ref: decisions 0003 and 0005
 
 CREATE TABLE idempotency_keys (
     caller       text        NOT NULL,
@@ -11,9 +12,13 @@ CREATE TABLE idempotency_keys (
     status       integer,
     content_type text,
     location     text,
-    body         bytea,
     created_at   timestamptz NOT NULL,
     expires_at   timestamptz NOT NULL,
+    -- The response body sealed under the keyring, since it can hold
+    -- whatever the request created, with the associated data
+    -- idempotency_keys.body_sealed:<caller>/<key>; NULL while the key is
+    -- in flight, and for a response with no body.
+    body_sealed  bytea,
     PRIMARY KEY (caller, key),
     CHECK ((state = 'done') = (status IS NOT NULL))
 );

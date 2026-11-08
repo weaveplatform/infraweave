@@ -1,6 +1,7 @@
--- Decision 0013's keyring: data keys wrapped by a KEK that never enters
--- the database. Values sealed under a key carry its ID; a key is deleted
--- only once resealing leaves nothing under it.
+-- The keyring: data keys wrapped by a KEK that never enters the database.
+-- Values sealed under a key carry its ID; a key is deleted only once
+-- resealing leaves nothing under it.
+-- ref: decision 0013
 
 CREATE TABLE encryption_keys (
     id          integer     PRIMARY KEY CHECK (id > 0),
