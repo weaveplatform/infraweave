@@ -2,6 +2,22 @@
 # This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
 components:
   schemas:
+    ActionCatalogueEntry:
+      description: An action of the catalogue and whether a role may hold it.
+      properties:
+        action:
+          $ref: '#/components/schemas/Action'
+        deprecated:
+          description: Whether the schema deprecates the action.
+          type: boolean
+        disabled:
+          description: Whether the schema disables the action.
+          type: boolean
+      required:
+        - action
+        - deprecated
+        - disabled
+      type: object
     ApiKeySessionsWithAccessToSpaceEdge:
       properties:
         cursor:
@@ -1891,6 +1907,44 @@ components:
         - items
       type: object
 paths:
+  /actions:
+    get:
+      description: >-
+        Every action a role may name, in the catalogue's order, each with
+        whether the schema disables or deprecates it. A role holds neither a
+        disabled nor a deprecated action. Any authenticated caller may read
+        it, so a client lists the actions without schema introspection.
+      operationId: actionCatalogue
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ActionCatalogueEntry'
+                type: array
+          description: The action catalogue.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Action Catalogue
+      tags:
+        - Spaces
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-cost: standard
+      x-infraweave-feature: spaces
+      x-infraweave-subject: account
+      x-upstream: none
   /api-key-sessions-with-access-to-space:
     get:
       description: |-
@@ -2772,7 +2826,12 @@ paths:
       x-rest-style: update
   /spaces/search:
     post:
-      description: Search Spaces with a set of predicates, ordering and paging.
+      description: >-
+        Search the spaces the caller may read with a set of predicates,
+        ordering and paging. Every page before the last is full. The fields
+        are id, name, description, label, inheritEntities, parentSpace and
+        space, the tree; id and name order, by id when the search names no
+        order.
       operationId: searchSpaces
       requestBody:
         content:
@@ -2809,6 +2868,56 @@ paths:
       x-bruno: Spaces/Search Spaces.bru
       x-graphql:
         field: searchSpaces
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: list
+      x-rest-style: search
+  /spaces/search/suggestions:
+    post:
+      description: >-
+        The fields a space search filters and orders by, with the values the
+        spaces the predicates keep hold and how many hold each. Only spaces
+        the caller may read are counted.
+      operationId: searchSpacesSuggestions
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchSpacesSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Spaces Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Spaces Suggestions.bru
+      x-graphql:
+        field: searchSpacesSuggestions
         operation: query
         type: Query
       x-infraweave-action: SPACE_READ

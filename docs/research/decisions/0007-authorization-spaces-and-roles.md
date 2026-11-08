@@ -221,6 +221,11 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   lets the admin of any space read keys, users and groups. Roles hold them
   like any other action, and the served `Action` enum lists them, so
   `allowedActions` can.
+- **Served catalogue.** `GET /actions`, infraweave's own and open to any
+  authenticated caller, lists every catalogue action in its order with its
+  `disabled` and `deprecated` flags, so a Terraform provider's
+  `role_actions` data source reads it over REST rather than introspecting
+  a GraphQL schema.
 - **Tables** `roles(account_id, id, slug, name, description, is_system)`,
   unique `(account_id, slug)`, and `role_actions(account_id, role_id,
   action)`, which holds custom roles' actions. A system role's actions are
@@ -306,7 +311,13 @@ schemes.
 **Reachable spaces.** `authz.Reachable(ctx, principal, action) []uuid.UUID`
 returns every space in which the action is allowed. List and search handlers
 pass it to SQL as `space_id = ANY($n)` so that the database never returns a
-row the caller may not see, and paging (decision 0003) stays exact.
+row the caller may not see, and paging (decision 0003) stays exact. Every
+search compiles through `internal/platform/sql/search`, which ANDs that
+clause before any predicate of the reference's `SearchInput` and binds every
+value as a parameter; suggestions count under the same filter. A list that
+keeps only the spaces where the caller may perform several actions, such as
+`spaces` with `input.actions`, passes the intersection of their reachable
+sets.
 
 **In-run restriction.** A `run` principal can never perform the actions in
 `authz.RunDenied`: `STACK_STATE_READ`, `STACK_STATE_DOWNLOAD`, every

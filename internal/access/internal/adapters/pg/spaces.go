@@ -11,20 +11,25 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	sqlsearch "github.com/weaveplatform/infraweave/internal/platform/sql/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
 const spaceColumns = `s.account_id, s.id, s.slug, s.name, s.description, s.labels,
 	s.inherit_entities, s.parent_id, s.created_at`
 
-func scanSpace(row pgx.Row) (space.Space, error) {
+// scanSpace reads spaceColumns, then into extra.
+func scanSpace(row pgx.Row, extra ...any) (space.Space, error) {
 	var (
 		s      space.Space
 		parent *kernel.ULID
 	)
-	err := row.Scan(&s.AccountID, &s.ID, &s.Slug, &s.Name, &s.Description, &s.Labels,
-		&s.InheritEntities, &parent, &s.CreatedAt)
+	err := row.Scan(append([]any{
+		&s.AccountID, &s.ID, &s.Slug, &s.Name, &s.Description, &s.Labels,
+		&s.InheritEntities, &parent, &s.CreatedAt,
+	}, extra...)...)
 	if parent != nil {
 		s.ParentID = *parent
 	}
@@ -89,6 +94,78 @@ func (s *Store) Spaces(ctx context.Context, acct kernel.AccountID) ([]space.Spac
 	})
 	if err != nil {
 		return nil, fmt.Errorf("access: list spaces: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// spaceColumn is the SQL of each of space.Fields.
+var spaceColumn = map[string]sqlsearch.Column{
+	"id":              {Expr: "s.slug", Cast: "text", Text: true},
+	"name":            {Expr: "s.name", Cast: "text", Text: true},
+	"description":     {Expr: "s.description", Text: true},
+	"label":           {Expr: "s.labels", Many: true, Text: true},
+	"inheritEntities": {Expr: "s.inherit_entities", Cast: "boolean"},
+	"parentSpace":     {Expr: "p.slug"},
+	// A node is a space by slug, and $1 is the account the scope names,
+	// since every account has a legacy.
+	"space": {
+		Expr: "s.id",
+		Tree: `SELECT c.descendant_id FROM space_closure c JOIN spaces a ON a.id = c.ancestor_id
+			WHERE a.account_id = $1 AND a.slug = ANY(%[1]s::text[]) AND (%[2]s::boolean OR c.depth = 0)`,
+		// Each node's parent is its nearest reachable ancestor, so no
+		// slug the caller may not read is named.
+		Nodes: `SELECT n.id::text, n.slug, (SELECT a.slug FROM space_closure c
+				JOIN spaces a ON a.id = c.ancestor_id
+				WHERE c.descendant_id = n.id AND c.depth > 0 AND a.id = ANY(%[1]s::uuid[])
+				ORDER BY c.depth LIMIT 1), n.name
+			FROM spaces n WHERE n.id = ANY(%[1]s::uuid[]) ORDER BY n.slug`,
+	},
+}
+
+// spaceSearch is the spaces table as space.Fields search it.
+var spaceSearch = func() sqlsearch.Entity {
+	e := sqlsearch.Entity{
+		List: "spaces", From: "spaces s LEFT JOIN spaces p ON p.id = s.parent_id",
+		Select: spaceColumns, Space: "s.id", ID: "s.slug",
+		Order: []search.Order{{Field: "id"}},
+	}
+	for _, f := range space.Fields {
+		c := spaceColumn[f.Name]
+		c.Field = f
+		e.Columns = append(e.Columns, c)
+	}
+	return e
+}()
+
+// Search reads a page of acct's spaces among reachable that in keeps.
+func (s *Store) Search(
+	ctx context.Context,
+	acct kernel.AccountID,
+	in search.Input,
+	reachable []kernel.ULID,
+) (search.Result[space.Space], error) {
+	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), spaceSearch, sqlsearch.Scope{
+		Where: "s.account_id = $1", Args: []any{acct}, Reachable: reachable,
+	}, in, scanSpace)
+	if err != nil {
+		return out, fmt.Errorf("access: %w", err)
+	}
+	return out, nil
+}
+
+// Suggest lists the values acct's spaces among reachable that in keeps
+// hold.
+func (s *Store) Suggest(
+	ctx context.Context,
+	acct kernel.AccountID,
+	in search.SuggestionsInput,
+	reachable []kernel.ULID,
+) (search.Suggestions, error) {
+	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), spaceSearch, sqlsearch.Scope{
+		Where: "s.account_id = $1", Args: []any{acct}, Reachable: reachable,
+	}, in)
+	if err != nil {
+		return out, fmt.Errorf("access: %w", err)
 	}
 	return out, nil
 }

@@ -105,7 +105,11 @@ change to retrofit once clients exist:
   list, answers `400`, problem `invalid-cursor`.
 - **Searches.** `POST …/search` keeps the reference's relay-style
   `SearchInput.first` and `after` with `pageInfo`, which is already
-  cursor-based.
+  cursor-based. `first` is clamped as `limit` is. `requestedPage` reads
+  `FIRST` and `NEXT` forwards from `after`, and `PREVIOUS` and `LAST`
+  backwards. A search cursor holds the last row's keys in the search's
+  order and names that order, so a cursor read under another order answers
+  `400 invalid-cursor`.
 
 ### Problem types
 

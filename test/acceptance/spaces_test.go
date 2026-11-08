@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -30,6 +31,17 @@ func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
 		`^the account "([a-z-]+)" has its top space, legacy below it, the system roles and "(\w+)" as space-admin on its top space$`,
 		s.seeded,
+	)
+	sc.Step(
+		`^token "(\w+)" searching the spaces through ([AB]) in pages of (\d+) finds "([^"]*)", every page full but the last$`,
+		s.searches,
+	)
+	sc.Step(`^the answer suggests the ids "([^"]*)" of (\d+) spaces?$`, s.suggests)
+	sc.Step(`^the problem refuses the field "([^"]+)" as "([a-z-]+)"$`, s.refuses)
+	sc.Step(`^a caller with no token sends "([A-Z]+) ([^"]+)" through ([AB])$`, s.anonymous)
+	sc.Step(
+		`^the answer lists (\d+) actions, "([A-Z_]+)" deprecated and "([A-Z_]+)" disabled$`,
+		s.catalogue,
 	)
 }
 
@@ -62,13 +74,7 @@ func (s *spaceSteps) lists(want string) error {
 	for _, it := range page.Items {
 		got = append(got, it.ID)
 	}
-	w := []string{}
-	if want = s.o.resolve(want); want != "" {
-		for slug := range strings.SplitSeq(want, ",") {
-			w = append(w, strings.TrimSpace(slug))
-		}
-	}
-	if !reflect.DeepEqual(got, w) {
+	if w := s.slugList(want); !reflect.DeepEqual(got, w) {
 		return fmt.Errorf("%w: the spaces are %v, want %v", errStep, got, w)
 	}
 	return nil
@@ -127,6 +133,152 @@ func (s *spaceSteps) matchesViewer(ctx context.Context, name, slug, replica stri
 		}
 	}
 	return fmt.Errorf("%w: the viewer lists no actions on %s: %s", errStep, slug, v.body)
+}
+
+// slugList is want's slugs, comma-separated, with each {name} resolved.
+func (s *spaceSteps) slugList(want string) []string {
+	w := []string{}
+	if want = s.o.resolve(want); want != "" {
+		for slug := range strings.SplitSeq(want, ",") {
+			w = append(w, strings.TrimSpace(slug))
+		}
+	}
+	return w
+}
+
+// searches pages through searchSpaces with token name, n at a time,
+// following each page's endCursor, and checks the spaces it finds, in
+// order, and that no page before the last holds fewer than n.
+func (s *spaceSteps) searches(ctx context.Context, name, replica string, n int, want string) error {
+	got := []string{}
+	after := ""
+	for range 20 {
+		in := map[string]any{"first": n}
+		if after != "" {
+			in["after"] = after
+		}
+		r, err := s.o.a.do(ctx, replica, name, http.MethodPost, "/api/v1/spaces/search", in)
+		if err != nil {
+			return err
+		}
+		var page struct {
+			Edges []struct {
+				Node struct {
+					ID string `json:"id"`
+				} `json:"node"`
+			} `json:"edges"`
+			PageInfo struct {
+				EndCursor   string `json:"endCursor"`
+				HasNextPage bool   `json:"hasNextPage"`
+			} `json:"pageInfo"`
+		}
+		if json.Unmarshal(r.body, &page) != nil || r.status != http.StatusOK {
+			return fmt.Errorf("%w: not a page of spaces: %d %s", errStep, r.status, r.body)
+		}
+		for _, e := range page.Edges {
+			got = append(got, e.Node.ID)
+		}
+		if !page.PageInfo.HasNextPage {
+			if w := s.slugList(want); !reflect.DeepEqual(got, w) {
+				return fmt.Errorf("%w: the search found %v, want %v", errStep, got, w)
+			}
+			return nil
+		}
+		if len(page.Edges) != n {
+			return fmt.Errorf("%w: a page before the last holds %d spaces: %s", errStep,
+				len(page.Edges), r.body)
+		}
+		after = page.PageInfo.EndCursor
+	}
+	return fmt.Errorf("%w: the search did not end after 20 pages", errStep)
+}
+
+// suggests checks the last answer, the suggestions of the id field, for
+// the slugs it lists and the spaces it counts.
+func (s *spaceSteps) suggests(want string, count int) error {
+	var out struct {
+		Fields []struct {
+			Name                 string `json:"name"`
+			PossibleValuesString *struct {
+				Values []string `json:"values"`
+			} `json:"possibleValuesString"`
+		} `json:"fields"`
+		FilteredCount int `json:"filteredCount"`
+	}
+	r := s.o.a.s.last()
+	if json.Unmarshal(r.body, &out) != nil || r.status != http.StatusOK {
+		return fmt.Errorf("%w: not suggestions: %d %s", errStep, r.status, r.body)
+	}
+	for _, f := range out.Fields {
+		if f.Name != "id" || f.PossibleValuesString == nil {
+			continue
+		}
+		got := slices.Clone(f.PossibleValuesString.Values)
+		slices.Sort(got)
+		w := s.slugList(want)
+		slices.Sort(w)
+		if !reflect.DeepEqual(got, w) || out.FilteredCount != count {
+			return fmt.Errorf("%w: suggested %v of %d, want %v of %d", errStep, got,
+				out.FilteredCount, w, count)
+		}
+		return nil
+	}
+	return fmt.Errorf("%w: no values of id: %s", errStep, r.body)
+}
+
+// refuses checks that the last answer, a problem, names the field at
+// pointer with reason.
+func (s *spaceSteps) refuses(pointer, reason string) error {
+	var p struct {
+		Errors []struct {
+			Pointer string `json:"pointer"`
+			Reason  string `json:"reason"`
+		} `json:"errors"`
+	}
+	r := s.o.a.s.last()
+	if json.Unmarshal(r.body, &p) == nil {
+		for _, e := range p.Errors {
+			if e.Pointer == pointer && e.Reason == reason {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("%w: no %s error at %s: %d %s", errStep, reason, pointer, r.status, r.body)
+}
+
+// anonymous sends a request with no credential.
+func (s *spaceSteps) anonymous(ctx context.Context, method, path, replica string) error {
+	_, err := s.o.a.do(ctx, replica, "", method, path, nil)
+	return err
+}
+
+// catalogue checks the last answer, the action catalogue, for its size
+// and two actions' flags.
+func (s *spaceSteps) catalogue(n int, deprecated, disabled string) error {
+	var out []struct {
+		Action     string `json:"action"`
+		Deprecated bool   `json:"deprecated"`
+		Disabled   bool   `json:"disabled"`
+	}
+	r := s.o.a.s.last()
+	if json.Unmarshal(r.body, &out) != nil || r.status != http.StatusOK || len(out) != n {
+		return fmt.Errorf(
+			"%w: not a catalogue of %d actions: %d %.200s",
+			errStep,
+			n,
+			r.status,
+			r.body,
+		)
+	}
+	flags := map[string][2]bool{}
+	for _, a := range out {
+		flags[a.Action] = [2]bool{a.Deprecated, a.Disabled}
+	}
+	if flags[deprecated] != [2]bool{true, false} || flags[disabled] != [2]bool{false, true} {
+		return fmt.Errorf("%w: %s is %v and %s %v", errStep, deprecated, flags[deprecated],
+			disabled, flags[disabled])
+	}
+	return nil
 }
 
 // seeded checks the tree, roles and first binding creating the account

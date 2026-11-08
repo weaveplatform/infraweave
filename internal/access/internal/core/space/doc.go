@@ -19,7 +19,10 @@
 // stopping one inheriting. A change it withholds is a *Denied naming
 // SPACE_ADMIN. After each change it drops this replica's authorization
 // snapshot of the account through Deps.Drop, so the change's answer and
-// the caller's next request here see it.
+// the caller's next request here see it. Search and Suggest read the
+// spaces a caller may read through Store by Fields, the reference's
+// generic search over the tree, with the reachable spaces the caller
+// passes held in the query.
 //
 // # Input and output
 //
@@ -30,6 +33,6 @@
 // # Dependencies
 //
 // It imports accessapi, the access domain's account package,
-// internal/kernel and the standard library. The access domain's adapters
+// internal/kernel, kernel/search and the standard library. The access domain's adapters
 // and assembly import it.
 package space

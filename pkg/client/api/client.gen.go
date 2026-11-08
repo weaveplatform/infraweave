@@ -1436,6 +1436,57 @@ func (e ProblemScope) Valid() bool {
 	}
 }
 
+// Defines values for ProblemFieldErrorReason.
+const (
+	ProblemFieldErrorReasonDuplicate    ProblemFieldErrorReason = "duplicate"
+	ProblemFieldErrorReasonEnum         ProblemFieldErrorReason = "enum"
+	ProblemFieldErrorReasonFormat       ProblemFieldErrorReason = "format"
+	ProblemFieldErrorReasonMaxLength    ProblemFieldErrorReason = "max-length"
+	ProblemFieldErrorReasonMaximum      ProblemFieldErrorReason = "maximum"
+	ProblemFieldErrorReasonMinLength    ProblemFieldErrorReason = "min-length"
+	ProblemFieldErrorReasonMinimum      ProblemFieldErrorReason = "minimum"
+	ProblemFieldErrorReasonNotFound     ProblemFieldErrorReason = "not-found"
+	ProblemFieldErrorReasonPattern      ProblemFieldErrorReason = "pattern"
+	ProblemFieldErrorReasonRequired     ProblemFieldErrorReason = "required"
+	ProblemFieldErrorReasonRule         ProblemFieldErrorReason = "rule"
+	ProblemFieldErrorReasonType         ProblemFieldErrorReason = "type"
+	ProblemFieldErrorReasonUnknownField ProblemFieldErrorReason = "unknown-field"
+)
+
+// Valid indicates whether the value is a known member of the ProblemFieldErrorReason enum.
+func (e ProblemFieldErrorReason) Valid() bool {
+	switch e {
+	case ProblemFieldErrorReasonDuplicate:
+		return true
+	case ProblemFieldErrorReasonEnum:
+		return true
+	case ProblemFieldErrorReasonFormat:
+		return true
+	case ProblemFieldErrorReasonMaxLength:
+		return true
+	case ProblemFieldErrorReasonMaximum:
+		return true
+	case ProblemFieldErrorReasonMinLength:
+		return true
+	case ProblemFieldErrorReasonMinimum:
+		return true
+	case ProblemFieldErrorReasonNotFound:
+		return true
+	case ProblemFieldErrorReasonPattern:
+		return true
+	case ProblemFieldErrorReasonRequired:
+		return true
+	case ProblemFieldErrorReasonRule:
+		return true
+	case ProblemFieldErrorReasonType:
+		return true
+	case ProblemFieldErrorReasonUnknownField:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PulumiOutputKind.
 const (
 	PulumiOutputKindPulumiOutput PulumiOutputKind = "PulumiOutput"
@@ -2645,6 +2696,18 @@ type AccountUpdateSecurityEmailRequest struct {
 
 // Action Action represents an action that a user can perform. The values after AI_INTEGRATION_TOGGLE act on the account's API keys, sessions, managed users and groups, which belong to the account rather than to a space, so they are held on the account's top space.
 type Action string
+
+// ActionCatalogueEntry An action of the catalogue and whether a role may hold it.
+type ActionCatalogueEntry struct {
+	// Action Action represents an action that a user can perform. The values after AI_INTEGRATION_TOGGLE act on the account's API keys, sessions, managed users and groups, which belong to the account rather than to a space, so they are held on the account's top space.
+	Action Action `json:"action"`
+
+	// Deprecated Whether the schema deprecates the action.
+	Deprecated bool `json:"deprecated"`
+
+	// Disabled Whether the schema disables the action.
+	Disabled bool `json:"disabled"`
+}
 
 // AnsibleEntity Possible Ansible entity types.
 type AnsibleEntity struct {
@@ -5164,6 +5227,9 @@ type Problem struct {
 	// Detail What went wrong with this request.
 	Detail *string `json:"detail,omitempty"`
 
+	// Errors For invalid-request and validation-failed, each field the server refused.
+	Errors *[]ProblemFieldError `json:"errors,omitempty"`
+
 	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
 	Feature *string `json:"feature,omitempty"`
 
@@ -5194,6 +5260,21 @@ type Problem struct {
 
 // ProblemScope For limit-reached, whether the organization's pool or the account's limit was reached.
 type ProblemScope string
+
+// ProblemFieldError A field of the request the server refused.
+type ProblemFieldError struct {
+	// Message The refusal, for people.
+	Message string `json:"message"`
+
+	// Pointer A JSON Pointer (RFC 6901) into the body, or #/query/<name>, #/path/<name> or #/header/<name> for a parameter.
+	Pointer string `json:"pointer"`
+
+	// Reason Why the field was refused, for clients to branch on.
+	Reason ProblemFieldErrorReason `json:"reason"`
+}
+
+// ProblemFieldErrorReason Why the field was refused, for clients to branch on.
+type ProblemFieldErrorReason string
 
 // ProposeWithOverridesRequest The arguments of proposeWithOverrides not carried in the path.
 type ProposeWithOverridesRequest struct {
@@ -9545,6 +9626,9 @@ type SpaceCreateJSONRequestBody = SpaceInput
 // SearchSpacesJSONRequestBody defines body for SearchSpaces for application/json ContentType.
 type SearchSpacesJSONRequestBody = SearchInput
 
+// SearchSpacesSuggestionsJSONRequestBody defines body for SearchSpacesSuggestions for application/json ContentType.
+type SearchSpacesSuggestionsJSONRequestBody = SearchSuggestionsInput
+
 // SpaceUpdateJSONRequestBody defines body for SpaceUpdate for application/json ContentType.
 type SpaceUpdateJSONRequestBody = SpaceInput
 
@@ -11382,6 +11466,13 @@ type ClientInterface interface {
 	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
 	AccountUpdateSecurityEmail(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ActionCatalogue Action Catalogue
+	//
+	// Every action a role may name, in the catalogue's order, each with whether the schema disables or deprecates it. A role holds neither a disabled nor a deprecated action. Any authenticated caller may read it, so a client lists the actions without schema introspection.
+	//
+	// Corresponds with GET /actions (the `ActionCatalogue` operationId).
+	ActionCatalogue(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AllowNonAdminSpaceCreation Allow Non-Admin Space Creation
 	//
 	// Whether admins of spaces below the account's top space may create, move and delete spaces below the spaces they administer, as accountToggleAllowNonAdminSpaceCreation sets it.
@@ -12354,7 +12445,7 @@ type ClientInterface interface {
 
 	// SearchSpacesWithBody Search Spaces
 	//
-	// Search Spaces with a set of predicates, ordering and paging.
+	// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -12363,12 +12454,30 @@ type ClientInterface interface {
 
 	// SearchSpaces Search Spaces
 	//
-	// Search Spaces with a set of predicates, ordering and paging.
+	// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /spaces/search (the `SearchSpaces` operationId).
 	SearchSpaces(ctx context.Context, body SearchSpacesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchSpacesSuggestionsWithBody Search Spaces Suggestions
+	//
+	// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+	SearchSpacesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchSpacesSuggestions Search Spaces Suggestions
+	//
+	// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+	SearchSpacesSuggestions(ctx context.Context, body SearchSpacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SpaceDelete Delete Space
 	//
@@ -13662,6 +13771,23 @@ func (c *Client) AccountUpdateSecurityEmailWithBody(ctx context.Context, params 
 // Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
 func (c *Client) AccountUpdateSecurityEmail(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAccountUpdateSecurityEmailRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ActionCatalogue Action Catalogue
+//
+// Every action a role may name, in the catalogue's order, each with whether the schema disables or deprecates it. A role holds neither a disabled nor a deprecated action. Any authenticated caller may read it, so a client lists the actions without schema introspection.
+//
+// Corresponds with GET /actions (the `ActionCatalogue` operationId).
+func (c *Client) ActionCatalogue(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewActionCatalogueRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -15824,7 +15950,7 @@ func (c *Client) SpaceCreate(ctx context.Context, params *SpaceCreateParams, bod
 
 // SearchSpacesWithBody Search Spaces
 //
-// Search Spaces with a set of predicates, ordering and paging.
+// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 //
 // Takes any type of body and a specified content type.
 //
@@ -15843,13 +15969,51 @@ func (c *Client) SearchSpacesWithBody(ctx context.Context, contentType string, b
 
 // SearchSpaces Search Spaces
 //
-// Search Spaces with a set of predicates, ordering and paging.
+// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 //
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /spaces/search (the `SearchSpaces` operationId).
 func (c *Client) SearchSpaces(ctx context.Context, body SearchSpacesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchSpacesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchSpacesSuggestionsWithBody Search Spaces Suggestions
+//
+// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+func (c *Client) SearchSpacesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSpacesSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchSpacesSuggestions Search Spaces Suggestions
+//
+// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+func (c *Client) SearchSpacesSuggestions(ctx context.Context, body SearchSpacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSpacesSuggestionsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -18507,6 +18671,33 @@ func NewAccountUpdateSecurityEmailRequestWithBody(server string, params *Account
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewActionCatalogueRequest constructs an http.Request for the ActionCatalogue method
+func NewActionCatalogueRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/actions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -22968,6 +23159,46 @@ func NewSearchSpacesRequestWithBody(server string, contentType string, body io.R
 	}
 
 	operationPath := fmt.Sprintf("/spaces/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchSpacesSuggestionsRequest calls the generic SearchSpacesSuggestions builder with application/json body
+func NewSearchSpacesSuggestionsRequest(server string, body SearchSpacesSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchSpacesSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchSpacesSuggestionsRequestWithBody constructs an http.Request for the SearchSpacesSuggestions method, with any body, and a specified content type
+func NewSearchSpacesSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/search/suggestions")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -27871,6 +28102,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
 	AccountUpdateSecurityEmailWithResponse(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateSecurityEmailResponse, error)
 
+	// ActionCatalogueWithResponse Action Catalogue
+	//
+	// Every action a role may name, in the catalogue's order, each with whether the schema disables or deprecates it. A role holds neither a disabled nor a deprecated action. Any authenticated caller may read it, so a client lists the actions without schema introspection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /actions (the `ActionCatalogue` operationId).
+	ActionCatalogueWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ActionCatalogueResponse, error)
+
 	// AllowNonAdminSpaceCreationWithResponse Allow Non-Admin Space Creation
 	//
 	// Whether admins of spaces below the account's top space may create, move and delete spaces below the spaces they administer, as accountToggleAllowNonAdminSpaceCreation sets it.
@@ -28979,7 +29219,7 @@ type ClientWithResponsesInterface interface {
 
 	// SearchSpacesWithBodyWithResponse Search Spaces
 	//
-	// Search Spaces with a set of predicates, ordering and paging.
+	// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -28988,12 +29228,30 @@ type ClientWithResponsesInterface interface {
 
 	// SearchSpacesWithResponse Search Spaces
 	//
-	// Search Spaces with a set of predicates, ordering and paging.
+	// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /spaces/search (the `SearchSpaces` operationId).
 	SearchSpacesWithResponse(ctx context.Context, body SearchSpacesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpacesResponse, error)
+
+	// SearchSpacesSuggestionsWithBodyWithResponse Search Spaces Suggestions
+	//
+	// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+	SearchSpacesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSpacesSuggestionsResponse, error)
+
+	// SearchSpacesSuggestionsWithResponse Search Spaces Suggestions
+	//
+	// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+	SearchSpacesSuggestionsWithResponse(ctx context.Context, body SearchSpacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpacesSuggestionsResponse, error)
 
 	// SpaceDeleteWithResponse Delete Space
 	//
@@ -31243,6 +31501,94 @@ func (r AccountUpdateSecurityEmailResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AccountUpdateSecurityEmailResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ActionCatalogueResponse200Headers the declared response headers of an HTTP 200 response for ActionCatalogue
+type ActionCatalogueResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ActionCatalogueResponse429Headers the declared response headers of an HTTP 429 response for ActionCatalogue
+type ActionCatalogueResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ActionCatalogueResponse503Headers the declared response headers of an HTTP 503 response for ActionCatalogue
+type ActionCatalogueResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ActionCatalogueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]ActionCatalogueEntry
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ActionCatalogueResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ActionCatalogueResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ActionCatalogueResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ActionCatalogueResponse) GetJSON200() *[]ActionCatalogueEntry {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ActionCatalogueResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ActionCatalogueResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ActionCatalogueResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ActionCatalogueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ActionCatalogueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ActionCatalogueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ActionCatalogueResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -40517,6 +40863,94 @@ func (r SearchSpacesResponse) ContentType() string {
 	return ""
 }
 
+// SearchSpacesSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchSpacesSuggestions
+type SearchSpacesSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchSpacesSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchSpacesSuggestions
+type SearchSpacesSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchSpacesSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchSpacesSuggestions
+type SearchSpacesSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchSpacesSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchSpacesSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchSpacesSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchSpacesSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchSpacesSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchSpacesSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchSpacesSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchSpacesSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchSpacesSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchSpacesSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchSpacesSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchSpacesSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SpaceDeleteResponse200Headers the declared response headers of an HTTP 200 response for SpaceDelete
 type SpaceDeleteResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -49109,6 +49543,21 @@ func (c *ClientWithResponses) AccountUpdateSecurityEmailWithResponse(ctx context
 	return ParseAccountUpdateSecurityEmailResponse(rsp)
 }
 
+// ActionCatalogueWithResponse Action Catalogue
+//
+// Every action a role may name, in the catalogue's order, each with whether the schema disables or deprecates it. A role holds neither a disabled nor a deprecated action. Any authenticated caller may read it, so a client lists the actions without schema introspection.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /actions (the `ActionCatalogue` operationId).
+func (c *ClientWithResponses) ActionCatalogueWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ActionCatalogueResponse, error) {
+	rsp, err := c.ActionCatalogue(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseActionCatalogueResponse(rsp)
+}
+
 // AllowNonAdminSpaceCreationWithResponse Allow Non-Admin Space Creation
 //
 // Whether admins of spaces below the account's top space may create, move and delete spaces below the spaces they administer, as accountToggleAllowNonAdminSpaceCreation sets it.
@@ -50925,7 +51374,7 @@ func (c *ClientWithResponses) SpaceCreateWithResponse(ctx context.Context, param
 
 // SearchSpacesWithBodyWithResponse Search Spaces
 //
-// Search Spaces with a set of predicates, ordering and paging.
+// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -50940,7 +51389,7 @@ func (c *ClientWithResponses) SearchSpacesWithBodyWithResponse(ctx context.Conte
 
 // SearchSpacesWithResponse Search Spaces
 //
-// Search Spaces with a set of predicates, ordering and paging.
+// Search the spaces the caller may read with a set of predicates, ordering and paging. Every page before the last is full. The fields are id, name, description, label, inheritEntities, parentSpace and space, the tree; id and name order, by id when the search names no order.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -50951,6 +51400,36 @@ func (c *ClientWithResponses) SearchSpacesWithResponse(ctx context.Context, body
 		return nil, err
 	}
 	return ParseSearchSpacesResponse(rsp)
+}
+
+// SearchSpacesSuggestionsWithBodyWithResponse Search Spaces Suggestions
+//
+// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+func (c *ClientWithResponses) SearchSpacesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSpacesSuggestionsResponse, error) {
+	rsp, err := c.SearchSpacesSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSpacesSuggestionsResponse(rsp)
+}
+
+// SearchSpacesSuggestionsWithResponse Search Spaces Suggestions
+//
+// The fields a space search filters and orders by, with the values the spaces the predicates keep hold and how many hold each. Only spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /spaces/search/suggestions (the `SearchSpacesSuggestions` operationId).
+func (c *ClientWithResponses) SearchSpacesSuggestionsWithResponse(ctx context.Context, body SearchSpacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpacesSuggestionsResponse, error) {
+	rsp, err := c.SearchSpacesSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSpacesSuggestionsResponse(rsp)
 }
 
 // SpaceDeleteWithResponse Delete Space
@@ -54207,6 +54686,121 @@ func ParseAccountUpdateSecurityEmailResponse(rsp *http.Response) (*AccountUpdate
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AccountUpdateSecurityEmailResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseActionCatalogueResponse parses an HTTP response from a ActionCatalogueWithResponse call
+func ParseActionCatalogueResponse(rsp *http.Response) (*ActionCatalogueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ActionCatalogueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ActionCatalogueEntry
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ActionCatalogueResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ActionCatalogueResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ActionCatalogueResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -66025,6 +66619,121 @@ func ParseSearchSpacesResponse(rsp *http.Response) (*SearchSpacesResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers SearchSpacesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchSpacesSuggestionsResponse parses an HTTP response from a SearchSpacesSuggestionsWithResponse call
+func ParseSearchSpacesSuggestionsResponse(rsp *http.Response) (*SearchSpacesSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchSpacesSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchSpacesSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchSpacesSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchSpacesSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
