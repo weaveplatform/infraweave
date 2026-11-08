@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
@@ -107,6 +108,7 @@ type Domain struct {
 	users    *user.Service
 	groups   *group.Service
 	oauth    *oauth.Service
+	spaces   *space.Service
 	manual   bool
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
@@ -199,6 +201,7 @@ func New(d Deps) (*Domain, error) {
 		users:     user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups:    group.NewService(group.Deps{Store: store, Now: now}),
 		oauth:     grants,
+		spaces:    space.NewService(store, now),
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil
@@ -305,6 +308,12 @@ func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
 		}
 	}
 }
+
+// GuardSpaces registers g, by which another domain refuses deleting a
+// space its rows name and a move that would cut a stack off an entity it
+// reaches. internal/app registers each domain's guard before the API
+// serves.
+func (d *Domain) GuardSpaces(g accessapi.SpaceGuard) { d.spaces.Guard(g) }
 
 // AccountOrganization is the organization that holds acct, for work
 // outside a request that knows only its account, as a queued job does;

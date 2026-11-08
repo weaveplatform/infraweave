@@ -21,6 +21,7 @@ func TestUnitParseSlug(t *testing.T) {
 		"acme-":                 "ends with a hyphen",
 		"ac--me":                "has two hyphens in a row",
 		"root":                  `"root" is reserved`,
+		"legacy":                `"legacy" is reserved`,
 		"acme_corp":             `has '_'; only a-z, 0-9 and - are allowed`,
 		"acMe":                  `has 'M'; only a-z, 0-9 and - are allowed`,
 		"acmé":                  `has 'é'; only a-z, 0-9 and - are allowed`,

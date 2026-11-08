@@ -20,8 +20,10 @@ const MaxName = 100
 
 // reserved are slugs no organization or account may take. root is the
 // installation's top node, and a top space named root could not say which
-// account it belongs to (decision 0007).
-var reserved = map[string]bool{"root": true}
+// account it belongs to; legacy is the slug of the space below every top
+// space, which takes its account's slug, so an account named legacy would
+// hold two spaces of one slug (decision 0007).
+var reserved = map[string]bool{"root": true, "legacy": true}
 
 // ErrInvalid marks input that breaks a rule; the error names the field.
 var ErrInvalid = errors.New("invalid")

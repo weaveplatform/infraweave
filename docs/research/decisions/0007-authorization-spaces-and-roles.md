@@ -52,8 +52,9 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   created_at)`.
   Slugs are immutable and names can be renamed. A slug is 1 to 63
   lower-case letters, digits and single hyphens, starts with a letter and
-  does not end with a hyphen; `root` is reserved, because the top space
-  takes the account's slug where Spacelift says `root`. Account slugs are
+  does not end with a hyphen; `root` and `legacy` are reserved, because
+  the top space takes the account's slug where Spacelift says `root`, and
+  `legacy` is the slug of the space beneath it. Account slugs are
   unique across the installation, because the registry namespace
   ([0014](0014-module-and-provider-registry.md)) and the federation audience
   (0006) are installation-wide. Organization slugs are unique among
@@ -150,9 +151,10 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 - **The top space.** Every account's tree has one top space, the space
   Spacelift calls `root`. Its slug, and so its ID on the wire, is the
   account's immutable slug, so no space ID says root, and one ID names the
-  same space in exports, OIDC subjects and imports. The importer maps a
-  Spacelift `root` to the account's slug. The top space cannot be deleted
-  or changed.
+  same space in exports, OIDC subjects and imports. Its key is the
+  account's ID, so the account names its top space without a lookup. The
+  importer maps a Spacelift `root` to the account's slug. The top space
+  cannot be deleted or changed.
 - **Seeded spaces.** Every account starts with its top space and `legacy`, a
   child of the top space whose slug has no suffix. `legacy` cannot be
   deleted. It is an ordinary space: it carries no special access semantics

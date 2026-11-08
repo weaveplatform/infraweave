@@ -120,6 +120,9 @@ func (s *Store) CreateAccount(
 			a.OrganizationID, a.ID, a.Slug, a.Name, a.ClaimedAt, a.CreatedAt); err != nil {
 			return classify(err, "account")
 		}
+		if err := seedSpaces(ctx, q, a); err != nil {
+			return err
+		}
 		return s.admit(ctx, q, a.OrganizationID, a.ID, admin)
 	})
 	if err != nil {

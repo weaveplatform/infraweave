@@ -1,6 +1,11 @@
 package api
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
+)
 
 // Access is what a route admits (decision 0006 § "The principal").
 type Access int
@@ -49,3 +54,36 @@ const (
 	OAuthAuthorizePattern = "/oauth/authorize"
 	OAuthTokenPattern     = "/oauth/token" //nolint:gosec // a route, not a credential
 )
+
+// SpaceGuard is a domain's say in changes to an account's space tree
+// (decision 0007 § "Spaces"): a domain whose rows name spaces registers
+// one, and the tree refuses a delete or a move it objects to. Both
+// methods run inside the change's transaction, which the context
+// carries, after the tree is locked, so what they read cannot change
+// before the change commits.
+type SpaceGuard interface {
+	// SpaceInUse reports whether a row of the domain names space, which
+	// refuses its deletion.
+	SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
+	// LostOnMove lists each stack that would no longer reach an entity
+	// it reaches today if m were made, which refuses it.
+	LostOnMove(ctx context.Context, m SpaceMove) ([]LostReach, error)
+}
+
+// SpaceMove is a proposed move of Space, with every space below it, to a
+// new parent. From and To are the moved space's ancestors before and
+// after the move, its parent first and the top space last.
+type SpaceMove struct {
+	Account  kernel.AccountID
+	Space    kernel.ULID
+	Subtree  []kernel.ULID
+	From, To []kernel.ULID
+}
+
+// LostReach is a stack that a tree change would cut off from an entity:
+// a worker pool, a cloud integration, a context or a policy, by its kind
+// and name.
+type LostReach struct {
+	Stack  string
+	Entity string
+}

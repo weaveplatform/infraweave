@@ -192,6 +192,8 @@ var deleteAccount = []string{
 	`DELETE FROM managed_user_groups WHERE account_id = $1`,
 	`DELETE FROM account_users WHERE account_id = $1`,
 	`DELETE FROM account_settings WHERE account_id = $1`,
+	`DELETE FROM space_closure WHERE account_id = $1`,
+	`DELETE FROM spaces WHERE account_id = $1`,
 }
 
 // DeleteAccount deletes the account once it is marked for deletion, under
