@@ -415,8 +415,10 @@ func TestUnitServiceInvalid(t *testing.T) {
 	}
 }
 
-// TestUnitIssuerAllowed checks DV-014: HTTPS only, and only an allowed
-// issuer when any are configured.
+// TestUnitIssuerAllowed checks the issuer rule: HTTPS only, and only an
+// allowed issuer when any are configured.
+//
+// ref: DV-014
 func TestUnitIssuerAllowed(t *testing.T) {
 	for issuer, want := range map[string]bool{
 		"https://idp.example.com":        true,

@@ -8,7 +8,9 @@ import (
 )
 
 // OrganizationPrefix starts every organization key secret, so a scanner
-// tells one from an account's key (decision 0006).
+// tells one from an account's key.
+//
+// ref: decision 0006 § "API keys and organization keys"
 const OrganizationPrefix = "iwo_"
 
 // OrganizationKey is an organization key: held by the organization's

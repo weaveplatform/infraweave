@@ -1,12 +1,12 @@
-// Package apikey is decision 0006's API keys. A secret is Prefix, iwk_,
+// Package apikey is the API keys. A secret is Prefix, iwk_,
 // and 43 base64url characters encoding 32 random bytes (NewSecret); only
 // its SHA-256 is stored (Hash), and Matches compares digests in constant
 // time. Usable is whether a key may exchange: neither disabled, deleted
 // nor expired. An OIDC key has no secret: it exchanges a JWT of its
 // issuer whose sub matches CompileSubject's anchored expression, and
 // OIDC.Teams adds the values of the claim its mapping names TeamsClaim
-// to the key's teams. An organization key (decision 0007) is an
-// organization's, not an account's: its secret is OrganizationPrefix,
+// to the key's teams. An organization key is an organization's, not an
+// account's: its secret is OrganizationPrefix,
 // iwo_, and 43 base64url characters (NewOrganizationSecret), stored as
 // HashOrganization's SHA-256, and OrganizationKey.Usable and Matches
 // mirror an API key's.
@@ -19,7 +19,7 @@
 // (apiKeyEnableNonAdminManagers), in any space, through Authorizer; any
 // other caller is Denied, naming the action. Actions is that rule's
 // answer for a key's allowedActions. Input it refuses is ErrInvalid, naming the field; IssuerAllowed
-// is DV-014's issuer rule. A personal key has an Owner, the member whose
+// is the issuer rule, HTTPS only and within any configured allowlist. A personal key has an Owner, the member whose
 // principal in the key's account its tokens act as: CreatePersonal takes
 // it from a member's own session, any other caller being ErrNoOwner, and
 // the store refuses it with ErrPersonalOff while the account turns
@@ -31,6 +31,8 @@
 // creation runs under its locks. A personal key whose
 // owner leaves the account or is deactivated is disabled as
 // DEPROVISIONED.
+//
+// ref: decisions 0006 and 0007, DV-014
 //
 // # Input and output
 //

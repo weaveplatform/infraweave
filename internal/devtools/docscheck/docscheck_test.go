@@ -41,8 +41,9 @@ const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack ma
 const anySchema = `{"x-id-pattern": ".+"}`
 
 // features, capabilities and supersessions are registers that name only
-// phases the plan has. Report 26's wording in a capability's spacelift
-// member and a phase in a code span are not assignments.
+// phases the plan has. The scope-and-tiers report's wording in a
+// capability's spacelift member and a phase in a code span are not
+// assignments.
 const (
 	features = `{"$schema": "schema/features.schema.json", "records": [
   {"id": "stacks", "phase": "P0", "notes": "` + "`P42`" + ` is a name"}]}`
@@ -526,10 +527,10 @@ func openQuestions(m fstest.MapFS, reports ...string) {
 	)
 }
 
-// TestUnitCheckScopeAndOpenQuestions covers the capabilities register,
-// report 30 and the open-questions register when they satisfy their checks,
-// and the register without a spec to check it against. Report 30 defines the
-// marker, so no record lists it.
+// TestUnitCheckScopeAndOpenQuestions covers the capabilities register, the
+// open-questions report and the open-questions register when they satisfy
+// their checks, and the register without a spec to check it against. The
+// report defines the marker, so no record lists it.
 func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
 	m := tree()
 	m["docs/research/reference/30-open-questions.md"] = file(

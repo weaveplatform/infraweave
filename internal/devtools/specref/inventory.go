@@ -11,12 +11,12 @@ import (
 )
 
 // The inventory is two files: the register docs/data/graphql-inventory.json,
-// one record per named type of the schema, and report 29 under
-// docs/research/reference, which says what the register holds and counts it.
-// Everything either prints comes from the schema and the lock, including the
-// research baseline (the fetch date, not today), so regenerating from
-// unchanged snapshots is byte-identical and make verify-reference can diff
-// both.
+// one record per named type of the schema, and the data-model inventory
+// report docs/research/reference/29-data-model-inventory.md, which says what
+// the register holds and counts it. Everything either prints comes from the
+// schema and the lock, including the research baseline (the fetch date, not
+// today), so regenerating from unchanged snapshots is byte-identical and
+// make verify-reference can diff both.
 //
 // Descriptions are left out on purpose: they are Spacelift's prose and carry
 // no stated licence, whereas type, field and value names are facts about the
@@ -162,8 +162,8 @@ func inventoryInput(v InputValue) inventoryField {
 	}
 }
 
-// Inventory renders report 29. Its links assume it lives in
-// docs/research/reference and the register in docs/data.
+// Inventory renders the data-model inventory report. Its links assume it
+// lives in docs/research/reference and the register in docs/data.
 func Inventory(s *Schema, lock *Lock) []byte {
 	byKind := inventoryTypes(s)
 	var b strings.Builder

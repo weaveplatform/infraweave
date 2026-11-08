@@ -1,5 +1,7 @@
-// Package objectstoretest is decision 0016's contract suite for
-// objectstore drivers.
+// Package objectstoretest is the contract suite every objectstore driver
+// passes.
+//
+// ref: decision 0016
 //
 // Run runs every case of Cases against a Bucket, each under a key prefix
 // of its own: round-trips, a missing key, deletes, writes shorter and

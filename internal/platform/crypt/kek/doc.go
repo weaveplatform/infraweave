@@ -1,7 +1,7 @@
-// Package kek is decision 0013's key encryption key providers, which wrap
-// the keyring's data keys. Provider binds a data key's ID into its
-// wrapping, so a wrapped key moved to another ID fails to unwrap
-// (ErrUnwrap), and Ref names the provider and the KEK that wrapped it.
+// Package kek is the key encryption key providers, which wrap the keyring's
+// data keys. Provider binds a data key's ID into its wrapping, so a wrapped
+// key moved to another ID fails to unwrap (ErrUnwrap), and Ref names the
+// provider and the KEK that wrapped it.
 //
 // Config is secrets.kek: provider, which every process mode that seals
 // requires (ErrNoProvider), and the settings of local, awskms, gcpkms,
@@ -12,6 +12,8 @@
 // from secrets.kek.local.key_file or INFRAWEAVE_SECRETS_KEK (Env), and it
 // wraps with AES-256-GCM through cipher.NewGCMWithRandomNonce, in the
 // format 0x01 | nonce | ciphertext and tag.
+//
+// ref: decision 0013
 //
 // # Input and output
 //

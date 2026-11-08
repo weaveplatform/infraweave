@@ -18,7 +18,9 @@ import (
 // backlog in one never starves another.
 type Name string
 
-// The logical queues of decision 0011.
+// The logical queues.
+//
+// ref: decision 0011
 const (
 	Default     Name = "default"
 	Events      Name = "events"
@@ -29,8 +31,9 @@ const (
 	Maintenance Name = "maintenance"
 )
 
-// Queues are every logical queue, in decision 0011's order, which Stats
-// reports in.
+// Queues are every logical queue, in the order Stats reports them.
+//
+// ref: decision 0011
 var Queues = []Name{Default, Events, VCSInbox, Deliveries, Scheduler, Flows, Maintenance}
 
 // Policy resolves an enqueue whose kind and unique key match a pending or
@@ -46,7 +49,9 @@ const (
 	Ignore
 )
 
-// Defaults of decision 0011.
+// Enqueue's defaults and the payload limit.
+//
+// ref: decision 0011
 const (
 	DefaultPriority    = 5
 	DefaultMaxAttempts = 5

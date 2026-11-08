@@ -1,6 +1,6 @@
-// Package ctl is infraweavectl's command tree (decision 0001): profile,
-// whoami, version, api, and operator with tier, organization, grant and
-// billing (decision 0021). Root builds it; cmd/infraweavectl runs it.
+// Package ctl is infraweavectl's command tree: profile, whoami, version,
+// api, and operator with tier, organization, grant and billing. Root builds
+// it; cmd/infraweavectl runs it.
 //
 // Settings are strict YAML profiles, each an endpoint and a credential (an
 // API key's ID and secret, or a token), with flag > environment > file
@@ -9,6 +9,8 @@
 // key's secret and a token have variables, INFRAWEAVECTL_API_KEY_SECRET and
 // INFRAWEAVECTL_TOKEN, and standard input for profile set, but no flag, so
 // neither appears in a process listing.
+//
+// ref: decisions 0001 and 0021
 //
 // # Input and output
 //

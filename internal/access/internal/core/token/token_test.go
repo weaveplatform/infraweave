@@ -152,7 +152,7 @@ func TestUnitTokenClaims(t *testing.T) {
 	type claims struct {
 		jwt.Claims
 
-		Kind string `json:"iw_kind"` //nolint:tagliatelle // decision 0006's claim name
+		Kind string `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
 	}
 	with := func(f func(*claims)) claims {
 		cl := claims{Claims: valid(), Kind: "api_key"}

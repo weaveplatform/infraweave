@@ -3,11 +3,12 @@ name: go | Quality gate
 # Every pull request passes vet, blocking lint, unit tests on Linux, macOS and
 # Windows, govulncheck, a cross-compile of every cmd/* binary, and the merged
 # coverage gate (>=95% total, >=90% per package), the acceptance partitions
-# of decision 0016 against real dependencies in Docker, the unit tests and
-# every partition again in FIPS 140-only mode, and the parity check over
-# their results. The `gate` job is the single required status
-# check: make it required in branch protection. Every required job is in its
-# `needs` and, when it produces coverage, in the coverage job's.
+# against real dependencies in Docker, the unit tests and every partition
+# again in FIPS 140-only mode, and the parity check over their results. The
+# `gate` job is the single required status check: make it required in branch
+# protection. Every required job is in its `needs` and, when it produces
+# coverage, in the coverage job's.
+# ref: decision 0016
 
 on:
   workflow_dispatch:
@@ -70,10 +71,11 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # Decision 0016's partitions. A scenario runs in the first of runs,
+  # The acceptance partitions. A scenario runs in the first of runs,
   # integrations and core that lists one of its tags; TestUnitFeaturePartitions
   # fails a tag no partition lists. A partition near its timeout splits by
   # tag into two jobs; scenarios are never dropped to fit.
+  # ref: decision 0016
   accept:
     name: 'accept-${{ matrix.partition }}'
     strategy:
@@ -145,12 +147,13 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # Decision 0016's fips-only: the unit tests and every acceptance
-  # partition again, with every binary built with the certified FIPS 140-3
-  # module and every process in fips140=only mode (make's FIPS=1), so a
-  # call to MD5, SHA-1 or another refused algorithm, in product code, a
-  # test or a library, fails the merge. It proves the same tests under
-  # another mode, so its coverage is not uploaded and adds nothing.
+  # The unit tests and every acceptance partition again, with every binary
+  # built with the certified FIPS 140-3 module and every process in
+  # fips140=only mode (make's FIPS=1), so a call to MD5, SHA-1 or another
+  # refused algorithm, in product code, a test or a library, fails the
+  # merge. It proves the same tests under another mode, so its coverage is
+  # not uploaded and adds nothing.
+  # ref: decision 0016
   fips-only:
     name: fips-only
     runs-on: ubuntu-latest
@@ -188,13 +191,12 @@ jobs:
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
-  # A recorded capability state is a claim that the acceptance results must
-  # back, so parity runs on the merged results of every partition.
-  # Decision 0016's postgres-next: the sqltest suites and accept-core on the
-  # next PostgreSQL major, its beta or release candidate until it is
-  # generally available. It reports and never blocks: gate does not need it
-  # and its coverage is not merged, so a floor raise is never a surprise
-  # and an upstream regression never stops a merge.
+  # The sqltest suites and accept-core on the next PostgreSQL major, its
+  # beta or release candidate until it is generally available. It reports
+  # and never blocks: gate does not need it and its coverage is not merged,
+  # so a floor raise is never a surprise and an upstream regression never
+  # stops a merge.
+  # ref: decisions 0005 and 0016
   postgres-next:
     name: postgres-next
     runs-on: ubuntu-latest
@@ -235,6 +237,8 @@ jobs:
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
+  # A recorded capability state is a claim that the acceptance results must
+  # back, so parity runs on the merged results of every partition.
   parity:
     name: 'parity'
     needs: [accept]
@@ -294,8 +298,8 @@ jobs:
       # Offline: regenerates both products' references from the committed
       # snapshots and diffs, so an edit to either rest-mapping.yaml, the Flows
       # schemas.yaml or the generator without `make reference` (or
-      # `make reference-inventory` for report 29 and the two registers)
-      # fails here rather than shipping a stale spec or inventory.
+      # `make reference-inventory` for the data-model inventory and the two
+      # registers) fails here rather than shipping a stale spec or inventory.
       - name: Verify the generated reference
         run: make verify-reference
 

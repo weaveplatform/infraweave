@@ -165,8 +165,11 @@ func (s *servedSteps) retryAfterNear(want, slack int) error {
 	return nil
 }
 
-// fingerprint is decision 0003's identity of a request, as the idempotency
-// middleware computes it, so a scenario can store a key's state itself.
+// fingerprint is a request's identity, its method, path and SHA-256 of
+// its body, as the idempotency middleware computes it, so a scenario can
+// store a key's state itself.
+//
+// ref: decision 0003
 func fingerprint(method, path, body string) string {
 	sum := sha256.Sum256([]byte(body))
 	return method + " " + path + " " + hex.EncodeToString(sum[:])

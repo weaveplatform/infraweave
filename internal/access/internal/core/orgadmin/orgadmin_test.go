@@ -766,9 +766,11 @@ func TestUnitKeys(t *testing.T) {
 
 func ptr(v int64) *int64 { return &v }
 
-// TestUnitLimits checks decision 0021's limits as the tag answers them:
-// every limit of the catalogue, the pool's value where it sets one, the
-// account's own where one is set, and the seats in use.
+// TestUnitLimits checks the limits as the tag answers them: every limit of
+// the catalogue, the pool's value where it sets one, the account's own
+// where one is set, and the seats in use.
+//
+// ref: decision 0021 § "Limits"
 func TestUnitLimits(t *testing.T) {
 	w := newWorld(t)
 	ctx := t.Context()

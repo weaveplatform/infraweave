@@ -16,7 +16,9 @@ import (
 )
 
 // RequestTTL is how long an authorization request waits for the member's
-// consent (decision 0006).
+// consent.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 const RequestTTL = 10 * time.Minute
 
 // ClientRetention is how long a client goes unused before expiry deletes
@@ -41,7 +43,7 @@ const (
 	GrantAuthorizationCode = "authorization_code"
 	GrantRefreshToken      = "refresh_token"
 	ResponseCode           = "code"
-	// codeInvalidTarget is RFC 8707's refusal of a resource.
+	// codeInvalidTarget is the refusal of a resource in RFC 8707.
 	codeInvalidTarget = "invalid_target"
 )
 
@@ -126,7 +128,9 @@ type Deps struct {
 	Now                            func() time.Time
 }
 
-// Service is decision 0006's authorization server for MCP clients.
+// Service is the authorization server for MCP clients.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 type Service struct{ d Deps }
 
 // NewService returns the service on d.
@@ -134,7 +138,7 @@ func NewService(d Deps) *Service { return &Service{d: d} }
 
 // Metadata is the RFC 8414 document.
 //
-//nolint:tagliatelle // RFC 8414's names
+//nolint:tagliatelle // the names RFC 8414 sets
 type Metadata struct {
 	Issuer                            string   `json:"issuer"`
 	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
@@ -147,8 +151,11 @@ type Metadata struct {
 	ScopesSupported                   []string `json:"scopes_supported"`
 }
 
-// Metadata is the server's RFC 8414 document, exactly decision 0006's
-// fields.
+// Metadata is the server's RFC 8414 document: the issuer, its three
+// endpoints, and only the response type, grant types, PKCE method, client
+// authentication and scopes it supports.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 func (s *Service) Metadata() Metadata {
 	base := strings.TrimSuffix(s.d.PublicURL, "/")
 	return Metadata{
@@ -428,7 +435,7 @@ type TokenParams struct {
 
 // Tokens are a token endpoint's answer (RFC 6749 section 5.1).
 //
-//nolint:tagliatelle // RFC 6749's names
+//nolint:tagliatelle // the names RFC 6749 sets
 type Tokens struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`

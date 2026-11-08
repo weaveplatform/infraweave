@@ -1,9 +1,11 @@
-// Package member is decision 0006's member: a person in an organization,
+// Package member is the member: a person in an organization,
 // which accounts admit. Status is Active once the person has signed in,
 // Pending from an invitation until they sign in through it, and
 // Deactivated once an organization admin deactivates them; an active or
 // pending member holds one seat however many accounts admit it.
 // CheckEmail checks an address input names.
+//
+// ref: decision 0006 § "Members and identity providers"
 //
 // # Input and output
 //

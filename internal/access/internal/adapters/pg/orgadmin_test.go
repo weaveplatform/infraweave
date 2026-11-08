@@ -139,9 +139,11 @@ func TestAccOrganizationAdmins(t *testing.T) {
 	}
 }
 
-// TestAccClaim checks decision 0007's claim: a single transition from
+// TestAccClaim checks claiming an account: a single transition from
 // unclaimed to claimed that admits the named member, which must be an
 // active member of the organization, and that the seats limit checks.
+//
+// ref: decision 0007 § "Tenancy"
 func TestAccClaim(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)

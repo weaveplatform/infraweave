@@ -1,8 +1,9 @@
 @postgres @op:messageQueueStats
 Feature: Message queue depth
-  An operator reads how many jobs each of decision 0011's seven logical
+  An operator reads how many jobs each of the work queue's seven logical
   queues holds: visible jobs are pending and due, in-flight jobs are
   running. The counts are installation-wide, as the reference serves them.
+  ref: decision 0011
 
   Background:
     Given a running infraweave server

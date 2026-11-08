@@ -103,11 +103,13 @@ jobs:
           # prefix] rewrites the pins of the image whose tag starts with the
           # prefix to the newest tag matching the pattern, at the digest of
           # its multi-platform index so the pin pulls on any host.
-          # PostgreSQL keeps one pin per major: 18, the floor decision 0005
-          # names, 17, the major below it that the floor test refuses, and 19,
-          # the next major the postgres-next job runs. The prefix, without its
-          # backslashes, also filters the tag listing by name, since a
-          # major's tags can be older than the 100 most recently updated.
+          # PostgreSQL keeps one pin per major: 18, the version floor that
+          # every process mode requires, 17, the major below it that the floor
+          # test refuses, and 19, the next major the postgres-next job runs.
+          # The prefix, without its backslashes, also filters the tag listing
+          # by name, since a major's tags can be older than the 100 most
+          # recently updated.
+          # ref: decision 0005
           tags() {
             curl -fsS "https://hub.docker.com/v2/repositories/$1/tags?page_size=100&ordering=last_updated&name=${2//\\/}" \
               | jq -r '.results[].name'

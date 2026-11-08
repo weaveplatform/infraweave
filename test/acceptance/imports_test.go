@@ -37,9 +37,11 @@ func clientImports(t *testing.T, dir string) []string {
 	return out
 }
 
-// TestUnitStepsUseTheSDK holds every step to decision 0016: a step that
-// drives the API does it through pkg/sdk, so each scenario exercises the
-// SDK too, never through the generated client beneath it.
+// TestUnitStepsUseTheSDK holds every step to one rule: a step that drives
+// the API does it through pkg/sdk, so each scenario exercises the SDK too,
+// never through the generated client beneath it.
+//
+// ref: decision 0016
 func TestUnitStepsUseTheSDK(t *testing.T) {
 	if got := clientImports(t, "."); len(got) > 0 {
 		t.Errorf("acceptance files import a generated client; use pkg/sdk: %q", got)

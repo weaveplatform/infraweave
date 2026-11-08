@@ -1,6 +1,6 @@
-// Package objectstore is decision 0005's object storage: the eleven
-// logical stores, the interfaces their drivers implement, and the router
-// that puts each store under its prefix in its bucket.
+// Package objectstore is infraweave's object storage: the eleven logical
+// stores, the interfaces their drivers implement, and the router that puts
+// each store under its prefix in its bucket.
 //
 // A Bucket is one driver's bucket, over object keys. New opens each
 // distinct bucket the configuration names once, through the caller's
@@ -19,6 +19,8 @@
 // drivers' size checks for writes sent in parts. Config is the objectstore
 // settings: Validate names a bad key, and Require refuses a missing
 // driver, which every process mode needs.
+//
+// ref: decision 0005
 //
 // # Input and output
 //

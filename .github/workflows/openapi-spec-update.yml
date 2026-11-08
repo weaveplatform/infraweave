@@ -222,7 +222,8 @@ jobs:
           RESULT: ${{ steps.generate.outputs.result }}
         run: |
           set -euo pipefail
-          # fetchedAt changes on every run, and report 29's header carries it;
+          # fetchedAt changes on every run, and the data-model inventory's
+          # ($INVENTORY's) header carries it;
           # each spec is versioned by its sources' digests, so a forced run
           # against an unchanged upstream changes nothing else and needs no PR.
           others=$(git status --porcelain -- . ":(exclude)$LOCK" ":(exclude)$FLOWS_LOCK" ":(exclude)$INVENTORY")

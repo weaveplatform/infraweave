@@ -9,11 +9,14 @@ import (
 // Config holds the outbox settings, keyed below events.
 type Config struct {
 	// Retention keeps an event after its fan-out, the window a stream
-	// client may resume within (decision 0015).
+	// client may resume within.
+	// ref: decision 0015
 	Retention time.Duration `mapstructure:"retention"`
 }
 
-// Defaults are decision 0015's settings.
+// Defaults are the outbox settings a process starts with.
+//
+// ref: decision 0015
 func Defaults() Config { return Config{Retention: 72 * time.Hour} }
 
 // ErrConfig reports a setting the outbox could not run with.

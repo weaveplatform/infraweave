@@ -44,9 +44,11 @@ func scenarioTags(t *testing.T, dir string) map[string][]string {
 	return out
 }
 
-// TestUnitFeaturePartitions holds every scenario of features/ to decision
-// 0016's partitions: a tag no partition lists would leave its scenario in
-// no CI job, or in one without its dependency.
+// TestUnitFeaturePartitions holds every scenario of features/ to the
+// Partitions: a tag no partition lists would leave its scenario in no CI
+// job, or in one without its dependency.
+//
+// ref: decision 0016
 func TestUnitFeaturePartitions(t *testing.T) {
 	for name, tags := range scenarioTags(t, "features") {
 		if _, err := Place(tags); err != nil {

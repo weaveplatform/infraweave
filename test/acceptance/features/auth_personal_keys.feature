@@ -1,6 +1,6 @@
 @postgres
 Feature: Personal API keys
-  A personal API key is a member's own in one account (decision 0006). Its
+  A personal API key is a member's own in one account. Its
   token acts as the owner in the key's account, with the owner's login and
   teams, so it never exceeds them. Only a member's own session creates one,
   and only while the account's personalApiKeysEnabled is on; the viewer's
@@ -9,6 +9,7 @@ Feature: Personal API keys
   owner from the account, or deactivating them, disables the key as
   DEPROVISIONED and ends its sessions, and its exchange answers 401 like any
   refused key's (capture C123). A personal key rides on its owner's seat.
+  ref: decision 0006
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

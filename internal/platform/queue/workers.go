@@ -21,8 +21,9 @@ import (
 // timeout, on shutdown after the grace, or when the lease is lost.
 type Handler func(ctx context.Context, j Job) error
 
-// Handler timeouts of decision 0011. MaxTimeout is Spacelift's 900-second
-// processing bound.
+// Handler timeouts. MaxTimeout is Spacelift's 900-second processing bound.
+//
+// ref: decision 0011
 const (
 	DefaultTimeout = 5 * time.Minute
 	MaxTimeout     = 15 * time.Minute
@@ -34,7 +35,8 @@ type HandlerOptions struct {
 	// Timeout bounds one attempt; 0 means DefaultTimeout.
 	Timeout time.Duration
 	// Feature, when set, is the feature an account's entitlement must
-	// include for its jobs to run (decision 0021).
+	// include for its jobs to run.
+	// ref: decision 0021
 	Feature string
 	// RetryDelay is the wait before the attempt after a failed one; nil
 	// means Backoff.
@@ -169,7 +171,9 @@ type Workers struct {
 	// waiting, when set, is called each time a queue's pool waits; tests
 	// use it to enqueue only once a pool is idle.
 	waiting func(Name)
-	// skipped counts decision 0011's infraweave.features.skipped.
+	// skipped counts the jobs completed unrun because their account lacks
+	// the kind's feature, the infraweave.features.skipped metric.
+	// ref: decision 0011
 	skipped atomic.Int64
 }
 
@@ -203,10 +207,10 @@ func (p *pool) poke() {
 	}
 }
 
-// Run claims and runs jobs until ctx ends, then shuts down as decision 0011
-// says: it stops claiming, lets running handlers finish for
-// queue.shutdown_grace, then cancels the rest and hands their jobs back
-// without counting the attempt. It returns once every handler has.
+// Run claims and runs jobs until ctx ends, then shuts down: it stops
+// claiming, lets running handlers finish for queue.shutdown_grace, then
+// cancels the rest and hands their jobs back without counting the attempt.
+// It returns once every handler has.
 func (w *Workers) Run(ctx context.Context) {
 	base, stop := context.WithCancelCause(context.WithoutCancel(ctx))
 	defer stop(nil)

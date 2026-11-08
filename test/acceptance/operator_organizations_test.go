@@ -117,8 +117,11 @@ func (o *operatorSteps) hashPassword(ctx context.Context, password string) error
 	return nil
 }
 
-// verifies checks the hash against decision 0006's format with the
-// standard library alone, so the check does not share infraweave's code.
+// verifies checks the hash against the break-glass password format,
+// $pbkdf2-sha256$i=<n>$<salt>$<hash>, with the standard library alone, so
+// the check does not share infraweave's code.
+//
+// ref: decision 0006
 func (o *operatorSteps) verifies(good, bad string) error {
 	rest, ok := strings.CutPrefix(o.hash, "$pbkdf2-sha256$i=")
 	parts := strings.Split(rest, "$")

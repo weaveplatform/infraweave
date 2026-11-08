@@ -22,12 +22,16 @@ const ContentType = "application/problem+json"
 const TypePrefix = "urn:infraweave:problem:"
 
 // InstancePrefix starts every problem's instance, which names the request it
-// answers (decision 0022, "Correlation").
+// answers.
+//
+// ref: decision 0022 "Correlation"
 const InstancePrefix = "urn:infraweave:request:"
 
-// RequestIDHeader carries the request ID both ways (decision 0017).
-// httpkit/middleware sets it on the response before any handler runs, so
-// Write finds it there whichever handler or guard answers.
+// RequestIDHeader carries the request ID both ways. httpkit/middleware
+// sets it on the response before any handler runs, so Write finds it there
+// whichever handler or guard answers.
+//
+// ref: decision 0017
 const RequestIDHeader = "X-Request-Id"
 
 // Type is a problem type of the register, docs/data/problems.json: its slug,
@@ -151,9 +155,11 @@ func (t Type) New(detail string) Problem {
 	return Problem{Type: TypePrefix + t.Slug, Title: t.Title, Status: t.Status, Detail: detail}
 }
 
-// NewLimitReached is decision 0022's 403 limit-reached for a creation
-// refused at limit's value in scope, organization or account, with the
-// three as members, so a client reads which limit to raise and who can.
+// NewLimitReached is the 403 limit-reached for a creation refused at
+// limit's value in scope, organization or account, with the three as
+// members, so a client reads which limit to raise and who can.
+//
+// ref: decision 0022
 func NewLimitReached(limit, scope string, value int64) Problem {
 	whose := "The organization has"
 	if scope == "account" {
@@ -200,9 +206,11 @@ type Problem struct {
 	Errors []FieldError `json:"errors,omitempty"`
 }
 
-// FieldError is a field of a request the server refused (decision 0022):
-// a JSON Pointer into the body, or #/query/<name>, #/path/<name> or
-// #/header/<name>; a reason clients branch on; and a message for people.
+// FieldError is a field of a request the server refused: a JSON Pointer
+// into the body, or #/query/<name>, #/path/<name> or #/header/<name>; a
+// reason clients branch on; and a message for people.
+//
+// ref: decision 0022
 type FieldError struct {
 	Pointer string `json:"pointer"`
 	Reason  string `json:"reason"`

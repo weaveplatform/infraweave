@@ -15,7 +15,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
-// RequestIDHeader carries the request ID both ways (decision 0017).
+// RequestIDHeader carries the request ID both ways.
+//
+// ref: decision 0017
 const RequestIDHeader = problem.RequestIDHeader
 
 // validID is the X-Request-Id a client may choose; any other is replaced, so

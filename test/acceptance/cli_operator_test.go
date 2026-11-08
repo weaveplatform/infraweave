@@ -84,7 +84,7 @@ func (c *ctlSteps) whoami(ctx context.Context) error {
 	}
 	var claims struct {
 		Subject string `json:"sub"`
-		Kind    string `json:"iw_kind"` //nolint:tagliatelle // decision 0006's claim name
+		Kind    string `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
 	}
 	if err := json.Unmarshal([]byte(out), &claims); err != nil ||
 		claims.Subject != "operator::"+operatorKey || claims.Kind != "operator" {

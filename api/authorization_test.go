@@ -11,11 +11,13 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 )
 
-// authorizationViolations checks decision 0007's enforcement point on doc:
-// every operation names an action of the catalogue, or a pseudo-action,
-// in x-infraweave-action and where its space comes from in
+// authorizationViolations checks the API's authorization enforcement point
+// on doc: every operation names an action of the catalogue, or a
+// pseudo-action, in x-infraweave-action and where its space comes from in
 // x-infraweave-subject, and both agree with x-infraweave-access and the
 // action's own rule.
+//
+// ref: decision 0007
 func authorizationViolations(doc *openapi3.T) []string {
 	var out []string
 	for path, item := range doc.Paths.Map() {

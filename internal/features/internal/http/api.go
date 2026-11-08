@@ -30,8 +30,11 @@ type SeatCounter func(
 ) (featuresapi.Usage, error)
 
 // Server is the features domain's partial of the API's strict server: the
-// Billing and Feature Flags reads with decision 0021's local meaning, and
-// the subscription mutations, which no installation can perform.
+// Billing and Feature Flags reads, answered from the installation's own
+// data in place of the vendor's billing, and the subscription mutations,
+// which no installation can perform.
+//
+// ref: decision 0021
 type Server struct {
 	svc   *core.Service
 	seats SeatCounter
@@ -70,7 +73,10 @@ func checkCursor(list string, cursor *string) error {
 	return err //nolint:wrapcheck // a problem, answered as it is
 }
 
-// Tier answers the organization's tier as a tier object (DV-079).
+// Tier answers the organization's tier as a tier object, not the
+// reference's enum, since tiers are data the operator defines.
+//
+// ref: DV-079
 func (s Server) Tier(ctx context.Context, _ api.TierRequestObject) (api.TierResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -125,7 +131,9 @@ func (s Server) TierFeatures(
 }
 
 // Seats answers the account's seats: its organization's pool, and its own
-// limit when one is set (DV-080).
+// limit when one is set, where members and API keys share one count.
+//
+// ref: DV-080
 func (s Server) Seats(
 	ctx context.Context,
 	_ api.SeatsRequestObject,

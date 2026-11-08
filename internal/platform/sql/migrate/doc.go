@@ -1,9 +1,9 @@
-// Package migrate applies infraweave's embedded schema migrations (decision
-// 0005). A Stream is one domain's files, or the platform's, named
-// NNNNN_snake_case.sql and gap-free from 00001; Load checks them and reads
-// their headers: -- infraweave:no-transaction on the first line runs a file
-// outside a transaction, and -- infraweave:compatible-from NNNNN raises the
-// oldest version of the stream a running binary may know.
+// Package migrate applies infraweave's embedded schema migrations. A Stream
+// is one domain's files, or the platform's, named NNNNN_snake_case.sql and
+// gap-free from 00001; Load checks them and reads their headers: --
+// infraweave:no-transaction on the first line runs a file outside a
+// transaction, and -- infraweave:compatible-from NNNNN raises the oldest
+// version of the stream a running binary may know.
 //
 // Up applies every pending file of the streams in their registration order,
 // each in its own transaction with its record, under a session advisory lock
@@ -12,8 +12,10 @@
 // each stream's applied and pending files. All three refuse a schema the
 // binary must not run on with ErrRefused: a changed file, a diverged schema,
 // a stream whose compatible_from is newer than the binary, or a database
-// below a stream's upgrade Floor, which would skip a major (decision 0020).
-// Forward only: there are no down migrations.
+// below a stream's upgrade Floor, which would skip a major release. Forward
+// only: there are no down migrations.
+//
+// ref: decisions 0005 and 0020
 //
 // # Input and output
 //

@@ -27,7 +27,9 @@ import (
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
-// sessionCookie is the browser session's cookie (decision 0006).
+// sessionCookie is the browser session's cookie.
+//
+// ref: decision 0006
 const sessionCookie = "__Host-infraweave_session"
 
 // jar is the scenario's browser: an sdk.Doer that sends the cookies it
@@ -98,8 +100,10 @@ func (j *jar) session() (string, bool) {
 	return v, ok
 }
 
-// browserSteps are the steps of decision 0006's browser sessions: the
-// break-glass sign-in, the Origin rule, CLI tokens and account switching.
+// browserSteps are the steps of the browser sessions: the break-glass
+// sign-in, the Origin rule, CLI tokens and account switching.
+//
+// ref: decision 0006
 type browserSteps struct {
 	a   *authSteps
 	jar *jar

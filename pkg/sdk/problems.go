@@ -12,13 +12,15 @@ import (
 // TypePrefix starts every problem type URI the API sends; the slug follows.
 const TypePrefix = "urn:infraweave:problem:"
 
-// Problem is an RFC 9457 problem detail, the body of every error answer
-// (decision 0022). Each slug of docs/data/problems.json has a type that
-// embeds it, so a caller tests for one with errors.As:
+// Problem is an RFC 9457 problem detail, the body of every error answer.
+// Each slug of docs/data/problems.json has a type that embeds it, so a
+// caller tests for one with errors.As:
 //
 //	if errors.As(err, &sdk.NotFound{}) { … }
 //
 // A problem whose type no slug names is returned as a Problem.
+//
+// ref: decision 0022
 type Problem struct {
 	Type     string `json:"type,omitempty"`
 	Title    string `json:"title"`

@@ -11,8 +11,10 @@ import (
 	"time"
 )
 
-// Config holds the listener settings. The keys are decision 0020's and
-// 0017's, server.listen, server.admin_listen and server.shutdown.
+// Config holds the listener settings, server.listen, server.admin_listen
+// and server.shutdown.
+//
+// ref: decisions 0017 and 0020
 type Config struct {
 	Listen      string   `mapstructure:"listen"`
 	AdminListen string   `mapstructure:"admin_listen"`
@@ -188,12 +190,14 @@ func (r *Running) Shutdown(ctx context.Context) error {
 }
 
 // Run starts the listeners and serves until ctx is done, then shuts down
-// gracefully (decision 0017): it calls stopping, which makes /readyz fail,
-// keeps accepting for the ready delay so load balancers stop routing here,
-// then drains in-flight requests for at most the timeout. It returns nil
-// after a clean shutdown and the error when a listener fails or in-flight
-// requests outlast the timeout. A listener that fails skips the ready
-// delay: the process is already unreachable on it.
+// gracefully: it calls stopping, which makes /readyz fail, keeps accepting
+// for the ready delay so load balancers stop routing here, then drains
+// in-flight requests for at most the timeout. It returns nil after a clean
+// shutdown and the error when a listener fails or in-flight requests outlast
+// the timeout. A listener that fails skips the ready delay: the process is
+// already unreachable on it.
+//
+// ref: decision 0017
 func Run(
 	ctx context.Context,
 	c Config,

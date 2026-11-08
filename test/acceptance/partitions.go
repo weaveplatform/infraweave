@@ -7,18 +7,22 @@ import (
 	"strings"
 )
 
-// Partition is one CI job of decision 0016's acceptance split, named by the
-// suffix make accept PARTITION= takes.
+// Partition is one CI job of the acceptance split, named by the suffix
+// make accept PARTITION= takes.
+//
+// ref: decision 0016
 type Partition struct {
 	Name string
 	// Tags are the dependency tags whose scenarios run in the partition.
 	Tags []string
 }
 
-// Partitions is decision 0016's table, in the order a scenario is placed:
-// the first partition that lists one of its tags takes it, so a scenario
-// that needs a run and a VCS runs with the runs. accept-core also takes
-// every untagged scenario.
+// Partitions are the CI jobs, in the order a scenario is placed: the first
+// partition that lists one of its tags takes it, so a scenario that needs
+// a run and a VCS runs with the runs. accept-core also takes every
+// untagged scenario.
+//
+// ref: decision 0016
 var Partitions = []Partition{
 	{Name: "runs", Tags: []string{"@terraform", "@tofu", "@kubernetes", "@flows-agent"}},
 	{Name: "integrations", Tags: []string{"@vcs", "@ai"}},

@@ -30,8 +30,10 @@ func TestUnitSeed(t *testing.T) {
 	}
 }
 
-// TestUnitSystemActions checks each system role against decision 0007's
-// definition from the fallback column.
+// TestUnitSystemActions checks each system role against its definition
+// from the fallback column.
+//
+// ref: decision 0007 § "Roles and the action catalogue"
 func TestUnitSystemActions(t *testing.T) {
 	actions := func(slug string) []accessapi.Action {
 		t.Helper()

@@ -19,8 +19,10 @@ var ErrKind = errors.New("invalid event kind")
 var ErrDocument = errors.New("event document fails its schema")
 
 // Kinds holds each event kind's JSON Schema per schema version. Within a
-// version a schema only gains optional fields (decision 0015), so a
-// document valid once stays valid.
+// version a schema only gains optional fields, so a document valid once
+// stays valid.
+//
+// ref: decision 0015
 type Kinds struct {
 	mu      sync.RWMutex
 	schemas map[kindVersion]*jsonschema.Schema

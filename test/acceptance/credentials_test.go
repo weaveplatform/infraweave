@@ -67,13 +67,19 @@ var (
 )
 
 // secret is the key's secret, derived from its ID so no secret is
-// written down: iwk_ and 32 bytes in base64url (decision 0006).
+// written down: iwk_ and 32 bytes in base64url, the format of every API
+// key secret.
+//
+// ref: decision 0006
 func (t tenant) secret() string {
 	h := sha256.Sum256([]byte("acceptance:" + t.key))
 	return "iwk_" + base64.RawURLEncoding.EncodeToString(h[:])
 }
 
-// caller is the key's caller key for decision 0003's controls.
+// caller is the key's caller, <kind>:<actor ID>, which keys the rate
+// limits, idempotency keys and API disable switch.
+//
+// ref: decision 0003
 func (t tenant) caller() string { return string(kernel.PrincipalAPIKey) + ":" + t.key }
 
 func uuidOf(ulid string) string {

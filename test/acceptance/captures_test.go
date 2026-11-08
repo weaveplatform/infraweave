@@ -18,7 +18,9 @@ import (
 
 var capturesRoot = filepath.Join(repoRoot, "test", "fixtures", "captures")
 
-// captureEntries reads the capture records of the report 30 register.
+// captureEntries reads the capture records of the open-questions register.
+//
+// ref: report 30
 func captureEntries(t *testing.T) map[string]bool {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(repoRoot, "docs", "data", "open-questions.json"))

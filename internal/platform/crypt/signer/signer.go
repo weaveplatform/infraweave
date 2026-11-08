@@ -15,8 +15,10 @@ import (
 	jose "github.com/go-jose/go-jose/v4"
 )
 
-// ES256 is ECDSA on P-256 with SHA-256, the api-token purpose's algorithm
-// and the only curve decision 0013's FIPS 140-3 rule allows.
+// ES256 is ECDSA on P-256 with SHA-256, the api-token purpose's algorithm,
+// which Go's FIPS 140-3 mode approves.
+//
+// ref: decisions 0006 and 0013
 const ES256 = jose.ES256
 
 // DigestSize is the length of the digest a Signer signs: SHA-256's.

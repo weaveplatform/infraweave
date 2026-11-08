@@ -24,7 +24,9 @@ type Subject struct {
 	ID   string
 }
 
-// Event is decision 0015's envelope, shared by Deploy and Flows.
+// Event is the envelope of every event, shared by Deploy and Flows.
+//
+// ref: decision 0015
 type Event struct {
 	Account kernel.ULID
 	// ID is assigned by Append when zero.
@@ -311,7 +313,9 @@ FROM events WHERE account_id = $1 AND id = $2`, r.Account, r.ID).Scan(&ev.Accoun
 // Prune deletes events fanned out more than retention ago, with their
 // consumption records, and returns how many events it deleted; the
 // scheduler's events.prune task runs it. An event not yet fanned out is
-// never deleted (decision 0015).
+// never deleted, so every consumer still receives it.
+//
+// ref: decision 0015
 func (o *Outbox) Prune(ctx context.Context, retention time.Duration) (int64, error) {
 	var n int64
 	err := tx.Q(ctx, o.db).QueryRow(ctx, `

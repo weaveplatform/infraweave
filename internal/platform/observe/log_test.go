@@ -112,8 +112,9 @@ func TestUnitLogConfig(t *testing.T) {
 	}
 }
 
-// TestUnitRedactHandler checks each rule of decision 0017's redaction
-// table.
+// TestUnitRedactHandler checks each rule of the log's redaction table.
+//
+// ref: decision 0017
 func TestUnitRedactHandler(t *testing.T) {
 	var b bytes.Buffer
 	log := slog.New(Redact(slog.NewJSONHandler(&b, nil))).With("api_token", "base-attr-value")

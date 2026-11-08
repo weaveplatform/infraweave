@@ -1,7 +1,7 @@
 @postgres
 Feature: Observability and health
-  Every infraweave process logs JSON lines to stdout with decision 0017's
-  standard fields, gives every request an ID it echoes and logs, and
+  Every infraweave process logs JSON lines to stdout with the standard
+  fields, gives every request an ID it echoes and logs, and
   answers /livez, /startupz and /readyz on the admin listener alone. On
   SIGTERM, /readyz fails at once, the listeners keep accepting for
   server.shutdown.ready_delay, in-flight requests drain and the process
@@ -9,6 +9,7 @@ Feature: Observability and health
   PostgreSQL while it is unreachable answers 503 service-unavailable with
   Retry-After, which pkg/sdk retries. Each scenario runs its own infraweave
   all, or infraweave scheduler, on a database of its own.
+  ref: decision 0017
 
   Scenario: The probes pass once the schema is migrated
     Given a running infraweave server

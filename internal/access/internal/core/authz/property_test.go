@@ -11,11 +11,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// TestUnitClosureProperty is the evaluator half of decision 0007's
+// TestUnitClosureProperty is the evaluator half of the authorization
 // property test: on random trees, after random moves and with random
 // bindings, inherit flags and principals, Reachable(action) is exactly
 // the spaces where Authorize allows the action, for an action of each
 // class.
+//
+// ref: decision 0007 § "Verification"
 func TestUnitClosureProperty(t *testing.T) {
 	r := rand.New(rand.NewPCG(7, 11)) //nolint:gosec // a reproducible test sequence
 	actions := []accessapi.Action{

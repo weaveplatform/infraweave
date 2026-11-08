@@ -63,8 +63,10 @@ func Seed(a account.Account) (top, legacy Space) {
 
 // SlugOf is the slug of a space created with name: the name lowercased,
 // each run of other characters a hyphen, then a hyphen and the space's
-// ULID, the shape report 12 records for Spacelift's space IDs. A name
-// with no letter or digit gives the ULID alone.
+// ULID, the shape of Spacelift's space IDs. A name with no letter or
+// digit gives the ULID alone.
+//
+// ref: report 12
 func SlugOf(name string, id kernel.ULID) string {
 	var b strings.Builder
 	hyphen := false

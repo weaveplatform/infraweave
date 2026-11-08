@@ -105,9 +105,11 @@ func rotate(t *testing.T, db *pgxpool.Pool, p kek.Provider, olderThan time.Durat
 	return rotated, err
 }
 
-// TestAccRotateAndReseal checks decision 0013's rotation: the old key
-// keeps opening while it retires, the reseal walks every value onto the
-// new key in batches, and the old key's row is deleted at the end.
+// TestAccRotateAndReseal checks a data key's rotation: the old key keeps
+// opening while it retires, the reseal walks every value onto the new key
+// in batches, and the old key's row is deleted at the end.
+//
+// ref: decision 0013
 func TestAccRotateAndReseal(t *testing.T) {
 	crypt.SetResealBatch(t, 3)
 	db := pool(t)

@@ -1,9 +1,8 @@
-// Package vault is decision 0013's vault KEK provider: it wraps data keys
-// with the Transit engine at secrets.kek.vault.mount under the key
-// key_name names, binding kek.AAD as associated_data, which a key of an
-// AEAD type checks on decrypt. Transit's 400 on decrypt is kek.ErrUnwrap;
-// any other answer, a refused permission among them, names the provider
-// and the key as itself.
+// Package vault is the vault KEK provider: it wraps data keys with the
+// Transit engine at secrets.kek.vault.mount under the key key_name names,
+// binding kek.AAD as associated_data, which a key of an AEAD type checks on
+// decrypt. Transit's 400 on decrypt is kek.ErrUnwrap; any other answer, a
+// refused permission among them, names the provider and the key as itself.
 //
 // Client is the authenticated caller of Vault's HTTP API under the
 // provider, which NewClient builds from the address and auth method alone;
@@ -14,6 +13,8 @@
 // call, reading auth.jwt_file or auth.secret_id_file then, log in again
 // halfway through the token's lease, and once more when Vault refuses the
 // token.
+//
+// ref: decision 0013
 //
 // # Input and output
 //

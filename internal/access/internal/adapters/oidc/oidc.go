@@ -20,7 +20,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 )
 
-// The limits of decision 0006 on fetching an issuer's documents.
+// The limits on fetching an issuer's documents, from a URL that whoever
+// creates an OIDC API key supplies.
+//
+// ref: decision 0006
 const (
 	// Timeout bounds each fetch of a discovery document or JWKS.
 	Timeout = 5 * time.Second

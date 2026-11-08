@@ -7,13 +7,17 @@ import (
 	"slices"
 )
 
-// PrincipalKind is what a request authenticated as (decision 0006).
+// PrincipalKind is what a request authenticated as.
+//
+// ref: decision 0006
 type PrincipalKind string
 
-// The principal kinds of decision 0006. A user is a member signed in, an
-// API key a key's token, and a run a run's in-run token; organization is an
-// organization key's token, break_glass an organization's break-glass
-// sign-in, operator an operator key's token, and anonymous no credential.
+// The principal kinds. A user is a member signed in, an API key a key's
+// token, and a run a run's in-run token; organization is an organization
+// key's token, break_glass an organization's break-glass sign-in, operator
+// an operator key's token, and anonymous no credential.
+//
+// ref: decision 0006
 const (
 	PrincipalUser         PrincipalKind = "user"
 	PrincipalAPIKey       PrincipalKind = "api_key"
@@ -24,7 +28,10 @@ const (
 	PrincipalAnonymous    PrincipalKind = "anonymous"
 )
 
-// PrincipalKinds are every kind, in decision 0006's order.
+// PrincipalKinds are every kind, in the order the authentication design
+// lists them.
+//
+// ref: decision 0006
 var PrincipalKinds = []PrincipalKind{
 	PrincipalUser,
 	PrincipalAPIKey,
@@ -38,7 +45,10 @@ var PrincipalKinds = []PrincipalKind{
 // ErrPrincipalKind reports text that names no principal kind.
 var ErrPrincipalKind = errors.New("not a principal kind")
 
-// ParsePrincipalKind reads a kind as decision 0006 spells it.
+// ParsePrincipalKind reads a kind in its wire spelling, such as api_key or
+// break_glass.
+//
+// ref: decision 0006
 func ParsePrincipalKind(s string) (PrincipalKind, error) {
 	if k := PrincipalKind(s); slices.Contains(PrincipalKinds, k) {
 		return k, nil
@@ -90,9 +100,11 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
-// Caller is the principal's key for decision 0003's idempotency keys and
-// rate-limit buckets, <kind>:<actor ID>, so every session of one API key
-// shares one budget.
+// Caller is the principal's key for idempotency keys and rate-limit
+// buckets, <kind>:<actor ID>, so every session of one API key shares one
+// budget.
+//
+// ref: decision 0003
 func (p Principal) Caller() string {
 	return string(p.Kind) + ":" + p.ActorID.String()
 }

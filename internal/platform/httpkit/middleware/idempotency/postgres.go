@@ -15,8 +15,10 @@ import (
 // Postgres is the Store every serve replica shares: the platform stream's
 // idempotency_keys table. Locks and expiry compare against the database
 // clock, so replicas whose clocks differ agree on every outcome. A stored
-// body is sealed (decision 0013), since it can hold whatever the request
-// created.
+// body is sealed, since it can hold whatever the request created, such as
+// a secret shown only once.
+//
+// ref: decisions 0005 and 0013
 type Postgres struct {
 	db        tx.Querier
 	keys      Sealer
@@ -151,7 +153,9 @@ func (p *Postgres) Release(ctx context.Context, key Key) error {
 
 // Purge deletes the keys whose time to live has passed, which Claim
 // would treat as absent anyway, and returns how many it deleted. The
-// idempotency.purge periodic task runs it (decision 0005).
+// hourly idempotency.purge periodic task runs it.
+//
+// ref: decision 0005
 func (p *Postgres) Purge(ctx context.Context) (int64, error) {
 	tag, err := tx.Q(ctx, p.db).Exec(ctx, `DELETE FROM idempotency_keys WHERE expires_at <= now()`)
 	if err != nil {

@@ -1,6 +1,6 @@
 @postgres
 Feature: The fs driver's signed URLs on an authenticating server
-  Decision 0005's fs driver serves the URLs it signs on the API listener,
+  The object store's fs driver serves the URLs it signs on the API listener,
   and the token in the path is their only credential: it binds the method,
   the key, the expiry and a PUT's size. A client holding one sends no
   Authorization header, so the routes take none, and a token that does not
@@ -8,6 +8,7 @@ Feature: The fs driver's signed URLs on an authenticating server
   other route still needs a credential. No operation hands out a signed
   URL yet, so the steps sign one as the servers' driver does, under the
   keyring of their database.
+  ref: decision 0005
 
   Background:
     Given two infraweave servers, A and B, on one database

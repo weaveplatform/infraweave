@@ -176,8 +176,8 @@ in the same database, in the `flows` PostgreSQL schema that
   v0.1.0 the released files are immutable and the mixed-version rules above
   apply.
 - **Comments.** A migration's comments stand on their own. A citation of a
-  decision or report goes on its own `-- ref:` line, and the same test
-  refuses one anywhere else.
+  decision, a report or a register record goes on its own `-- ref:` line,
+  and `make docs-check` refuses one anywhere else.
 - **Refusing to start.** A binary refuses to start, and says why, when:
   - a stream's `compatible_from` is greater than the binary's newest
     embedded version of that stream (the binary is too old). A stream the

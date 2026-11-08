@@ -46,8 +46,8 @@
 // key's owner. Every User answer, of apiKeyUser, viewer and
 // authSessionAccount, is composed from the principal and the apikey
 // service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
-// that service's answers from its own rules (decision 0007's grant
-// views), and actions the evaluator's actions on each space of the
+// that service's answers from its own rules, never a copy of them, and
+// actions the evaluator's actions on each space of the
 // account where the caller holds any. Each ApiKey's
 // allowedActions is the apikey service's Actions, and a change its
 // managers' rule refuses answers 403 forbidden naming the action; each
@@ -98,6 +98,8 @@
 // forbidden naming it, and an entity kind no lookup is registered for 501.
 // It reads at most a mebibyte of a body for its field and leaves the body
 // whole for the handler.
+//
+// ref: decision 0007 § "Evaluation"
 //
 // # Input and output
 //

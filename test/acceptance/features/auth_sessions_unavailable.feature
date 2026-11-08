@@ -2,10 +2,11 @@
 Feature: API tokens and sessions while PostgreSQL is down
   The exchange and every session operation answer 503 service-unavailable
   while PostgreSQL is unreachable. A token whose session a replica holds in
-  its cache still authenticates for up to a minute (decision 0006), so the
+  its cache still authenticates for up to a minute, so the
   operations it reaches fail at the store; a token the replica has not seen
   fails at authentication. The server runs on a PostgreSQL of its own, which
   the scenario stops.
+  ref: decision 0006
 
   @op:apiKeyUser @op:viewer @op:sessions @op:sessionDelete @op:sessionDeleteAll @op:logout @case:failure
   Scenario: Every token and session operation answers 503 while PostgreSQL is down

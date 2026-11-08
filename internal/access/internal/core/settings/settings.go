@@ -63,11 +63,13 @@ type Mark struct {
 	Description *string
 }
 
-// CheckRedirectHosts checks each entry of decision 0006's allowlist: a bare
-// host, or a host after one leading "*.", which matches its subdomains. A
-// scheme, port, path, user or any other character fails, naming the
-// entry, as does an entry given twice. Hosts compare without case, so
-// each is returned in lower case.
+// CheckRedirectHosts checks each entry of the OAuth redirect allowlist: a
+// bare host, or a host after one leading "*.", which matches its
+// subdomains. A scheme, port, path, user or any other character fails,
+// naming the entry, as does an entry given twice. Hosts compare without
+// case, so each is returned in lower case.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 func CheckRedirectHosts(hosts []string) ([]string, error) {
 	out := make([]string, 0, len(hosts))
 	seen := map[string]bool{}

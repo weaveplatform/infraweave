@@ -1,6 +1,7 @@
-# The operator's organizations (decisions 0006, 0007 and 0021). An
-# organization is named by its slug, which never changes and is how the
-# operator and the break-glass login (/admin-login/{organization}) name it.
+# The operator's organizations. An organization is named by its slug, which
+# never changes and is how the operator and the break-glass login
+# (/admin-login/{organization}) name it.
+# ref: decisions 0006, 0007 and 0021
 components:
   parameters:
     OrganizationSlug:

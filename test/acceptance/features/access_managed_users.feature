@@ -1,16 +1,16 @@
 @postgres
 Feature: Managed users and groups
-  A managed user is a member of the organization as one account sees it
-  (decision 0007). Inviting a login admits the organization's member with
-  it, or creates a pending member, and records the invitation without
-  e-mail delivery (capture C251); a second invitation for an address with a
-  pending one answers 409 invalid-state. Removing a managed user stops the
-  account admitting them, and they stay a member of the organization. A
-  member counts once against the seats limit however many accounts admit
-  it. Groups are each account's: their members are the account's managed
-  users whose latest sign-in reported the group's name. Role bindings
-  arrive with the account's roles, so an input carrying any answers 400
-  invalid-request.
+  A managed user is a member of the organization as one account sees it.
+  Inviting a login admits the organization's member with it, or creates a
+  pending member, and records the invitation without e-mail delivery
+  (capture C251); a second invitation for an address with a pending one
+  answers 409 invalid-state. Removing a managed user stops the account
+  admitting them, and they stay a member of the organization. A member
+  counts once against the seats limit however many accounts admit it. Groups
+  are each account's: their members are the account's managed users whose
+  latest sign-in reported the group's name. Role bindings arrive with the
+  account's roles, so an input carrying any answers 400 invalid-request.
+  ref: decision 0007
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

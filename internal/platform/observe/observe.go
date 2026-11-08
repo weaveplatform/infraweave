@@ -17,7 +17,9 @@ type Check func(ctx context.Context) error
 
 // Each check runs for at most checkTimeout, a timeout counting as a
 // failure, and its result is kept for cacheFor, so probes from several
-// load balancers do not load the database (decision 0017).
+// load balancers do not load the database.
+//
+// ref: decision 0017
 const (
 	checkTimeout = 2 * time.Second
 	cacheFor     = time.Second
@@ -151,10 +153,12 @@ func (h *Health) readyReport(ctx context.Context) report {
 	return h.run(ctx, h.checks(false))
 }
 
-// Probes is the admin listener's handler (decision 0017): GET /livez
-// answers 200 while the process serves HTTP, /startupz and /readyz answer
-// 200 or 503 from h's checks, as ok or fail, or as JSON with ?verbose.
-// Every other path or method is a problem detail.
+// Probes is the admin listener's handler: GET /livez answers 200 while the
+// process serves HTTP, /startupz and /readyz answer 200 or 503 from h's
+// checks, as ok or fail, or as JSON with ?verbose. Every other path or
+// method is a problem detail.
+//
+// ref: decision 0017
 func Probes(log *slog.Logger, h *Health) http.Handler {
 	r := middleware.NewRouter(log)
 	r.Get("/livez", func(w http.ResponseWriter, _ *http.Request) {

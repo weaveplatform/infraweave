@@ -14,9 +14,11 @@ import (
 	"unicode/utf8"
 )
 
-// testKinds are decision 0016's test kinds. make test selects -run
+// testKinds are the test kinds, unit and acceptance. make test selects -run
 // '^TestUnit' and make accept -run '^TestAcc', so a test named otherwise
 // runs in neither.
+//
+// ref: decision 0016
 var testKinds = []string{"TestUnit", "TestAcc"}
 
 // testNameProblems parses every _test.go file of the module rooted at fsys

@@ -4,13 +4,15 @@
 // snapshots, generate derives the OpenAPI spec and coverage report from
 // them, check fails when the committed output is stale, scaffold copies a
 // reference tag into a served-API fragment, inventory writes or checks the
-// product's inventory register (and, for Deploy, report 29, which
-// summarizes it), and parity decides each reference operation's outcome
+// product's inventory register (and, for Deploy, the data model inventory
+// report, which summarizes it), and parity decides each reference operation's outcome
 // (served, served with divergence, superseded or missing), checks the
 // capabilities register's states against the acceptance results with
 // --states, and rewrites the parity baseline; actions writes or checks
 // Deploy's action catalogue, internal/access/api/actions.gen.go. Logic lives in
 // internal/devtools/specref.
+//
+// ref: report 29
 package main
 
 import (

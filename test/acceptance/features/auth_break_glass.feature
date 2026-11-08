@@ -1,7 +1,7 @@
 @postgres
 Feature: Break-glass sign-in and browser sessions
   An organization's break-glass admin signs in at /admin-login/<organization>
-  with the login and password the operator set (decision 0006). The session
+  with the login and password the operator set. The session
   is a browser session in the cookie __Host-infraweave_session, of actor
   kind break_glass: an organization admin in no account, which the
   organization's routes admit and every account route treats as no
@@ -9,6 +9,7 @@ Feature: Break-glass sign-in and browser sessions
   credential, answer one 401, and every attempt on an organization is on
   its trail. A cookie authenticates a write only with the public URL's
   Origin, so another site cannot make a signed-in browser write.
+  ref: decision 0006
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

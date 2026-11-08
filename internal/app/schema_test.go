@@ -21,8 +21,11 @@ import (
 // apiImport is an allow entry of a graph rule naming another domain's api/.
 var apiImport = regexp.MustCompile(`^` + regexp.QuoteMeta(module) + `/internal/([a-z]+)/api[$/]$`)
 
-// declaredGraph reads decision 0004's declared graph from the graph-<domain>
-// depguard rules: each domain and the domains whose api/ it may import.
+// declaredGraph reads the declared graph from the graph-<domain> depguard
+// rules, the one place it is written: each domain and the domains whose
+// api/ it may import.
+//
+// ref: decision 0004
 func declaredGraph(rules map[string]depguardRule) map[string][]string {
 	graph := map[string][]string{}
 	for name, r := range rules {
@@ -42,8 +45,10 @@ func declaredGraph(rules map[string]depguardRule) map[string][]string {
 
 // mayReference reports whether a relation of from may reference one of to:
 // within a stream, and from a domain to the platform. A domain holds
-// another domain's rows through that domain's api/, never by a key or view
-// (decision 0004).
+// another domain's rows through that domain's api/, never by a key or view,
+// so each domain's stream applies on the platform's alone.
+//
+// ref: decision 0004
 func mayReference(from, to string) bool {
 	return from == to || to == schema.Name
 }
@@ -183,8 +188,11 @@ ORDER BY 1, 2, 3`
 // empty, attributes the relations each creates to its stream, and checks
 // every reference between streams: none may go from one domain to another
 // or from the platform to a domain, and a domain's key to the platform must
-// neither cascade nor set a value on delete (decision 0004). It then
-// applies each domain's stream alone on the platform's.
+// neither cascade nor set a value on delete, so a delete in one stream
+// never changes rows another stream owns. It then applies each domain's
+// stream alone on the platform's.
+//
+// ref: decision 0004
 func schemaDependencyProblems(
 	t *testing.T,
 	empty func(testing.TB) string,
@@ -254,8 +262,10 @@ func schemaDependencyProblems(
 	return append(out, aloneProblems(t, empty, streams)...)
 }
 
-// conventions are decision 0005's schema conventions as queries; each row
-// is a breach.
+// conventions are the schema conventions every migration follows, as
+// queries; each row is a breach.
+//
+// ref: decision 0005
 var conventions = []struct{ rule, query string }{
 	{"foreign key without an index", `
 SELECT c.conrelid::regclass::text || '.' || c.conname
@@ -312,8 +322,9 @@ func schemaConventionProblems(t *testing.T, url string) []string {
 }
 
 // TestAccSchemaDependencies keeps every registered stream's keys and views
-// inside its own domain, and checks the declared graph in .golangci.yml
-// (decision 0004).
+// inside its own domain, and checks the declared graph in .golangci.yml.
+//
+// ref: decision 0004
 func TestAccSchemaDependencies(t *testing.T) {
 	graph := declaredGraph(readDepguardRules(t, "../../.golangci.yml"))
 	if got := schemaDependencyProblems(t, sqltest.Empty, Streams(), graph); len(got) != 0 {
@@ -321,8 +332,10 @@ func TestAccSchemaDependencies(t *testing.T) {
 	}
 }
 
-// TestAccSchemaConventions holds the fully migrated schema to decision
-// 0005's conventions.
+// TestAccSchemaConventions holds the fully migrated schema to the schema
+// conventions (conventions).
+//
+// ref: decision 0005
 func TestAccSchemaConventions(t *testing.T) {
 	if got := schemaConventionProblems(t, sqltest.DSN(t)); len(got) != 0 {
 		t.Errorf("schema conventions:\n%s", strings.Join(got, "\n"))
@@ -550,8 +563,10 @@ func sealedRegistryProblems(schema []string, registry []crypt.Column) []string {
 }
 
 // TestAccSealedColumnRegistry holds SealedColumns to the fully migrated
-// schema (decision 0013): every _sealed column is listed with its primary
-// key, so resealing after a rotation reaches it, and nothing else is.
+// schema: every _sealed column is listed with its primary key, so resealing
+// after a rotation reaches it, and nothing else is.
+//
+// ref: decision 0013
 func TestAccSealedColumnRegistry(t *testing.T) {
 	if got := sealedRegistryProblems(
 		sealedColumns(t, sqltest.DSN(t)),

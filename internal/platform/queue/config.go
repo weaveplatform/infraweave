@@ -47,8 +47,10 @@ type QueueConfig struct {
 	Workers int `mapstructure:"workers"`
 }
 
-// Defaults are decision 0011's settings. The lease matches Spacelift's
-// 300-second visibility timeout.
+// Defaults are the queue settings a process starts with. The lease matches
+// Spacelift's 300-second visibility timeout.
+//
+// ref: decision 0011
 func Defaults() Config {
 	return Config{
 		Lease:              5 * time.Minute,

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// authorize writes decision 0007's x-infraweave-action and
+// authorize writes the authorization extensions x-infraweave-action and
 // x-infraweave-subject on a scaffolded operation where the catalogue rows
 // decide them, and leaves out what they cannot, so the served API's
 // authorization test names the operation for its author:
@@ -17,6 +17,8 @@ import (
 //   - another action's subject is the path parameter naming an entity of
 //     the action's kind, {stackId} for a stack, or, for a GET of no
 //     entity, a query parameter named space, or else list.
+//
+// ref: decision 0007
 func authorize(method, path string, op ymap, rows map[string]ActionRow) {
 	id, _ := op["operationId"].(string)
 	name := strings.ToUpper(strings.Join(words(id), "_"))

@@ -1,9 +1,9 @@
-// Package idempotency makes a retried POST or PATCH safe (decision 0003). A
-// request that sends an Idempotency-Key runs once; a repeat with the same
-// key and request gets the first response again, marked
-// Idempotency-Replayed: true. A repeat with another request answers 422
-// idempotency-key-reuse, and one that arrives while the first is still in
-// flight answers 409 idempotency-key-in-flight.
+// Package idempotency makes a retried POST or PATCH safe. A request that
+// sends an Idempotency-Key runs once; a repeat with the same key and request
+// gets the first response again, marked Idempotency-Replayed: true. A repeat
+// with another request answers 422 idempotency-key-reuse, and one that
+// arrives while the first is still in flight answers 409
+// idempotency-key-in-flight.
 //
 // Middleware applies the rule to the requests its applies function selects;
 // Store holds each key's claim and stored response per caller. Postgres is
@@ -13,6 +13,8 @@
 // in-process one for tests. Config is server.idempotency: how long a stored response
 // is kept, and how long a request holds its key before another may take it
 // over.
+//
+// ref: decision 0003
 //
 // # Input and output
 //

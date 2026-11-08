@@ -48,7 +48,9 @@ type Product struct {
 
 // Deploy is Spacelift's IaC orchestration product, projected from its
 // GraphQL schema, the spacelift-api-bruno collection and its Terraform
-// provider (report 02).
+// provider.
+//
+// ref: report 02
 var Deploy = Product{
 	Name:     "deploy",
 	Dir:      "api/reference/spacelift",
@@ -77,8 +79,9 @@ var Deploy = Product{
 }
 
 // Flows is Spacelift's workflow product, projected from the RPC paths its
-// clients terraform-provider-flows and flowctl call (report 02, "Flows: RPC
-// to REST").
+// clients terraform-provider-flows and flowctl call.
+//
+// ref: report 02, "Flows: RPC to REST"
 var Flows = Product{
 	Name:     "flows",
 	Dir:      "api/reference/spacelift-flows",

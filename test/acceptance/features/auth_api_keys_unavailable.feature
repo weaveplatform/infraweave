@@ -2,8 +2,9 @@
 Feature: API keys while PostgreSQL is down
   Every API key operation answers 503 service-unavailable while PostgreSQL
   is unreachable. The caller's token authenticates from the replica's
-  session cache (decision 0006), so each operation fails at the store. The
-  server runs on a PostgreSQL of its own, which the scenario stops.
+  session cache, so each operation fails at the store. The server runs on
+  a PostgreSQL of its own, which the scenario stops.
+  ref: decision 0006
 
   @op:apiKeys @op:apiKeyCreate @op:apiKey @op:apiKeyUpdate @op:apiKeyReset @op:apiKeyDelete @op:apiKeyEnableNonAdminManagers @case:failure
   Scenario: Every API key operation answers 503 while PostgreSQL is down

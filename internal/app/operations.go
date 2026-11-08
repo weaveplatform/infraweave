@@ -43,12 +43,16 @@ type Operation struct {
 	// Organization marks an operation whose x-infraweave-access is
 	// organization: it serves any session of an organization, with an
 	// account or none, such as the viewer or the account switcher. Every
-	// other operation needs a credential of an account (decision 0006).
+	// other operation needs a credential of an account.
+	//
+	// ref: decision 0006
 	Organization bool
 	// OrganizationAdmin marks an operation whose x-infraweave-access is
 	// organization-admin, the Organization tag's: it serves the principals
 	// that may hold the organization role and organization tokens, which no
-	// other operation accepts (decision 0006).
+	// other operation accepts.
+	//
+	// ref: decision 0006
 	OrganizationAdmin bool
 	// Body is the request body of an operation whose JSON body schema sets
 	// additionalProperties: false, which strictBodies checks before the
@@ -59,9 +63,11 @@ type Operation struct {
 	// catalogue, and the options its request body's properties name.
 	Gate featuresapi.Gate
 	// Required is the API operation's x-infraweave-action and
-	// x-infraweave-subject, which decision 0007's middleware decides; nil
-	// for the operator API's operations and the routes beside the APIs,
-	// which no action decides.
+	// x-infraweave-subject, which the authorization middleware decides on
+	// the caller's roles; nil for the operator API's operations and the
+	// routes beside the APIs, which no action decides.
+	//
+	// ref: decision 0007
 	Required *accessapi.Required
 }
 
@@ -72,14 +78,15 @@ type Operations map[string]Operation
 var errSpec = errors.New("invalid operation in the API")
 
 // operationsOf reads each operation of doc, mounted under base. A missing
-// x-infraweave-cost is standard, as decision 0003 says; one that names no
-// class fails, so a typo in the spec cannot silently cost standard. Every
-// operation names its capability in x-infraweave-feature (decision 0021),
-// and one that names none, or a name the catalogue holds as no capability,
-// fails, so no operation goes ungated. With authorized, every operation
-// names its action and subject (decision 0007), and one that lacks either
-// or names an action the catalogue lacks fails, so no operation goes
-// undecided.
+// x-infraweave-cost is standard; one that names no class fails, so a typo
+// in the spec cannot silently cost standard. Every operation names its
+// capability in x-infraweave-feature, and one that names none, or a name
+// the catalogue holds as no capability, fails, so no operation goes
+// ungated. With authorized, every operation names its action and subject,
+// and one that lacks either or names an action the catalogue lacks fails,
+// so no operation goes undecided.
+//
+// ref: decisions 0003, 0007 and 0021
 func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, error) {
 	ops := Operations{}
 	for path, item := range doc.Paths.Map() {
@@ -245,9 +252,10 @@ var apiOperations = sync.OnceValue(func() Operations {
 	// The authorization server for MCP clients takes no credential: a
 	// client registers, authorizes and redeems before it holds one. Each
 	// registration is an expensive draw on the client's address, because
-	// anyone may register (decision 0006), and none names a feature, so
-	// the protocol answers whatever an organization's tier holds; the
-	// consent operations, which grant, are the API's and gated there.
+	// anyone may register, and none names a feature, so the protocol
+	// answers whatever an organization's tier holds; the consent
+	// operations, which grant, are the API's and gated there.
+	// ref: decision 0006
 	ops[http.MethodGet+" "+accessapi.OAuthMetadataPattern] = Operation{Public: true}
 	ops[http.MethodPost+" "+accessapi.OAuthRegisterPattern] = Operation{
 		Public: true,
@@ -256,18 +264,21 @@ var apiOperations = sync.OnceValue(func() Operations {
 	ops[http.MethodGet+" "+accessapi.OAuthAuthorizePattern] = Operation{Public: true}
 	ops[http.MethodPost+" "+accessapi.OAuthTokenPattern] = Operation{Public: true}
 	// The fs driver's signed URLs carry their credential in the token,
-	// which the driver verifies (decision 0005); a bearer check in front
-	// would answer 401 to every one. Each draws on the standard budget of
-	// the client's address and names no feature, since the URL was signed
-	// by an operation already gated.
+	// which the driver verifies; a bearer check in front would answer 401
+	// to every one. Each draws on the standard budget of the client's
+	// address and names no feature, since the URL was signed by an
+	// operation already gated.
+	// ref: decision 0005
 	ops[http.MethodGet+" "+fs.Pattern] = Operation{Public: true}
 	ops[http.MethodPut+" "+fs.Pattern] = Operation{Public: true}
 	return ops
 })
 
-// Guards hold the state of decision 0003's controls: the operator's switch,
-// the rate-limit buckets and the idempotency keys. serve keeps all three in
+// Guards hold the state of the API's controls: the operator's switch, the
+// rate-limit buckets and the idempotency keys. serve keeps all three in
 // PostgreSQL, shared by every replica (postgresGuards).
+//
+// ref: decision 0003
 type Guards struct {
 	Switch  ratelimit.Switch
 	Buckets ratelimit.Store
@@ -279,22 +290,25 @@ type Guards struct {
 type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Handler) http.Handler
 
 // Guarded is an API listener router: request ID and recovery, the access
-// log, authentication, then decision 0003's controls in front of every
-// route registered on it, so a request a control rejects is logged too.
+// log, authentication, then the operator switch, rate limits and
+// idempotency keys in front of every route registered on it, so a request
+// a control rejects is logged too.
 // auth authenticates every request but those to a Public operation; nil
 // refuses every credential. The operator switch runs next, then the rate
 // limit, then idempotency keys, so a request one rejects never reaches the
 // next and a rejected request never reaches the key store. Each control
-// keys on the caller, the principal's <kind>:<actor ID> (decision 0006),
-// or the client's address on a public route. ops names the operations its
-// routes serve; a request no operation serves, such as a 404, still
-// authenticates and draws from the standard budget. gated, when not nil,
-// builds decision 0021's feature middleware, which runs right after
-// authentication, so a refused feature costs no budget and stores no
-// idempotent answer; it gates every operation that names a capability.
-// Between the two, a route the router serves that ops lacks answers 403,
-// and require, when not nil, decides each API operation's action on its
-// subject (decision 0007), so a refused action costs no budget either.
+// keys on the caller, the principal's <kind>:<actor ID>, or the client's
+// address on a public route. ops names the operations its routes serve; a
+// request no operation serves, such as a 404, still authenticates and draws
+// from the standard budget. gated, when not nil, builds the feature
+// middleware, which runs right after authentication, so a refused feature
+// costs no budget and stores no idempotent answer; it gates every operation
+// that names a capability. Between the two, a route the router serves that
+// ops lacks answers 403, and require, when not nil, decides each API
+// operation's action on its subject, so a refused action costs no budget
+// either.
+//
+// ref: decisions 0003, 0006, 0007 and 0021
 func Guarded(
 	log *slog.Logger,
 	c config.Server,
@@ -389,10 +403,12 @@ func (o Operation) access() accessapi.Access {
 const jsonType = "application/json"
 
 // strictBodies checks the body of a request whose operation has a strict
-// one against its schema (decision 0022), answering 400 invalid-request
-// for an unknown field, a missing required one or a wrong type before the
-// handler decodes it. A body with no Content-Type is checked as JSON, as
-// the generated handler decodes it.
+// one against its schema, answering 400 invalid-request for an unknown
+// field, a missing required one or a wrong type before the handler decodes
+// it. A body with no Content-Type is checked as JSON, as the generated
+// handler decodes it.
+//
+// ref: decision 0022
 func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Handler) http.Handler {
 	opts := &openapi3filter.Options{SkipSettingDefaults: true}
 	return func(next http.Handler) http.Handler {
@@ -415,8 +431,11 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 	}
 }
 
-// caller is the key of decision 0003's controls: the principal's, or the
-// client's address on a route no credential authenticates.
+// caller is the key of the rate limits and idempotency keys: the
+// principal's, or the client's address on a route no credential
+// authenticates.
+//
+// ref: decision 0003
 func caller(r *http.Request) string {
 	if p, ok := kernel.PrincipalFrom(r.Context()); ok {
 		return p.Caller()
@@ -426,7 +445,9 @@ func caller(r *http.Request) string {
 
 // unlisted answers 403 to a request for a route the router serves but the
 // operations lack, so a route mounted without a route-table entry is
-// never served undecided (decision 0007's deny by default).
+// never served undecided: authorization denies by default.
+//
+// ref: decision 0007
 func unlisted(listed func(*http.Request) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

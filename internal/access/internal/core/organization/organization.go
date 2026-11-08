@@ -22,14 +22,18 @@ const MaxName = 100
 // installation's top node, and a top space named root could not say which
 // account it belongs to; legacy is the slug of the space below every top
 // space, which takes its account's slug, so an account named legacy would
-// hold two spaces of one slug (decision 0007).
+// hold two spaces of one slug.
+//
+// ref: decision 0007 § "Tenancy"
 var reserved = map[string]bool{"root": true, "legacy": true}
 
 // ErrInvalid marks input that breaks a rule; the error names the field.
 var ErrInvalid = errors.New("invalid")
 
 // FieldError is input that breaks a rule of one field, which a handler
-// answers with 422 validation-failed naming the field (decision 0022).
+// answers with 422 validation-failed naming the field.
+//
+// ref: decision 0022
 type FieldError struct {
 	Field  string
 	Reason string

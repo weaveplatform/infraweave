@@ -1,7 +1,9 @@
 // Package queuetest is the queue's contract suite: TestAcc tests that run
 // package queue against PostgreSQL, one database per test, for every case
-// decision 0011's verification lists. make accept runs it in accept-core
-// and, on the next PostgreSQL major, in postgres-next.
+// the queue's decision record lists to verify. make accept runs it in
+// accept-core and, on the next PostgreSQL major, in postgres-next.
+//
+// ref: decision 0011
 //
 // # Input and output
 //

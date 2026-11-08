@@ -1,7 +1,7 @@
 // Package blobs keeps objects consistent with PostgreSQL through
-// blob_objects (decision 0005): every object has a row, a row is live
-// exactly when the business change that records it commits, and objects
-// go only after the change that drops them commits.
+// blob_objects: every object has a row, a row is live exactly when the
+// business change that records it commits, and objects go only after the
+// change that drops them commits.
 //
 // Objects is serve's side, over an objectstore.Writer. Begin records a
 // pending row for a signed upload's declared size and SHA-256 before the
@@ -19,6 +19,8 @@
 // blob.delete removes the object and then the row, and blob.expire marks
 // live rows past expires_at and pending rows older than a day deleting,
 // a batch at a time, each with its blob.delete.
+//
+// ref: decision 0005
 //
 // # Input and output
 //

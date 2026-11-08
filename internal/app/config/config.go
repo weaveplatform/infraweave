@@ -33,27 +33,39 @@ type Config struct {
 	Queue    queue.Config      `mapstructure:"queue"`
 	Events   outbox.Config     `mapstructure:"events"`
 	Secrets  crypt.Config      `mapstructure:"secrets"`
-	// ObjectStore is decision 0005's object storage; Load checks its
-	// settings, and the process modes require its driver.
+	// ObjectStore is the object storage that holds blobs beside
+	// PostgreSQL; Load checks its settings, and the process modes require
+	// its driver.
+	//
+	// ref: decision 0005
 	ObjectStore objectstore.Config `mapstructure:"objectstore"`
 	// Auth is the access domain's: token lifetimes, the issuer and the
-	// signing keys (decision 0006).
+	// signing keys.
+	//
+	// ref: decision 0006
 	Auth accessassembly.Settings `mapstructure:"auth"`
 	// Features is the features domain's: the features switched off for
-	// the whole installation (decision 0021).
+	// the whole installation.
+	//
+	// ref: decision 0021
 	Features featuresassembly.Settings `mapstructure:"features"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
-// server.admin_listen and server.shutdown, decision 0003's controls under
-// server.rate_limit and server.idempotency, and server.public_url.
+// server.admin_listen and server.shutdown, the API's rate limits and
+// idempotency keys under server.rate_limit and server.idempotency, and
+// server.public_url.
+//
+// ref: decision 0003
 type Server struct {
 	serve.Config `mapstructure:",squash"`
 
-	// PublicURL is decision 0020's server.public_url: the origin clients
-	// reach infraweave at, from which every absolute URL it emits derives,
-	// the token issuer among them. The modes that serve the API require it
+	// PublicURL is server.public_url: the origin clients reach infraweave
+	// at, from which every absolute URL it emits derives, the token issuer
+	// among them. The modes that serve the API require it
 	// (RequirePublicURL).
+	//
+	// ref: decision 0020
 	PublicURL string `mapstructure:"public_url"`
 
 	RateLimit   ratelimit.Config   `mapstructure:"rate_limit"`

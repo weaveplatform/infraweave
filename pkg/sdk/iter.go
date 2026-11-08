@@ -7,7 +7,9 @@ import (
 
 // Page fetches the page of a list operation that cursor names, nil for the
 // first, and returns its items and the nextCursor of the answer's
-// {items, nextCursor} envelope (decision 0003).
+// {items, nextCursor} envelope.
+//
+// ref: decision 0003
 type Page[T any] func(ctx context.Context, cursor *string) (items []T, next *string, err error)
 
 // Iterate yields every item of a list operation, fetching each page as the

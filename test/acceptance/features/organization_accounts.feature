@@ -1,12 +1,13 @@
 @postgres
 Feature: Organization accounts, members and keys
-  The Organization tag (decision 0007) serves an organization admin: a
-  member holding the organization role organization-admin, the
-  break-glass admin, or an organization key's token. It creates, claims,
-  renames and deletes the organization's accounts, deactivates members,
-  grants and revokes the role, and manages organization keys, which
-  exchange at /api/v1/auth/token for a token only this tag accepts. No
-  answer of the tag names an account's stacks, runs, state or secrets.
+  The Organization tag serves an organization admin: a member holding the
+  organization role organization-admin, the break-glass admin, or an
+  organization key's token. It creates, claims, renames and deletes the
+  organization's accounts, deactivates members, grants and revokes the role,
+  and manages organization keys, which exchange at /api/v1/auth/token for a
+  token only this tag accepts. No answer of the tag names an account's
+  stacks, runs, state or secrets.
+  ref: decision 0007
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

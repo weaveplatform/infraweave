@@ -2,8 +2,8 @@
 Feature: The operator's switch across replicas
   A caller in api_disabled_callers gets 503 api-disabled from every replica
   once the change is announced on infraweave_invalidate, until its until
-  passes or the row goes (decisions 0003 and 0005). Other callers, and the
-  probes, are unaffected.
+  passes or the row goes. Other callers, and the probes, are unaffected.
+  ref: decisions 0003 and 0005
 
   Background:
     Given two infraweave servers, A and B, on one database

@@ -81,9 +81,11 @@ func (e Entity) column(name string) Column {
 
 // Scope is the rows a caller may search: Where, over From with its own
 // parameters $1 to $len(Args), and the reachable spaces, which every
-// compiled query ANDs as Space = ANY($n) (decision 0007 § "Evaluation").
-// Reachable holds spaces of the account Where names, as an authorization
-// snapshot answers them: a HIERARCHY field's Nodes lists them as they are.
+// compiled query ANDs as Space = ANY($n). Reachable holds spaces of the
+// account Where names, as an authorization snapshot answers them: a
+// HIERARCHY field's Nodes lists them as they are.
+//
+// ref: decision 0007 "Evaluation"
 type Scope struct {
 	Where     string
 	Args      []any

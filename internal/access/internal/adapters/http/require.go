@@ -209,7 +209,10 @@ func bodyField(r *http.Request, field string) string {
 }
 
 // hidden answers 404 for an entity that is missing or that the caller
-// cannot read, with the same detail for both (decision 0022).
+// cannot read, with the same detail for both, so the API never reveals
+// what exists.
+//
+// ref: decision 0022
 func hidden(w http.ResponseWriter, entity, id string) {
 	problem.Write(w, problem.NotFound.New(fmt.Sprintf("No %s %q in this account.",
 		strings.ReplaceAll(entity, "_", " "), id)))

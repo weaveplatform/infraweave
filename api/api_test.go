@@ -23,7 +23,9 @@ import (
 const problems = "../docs/data/problems.json"
 
 // renames is the register of reference names infraweave serves under
-// another name (decision 0001).
+// another name.
+//
+// ref: decision 0001
 const renames = "../docs/data/renames.json"
 
 const problemPrefix = "urn:infraweave:problem:"
@@ -121,16 +123,22 @@ func readRegister(t *testing.T, file string, v any) {
 	}
 }
 
-// exampleInstance is decision 0022's instance: the request ID, as
-// X-Request-Id accepts it, under urn:infraweave:request:.
+// exampleInstance is a problem's instance: the request ID, as
+// X-Request-Id accepts it, under urn:infraweave:request:, so a problem
+// names the request that the response header and the server log name too.
+//
+// ref: decision 0022
 var exampleInstance = regexp.MustCompile(`^urn:infraweave:request:[A-Za-z0-9._-]{1,128}$`)
 
 // TestUnitAPIProblemTypes checks that every problem example in the spec
 // uses a slug the problem register lists, with its status, title and an
 // instance naming a request, so the
 // register stays the one complete list of problem types. It also checks that
-// every slug decision 0003 defines has a response that uses it, since 0003's
-// components exist to carry them.
+// every slug the register gives to the API conventions (idempotency keys,
+// rate limits, a disabled API, invalid cursors) has a response that uses
+// it, since the shared response components exist to carry them.
+//
+// ref: decision 0003
 func TestUnitAPIProblemTypes(t *testing.T) {
 	listed := problemTypes(t)
 	used := map[string]bool{}

@@ -1,5 +1,5 @@
 // Package observe is what a process tells the outside about itself: its logs
-// and its health (decision 0017).
+// and its health.
 //
 // NewLogger is the process's slog.Logger: JSON, one object per line, or text
 // for local work (LogConfig, log.format and log.level), with the standard
@@ -18,6 +18,8 @@
 // /readyz answer 200 or 503 from the checks, as ok or fail or, with
 // ?verbose, as JSON; every other path or method is a problem detail.
 // OpenTelemetry and /metrics join it with P18b.
+//
+// ref: decision 0017
 //
 // # Input and output
 //

@@ -183,9 +183,11 @@ func TestUnitSeats(t *testing.T) {
 	}
 }
 
-// TestUnitSetAccountLimit checks decision 0021's rule for an account
-// limit: a limit of the catalogue, zero or more, and no more than the pool
-// as it applies now, which billing off lifts.
+// TestUnitSetAccountLimit checks the rule for an account limit: a limit
+// of the catalogue, zero or more, and no more than the pool as it applies
+// now, which billing off lifts.
+//
+// ref: decision 0021
 func TestUnitSetAccountLimit(t *testing.T) {
 	pooled := &featuresapi.Entitlement{
 		Tier: root.Starter, Limits: map[string]int64{featuresapi.Seats: 10},

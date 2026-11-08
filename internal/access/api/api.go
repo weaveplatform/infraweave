@@ -8,7 +8,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// Access is what a route admits (decision 0006 § "The principal").
+// Access is the kind of principal a route admits.
+//
+// ref: decision 0006 § "The principal"
 type Access int
 
 const (
@@ -28,7 +30,9 @@ const (
 	OrganizationAdmin
 )
 
-// Authenticator authenticates the API's requests (decision 0006).
+// Authenticator authenticates the API's requests.
+//
+// ref: decision 0006
 type Authenticator interface {
 	// Middleware authenticates every request access does not make public.
 	// It puts the principal the request's bearer token or browser session
@@ -48,8 +52,9 @@ type Required struct {
 	Params  map[string]string
 }
 
-// Requirer decides each API request's Required after authentication
-// (decision 0007 § "Enforcement point").
+// Requirer decides each API request's Required after authentication.
+//
+// ref: decision 0007 § "Enforcement point"
 type Requirer interface {
 	// Middleware decides every request require reports ok for, and passes
 	// the others: the operator API's, a public route's, and a route that
@@ -68,17 +73,19 @@ type SpaceOf func(ctx context.Context, acct kernel.AccountID, id string) (kernel
 // ErrNoSubject is a subject the account does not hold.
 var ErrNoSubject = errors.New("no such subject")
 
-// LoginPattern is the route of an organization's break-glass login
-// (decision 0006 § "The break-glass admin"): GET answers its form, and a
-// POST of the form signs in. It is outside the API's base URL, a page
-// for a browser rather than an operation of the API.
+// LoginPattern is the route of an organization's break-glass login: GET
+// answers its form, and a POST of the form signs in. It is outside the
+// API's base URL, a page for a browser rather than an operation of the API.
+//
+// ref: decision 0006 § "The break-glass admin"
 const LoginPattern = "/admin-login/{organization}"
 
-// The routes of the authorization server for MCP clients (decision 0006 §
-// "The OAuth authorization server for MCP"), outside the API's base URL
-// as the OAuth protocol places them: RFC 8414 metadata, RFC 7591
-// registration, and the authorization and token endpoints. None takes a
-// credential.
+// The routes of the authorization server for MCP clients, outside the
+// API's base URL as the OAuth protocol places them: RFC 8414 metadata, RFC
+// 7591 registration, and the authorization and token endpoints. None takes
+// a credential.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 const (
 	OAuthMetadataPattern  = "/.well-known/oauth-authorization-server"
 	OAuthRegisterPattern  = "/oauth/register"
@@ -86,13 +93,15 @@ const (
 	OAuthTokenPattern     = "/oauth/token" //nolint:gosec // a route, not a credential
 )
 
-// Authorizer decides decision 0007's checks the same way for every
+// Authorizer decides the authorization checks the same way for every
 // domain: whether a principal may perform an action in a space, every
 // space of its account in which it may, for filtering a list by
 // space_id = ANY($n), whether it may in any space, as an anywhere action
 // is decided, and every assignable action it may perform in a space, for
 // a resource's allowedActions. A principal of no account may do nothing;
 // an error is the store's, and the check it fails refuses.
+//
+// ref: decision 0007
 type Authorizer interface {
 	Authorize(
 		ctx context.Context,

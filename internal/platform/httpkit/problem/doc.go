@@ -4,15 +4,17 @@
 //
 // Type is a problem type of the register docs/data/problems.json, its slug,
 // status and title; a variable declares each slug, and Types lists them all.
-// Type.New builds a Problem, and Write sends one, with decision 0022's
-// instance, urn:infraweave:request: and the X-Request-Id the response
-// carries. Failure answers an unexpected error: Unavailable's 503 with
-// Retry-After for kernel.ErrUnavailable, otherwise Internal's generic 500.
-// RequestError and ResponseError are the strict server's error handlers:
-// an *Error answers with the problem it carries, a NotImplementedError with a
-// 501 naming the operation, a *search.Invalid with 422 validation-failed
-// and decision 0022's errors member, a FieldError for each field the
-// search refused, and anything else through Failure.
+// Type.New builds a Problem, and Write sends one, with an instance of
+// urn:infraweave:request: and the X-Request-Id the response carries. Failure
+// answers an unexpected error: Unavailable's 503 with Retry-After for
+// kernel.ErrUnavailable, otherwise Internal's generic 500. RequestError and
+// ResponseError are the strict server's error handlers: an *Error answers
+// with the problem it carries, a NotImplementedError with a 501 naming the
+// operation, a *search.Invalid with 422 validation-failed and an errors
+// member, a FieldError for each field the search refused, and anything else
+// through Failure.
+//
+// ref: decision 0022
 //
 // # Input and output
 //

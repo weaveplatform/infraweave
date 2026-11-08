@@ -7,7 +7,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// The system roles' slugs (decision 0007).
+// The system roles' slugs, fixed for every account.
+//
+// ref: decision 0007 § "Roles and the action catalogue"
 const (
 	SpaceReader           = "space-reader"
 	SpaceWriter           = "space-writer"

@@ -9,9 +9,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// CookieName is the browser session's cookie (decision 0006 § "Sessions").
-// The __Host- prefix makes a browser refuse it unless it is Secure, has
-// Path=/ and no Domain, so no subdomain can set or read it.
+// CookieName is the browser session's cookie. The __Host- prefix makes a
+// browser refuse it unless it is Secure, has Path=/ and no Domain, so no
+// subdomain can set or read it.
+//
+// ref: decision 0006 § "Sessions"
 const CookieName = "__Host-infraweave_session"
 
 // secretLen is the cookie secret's length in bytes before encoding.
@@ -39,10 +41,12 @@ type Admitted struct {
 	Name string
 }
 
-// Admission decides which accounts admit a member (decision 0007): rows
-// of account_users today, which P4b's bindings and P13b's LOGIN policies
-// extend. Both are evaluated when read, so a change admits or refuses at
-// the member's next switch.
+// Admission decides which accounts admit a member: rows of account_users
+// today, which P4b's bindings and P13b's LOGIN policies extend. Both are
+// evaluated when read, so a change admits or refuses at the member's next
+// switch.
+//
+// ref: decision 0007
 type Admission interface {
 	// Accounts are the accounts of org that admit member, in slug order.
 	Accounts(

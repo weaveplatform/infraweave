@@ -1,11 +1,13 @@
-// Package azurekv is decision 0006's azurekv signing backend: it signs the
-// api-token purpose's tokens with one version of a Key Vault key of type
-// EC or EC-HSM on P-256, so the private key never leaves Key Vault. The
-// reference is the version's key ID, https://<vault>/keys/<name>/<version>,
-// since a key's current version changes when it rotates; anything else is
-// signer.ErrRef, and a key of another type or curve signer.ErrKey, each
-// naming the reference. Sign asks Key Vault to sign the SHA-256 digest
-// with ES256, whose answer is already JWS's r || s.
+// Package azurekv is the azurekv signing backend: it signs the api-token
+// purpose's tokens with one version of a Key Vault key of type EC or EC-HSM
+// on P-256, so the private key never leaves Key Vault. The reference is the
+// version's key ID, https://<vault>/keys/<name>/<version>, since a key's
+// current version changes when it rotates; anything else is signer.ErrRef,
+// and a key of another type or curve signer.ErrKey, each naming the
+// reference. Sign asks Key Vault to sign the SHA-256 digest with ES256,
+// whose answer is already JWS's r || s.
+//
+// ref: decision 0006
 //
 // # Input and output
 //

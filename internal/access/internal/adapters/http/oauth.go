@@ -21,8 +21,10 @@ import (
 // redirect URIs of the longest length fit.
 const maxOAuthBody = 32 << 10
 
-// OAuth serves decision 0006's authorization server for MCP clients
-// beside the APIs: its protocol answers OAuth's JSON, not problems.
+// OAuth serves the authorization server for MCP clients beside the APIs:
+// its protocol answers OAuth's JSON, not problems.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 type OAuth struct{ svc *oauth.Service }
 
 // NewOAuth returns the server over svc.
@@ -44,7 +46,7 @@ func (o OAuth) metadata(w http.ResponseWriter, _ *http.Request) {
 // registration is an RFC 7591 request's fields; others are ignored, as
 // the RFC lets a server do.
 //
-//nolint:tagliatelle // RFC 7591's names
+//nolint:tagliatelle // the names RFC 7591 sets
 type registration struct {
 	RedirectURIs            []string `json:"redirect_uris"`
 	ClientName              string   `json:"client_name"`
@@ -53,9 +55,9 @@ type registration struct {
 	ResponseTypes           []string `json:"response_types"`
 }
 
-// registered is RFC 7591's answer for a public client.
+// registered is the answer RFC 7591 gives a public client.
 //
-//nolint:tagliatelle // RFC 7591's names
+//nolint:tagliatelle // the names RFC 7591 sets
 type registered struct {
 	ClientID                string   `json:"client_id"`
 	ClientIDIssuedAt        int64    `json:"client_id_issued_at"`
@@ -166,8 +168,10 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 // consenter is the caller of a consent operation, which must present a
-// browser session, as decision 0006 asks; the service refuses one that is
-// not a member's.
+// browser session, since consent is a console page; the service refuses
+// one that is not a member's.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 func consenter(ctx context.Context) (kernel.Principal, error) {
 	p, err := principal(ctx)
 	if err != nil {

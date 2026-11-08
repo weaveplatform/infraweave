@@ -15,22 +15,27 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// The channels of decision 0005, each with the payload it carries.
+// The channels, each with the payload it carries.
+//
+// ref: decision 0005
 const (
-	// Jobs carries a queue name and wakes idle queue workers (decision 0011).
+	// Jobs carries a queue name and wakes idle queue workers.
+	// ref: decision 0011
 	Jobs = "infraweave_jobs"
-	// Runs carries a worker pool ID and wakes held worker polls (decision
-	// 0008).
+	// Runs carries a worker pool ID and wakes held worker polls.
+	// ref: decision 0008
 	Runs = "infraweave_runs"
-	// VCSAgent carries a VCS agent pool ID or a request ID (decision 0012).
+	// VCSAgent carries a VCS agent pool ID or a request ID.
+	// ref: decision 0012
 	VCSAgent = "infraweave_vcs_agent"
 	// Invalidate carries a cache key and clears in-process caches.
 	Invalidate = "infraweave_invalidate"
-	// Events carries an event ID and wakes server-sent-event streams
-	// (decision 0015).
+	// Events carries an event ID and wakes server-sent-event streams.
+	// ref: decision 0015
 	Events = "infraweave_events"
 	// Logs carries a run ID, state and state version and wakes run log
-	// streams (decision 0015).
+	// streams.
+	// ref: decision 0015
 	Logs = "infraweave_logs"
 )
 

@@ -119,7 +119,7 @@ func (g *grants) Refresh(
 
 func (g *grants) ExpireOAuth(context.Context, time.Time, time.Time) error { return nil }
 
-// oauthError checks rec is RFC 6749's JSON error of status and code.
+// oauthError checks rec is the JSON error of RFC 6749 with status and code.
 func oauthError(
 	t *testing.T,
 	what string,

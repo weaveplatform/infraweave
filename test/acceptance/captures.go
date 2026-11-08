@@ -27,7 +27,9 @@ import (
 // so it never counts as a capture.
 const ExampleCapture = "C0"
 
-// The files of one capture directory (decision 0016, "Capture fixtures").
+// The files of one capture directory.
+//
+// ref: decision 0016
 const (
 	captureMeta     = "meta.yaml"
 	captureRequest  = "request.graphql"
@@ -38,8 +40,10 @@ const (
 // CaptureMeta is a capture's meta.yaml: where and when it was taken, and
 // what was redacted before it was committed.
 type CaptureMeta struct {
-	// Entry is the capture's report 30 record in docs/data/open-questions.json,
+	// Entry is the capture's open question in docs/data/open-questions.json,
 	// and the name of its directory.
+	//
+	// ref: report 30
 	Entry string `yaml:"entry"`
 	// Example marks ExampleCapture.
 	Example bool `yaml:"example"`
@@ -96,8 +100,10 @@ var (
 )
 
 // LoadCaptures reads and validates every capture directory under root.
-// entries are the capture records of the report 30 register; a capture
-// other than the example must name one of them.
+// entries are the capture records of the open-questions register; a
+// capture other than the example must name one of them.
+//
+// ref: report 30
 func LoadCaptures(root string, entries map[string]bool) ([]Capture, error) {
 	dirs, err := os.ReadDir(root)
 	if err != nil {
@@ -327,8 +333,10 @@ func sameJSON(got, want any) bool {
 }
 
 // The shapes TestUnitCaptureRedaction refuses: what a capture's redaction
-// must replace before it is committed (decision 0002: no Spacelift
-// credential or customer data in the repository).
+// must replace before it is committed, since no Spacelift credential or
+// customer data may enter the repository.
+//
+// ref: decision 0002
 var leaks = []struct {
 	what string
 	re   *regexp.Regexp

@@ -20,12 +20,14 @@ const (
 	RotationAutomatic  = "automatic"
 	RotationManual     = "manual"
 	defaultAPITokenTTL = 10 * time.Hour
-	// The authorization server's lifetimes (decision 0006 § "Token
-	// kinds"): an access token, a refresh token unused, and a code.
+	// The authorization server's lifetimes: an access token, a refresh
+	// token unused, and a code.
+	// ref: decision 0006 § "Token kinds"
 	defaultOAuthAccessTTL  = time.Hour
 	defaultOAuthRefreshTTL = 30 * 24 * time.Hour
 	defaultOAuthCodeTTL    = time.Minute
-	// A browser session's limits (decision 0006 § "Token kinds").
+	// A browser session's limits: idle and absolute.
+	// ref: decision 0006 § "Token kinds"
 	defaultIdleTimeout = 12 * time.Hour
 	defaultMaxAge      = 7 * 24 * time.Hour
 )
@@ -33,7 +35,9 @@ const (
 // ErrConfig reports an auth setting the domain could not run with.
 var ErrConfig = errors.New("invalid auth configuration")
 
-// Settings are the access domain's settings, under auth (decision 0006).
+// Settings are the access domain's settings, under auth.
+//
+// ref: decision 0006 § "Configuration"
 type Settings struct {
 	// APIIssuer is the iss of every API-facing token; empty means
 	// server.public_url.
@@ -49,7 +53,8 @@ type Settings struct {
 type OperatorSettings struct {
 	// Keys are the operator keys, which exchange for operator tokens: they
 	// live in configuration so the operator can act before any
-	// organization exists (decision 0006).
+	// organization exists.
+	// ref: decision 0006 § "The principal"
 	Keys []OperatorKey `mapstructure:"keys"`
 }
 
@@ -63,8 +68,10 @@ type OperatorKey struct {
 // OIDCAPIKeySettings are auth.oidc_api_keys.
 type OIDCAPIKeySettings struct {
 	// AllowedIssuers are the issuers an OIDC API key may name, checked at
-	// creation and at every exchange; empty allows any HTTPS issuer
-	// (DV-014).
+	// creation and at every exchange; empty allows any HTTPS issuer. Only
+	// HTTPS is fetched, since a server fetching user-supplied URLs is an
+	// SSRF path.
+	// ref: DV-014
 	AllowedIssuers []string `mapstructure:"allowed_issuers"`
 	// CAFile is a PEM file of certificate authorities trusted beside the
 	// system's when fetching an issuer's documents, for an issuer under a
@@ -125,7 +132,9 @@ func (k KMSKey) String() string { return k.Provider + ":" + k.Ref }
 // kmsProviders are the providers a KMSKey may name.
 var kmsProviders = []string{"awskms", "gcpkms", "azurekv", "vault"}
 
-// DefaultSettings are decision 0006's defaults.
+// DefaultSettings are the auth settings' defaults.
+//
+// ref: decision 0006
 func DefaultSettings() Settings {
 	return Settings{
 		Tokens: TokenSettings{

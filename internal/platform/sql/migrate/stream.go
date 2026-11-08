@@ -18,8 +18,9 @@ type Stream struct {
 	Name  string
 	Files fs.FS
 	// Floor is the newest version of this stream in the last minor release
-	// of the previous major (decision 0020). A database below it would skip
-	// a major, which is refused. The zero Floor refuses nothing.
+	// of the previous major. A database below it would skip a major, which
+	// is refused. The zero Floor refuses nothing.
+	// ref: decision 0020
 	Floor Floor
 }
 

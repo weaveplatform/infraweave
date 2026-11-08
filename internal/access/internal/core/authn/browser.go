@@ -19,8 +19,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// The break-glass sign-in's trail entry (decision 0015): it changes
-// nothing, so its event type is NONE, and it affects the organization.
+// The break-glass sign-in's trail entry: it changes nothing, so its event
+// type is NONE, and it affects the organization.
+//
+// ref: decision 0015
 const (
 	ActionBreakGlassSignIn = "organization.break_glass_sign_in"
 	eventNone              = "NONE"

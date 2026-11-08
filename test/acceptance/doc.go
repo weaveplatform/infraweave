@@ -1,5 +1,5 @@
 // Package acceptance runs the Gherkin features in features/ with godog
-// against the binary a user runs (decision 0016). TestAccFeatures builds
+// against the binary a user runs. TestAccFeatures builds
 // cmd/infraweave with coverage once, gives each scenario that needs a server
 // its own infraweave all subprocess (or scheduler, for a scenario about that
 // mode), reading its listeners from the JSON logs on its stdout, and starts
@@ -15,13 +15,15 @@
 // parity bug named by its capture. TestUnitCaptureRedaction fails on a
 // fixture that Leaks a credential or a real e-mail address.
 //
+// ref: decision 0016, report 30
+//
 // # Input and output
 //
-// It reads features/, test/fixtures/captures, the report 30 register and
-// the committed reference and bundle, builds and runs infraweave, starts
-// containers through the Docker daemon, and writes godog's cucumber report
-// and the subprocesses' coverage to make accept's -test.gocoverdir,
-// cover/accept.
+// It reads features/, test/fixtures/captures, the open-questions register
+// in docs/data/open-questions.json and the committed reference and bundle,
+// builds and runs infraweave, starts containers through the Docker daemon,
+// and writes godog's cucumber report and the subprocesses' coverage to make
+// accept's -test.gocoverdir, cover/accept.
 //
 // # Dependencies
 //

@@ -1,8 +1,8 @@
-// Package seal is decision 0013's sealed formats, and holds no keys: the
+// Package seal is infraweave's sealed formats, and holds no keys: the
 // server's keyring is platform/crypt's, and the runner, which may import
-// this package but never crypt (decision 0004), brings keys of its own.
-// Every format starts with the version byte 0x01 and seals with AES-256-GCM
-// through cipher.NewGCMWithRandomNonce, which FIPS 140-only mode allows.
+// this package but never crypt, brings keys of its own. Every format starts
+// with the version byte 0x01 and seals with AES-256-GCM through
+// cipher.NewGCMWithRandomNonce, which FIPS 140-only mode allows.
 //
 //   - The column format, SealColumn and OpenColumn: 0x01 | data key ID
 //     (uint32, big-endian) | nonce | ciphertext and tag, with the column's
@@ -24,6 +24,8 @@
 // A value that fails to open reports ErrAuth whatever the cause, ErrFormat
 // when it is too short or malformed to try, and ErrVersion for another
 // version byte.
+//
+// ref: decisions 0004 and 0013
 //
 // # Input and output
 //

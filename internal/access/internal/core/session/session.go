@@ -12,7 +12,10 @@ import (
 // Channel is the login path a session came through.
 type Channel string
 
-// The channels of decision 0006. infraweave's CLI is INFRAWEAVECTL.
+// The channels a session comes through. infraweave's CLI is
+// INFRAWEAVECTL.
+//
+// ref: decision 0006 § "Token kinds"
 const (
 	ChannelUnknown      Channel = "UNKNOWN"
 	ChannelWeb          Channel = "WEB"

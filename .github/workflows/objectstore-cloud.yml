@@ -1,18 +1,19 @@
 name: go | Object store contract in the clouds
 
-# Decision 0016's objectstore-cloud job: objectstoretest against real
-# Amazon S3, Google Cloud Storage and Azure Blob Storage, each night on
-# main, covering what the emulators cannot decide. Each cloud runs the
-# contract twice, as decision 0020's writer (serve's grants, whose delete
-# the cloud must refuse) and deleter (scheduler's). GitHub's OIDC token is
-# federated to each cloud; no key is stored. test/cloud/objectstore holds
-# the Terraform that provisions the buckets and the trust, and its outputs
-# are this workflow's environment secrets: none is a credential, but they
-# name the clouds' accounts, and a public repository's logs mask only
-# secrets. A cloud without them reports "not configured" and fails rather
-# than passing. The job is informational:
-# the quality gate does not need it, and a failure opens an issue per
-# cloud, or comments on the open one.
+# objectstoretest against real Amazon S3, Google Cloud Storage and Azure
+# Blob Storage, each night on main, covering what the emulators cannot
+# decide. Each cloud runs the contract twice, with the two least-privilege
+# identities a deployment grants: the writer (serve's grants, which hold no
+# delete, so the cloud must refuse one) and the deleter (scheduler's, which
+# deletes expired objects). GitHub's OIDC token is federated to each cloud;
+# no key is stored. test/cloud/objectstore holds the Terraform that
+# provisions the buckets and the trust, and its outputs are this workflow's
+# environment secrets: none is a credential, but they name the clouds'
+# accounts, and a public repository's logs mask only secrets. A cloud
+# without them reports "not configured" and fails rather than passing. The
+# job is informational: the quality gate does not need it, and a failure
+# opens an issue per cloud, or comments on the open one.
+# ref: decisions 0016 and 0020
 on:
   schedule:
     - cron: '17 4 * * *'

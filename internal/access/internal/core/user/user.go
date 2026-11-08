@@ -28,7 +28,8 @@ const (
 	ResourceManagedUser = "MANAGED_USER"
 	ResourceSpace       = "SPACE"
 	// InvitationTTL is how long an invitation may be accepted after it was
-	// sent: Spacelift's 24 hours (report 14, C125).
+	// sent: Spacelift's 24 hours.
+	// ref: report 14 C125
 	InvitationTTL = 24 * time.Hour
 )
 
@@ -52,7 +53,10 @@ var (
 
 // Invitation is the latest invitation of a member to an account. The
 // person accepts it by signing in through its link, which names its ID,
-// never by an e-mail match (decision 0006).
+// never by an e-mail match, since a provider that lets a person set their
+// own address would otherwise let them take over another member.
+//
+// ref: decision 0006 § "Members and identity providers"
 type Invitation struct {
 	ID        kernel.ULID
 	Email     string

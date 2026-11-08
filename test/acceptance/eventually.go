@@ -22,9 +22,11 @@ const (
 var ErrTimedOut = errors.New("timed out")
 
 // Eventually polls cond until it reports true, returns an error, or ctx's
-// deadline (or waitLimit) passes. It is the suite's only way to wait:
-// decision 0016 forbids a fixed delay. The error names what it waited for
-// and cond's last error, so a timed-out scenario says why.
+// deadline (or waitLimit) passes. It is the suite's only way to wait: no
+// step sleeps for a fixed delay. The error names what it waited for and
+// cond's last error, so a timed-out scenario says why.
+//
+// ref: decision 0016
 func Eventually(ctx context.Context, what string, cond func(context.Context) (bool, error)) error {
 	ctx, cancel := context.WithTimeout(ctx, waitLimit)
 	defer cancel()

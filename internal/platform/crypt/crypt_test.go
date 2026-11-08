@@ -66,9 +66,11 @@ var secrets = crypt.Column{
 	Key:   []string{"account_id", "id"},
 }
 
-// TestAccKeyringFirstStart checks decision 0013's first start: replicas
+// TestAccKeyringFirstStart checks the keyring's first start: replicas
 // starting together on an empty keyring end with one active key, which
 // each of them holds.
+//
+// ref: decision 0013
 func TestAccKeyringFirstStart(t *testing.T) {
 	db := pool(t)
 	p := provider(t, 1)
@@ -428,8 +430,10 @@ func TestUnitConfig(t *testing.T) {
 	}
 }
 
-// approvedOnly are decision 0013's refusals under fips140=only: GCM with
-// a caller's nonce, MD5 and SHA-1, and ciphers no certificate covers.
+// approvedOnly are the calls Go refuses under fips140=only: GCM with a
+// caller's nonce, MD5 and SHA-1, and ciphers no certificate covers.
+//
+// ref: decision 0013
 var approvedOnly = map[string]string{
 	"cipher.NewGCM":              "GCM with a caller's nonce; use cipher.NewGCMWithRandomNonce",
 	"cipher.NewGCMWithNonceSize": "GCM with a caller's nonce",

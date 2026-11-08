@@ -13,16 +13,16 @@
 // api.UnimplementedStrict, so every operation no domain serves answers 501) under BaseURL, and the
 // operator API's (operatorServer, which embeds the access and features
 // domains' operator partials) under OperatorBaseURL on the same
-// router, behind decision 0003's controls, each prefix authenticated by
-// its own authenticator (byPrefix); Guarded and
-// Operations put authentication, then decision 0007's route table, which
+// router, behind the rate limits and idempotency keys, each prefix
+// authenticated by its own authenticator (byPrefix); Guarded and
+// Operations put authentication, then the authorization route table, which
 // answers 403 forbidden to a route the router serves and no operation
 // names and runs the access domain's Requirer on each API operation's
 // x-infraweave-action and x-infraweave-subject, then the operator switch, the rate limits
 // and idempotency keys in front of each route, and last strictBodies, which
 // answers 400 invalid-request to a JSON body its operation's schema
-// refuses when that schema sets additionalProperties false (decision
-// 0022), with each operation's cost
+// refuses when that schema sets additionalProperties false, with each
+// operation's cost
 // class read from the embedded spec's x-infraweave-cost, whether it is
 // public from its empty security, and whether it admits a credential of
 // no account from its x-infraweave-access: organization, with the
@@ -69,10 +69,13 @@
 // HashPassword is infraweave auth hash-password: it reads a password's
 // first line and prints its break-glass hash.
 //
+// ref: decisions 0003, 0007, 0017 and 0022
+//
 // # Input and output
 //
 // Run binds its mode's listeners through httpkit/serve and answers HTTP on
-// them until the context ends, then shuts down in decision 0017's order. The
+// them until the context ends, then shuts down: /readyz fails first, and
+// the listeners drain after the ready delay. The
 // operation table is decoded once from the specs embedded in gen/api and
 // gen/operator. HashPassword reads its io.Reader and writes the
 // io.Writer. Run

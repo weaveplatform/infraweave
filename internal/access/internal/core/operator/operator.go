@@ -85,9 +85,10 @@ type Deps struct {
 	Now  func() time.Time
 }
 
-// Service is the operator API's organizations (decision 0021). Its
-// callers are operator principals, which the operator authenticator
-// alone admits.
+// Service is the operator API's organizations. Its callers are operator
+// principals, which the operator authenticator alone admits.
+//
+// ref: decision 0021
 type Service struct{ d Deps }
 
 // NewService returns the service on d.
@@ -109,7 +110,9 @@ type Input struct {
 }
 
 // BreakGlassInput is a break-glass credential as the operator sends it:
-// the login and the hash in decision 0006's format.
+// the login and the hash in the format breakglass parses.
+//
+// ref: decision 0006 § "Human login"
 type BreakGlassInput struct {
 	Login, PasswordHash string
 }

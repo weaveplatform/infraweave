@@ -1,13 +1,13 @@
 @postgres
 Feature: Operator organizations
-  The operator API under /operator/v1 (decision 0021) creates the
-  installation's organizations, each with its first account, unclaimed, and
-  sets each organization's break-glass credential, whose password hash
-  infraweave auth hash-password prints (decision 0006). An operator key in
-  auth.operator.keys exchanges at /api/v1/auth/token for an operator token,
-  which only the operator API accepts; the operator API accepts nothing
-  else. Every write is on the organization's trail with actor kind
-  operator.
+  The operator API under /operator/v1 creates the installation's
+  organizations, each with its first account, unclaimed, and sets each
+  organization's break-glass credential, whose password hash infraweave auth
+  hash-password prints. An operator key in auth.operator.keys exchanges at
+  /api/v1/auth/token for an operator token, which only the operator API
+  accepts; the operator API accepts nothing else. Every write is on the
+  organization's trail with actor kind operator.
+  ref: decisions 0006 and 0021
 
   @case:success
   Scenario: An operator key creates, lists, reads and deletes an organization

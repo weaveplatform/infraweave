@@ -8,17 +8,21 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// Account is a business entity within an organization and the data
-// boundary (decision 0007). Its slug is unique across the installation and
-// never changes; its name may. An account starts unclaimed until an
-// organization admin names its first account admin, and stays claimed.
 // DefaultRunnerImage is the runner image a private worker pool's runs use
 // when neither the stack nor the run names one, which
 // defaultPrivateWorkerPoolRunnerImage answers until P8's launcher sets
 // the account's default. It is untagged, so it resolves to the latest
-// release of decision 0008's Terraform runner image.
+// release of the Terraform runner image.
+//
+// ref: decision 0008
 const DefaultRunnerImage = "ghcr.io/weaveplatform/infraweave-runner-terraform"
 
+// Account is a business entity within an organization and the data
+// boundary. Its slug is unique across the installation and never changes;
+// its name may. An account starts unclaimed until an organization admin
+// names its first account admin, and stays claimed.
+//
+// ref: decision 0007 § "Tenancy"
 type Account struct {
 	OrganizationID kernel.OrganizationID
 	ID             kernel.AccountID

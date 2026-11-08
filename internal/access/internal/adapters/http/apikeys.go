@@ -219,7 +219,9 @@ func (s Server) ApiKeyEnableNonAdminManagers(
 
 // onKey runs do on the key raw names in the caller's account. A key that
 // is not a ULID, belongs to another account or is deleted answers 404, as
-// hidden and missing are the same (decision 0022).
+// hidden and missing are the same, so the API never reveals what exists.
+//
+// ref: decision 0022
 func (s Server) onKey(
 	ctx context.Context,
 	raw string,

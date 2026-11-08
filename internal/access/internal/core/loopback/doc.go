@@ -1,5 +1,5 @@
 // Package loopback is the server's half of the CLI's loopback login
-// (decision 0006's CLI token, spacectl's browser handshake): Seal
+// (the CLI token's delivery, spacectl's browser handshake): Seal
 // encrypts a CLI token to the RSA public key the CLI generated, so the
 // browser that carries it to the CLI's local listener never reads it.
 // The envelope is spacectl's: an AES-256 key wrapped with RSA-OAEP over
@@ -7,6 +7,8 @@
 // padding, each in unpadded base64url, joined by a dot. Every primitive
 // is one FIPS 140-3 approves. A key that is not RSA of at least
 // MinKeyBits is ErrKey.
+//
+// ref: decision 0006
 //
 // # Input and output
 //

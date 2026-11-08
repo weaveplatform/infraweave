@@ -36,8 +36,10 @@ func (f Fallback) Within(level Fallback) bool {
 // it. Infraweave marks an action the reference's enum lacks: an account
 // action on a resource that lives in no space (an API key, a session, a
 // managed user or group), decided on the account's top space, or, when
-// Anywhere, in any space where the caller holds it, as report 14 lets
-// the admin of any space read keys, users and groups.
+// Anywhere, in any space where the caller holds it, since the admin of
+// any space may read keys, users and groups.
+//
+// ref: report 14
 type ActionInfo struct {
 	Action     Action
 	Subject    string
@@ -49,7 +51,9 @@ type ActionInfo struct {
 }
 
 // Assignable reports whether a role may hold the action: a disabled or
-// deprecated one is refused (decision 0007).
+// deprecated one is refused.
+//
+// ref: decision 0007
 func (i ActionInfo) Assignable() bool { return !i.Disabled && !i.Deprecated }
 
 // Actions is the catalogue: the reference's enum in its order, then

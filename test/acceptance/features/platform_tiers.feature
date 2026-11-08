@@ -1,12 +1,13 @@
 @postgres
 Feature: Tiers, organization tiers, grants and billing through the operator API
   Tiers, each organization's tier and grants, and the billing switch are
-  data the operator edits under /operator/v1 (decision 0021). Every edit
-  bumps the entitlement version of each organization it touches and
-  notifies infraweave_invalidate, so every replica applies it on a later
-  request without a restart. Enterprise, what every organization holds
-  while billing is off, cannot be edited, and a tier an organization holds
-  cannot be deleted.
+  data the operator edits under /operator/v1. Every edit bumps the
+  entitlement version of each organization it touches and notifies
+  infraweave_invalidate, so every replica applies it on a later request
+  without a restart. Enterprise, what every organization holds while billing
+  is off, cannot be edited, and a tier an organization holds cannot be
+  deleted.
+  ref: decision 0021
 
   @case:success
   Scenario: A new tier, given to an organization with billing on, applies on another replica

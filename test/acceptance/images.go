@@ -12,17 +12,24 @@ import (
 // major; the tag names the release for a reader, and the digest is what
 // Docker pulls. internal/platform/sql/sqltest runs on the same pins.
 const (
-	// ImagePostgres serves @postgres: PostgreSQL 18 (decision 0005).
+	// ImagePostgres serves @postgres: PostgreSQL 18, the version floor.
+	//
+	// ref: decision 0005
 	ImagePostgres = "postgres:18.6@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42"
 	// ImagePostgresNext is the next major, its beta or release candidate
-	// until it is generally available, which the postgres-next job runs
-	// (decision 0016).
+	// until it is generally available, which the postgres-next job runs.
+	//
+	// ref: decision 0016
 	ImagePostgresNext = "postgres:19rc1@sha256:4b3e4b2edcf554492dd1c5e008237208c1d6e6faf2f15c24bf5fc5c4bcf0a21d"
-	// ImagePostgresBelowFloor is PostgreSQL 17, one major below decision
-	// 0005's floor, which every process mode must refuse.
+	// ImagePostgresBelowFloor is PostgreSQL 17, one major below the version
+	// floor, which every process mode must refuse.
+	//
+	// ref: decision 0005
 	ImagePostgresBelowFloor = "postgres:17.11@sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f"
 	// ImageObjectStore serves @objectstore: RustFS, the S3-compatible store
-	// decision 0010 names.
+	// the suite runs the s3 driver against.
+	//
+	// ref: decisions 0010 and 0016
 	ImageObjectStore = "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"
 	// ObjectStoreReady is ImageObjectStore's readiness path, which answers
 	// 200 once its storage, IAM and locks are connected. /health answers

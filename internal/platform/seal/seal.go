@@ -30,9 +30,11 @@ var (
 	ErrAuth = errors.New("seal: message authentication failed")
 )
 
-// newAEAD is AES-256-GCM with random nonces, the one AEAD decision 0013
-// allows: cipher.NewGCM takes a caller's nonce, which FIPS 140-only mode
-// refuses.
+// newAEAD is AES-256-GCM with random nonces, the one AEAD the sealed
+// formats use: cipher.NewGCM takes a caller's nonce, which FIPS 140-only
+// mode refuses.
+//
+// ref: decision 0013
 func newAEAD(key []byte) (cipher.AEAD, error) {
 	if len(key) != KeySize {
 		return nil, ErrKeySize

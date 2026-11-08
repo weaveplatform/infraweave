@@ -23,7 +23,9 @@ type Who struct {
 	StackHome kernel.ULID
 }
 
-// Source is how a grant reaches a space (decision 0007).
+// Source is how a grant reaches a space.
+//
+// ref: decision 0007 § "Evaluation"
 type Source string
 
 const (
@@ -63,9 +65,11 @@ var runDenied = []accessapi.Action{
 // runRead are the subjects whose reads a run's token never makes.
 var runRead = []string{"run", "task", "log"}
 
-// RunDenied reports whether a run's token is refused action on subject
-// (decision 0007's in-run restriction): the state reads, every RUN_
-// action, TASK_CREATE, and SPACE_READ of a run, a task or a log.
+// RunDenied reports whether a run's token is refused action on subject,
+// whatever its stack holds: the state reads, every RUN_ action,
+// TASK_CREATE, and SPACE_READ of a run, a task or a log.
+//
+// ref: decision 0007 § "Evaluation"
 func RunDenied(action accessapi.Action, subject string) bool {
 	return slices.Contains(runDenied, action) || strings.HasPrefix(string(action), "RUN_") ||
 		action == accessapi.ActionSpaceRead && slices.Contains(runRead, subject)

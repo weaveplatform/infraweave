@@ -395,7 +395,10 @@ func (s *Service) may(ctx context.Context, p kernel.Principal, a accessapi.Actio
 
 // IssuerAllowed reports whether a key may name issuer: an absolute HTTPS
 // URL with a host and no query, fragment or credentials, among allowed
-// when any are configured (DV-014).
+// when any are configured, since a server fetching user-supplied URLs is
+// an SSRF path.
+//
+// ref: DV-014
 func IssuerAllowed(allowed []string, issuer string) bool {
 	u, err := url.Parse(issuer)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" ||

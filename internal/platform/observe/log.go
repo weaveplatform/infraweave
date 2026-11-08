@@ -67,10 +67,12 @@ func ParseLevel(s string) (slog.Level, error) {
 const Service = "infraweave"
 
 // NewLogger writes c's format to w at the level lv holds, which starts at
-// c's level. Every line carries decision 0017's standard fields: time in
-// UTC, level, msg, service, mode, version and, inside a request,
-// request_id; every attribute passes through Redact first. mode is the
-// process mode, such as serve or serve,scheduler for infraweave all.
+// c's level. Every line carries the standard fields: time in UTC, level,
+// msg, service, mode, version and, inside a request, request_id; every
+// attribute passes through Redact first. mode is the process mode, such as
+// serve or serve,scheduler for infraweave all.
+//
+// ref: decision 0017
 func NewLogger(w io.Writer, c LogConfig, mode string) (*slog.Logger, *slog.LevelVar, error) {
 	if err := c.Validate(); err != nil {
 		return nil, nil, err

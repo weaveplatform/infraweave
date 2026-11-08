@@ -1,6 +1,6 @@
 @postgres @vault
 Feature: Tokens signed through a KMS
-  With auth.signing.backend kms, decision 0006's api-token keys live in a
+  With auth.signing.backend kms, the api-token signing keys live in a
   KMS the operator names in auth.signing.kms_keys, and infraweave signs
   through it: the private half never enters the process or the database.
   signing_keys holds the key's reference in place of a sealed private
@@ -9,6 +9,7 @@ Feature: Tokens signed through a KMS
   version of a Transit key on the @vault container, which the servers
   reach through secrets.kek.vault's address and token while the KEK stays
   local.
+  ref: decision 0006
 
   Scenario: A token signed through Transit by one replica verifies on the other
     Given two infraweave servers, A and B, on one database, signing with an ecdsa-p256 Transit key

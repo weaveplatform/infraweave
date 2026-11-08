@@ -1,10 +1,11 @@
 Feature: Acceptance harness
   Scenarios run against the infraweave binary, each with its own process,
-  and name the real dependencies they need by tag (decision 0016). Each
-  dependency starts on first use and is shared, and each @postgres scenario
-  gets a database of its own in the shared container. Without Docker, a scenario
-  that needs it is skipped and named, unless the run requires Docker, and a
-  failed scenario leaves its evidence.
+  and name the real dependencies they need by tag. Each dependency starts
+  on first use and is shared, and each @postgres scenario gets a database
+  of its own in the shared container. Without Docker, a scenario that needs
+  it is skipped and named, unless the run requires Docker, and a failed
+  scenario leaves its evidence.
+  ref: decision 0016
 
   # Both examples create the same table, so whichever runs second fails
   # if the two share a database, in either order and in parallel.

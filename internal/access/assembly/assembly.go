@@ -47,17 +47,21 @@ type AccessAPI = http.Server
 // strict server, named as AccessAPI is.
 type AccessOperatorAPI = http.OperatorServer
 
-// RotateKeys is authn.keys.rotate, decision 0006's daily signing key
-// rotation. It runs on the maintenance queue with policy Ignore, so a slow
-// run never overlaps the next.
+// RotateKeys is authn.keys.rotate, the daily signing key rotation. It
+// runs on the maintenance queue with policy Ignore, so a slow run never
+// overlaps the next.
+//
+// ref: decision 0006 § "Signing keys"
 var RotateKeys = queue.Kind{
 	Name:   "authn.keys.rotate",
 	Queue:  queue.Maintenance,
 	Policy: queue.Ignore,
 }
 
-// ExpireSessions is authn.sessions.expire, decision 0006's hourly deletion
-// of the sessions that ended authn.Retention ago.
+// ExpireSessions is authn.sessions.expire, the hourly deletion of the
+// sessions that ended authn.Retention ago.
+//
+// ref: decision 0006 § "Sessions"
 var ExpireSessions = queue.Kind{
 	Name:   "authn.sessions.expire",
 	Queue:  queue.Maintenance,
@@ -68,8 +72,10 @@ var ExpireSessions = queue.Kind{
 const expireEvery = time.Hour
 
 // refreshEvery is how often a replica compares its authorization
-// snapshots' versions with the accounts': decision 0007's bound on how
-// long a lost authz:<account> message delays a change.
+// snapshots' versions with the accounts': the bound on how long a lost
+// authz:<account> message delays a change.
+//
+// ref: decision 0007 § "Snapshots and caching"
 const refreshEvery = 5 * time.Second
 
 // Stream is the access domain's migration stream.
@@ -338,8 +344,10 @@ func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
 	}
 }
 
-// Authorizer decides decision 0007's checks for every domain, from this
+// Authorizer decides the authorization checks for every domain, from this
 // replica's snapshots, which WatchAuthorization keeps current.
+//
+// ref: decision 0007
 func (d *Domain) Authorizer() accessapi.Authorizer { return d.authz }
 
 // Requirer is the middleware internal/app puts after authentication in

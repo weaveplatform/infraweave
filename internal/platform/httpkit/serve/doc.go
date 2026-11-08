@@ -1,17 +1,18 @@
 // Package serve runs a process's HTTP listeners: the admin listener, which
-// carries the probes, and the API listener of a mode that serves the API
-// (decision 0017).
+// carries the probes, and the API listener of a mode that serves the API.
 //
 // Config is server.listen, server.admin_listen and server.shutdown, with
 // their Defaults and Validate; ErrConfig marks an invalid setting. Start
 // binds the admin listener and, when it is given an API handler, the API
 // listener; Running reports their addresses and shuts them down. Run serves
-// until its context ends, then shuts down in decision 0017's order: it calls
-// the stopping function the caller gives, which makes /readyz fail, keeps
-// accepting for server.shutdown.ready_delay, and drains in-flight requests
-// for at most server.shutdown.timeout. What each listener routes is the
-// caller's: internal/app passes the API and the probes, and the agent
-// process modes will pass their own.
+// until its context ends, then shuts down: it calls the stopping function
+// the caller gives, which makes /readyz fail, keeps accepting for
+// server.shutdown.ready_delay, and drains in-flight requests for at most
+// server.shutdown.timeout. What each listener routes is the caller's:
+// internal/app passes the API and the probes, and the agent process modes
+// will pass their own.
+//
+// ref: decision 0017
 //
 // # Input and output
 //

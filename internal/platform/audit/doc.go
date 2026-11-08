@@ -1,6 +1,6 @@
-// Package audit is the write path of decision 0015's audit trail: every
-// domain records an entry of the account's trail in the transaction of the
-// change it describes, so an entry exists exactly when the change does.
+// Package audit is the write path of the audit trail: every domain records
+// an entry of the account's trail in the transaction of the change it
+// describes, so an entry exists exactly when the change does.
 //
 // Record takes a kernel.AuditEntry, refuses one without its account,
 // actor, action, event type or affected resource (ErrEntry) or made
@@ -9,6 +9,8 @@
 // the organization's own trail of changes with no account. The trails'
 // search, retention, write-only field sanitizing and ordered shipping are
 // built on the same tables by the events domain.
+//
+// ref: decision 0015
 //
 // # Input and output
 //

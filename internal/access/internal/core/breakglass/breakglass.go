@@ -13,9 +13,10 @@ import (
 	"time"
 )
 
-// The hash's parameters (decision 0006): OWASP's PBKDF2-HMAC-SHA256
-// iteration count, the salt NIST SP 800-132 asks for, and SHA-256's
-// output length.
+// The hash's parameters: OWASP's PBKDF2-HMAC-SHA256 iteration count, the
+// salt NIST SP 800-132 asks for, and SHA-256's output length.
+//
+// ref: decision 0006 § "Human login"
 const (
 	Iterations = 600_000
 	SaltLen    = 16
@@ -55,14 +56,14 @@ func New(password string) (Hash, error) {
 	return Hash{Iterations: Iterations, Salt: salt, Key: key}, nil
 }
 
-// String is the hash in decision 0006's format,
+// String is the hash in its stored format,
 // $pbkdf2-sha256$i=<iterations>$<salt>$<hash>.
 func (h Hash) String() string {
 	return Prefix + strconv.Itoa(h.Iterations) + "$" + b64.EncodeToString(h.Salt) + "$" +
 		b64.EncodeToString(h.Key)
 }
 
-// Parse reads s in decision 0006's format. An unknown prefix, fewer than
+// Parse reads s in String's format. An unknown prefix, fewer than
 // Iterations iterations, a salt shorter than SaltLen or a hash that is not
 // KeyLen bytes is ErrInvalid naming field; more iterations are accepted,
 // so the cost can rise without a release.

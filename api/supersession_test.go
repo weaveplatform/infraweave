@@ -12,8 +12,10 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-// supersessions is the register of decision 0021's supersessions: what is
-// not served, and what is served although upstream deprecates it.
+// supersessions is the register of supersessions: what is not served, and
+// what is served although upstream deprecates it.
+//
+// ref: decision 0021
 const supersessions = "../docs/data/supersessions.json"
 
 // excludedFields are the root fields the Deploy reference excludes, from
@@ -80,7 +82,9 @@ func deprecationViolations(doc *openapi3.T, excluded map[string]string, rows []r
 // TestUnitServedDeprecations fails when the API serves an operation the
 // reference excludes as deprecated or superseded without marking it
 // deprecated, so the weekly reference refresh cannot deprecate a served
-// operation silently (decision 0021).
+// operation silently.
+//
+// ref: decision 0021
 func TestUnitServedDeprecations(t *testing.T) {
 	excluded := excludedFields(t)
 	rows := renameTable(t)
@@ -236,7 +240,9 @@ func enumViolations(
 
 // TestUnitSupersededEnums fails when a served enum keeps a value a
 // superseded record lists, or a value the schema deprecates or no longer
-// uses unless the supersession register keeps it live (decision 0021).
+// uses unless the supersession register keeps it live.
+//
+// ref: decision 0021
 func TestUnitSupersededEnums(t *testing.T) {
 	deprecated := deprecatedEnumValues(t)
 	live := liveDeprecated(t)
@@ -288,8 +294,10 @@ components:
 }
 
 // deprecatedFields are the fields the schema snapshot marks deprecated, by
-// GraphQL type. The snapshot cannot mark an input field (PD-15), so those
+// GraphQL type. The snapshot carries no input-field deprecations, so those
 // reach the guard only through a record's fields member.
+//
+// ref: PD-15
 func deprecatedFields(t *testing.T) map[string][]string {
 	t.Helper()
 	var snap struct {
@@ -384,8 +392,10 @@ func fieldViolations(
 
 // TestUnitSupersededFields fails when a served schema keeps a field a
 // superseded record lists, or a field the schema deprecates unless the
-// supersession register keeps it live (decision 0021, rule S2 field by
-// field).
+// supersession register keeps it live: a schema deprecation that names a
+// served replacement supersedes the field, applied field by field.
+//
+// ref: decision 0021 rule S2
 func TestUnitSupersededFields(t *testing.T) {
 	deprecated := deprecatedFields(t)
 	live := liveDeprecated(t)

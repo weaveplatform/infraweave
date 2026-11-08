@@ -23,9 +23,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 )
 
-// The platform's periodic tasks, from decision 0011's table. Each runs on
-// the maintenance queue with policy Ignore, so a slow run never overlaps
-// the next.
+// The platform's periodic tasks. Each runs on the maintenance queue with
+// policy Ignore, so a slow run never overlaps the next.
+//
+// ref: decision 0011
 var (
 	PruneJobs = queue.Kind{
 		Name:   "queue.prune",
@@ -99,18 +100,19 @@ func platformTasks(
 // connection is down: its workers wake only on the poll interval then.
 var errNotListening = errors.New("the queue's listening connection is down")
 
-// startScheduler starts the scheduler role of decision 0020: the queue's
-// workers with the platform's handlers, the outbox's fan-out and
-// consumption and blob.delete over store, the one full objectstore.Store
-// of the process, and the ticker over periodic_tasks, after registering the
-// periodic tasks in the database. ent decides whether a job's account may
-// run its kind's feature, so a downgraded organization's jobs complete as
-// skipped. Their
+// startScheduler starts the scheduler role: the queue's workers with the
+// platform's handlers, the outbox's fan-out and consumption and blob.delete
+// over store, the one full objectstore.Store of the process, and the ticker
+// over periodic_tasks, after registering the periodic tasks in the
+// database. ent decides whether a job's account may run its kind's
+// feature, so a downgraded organization's jobs complete as skipped. Their
 // wake-ups come through l, which the caller runs. A registration that fails
 // fails startup. The returned stop ends the ticker, then the workers, which
-// finish or hand back their jobs within queue.shutdown_grace (decision
-// 0011's shutdown); the caller calls it after the HTTP drain and before the
-// pool closes.
+// finish within queue.shutdown_grace or hand their jobs back to pending
+// without counting the attempt; the caller calls it after the HTTP drain,
+// so another replica takes the work at once, and before the pool closes.
+//
+// ref: decisions 0011 and 0020
 func startScheduler(
 	ctx context.Context,
 	c config.Config,

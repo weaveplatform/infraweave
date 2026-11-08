@@ -15,10 +15,11 @@ import (
 )
 
 // sessionCookie is the Set-Cookie value that names a browser session for
-// the rest of its life (decision 0006 § "Sessions"). __Host- obliges
-// Secure, Path=/ and no Domain, so no subdomain can set or read it; Lax
-// sends it on a top-level navigation from another site but on no
-// cross-site write.
+// the rest of its life. __Host- obliges Secure, Path=/ and no Domain, so
+// no subdomain can set or read it; Lax sends it on a top-level navigation
+// from another site but on no cross-site write.
+//
+// ref: decision 0006 § "Sessions"
 func sessionCookie(b authn.Browser) string {
 	life := b.Session.ExpiresAt.Sub(b.Session.CreatedAt)
 	return (&http.Cookie{

@@ -1,14 +1,17 @@
 # Each value of the reference's Action enum, in the snapshot's order: the
 # kind of entity whose space decides it (subject), the legacy access level
 # that grants it when no role does (fallback: reader, writer or admin), and
-# whether the schema marks it disabled or deprecated. Report 14 section 3.3
-# is the source. specref actions generates actions.gen.go from this file
-# and api/reference/spacelift/introspection.json, and fails when either
-# names a value the other lacks or a flag disagrees with the schema. The
-# rows marked infraweave, at the end, are infraweave's own and in no enum.
+# whether the schema marks it disabled or deprecated, from the reference's
+# action catalogue table. specref actions generates actions.gen.go from
+# this file and api/reference/spacelift/introspection.json, and fails when
+# either names a value the other lacks or a flag disagrees with the schema.
+# The rows marked infraweave, at the end, are infraweave's own and in no
+# enum.
+# ref: report 14 §3.3
 #
-# STACK_SCHEDULED_DELETE_UPDATE's fallback is undocumented (report 14,
-# C117); it takes admin, as the other scheduling actions do.
+# STACK_SCHEDULED_DELETE_UPDATE's fallback is undocumented; it takes admin,
+# as the other scheduling actions do.
+# ref: report 14 C117
 CONTEXT_CREATE: {subject: context, fallback: admin}
 CONTEXT_DELETE: {subject: context, fallback: admin}
 CONTEXT_UPDATE: {subject: context, fallback: admin}

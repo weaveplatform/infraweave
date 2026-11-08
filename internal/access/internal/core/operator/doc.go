@@ -1,4 +1,4 @@
-// Package operator is the operator API's organizations (decision 0021).
+// Package operator is the operator API's organizations.
 // Service creates an organization with its first account, unclaimed, and
 // optionally its break-glass credential, in one write; lists, reads and
 // deletes organizations, a delete taking the organization's accounts and
@@ -9,6 +9,8 @@
 // not found. Each write carries its organization trail entry, by the
 // calling operator principal and from its address, and no entry holds a
 // password hash.
+//
+// ref: decision 0021
 //
 // # Input and output
 //

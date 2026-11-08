@@ -1,14 +1,15 @@
 @postgres
 Feature: Features the installation switches off
   features.disabled switches a feature off for every organization of the
-  installation (decision 0021). Each operation names the capability it
-  belongs to, so a request for a switched-off one answers 403
-  feature-disabled, naming the feature, whatever the organization's tier
-  and whether billing is on; every other operation is unaffected, and so is
-  a switched-off feature no served operation belongs to. With billing on,
-  seats are counted as Spacelift counts them: an API key takes a seat on
-  its first use in 30 days, so the exchange that would take one past the
-  limit answers 403 limit-reached and issues no token.
+  installation. Each operation names the capability it belongs to, so a
+  request for a switched-off one answers 403 feature-disabled, naming the
+  feature, whatever the organization's tier and whether billing is on; every
+  other operation is unaffected, and so is a switched-off feature no served
+  operation belongs to. With billing on, seats are counted as Spacelift
+  counts them: an API key takes a seat on its first use in 30 days, so the
+  exchange that would take one past the limit answers 403 limit-reached and
+  issues no token.
+  ref: decision 0021
 
   Scenario: A switched-off capability refuses its operations alone
     Given a running infraweave server whose features.disabled is "stacks, ai-integrations"

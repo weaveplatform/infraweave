@@ -10,7 +10,9 @@ import (
 var md5Headers = []string{"Content-Md5", "X-Ms-Blob-Content-Md5", "X-Ms-Content-Md5"}
 
 // NoMD5 returns a client over rt that fails t when a request carries an
-// MD5, which FIPS 140-only mode refuses (decision 0013).
+// MD5, which FIPS 140-only mode refuses.
+//
+// ref: decision 0013
 func NoMD5(t *testing.T, rt http.RoundTripper) *http.Client {
 	return &http.Client{Transport: noMD5{t, rt}}
 }
