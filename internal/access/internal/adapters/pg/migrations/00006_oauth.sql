@@ -1,7 +1,8 @@
--- Decision 0006's authorization server for MCP clients: registered
--- clients, authorization requests with their codes, and the refresh
--- tokens a grant has spent. A grant is a session row, whose secret_hash
--- is its current refresh token's.
+-- The authorization server for MCP clients: registered clients,
+-- authorization requests with their codes, and the refresh tokens a grant
+-- has spent. A grant is a session row, whose secret_hash is its current
+-- refresh token's and whose oauth_resource is its tokens' aud.
+-- ref: decision 0006
 
 -- A public client, registered by anyone (RFC 7591); authn.sessions.expire
 -- deletes one unused for 30 days.
@@ -50,9 +51,6 @@ CREATE INDEX oauth_requests_session ON oauth_requests (session_id) WHERE session
 CREATE UNIQUE INDEX oauth_requests_code ON oauth_requests (code_hash) WHERE code_hash IS NOT NULL;
 COMMENT ON TABLE oauth_requests IS
     'global: a request waits for consent before the member chooses its account';
-
--- The MCP resource a grant's access tokens name as their aud.
-ALTER TABLE sessions ADD COLUMN oauth_resource text;
 
 -- The refresh tokens a grant has spent: presenting one again revokes the
 -- grant. They go with the grant's row.

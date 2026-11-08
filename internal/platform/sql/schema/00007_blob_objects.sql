@@ -1,9 +1,10 @@
--- Decision 0005's record of every object in object storage. A row is
--- pending from before its upload until the transaction that records the
--- business change marks it live, and deleting from the transaction that
--- drops it until blob.delete has removed the object. blob.expire deletes
--- pending rows older than 24 hours and live rows past expires_at with
--- their objects, so no object outlives its row and no bucket is listed.
+-- The record of every object in object storage. A row is pending from
+-- before its upload until the transaction that records the business change
+-- marks it live, and deleting from the transaction that drops it until
+-- blob.delete has removed the object. blob.expire deletes pending rows
+-- older than 24 hours and live rows past expires_at with their objects, so
+-- no object outlives its row and no bucket is listed.
+-- ref: decision 0005
 
 CREATE TABLE blob_objects (
     store              text        NOT NULL,

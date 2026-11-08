@@ -1,23 +1,17 @@
-// Package pg is the access domain's PostgreSQL adapter: its migration
-// stream and the stores that implement the core's ports. The stream holds
-// decision 0007's tenancy (organizations, accounts, members, their
-// identities and the members each account admits) and decision 0006's
-// credentials (API keys, sessions, signing keys and each organization's
-// break-glass credential), with migration 00003 adding each account's
-// api_key_non_admin_managers, 00004 its account_settings, a row
-// created on the first write, so an account without one reads each
-// column's default, and 00005 the Enterprise entitlement of every
-// organization without one, where the features stream is applied, and
-// 00006 organization_admins, the members holding organization-admin, and
-// organization_keys, and 00007 the pending member, each admission's
-// latest_groups and slack_member_id, account_invitations,
-// managed_user_groups and a personal key's owner as a member of the
-// organization rather than an admission, so removing a managed user
-// keeps the keys it disables, and 00009 spaces and space_closure, with the
-// top space and legacy of every account that exists before it, and 00010
-// roles, role_actions and role_bindings, with the system roles of every
-// account that exists before it, and 00011 an account's
-// allow_non_admin_space_creation, false until toggled. Creating an account, with its
+// Package pg is the access domain's PostgreSQL adapter: its migration stream
+// and the stores that implement the core's ports. The stream holds the
+// tenancy (organizations, accounts with their api_key_non_admin_managers and
+// allow_non_admin_space_creation settings, members, pending until an invited
+// member first signs in, their identities, and the members each account
+// admits, with each admission's latest_groups and slack_member_id), the
+// credentials (API keys, whose personal owner is a member rather than an
+// admission, so removing a managed user keeps the keys it disables,
+// sessions, signing keys and each organization's break-glass credential),
+// account_settings, a row created on the first write, so an account without
+// one reads each column's default, organization_admins and
+// organization_keys, account_invitations and managed_user_groups, the OAuth
+// clients, requests and spent refresh tokens, spaces and space_closure, and
+// roles, role_actions and role_bindings. Creating an account, with its
 // organization or by an organization admin, seeds its top space, legacy
 // and system roles in the same transaction, and claiming or creating one
 // binds space-admin on its top space to the account admin it names. A

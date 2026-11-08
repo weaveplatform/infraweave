@@ -4,12 +4,11 @@
 CREATE TABLE account_settings (
     account_id                 uuid        PRIMARY KEY REFERENCES accounts ON DELETE RESTRICT,
     personal_api_keys          boolean     NOT NULL DEFAULT true,
-    -- Whether API keys may manage API keys (decision 0006); only a member
-    -- may turn it on.
+    -- Whether API keys may manage API keys; only a member may turn it on.
     api_key_non_human_managers boolean     NOT NULL DEFAULT false,
     security_email             text        NOT NULL DEFAULT '',
-    -- Decision 0006's OAuth redirect allowlist: bare hosts and hosts with
-    -- one leading "*.", in the order an admin set them.
+    -- The OAuth redirect allowlist: bare hosts and hosts with one leading
+    -- "*.", in the order an admin set them.
     oauth_redirect_hosts       text[]      NOT NULL DEFAULT '{}',
     survey_completed           boolean     NOT NULL DEFAULT false,
     survey_response            text,

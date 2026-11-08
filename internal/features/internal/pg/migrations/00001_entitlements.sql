@@ -1,8 +1,8 @@
--- Decision 0021's tiers and entitlement. The features domain sits below
--- access, which owns organizations and accounts, so their IDs appear here
--- without a foreign key; access creates and deletes these rows through
--- featuresapi in the transaction that creates or deletes the organization
--- or account.
+-- Tiers and entitlements. The features domain sits below access, which
+-- owns organizations and accounts, so their IDs appear here without a
+-- foreign key; access creates and deletes these rows through featuresapi
+-- in the transaction that creates or deletes the organization or account.
+-- ref: decisions 0004 and 0021
 
 -- A tier is data: a name, a set of features and a set of limit values.
 CREATE TABLE tiers (
@@ -35,8 +35,7 @@ COMMENT ON TABLE tier_limits IS
 -- change to the tier or grants, tells replicas their snapshot is stale.
 CREATE TABLE organization_entitlements (
     organization_id     uuid        PRIMARY KEY,
-    -- Deleting a tier an organization holds is refused, as 0021's 409
-    -- invalid-state says.
+    -- Deleting a tier an organization holds is refused.
     tier                text        NOT NULL REFERENCES tiers ON DELETE RESTRICT,
     entitlement_version bigint      NOT NULL DEFAULT 0,
     created_at          timestamptz NOT NULL DEFAULT now()

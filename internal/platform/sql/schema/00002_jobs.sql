@@ -1,6 +1,7 @@
--- Decision 0011's job queue. A row is a delivery mechanism, not a record of
--- the work: the change that asks for a job inserts it in its own
--- transaction, and pruning deletes it once it is done.
+-- The job queue. A row is a delivery mechanism, not a record of the work:
+-- the change that asks for a job inserts it in its own transaction, and
+-- pruning deletes it once it is done.
+-- ref: decision 0011
 
 CREATE TABLE jobs (
     id           bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

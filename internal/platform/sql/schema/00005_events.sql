@@ -1,6 +1,7 @@
--- Decision 0015's outbox: an event is written in the transaction of the
--- change that raised it, with its events.fanout job, and fanned out to its
--- consumers after the commit. A row not fanned out is never deleted.
+-- The outbox: an event is written in the transaction of the change that
+-- raised it, with its events.fanout job, and fanned out to its consumers
+-- after the commit. A row not fanned out is never deleted.
+-- ref: decision 0015
 
 CREATE TABLE events (
     account_id     uuid        NOT NULL,
@@ -21,8 +22,9 @@ CREATE TABLE events (
     PRIMARY KEY (account_id, id)
 );
 
--- The age of the oldest event not yet fanned out is a health signal
--- (decision 0017); pruning reads fanned-out rows by when they were.
+-- The age of the oldest event not yet fanned out is a health signal;
+-- pruning reads fanned-out rows by when they were.
+-- ref: decision 0017
 CREATE INDEX events_unfanned ON events (occurred_at) WHERE fanned_out_at IS NULL;
 CREATE INDEX events_fanned_out ON events (fanned_out_at) WHERE fanned_out_at IS NOT NULL;
 

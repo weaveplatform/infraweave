@@ -1,5 +1,6 @@
--- Decision 0007's organization role and decision 0006's organization keys:
--- what the Organization tag's callers hold. Neither reaches an account.
+-- The organization role and organization keys: what the Organization
+-- tag's callers hold. Neither reaches an account.
+-- ref: decisions 0006 and 0007
 
 -- A member holding organization-admin. created_by is the principal that
 -- granted it, as <kind>:<actor ID>, since a break-glass admin or an

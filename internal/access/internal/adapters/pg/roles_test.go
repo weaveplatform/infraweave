@@ -2,15 +2,11 @@ package pg_test
 
 import (
 	"errors"
-	"io/fs"
-	"regexp"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
@@ -228,25 +224,6 @@ func TestAccRoleDeletion(t *testing.T) {
 	for _, table := range tables {
 		if n := count(t, x, table, x.acct); n != 0 {
 			t.Errorf("%s rows of a deleted organization's account = %d", table, n)
-		}
-	}
-}
-
-// TestUnitRoleBackfill checks that access 00010's backfill gives existing
-// accounts the roles role.Seed gives new ones: the same slugs, names and
-// descriptions.
-func TestUnitRoleBackfill(t *testing.T) {
-	data, err := fs.ReadFile(pg.Stream().Files, "00010_roles.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	sql := regexp.MustCompile(`\s+`).ReplaceAllString(string(data), " ")
-	for _, r := range role.Seed(kernel.NewAccountID()) {
-		if row := "('" + r.Slug + "', '" + r.Name + "', '" + r.Description + "')"; !strings.Contains(
-			sql,
-			row,
-		) {
-			t.Errorf("the backfill lacks %s", row)
 		}
 	}
 }

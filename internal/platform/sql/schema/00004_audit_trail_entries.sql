@@ -1,8 +1,9 @@
--- Decision 0015's audit trail: an account's entries, each recorded in the
--- transaction of the change it describes. Entries with an organization and
--- no account belong to organization_audit_trail_entries, so account_id is
--- never null here. No foreign key to accounts: the platform stream
--- references no domain.
+-- The audit trail: an account's entries, each recorded in the transaction
+-- of the change it describes. Entries with an organization and no account
+-- belong to organization_audit_trail_entries, so account_id is never null
+-- here. No foreign key to accounts: the platform stream references no
+-- domain.
+-- ref: decision 0015
 
 CREATE TABLE audit_trail_entries (
     account_id        uuid        NOT NULL,

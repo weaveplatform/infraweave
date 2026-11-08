@@ -89,7 +89,8 @@ Rules that apply to every change in every phase:
 - **Migrations** follow [0005](../research/decisions/0005-persistence-postgresql.md#migrations):
   forward only, `NNNNN_snake_case.sql`, gap-free per domain stream, expand
   before contract across releases, large backfills as queue jobs, never in a
-  migration.
+  migration. Until v0.1.0 a change edits the table's `CREATE TABLE` in place,
+  with no `ALTER TABLE`, and citations sit only on `-- ref:` lines.
 - **Account isolation**: from P3, every operation that reads or writes an
   account's data has a scenario in which a credential of another account
   of the same organization finds nothing, and organization admins and

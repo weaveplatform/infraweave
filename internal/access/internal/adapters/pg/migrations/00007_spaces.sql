@@ -1,7 +1,9 @@
--- Decision 0007's spaces: each account's tree under its top space, which
--- the account's slug addresses, and the closure table that holds every
--- ancestor of every space, so subtree joins and the evaluator never
--- recurse.
+-- Spaces: each account's tree under its top space, which the account's
+-- slug addresses, and the closure table that holds every ancestor of
+-- every space, so subtree joins and the evaluator never recurse. Creating
+-- an account seeds its top space, with the account's ID, and legacy
+-- beneath it.
+-- ref: decision 0007
 
 -- parent_id is null only for the top space, which nothing sits above.
 -- The parent link is NO ACTION rather than RESTRICT, so deleting an
@@ -37,18 +39,3 @@ CREATE TABLE space_closure (
 
 CREATE INDEX space_closure_descendant ON space_closure (descendant_id);
 CREATE INDEX space_closure_account ON space_closure (account_id);
-
--- Every account that exists before this migration gets its top space and
--- legacy, as account creation seeds them. A top space's ID is its
--- account's, as seeding gives it, so the account names its top space
--- without a lookup. legacy's is random: any 16 bytes read as a ULID.
-INSERT INTO spaces (account_id, id, slug, name, parent_id, created_at)
-SELECT id, id, slug, name, NULL, created_at FROM accounts;
-
-INSERT INTO spaces (account_id, id, slug, name, parent_id, created_at)
-SELECT a.id, gen_random_uuid(), 'legacy', 'legacy', a.id, a.created_at FROM accounts a;
-
-INSERT INTO space_closure (account_id, ancestor_id, descendant_id, depth)
-SELECT account_id, id, id, 0 FROM spaces
-UNION ALL
-SELECT account_id, parent_id, id, 1 FROM spaces WHERE parent_id IS NOT NULL;
