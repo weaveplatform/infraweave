@@ -55,6 +55,21 @@ const (
 	OAuthTokenPattern     = "/oauth/token" //nolint:gosec // a route, not a credential
 )
 
+// Authorizer decides decision 0007's checks the same way for every
+// domain: whether a principal may perform an action in a space, and every
+// space of its account in which it may, for filtering a list by
+// space_id = ANY($n). A principal of no account may do nothing; an error
+// is the store's, and the check it fails refuses.
+type Authorizer interface {
+	Authorize(
+		ctx context.Context,
+		p kernel.Principal,
+		action Action,
+		space kernel.ULID,
+	) (bool, error)
+	Reachable(ctx context.Context, p kernel.Principal, action Action) ([]kernel.ULID, error)
+}
+
 // SpaceGuard is a domain's say in changes to an account's space tree
 // (decision 0007 § "Spaces"): a domain whose rows name spaces registers
 // one, and the tree refuses a delete or a move it objects to. Both

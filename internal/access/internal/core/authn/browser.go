@@ -115,7 +115,11 @@ func (s *Service) AuthenticateBrowser(
 		// The next use reads the moved idle end.
 		s.cache.Drop(ss.ID)
 	}
-	return ss.Principal(), ss, nil
+	p, err := s.principal(ctx, ss)
+	if err != nil {
+		return kernel.Principal{}, session.Session{}, err
+	}
+	return p, ss, nil
 }
 
 // decoy is a hash a refused sign-in verifies against, so one without a

@@ -26,7 +26,10 @@
 // sessions alone, so neither API accepts the other's tokens.
 // AuthenticateGrant does so for an MCP surface: it admits an OAuth access
 // token only when its session is an OAuth grant for that resource whose
-// scopes include the token's, and the principal holds the token's scopes. Every
+// scopes include the token's, and the principal holds the token's scopes.
+// An account session's principal is an account admin as Deps.AccountAdmin
+// decides at each authentication, from the account's bindings; a session
+// of no account keeps the Admin it stores. Every
 // refused credential is the one ErrUnauthenticated. Sessions, Revoke,
 // RevokeOthers and Logout list and revoke sessions; Expire is
 // authn.sessions.expire.

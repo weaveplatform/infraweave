@@ -226,9 +226,10 @@ func TestAccClaim(t *testing.T) {
 	if _, ok, err := s.Admits(ctx, x.org, x.member, x.acct); err != nil || !ok {
 		t.Errorf("the claimed account admits its admin %t, %v", ok, err)
 	}
+	// Creation moves the version once, the claim once more.
 	var version int64
 	if err := db.QueryRow(ctx, `SELECT authz_version FROM accounts WHERE id = $1`, x.acct).
-		Scan(&version); err != nil || version != 1 {
+		Scan(&version); err != nil || version != 2 {
 		t.Errorf("authz_version = %d, %v", version, err)
 	}
 	if n := trail(t, x, orgadmin.ActionAccountClaim); n != 1 {

@@ -164,10 +164,10 @@ func (s *Store) ClaimAccount(
 		if err := bindAccountAdmin(ctx, q, acct, admin, e); err != nil {
 			return err
 		}
-		// Admitting a member and binding them change the account's
-		// authorization.
-		a, err = scanAccount(q.QueryRow(ctx, `UPDATE accounts SET claimed_at = $2,
-				authz_version = authz_version + 1
+		if err := bumpAuthz(ctx, q, acct); err != nil {
+			return err
+		}
+		a, err = scanAccount(q.QueryRow(ctx, `UPDATE accounts SET claimed_at = $2
 			WHERE id = $1 RETURNING `+accountColumns, acct, at))
 		return read(err, "account", acct.ULID)
 	})

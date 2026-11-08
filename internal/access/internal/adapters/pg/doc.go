@@ -20,11 +20,18 @@
 // organization or by an organization admin, seeds its top space, legacy
 // and system roles in the same transaction, and claiming or creating one
 // binds space-admin on its top space to the account admin it names. A
-// key's Admin reads whether it holds that binding.
+// key's Admin reads whether it holds that binding. Every write to
+// spaces, roles, role_actions, role_bindings or managed_user_groups, and
+// every admission, moves the account's authz_version and sends
+// authz:<account> on infraweave_invalidate in its transaction; AuthzData
+// reads an account's authorization rows in one serializable transaction
+// and AuthzVersions the versions of the accounts a replica holds, as
+// authz.Store.
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
-// orgadmin.Store, settings.Store, space.Store, user.Store and group.Store, with an
+// orgadmin.Store, settings.Store, space.Store, user.Store, group.Store and
+// authz.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then

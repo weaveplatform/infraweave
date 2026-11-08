@@ -135,6 +135,8 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if m.API {
 		revoked, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
 		wg.Go(func() { domains.Access.WatchSessions(background, revoked) })
+		granted, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
+		wg.Go(func() { domains.Access.WatchAuthorization(background, granted, log) })
 		entitlements, _ := l.Subscribe(
 			notify.Invalidate,
 		) // one of notify.Channels, so never an error

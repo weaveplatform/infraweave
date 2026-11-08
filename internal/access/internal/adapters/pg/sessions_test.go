@@ -173,6 +173,7 @@ func TestAccSessions(t *testing.T) {
 
 	// Another account's session is not found.
 	y := seed(t, db, "piedpiper")
+	messages(t, l) // its creation's authz message
 	if _, err := x.s.RevokeSession(ctx, y.acct, k1.ID); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("revoke across accounts = %v", err)
 	}

@@ -33,7 +33,7 @@ func seedAccount(ctx context.Context, q tx.Querier, a account.Account) error {
 			return fmt.Errorf("access: seed role %s: %w", r.Slug, sql.Unavailable(err))
 		}
 	}
-	return nil
+	return bumpAuthz(ctx, q, a.ID)
 }
 
 // bindAccountAdmin binds space-admin on acct's top space to the member

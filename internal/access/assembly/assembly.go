@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	nethttp "net/http"
 	"os"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
@@ -65,6 +67,11 @@ var ExpireSessions = queue.Kind{
 // expireEvery is how often authn.sessions.expire runs.
 const expireEvery = time.Hour
 
+// refreshEvery is how often a replica compares its authorization
+// snapshots' versions with the accounts': decision 0007's bound on how
+// long a lost authz:<account> message delays a change.
+const refreshEvery = 5 * time.Second
+
 // Stream is the access domain's migration stream.
 func Stream() migrate.Stream { return pg.Stream() }
 
@@ -101,6 +108,7 @@ type Domain struct {
 	store    *pg.Store
 	tokens   *token.Service
 	authn    *authn.Service
+	authz    *authz.Service
 	keys     *apikey.Service
 	orgs     *operator.Service
 	orgAdmin *orgadmin.Service
@@ -128,6 +136,7 @@ func New(d Deps) (*Domain, error) {
 	}
 	manual := d.Settings.Signing.Rotation == RotationManual
 	store := pg.New(d.DB).WithFeatures(d.Features)
+	decide := authz.NewService(store)
 	refs := make([]string, 0, len(d.KMS))
 	for _, k := range d.KMS {
 		refs = append(refs, k.Ref())
@@ -164,6 +173,7 @@ func New(d Deps) (*Domain, error) {
 		TTL:              d.Settings.Tokens.API.TTL,
 		BreakGlass:       store,
 		Admission:        store,
+		AccountAdmin:     decide.Admin,
 		Idle:             d.Settings.Session.IdleTimeout,
 		MaxAge:           d.Settings.Session.MaxAge,
 		Now:              now,
@@ -190,6 +200,7 @@ func New(d Deps) (*Domain, error) {
 		store:  store,
 		tokens: tokens,
 		authn:  auth,
+		authz:  decide,
 		keys:   keys,
 		orgs:   orgs,
 		orgAdmin: orgadmin.NewService(orgadmin.Deps{
@@ -304,6 +315,50 @@ func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
 				cache.Flush()
 			} else if id, ok := session.ParseKey(m.Payload); ok {
 				cache.Drop(id)
+			}
+		}
+	}
+}
+
+// Authorizer decides decision 0007's checks for every domain, from this
+// replica's snapshots, which WatchAuthorization keeps current.
+func (d *Domain) Authorizer() accessapi.Authorizer { return d.authz }
+
+// WatchAuthorization keeps the replica's authorization snapshots in step
+// with every replica's writes until ctx ends: an authz:<account> message
+// on sub, a subscription to infraweave_invalidate, drops that account's
+// snapshot, a Resync drops them all, and every refreshEvery the held
+// snapshots whose account's version moved are dropped, in case a message
+// was lost. A failed comparison is logged and the next one retries.
+func (d *Domain) WatchAuthorization(
+	ctx context.Context,
+	sub *notify.Subscription,
+	log *slog.Logger,
+) {
+	watchAuthorization(ctx, d.authz, sub.C, log)
+}
+
+func watchAuthorization(
+	ctx context.Context,
+	svc *authz.Service,
+	msgs <-chan notify.Message,
+	log *slog.Logger,
+) {
+	tick := time.NewTicker(refreshEvery)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-msgs:
+			if m.Resync {
+				svc.Flush()
+			} else if acct, ok := authz.ParseKey(m.Payload); ok {
+				svc.Drop(acct)
+			}
+		case <-tick.C:
+			if err := svc.Refresh(ctx); err != nil && ctx.Err() == nil {
+				log.ErrorContext(ctx, "authorization versions unread", "error", err)
 			}
 		}
 	}

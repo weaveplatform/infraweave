@@ -340,6 +340,8 @@ type world struct {
 	acct   kernel.AccountID
 	key    kernel.ULID
 	secret string
+	// admin is the replicas' AccountAdmin.
+	admin func(context.Context, kernel.Principal) (bool, error)
 }
 
 func newWorld(t *testing.T) *world {
@@ -376,7 +378,8 @@ func (w *world) replica() *authn.Service {
 		Keys: f, OrganizationKeys: f, Sessions: f, Tokens: f, Audience: audience,
 		TTL:        10 * time.Hour,
 		BreakGlass: f, Admission: f, Idle: idle, MaxAge: maxAge,
-		Now: func() time.Time { return f.now },
+		AccountAdmin: w.admin,
+		Now:          func() time.Time { return f.now },
 	})
 }
 

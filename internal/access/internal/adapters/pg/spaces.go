@@ -118,7 +118,10 @@ func (s *Store) CreateSpace(ctx context.Context, sp space.Space) error {
 		if err != nil {
 			return read(err, "space", sp.ParentID)
 		}
-		return insertSpace(ctx, q, sp)
+		if err := insertSpace(ctx, q, sp); err != nil {
+			return err
+		}
+		return bumpAuthz(ctx, q, sp.AccountID)
 	})
 	if err != nil {
 		return fmt.Errorf("create space %s: %w", sp.Slug, err)
@@ -197,7 +200,7 @@ func (s *Store) MoveSpace(
 				return fmt.Errorf("access: %w", sql.Unavailable(err))
 			}
 		}
-		return nil
+		return bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("move space %s: %w", slug, err)
@@ -242,7 +245,7 @@ func (s *Store) DeleteSpace(
 				return fmt.Errorf("access: %w", sql.Unavailable(err))
 			}
 		}
-		return nil
+		return bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("delete space %s: %w", slug, err)
