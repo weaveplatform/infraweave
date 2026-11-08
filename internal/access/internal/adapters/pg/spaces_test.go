@@ -444,9 +444,34 @@ func TestAccSpaceStoreUnavailable(t *testing.T) {
 		"setting": func() error { _, err := s.NonAdminCreation(bg, x.acct); return err }(),
 		"toggle":  func() error { _, err := s.ToggleNonAdminCreation(bg, x.acct); return err }(),
 		"delete":  s.DeleteSpace(bg, x.acct, child.Slug, allow),
+		"hold":    s.HoldSpace(bg, x.acct, child.ID),
 	} {
 		if err == nil || errors.Is(err, port.ErrNotFound) {
 			t.Errorf("%s on a closed pool = %v", name, err)
+		}
+	}
+}
+
+// TestAccSpaceHold checks that a hold finds the account's own space, in a
+// transaction or out of one, and no other.
+func TestAccSpaceHold(t *testing.T) {
+	ctx := t.Context()
+	x := seed(t, pool(t), "hooli-hold")
+	legacy, err := x.s.Space(ctx, x.acct, space.LegacySlug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Do(ctx, x.db, tx.Options{}, func(ctx context.Context) error {
+		return x.s.HoldSpace(ctx, x.acct, legacy.ID)
+	}); err != nil {
+		t.Errorf("hold in a transaction = %v", err)
+	}
+	for name, err := range map[string]error{
+		"a missing space":       x.s.HoldSpace(ctx, x.acct, kernel.NewULID()),
+		"another account's one": x.s.HoldSpace(ctx, kernel.NewAccountID(), legacy.ID),
+	} {
+		if !errors.Is(err, port.ErrNotFound) {
+			t.Errorf("hold of %s = %v, want ErrNotFound", name, err)
 		}
 	}
 }

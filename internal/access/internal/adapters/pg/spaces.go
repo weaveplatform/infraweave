@@ -80,6 +80,30 @@ func lockTree(ctx context.Context, q tx.Querier, acct kernel.AccountID) error {
 	return read(err, "account", acct.ULID)
 }
 
+// HoldSpace takes FOR KEY SHARE on acct's space id in the context's
+// transaction, the lock PostgreSQL's own key check takes: a delete or
+// move, which locks the row FOR UPDATE before asking its guards, waits
+// for the holder to commit and then sees what it wrote.
+//
+// ref: decision 0004
+func (s *Store) HoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
+	var got kernel.ULID
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM spaces
+		WHERE account_id = $1 AND id = $2 FOR KEY SHARE`, acct, id).Scan(&got)
+	return read(err, "space", id)
+}
+
+// lockSpaces locks acct's spaces ids FOR UPDATE, after the tree, so a
+// delete or move waits for every transaction holding one, and the guards
+// it asks next, in statements of their own, see what those committed.
+func lockSpaces(ctx context.Context, q tx.Querier, acct kernel.AccountID, ids []kernel.ULID) error {
+	if _, err := q.Exec(ctx, `SELECT id FROM spaces WHERE account_id = $1 AND id = ANY($2)
+		ORDER BY id FOR UPDATE`, acct, ids); err != nil {
+		return fmt.Errorf("access: lock spaces: %w", sql.Unavailable(err))
+	}
+	return nil
+}
+
 // Spaces lists acct's spaces, top space first, then by depth and slug.
 func (s *Store) Spaces(ctx context.Context, acct kernel.AccountID) ([]space.Space, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+spaceColumns+`
@@ -242,6 +266,9 @@ func (s *Store) UpdateSpace(
 			if m, err = move(ctx, q, cur, parent); err != nil {
 				return err
 			}
+			if err := lockSpaces(ctx, q, acct, m.Subtree); err != nil {
+				return err
+			}
 		}
 		if out, err = edit(ctx, cur, parent, m); err != nil {
 			return err
@@ -347,6 +374,9 @@ func (s *Store) DeleteSpace(
 		}
 		sp, err := s.Space(ctx, acct, slug)
 		if err != nil {
+			return err
+		}
+		if err := lockSpaces(ctx, q, acct, []kernel.ULID{sp.ID}); err != nil {
 			return err
 		}
 		if err := check(ctx, sp); err != nil {

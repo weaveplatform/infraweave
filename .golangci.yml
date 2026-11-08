@@ -247,6 +247,39 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/
             - github.com/weaveplatform/infraweave/internal/iac$
             - github.com/weaveplatform/infraweave/internal/iac/
+        graph-vendors:
+          list-mode: lax
+          files:
+            - "**/internal/vendors/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: vendors imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/vendors/
+            - github.com/weaveplatform/infraweave/internal/features/api$
+            - github.com/weaveplatform/infraweave/internal/access/api$
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
+            - github.com/weaveplatform/infraweave/internal/iac$
+            - github.com/weaveplatform/infraweave/internal/iac/
+        graph-stacks:
+          list-mode: lax
+          files:
+            - "**/internal/stacks/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: stacks imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/stacks/
+            - github.com/weaveplatform/infraweave/internal/features/api$
+            - github.com/weaveplatform/infraweave/internal/access/api$
+            - github.com/weaveplatform/infraweave/internal/vendors/api$
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
+            - github.com/weaveplatform/infraweave/internal/iac$
+            - github.com/weaveplatform/infraweave/internal/iac/
         devtools:
           files:
             - $all

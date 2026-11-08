@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
+	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 )
 
 // Streams are the migration streams: the platform's first, since every
@@ -27,7 +28,12 @@ import (
 // the platform's alone, as the domains' store tests migrate it (decision
 // 0004).
 func Streams() []migrate.Stream {
-	return []migrate.Stream{schema.Stream(), featuresassembly.Stream(), accessassembly.Stream()}
+	return []migrate.Stream{
+		schema.Stream(),
+		featuresassembly.Stream(),
+		accessassembly.Stream(),
+		stacksassembly.Stream(),
+	}
 }
 
 // SealedColumns are the sealed columns of every stream Streams registers,

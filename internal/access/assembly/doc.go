@@ -12,9 +12,10 @@
 // slug, for the features domain's operator partial, and Seats counts an
 // organization's and an account's seats in use, for its seats read;
 // GuardSpaces registers another domain's accessapi.SpaceGuard, which the
-// space service consults before each delete and move; Stream is
-// its migration stream and SealedColumns its sealed columns, which
-// internal/app registers in the declared graph's order. Settings are its
+// space service consults before each delete and move, and Spaces is the
+// accessapi.Spaces such a domain holds a space through; Stream is its
+// migration stream and SealedColumns its sealed columns, which
+// internal/app registers in construction order. Settings are its
 // auth.* settings: the issuer, auth.tokens.api.ttl, the authorization
 // server's auth.tokens.oauth_access.ttl, oauth_refresh.ttl and
 // oauth_code.ttl (an hour, 30 days and a minute), auth.session's

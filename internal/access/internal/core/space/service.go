@@ -9,6 +9,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
@@ -39,6 +40,9 @@ type Store interface {
 		slug, parentSlug string,
 		edit func(ctx context.Context, current, parent Space, m *accessapi.SpaceMove) (Space, error),
 	) (Space, error)
+	// HoldSpace locks the account's space id FOR KEY SHARE in the
+	// context's transaction; port.ErrNotFound when the account lacks it.
+	HoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 	// DeleteSpace deletes the account's space slug. check sees it first
 	// and may refuse; a space with children is a *Refusal.
 	DeleteSpace(
@@ -138,6 +142,19 @@ func (s *Service) registered() []accessapi.SpaceGuard {
 	defer s.mu.RUnlock()
 	return slices.Clone(s.guards)
 }
+
+// Hold locks acct's space id in the context's transaction until it ends,
+// so a delete or move waits for it and its guards see what the caller
+// wrote; a space acct lacks is accessapi.ErrNoSpace.
+func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
+	err := s.store.HoldSpace(ctx, acct, id)
+	if errors.Is(err, port.ErrNotFound) {
+		return fmt.Errorf("%w: %s", accessapi.ErrNoSpace, id)
+	}
+	return err //nolint:wrapcheck // the store names the read
+}
+
+var _ accessapi.Spaces = (*Service)(nil)
 
 // Spaces lists acct's spaces, top space first.
 func (s *Service) Spaces(ctx context.Context, acct kernel.AccountID) ([]Space, error) {

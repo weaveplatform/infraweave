@@ -400,6 +400,10 @@ func watchAuthorization(
 // serves.
 func (d *Domain) GuardSpaces(g accessapi.SpaceGuard) { d.spaces.Guard(g) }
 
+// Spaces is what a domain that stores a space's ID calls to hold the
+// space in its own transaction.
+func (d *Domain) Spaces() accessapi.Spaces { return d.spaces }
+
 // AccountOrganization is the organization that holds acct, for work
 // outside a request that knows only its account, as a queued job does;
 // the zero ID when no account acct exists.

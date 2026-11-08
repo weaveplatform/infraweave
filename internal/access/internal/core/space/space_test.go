@@ -118,6 +118,18 @@ func (f *tree) UpdateSpace(
 	return out, nil
 }
 
+func (f *tree) HoldSpace(_ context.Context, acct kernel.AccountID, id kernel.ULID) error {
+	if f.err != nil {
+		return f.err
+	}
+	for _, s := range f.spaces {
+		if s.ID == id && acct == f.acct {
+			return nil
+		}
+	}
+	return port.ErrNotFound
+}
+
 func (f *tree) DeleteSpace(
 	ctx context.Context,
 	acct kernel.AccountID,
@@ -399,6 +411,29 @@ func TestUnitSpaceService(t *testing.T) {
 		w.f.err,
 	) {
 		t.Errorf("Create on a failing store = %v", err)
+	}
+}
+
+// TestUnitSpaceHold checks that a hold names a missing space by
+// accessapi.ErrNoSpace and passes a store failure through as it is.
+func TestUnitSpaceHold(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	if err := w.svc.Hold(ctx, w.f.acct, w.legacy.ID); err != nil {
+		t.Errorf("Hold of legacy = %v", err)
+	}
+	for name, err := range map[string]error{
+		"a missing space":       w.svc.Hold(ctx, w.f.acct, kernel.NewULID()),
+		"another account's one": w.svc.Hold(ctx, kernel.NewAccountID(), w.legacy.ID),
+	} {
+		if !errors.Is(err, accessapi.ErrNoSpace) {
+			t.Errorf("Hold of %s = %v, want ErrNoSpace", name, err)
+		}
+	}
+	w.f.err = errors.New("unavailable")
+	if err := w.svc.Hold(ctx, w.f.acct, w.legacy.ID); !errors.Is(err, w.f.err) ||
+		errors.Is(err, accessapi.ErrNoSpace) {
+		t.Errorf("Hold on a failing store = %v", err)
 	}
 }
 
