@@ -129,81 +129,128 @@ func (s *Store) CreateSpace(ctx context.Context, sp space.Space) error {
 	return nil
 }
 
-// MoveSpace moves acct's space slug below parentSlug. The closure rows
-// that link the subtree to its old ancestors are replaced by the cross
-// product of the new ancestors and the subtree.
-func (s *Store) MoveSpace(
+// UpdateSpace changes acct's space slug as edit answers, and moves it
+// below parentSlug when that names a new parent: the closure rows that
+// link the subtree to its old ancestors are replaced by the cross product
+// of the new ancestors and the subtree. A move or a change of inheritance
+// changes what grants reach, so it bumps the account's authorization.
+func (s *Store) UpdateSpace(
 	ctx context.Context,
 	acct kernel.AccountID,
 	slug, parentSlug string,
-	check func(ctx context.Context, moved, parent space.Space, m accessapi.SpaceMove) error,
-) error {
+	edit func(
+		ctx context.Context,
+		current, parent space.Space,
+		m *accessapi.SpaceMove,
+	) (space.Space, error),
+) (space.Space, error) {
+	var out space.Space
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
 		if err := lockTree(ctx, q, acct); err != nil {
 			return err
 		}
-		moved, err := s.Space(ctx, acct, slug)
+		cur, err := s.Space(ctx, acct, slug)
 		if err != nil {
 			return err
 		}
-		parent, err := s.Space(ctx, acct, parentSlug)
-		if err != nil {
-			return err
-		}
-		m := accessapi.SpaceMove{Account: acct, Space: moved.ID}
-		if m.Subtree, err = ids(ctx, q, `SELECT descendant_id FROM space_closure
-			WHERE ancestor_id = $1 ORDER BY depth, descendant_id`, moved.ID); err != nil {
-			return err
-		}
-		if slices.Contains(m.Subtree, parent.ID) {
-			return &space.Refusal{Reasons: []string{fmt.Sprintf(
-				"space %s cannot move below %s, which is inside it", moved.Slug, parent.Slug)}}
-		}
-		ancestors := `SELECT ancestor_id FROM space_closure
-			WHERE descendant_id = $1 AND depth > $2 ORDER BY depth`
-		if m.From, err = ids(ctx, q, ancestors, moved.ID, 0); err != nil {
-			return err
-		}
-		if m.To, err = ids(ctx, q, ancestors, parent.ID, -1); err != nil {
-			return err
-		}
-		if err := check(ctx, moved, parent, m); err != nil {
-			return err
-		}
-		if moved.ParentID == parent.ID {
-			return nil
-		}
-		for _, stmt := range []struct {
-			sql  string
-			args []any
-		}{
-			{
-				`DELETE FROM space_closure
-				WHERE descendant_id IN (SELECT descendant_id FROM space_closure WHERE ancestor_id = $1)
-				AND ancestor_id NOT IN (SELECT descendant_id FROM space_closure WHERE ancestor_id = $1)`,
-				[]any{moved.ID},
-			},
-			{
-				`INSERT INTO space_closure (account_id, ancestor_id, descendant_id, depth)
-				SELECT $3, a.ancestor_id, d.descendant_id, a.depth + d.depth + 1
-				FROM space_closure a, space_closure d
-				WHERE a.descendant_id = $2 AND d.ancestor_id = $1`,
-				[]any{moved.ID, parent.ID, acct},
-			},
-			{
-				`UPDATE spaces SET parent_id = $2 WHERE id = $1 AND account_id = $3`,
-				[]any{moved.ID, parent.ID, acct},
-			},
-		} {
-			if _, err := q.Exec(ctx, stmt.sql, stmt.args...); err != nil {
-				return fmt.Errorf("access: %w", sql.Unavailable(err))
+		var parent space.Space
+		if parentSlug != "" {
+			if parent, err = s.Space(ctx, acct, parentSlug); err != nil {
+				return err
 			}
+		}
+		var m *accessapi.SpaceMove
+		if parentSlug != "" && parent.ID != cur.ParentID {
+			if m, err = move(ctx, q, cur, parent); err != nil {
+				return err
+			}
+		}
+		if out, err = edit(ctx, cur, parent, m); err != nil {
+			return err
+		}
+		if _, err := q.Exec(ctx, `UPDATE spaces SET name = $3, description = $4, labels = $5,
+				inherit_entities = $6 WHERE id = $1 AND account_id = $2`,
+			cur.ID, acct, out.Name, out.Description, nonNil(out.Labels),
+			out.InheritEntities); err != nil {
+			return fmt.Errorf("access: %w", sql.Unavailable(err))
+		}
+		if m != nil {
+			if err := reparent(ctx, q, acct, cur.ID, parent.ID); err != nil {
+				return err
+			}
+		}
+		if m == nil && out.InheritEntities == cur.InheritEntities {
+			return nil
 		}
 		return bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
-		return fmt.Errorf("move space %s: %w", slug, err)
+		return space.Space{}, fmt.Errorf("update space %s: %w", slug, err)
+	}
+	return out, nil
+}
+
+// move is the move of moved's subtree below parent, refused when parent
+// is inside it.
+func move(
+	ctx context.Context,
+	q tx.Querier,
+	moved, parent space.Space,
+) (*accessapi.SpaceMove, error) {
+	m := accessapi.SpaceMove{Account: moved.AccountID, Space: moved.ID}
+	var err error
+	if m.Subtree, err = ids(ctx, q, `SELECT descendant_id FROM space_closure
+		WHERE ancestor_id = $1 ORDER BY depth, descendant_id`, moved.ID); err != nil {
+		return nil, err
+	}
+	if slices.Contains(m.Subtree, parent.ID) {
+		return nil, &space.Refusal{Reasons: []string{fmt.Sprintf(
+			"space %s cannot move below %s, which is inside it", moved.Slug, parent.Slug)}}
+	}
+	ancestors := `SELECT ancestor_id FROM space_closure
+		WHERE descendant_id = $1 AND depth > $2 ORDER BY depth`
+	if m.From, err = ids(ctx, q, ancestors, moved.ID, 0); err != nil {
+		return nil, err
+	}
+	if m.To, err = ids(ctx, q, ancestors, parent.ID, -1); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// reparent moves the subtree of acct's space id below parent.
+func reparent(
+	ctx context.Context,
+	q tx.Querier,
+	acct kernel.AccountID,
+	id, parent kernel.ULID,
+) error {
+	for _, stmt := range []struct {
+		sql  string
+		args []any
+	}{
+		{
+			`DELETE FROM space_closure
+			WHERE descendant_id IN (SELECT descendant_id FROM space_closure WHERE ancestor_id = $1)
+			AND ancestor_id NOT IN (SELECT descendant_id FROM space_closure WHERE ancestor_id = $1)`,
+			[]any{id},
+		},
+		{
+			`INSERT INTO space_closure (account_id, ancestor_id, descendant_id, depth)
+			SELECT $3, a.ancestor_id, d.descendant_id, a.depth + d.depth + 1
+			FROM space_closure a, space_closure d
+			WHERE a.descendant_id = $2 AND d.ancestor_id = $1`,
+			[]any{id, parent, acct},
+		},
+		{
+			`UPDATE spaces SET parent_id = $2 WHERE id = $1 AND account_id = $3`,
+			[]any{id, parent, acct},
+		},
+	} {
+		if _, err := q.Exec(ctx, stmt.sql, stmt.args...); err != nil {
+			return fmt.Errorf("access: %w", sql.Unavailable(err))
+		}
 	}
 	return nil
 }
@@ -264,4 +311,22 @@ func ids(ctx context.Context, q tx.Querier, query string, args ...any) ([]kernel
 		return nil, fmt.Errorf("access: %w", sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// NonAdminCreation reads acct's allowNonAdminSpaceCreation.
+func (s *Store) NonAdminCreation(ctx context.Context, acct kernel.AccountID) (bool, error) {
+	var on bool
+	err := tx.Q(ctx, s.db).QueryRow(ctx,
+		`SELECT allow_non_admin_space_creation FROM accounts WHERE id = $1`, acct).Scan(&on)
+	return on, read(err, "account", acct.ULID)
+}
+
+// ToggleNonAdminCreation flips the setting in one statement, so two flips
+// at once are two flips.
+func (s *Store) ToggleNonAdminCreation(ctx context.Context, acct kernel.AccountID) (bool, error) {
+	var on bool
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `UPDATE accounts
+		SET allow_non_admin_space_creation = NOT allow_non_admin_space_creation
+		WHERE id = $1 RETURNING allow_non_admin_space_creation`, acct).Scan(&on)
+	return on, read(err, "account", acct.ULID)
 }

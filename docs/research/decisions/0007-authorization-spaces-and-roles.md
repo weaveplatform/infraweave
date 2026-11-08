@@ -192,7 +192,12 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   reads is on, and then only below spaces they administer; the spaces they
   create always inherit. With the setting off, such an admin edits the
   name, description and labels of spaces they administer and nothing
-  else.
+  else. With it on, they also move a space they administer below another
+  they administer and delete it, but never stop a space inheriting. The
+  setting is `false` until an account admin toggles it. The route
+  table decides `SPACE_ADMIN` on the space an operation names, the parent
+  for a create; the `space` service makes the second check, answering
+  `403 forbidden` naming `SPACE_ADMIN` for a change the setting withholds.
 
 ### Roles and the action catalogue
 
@@ -379,6 +384,7 @@ so that member sees an empty list.
   |---|---|
   | `path:<param>:<entity>` | the space of the entity named by a path parameter, such as `path:stackId:stack` |
   | `body:<field>[:<entity>]` | the space of the entity a dotted field of the request body names, a space by default, for creates; a body without the field decides on the top space |
+  | `query:<param>[:<entity>]` | the space of the entity a query parameter names, a space by default, such as `query:space` for the `… With Access To Space` reads; a request without the parameter decides on the top space |
   | `account` | the account's top space, for account-wide settings and account actions |
   | `any` | any space where the caller holds the action, for the `anywhere` reads and for API key management while non-admin managers are on |
   | `organization` | none: the caller's organization, for the operations of the `Organization` and `SSO` tags, which take `ORGANIZATION_ADMIN`, and the organization-access routes, which take `AUTHENTICATED` |
@@ -393,10 +399,11 @@ so that member sees an empty list.
   `policy`, `worker_pool`, `run`, and so on) and calls `Authorize`. A subject
   whose entity no domain registers answers `501`, as no domain serves its
   operations. Handlers make extra checks only where an operation needs two
-  (stack bindings, moves, module sharing) or where the owning service's
-  rule is narrower than the route's: API key management takes `any` at the
-  route, and the `apikey` service refuses a caller who is not space-admin
-  on the top space while non-admin managers are off.
+  (stack bindings, the Spaces operations' tree changes, module sharing) or
+  where the owning service's rule is narrower than the route's: API key
+  management takes `any` at the route, and the `apikey` service refuses a
+  caller who is not space-admin on the top space while non-admin managers
+  are off.
 - **Deny by default.** A route the router serves with no route-table entry
   answers `403`, and `api/authorization_test.go` fails when any operation
   lacks either extension, names an action the catalogue lacks, or names a

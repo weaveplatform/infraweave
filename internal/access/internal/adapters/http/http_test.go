@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -308,6 +309,7 @@ type world struct {
 	grants *grants
 	// authz holds every assignable action on the account's top space.
 	authz *grantsOf
+	tree  *spaceTree
 }
 
 // public is the route class that takes no credential.
@@ -370,6 +372,7 @@ func newWorld(t *testing.T) *world {
 		}
 	}
 	w.authz = &grantsOf{on: map[kernel.ULID][]accessapi.Action{w.acct.ULID: all}}
+	w.tree = newSpaceTree(st, st.accounts[w.acct])
 	keys := apikey.NewService(apikey.Deps{
 		Store: st, Authz: w.authz, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
@@ -385,8 +388,9 @@ func newWorld(t *testing.T) *world {
 	})
 	strict := api.NewStrictHandlerWithOptions(
 		full{Server: NewServer(Services{
-			Auth: auth, Keys: keys, Authz: w.authz, Spaces: st, Accounts: st, Settings: cfg,
-			OAuth: grants,
+			Auth: auth, Keys: keys, Authz: w.authz, Accounts: st, Settings: cfg,
+			Spaces: space.NewService(w.tree, w.authz, func() time.Time { return t0 }),
+			OAuth:  grants,
 		})},
 		nil,
 		api.StrictHTTPServerOptions{

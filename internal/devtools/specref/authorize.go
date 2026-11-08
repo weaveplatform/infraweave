@@ -16,7 +16,7 @@ import (
 //     anywhere, else account;
 //   - another action's subject is the path parameter naming an entity of
 //     the action's kind, {stackId} for a stack, or, for a GET of no
-//     entity, list.
+//     entity, a query parameter named space, or else list.
 func authorize(method, path string, op ymap, rows map[string]ActionRow) {
 	id, _ := op["operationId"].(string)
 	name := strings.ToUpper(strings.Join(words(id), "_"))
@@ -43,6 +43,8 @@ func authorize(method, path string, op ymap, rows map[string]ActionRow) {
 		op["x-infraweave-subject"] = "any"
 	case row.Infraweave:
 		op["x-infraweave-subject"] = "account"
+	case name == "SPACE_READ" && len(params) == 0 && hasQuery(op, "space"):
+		op["x-infraweave-subject"] = "query:space"
 	case name == "SPACE_READ" && len(params) == 0:
 		op["x-infraweave-subject"] = "list"
 	default:
@@ -54,6 +56,17 @@ func authorize(method, path string, op ymap, rows map[string]ActionRow) {
 			}
 		}
 	}
+}
+
+// hasQuery reports whether op takes the query parameter name.
+func hasQuery(op ymap, name string) bool {
+	params, _ := op["parameters"].([]any)
+	for _, p := range params {
+		if m, ok := p.(ymap); ok && m["in"] == "query" && m["name"] == name {
+			return true
+		}
+	}
+	return false
 }
 
 // kinds are the entity kinds the catalogue's rows name.

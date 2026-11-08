@@ -13,18 +13,24 @@ STACK_LOCK: {subject: stack, fallback: writer}
 	for _, tc := range []struct {
 		method, path, id string
 		action, subject  string
+		query            string
 	}{
-		{"post", "/stacks/{stackId}/lock", "stackLock", "STACK_LOCK", "path:stackId:stack"},
-		{"post", "/stacks", "stackCreate", "STACK_CREATE", ""},
-		{"get", "/stacks/{stackId}", "stack", "SPACE_READ", "path:stackId:stack"},
-		{"get", "/stacks", "stacks", "SPACE_READ", "list"},
-		{"get", "/things/{thingId}", "thing", "SPACE_READ", ""},
-		{"get", "/api-keys", "apiKeys", "API_KEY_READ", "any"},
-		{"get", "/api-keys/{apiKeyId}", "apiKey", "API_KEY_READ", "any"},
-		{"delete", "/api-keys/{apiKeyId}", "apiKeyDelete", "API_KEY_DELETE", "account"},
-		{"post", "/stacks/{stackId}/fly", "stackFly", "", ""},
+		{"post", "/stacks/{stackId}/lock", "stackLock", "STACK_LOCK", "path:stackId:stack", ""},
+		{"post", "/stacks", "stackCreate", "STACK_CREATE", "", ""},
+		{"get", "/stacks/{stackId}", "stack", "SPACE_READ", "path:stackId:stack", ""},
+		{"get", "/stacks", "stacks", "SPACE_READ", "list", ""},
+		{"get", "/stacks", "stacks", "SPACE_READ", "list", "input"},
+		{"get", "/stacks-in-space", "stacksInSpace", "SPACE_READ", "query:space", "space"},
+		{"get", "/things/{thingId}", "thing", "SPACE_READ", "", ""},
+		{"get", "/api-keys", "apiKeys", "API_KEY_READ", "any", ""},
+		{"get", "/api-keys/{apiKeyId}", "apiKey", "API_KEY_READ", "any", ""},
+		{"delete", "/api-keys/{apiKeyId}", "apiKeyDelete", "API_KEY_DELETE", "account", ""},
+		{"post", "/stacks/{stackId}/fly", "stackFly", "", "", ""},
 	} {
 		op := ymap{"operationId": tc.id}
+		if tc.query != "" {
+			op["parameters"] = []any{ymap{"in": "query", "name": tc.query}}
+		}
 		authorize(tc.method, tc.path, op, rows)
 		action, _ := op["x-infraweave-action"].(string)
 		subject, _ := op["x-infraweave-subject"].(string)

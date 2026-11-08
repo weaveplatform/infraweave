@@ -21,6 +21,11 @@ tags:
     description: >-
       The run lifecycle: trigger, confirm, discard, cancel, stop and retry
       runs against a stack.
+  - name: Spaces
+    description: >-
+      The account's tree of spaces, the unit of isolation and access: every
+      stack, context and integration lives in one, and a space may inherit
+      its parent's entities. The top space's slug is the account's.
   - name: Stacks
     description: >-
       Tracked pieces of infrastructure, each bound to a repository, a branch

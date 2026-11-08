@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	opapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
@@ -199,7 +200,8 @@ func newOpWorld(t *testing.T) *opWorld {
 		NewAuthenticator(auth, publicURL).Middleware(isPublic)(api.HandlerWithOptions(
 			api.NewStrictHandlerWithOptions(
 				full{Server: NewServer(Services{
-					Auth: auth, Keys: keys, Authz: base.authz, Spaces: base.st, Accounts: base.st,
+					Auth: auth, Keys: keys, Authz: base.authz, Accounts: base.st,
+					Spaces: space.NewService(base.tree, base.authz, func() time.Time { return t0 }),
 				})},
 				nil,
 				opts,

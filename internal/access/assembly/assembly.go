@@ -228,7 +228,7 @@ func New(d Deps) (*Domain, error) {
 		users:     user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups:    group.NewService(group.Deps{Store: store, Now: now}),
 		oauth:     grants,
-		spaces:    space.NewService(store, now),
+		spaces:    space.NewService(store, decide, now),
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil

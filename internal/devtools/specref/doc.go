@@ -38,8 +38,8 @@
 // For any product, ScaffoldFile copies one reference tag into a
 // served-API fragment with decision 0003's conventions, naming each
 // operation's action and subject (x-infraweave-action and
-// x-infraweave-subject) from the action catalogue where its name and path
-// decide them. Product.Parity and
+// x-infraweave-subject) from the action catalogue where its name, path
+// and a query parameter named space decide them. Product.Parity and
 // ParityCheck decide decision 0016's outcome for each reference operation
 // over the served operations under the product's own tags: served, served
 // with divergence, superseded or missing. They match renamed operations

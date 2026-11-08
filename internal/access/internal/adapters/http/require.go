@@ -67,10 +67,10 @@ func NewRequire(authz accessapi.Authorizer, subjects *Subjects) Require {
 //   - organization and list pass: the organization's own rule decides an
 //     organization operation, and a list's handler filters with
 //     Reachable;
-//   - a path or body subject finds the entity's space, answering 404 for
-//     an entity the account lacks or one whose space the caller cannot
-//     read, with one body for both, then 403 when it may not perform the
-//     action there. An entity kind no domain registers answers 501, as no
+//   - a path, body or query subject finds the entity's space, answering
+//     404 for an entity the account lacks or one whose space the caller
+//     cannot read, with one body for both, then 403 when it may not
+//     perform the action there. An entity kind no domain registers answers 501, as no
 //     domain serves its operations.
 //
 // A request with no principal passes, as only a public route has none.
@@ -124,7 +124,9 @@ func (q Require) decide(
 	return allowed, false
 }
 
-// decideEntity decides a path or body subject.
+// decideEntity decides a path, body or query subject. A query subject
+// whose parameter is absent decides on the top space, as a body subject
+// without its field does.
 func (q Require) decideEntity(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -139,9 +141,14 @@ func (q Require) decideEntity(
 			"No domain serves the %s this operation acts on yet.", s.Entity)))
 		return false, true
 	}
-	id := req.Params[s.Param]
-	if s.Kind == accessapi.SubjectBody {
+	var id string
+	switch s.Kind {
+	case accessapi.SubjectBody:
 		id = bodyField(r, s.Field)
+	case accessapi.SubjectQuery:
+		id = r.URL.Query().Get(s.Param)
+	default:
+		id = req.Params[s.Param]
 	}
 	space := p.AccountID.ULID
 	if id != "" {

@@ -386,6 +386,58 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /account/toggle-allow-non-admin-space-creation:
+    post:
+      description: >-
+        Flip whether admins of spaces below the account's top space may
+        create, move and delete spaces below the spaces they administer, and
+        answer the new value. Off by default: while off, such an admin may
+        change only the name, description and labels of the spaces they
+        administer. The spaces they create always inherit their parent's
+        entities.
+      operationId: accountToggleAllowNonAdminSpaceCreation
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The accountToggleAllowNonAdminSpaceCreation result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Toggle Allow Non-Admin Space Creation
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Toggle Allow Non Root Admin Space Creation.bru
+      x-graphql:
+        field: accountToggleAllowNonAdminSpaceCreation
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
   /account/toggle-api-key-management-from-non-humans:
     post:
       description: >-
@@ -603,6 +655,48 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /allow-non-admin-space-creation:
+    get:
+      description: >-
+        Whether admins of spaces below the account's top space may create,
+        move and delete spaces below the spaces they administer, as
+        accountToggleAllowNonAdminSpaceCreation sets it.
+      operationId: allowNonAdminSpaceCreation
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The allowNonAdminSpaceCreation result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Allow Non-Admin Space Creation
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Allow Non Root Admin Space Creation.bru
+      x-graphql:
+        field: allowNonAdminSpaceCreation
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /api-keys-manageable-by-non-humans:
     get:
       description: >-

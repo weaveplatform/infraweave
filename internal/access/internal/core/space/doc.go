@@ -3,19 +3,27 @@
 // whose ID and slug are the account's, so no space is named root and
 // nothing sits above it, and legacy below it, an ordinary space with no
 // suffix on its slug. A created space's slug is SlugOf its name and ULID
-// and never changes. Service creates, moves and deletes spaces through
-// Store, which keeps the closure table in the same transaction and locks
-// the tree for each change: a move below the moved subtree, a delete of a
-// space with children, of the top space or of legacy, and a move of the
-// top space are each a *Refusal, as is a change a registered
-// accessapi.SpaceGuard objects to. Who may change the tree is decided by
-// authorization before a call reaches it.
+// and never changes. Service creates, changes, moves and deletes spaces
+// through Store, which keeps the closure table in the same transaction
+// and locks the tree for each change: a move below the moved subtree, a
+// delete of a space with children, of the top space or of legacy, a
+// change of the top space's parent or inheritance, and a space below it
+// left with no parent are each a *Refusal, as is a change a registered
+// accessapi.SpaceGuard objects to. Service also decides who changes the
+// tree beyond the route table's check: an account admin anything, and an
+// admin of a space below the top, through Authorizer, only that space's
+// name, description and labels while the account's
+// allowNonAdminSpaceCreation, which Service reads and toggles, is off;
+// while it is on, also creates below, moves between and deletes the
+// spaces they administer, creating only spaces that inherit and never
+// stopping one inheriting. A change it withholds is a *Denied naming
+// SPACE_ADMIN.
 //
 // # Input and output
 //
-// None of its own: Store reads and writes the spaces and their closure
-// rows, and each SpaceGuard reads its own domain's rows in the change's
-// transaction.
+// None of its own: Store reads and writes the spaces, their closure rows
+// and the setting, and each SpaceGuard reads its own domain's rows in the
+// change's transaction.
 //
 // # Dependencies
 //

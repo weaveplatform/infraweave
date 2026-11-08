@@ -876,7 +876,8 @@
         "lowestTier": "Free",
         "phase": "P4",
         "also": "P4b, P6, P8, P12, P13, P15, P21, P22",
-        "state": "missing"
+        "state": "partial",
+        "notes": "`spaces`, `space`, `spaceCreate`, `spaceUpdate` and `spaceDelete` are served (P4); `searchSpaces` arrives with the generic search in P4, the `… With Access To Space` reads with role bindings in P4b, and the attachable, metrics and search-in-space reads with their entities' phases"
       }
     },
     {

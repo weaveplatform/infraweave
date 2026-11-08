@@ -11,7 +11,6 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
-	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
@@ -153,14 +152,6 @@ func (s *store) NonHumanKeyManagers(context.Context, kernel.AccountID) (bool, er
 
 func (s *store) NonAdminKeyManagers(context.Context, kernel.AccountID) (bool, error) {
 	return false, s.err()
-}
-
-// Spaces is the account's top space and one below it, which the caller
-// holds no action on.
-func (s *store) Spaces(_ context.Context, acct kernel.AccountID) ([]space.Space, error) {
-	a := s.accounts[acct]
-	top, legacy := space.Seed(a)
-	return []space.Space{top, legacy}, s.err()
 }
 
 // TestUnitAPIKeys runs the API Keys operations through the router: a key

@@ -9,7 +9,9 @@
 // whether it holds an action in any, and the actions it holds in one.
 // Requirer is the middleware internal/app puts after authentication,
 // deciding each operation's Required: its action on its Subject, which
-// ParseSubject reads from x-infraweave-subject; a domain resolves its
+// ParseSubject reads from x-infraweave-subject, naming the space through
+// a path parameter, a body field or a query parameter, or none; a domain
+// resolves its
 // entities' spaces for it with a SpaceOf, ErrNoSubject for an entity the
 // account lacks. SpaceGuard is what a domain whose rows name spaces registers, so the
 // space tree refuses a delete or a move that would strand them. Action is

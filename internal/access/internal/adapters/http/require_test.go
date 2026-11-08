@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,8 +16,9 @@ import (
 )
 
 // grantsOf is an accessapi.Authorizer allowing the actions it lists on
-// each space, and anywhere for Holds, and answering them as each space's
-// Actions; err fails every decision.
+// each space, and anywhere for Holds, answering them as each space's
+// Actions and the spaces that list one as Reachable; err fails every
+// decision.
 type grantsOf struct {
 	on  map[kernel.ULID][]accessapi.Action
 	err error
@@ -37,11 +39,17 @@ func (g grantsOf) Authorize(
 }
 
 func (g grantsOf) Reachable(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
+	_ context.Context,
+	_ kernel.Principal,
+	a accessapi.Action,
 ) ([]kernel.ULID, error) {
-	return nil, g.err
+	var out []kernel.ULID
+	for space, held := range g.on {
+		if slices.Contains(held, a) {
+			out = append(out, space)
+		}
+	}
+	return out, g.err
 }
 
 func (g grantsOf) Holds(ctx context.Context, p kernel.Principal, a accessapi.Action) (bool, error) {
@@ -110,10 +118,16 @@ func TestUnitRequire(t *testing.T) {
 		Field:  "input.space",
 		Entity: accessapi.EntitySpace,
 	}
+	query := accessapi.Subject{
+		Kind:   accessapi.SubjectQuery,
+		Param:  "space",
+		Entity: accessapi.EntitySpace,
+	}
 	for _, c := range []struct {
 		name   string
 		authz  accessapi.Authorizer
 		req    accessapi.Required
+		target string
 		body   string
 		lookup error
 		code   int
@@ -192,6 +206,21 @@ func TestUnitRequire(t *testing.T) {
 			req:  accessapi.Required{Action: accessapi.ActionStackCreate, Subject: body},
 			code: http.StatusNotFound, typ: problem.NotFound, detail: `No space "elsewhere" in this account.`,
 		},
+		{
+			name: "query", target: "/?space=team",
+			req:  accessapi.Required{Action: accessapi.ActionStackCreate, Subject: query},
+			code: http.StatusOK,
+		},
+		{
+			name: "query without the parameter decides on the top space", target: "/",
+			req:  accessapi.Required{Action: accessapi.ActionStackCreate, Subject: query},
+			code: http.StatusForbidden, typ: problem.Forbidden,
+		},
+		{
+			name: "query hidden", target: "/?space=elsewhere",
+			req:  accessapi.Required{Action: accessapi.ActionStackCreate, Subject: query},
+			code: http.StatusNotFound, typ: problem.NotFound, detail: `No space "elsewhere" in this account.`,
+		},
 		{name: "authorizer down", authz: grantsOf{err: kernel.ErrUnavailable}, req: accessapi.Required{
 			Action: accessapi.ActionStackLock, Subject: stack("stackId"),
 			Params: map[string]string{"stackId": "mine"},
@@ -214,8 +243,12 @@ func TestUnitRequire(t *testing.T) {
 				seen = string(b)
 				w.WriteHeader(http.StatusOK)
 			}))
+			target := c.target
+			if target == "" {
+				target = "/"
+			}
 			req := httptest.NewRequestWithContext(kernel.WithPrincipal(t.Context(), p),
-				http.MethodPost, "/", strings.NewReader(c.body))
+				http.MethodPost, target, strings.NewReader(c.body))
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 			if rec.Code != c.code {

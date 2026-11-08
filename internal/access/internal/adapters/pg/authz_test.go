@@ -5,7 +5,6 @@ import (
 	"errors"
 	"slices"
 	"testing"
-	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
@@ -35,7 +34,7 @@ func authzVersion(t *testing.T, x seeded, acct kernel.AccountID) int64 {
 func TestAccAuthzData(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "hooli")
-	svc := space.NewService(x.s, func() time.Time { return spacesAt })
+	svc := treeOf(x.s)
 	prod, err := svc.Create(ctx, x.acct, "hooli", space.Space{Name: "Prod", InheritEntities: true})
 	if err != nil {
 		t.Fatal(err)
@@ -120,12 +119,12 @@ func TestAccAuthzData(t *testing.T) {
 
 // TestAccAuthzInvalidation checks that every write a snapshot reads moves
 // the account's authz_version and sends authz:<account> on commit, and a
-// refused write does neither.
+// refused write, or a rename, which no snapshot reads, does neither.
 func TestAccAuthzInvalidation(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "endframe")
 	c := listen(t, x.db)
-	svc := space.NewService(x.s, func() time.Time { return spacesAt })
+	svc := treeOf(x.s)
 	want := []string{authz.Key(x.acct)}
 	var created space.Space
 	var ops group.Group
@@ -135,6 +134,12 @@ func TestAccAuthzInvalidation(t *testing.T) {
 	}{
 		{"create a space", func() (err error) {
 			created, err = svc.Create(ctx, x.acct, "endframe", space.Space{Name: "Prod"})
+			return err
+		}},
+		{"make a space inherit", func() error {
+			in := created
+			in.InheritEntities = true
+			_, err := svc.svc.Update(ctx, admin(x.acct), created.Slug, "endframe", in)
 			return err
 		}},
 		{"move a space", func() error {
@@ -174,6 +179,10 @@ func TestAccAuthzInvalidation(t *testing.T) {
 	}
 	if err := svc.Delete(ctx, x.acct, "endframe"); err == nil {
 		t.Fatal("deleting the top space succeeded")
+	}
+	if _, err := svc.svc.Update(ctx, admin(x.acct), space.LegacySlug, "endframe",
+		space.Space{Name: "Old", Labels: []string{"kept"}}); err != nil {
+		t.Fatalf("rename legacy: %v", err)
 	}
 	if got := messages(t, c); len(got) != 0 {
 		t.Errorf("refused writes sent %v", got)
