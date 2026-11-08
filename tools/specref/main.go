@@ -8,7 +8,8 @@
 // summarizes it), and parity decides each reference operation's outcome
 // (served, served with divergence, superseded or missing), checks the
 // capabilities register's states against the acceptance results with
-// --states, and rewrites the parity baseline. Logic lives in
+// --states, and rewrites the parity baseline; actions writes or checks
+// Deploy's action catalogue, internal/access/api/actions.gen.go. Logic lives in
 // internal/devtools/specref.
 package main
 
@@ -75,6 +76,8 @@ type config struct {
 	Timeout           string `mapstructure:"timeout"`
 	Tag               string `mapstructure:"tag"`
 	Out               string `mapstructure:"out"`
+	Catalogue         string `mapstructure:"catalogue"`
+	Generated         string `mapstructure:"generated"`
 	Register          string `mapstructure:"register"`
 	Served            string `mapstructure:"served"`
 	Baseline          string `mapstructure:"baseline"`
@@ -411,7 +414,27 @@ func newRoot() *cobra.Command {
 		false,
 		"rewrite the baseline to accept the report instead of printing it",
 	)
-	root.AddCommand(fetch, generate, check, scaffold, inventory, parity)
+	actions := &cobra.Command{
+		Use:   "actions",
+		Short: "Write Deploy's action catalogue, actions.gen.go, from the Action enum and actions.yaml",
+		Args:  cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			c, err := decode(v)
+			if err != nil {
+				return err
+			}
+			if c.Product != specref.Deploy.Name {
+				return fmt.Errorf("%w: only %s has an Action enum", specref.ErrUnknownProduct,
+					specref.Deploy.Name)
+			}
+			return specref.ActionsFile(c.Dir, c.Catalogue, c.Generated, c.Check)
+		},
+	}
+	af := actions.Flags()
+	af.String("catalogue", specref.ActionCatalogue, "the hand-maintained catalogue rows")
+	af.String("generated", specref.ActionsGo, "the generated file")
+	af.Bool("check", false, "fail if the generated file is stale instead of writing it")
+	root.AddCommand(fetch, generate, check, scaffold, inventory, parity, actions)
 	return root
 }
 

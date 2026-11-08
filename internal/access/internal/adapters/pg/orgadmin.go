@@ -106,8 +106,9 @@ func (s *Store) AccountBySlug(
 	return a, read(err, "account", slug)
 }
 
-// CreateAccount records a, claimed, admitting admin, and records e, in one
-// transaction. The seats limit checks the admission.
+// CreateAccount records a, claimed, admitting admin with space-admin on its
+// top space, and records e, in one transaction. The seats limit checks the
+// admission.
 func (s *Store) CreateAccount(
 	ctx context.Context,
 	a account.Account,
@@ -120,10 +121,13 @@ func (s *Store) CreateAccount(
 			a.OrganizationID, a.ID, a.Slug, a.Name, a.ClaimedAt, a.CreatedAt); err != nil {
 			return classify(err, "account")
 		}
-		if err := seedSpaces(ctx, q, a); err != nil {
+		if err := seedAccount(ctx, q, a); err != nil {
 			return err
 		}
-		return s.admit(ctx, q, a.OrganizationID, a.ID, admin)
+		if err := s.admit(ctx, q, a.OrganizationID, a.ID, admin); err != nil {
+			return err
+		}
+		return bindAccountAdmin(ctx, q, a.ID, admin, e)
 	})
 	if err != nil {
 		return fmt.Errorf("create account %s: %w", a.Slug, err)
@@ -131,8 +135,8 @@ func (s *Store) CreateAccount(
 	return nil
 }
 
-// ClaimAccount claims org's unclaimed account acct at at, admitting admin,
-// and records e, in one transaction; a claimed account is
+// ClaimAccount claims org's unclaimed account acct at at, admitting admin
+// with space-admin on its top space, and records e, in one transaction; a claimed account is
 // orgadmin.ErrInvalidState. The row lock makes the claim a single
 // transition: of two claims at once, the second reads the first's.
 func (s *Store) ClaimAccount(
@@ -157,7 +161,11 @@ func (s *Store) ClaimAccount(
 		if err := s.admit(ctx, q, org, acct, admin); err != nil {
 			return err
 		}
-		// Admitting a member changes the account's authorization.
+		if err := bindAccountAdmin(ctx, q, acct, admin, e); err != nil {
+			return err
+		}
+		// Admitting a member and binding them change the account's
+		// authorization.
 		a, err = scanAccount(q.QueryRow(ctx, `UPDATE accounts SET claimed_at = $2,
 				authz_version = authz_version + 1
 			WHERE id = $1 RETURNING `+accountColumns, acct, at))

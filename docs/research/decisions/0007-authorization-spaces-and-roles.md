@@ -205,8 +205,11 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   ([3.3](../reference/14-spaces-rbac-and-identity.md#33-the-action-catalogue)).
   `make verify-reference` fails when an enum value has no row or a row has no
   enum value.
-- **Tables** `roles(account_id, id, slug, name, description, is_system)` and
-  `role_actions(role_id, action)`, unique `(account_id, slug)`.
+- **Tables** `roles(account_id, id, slug, name, description, is_system)`,
+  unique `(account_id, slug)`, and `role_actions(account_id, role_id,
+  action)`, which holds custom roles' actions. A system role's actions are
+  computed from the catalogue and never stored, so a catalogue refresh
+  changes every account's system roles at once.
 - **Custom roles.** Account admins create, update and delete them. Assigning a
   `disabled` or `deprecated` action answers `422`, problem
   `validation-failed`, naming the action. A role with bindings can be

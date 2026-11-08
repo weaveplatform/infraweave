@@ -76,7 +76,8 @@ type querier interface {
 
 // seed inserts t's organization, with the Enterprise entitlement creating
 // an organization gives it while billing is off, its account with the top
-// space and legacy that creating an account gives it, and its key, or
+// space, legacy and system roles that creating an account gives it, and
+// its key, or
 // leaves them as they are, so every replica's launch may seed.
 func (t tenant) seed(ctx context.Context, db querier) error {
 	digest := sha256.Sum256([]byte(t.secret()))
@@ -95,6 +96,12 @@ func (t tenant) seed(ctx context.Context, db querier) error {
 			SELECT account_id, id, id, 0 FROM spaces WHERE account_id = '%[3]s'
 			UNION ALL SELECT account_id, parent_id, id, 1 FROM spaces
 				WHERE account_id = '%[3]s' AND parent_id IS NOT NULL
+			ON CONFLICT DO NOTHING;
+		INSERT INTO roles (account_id, id, slug, name, description, is_system)
+			SELECT '%[3]s', gen_random_uuid(), slug, name, '', true FROM (VALUES
+				('space-reader', 'Space reader'), ('space-writer', 'Space writer'),
+				('space-admin', 'Space admin'), ('worker-pool-controller', 'Worker pool controller'),
+				('drift-detection-manager', 'Drift detection manager')) AS r (slug, name)
 			ON CONFLICT DO NOTHING;
 		INSERT INTO api_keys (account_id, id, name, type, secret_hash, teams, creator)
 			VALUES ('%[3]s', '%[5]s', 'acceptance', 'SECRET', '\x%[6]s', '{acceptance}', 'acceptance')

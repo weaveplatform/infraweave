@@ -58,7 +58,7 @@ func (s *Store) CreateOrganization(
 		); err != nil {
 			return classify(err, "account")
 		}
-		if err := seedSpaces(ctx, q, first); err != nil {
+		if err := seedAccount(ctx, q, first); err != nil {
 			return err
 		}
 		if bg != nil {
@@ -179,8 +179,9 @@ func (s *Store) accountsOf(ctx context.Context, orgs []operator.Organization) er
 
 // deleteOrganization are the deletes of everything the access domain holds
 // for an organization, $1, in the order its foreign keys allow: a session
-// may name a parent session, so the links go first, and a space's closure
-// rows name it, so they go before the spaces.
+// may name a parent session, so the links go first, and a binding names
+// its role and space and a space's closure rows name it, so they go
+// before the roles and spaces.
 var deleteOrganization = []string{
 	`UPDATE sessions SET parent_session_id = NULL
 		WHERE organization_id = $1 AND parent_session_id IS NOT NULL`,
@@ -193,6 +194,11 @@ var deleteOrganization = []string{
 	`DELETE FROM account_users WHERE organization_id = $1`,
 	`DELETE FROM account_settings
 		WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
+	`DELETE FROM role_bindings
+		WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
+	`DELETE FROM role_actions
+		WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
+	`DELETE FROM roles WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
 	`DELETE FROM space_closure
 		WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
 	`DELETE FROM spaces WHERE account_id IN (SELECT id FROM accounts WHERE organization_id = $1)`,
