@@ -75,8 +75,9 @@ type querier interface {
 }
 
 // seed inserts t's organization, with the Enterprise entitlement creating
-// an organization gives it while billing is off, its account and its key,
-// or leaves them as they are, so every replica's launch may seed.
+// an organization gives it while billing is off, its account with the top
+// space and legacy that creating an account gives it, and its key, or
+// leaves them as they are, so every replica's launch may seed.
 func (t tenant) seed(ctx context.Context, db querier) error {
 	digest := sha256.Sum256([]byte(t.secret()))
 	_, err := db.Query(ctx, fmt.Sprintf(`
@@ -86,6 +87,15 @@ func (t tenant) seed(ctx context.Context, db querier) error {
 			ON CONFLICT DO NOTHING;
 		INSERT INTO accounts (organization_id, id, slug, name)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', '%[4]s') ON CONFLICT DO NOTHING;
+		INSERT INTO spaces (account_id, id, slug, name, parent_id)
+			VALUES ('%[3]s', '%[3]s', '%[4]s', '%[4]s', NULL),
+				('%[3]s', gen_random_uuid(), 'legacy', 'legacy', '%[3]s')
+			ON CONFLICT DO NOTHING;
+		INSERT INTO space_closure (account_id, ancestor_id, descendant_id, depth)
+			SELECT account_id, id, id, 0 FROM spaces WHERE account_id = '%[3]s'
+			UNION ALL SELECT account_id, parent_id, id, 1 FROM spaces
+				WHERE account_id = '%[3]s' AND parent_id IS NOT NULL
+			ON CONFLICT DO NOTHING;
 		INSERT INTO api_keys (account_id, id, name, type, secret_hash, teams, creator)
 			VALUES ('%[3]s', '%[5]s', 'acceptance', 'SECRET', '\x%[6]s', '{acceptance}', 'acceptance')
 			ON CONFLICT DO NOTHING;`,

@@ -13,24 +13,27 @@
 // latest_groups and slack_member_id, account_invitations,
 // managed_user_groups and a personal key's owner as a member of the
 // organization rather than an admission, so removing a managed user
-// keeps the keys it disables.
+// keeps the keys it disables, and 00009 spaces and space_closure, with the
+// top space and legacy of every account that exists before it. Creating
+// an account, with its organization or by an organization admin, seeds
+// its top space and legacy in the same transaction.
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
-// orgadmin.Store, settings.Store, user.Store and group.Store, with an
+// orgadmin.Store, settings.Store, space.Store, user.Store and group.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then
 // deletes its sessions, API keys, organization keys and admins,
 // invitations, managed user groups, members
 // and their identities, its
-// break-glass credential, its accounts, its rows in the features domain
+// break-glass credential, its accounts' settings and space trees, its accounts, its rows in the features domain
 // through the featuresapi.Entitlements WithFeatures gives, and itself, as
 // every foreign key restricts. Deleting an account takes its
 // organization's row lock, so two deletions never both remove an
 // organization's last two accounts, then deletes the account's sessions,
-// API keys, invitations, managed user groups, admissions, settings and
-// features rows and the account, and
+// API keys, invitations, managed user groups, admissions, settings,
+// space tree and features rows and the account, and
 // records its organization trail entry in the same transaction; turning
 // personal keys off with disableExistingKeys disables them for ACCOUNT
 // and revokes their sessions. orgadmin.Store's writes record their
@@ -59,6 +62,10 @@
 // member once
 // and each other live key that is not personal and was used in the window;
 // Seats counts the same for the seats read, leaving out no key.
+// space.Store locks an account's tree through its top space's row for
+// each change, and writes the change's closure rows in its transaction:
+// a move deletes the rows linking the subtree to its old ancestors and
+// inserts the cross product of the new ancestors and the subtree.
 // A unique violation on a slug is
 // port.ErrSlugTaken and a
 // break-glass credential of no organization port.ErrNotFound. Store also
