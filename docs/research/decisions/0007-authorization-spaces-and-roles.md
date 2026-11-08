@@ -340,12 +340,17 @@ kind.
 - Each replica holds, per account, an immutable snapshot of the space tree
   (parent, `inherit_entities`), the roles with their actions, and the
   bindings indexed by actor. A check walks at most the depth of the tree.
-- Every write to `spaces`, `roles`, `role_actions`, `role_bindings`,
-  `managed_user_groups`, an admission or the scheme bumps `accounts.authz_version` in the same
-  transaction and sends `authz:<account>` on `infraweave_invalidate`
-  ([0005](0005-persistence-postgresql.md)). A replica rebuilds the snapshot on
-  the message, and also compares the version every 5 seconds in case a
-  message was lost.
+- Every write to the space tree or a space's inheritance, `roles`,
+  `role_actions`, `role_bindings`, `managed_user_groups`, an admission or
+  the scheme bumps `accounts.authz_version` in the same transaction and
+  sends `authz:<account>` on `infraweave_invalidate`
+  ([0005](0005-persistence-postgresql.md)). A replica rebuilds the snapshot
+  on the message, and also compares the version every 5 seconds in case a
+  message was lost. The replica that changes a tree drops its own snapshot
+  on commit, so the change's answer reflects it, and a check of a space the
+  snapshot lacks compares the version at once and rebuilds when it has
+  moved, so a space created on another replica is usable before its
+  message arrives.
 - Under `MANAGED_USERS` this makes binding and role changes apply to live
   sessions at once, as Spacelift does since 2026-03-19.
 

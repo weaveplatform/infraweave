@@ -17,7 +17,9 @@
 // while it is on, also creates below, moves between and deletes the
 // spaces they administer, creating only spaces that inherit and never
 // stopping one inheriting. A change it withholds is a *Denied naming
-// SPACE_ADMIN.
+// SPACE_ADMIN. After each change it drops this replica's authorization
+// snapshot of the account through Deps.Drop, so the change's answer and
+// the caller's next request here see it.
 //
 // # Input and output
 //

@@ -134,6 +134,45 @@ func TestUnitService(t *testing.T) {
 		t.Errorf("an overtaken load was kept: %d loads", f.loads)
 	}
 
+	// A space the snapshot lacks rebuilds it once the account's version
+	// has moved, as when the space was created since, and not before.
+	unknown := kernel.NewULID()
+	before := f.loads
+	if ok, err := svc.Authorize(ctx, p, accessapi.ActionSpaceRead, unknown); ok || err != nil ||
+		f.loads != before {
+		t.Errorf(
+			"an unknown space at the same version = %t, %v after %d loads",
+			ok,
+			err,
+			f.loads-before,
+		)
+	}
+	f.version++
+	if got, err := svc.Actions(
+		ctx,
+		p,
+		unknown,
+	); len(got) != 0 || err != nil ||
+		f.loads != before+1 {
+		t.Errorf(
+			"an unknown space at a moved version = %v, %v after %d loads",
+			got,
+			err,
+			f.loads-before,
+		)
+	}
+	f.verErr = errors.New("database down")
+	if _, err := svc.Explain(ctx, p, unknown); !errors.Is(err, f.verErr) {
+		t.Errorf("an unknown space with the version unread = %v", err)
+	}
+	f.verErr = nil
+	f.err = errors.New("database down")
+	f.version++
+	if _, err := svc.Authorize(ctx, p, accessapi.ActionSpaceRead, unknown); !errors.Is(err, f.err) {
+		t.Errorf("an unknown space whose rebuild fails = %v", err)
+	}
+	f.err = nil
+
 	// A principal with no account decides nothing and reads nothing.
 	none := kernel.Principal{Kind: kernel.PrincipalOrganization}
 	if ok, err := svc.Authorize(

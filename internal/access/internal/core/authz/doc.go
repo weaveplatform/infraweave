@@ -21,7 +21,10 @@
 // implements accessapi.Authorizer. Drop forgets an account's snapshot on
 // its authz:<account> message, Flush forgets them all after a Resync,
 // and Refresh drops each one whose account's version moved, for a lost
-// message; a load that a drop overtakes is used once and not kept. A run
+// message; a load that a drop overtakes is used once and not kept. A
+// check of a space the snapshot lacks reads the account's version first
+// and rebuilds the snapshot when it has moved, as the space is newer than
+// the snapshot. A run
 // principal holds no grant until its stack and home space reach the
 // principal.
 //

@@ -42,7 +42,10 @@ func (everything) Authorize(
 type adminTree struct{ svc *space.Service }
 
 func treeOf(s space.Store) adminTree {
-	return adminTree{space.NewService(s, everything{}, func() time.Time { return spacesAt })}
+	return adminTree{space.NewService(space.Deps{
+		Store: s, Authz: everything{}, Drop: func(kernel.AccountID) {},
+		Now: func() time.Time { return spacesAt },
+	})}
 }
 
 func admin(acct kernel.AccountID) kernel.Principal {
