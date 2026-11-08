@@ -7,7 +7,22 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
+
+// Fields are what a space search filters and orders by: id, the slug;
+// label, any of its labels; parentSpace, its parent's slug; and space, its
+// place in the tree, which keeps a node's spaces and, asked, those below
+// it. A search names no order reads by id.
+var Fields = []search.Field{
+	{Name: "id", Type: search.String, Orderable: true},
+	{Name: "name", Type: search.String, Orderable: true},
+	{Name: "description", Type: search.String},
+	{Name: "label", Type: search.String},
+	{Name: "inheritEntities", Type: search.Boolean},
+	{Name: "parentSpace", Type: search.String},
+	{Name: "space", Type: search.Hierarchy},
+}
 
 // LegacySlug is the slug of the space every account starts with below its
 // top space. It has no suffix, so imported data and OIDC subjects that

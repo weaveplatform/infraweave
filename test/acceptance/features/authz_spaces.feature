@@ -9,7 +9,9 @@ Feature: Spaces
   them between spaces they administer and delete them. The top space and
   legacy are never deleted, a space with child spaces is not, and no space
   moves below itself. Each space answers the caller's access level and the
-  actions the caller may perform there. The home key is space-admin on
+  actions the caller may perform there. Lists, searches and suggestions
+  hold only the spaces the caller may read, so every page before the last
+  is full and no count names another. The home key is space-admin on
   the account's top space; the member key holds only the bindings a
   scenario gives it.
 
@@ -115,12 +117,58 @@ Feature: Spaces
     When token "m" sends "DELETE /api/v1/spaces/{sub}" through B
     Then it answers 200
 
-  @op:spaces @op:space @case:denial
+  @op:spaces @op:space @op:searchSpaces @op:searchSpacesSuggestions @case:denial
   Scenario: A member with no binding sees no space
     When token "m" sends "GET /api/v1/spaces" through A
     Then the answer lists the spaces ""
     When token "m" sends "GET /api/v1/spaces/legacy" through B
     Then it answers a 404 problem "not-found"
+    And token "m" searching the spaces through A in pages of 2 finds "", every page full but the last
+    When token "m" sends "POST /api/v1/spaces/search/suggestions" with '{}' through B
+    Then the answer suggests the ids "" of 0 spaces
+
+  @op:searchSpaces @op:spaces @case:success
+  Scenario: A member reaching three of five spaces searches and lists exactly those, page by page
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    And the answer's id is the space "team"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Sub","description":"","inheritEntities":false,"parentSpace":"{team}"}' through A
+    And the answer's id is the space "sub"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Other","description":"","inheritEntities":false,"parentSpace":"acme"}' through B
+    And the answer's id is the space "other"
+    And the member key is space-reader on the space "{team}"
+    And the member key is space-reader on the space "legacy"
+    Then token "m" searching the spaces through A in pages of 2 finds "legacy, {sub}, {team}", every page full but the last
+    And token "h" searching the spaces through B in pages of 2 finds "acme, legacy, {other}, {sub}, {team}", every page full but the last
+    When token "m" sends "GET /api/v1/spaces?limit=2" through B
+    Then the answer lists the spaces "legacy, {sub}"
+
+  @op:searchSpacesSuggestions @case:success
+  Scenario: Suggestions list and count only the spaces the caller may read
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    And the answer's id is the space "team"
+    And the member key is space-reader on the space "{team}"
+    When token "m" sends "POST /api/v1/spaces/search/suggestions" with '{"fields":["id"]}' through B
+    Then the answer suggests the ids "{team}" of 1 space
+    When token "h" sends "POST /api/v1/spaces/search/suggestions" with '{"fields":["id"],"predicates":[{"field":"parentSpace","constraint":{"stringEquals":["acme"]}}]}' through A
+    Then the answer suggests the ids "legacy, {team}" of 2 spaces
+
+  @op:searchSpaces @op:searchSpacesSuggestions @case:failure
+  Scenario: A search of a field spaces lack, or with a constraint its field does not take, is refused naming it
+    When token "h" sends "POST /api/v1/spaces/search" with '{"predicates":[{"field":"owner","constraint":{"stringEquals":["x"]}}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/predicates/0/field" as "unknown-field"
+    When token "h" sends "POST /api/v1/spaces/search/suggestions" with '{"predicates":[{"field":"inheritEntities","constraint":{"stringEquals":["x"]}}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/predicates/0/constraint/stringEquals" as "rule"
+    When token "h" sends "POST /api/v1/spaces/search" with '{"after":"not-a-cursor"}' through A
+    Then it answers a 400 problem "invalid-cursor"
+
+  @op:actionCatalogue @case:success @case:denial
+  Scenario: Any authenticated caller reads the action catalogue with its flags
+    When token "m" sends "GET /api/v1/actions" through A
+    Then the answer lists 165 actions, "UPDATE_BLUEPRINT_DEPLOYMENT" deprecated and "STACK_CONTEXT_ATTACH" disabled
+    When a caller with no token sends "GET /api/v1/actions" through B
+    Then it answers a 401 problem "unauthenticated"
 
   @op:space @op:spaces @case:success
   Scenario: Each space answers the access its resident, propagated and inherited grants give

@@ -62,6 +62,10 @@ func (UnimplementedStrict) AccountUpdateSecurityEmail(context.Context, AccountUp
 	return nil, &problem.NotImplementedError{OperationID: "accountUpdateSecurityEmail", Route: "POST /account/update-security-email"}
 }
 
+func (UnimplementedStrict) ActionCatalogue(context.Context, ActionCatalogueRequestObject) (ActionCatalogueResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "actionCatalogue", Route: "GET /actions"}
+}
+
 func (UnimplementedStrict) AllowNonAdminSpaceCreation(context.Context, AllowNonAdminSpaceCreationRequestObject) (AllowNonAdminSpaceCreationResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "allowNonAdminSpaceCreation", Route: "GET /allow-non-admin-space-creation"}
 }
@@ -436,6 +440,10 @@ func (UnimplementedStrict) SpaceCreate(context.Context, SpaceCreateRequestObject
 
 func (UnimplementedStrict) SearchSpaces(context.Context, SearchSpacesRequestObject) (SearchSpacesResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchSpaces", Route: "POST /spaces/search"}
+}
+
+func (UnimplementedStrict) SearchSpacesSuggestions(context.Context, SearchSpacesSuggestionsRequestObject) (SearchSpacesSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchSpacesSuggestions", Route: "POST /spaces/search/suggestions"}
 }
 
 func (UnimplementedStrict) SpaceDelete(context.Context, SpaceDeleteRequestObject) (SpaceDeleteResponseObject, error) {

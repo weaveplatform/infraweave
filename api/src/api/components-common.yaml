@@ -61,6 +61,43 @@ components:
           type: integer
           format: int64
           description: For limit-reached, that scope's limit.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProblemFieldError'
+          description: >-
+            For invalid-request and validation-failed, each field the server
+            refused.
+    ProblemFieldError:
+      description: A field of the request the server refused.
+      type: object
+      required: [pointer, reason, message]
+      properties:
+        pointer:
+          type: string
+          description: >-
+            A JSON Pointer (RFC 6901) into the body, or #/query/<name>,
+            #/path/<name> or #/header/<name> for a parameter.
+        reason:
+          type: string
+          enum:
+            - required
+            - type
+            - enum
+            - format
+            - pattern
+            - min-length
+            - max-length
+            - minimum
+            - maximum
+            - unknown-field
+            - duplicate
+            - not-found
+            - rule
+          description: Why the field was refused, for clients to branch on.
+        message:
+          type: string
+          description: The refusal, for people.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key

@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
 
 func decode(t *testing.T, rec *httptest.ResponseRecorder) Problem {
@@ -86,6 +87,23 @@ func TestUnitResponseErrorProblem(t *testing.T) {
 	}
 	if got := err.Error(); got != "list: Invalid cursor: The cursor belongs to another list." {
 		t.Errorf("Error() = %q", got)
+	}
+}
+
+func TestUnitResponseErrorSearch(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := fmt.Errorf("search spaces: %w", &search.Invalid{Errors: []search.FieldError{
+		{Pointer: "/predicates/0/field", Reason: search.ReasonUnknownField, Message: "no"},
+	}})
+	ResponseError(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil), err)
+	var p Problem
+	if err := json.NewDecoder(rec.Body).Decode(&p); err != nil {
+		t.Fatal(err)
+	}
+	want := []FieldError{{Pointer: "/predicates/0/field", Reason: "unknown-field", Message: "no"}}
+	if rec.Code != http.StatusUnprocessableEntity || p.Type != TypePrefix+"validation-failed" ||
+		!reflect.DeepEqual(p.Errors, want) {
+		t.Errorf("got %d %+v", rec.Code, p)
 	}
 }
 
@@ -206,18 +224,22 @@ func TestUnitResponseErrorUnavailable(t *testing.T) {
 }
 
 // TestUnitProblemMembers checks the extension members of decision 0021's
-// refusals, and that a limit of 0 still names its value.
+// refusals and decision 0022's field errors, and that a limit of 0 still
+// names its value.
 func TestUnitProblemMembers(t *testing.T) {
 	p := FeatureNotInTier.New("no")
 	p.Feature, p.Tiers = "policies", []string{"Starter", "Business"}
 	l := NewLimitReached("seats", "account", 0)
+	v := ValidationFailed.New("no")
+	v.Errors = []FieldError{{Pointer: "/predicates/0/field", Reason: "unknown-field", Message: "m"}}
 	for _, c := range []struct {
 		p    Problem
 		want []string
 		not  []string
 	}{
 		{p, []string{`"feature":"policies"`, `"tiers":["Starter","Business"]`}, []string{`"limit"`, `"value"`}},
-		{l, []string{`"limit":"seats"`, `"scope":"account"`, `"value":0`}, []string{`"feature"`, `"tiers"`}},
+		{l, []string{`"limit":"seats"`, `"scope":"account"`, `"value":0`}, []string{`"feature"`, `"tiers"`, `"errors"`}},
+		{v, []string{`"errors":[{"pointer":"/predicates/0/field","reason":"unknown-field","message":"m"}]`}, nil},
 	} {
 		b, err := json.Marshal(c.p)
 		if err != nil {

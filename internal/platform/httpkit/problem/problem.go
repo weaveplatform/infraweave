@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
 
 // ContentType is the media type of every problem body.
@@ -194,6 +195,18 @@ type Problem struct {
 	// Action is forbidden's, when an action decided it: the action the
 	// caller may not perform.
 	Action string `json:"action,omitempty"`
+	// Errors are invalid-request's and validation-failed's: each field
+	// the server refused.
+	Errors []FieldError `json:"errors,omitempty"`
+}
+
+// FieldError is a field of a request the server refused (decision 0022):
+// a JSON Pointer into the body, or #/query/<name>, #/path/<name> or
+// #/header/<name>; a reason clients branch on; and a message for people.
+type FieldError struct {
+	Pointer string `json:"pointer"`
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
 }
 
 // Write sends p with its status. The status line and the body's status are
@@ -271,5 +284,19 @@ func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 		Write(w, NotImplemented.New(nie.Error()))
 		return
 	}
+	if inv, ok := errors.AsType[*search.Invalid](err); ok {
+		Write(w, searchRefused(inv))
+		return
+	}
 	Failure(w, err)
+}
+
+// searchRefused is validation-failed naming each field of a search input
+// the entity refused.
+func searchRefused(inv *search.Invalid) Problem {
+	p := ValidationFailed.New("The search names fields or constraints this list does not have.")
+	for _, e := range inv.Errors {
+		p.Errors = append(p.Errors, FieldError(e))
+	}
+	return p
 }

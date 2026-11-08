@@ -11,15 +11,15 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
-// spacesList names the spaces list's cursors.
-const spacesList = "spaces"
-
 // Spaces lists the spaces of the caller's account it may read, by slug,
 // keeping those where it may perform every action input.actions lists.
+// The spaces it may not read, or where it may not perform one of them, are
+// left out in the query, so every page before the last is full.
 func (s Server) Spaces(
 	ctx context.Context,
 	req api.SpacesRequestObject,
@@ -28,50 +28,134 @@ func (s Server) Spaces(
 	if err != nil {
 		return nil, err
 	}
-	all, err := s.spaces.Spaces(ctx, p.AccountID)
-	if err != nil {
-		return nil, err //nolint:wrapcheck // the store marks an unreachable database
-	}
-	readable, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
-	if err != nil {
-		return nil, err //nolint:wrapcheck // the snapshot's read names itself
-	}
 	var want []api.Action
 	if req.Params.Input != nil && req.Params.Input.Actions != nil {
 		want = *req.Params.Input.Actions
 	}
-	slugs := slugsOf(all)
-	slices.SortFunc(all, func(a, b space.Space) int { return strings.Compare(a.Slug, b.Slug) })
-	views := []api.Space{}
-	for _, sp := range all {
-		if !slices.Contains(readable, sp.ID) {
-			continue
-		}
-		v, err := s.spaceView(ctx, p, sp, slugs)
-		if err != nil {
-			return nil, err
-		}
-		if !containsAll(v.AllowedActions, want) {
-			continue
-		}
-		views = append(views, v)
-	}
-	items, next, err := listPage(spacesList, req.Params.Cursor, req.Params.Limit,
-		func(c string) (string, error) { return c, nil },
-		func(after string, n int) ([]api.Space, error) {
-			i, _ := slices.BinarySearchFunc(views, after, func(v api.Space, slug string) int {
-				return strings.Compare(v.Id, slug)
-			})
-			if i < len(views) && views[i].Id == after {
-				i++
-			}
-			return views[i:min(i+n, len(views))], nil
-		},
-		func(v api.Space) string { return v.Id })
+	reach, err := s.allowing(ctx, p, want)
 	if err != nil {
 		return nil, err
 	}
-	return api.Spaces200JSONResponse{Body: api.SpacePage{Items: items, NextCursor: next}}, nil
+	in := search.Input{First: req.Params.Limit, After: deref(req.Params.Cursor)}
+	res, err := s.spaces.Search(ctx, p.AccountID, in, reach)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read; a bad cursor is a problem
+	}
+	all, err := s.spaces.Spaces(ctx, p.AccountID)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store marks an unreachable database
+	}
+	slugs := slugsOf(all)
+	out := api.SpacePage{Items: []api.Space{}}
+	for _, e := range res.Edges {
+		v, err := s.spaceView(ctx, p, e.Node, slugs)
+		if err != nil {
+			return nil, err
+		}
+		out.Items = append(out.Items, v)
+	}
+	if res.HasNext {
+		out.NextCursor = &res.End
+	}
+	return api.Spaces200JSONResponse{Body: out}, nil
+}
+
+// allowing is every space of p's account where p may read and perform
+// each of want. An action no role may hold, being disabled, deprecated or
+// no catalogue action, is allowed nowhere, as a space's allowedActions
+// never list it.
+func (s Server) allowing(
+	ctx context.Context,
+	p kernel.Principal,
+	want []api.Action,
+) ([]kernel.ULID, error) {
+	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	for _, a := range want {
+		info, ok := accessapi.ActionOf(accessapi.Action(a))
+		if !ok || !info.Assignable() {
+			return nil, nil
+		}
+		in, err := s.authz.Reachable(ctx, p, info.Action)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // as above
+		}
+		reach = slices.DeleteFunc(
+			reach,
+			func(id kernel.ULID) bool { return !slices.Contains(in, id) },
+		)
+	}
+	return reach, nil
+}
+
+// SearchSpaces searches the spaces of the caller's account it may read.
+func (s Server) SearchSpaces(
+	ctx context.Context,
+	req api.SearchSpacesRequestObject,
+) (api.SearchSpacesResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	res, err := s.spaces.Search(ctx, p.AccountID, searchInput(*req.Body), reach)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
+	}
+	out := api.SearchSpacesOutput{
+		Edges: []api.SpaceConnection{},
+		PageInfo: api.PageInfo{
+			StartCursor: res.Start, EndCursor: res.End,
+			HasNextPage: res.HasNext, HasPreviousPage: res.HasPrevious,
+		},
+	}
+	for _, e := range res.Edges {
+		out.Edges = append(out.Edges, api.SpaceConnection{
+			Cursor: e.Cursor, Node: api.SpaceRef{Id: e.Node.Slug},
+		})
+	}
+	return api.SearchSpaces200JSONResponse{Body: out}, nil
+}
+
+// SearchSpacesSuggestions lists the values of the spaces of the caller's
+// account it may read.
+func (s Server) SearchSpacesSuggestions(
+	ctx context.Context,
+	req api.SearchSpacesSuggestionsRequestObject,
+) (api.SearchSpacesSuggestionsResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	got, err := s.spaces.Suggest(ctx, p.AccountID, suggestionsInput(*req.Body), reach)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
+	}
+	return api.SearchSpacesSuggestions200JSONResponse{Body: suggestions(got)}, nil
+}
+
+// ActionCatalogue lists every catalogue action with its flags.
+func (s Server) ActionCatalogue(
+	context.Context,
+	api.ActionCatalogueRequestObject,
+) (api.ActionCatalogueResponseObject, error) {
+	catalogue := accessapi.Actions()
+	out := make([]api.ActionCatalogueEntry, 0, len(catalogue))
+	for _, a := range catalogue {
+		out = append(out, api.ActionCatalogueEntry{
+			Action: api.Action(a.Action), Disabled: a.Disabled, Deprecated: a.Deprecated,
+		})
+	}
+	return api.ActionCatalogue200JSONResponse{Body: out}, nil
 }
 
 // Space answers one space of the caller's account. The route table has
@@ -264,15 +348,6 @@ func slugsOf(spaces []space.Space) map[kernel.ULID]string {
 		out[sp.ID] = sp.Slug
 	}
 	return out
-}
-
-func containsAll(held, want []api.Action) bool {
-	for _, a := range want {
-		if !slices.Contains(held, a) {
-			return false
-		}
-	}
-	return true
 }
 
 // spaceOf is the fields of a SpaceInput the service writes.

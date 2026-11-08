@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
 
 func TestUnitSlugOf(t *testing.T) {
@@ -141,6 +142,27 @@ func (f *tree) NonAdminCreation(context.Context, kernel.AccountID) (bool, error)
 func (f *tree) ToggleNonAdminCreation(context.Context, kernel.AccountID) (bool, error) {
 	f.setting = !f.setting
 	return f.setting, f.err
+}
+
+// errSearched marks the store's search, which Service hands on as it is.
+var errSearched = errors.New("searched")
+
+func (f *tree) Search(
+	context.Context,
+	kernel.AccountID,
+	search.Input,
+	[]kernel.ULID,
+) (search.Result[space.Space], error) {
+	return search.Result[space.Space]{}, errSearched
+}
+
+func (f *tree) Suggest(
+	context.Context,
+	kernel.AccountID,
+	search.SuggestionsInput,
+	[]kernel.ULID,
+) (search.Suggestions, error) {
+	return search.Suggestions{}, errSearched
 }
 
 // admins is a space.Authorizer granting SPACE_ADMIN on the spaces it
@@ -273,6 +295,20 @@ func TestUnitSpaceService(t *testing.T) {
 	}
 	if got, err := w.svc.Spaces(ctx, w.f.acct); err != nil || len(got) != 3 {
 		t.Errorf("Spaces = %v, %v", got, err)
+	}
+	if _, err := w.svc.Search(ctx, w.f.acct, search.Input{}, nil); !errors.Is(err, errSearched) {
+		t.Errorf("Search = %v, want the store's", err)
+	}
+	if _, err := w.svc.Suggest(
+		ctx,
+		w.f.acct,
+		search.SuggestionsInput{},
+		nil,
+	); !errors.Is(
+		err,
+		errSearched,
+	) {
+		t.Errorf("Suggest = %v, want the store's", err)
 	}
 
 	renamed, err := w.svc.Update(ctx, w.p, prod.Slug, legacy.Slug, space.Space{

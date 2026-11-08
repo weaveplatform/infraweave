@@ -10,6 +10,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
 
 // ErrName is a space created or changed without a name.
@@ -50,6 +51,22 @@ type Store interface {
 	NonAdminCreation(ctx context.Context, acct kernel.AccountID) (bool, error)
 	// ToggleNonAdminCreation flips it and answers the new value.
 	ToggleNonAdminCreation(ctx context.Context, acct kernel.AccountID) (bool, error)
+	// Search reads a page of the account's spaces among reachable that in
+	// keeps, by Fields; an input they cannot answer is a *search.Invalid.
+	Search(
+		ctx context.Context,
+		acct kernel.AccountID,
+		in search.Input,
+		reachable []kernel.ULID,
+	) (search.Result[Space], error)
+	// Suggest lists the values Fields hold among the account's spaces in
+	// reachable that in keeps.
+	Suggest(
+		ctx context.Context,
+		acct kernel.AccountID,
+		in search.SuggestionsInput,
+		reachable []kernel.ULID,
+	) (search.Suggestions, error)
 }
 
 // Authorizer decides whether a principal may perform an action in a
@@ -125,6 +142,28 @@ func (s *Service) registered() []accessapi.SpaceGuard {
 // Spaces lists acct's spaces, top space first.
 func (s *Service) Spaces(ctx context.Context, acct kernel.AccountID) ([]Space, error) {
 	return s.store.Spaces(ctx, acct) //nolint:wrapcheck // the store names the read
+}
+
+// Search reads a page of acct's spaces among reachable, the spaces the
+// caller may read, that in keeps.
+func (s *Service) Search(
+	ctx context.Context,
+	acct kernel.AccountID,
+	in search.Input,
+	reachable []kernel.ULID,
+) (search.Result[Space], error) {
+	return s.store.Search(ctx, acct, in, reachable) //nolint:wrapcheck // the store names the read
+}
+
+// Suggest lists the values of acct's spaces among reachable that in
+// keeps.
+func (s *Service) Suggest(
+	ctx context.Context,
+	acct kernel.AccountID,
+	in search.SuggestionsInput,
+	reachable []kernel.ULID,
+) (search.Suggestions, error) {
+	return s.store.Suggest(ctx, acct, in, reachable) //nolint:wrapcheck // the store names the read
 }
 
 // Space reads acct's space slug.
