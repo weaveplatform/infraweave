@@ -32,10 +32,14 @@
 // For Deploy, ActionsFile writes or checks decision 0007's action
 // catalogue, internal/access/api/actions.gen.go, from the schema's Action
 // enum and the hand-maintained actions.yaml, failing with ErrActions on a
-// value either lacks or a flag the schema contradicts.
+// value either lacks or a flag the schema contradicts; the rows marked
+// infraweave, which the enum must lack, follow the enum's values by name.
 //
 // For any product, ScaffoldFile copies one reference tag into a
-// served-API fragment with decision 0003's conventions. Product.Parity and
+// served-API fragment with decision 0003's conventions, naming each
+// operation's action and subject (x-infraweave-action and
+// x-infraweave-subject) from the action catalogue where its name and path
+// decide them. Product.Parity and
 // ParityCheck decide decision 0016's outcome for each reference operation
 // over the served operations under the product's own tags: served, served
 // with divergence, superseded or missing. They match renamed operations
@@ -64,7 +68,8 @@
 // registry's own host; it writes the snapshots and the lock under
 // api/reference/spacelift-flows. Everything else reads a reference directory
 // and writes: the document and coverage report (GenerateDir), a fragment
-// under api/src/api (ScaffoldFile), report 29 and
+// under api/src/api from the reference and actions.yaml (ScaffoldFile),
+// report 29 and
 // docs/data/graphql-inventory.json or docs/data/flows-sdk-inventory.json
 // (Product.Inventory), the parity baseline (WriteParityBaseline), and
 // internal/access/api/actions.gen.go from actions.yaml beside it

@@ -3,7 +3,7 @@
 components:
   schemas:
     AvailableUserGroupsPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -35,6 +35,11 @@ components:
           description: List of permissions given explicitly to given user.
           items:
             $ref: '#/components/schemas/SpaceAccessRule'
+          type: array
+        allowedActions:
+          description: The actions the caller may perform on the managed user, from the rules that enforce them.
+          items:
+            $ref: '#/components/schemas/Action'
           type: array
         groupCount:
           description: Number of groups in your identity provider that this user was a member of on last login.
@@ -85,6 +90,7 @@ components:
           type: string
       required:
         - accessRules
+        - allowedActions
         - groupCount
         - id
         - latestGroups
@@ -171,7 +177,7 @@ components:
       type: object
       x-graphql-type: ManagedUserGroupCreateInputV2
     ManagedUserGroupPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -230,7 +236,7 @@ components:
       type: object
       x-graphql-type: ManagedUserInviteInputV2
     ManagedUserPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -377,6 +383,8 @@ paths:
         group can match.
       operationId: availableUserGroups
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -423,6 +431,8 @@ paths:
         sign-in reported its name, and it reaches no other account.
       operationId: managedUserGroups
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -470,6 +480,8 @@ paths:
         so no grant is dropped silently.
       operationId: managedUserGroupCreateV2
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_CREATE
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -529,6 +541,8 @@ paths:
         members stay managed users of the account.
       operationId: managedUserGroupDelete
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_DELETE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: managedUserGroupId
@@ -576,6 +590,8 @@ paths:
         404.
       operationId: managedUserGroup
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: managedUserGroupId
@@ -622,6 +638,8 @@ paths:
         Set the description of the account's managed user group.
       operationId: managedUserGroupUpdateV2
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_UPDATE
+      x-infraweave-subject: account
       parameters:
         - description: Globally unique, immutable ID of ManagedUserGroup.
           in: path
@@ -680,6 +698,8 @@ paths:
         group's name, oldest first.
       operationId: managedUserGroupManagedUsers
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - description: Selects the parent object.
           in: path
@@ -733,6 +753,8 @@ paths:
         account's audit trail as managed_user.request_invite. Answers true.
       operationId: managedUserRequestInvite
       x-infraweave-feature: managed-users
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -789,6 +811,8 @@ paths:
         admits appears here only once this account admits it too.
       operationId: managedUsers
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -843,6 +867,8 @@ paths:
         non-empty roleBindings answers 400 invalid-request.
       operationId: managedUserInviteV2
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_INVITE
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -905,6 +931,8 @@ paths:
         organization, and keep their seat while another account admits them.
       operationId: managedUserDelete
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_DELETE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: managedUserId
@@ -956,6 +984,8 @@ paths:
         account does not admit answers 404.
       operationId: managedUser
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_READ
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: managedUserId
@@ -1004,6 +1034,8 @@ paths:
         accessRules answers 400 invalid-request.
       operationId: managedUserUpdate
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_UPDATE
+      x-infraweave-subject: account
       parameters:
         - description: Globally unique, immutable ID of ManagedUser to update.
           in: path
@@ -1065,6 +1097,8 @@ paths:
         including those disabled as DEPROVISIONED.
       operationId: managedUserPersonalApiKeys
       x-infraweave-feature: managed-users
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
       parameters:
         - description: Selects the parent object.
           in: path
@@ -1118,6 +1152,8 @@ paths:
         accepted their invitation, or has none, answers 409 invalid-state.
       operationId: managedUserResendInvite
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_INVITE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: managedUserId
@@ -1176,6 +1212,8 @@ paths:
         true.
       operationId: managedUserRequestRoleChange
       x-infraweave-feature: managed-users
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:spaceId:space
       parameters:
         - in: path
           name: spaceId

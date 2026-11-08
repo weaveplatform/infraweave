@@ -2,16 +2,20 @@
 
 package api
 
-// The reference's Action enum, in its order.
+// The reference's Action enum, in its order, then infraweave's own actions by name.
 const (
 	ActionSpaceRead                 Action = "SPACE_READ"
 	ActionStackWebhookCreate        Action = "STACK_WEBHOOK_CREATE"
 	ActionUpdateBlueprintDeployment Action = "UPDATE_BLUEPRINT_DEPLOYMENT"
+	ActionApiKeyDelete              Action = "API_KEY_DELETE"
+	ActionApiKeyRead                Action = "API_KEY_READ"
 )
 
 // catalogue is each value's row of actions.yaml.
 var catalogue = []ActionInfo{
-	{Action: ActionSpaceRead, Subject: "space", Fallback: FallbackReader, Disabled: false, Deprecated: false},
-	{Action: ActionStackWebhookCreate, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false},
-	{Action: ActionUpdateBlueprintDeployment, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: true},
+	{Action: ActionSpaceRead, Subject: "space", Fallback: FallbackReader, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionStackWebhookCreate, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionUpdateBlueprintDeployment, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: true, Infraweave: false, Anywhere: false},
+	{Action: ActionApiKeyDelete, Subject: "api_key", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: true, Anywhere: false},
+	{Action: ActionApiKeyRead, Subject: "api_key", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: true, Anywhere: true},
 }

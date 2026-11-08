@@ -306,6 +306,8 @@ type world struct {
 	key    kernel.ULID
 	secret string
 	grants *grants
+	// authz holds every assignable action on the account's top space.
+	authz *grantsOf
 }
 
 // public is the route class that takes no credential.
@@ -361,8 +363,15 @@ func newWorld(t *testing.T) *world {
 		BreakGlass: st, Admission: st, Idle: idle, MaxAge: maxAge,
 		Now: func() time.Time { return t0 },
 	})
+	var all []accessapi.Action
+	for _, a := range accessapi.Actions() {
+		if a.Assignable() {
+			all = append(all, a.Action)
+		}
+	}
+	w.authz = &grantsOf{on: map[kernel.ULID][]accessapi.Action{w.acct.ULID: all}}
 	keys := apikey.NewService(apikey.Deps{
-		Store: st, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
+		Store: st, Authz: w.authz, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
 	w.cfg = &configs{s: settings.Defaults()}
 	cfg := settings.NewService(settings.Deps{
@@ -376,7 +385,8 @@ func newWorld(t *testing.T) *world {
 	})
 	strict := api.NewStrictHandlerWithOptions(
 		full{Server: NewServer(Services{
-			Auth: auth, Keys: keys, Accounts: st, Settings: cfg, OAuth: grants,
+			Auth: auth, Keys: keys, Authz: w.authz, Spaces: st, Accounts: st, Settings: cfg,
+			OAuth: grants,
 		})},
 		nil,
 		api.StrictHTTPServerOptions{
@@ -671,6 +681,58 @@ func TestUnitSessions(t *testing.T) {
 		t.Errorf("logout = %+v", out)
 	}
 	wantUnauthenticated(t, w.do(t, http.MethodGet, "/sessions", me, ""), true)
+}
+
+// TestUnitAllowedActions checks that each view lists the actions its
+// operations' rules let the caller perform: every action on its entity
+// for the top space's admin, none for a caller with no binding, whose
+// change answers 403 naming the action, and the authorizer's failure.
+func TestUnitAllowedActions(t *testing.T) {
+	w := newWorld(t)
+	me := "Bearer " + w.exchange(t).Jwt
+	want := func(name string, got []api.Action, want ...api.Action) {
+		t.Helper()
+		if !slices.Equal(got, want) {
+			t.Errorf("%s allowedActions = %v, want %v", name, got, want)
+		}
+	}
+	u := decode[api.User](t, w.do(t, http.MethodGet, "/viewer", me, ""))
+	if len(u.Actions) != 1 || u.Actions[0].SpaceID != "acme" ||
+		len(u.Actions[0].Actions) != len(w.authz.on[w.acct.ULID]) {
+		t.Errorf("viewer actions = %+v", u.Actions)
+	}
+	keys := decode[api.ApiKeyPage](t, w.do(t, http.MethodGet, "/api-keys", me, ""))
+	want("API key", keys.Items[0].AllowedActions, api.APIKEYREAD, api.APIKEYUPDATE,
+		api.APIKEYRESET, api.APIKEYDELETE)
+	ss := decode[api.SessionPage](t, w.do(t, http.MethodGet, "/sessions", me, ""))
+	want("session", ss.Items[0].AllowedActions, api.SESSIONDELETE, api.SESSIONREAD)
+
+	w.authz.on = map[kernel.ULID][]accessapi.Action{}
+	if u := decode[api.User](t, w.do(t, http.MethodGet, "/viewer", me, "")); len(u.Actions) != 0 {
+		t.Errorf("viewer actions with no binding = %+v", u.Actions)
+	}
+	keys = decode[api.ApiKeyPage](t, w.do(t, http.MethodGet, "/api-keys", me, ""))
+	want("API key with no binding", keys.Items[0].AllowedActions)
+	ss = decode[api.SessionPage](t, w.do(t, http.MethodGet, "/sessions", me, ""))
+	want("session with no binding", ss.Items[0].AllowedActions)
+	rec := w.do(t, http.MethodPut, "/api-keys/"+w.key.String(), me, `{"name":"x"}`)
+	if p := decode[problem.Problem](t, rec); rec.Code != http.StatusForbidden ||
+		p.Action != string(accessapi.ActionApiKeyUpdate) {
+		t.Errorf("an update with no binding = %d %+v", rec.Code, p)
+	}
+
+	w.authz.err = errDown
+	for _, r := range [][2]string{
+		{http.MethodGet, "/viewer"},
+		{http.MethodGet, "/api-keys"},
+		{http.MethodGet, "/sessions"},
+		{http.MethodDelete, "/sessions"},
+		{http.MethodPost, "/auth/logout"},
+	} {
+		if rec := w.do(t, r[0], r[1], me, ""); rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("%s %s with the authorizer down: %d %s", r[0], r[1], rec.Code, rec.Body)
+		}
+	}
 }
 
 func TestUnitSessionsDown(t *testing.T) {

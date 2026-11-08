@@ -346,6 +346,10 @@ func TestUnitScaffoldFile(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	cat := filepath.Join(refDir, "actions.yaml")
+	if err := os.WriteFile(cat, []byte(actionRows), filePerm); err != nil {
+		t.Fatal(err)
+	}
 	svc := t.TempDir()
 	writeCommon(t, svc, "responses/Problem", "responses/NotFound")
 	write := func(name, body string) {
@@ -358,7 +362,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 	write("README.md", "ignored")
 	out := filepath.Join(svc, "paths-stacks.yaml")
 
-	s, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "Stacks", out, false)
+	s, err := ScaffoldFile(filepath.Join(refDir, FileSpec), cat, "Stacks", out, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,6 +372,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 	}
 	if _, err := ScaffoldFile(
 		filepath.Join(refDir, FileSpec),
+		cat,
 		"Stacks",
 		out,
 		false,
@@ -379,7 +384,13 @@ func TestUnitScaffoldFile(t *testing.T) {
 	}
 	// With force, the fragment being replaced doesn't count as existing, so
 	// the result is byte-identical rather than empty.
-	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "Stacks", out, true); err != nil {
+	if _, err := ScaffoldFile(
+		filepath.Join(refDir, FileSpec),
+		cat,
+		"Stacks",
+		out,
+		true,
+	); err != nil {
 		t.Fatal(err)
 	}
 	second, err := os.ReadFile(out)
@@ -389,6 +400,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 
 	if _, err := ScaffoldFile(
 		filepath.Join(t.TempDir(), FileSpec),
+		cat,
 		"Stacks",
 		filepath.Join(t.TempDir(), "p.yaml"),
 		false,
@@ -397,6 +409,7 @@ func TestUnitScaffoldFile(t *testing.T) {
 	}
 	if _, err := ScaffoldFile(
 		filepath.Join(refDir, FileSpec),
+		cat,
 		"Gadgets",
 		filepath.Join(svc, "paths-g.yaml"),
 		false,
@@ -408,15 +421,33 @@ func TestUnitScaffoldFile(t *testing.T) {
 	}
 	if _, err := ScaffoldFile(
 		filepath.Join(refDir, FileSpec),
+		cat,
 		"Stacks",
 		filepath.Join(svc, "missing", "p.yaml"),
 		false,
 	); err == nil {
 		t.Error("missing service directory: want error")
 	}
+	for name, catalogue := range map[string]string{
+		"missing":       filepath.Join(refDir, "none.yaml"),
+		"not a mapping": filepath.Join(refDir, "list.yaml"),
+	} {
+		if err := os.WriteFile(
+			filepath.Join(refDir, "list.yaml"),
+			[]byte("- a"),
+			filePerm,
+		); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), catalogue, "Stacks", out,
+			true); err == nil {
+			t.Errorf("a catalogue %s: want error", name)
+		}
+	}
 	write("paths-bad.yaml", "paths: [\n")
 	if _, err := ScaffoldFile(
 		filepath.Join(refDir, FileSpec),
+		cat,
 		"Stacks",
 		out,
 		true,
@@ -431,6 +462,10 @@ func TestUnitScaffoldFileUnwritable(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(refDir, FileSpec), []byte(mini), filePerm); err != nil {
 		t.Fatal(err)
 	}
+	cat := filepath.Join(refDir, "actions.yaml")
+	if err := os.WriteFile(cat, []byte(actionRows), filePerm); err != nil {
+		t.Fatal(err)
+	}
 	svc := t.TempDir()
 	// A directory where the fragment should go: Stat succeeds, so force is
 	// needed, and the write then fails.
@@ -439,7 +474,7 @@ func TestUnitScaffoldFileUnwritable(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeCommon(t, svc)
-	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), "W", out, true); err == nil {
+	if _, err := ScaffoldFile(filepath.Join(refDir, FileSpec), cat, "W", out, true); err == nil {
 		t.Error("unwritable fragment: want error")
 	}
 }

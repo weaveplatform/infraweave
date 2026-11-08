@@ -197,14 +197,25 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 ### Roles and the action catalogue
 
 - **Source.** The action catalogue is the `Action` enum of the committed
-  introspection snapshot (150 values). `specref` generates
-  `internal/access/api/actions.gen.go` from it, and a hand-maintained
-  `internal/access/api/actions.yaml` gives each value its subject, legacy fallback
-  (`reader`, `writer`, `admin`), and `disabled` and `deprecated` flags, from
-  report 14's table
+  introspection snapshot (150 values), then infraweave's own account actions.
+  `specref` generates `internal/access/api/actions.gen.go` from it, and a
+  hand-maintained `internal/access/api/actions.yaml` gives each value its
+  subject, legacy fallback (`reader`, `writer`, `admin`), and `disabled` and
+  `deprecated` flags, from report 14's table
   ([3.3](../reference/14-spaces-rbac-and-identity.md#33-the-action-catalogue)).
-  `make verify-reference` fails when an enum value has no row or a row has no
-  enum value.
+  `make verify-reference` fails when an enum value has no row, or a row has
+  no enum value and is not infraweave's.
+- **Account actions.** Spacelift decides API keys, sessions, managed users
+  and their groups by account admin alone; these resources live in no space.
+  The catalogue adds their actions, marked `infraweave: true` and sorted by
+  name after the enum: `API_KEY_*`, `SESSION_*`, `MANAGED_USER_*` and
+  `MANAGED_USER_GROUP_*`, each with fallback `admin`. An account action is
+  decided on the account's top space, except the reads marked
+  `anywhere: true` (`API_KEY_READ`, `MANAGED_USER_READ`,
+  `MANAGED_USER_GROUP_READ`), which any space's admin holds, as report 14
+  lets the admin of any space read keys, users and groups. Roles hold them
+  like any other action, and the served `Action` enum lists them, so
+  `allowedActions` can.
 - **Tables** `roles(account_id, id, slug, name, description, is_system)`,
   unique `(account_id, slug)`, and `role_actions(account_id, role_id,
   action)`, which holds custom roles' actions. A system role's actions are
@@ -314,7 +325,10 @@ adapter from each owner's answer. `User.canCreatePersonalApiKey` is the
 session, admitted and active, with `personalApiKeysEnabled` on), the same
 query the creation runs under its locks, and `User.apiKeys` and
 `ownedApiKeys` are that service's too; `User.admin` and `User.actions` are
-the evaluator's.
+the evaluator's. `ApiKey.allowedActions` is the `apikey` service's reading of
+its managers' rule; `Session.allowedActions` and
+`ManagedUser.allowedActions` are the evaluator's account actions on their
+kind.
 
 ### Snapshots and caching
 
@@ -364,20 +378,29 @@ so that member sees an empty list.
   | `x-infraweave-subject` | Space used |
   |---|---|
   | `path:<param>:<entity>` | the space of the entity named by a path parameter, such as `path:stackId:stack` |
-  | `body:<field>` | a space ID in the request body, for creates |
-  | `account` | the account's top space, for account-wide settings |
-  | `organization` | none: the caller's organization, for the operations of the `Organization` and `SSO` tags, which take `ORGANIZATION_ADMIN` |
+  | `body:<field>[:<entity>]` | the space of the entity a dotted field of the request body names, a space by default, for creates; a body without the field decides on the top space |
+  | `account` | the account's top space, for account-wide settings and account actions |
+  | `any` | any space where the caller holds the action, for the `anywhere` reads and for API key management while non-admin managers are on |
+  | `organization` | none: the caller's organization, for the operations of the `Organization` and `SSO` tags, which take `ORGANIZATION_ADMIN`, and the organization-access routes, which take `AUTHENTICATED` |
   | `list` | none: the handler filters with `Reachable` |
 
-- **In the server.** The scaffolder generates a route table from these
-  extensions, and one chi middleware, `authz.Require`, runs after
-  `authn.Middleware` on every route: it resolves the subject's space through
-  a small per-entity lookup (`stack`, `module`, `context`, `policy`,
-  `worker_pool`, `run`, and so on) and calls `Authorize`. Handlers make extra
-  checks only where an operation needs two (stack bindings, moves, module
-  sharing).
-- **Deny by default.** A route with no route-table entry answers `403`, and
-  `api/api_test.go` fails when any operation lacks either extension.
+- **In the server.** The scaffolder writes both extensions on each operation
+  it scaffolds, from the catalogue. `internal/app` reads them into the route
+  table from the embedded spec at startup, and one chi middleware, the
+  access domain's `Requirer`, runs after authentication on every route: it
+  resolves the subject's space through a per-entity lookup that the domain
+  owning the entity registers (`space`, `stack`, `module`, `context`,
+  `policy`, `worker_pool`, `run`, and so on) and calls `Authorize`. A subject
+  whose entity no domain registers answers `501`, as no domain serves its
+  operations. Handlers make extra checks only where an operation needs two
+  (stack bindings, moves, module sharing) or where the owning service's
+  rule is narrower than the route's: API key management takes `any` at the
+  route, and the `apikey` service refuses a caller who is not space-admin
+  on the top space while non-admin managers are off.
+- **Deny by default.** A route the router serves with no route-table entry
+  answers `403`, and `api/authorization_test.go` fails when any operation
+  lacks either extension, names an action the catalogue lacks, or names a
+  subject its access, its action or its parameters contradict.
 - **Answers.** A subject in a space where the caller lacks `SPACE_READ`
   answers `404`, as if it did not exist; a readable subject whose action is
   not allowed answers `403`, problem `forbidden`, naming the action. Decision
@@ -483,8 +506,9 @@ Departures from Spacelift, for the plan's deviations register:
 - A property test: after random creates, moves and deletes, `space_closure`
   equals the ancestors computed from `parent_id`, and `Reachable` equals
   `Authorize` over every space.
-- `api/api_test.go`: every operation has `x-infraweave-action` and
-  `x-infraweave-subject`, and every action named exists in the catalogue.
+- `api/authorization_test.go`: every operation has `x-infraweave-action`
+  and `x-infraweave-subject`, every action named exists in the catalogue,
+  and each subject agrees with the operation's access and parameters.
 - `make verify-reference`: `actions.yaml` covers the `Action` enum exactly.
 - Gherkin acceptance against PostgreSQL in testcontainers:
   `test/acceptance/features/authz_spaces.feature` (tree changes, refused

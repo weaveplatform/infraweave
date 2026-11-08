@@ -61,11 +61,11 @@ Feature: Managed users and groups
     Then the answer's items is '[]'
     When token "h" sends "POST /api/v1/managed-user-invite-requests" with '{"email":"carol@example.com","userName":"carol"}' through A
     Then it answers 201
-    When the browser sends "POST /api/v1/spaces/root/role-change-requests" with '{"requestedAccessLevel":"WRITE"}' through B
+    When the browser sends "POST /api/v1/spaces/legacy/role-change-requests" with '{"requestedAccessLevel":"WRITE"}' through B
     Then it answers 201
     When the browser sends "POST /api/v1/spaces/elsewhere/role-change-requests" with '{"requestedAccessLevel":"WRITE"}' through A
     Then it answers a 404 problem "not-found"
-    When token "h" sends "POST /api/v1/spaces/root/role-change-requests" with '{"requestedAccessLevel":"READ"}' through A
+    When token "h" sends "POST /api/v1/spaces/legacy/role-change-requests" with '{"requestedAccessLevel":"READ"}' through A
     Then it answers a 403 problem "forbidden"
     And the home account's audit trail holds "managed_user.resend_invite"
     And the home account's audit trail holds "managed_user.request_invite"

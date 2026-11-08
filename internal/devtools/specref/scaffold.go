@@ -59,6 +59,9 @@ type ScaffoldOptions struct {
 	Tag string
 	// Existing is what the service's other fragments define.
 	Existing Defined
+	// Actions are the action catalogue's rows, from which each operation's
+	// action and subject are written where they decide them.
+	Actions map[string]ActionRow
 }
 
 // Scaffolded is a fragment and what the author must know about it.
@@ -86,7 +89,8 @@ type ymap = map[string]any
 // fragment (paths and components only). Each operation gets decision 0003's
 // conventions: cursor pagination on collection GETs, an optional
 // Idempotency-Key on POST and PATCH, rate-limit responses and headers, and a
-// cost class. Provenance extensions (x-graphql, x-terraform, x-bruno) are
+// cost class, and decision 0007's action and subject where the catalogue
+// decides them. Provenance extensions (x-graphql, x-terraform, x-bruno) are
 // kept.
 func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 	var ref ymap
@@ -125,6 +129,7 @@ func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 			if err := applyConventions(m, p, op, refComps, added); err != nil {
 				return nil, err
 			}
+			authorize(m, p, op, o.Actions)
 			out.Operations++
 		}
 		picked[p] = item
@@ -241,7 +246,7 @@ func paginate(op, responses, refComps, added ymap) (bool, error) {
 	if _, ok := added[key]; !ok {
 		added[key] = ymap{
 			"type":        "object",
-			"description": "One page of a cursor-paginated list (decision 0003).",
+			"description": "One page of a cursor-paginated list.",
 			"required":    []any{"items"},
 			"properties": ymap{
 				"items": ymap{"type": "array", "items": items},
@@ -415,9 +420,11 @@ func tagDescription(ref ymap, tag string) string {
 
 // ScaffoldFile scaffolds tag from the reference document at spec, any
 // product's, into the fragment out, referencing what the other fragments in
-// out's directory define. It refuses to replace an existing fragment unless
-// force is set, because a scaffolded fragment is curated by hand afterwards.
-func ScaffoldFile(spec, tag, out string, force bool) (*Scaffolded, error) {
+// out's directory define, with each operation's action and subject from
+// the action catalogue at catalogue. It refuses to replace an existing
+// fragment unless force is set, because a scaffolded fragment is curated by
+// hand afterwards.
+func ScaffoldFile(spec, catalogue, tag, out string, force bool) (*Scaffolded, error) {
 	if _, err := os.Stat(out); err == nil && !force {
 		return nil, fmt.Errorf("%w: %s", ErrFragmentExists, out)
 	}
@@ -425,11 +432,19 @@ func ScaffoldFile(spec, tag, out string, force bool) (*Scaffolded, error) {
 	if err != nil {
 		return nil, fmt.Errorf("specref: %w", err)
 	}
+	data, err := os.ReadFile(catalogue)
+	if err != nil {
+		return nil, fmt.Errorf("specref: %w", err)
+	}
+	rows, err := ParseActionCatalogue(data)
+	if err != nil {
+		return nil, err
+	}
 	existing, err := ReadDefined(filepath.Dir(out), filepath.Base(out))
 	if err != nil {
 		return nil, err
 	}
-	s, err := Scaffold(ScaffoldOptions{Reference: ref, Tag: tag, Existing: existing})
+	s, err := Scaffold(ScaffoldOptions{Reference: ref, Tag: tag, Existing: existing, Actions: rows})
 	if err != nil {
 		return nil, err
 	}

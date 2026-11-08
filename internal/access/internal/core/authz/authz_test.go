@@ -358,3 +358,46 @@ func TestUnitBuildSkipsDangling(t *testing.T) {
 		t.Errorf("an account with no tree reaches %v", got)
 	}
 }
+
+// TestUnitActions checks a space's actions: the space's own for the
+// enum's, the top space's for infraweave's account actions, and any
+// space's for an anywhere one, as report 14's matrix lets a space's admin
+// read keys and users but manage neither.
+func TestUnitActions(t *testing.T) {
+	x := newAccount()
+	admin, below, writer := kernel.NewMemberID(), kernel.NewMemberID(), kernel.NewMemberID()
+	x.bind(role.ActorUser, admin.ULID, role.SpaceAdmin, "top")
+	x.bind(role.ActorUser, below.ULID, role.SpaceAdmin, "a11")
+	x.bind(role.ActorUser, writer.ULID, role.SpaceWriter, "top")
+	snap := authz.Build(x.data)
+	has := slices.Contains[[]accessapi.Action]
+
+	if got := snap.Actions(x.user(admin), x.spaces["top"]); len(got) != 145 {
+		t.Errorf("the account admin holds %d actions on the top space, want 145", len(got))
+	}
+	got := snap.Actions(x.user(below), x.spaces["a11"])
+	if !has(got, accessapi.ActionStackCreate) || !has(got, accessapi.ActionApiKeyRead) ||
+		has(got, accessapi.ActionApiKeyDelete) || has(got, accessapi.ActionStackWebhookCreate) {
+		t.Errorf("a space's admin's actions there = %v", got)
+	}
+	got = snap.Actions(x.user(below), x.spaces["top"])
+	if !has(got, accessapi.ActionApiKeyRead) || !has(got, accessapi.ActionManagedUserRead) ||
+		has(got, accessapi.ActionStackCreate) || has(got, accessapi.ActionManagedUserInvite) {
+		t.Errorf("a space's admin's actions on the top space = %v", got)
+	}
+	got = snap.Actions(x.user(writer), x.spaces["a"])
+	if !has(got, accessapi.ActionStackLock) || has(got, accessapi.ActionApiKeyRead) {
+		t.Errorf("a writer's actions = %v", got)
+	}
+	if !snap.Holds(x.user(below), accessapi.ActionApiKeyRead) ||
+		snap.Holds(x.user(writer), accessapi.ActionApiKeyRead) {
+		t.Error("Holds disagrees with the bindings")
+	}
+	if got := snap.Actions(x.user(admin), kernel.NewULID()); got != nil {
+		t.Errorf("actions in a space of no account = %v", got)
+	}
+	if got := snap.Actions(authz.Who{Account: kernel.NewAccountID(), Kind: kernel.PrincipalUser},
+		x.spaces["top"]); got != nil {
+		t.Errorf("actions of another account's principal = %v", got)
+	}
+}

@@ -1,10 +1,9 @@
 # The installation's own maintenance, which no domain owns: the queue's dead
-# jobs (decision 0011) and the data key's rotation (decision 0013).
+# jobs and the data key's rotation.
 components:
   schemas:
     DeadJob:
-      description: A job that exhausted its attempts or failed permanently (decision
-        0011).
+      description: A job that exhausted its attempts or failed permanently.
       type: object
       required:
         - id
@@ -50,7 +49,7 @@ components:
           format: int64
           description: When it died, in Unix seconds.
     DeadJobPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       type: object
       required:
         - items
@@ -63,7 +62,7 @@ components:
           type: string
           description: Pass as cursor to fetch the next page. Absent on the last page.
     DataKey:
-      description: The data key that seals new values (decision 0013).
+      description: The data key that seals new values.
       type: object
       required:
         - keyId

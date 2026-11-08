@@ -43,7 +43,7 @@ type AccountInput struct {
 	Slug string `json:"slug"`
 }
 
-// Billing The installation's billing switch and default tier (decision 0021).
+// Billing The installation's billing switch and default tier.
 type Billing struct {
 	// DefaultTier The tier a new organization gets.
 	DefaultTier string `json:"defaultTier"`
@@ -79,13 +79,13 @@ type BreakGlassInput struct {
 	PasswordHash *string `json:"passwordHash,omitempty"`
 }
 
-// DataKey The data key that seals new values (decision 0013).
+// DataKey The data key that seals new values.
 type DataKey struct {
 	// KeyId The active data key's ID.
 	KeyId int64 `json:"keyId"`
 }
 
-// DeadJob A job that exhausted its attempts or failed permanently (decision 0011).
+// DeadJob A job that exhausted its attempts or failed permanently.
 type DeadJob struct {
 	// Account The ULID of the account the job ran for, when it ran for one.
 	Account *string `json:"account,omitempty"`
@@ -118,7 +118,7 @@ type DeadJob struct {
 	UniqueKey *string `json:"uniqueKey,omitempty"`
 }
 
-// DeadJobPage One page of a cursor-paginated list (decision 0003).
+// DeadJobPage One page of a cursor-paginated list.
 type DeadJobPage struct {
 	Items []DeadJob `json:"items"`
 
@@ -219,7 +219,7 @@ type OrganizationCreateInput struct {
 	Slug string `json:"slug"`
 }
 
-// OrganizationPage One page of a cursor-paginated list (decision 0003).
+// OrganizationPage One page of a cursor-paginated list.
 type OrganizationPage struct {
 	Items []Organization `json:"items"`
 
@@ -232,7 +232,7 @@ type Problem struct {
 	// Detail What went wrong with this request.
 	Detail *string `json:"detail,omitempty"`
 
-	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
 	Feature *string `json:"feature,omitempty"`
 
 	// Instance The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
@@ -263,7 +263,7 @@ type Problem struct {
 // ProblemScope For limit-reached, whether the organization's pool or the account's limit was reached.
 type ProblemScope string
 
-// Tier A tier: a set of features and a set of limit values (decision 0021).
+// Tier A tier: a set of features and a set of limit values.
 type Tier struct {
 	// Editable False for Enterprise, which holds every feature and no limit and which the operator can neither edit nor delete.
 	Editable bool `json:"editable"`
@@ -308,7 +308,7 @@ type TierInput struct {
 	Name string `json:"name"`
 }
 
-// TierPage One page of a cursor-paginated list (decision 0003).
+// TierPage One page of a cursor-paginated list.
 type TierPage struct {
 	Items []Tier `json:"items"`
 

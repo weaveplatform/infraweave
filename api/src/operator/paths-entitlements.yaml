@@ -1,5 +1,5 @@
 # Tiers, the billing switch and each organization's tier and grants
-# (decision 0021), which the features domain serves. A change takes effect
+#, which the features domain serves. A change takes effect
 # on every replica without a restart.
 components:
   parameters:
@@ -12,8 +12,7 @@ components:
         type: string
   schemas:
     Tier:
-      description: 'A tier: a set of features and a set of limit values (decision
-        0021).'
+      description: 'A tier: a set of features and a set of limit values.'
       type: object
       required:
         - name
@@ -47,7 +46,7 @@ components:
           description: False for Enterprise, which holds every feature and no limit
             and which the operator can neither edit nor delete.
     TierPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       type: object
       required:
         - items
@@ -105,7 +104,7 @@ components:
             format: int64
             minimum: 0
     Billing:
-      description: The installation's billing switch and default tier (decision 0021).
+      description: The installation's billing switch and default tier.
       type: object
       required:
         - enabled

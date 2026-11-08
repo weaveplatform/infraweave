@@ -109,6 +109,7 @@ type Domain struct {
 	tokens   *token.Service
 	authn    *authn.Service
 	authz    *authz.Service
+	subjects *http.Subjects
 	keys     *apikey.Service
 	orgs     *operator.Service
 	orgAdmin *orgadmin.Service
@@ -180,6 +181,7 @@ func New(d Deps) (*Domain, error) {
 	})
 	keys := apikey.NewService(apikey.Deps{
 		Store:          store,
+		Authz:          decide,
 		Drop:           auth.Cache().Drop,
 		AllowedIssuers: d.Settings.OIDCAPIKeys.AllowedIssuers,
 		Now:            now,
@@ -196,13 +198,27 @@ func New(d Deps) (*Domain, error) {
 		CodeTTL:    d.Settings.Tokens.OAuthCode.TTL,
 		Now:        now,
 	})
+	subjects := http.NewSubjects()
+	// A request names a space by its slug, as the API's Space ID is.
+	subjects.Register(accessapi.EntitySpace, func(
+		ctx context.Context,
+		acct kernel.AccountID,
+		slug string,
+	) (kernel.ULID, error) {
+		sp, err := store.Space(ctx, acct, slug)
+		if errors.Is(err, port.ErrNotFound) {
+			return kernel.ULID{}, accessapi.ErrNoSubject
+		}
+		return sp.ID, err //nolint:wrapcheck // the store names the read
+	})
 	return &Domain{
-		store:  store,
-		tokens: tokens,
-		authn:  auth,
-		authz:  decide,
-		keys:   keys,
-		orgs:   orgs,
+		store:    store,
+		tokens:   tokens,
+		authn:    auth,
+		authz:    decide,
+		subjects: subjects,
+		keys:     keys,
+		orgs:     orgs,
 		orgAdmin: orgadmin.NewService(orgadmin.Deps{
 			Store: store, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
 		}),
@@ -225,8 +241,8 @@ func (d *Domain) API() AccessAPI {
 		return AccessAPI{}
 	}
 	return http.NewServer(http.Services{
-		Auth: d.authn, Keys: d.keys, Accounts: d.store, Settings: d.settings, Orgs: d.orgAdmin,
-		Users: d.users, Groups: d.groups, OAuth: d.oauth,
+		Auth: d.authn, Keys: d.keys, Authz: d.authz, Spaces: d.spaces, Accounts: d.store,
+		Settings: d.settings, Orgs: d.orgAdmin, Users: d.users, Groups: d.groups, OAuth: d.oauth,
 	})
 }
 
@@ -323,6 +339,18 @@ func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
 // Authorizer decides decision 0007's checks for every domain, from this
 // replica's snapshots, which WatchAuthorization keeps current.
 func (d *Domain) Authorizer() accessapi.Authorizer { return d.authz }
+
+// Requirer is the middleware internal/app puts after authentication in
+// front of every API operation, deciding its action on its subject.
+func (d *Domain) Requirer() accessapi.Requirer { return http.NewRequire(d.authz, d.subjects) }
+
+// ResolveSubjects registers how the middleware finds the space of an
+// entity kind another domain owns, such as a stack, by the ID a request
+// names. internal/app registers each domain's before the API serves; the
+// domain registers its own spaces'.
+func (d *Domain) ResolveSubjects(entity string, f accessapi.SpaceOf) {
+	d.subjects.Register(entity, f)
+}
 
 // WatchAuthorization keeps the replica's authorization snapshots in step
 // with every replica's writes until ctx ends: an authz:<account> message

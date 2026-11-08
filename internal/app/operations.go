@@ -58,6 +58,11 @@ type Operation struct {
 	// Gate is the operation's x-infraweave-feature, a capability of the
 	// catalogue, and the options its request body's properties name.
 	Gate featuresapi.Gate
+	// Required is the API operation's x-infraweave-action and
+	// x-infraweave-subject, which decision 0007's middleware decides; nil
+	// for the operator API's operations and the routes beside the APIs,
+	// which no action decides.
+	Required *accessapi.Required
 }
 
 // Operations maps "METHOD pattern", a method and the chi route pattern it is
@@ -71,8 +76,11 @@ var errSpec = errors.New("invalid operation in the API")
 // class fails, so a typo in the spec cannot silently cost standard. Every
 // operation names its capability in x-infraweave-feature (decision 0021),
 // and one that names none, or a name the catalogue holds as no capability,
-// fails, so no operation goes ungated.
-func operationsOf(doc *openapi3.T, base string) (Operations, error) {
+// fails, so no operation goes ungated. With authorized, every operation
+// names its action and subject (decision 0007), and one that lacks either
+// or names an action the catalogue lacks fails, so no operation goes
+// undecided.
+func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, error) {
 	ops := Operations{}
 	for path, item := range doc.Paths.Map() {
 		for method, op := range item.Operations() {
@@ -101,6 +109,12 @@ func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
 			}
+			var required *accessapi.Required
+			if authorized {
+				if required, err = requiredOf(op); err != nil {
+					return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
+				}
+			}
 			ops[method+" "+base+path] = Operation{
 				Cost:              cost,
 				Search:            style == "search" || strings.HasSuffix(path, "/search"),
@@ -109,10 +123,34 @@ func operationsOf(doc *openapi3.T, base string) (Operations, error) {
 				OrganizationAdmin: admin,
 				Body:              strictBody(op),
 				Gate:              gate,
+				Required:          required,
 			}
 		}
 	}
 	return ops, nil
+}
+
+var errAction = errors.New("names no action of the catalogue")
+
+// requiredOf reads op's action and subject.
+func requiredOf(op *openapi3.Operation) (*accessapi.Required, error) {
+	name, _ := op.Extensions["x-infraweave-action"].(string)
+	a := accessapi.Action(name)
+	_, known := accessapi.ActionOf(a)
+	switch a {
+	case accessapi.ActionAccountAdmin, accessapi.ActionOrganizationAdmin,
+		accessapi.ActionAuthenticated:
+		known = true
+	}
+	if !known {
+		return nil, fmt.Errorf("x-infraweave-action %q %w", name, errAction)
+	}
+	raw, _ := op.Extensions["x-infraweave-subject"].(string)
+	s, err := accessapi.ParseSubject(raw)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // names the subject
+	}
+	return &accessapi.Required{Action: a, Subject: s}, nil
 }
 
 var errFeature = errors.New("names no feature of its kind")
@@ -186,7 +224,9 @@ var apiOperations = sync.OnceValue(func() Operations {
 		if err != nil {
 			panic(fmt.Sprintf("load the embedded spec of %s: %v", base, err))
 		}
-		some, err := operationsOf(doc, base)
+		// Operator tokens alone reach the operator API, which no account
+		// grant decides.
+		some, err := operationsOf(doc, base, base == BaseURL)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -252,22 +292,33 @@ type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Han
 // builds decision 0021's feature middleware, which runs right after
 // authentication, so a refused feature costs no budget and stores no
 // idempotent answer; it gates every operation that names a capability.
+// Between the two, a route the router serves that ops lacks answers 403,
+// and require, when not nil, decides each API operation's action on its
+// subject (decision 0007), so a refused action costs no budget either.
 func Guarded(
 	log *slog.Logger,
 	c config.Server,
 	ops Operations,
 	g Guards,
 	auth accessapi.Authenticator,
+	require accessapi.Requirer,
 	gated Gated,
 ) *chi.Mux {
 	var r *chi.Mux
+	find := func(req *http.Request) (string, *chi.Context) {
+		rctx := chi.NewRouteContext()
+		return r.Find(rctx, req.Method, routePath(req)), rctx
+	}
 	resolve := func(req *http.Request) (Operation, bool) {
-		pattern := r.Find(chi.NewRouteContext(), req.Method, routePath(req))
+		pattern, _ := find(req)
 		op, ok := ops[req.Method+" "+pattern]
 		return op, ok
 	}
 	if auth == nil {
 		auth = refuseAll{}
+	}
+	if require == nil {
+		require = passAll{}
 	}
 	if gated == nil {
 		gated = func(func(*http.Request) (featuresapi.Gate, bool)) func(http.Handler) http.Handler {
@@ -279,6 +330,24 @@ func Guarded(
 		auth.Middleware(func(req *http.Request) accessapi.Access {
 			op, _ := resolve(req)
 			return op.access()
+		}),
+		unlisted(func(req *http.Request) bool {
+			pattern, _ := find(req)
+			_, ok := ops[req.Method+" "+pattern]
+			return pattern != "" && !ok
+		}),
+		require.Middleware(func(req *http.Request) (accessapi.Required, bool) {
+			pattern, rctx := find(req)
+			op, ok := ops[req.Method+" "+pattern]
+			if !ok || op.Required == nil {
+				return accessapi.Required{}, false
+			}
+			out := *op.Required
+			out.Params = map[string]string{}
+			for i, k := range rctx.URLParams.Keys {
+				out.Params[k] = rctx.URLParams.Values[i]
+			}
+			return out, true
 		}),
 		gated(func(req *http.Request) (featuresapi.Gate, bool) {
 			op, ok := resolve(req)
@@ -353,6 +422,31 @@ func caller(r *http.Request) string {
 		return p.Caller()
 	}
 	return ratelimit.ClientAddr(r)
+}
+
+// unlisted answers 403 to a request for a route the router serves but the
+// operations lack, so a route mounted without a route-table entry is
+// never served undecided (decision 0007's deny by default).
+func unlisted(listed func(*http.Request) bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if listed(r) {
+				problem.Write(w, problem.Forbidden.New("No route-table entry decides this route."))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// passAll is the requirer of a router built with none, for tests of the
+// other controls: it decides nothing.
+type passAll struct{}
+
+func (passAll) Middleware(
+	func(*http.Request) (accessapi.Required, bool),
+) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler { return next }
 }
 
 // refuseAll is the authenticator of a router built with none: every route

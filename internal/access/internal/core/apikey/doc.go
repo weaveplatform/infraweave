@@ -14,7 +14,11 @@
 // Service manages the keys of the caller's account through Store: create,
 // list, read, update, reset, disable and delete, where reset, disable and
 // delete revoke every session of the key and drop them from the replica's
-// cache. Input it refuses is ErrInvalid, naming the field; IssuerAllowed
+// cache. A change takes its action on the account's top space or, while
+// the account lets the admins of the spaces below manage keys
+// (apiKeyEnableNonAdminManagers), in any space, through Authorizer; any
+// other caller is Denied, naming the action. Actions is that rule's
+// answer for a key's allowedActions. Input it refuses is ErrInvalid, naming the field; IssuerAllowed
 // is DV-014's issuer rule. A personal key has an Owner, the member whose
 // principal in the key's account its tokens act as: CreatePersonal takes
 // it from a member's own session, any other caller being ErrNoOwner, and
@@ -35,6 +39,7 @@
 //
 // # Dependencies
 //
-// It imports the standard library and internal/kernel. The access
+// It imports the standard library, accessapi for the actions and
+// internal/kernel. The access
 // domain's authn service, HTTP adapter, pg adapter and assembly use it.
 package apikey

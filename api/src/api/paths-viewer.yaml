@@ -6,6 +6,8 @@ paths:
       description: Current user, if any.
       operationId: viewer
       x-infraweave-feature: viewer
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       responses:
         "200":
           content:

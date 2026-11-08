@@ -191,6 +191,9 @@ type Problem struct {
 	Limit string `json:"limit,omitempty"`
 	Scope string `json:"scope,omitempty"`
 	Value *int64 `json:"value,omitempty"`
+	// Action is forbidden's, when an action decided it: the action the
+	// caller may not perform.
+	Action string `json:"action,omitempty"`
 }
 
 // Write sends p with its status. The status line and the body's status are

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -37,6 +38,36 @@ type Authenticator interface {
 	Middleware(access func(*http.Request) Access) func(http.Handler) http.Handler
 }
 
+// Required is what an API operation requires before its handler runs: its
+// x-infraweave-action, decided in the space its x-infraweave-subject
+// finds, with the path parameters the router matched, which a path
+// subject reads.
+type Required struct {
+	Action  Action
+	Subject Subject
+	Params  map[string]string
+}
+
+// Requirer decides each API request's Required after authentication
+// (decision 0007 § "Enforcement point").
+type Requirer interface {
+	// Middleware decides every request require reports ok for, and passes
+	// the others: the operator API's, a public route's, and a route that
+	// matches no operation, which the router answers itself. A subject
+	// the caller cannot read answers 404 not-found, as a missing one does,
+	// and an action it may not perform on a readable one 403 forbidden,
+	// naming the action.
+	Middleware(require func(*http.Request) (Required, bool)) func(http.Handler) http.Handler
+}
+
+// SpaceOf finds the space of one kind of entity by the ID a request
+// names, for a path or body subject: ErrNoSubject when the account holds
+// no such entity. A domain registers one for each kind it owns.
+type SpaceOf func(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error)
+
+// ErrNoSubject is a subject the account does not hold.
+var ErrNoSubject = errors.New("no such subject")
+
 // LoginPattern is the route of an organization's break-glass login
 // (decision 0006 § "The break-glass admin"): GET answers its form, and a
 // POST of the form signs in. It is outside the API's base URL, a page
@@ -56,10 +87,12 @@ const (
 )
 
 // Authorizer decides decision 0007's checks the same way for every
-// domain: whether a principal may perform an action in a space, and every
+// domain: whether a principal may perform an action in a space, every
 // space of its account in which it may, for filtering a list by
-// space_id = ANY($n). A principal of no account may do nothing; an error
-// is the store's, and the check it fails refuses.
+// space_id = ANY($n), whether it may in any space, as an anywhere action
+// is decided, and every assignable action it may perform in a space, for
+// a resource's allowedActions. A principal of no account may do nothing;
+// an error is the store's, and the check it fails refuses.
 type Authorizer interface {
 	Authorize(
 		ctx context.Context,
@@ -68,6 +101,8 @@ type Authorizer interface {
 		space kernel.ULID,
 	) (bool, error)
 	Reachable(ctx context.Context, p kernel.Principal, action Action) ([]kernel.ULID, error)
+	Holds(ctx context.Context, p kernel.Principal, action Action) (bool, error)
+	Actions(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]Action, error)
 }
 
 // SpaceGuard is a domain's say in changes to an account's space tree

@@ -4,7 +4,7 @@ info:
   title: infraweave Deploy API
   version: 0.1.0
   description: >-
-    infraweave's infrastructure-as-code orchestration API: stacks, runs, policies, contexts and worker pools over REST. It starts from the reference specification in the repository's api/reference directory and may diverge from it, as decision 0001 in docs/research/decisions sets out.
+    infraweave's infrastructure-as-code orchestration API: stacks, runs, policies, contexts and worker pools over REST. It starts from the reference specification in the repository's api/reference directory and may diverge from it.
 servers:
   - url: /api/v1
     description: The versioned prefix on the server's single listener.
@@ -31,6 +31,8 @@ paths:
         current permissions.
       operationId: apiKeyEnableNonAdminManagers
       x-infraweave-feature: api-keys
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       requestBody:
         content:
           application/json:
@@ -77,6 +79,8 @@ paths:
         Whether accountConfirmDelete would delete the account now: true while the account is marked for deletion and is not its organization's last account. infraweave sets no waiting period, so a mark allows deletion at once.
       operationId: accountCanBeDeleted
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -115,6 +119,8 @@ paths:
         When the account can be deleted, in Unix seconds: the time of its deletion mark, as infraweave sets no waiting period; 0 while the account is not marked.
       operationId: accountCanBeDeletedAt
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -154,6 +160,8 @@ paths:
         Delete the caller's account and everything it holds: its API keys, sessions, admitted members and account limits, in one transaction. Members stay in the organization. An account not marked for deletion, or the organization's last account, answers 409 invalid-state.
       operationId: accountConfirmDelete
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -199,6 +207,8 @@ paths:
         Ask the account's admins to enable personal API keys. The request is recorded in the account's audit trail; no message is delivered.
       operationId: accountRequestPersonalApiKeysEnabling
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -244,6 +254,8 @@ paths:
         Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
       operationId: accountSetOAuthRedirectAllowlist
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -300,6 +312,8 @@ paths:
         Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
       operationId: accountSetPersonalApiKeysEnabled
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -354,6 +368,8 @@ paths:
         Flip whether non-human sessions, API keys, may manage API keys, and answer the new value. Off by default: while off, an API key that creates, updates, resets, disables or deletes a key answers 403 forbidden. Only a human session, a member's or the break-glass admin's, may flip it.
       operationId: accountToggleAPIKeyManagementFromNonHumans
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -399,6 +415,8 @@ paths:
         Mark the account for deletion, recording the reason and description, or clear the mark; answers whether the account is now marked.
       operationId: accountToggleDeletionMark
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -449,6 +467,8 @@ paths:
         Record the account's answer to the survey of how it heard of the product, and answer it.
       operationId: accountUpdateAwarenessSourceSurvey
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -502,6 +522,8 @@ paths:
         Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
       operationId: accountUpdateSecurityEmail
       x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -554,6 +576,8 @@ paths:
       description: List of all API keys for the account.
       operationId: apiKeys
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -596,6 +620,8 @@ paths:
       description: Create an API key.
       operationId: apiKeyCreate
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_CREATE
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -654,6 +680,8 @@ paths:
         Whether non-human sessions, API keys, may manage API keys; false until an account admin turns it on.
       operationId: apiKeysManageableByNonHumans
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -692,6 +720,8 @@ paths:
         Whether admins of spaces below the account's top space may manage API keys, as apiKeyEnableNonAdminManagers sets it.
       operationId: apiKeysManagedByNonAdmins
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -729,6 +759,8 @@ paths:
       description: Delete an API key.
       operationId: apiKeyDelete
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_DELETE
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -773,6 +805,8 @@ paths:
     get:
       operationId: apiKey
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -818,6 +852,8 @@ paths:
       description: Update an API key.
       operationId: apiKeyUpdate
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_UPDATE
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -874,6 +910,8 @@ paths:
       description: Reset the secret of an API key.
       operationId: apiKeyReset
       x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_RESET
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: apiKeyId
@@ -926,6 +964,8 @@ paths:
       description: The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
       operationId: authAccounts
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -965,6 +1005,8 @@ paths:
         and token query parameters.
       operationId: cliConfirmationToken
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1017,6 +1059,8 @@ paths:
       description: End the current session. A browser session's answer also clears its cookie.
       operationId: logout
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -1069,6 +1113,8 @@ paths:
         that is past its end, answers 404.
       operationId: authOAuthRequest
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - description: The authorization request's ID.
           in: path
@@ -1114,6 +1160,8 @@ paths:
         request that was approved or denied already, or that is past its end, answers 404.
       operationId: authOAuthRequestApprove
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - description: The authorization request's ID.
@@ -1168,6 +1216,8 @@ paths:
         was approved or denied already, or that is past its end, answers 404.
       operationId: authOAuthRequestDeny
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - description: The authorization request's ID.
@@ -1217,6 +1267,8 @@ paths:
         404, as does a credential that is not a member's.
       operationId: authSessionAccount
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1266,6 +1318,8 @@ paths:
       description: Exchange a secret API key for an API token, which the Users jwt carries until validUntil.
       operationId: apiKeyUser
       x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1315,9 +1369,11 @@ paths:
   /available-billing-addons:
     get:
       description: >-
-        An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+        An empty list: infraweave sells no add-ons.
       operationId: availableBillingAddons
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -1360,9 +1416,11 @@ paths:
   /available-self-service-plans:
     get:
       description: >-
-        An empty list: infraweave sells no plans (decision 0021, DV-080).
+        An empty list: infraweave sells no plans.
       operationId: availableSelfServicePlans
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -1408,6 +1466,8 @@ paths:
         The groups the identity provider reported for the account's managed users at their latest sign-in, in name order: the names a managed user group can match.
       operationId: availableUserGroups
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -1452,6 +1512,8 @@ paths:
         The account's answer to the survey of how it heard of the product; not completed until accountUpdateAwarenessSourceSurvey records one.
       operationId: awarenessSourceSurvey
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1487,9 +1549,11 @@ paths:
   /billed-externally:
     get:
       description: >-
-        true: no Stripe subscription exists (decision 0021, DV-080).
+        true: no Stripe subscription exists.
       operationId: billedExternally
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1526,9 +1590,11 @@ paths:
   /billing-subscription:
     delete:
       description: >-
-        Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+        Would cancel the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionDelete
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1564,9 +1630,11 @@ paths:
       x-rest-style: singleton
     get:
       description: >-
-        null: no Stripe subscription exists (decision 0021, DV-080).
+        null: no Stripe subscription exists.
       operationId: billingSubscription
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1605,9 +1673,11 @@ paths:
       x-rest-style: singleton
     post:
       description: >-
-        Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+        Would create a Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionCreate
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1665,9 +1735,11 @@ paths:
       x-rest-style: singleton
     put:
       description: >-
-        Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+        Would change the Stripe subscription through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionUpdateV2
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       requestBody:
         content:
           application/json:
@@ -1713,9 +1785,11 @@ paths:
   /billing-subscription/update-info:
     post:
       description: >-
-        Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+        Would change the subscription's billing details through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionUpdateInfo
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1773,9 +1847,11 @@ paths:
   /billing-subscription/update-tier:
     post:
       description: >-
-        Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported (decision 0021, DV-080). The operator changes an organization's tier through the operator API.
+        Would change the subscription's tier through a billing service. infraweave has none, so it answers 403 installation-unsupported. The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionUpdateTier
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1830,6 +1906,8 @@ paths:
         The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
       operationId: defaultPrivateWorkerPoolRunnerImage
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1865,9 +1943,11 @@ paths:
   /evaluate-feature-flags:
     get:
       description: >-
-        An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch (decision 0021).
+        An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
       operationId: evaluateFeatureFlags
       x-infraweave-feature: console
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - content:
             application/json:
@@ -1919,6 +1999,8 @@ paths:
       description: The ID of the caller's account.
       operationId: id
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1957,6 +2039,8 @@ paths:
         The account's managed user groups, oldest first. A group is the account's: its members are the account's managed users whose latest sign-in reported its name, and it reaches no other account.
       operationId: managedUserGroups
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -2000,6 +2084,8 @@ paths:
         Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
       operationId: managedUserGroupCreateV2
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_CREATE
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -2058,6 +2144,8 @@ paths:
         Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
       operationId: managedUserGroupDelete
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_DELETE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: managedUserGroupId
@@ -2104,6 +2192,8 @@ paths:
         The account's managed user group; a group of another account answers 404.
       operationId: managedUserGroup
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: managedUserGroupId
@@ -2150,6 +2240,8 @@ paths:
         Set the description of the account's managed user group.
       operationId: managedUserGroupUpdateV2
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_UPDATE
+      x-infraweave-subject: account
       parameters:
         - description: Globally unique, immutable ID of ManagedUserGroup.
           in: path
@@ -2207,6 +2299,8 @@ paths:
         The managed users of the account whose latest sign-in reported the group's name, oldest first.
       operationId: managedUserGroupManagedUsers
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2258,6 +2352,8 @@ paths:
         Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
       operationId: managedUserRequestInvite
       x-infraweave-feature: managed-users
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -2312,6 +2408,8 @@ paths:
         The account's managed users, oldest first: the organization's members the account admits, invited or signed in. A member another account admits appears here only once this account admits it too.
       operationId: managedUsers
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_READ
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -2355,6 +2453,8 @@ paths:
         Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
       operationId: managedUserInviteV2
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_INVITE
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -2413,6 +2513,8 @@ paths:
         Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
       operationId: managedUserDelete
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_DELETE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: managedUserId
@@ -2459,6 +2561,8 @@ paths:
         The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
       operationId: managedUser
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_READ
+      x-infraweave-subject: any
       parameters:
         - in: path
           name: managedUserId
@@ -2505,6 +2609,8 @@ paths:
         Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
       operationId: managedUserUpdate
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_UPDATE
+      x-infraweave-subject: account
       parameters:
         - description: Globally unique, immutable ID of ManagedUser to update.
           in: path
@@ -2565,6 +2671,8 @@ paths:
         The managed user's personal API keys in the account, oldest first, including those disabled as DEPROVISIONED.
       operationId: managedUserPersonalApiKeys
       x-infraweave-feature: managed-users
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
       parameters:
         - description: Selects the parent object.
           in: path
@@ -2616,6 +2724,8 @@ paths:
         Resend the managed user's invitation, which moves its sentAt to now and so restarts its 24 hours; nothing is delivered. A managed user who has accepted their invitation, or has none, answers 409 invalid-state.
       operationId: managedUserResendInvite
       x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_INVITE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: managedUserId
@@ -2668,6 +2778,8 @@ paths:
       description: Whether the account is marked for deletion.
       operationId: markedForDeletion
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -2708,6 +2820,8 @@ paths:
         can only be fetched by admins.
       operationId: messageQueueStats
       x-infraweave-feature: infrastructure
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -2751,6 +2865,8 @@ paths:
       description: The display name of the caller's account.
       operationId: name
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -2788,6 +2904,8 @@ paths:
       description: The account's OAuth redirect host allowlist, in the order it was set.
       operationId: oauthRedirectAllowedHosts
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -2829,9 +2947,11 @@ paths:
   /on-trial-until:
     get:
       description: >-
-        null: an infraweave account is never on a trial (decision 0021, DV-080).
+        null: an infraweave account is never on a trial.
       operationId: onTrialUntil
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -2874,6 +2994,8 @@ paths:
         The caller's organization.
       operationId: organization
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -2909,6 +3031,8 @@ paths:
         Rename the caller's organization; its slug never changes.
       operationId: organizationUpdate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       requestBody:
         content:
           application/json:
@@ -2953,6 +3077,8 @@ paths:
         The organization's accounts, oldest first.
       operationId: organizationAccounts
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -2995,6 +3121,8 @@ paths:
         answers 409 already-exists, and an admin that is no active member of the organization 422.
       operationId: organizationAccountCreate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -3044,6 +3172,8 @@ paths:
         sessions. Deleting the organization's last account answers 409 invalid-state.
       operationId: organizationAccountDelete
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
       responses:
@@ -3085,6 +3215,8 @@ paths:
         Rename an account of the organization; its slug never changes.
       operationId: organizationAccountUpdate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
       requestBody:
@@ -3134,6 +3266,8 @@ paths:
         account admits it. A claimed account stays claimed, so claiming it again answers 409 invalid-state.
       operationId: organizationAccountClaim
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -3186,6 +3320,8 @@ paths:
         no change. It answers the account's use of every limit.
       operationId: organizationAccountLimitClear
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
         - $ref: '#/components/parameters/OrganizationLimitName'
@@ -3230,6 +3366,8 @@ paths:
         validation-failed naming the limit. It answers the account's use of every limit.
       operationId: organizationAccountLimitSet
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
         - $ref: '#/components/parameters/OrganizationLimitName'
@@ -3279,6 +3417,8 @@ paths:
         The organization's keys, oldest first, with no secret.
       operationId: organizationKeys
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -3320,6 +3460,8 @@ paths:
         SHA-256 is stored. Its token reaches the Organization tag alone and takes no seat.
       operationId: organizationKeyCreate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -3368,6 +3510,8 @@ paths:
         Delete an organization key, revoking every session of its tokens.
       operationId: organizationKeyDelete
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationKeyID'
       responses:
@@ -3409,6 +3553,8 @@ paths:
         change.
       operationId: organizationKeyDisable
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationKeyID'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -3454,6 +3600,8 @@ paths:
         The organization's pooled limits as they apply now, and their use across its accounts.
       operationId: organizationLimits
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -3490,6 +3638,8 @@ paths:
         The organization's members, oldest first.
       operationId: organizationMembers
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -3532,6 +3682,8 @@ paths:
         disabled as DEPROVISIONED, and it holds no seat. Deactivating a deactivated member is no change.
       operationId: organizationMemberDeactivate
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationMemberID'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -3578,6 +3730,8 @@ paths:
         is no change.
       operationId: organizationAdminRevoke
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationMemberID'
       responses:
@@ -3618,6 +3772,8 @@ paths:
         no account's data. Granting a role the member holds is no change.
       operationId: organizationAdminGrant
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/OrganizationMemberID'
       responses:
@@ -3659,6 +3815,8 @@ paths:
         stack, run, state or secret.
       operationId: organizationUsage
       x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -3700,6 +3858,8 @@ paths:
         The account's personal API keys, oldest first, each naming its owner. Deleted keys are left out.
       operationId: personalApiKeys
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -3743,6 +3903,8 @@ paths:
         Create a personal API key owned by the calling member. Its token acts as the owner in this account, never beyond them, and stops working when the owner is removed from the account or deactivated. Only a member's own session may create one, and only while the account's personalApiKeysEnabled is on; any other caller answers 403. The secret is answered once.
       operationId: personalApiKeyCreate
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -3797,6 +3959,8 @@ paths:
       description: The number of the account's personal API keys that are neither disabled nor deleted.
       operationId: personalApiKeysCount
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -3836,6 +4000,8 @@ paths:
         Whether the account's members may create personal API keys; true until an account admin turns it off.
       operationId: personalApiKeysEnabled
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -3874,6 +4040,8 @@ paths:
         Disable one of the account's personal API keys and end every session of it. A key that is not personal answers 404.
       operationId: personalApiKeyDisable
       x-infraweave-feature: personal-api-keys
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: personalApiKeyId
@@ -3924,9 +4092,11 @@ paths:
   /seats:
     get:
       description: >-
-        The seats of the caller's account and its organization (decision 0021, DV-080). With billing off no limit applies and neither limit is set.
+        The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
       operationId: seats
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -3966,6 +4136,8 @@ paths:
         The account's security contact address; empty until an account admin sets it.
       operationId: securityEmail
       x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -4003,6 +4175,8 @@ paths:
       description: Invalidate all account sessions except for the session making the request. Returns the deleted sessions.
       operationId: sessionDeleteAll
       x-infraweave-feature: sessions
+      x-infraweave-action: SESSION_DELETE
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -4041,6 +4215,8 @@ paths:
         tier. An empty array will be returned for Starter tier accounts.
       operationId: sessions
       x-infraweave-feature: sessions
+      x-infraweave-action: SESSION_READ
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -4084,6 +4260,8 @@ paths:
       description: 'Invalidate a Session. NOTE: this functionality is not available in the Starter tier.'
       operationId: sessionDelete
       x-infraweave-feature: sessions
+      x-infraweave-action: SESSION_DELETE
+      x-infraweave-subject: account
       parameters:
         - in: path
           name: sessionId
@@ -4131,6 +4309,8 @@ paths:
         Ask the account's admins for requestedAccessLevel on the space spaceId names. Only a member may ask; another caller answers 403 forbidden. The account's root space is its only space until spaces arrive, so another spaceId answers 404. Nothing is delivered: the request is recorded on the account's audit trail as managed_user.request_role_change. Answers true.
       operationId: managedUserRequestRoleChange
       x-infraweave-feature: managed-users
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:spaceId:space
       parameters:
         - in: path
           name: spaceId
@@ -4191,6 +4371,8 @@ paths:
       description: Create a new stack dependency.
       operationId: stackDependencyCreate
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: body:stackId:stack
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -4246,6 +4428,8 @@ paths:
       description: Creates multiple stack dependencies in a single request.
       operationId: stackDependenciesCreateInBatch
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -4304,6 +4488,8 @@ paths:
       description: Delete a stack dependency.
       operationId: stackDependencyDelete
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackDependencyId:stack_dependency
       parameters:
         - in: path
           name: stackDependencyId
@@ -4349,6 +4535,8 @@ paths:
       description: Update an existing stack dependency.
       operationId: stackDependencyUpdate
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackDependencyId:stack_dependency
       parameters:
         - description: ID of the stack dependency to update.
           in: path
@@ -4405,6 +4593,8 @@ paths:
       description: Adds reference output/input
       operationId: stackDependenciesAddReference
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackDependencyId:stack_dependency
       parameters:
         - description: Immutable ID of stack dependency
           in: path
@@ -4472,6 +4662,8 @@ paths:
       description: Adds multiple references output/input in a single request.
       operationId: stackDependenciesAddReferences
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackDependencyId:stack_dependency
       parameters:
         - in: path
           name: stackDependencyId
@@ -4538,6 +4730,8 @@ paths:
       description: Deletes multiple references from stack dependency.
       operationId: stackDependenciesDeleteReferences
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: any
       parameters:
         - in: query
           name: ids
@@ -4585,6 +4779,8 @@ paths:
       description: Updates multiple references output/input in a single request.
       operationId: stackDependenciesUpdateReferences
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: any
       requestBody:
         content:
           application/json:
@@ -4637,6 +4833,8 @@ paths:
       description: Deletes reference output/input from stack dependency
       operationId: stackDependenciesDeleteReference
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:referenceId:stack_dependency_reference
       parameters:
         - in: path
           name: referenceId
@@ -4682,6 +4880,8 @@ paths:
       description: Updates reference output/input
       operationId: stackDependenciesUpdateReference
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:referenceId:stack_dependency_reference
       parameters:
         - in: path
           name: referenceId
@@ -4740,6 +4940,8 @@ paths:
       description: List of all the stacks in the account.
       operationId: stacks
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -4785,6 +4987,8 @@ paths:
         handed over to infraweave for further management.
       operationId: stackCreate
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_CREATE
+      x-infraweave-subject: body:input.space
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -4847,6 +5051,8 @@ paths:
       description: Search Stacks with a set of predicates, ordering and paging.
       operationId: searchStacks
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
       requestBody:
         content:
           application/json:
@@ -4893,6 +5099,8 @@ paths:
       description: Delete an existing stack.
       operationId: stackDelete
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_DELETE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -4943,6 +5151,8 @@ paths:
       description: Details of a single Stack.
       operationId: stack
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -4988,6 +5198,8 @@ paths:
       description: Update an existing stack.
       operationId: stackUpdate
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5051,6 +5263,8 @@ paths:
       description: List of aws integrations that can be attached to this Stack.
       operationId: stackAttachableAwsIntegrations
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5101,6 +5315,8 @@ paths:
       description: List of azure integrations that can be attached to this Stack.
       operationId: stackAttachableAzureIntegrations
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5151,6 +5367,8 @@ paths:
       description: List of contexts that can be attached to this Stack.
       operationId: stackAttachableContexts
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5201,6 +5419,8 @@ paths:
       description: List of policies that can be attached to this Stack.
       operationId: stackAttachablePolicies
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5251,6 +5471,8 @@ paths:
       description: List of worker pools that can be attached to this Stack.
       operationId: stackAttachableWorkerPools
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5301,6 +5523,8 @@ paths:
       description: Single stack config element.
       operationId: stackConfigElement
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5352,6 +5576,8 @@ paths:
       description: Add a stack config element.
       operationId: stackConfigAdd
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_ADD_CONFIG
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack on which the environment variable is defined
           in: path
@@ -5421,6 +5647,8 @@ paths:
       description: Delete a stack config element.
       operationId: stackConfigDelete
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_DELETE_CONFIG
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5473,6 +5701,8 @@ paths:
       description: An individual stack dependency.
       operationId: stackDependency
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5528,6 +5758,8 @@ paths:
       description: Disable the stack, so it cannot create new runs.
       operationId: stackDisable
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_DISABLE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5580,6 +5812,8 @@ paths:
       description: Enable the stack.
       operationId: stackEnable
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_ENABLE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5632,6 +5866,8 @@ paths:
       description: Individual entity managed by this stack (id is the address of the entity).
       operationId: stackEntity
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5683,6 +5919,8 @@ paths:
       description: Lock the stack for exclusive use.
       operationId: stackLock
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_LOCK
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5742,6 +5980,8 @@ paths:
       description: "Import a previously uploaded state file into a managed-state stack.\nNOTE: the `state` argument is the objectId returned by the stateUploadUrl \nmutation, which points at the file you uploaded via its pre-signed URL."
       operationId: stackManagedStateImport
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_MANAGED_STATE_IMPORT
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5801,6 +6041,8 @@ paths:
     post:
       operationId: stackManagedStateRollback
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_MANAGED_STATE_ROLLBACK
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5863,6 +6105,8 @@ paths:
         Supports bidirectional migration between Terraform stacks with 'terragrunt' label and native Terragrunt.
       operationId: stackMigrateVendor
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -5923,6 +6167,8 @@ paths:
       description: Retrieve stack policy attachment by a known ID.
       operationId: stackPolicyAttachment
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -5974,6 +6220,8 @@ paths:
       description: Paginated list of proposed Runs.
       operationId: stackProposedRuns
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6034,6 +6282,8 @@ paths:
         Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
       operationId: proposeWithOverrides
       x-infraweave-feature: stacks
+      x-infraweave-action: RUN_PROPOSE_WITH_OVERRIDES
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -6098,6 +6348,8 @@ paths:
         sure you know exactly what you're doing!
       operationId: stackReslug
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_RESLUG
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -6150,6 +6402,8 @@ paths:
       description: List of role bindings for this Stack.
       operationId: stackRoleBindings
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6200,6 +6454,8 @@ paths:
       description: Individual Run (or task) by ID.
       operationId: stackRun
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6250,6 +6506,8 @@ paths:
     get:
       operationId: stackRunResourceState
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6301,6 +6559,8 @@ paths:
       description: Paginated list of Runs targeting the tracked branch.
       operationId: stackRuns
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6359,6 +6619,8 @@ paths:
         be overridden.
       operationId: runTrigger
       x-infraweave-feature: stacks
+      x-infraweave-action: RUN_TRIGGER
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack on which the run is to be triggered.
           in: path
@@ -6426,6 +6688,8 @@ paths:
         Also, note that the maximum supported range is 8 days (691,200 seconds).
       operationId: stackRunsInRange
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6488,6 +6752,8 @@ paths:
       description: Individual ScheduledDelete created for this stack
       operationId: stackScheduledDelete
       x-infraweave-feature: scheduling
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6539,6 +6805,8 @@ paths:
       description: Create a new ScheduledDelete for stack
       operationId: stackScheduledDeleteCreate
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_DELETE_CREATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack for which to set up scheduling
           in: path
@@ -6605,6 +6873,8 @@ paths:
       description: Delete ScheduledDelete for stack
       operationId: stackScheduledDeleteDelete
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_DELETE_DELETE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -6656,6 +6926,8 @@ paths:
       description: Update ScheduledDelete for stack
       operationId: stackScheduledDeleteUpdate
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_DELETE_UPDATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -6719,6 +6991,8 @@ paths:
       description: Individual ScheduledRun created for this stack
       operationId: stackScheduledRun
       x-infraweave-feature: scheduling
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -6770,6 +7044,8 @@ paths:
       description: Create a new ScheduledRun for stack
       operationId: stackScheduledRunCreate
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_RUN_CREATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack for which to set up the scheduled run
           in: path
@@ -6837,6 +7113,8 @@ paths:
       description: Delete ScheduledRun for stack
       operationId: stackScheduledRunDelete
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_RUN_DELETE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -6888,6 +7166,8 @@ paths:
       description: Update ScheduledRun for stack
       operationId: stackScheduledRunUpdate
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_RUN_UPDATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -6952,6 +7232,8 @@ paths:
       description: Individual ScheduledTask created for this stack
       operationId: stackScheduledTask
       x-infraweave-feature: scheduling
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7003,6 +7285,8 @@ paths:
       description: Create a new ScheduledTask for stack
       operationId: stackScheduledTaskCreate
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_TASK_CREATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack for which to set up the scheduled task
           in: path
@@ -7065,6 +7349,8 @@ paths:
       description: Delete ScheduledTask for stack
       operationId: stackScheduledTaskDelete
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_TASK_DELETE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -7116,6 +7402,8 @@ paths:
       description: Update ScheduledTask for stack
       operationId: stackScheduledTaskUpdate
       x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_TASK_UPDATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -7175,6 +7463,8 @@ paths:
       description: Search managed entities with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntities
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7228,6 +7518,8 @@ paths:
       description: Search managed entities grouped by providers with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntitiesGroupByProviders
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7281,6 +7573,8 @@ paths:
       description: Search managed entities grouped by stacks with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntitiesGroupByStacks
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7334,6 +7628,8 @@ paths:
       description: Search managed entities grouped by types with a set of predicates, ordering and paging.
       operationId: stackSearchManagedEntitiesGroupByTypes
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7387,6 +7683,8 @@ paths:
       description: Information about fields available for searching managed entities.
       operationId: stackSearchManagedEntitiesSuggestions
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7440,6 +7738,8 @@ paths:
       description: Returns managed state versions
       operationId: stackSearchManagedStateVersions
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7495,6 +7795,8 @@ paths:
         Note: this is an experimental functionality.
       operationId: stackSearchRunIgnoredTriggers
       x-infraweave-feature: ignored-runs
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7550,6 +7852,8 @@ paths:
         used for tasks and - by default - for triggering tracked runs (deployments).
       operationId: stackSetCurrentCommit
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_SET_CURRENT_COMMIT
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -7610,6 +7914,8 @@ paths:
       description: Sets or unsets star on a Stack or Module.
       operationId: starSet
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_SET_STAR
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -7666,6 +7972,8 @@ paths:
         Requires external state access to be enabled on the stack.
       operationId: stateDownloadUrl
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_STATE_DOWNLOAD
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack to download state from.
           in: path
@@ -7727,6 +8035,8 @@ paths:
       description: Sync the tracked commit of the stack.
       operationId: stackSyncCommit
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_SYNC_COMMIT
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -7779,6 +8089,8 @@ paths:
       description: Paginated list of Tasks.
       operationId: stackTasks
       x-infraweave-feature: stacks
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.
           in: path
@@ -7833,6 +8145,8 @@ paths:
       description: Create a Task from a command.
       operationId: taskCreate
       x-infraweave-feature: stacks
+      x-infraweave-action: TASK_CREATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack for which to run the task
           in: path
@@ -7897,6 +8211,8 @@ paths:
       description: Unlock the stack.
       operationId: stackUnlock
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UNLOCK
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -7949,6 +8265,8 @@ paths:
       description: Create a new WebhooksIntegration for stack
       operationId: webhooksIntegrationCreate
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_WEBHOOK_CREATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - description: ID of the stack which triggers the webhooks
           in: path
@@ -8015,6 +8333,8 @@ paths:
       description: Delete WebhooksIntegration for stack
       operationId: webhooksIntegrationDelete
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_WEBHOOK_DELETE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -8066,6 +8386,8 @@ paths:
       description: Update WebhooksIntegration for stack
       operationId: webhooksIntegrationUpdate
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_WEBHOOK_UPDATE
+      x-infraweave-subject: path:stackId:stack
       parameters:
         - in: path
           name: stackId
@@ -8129,6 +8451,8 @@ paths:
       description: Generate pre-signed state upload URL.
       operationId: stateUploadUrl
       x-infraweave-feature: stacks
+      x-infraweave-action: STACK_MANAGED_STATE_IMPORT
+      x-infraweave-subject: any
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -8171,9 +8495,11 @@ paths:
   /tier:
     get:
       description: >-
-        The tier of the caller's organization, as the operator defines it (decision 0021, DV-079). With billing off it is Enterprise, which every organization then has.
+        The tier of the caller's organization, as the operator defines it. With billing off it is Enterprise, which every organization then has.
       operationId: tier
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -8210,9 +8536,11 @@ paths:
   /tier-features:
     get:
       description: >-
-        The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off (decision 0021, DV-079). With billing off it is every gated feature the operator has not switched off.
+        The entitlement of the caller's organization in infraweave feature names, sorted: its tier's features and its grants, less those the operator switched off. With billing off it is every gated feature the operator has not switched off.
       operationId: tierFeatures
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -8257,6 +8585,8 @@ paths:
       description: The type of the caller's account, always ORG.
       operationId: type
       x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -8294,6 +8624,8 @@ paths:
       description: Current user, if any.
       operationId: viewer
       x-infraweave-feature: viewer
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
       responses:
         "200":
           content:
@@ -8586,7 +8918,7 @@ components:
       type: object
       x-graphql-args-of: accountUpdateSecurityEmail
     Action:
-      description: Action represents an action that a user can perform.
+      description: Action represents an action that a user can perform. The values after AI_INTEGRATION_TOGGLE act on the account's API keys, sessions, managed users and groups, which belong to the account rather than to a space, so they are held on the account's top space.
       enum:
         - CONTEXT_CREATE
         - CONTEXT_DELETE
@@ -8730,8 +9062,38 @@ components:
         - AI_INTEGRATION_UPDATE
         - AI_INTEGRATION_DELETE
         - AI_INTEGRATION_TOGGLE
+        - API_KEY_CREATE
+        - API_KEY_DELETE
+        - API_KEY_READ
+        - API_KEY_RESET
+        - API_KEY_UPDATE
+        - MANAGED_USER_DELETE
+        - MANAGED_USER_GROUP_CREATE
+        - MANAGED_USER_GROUP_DELETE
+        - MANAGED_USER_GROUP_READ
+        - MANAGED_USER_GROUP_UPDATE
+        - MANAGED_USER_INVITE
+        - MANAGED_USER_READ
+        - MANAGED_USER_UPDATE
+        - SESSION_DELETE
+        - SESSION_READ
       type: string
       x-enum-descriptions:
+        API_KEY_CREATE: Create the account's API keys.
+        API_KEY_DELETE: Delete the account's API keys.
+        API_KEY_READ: Read the account's API keys; an admin of any space holds it.
+        API_KEY_RESET: Reset the secrets of the account's API keys.
+        API_KEY_UPDATE: Update the account's API keys.
+        MANAGED_USER_DELETE: Delete the account's managed users.
+        MANAGED_USER_GROUP_CREATE: Create the account's managed user groups.
+        MANAGED_USER_GROUP_DELETE: Delete the account's managed user groups.
+        MANAGED_USER_GROUP_READ: Read the account's managed user groups; an admin of any space holds it.
+        MANAGED_USER_GROUP_UPDATE: Update the account's managed user groups.
+        MANAGED_USER_INVITE: Invite people to the account as managed users.
+        MANAGED_USER_READ: Read the account's managed users; an admin of any space holds it.
+        MANAGED_USER_UPDATE: Update the account's managed users.
+        SESSION_DELETE: Delete the account's sessions.
+        SESSION_READ: Read the account's sessions.
         STACK_AWS_INTEGRATION_ATTACH: Disabled. Do not use.
         STACK_AWS_INTEGRATION_DETACH: Disabled. Do not use.
         STACK_AWS_INTEGRATION_UPDATE: Disabled. Do not use.
@@ -8782,6 +9144,11 @@ components:
         admin:
           description: Whether the key holds a space-admin role binding on the account's top space.
           type: boolean
+        allowedActions:
+          description: The actions the caller may perform on the API key, from the rules that enforce them.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         createdAt:
           description: Creation timestamp.
           format: int32
@@ -8858,6 +9225,7 @@ components:
       required:
         - accessRules
         - admin
+        - allowedActions
         - createdAt
         - creator
         - deleted
@@ -8904,7 +9272,7 @@ components:
       description: |-
         A new API key. There is no admin field: a body that sets one answers
         400, and a key becomes an account admin through a space-admin role
-        binding on the account's top space (decision 0006).
+        binding on the account's top space.
       properties:
         description:
           description: Description of the API key
@@ -8962,7 +9330,7 @@ components:
       type: object
       x-graphql-type: ApiKeyOIDCSettings
     ApiKeyPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -9100,7 +9468,7 @@ components:
         - account
       type: object
     AvailableUserGroupsPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -9222,7 +9590,7 @@ components:
         externalIdForStack: served by GET /aws-integrations/{awsIntegrationId}/external-id-for-stack
       x-graphql-type: AwsIntegration
     AwsIntegrationPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -9379,7 +9747,7 @@ components:
         attachedStack: served by GET /azure-integrations/{azureIntegrationId}/attached-stack
       x-graphql-type: AzureIntegration
     AzureIntegrationPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -9460,7 +9828,7 @@ components:
       type: object
       x-graphql-type: BillingAddon
     BillingAddonPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -9556,7 +9924,7 @@ components:
       type: object
       x-graphql-type: BillingPlan
     BillingPlanPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -10046,7 +10414,7 @@ components:
         configElement: served by GET /contexts/{contextId}/config-element
       x-graphql-type: Context
     ContextPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -10398,7 +10766,7 @@ components:
       type: object
       x-graphql-type: FeatureFlagEvaluationResult
     FeatureFlagEvaluationResultPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -10968,6 +11336,11 @@ components:
           items:
             $ref: '#/components/schemas/SpaceAccessRule'
           type: array
+        allowedActions:
+          description: The actions the caller may perform on the managed user, from the rules that enforce them.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         groupCount:
           description: Number of groups in your identity provider that this user was a member of on last login.
           format: int32
@@ -11017,6 +11390,7 @@ components:
           type: string
       required:
         - accessRules
+        - allowedActions
         - groupCount
         - id
         - latestGroups
@@ -11103,7 +11477,7 @@ components:
       type: object
       x-graphql-type: ManagedUserGroupCreateInputV2
     ManagedUserGroupPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11162,7 +11536,7 @@ components:
       type: object
       x-graphql-type: ManagedUserInviteInputV2
     ManagedUserPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11240,7 +11614,7 @@ components:
       type: object
       x-graphql-type: MessageQueueStats
     MessageQueueStatsPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11381,7 +11755,7 @@ components:
       type: object
       x-graphql-type: ModuleResource
     OauthRedirectAllowedHostsPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11562,7 +11936,7 @@ components:
         - value
       type: object
     OrganizationAccountPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11649,7 +12023,7 @@ components:
         - name
       type: object
     OrganizationKeyPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11724,7 +12098,7 @@ components:
         - status
       type: object
     OrganizationMemberPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -11755,7 +12129,7 @@ components:
         - name
       type: object
     OrganizationUsagePage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -12037,7 +12411,7 @@ components:
       type: object
       x-graphql-type: PolicyIntentProjectAttachment
     PolicyPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -12134,10 +12508,14 @@ components:
           type: string
           description: >-
             The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
+        action:
+          type: string
+          description: >-
+            For forbidden, when an action decided it, the action the caller may not perform, a value of the Action enum or a pseudo-action.
         feature:
           type: string
           description: >-
-            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue (decision 0021).
+            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
         tiers:
           type: array
           items:
@@ -12711,7 +13089,7 @@ components:
       type: object
       x-graphql-type: RunObservabilityStatus
     RunPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -14029,7 +14407,7 @@ components:
       type: object
     Seats:
       description: >-
-        The seats of the caller's account: the pooled seats limit of its organization with the organization's use, and the account's own limit with its use when one is set (decision 0021, DV-080).
+        The seats of the caller's account: the pooled seats limit of its organization with the organization's use, and the account's own limit with its use when one is set.
       properties:
         account:
           $ref: '#/components/schemas/SeatLimit'
@@ -14071,6 +14449,11 @@ components:
         admin:
           description: Admin means that the user is an admin of the organization.
           type: boolean
+        allowedActions:
+          description: The actions the caller may perform on the session, from the rules that enforce them.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         channel:
           $ref: '#/components/schemas/SessionChannel'
         createdAt:
@@ -14112,6 +14495,7 @@ components:
           type: string
       required:
         - admin
+        - allowedActions
         - channel
         - createdAt
         - current
@@ -14136,7 +14520,7 @@ components:
       type: string
       x-graphql-type: SessionChannel
     SessionPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -15925,7 +16309,7 @@ components:
       type: object
       x-graphql-type: StackOutput
     StackPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -16018,7 +16402,7 @@ components:
       type: object
       x-graphql-type: StackRoleBinding
     StackRoleBindingPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -16441,7 +16825,7 @@ components:
       x-graphql-type: TerragruntTool
     Tier:
       description: >-
-        A tier as the operator defines it (decision 0021, DV-079), in place of the BillingTier enum.
+        A tier as the operator defines it, in place of the BillingTier enum.
       properties:
         features:
           description: The features the tier holds, as infraweave names them, sorted.
@@ -16462,7 +16846,7 @@ components:
         - name
       type: object
     TierFeaturePage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -17018,7 +17402,7 @@ components:
         searchWorkersSuggestions: served by GET /worker-pools/{workerPoolId}/search-workers-suggestions
       x-graphql-type: WorkerPool
     WorkerPoolPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:

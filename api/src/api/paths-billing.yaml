@@ -28,7 +28,7 @@ components:
       type: object
       x-graphql-type: BillingAddon
     BillingAddonPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -124,7 +124,7 @@ components:
       type: object
       x-graphql-type: BillingPlan
     BillingPlanPage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -280,7 +280,7 @@ components:
       description: >-
         The seats of the caller's account: the pooled seats limit of its
         organization with the organization's use, and the account's own
-        limit with its use when one is set (decision 0021, DV-080).
+        limit with its use when one is set.
       properties:
         account:
           $ref: '#/components/schemas/SeatLimit'
@@ -367,7 +367,7 @@ components:
       x-graphql-type: SubscriptionUpdateV2Input
     Tier:
       description: >-
-        A tier as the operator defines it (decision 0021, DV-079), in place of
+        A tier as the operator defines it, in place of
         the BillingTier enum.
       properties:
         features:
@@ -389,7 +389,7 @@ components:
         - name
       type: object
     TierFeaturePage:
-      description: One page of a cursor-paginated list (decision 0003).
+      description: One page of a cursor-paginated list.
       properties:
         items:
           items:
@@ -405,9 +405,11 @@ paths:
   /available-billing-addons:
     get:
       description: >-
-        An empty list: infraweave sells no add-ons (decision 0021, DV-080).
+        An empty list: infraweave sells no add-ons.
       operationId: availableBillingAddons
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -450,9 +452,11 @@ paths:
   /available-self-service-plans:
     get:
       description: >-
-        An empty list: infraweave sells no plans (decision 0021, DV-080).
+        An empty list: infraweave sells no plans.
       operationId: availableSelfServicePlans
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -495,9 +499,11 @@ paths:
   /billed-externally:
     get:
       description: >-
-        true: no Stripe subscription exists (decision 0021, DV-080).
+        true: no Stripe subscription exists.
       operationId: billedExternally
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -535,10 +541,12 @@ paths:
     delete:
       description: >-
         Would cancel the Stripe subscription through a billing service. infraweave has none,
-        so it answers 403 installation-unsupported (decision 0021, DV-080).
+        so it answers 403 installation-unsupported.
         The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionDelete
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -574,9 +582,11 @@ paths:
       x-rest-style: singleton
     get:
       description: >-
-        null: no Stripe subscription exists (decision 0021, DV-080).
+        null: no Stripe subscription exists.
       operationId: billingSubscription
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -616,10 +626,12 @@ paths:
     post:
       description: >-
         Would create a Stripe subscription through a billing service. infraweave has none,
-        so it answers 403 installation-unsupported (decision 0021, DV-080).
+        so it answers 403 installation-unsupported.
         The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionCreate
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -678,10 +690,12 @@ paths:
     put:
       description: >-
         Would change the Stripe subscription through a billing service. infraweave has none,
-        so it answers 403 installation-unsupported (decision 0021, DV-080).
+        so it answers 403 installation-unsupported.
         The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionUpdateV2
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       requestBody:
         content:
           application/json:
@@ -728,10 +742,12 @@ paths:
     post:
       description: >-
         Would change the subscription's billing details through a billing service. infraweave has none,
-        so it answers 403 installation-unsupported (decision 0021, DV-080).
+        so it answers 403 installation-unsupported.
         The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionUpdateInfo
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -790,10 +806,12 @@ paths:
     post:
       description: >-
         Would change the subscription's tier through a billing service. infraweave has none,
-        so it answers 403 installation-unsupported (decision 0021, DV-080).
+        so it answers 403 installation-unsupported.
         The operator changes an organization's tier through the operator API.
       operationId: billingSubscriptionUpdateTier
       x-infraweave-feature: usage
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -845,9 +863,11 @@ paths:
   /on-trial-until:
     get:
       description: >-
-        null: an infraweave account is never on a trial (decision 0021, DV-080).
+        null: an infraweave account is never on a trial.
       operationId: onTrialUntil
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -887,10 +907,11 @@ paths:
   /seats:
     get:
       description: >-
-        The seats of the caller's account and its organization (decision 0021,
-        DV-080). With billing off no limit applies and neither limit is set.
+        The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
       operationId: seats
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -927,11 +948,12 @@ paths:
   /tier:
     get:
       description: >-
-        The tier of the caller's organization, as the operator defines it
-        (decision 0021, DV-079). With billing off it is Enterprise, which every
+        The tier of the caller's organization, as the operator defines it. With billing off it is Enterprise, which every
         organization then has.
       operationId: tier
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -970,10 +992,12 @@ paths:
       description: >-
         The entitlement of the caller's organization in infraweave feature
         names, sorted: its tier's features and its grants, less those the
-        operator switched off (decision 0021, DV-079). With billing off it is
+        operator switched off. With billing off it is
         every gated feature the operator has not switched off.
       operationId: tierFeatures
       x-infraweave-feature: usage
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'

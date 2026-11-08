@@ -27,9 +27,6 @@ const (
 	// of a managed user and a space.
 	ResourceManagedUser = "MANAGED_USER"
 	ResourceSpace       = "SPACE"
-	// RootSpace is the ID of the account's top space, its only space until
-	// P4's spaces.
-	RootSpace = "root"
 	// InvitationTTL is how long an invitation may be accepted after it was
 	// sent: Spacelift's 24 hours (report 14, C125).
 	InvitationTTL = 24 * time.Hour
@@ -331,8 +328,10 @@ func (s *Service) RequestInvite(
 		map[string]any{"email": email, "userName": name}))
 }
 
-// RequestRoleChange records p's request for level on space. Nothing is
-// delivered; the trail holds it.
+// RequestRoleChange records p's request for level on space, the slug of
+// a space of p's account that p can read, which the route table checks
+// before the request reaches the service. Nothing is delivered; the
+// trail holds it.
 func (s *Service) RequestRoleChange(
 	ctx context.Context,
 	p kernel.Principal,
@@ -340,9 +339,6 @@ func (s *Service) RequestRoleChange(
 ) error {
 	if p.Kind != kernel.PrincipalUser {
 		return ErrNotMember
-	}
-	if space != RootSpace {
-		return fmt.Errorf("%w: space %q", port.ErrNotFound, space)
 	}
 	if !slices.Contains(AccessLevels, level) {
 		return &organization.FieldError{

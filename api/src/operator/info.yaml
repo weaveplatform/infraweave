@@ -3,7 +3,7 @@ info:
   title: infraweave operator API
   version: 0.1.0
   description: >-
-    The installation operator's API (decision 0021): organizations, their
+    The installation operator's API: organizations, their
     first accounts and their break-glass credentials; tiers, the billing
     switch and each organization's tier and grants; the queue's dead jobs;
     and the data key's rotation. Only an operator

@@ -48,6 +48,7 @@ func TestAccGuardedReplicas(t *testing.T) {
 			g,
 			byAddress{},
 			nil,
+			nil,
 		)
 		r.Post("/things", func(w http.ResponseWriter, req *http.Request) {
 			runs.Add(1)

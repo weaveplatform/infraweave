@@ -105,6 +105,18 @@ func (s *Store) NonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) 
 	return on, nil
 }
 
+// NonAdminKeyManagers reads whether the account lets the admins of the
+// spaces below its top space manage API keys.
+func (s *Store) NonAdminKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error) {
+	var on bool
+	err := tx.Q(ctx, s.db).QueryRow(ctx,
+		`SELECT api_key_non_admin_managers FROM accounts WHERE id = $1`, acct).Scan(&on)
+	if err != nil {
+		return false, read(err, "account", acct.ULID)
+	}
+	return on, nil
+}
+
 // ToggleNonHumanKeyManagers flips the setting in one statement, so two
 // flips at once are two flips.
 func (s *Store) ToggleNonHumanKeyManagers(

@@ -15,16 +15,19 @@ import (
 
 // tenant is an account seeded through SQL with one secret API key, its
 // first: no credential exists before it to create one through the API
-// with. The IDs are fixed so feature files can name the key's caller,
-// api_key:<key>.
+// with. The key is space-admin on the account's top space, as an
+// account's first admin is, unless member. The IDs are fixed so feature
+// files can name the key's caller, api_key:<key>.
 type tenant struct {
 	org, account, key string
 	orgSlug, slug     string
+	member            bool
 }
 
 // The scenario's tenants: home, whose key every SDK client authenticates
-// with; sibling, another account of home's organization; and stranger,
-// an account of another organization.
+// with; member, a key of home's account with no binding; sibling, another
+// account of home's organization; and stranger, an account of another
+// organization.
 var (
 	home = tenant{
 		"01KACME0000000000000000001",
@@ -32,6 +35,15 @@ var (
 		"01KACME0000000000000000003",
 		"acme",
 		"acme",
+		false,
+	}
+	member = tenant{
+		"01KACME0000000000000000001",
+		"01KACME0000000000000000002",
+		"01KACME000000000000000000A",
+		"acme",
+		"acme",
+		true,
 	}
 	sibling = tenant{
 		"01KACME0000000000000000001",
@@ -39,6 +51,7 @@ var (
 		"01KACME0000000000000000005",
 		"acme",
 		"acme-dev",
+		false,
 	}
 	stranger = tenant{
 		"01KG10BEX00000000000000001",
@@ -46,8 +59,11 @@ var (
 		"01KG10BEX00000000000000003",
 		"globex",
 		"globex",
+		false,
 	}
-	tenants = map[string]tenant{"home": home, "sibling": sibling, "stranger": stranger}
+	tenants = map[string]tenant{
+		"home": home, "member": member, "sibling": sibling, "stranger": stranger,
+	}
 )
 
 // secret is the key's secret, derived from its ID so no secret is
@@ -77,10 +93,19 @@ type querier interface {
 // seed inserts t's organization, with the Enterprise entitlement creating
 // an organization gives it while billing is off, its account with the top
 // space, legacy and system roles that creating an account gives it, and
-// its key, or
-// leaves them as they are, so every replica's launch may seed.
+// its key with its binding, or leaves them as they are, so every
+// replica's launch may seed.
 func (t tenant) seed(ctx context.Context, db querier) error {
 	digest := sha256.Sum256([]byte(t.secret()))
+	binding := fmt.Sprintf(`
+		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
+				created_by)
+			SELECT '%[1]s', gen_random_uuid(), 'api_key', '%[2]s', id, '%[1]s', 'binding', 'acceptance'
+			FROM roles WHERE account_id = '%[1]s' AND slug = 'space-admin'
+			ON CONFLICT DO NOTHING;%[3]s`, uuidOf(t.account), uuidOf(t.key), authzChanged(t.account))
+	if t.member {
+		binding = ""
+	}
 	_, err := db.Query(ctx, fmt.Sprintf(`
 		INSERT INTO organizations (id, slug, name) VALUES ('%[1]s', '%[2]s', '%[2]s')
 			ON CONFLICT DO NOTHING;
@@ -105,10 +130,19 @@ func (t tenant) seed(ctx context.Context, db querier) error {
 			ON CONFLICT DO NOTHING;
 		INSERT INTO api_keys (account_id, id, name, type, secret_hash, teams, creator)
 			VALUES ('%[3]s', '%[5]s', 'acceptance', 'SECRET', '\x%[6]s', '{acceptance}', 'acceptance')
-			ON CONFLICT DO NOTHING;`,
+			ON CONFLICT DO NOTHING;%[7]s`,
 		uuidOf(t.org), t.orgSlug, uuidOf(t.account), t.slug, uuidOf(t.key),
-		hex.EncodeToString(digest[:])))
+		hex.EncodeToString(digest[:]), binding))
 	return err
+}
+
+// authzChanged is the SQL that marks the account's authorization changed,
+// as the access domain's writes do: its version moves and authz:<account>
+// goes out, so every replica drops the snapshot it holds at once.
+func authzChanged(account string) string {
+	return fmt.Sprintf(`
+		UPDATE accounts SET authz_version = authz_version + 1 WHERE id = '%s';
+		SELECT pg_notify('infraweave_invalidate', 'authz:%s');`, uuidOf(account), account)
 }
 
 // exchange trades t's key for an API token at POST /auth/token.

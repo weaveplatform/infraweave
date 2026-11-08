@@ -167,13 +167,23 @@ func TestAccAPIKeyStore(t *testing.T) {
 		t.Errorf("the list after a delete has %d keys, want 2", len(list))
 	}
 
+	if on, err := x.s.NonAdminKeyManagers(ctx, x.acct); err != nil || on {
+		t.Errorf("non-admin managers before the setting = %t, %v", on, err)
+	}
 	if err := x.s.SetNonAdminManagers(ctx, x.acct, true); err != nil {
 		t.Fatal(err)
 	}
-	var on bool
-	if err := db.QueryRow(ctx, `SELECT api_key_non_admin_managers FROM accounts WHERE id = $1`,
-		x.acct).Scan(&on); err != nil || !on {
-		t.Errorf("api_key_non_admin_managers = %v, %v", on, err)
+	if on, err := x.s.NonAdminKeyManagers(ctx, x.acct); err != nil || !on {
+		t.Errorf("non-admin managers = %t, %v", on, err)
+	}
+	if _, err := x.s.NonAdminKeyManagers(
+		ctx,
+		kernel.NewAccountID(),
+	); !errors.Is(
+		err,
+		port.ErrNotFound,
+	) {
+		t.Errorf("non-admin managers of no account: %v", err)
 	}
 	if err := x.s.SetNonAdminManagers(
 		ctx,

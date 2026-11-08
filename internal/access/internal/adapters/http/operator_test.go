@@ -177,7 +177,8 @@ func newOpWorld(t *testing.T) *opWorld {
 		Now:              func() time.Time { return t0 },
 	})
 	keys := apikey.NewService(apikey.Deps{
-		Store: base.st, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
+		Store: base.st, Authz: base.authz, Drop: auth.Cache().Drop,
+		Now: func() time.Time { return t0 },
 	})
 	svc := operator.NewService(operator.Deps{
 		Store: w.orgs, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
@@ -197,7 +198,9 @@ func newOpWorld(t *testing.T) *opWorld {
 		"/api/",
 		NewAuthenticator(auth, publicURL).Middleware(isPublic)(api.HandlerWithOptions(
 			api.NewStrictHandlerWithOptions(
-				full{Server: NewServer(Services{Auth: auth, Keys: keys, Accounts: base.st})},
+				full{Server: NewServer(Services{
+					Auth: auth, Keys: keys, Authz: base.authz, Spaces: base.st, Accounts: base.st,
+				})},
 				nil,
 				opts,
 			),

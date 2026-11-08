@@ -4,7 +4,8 @@
 # whether the schema marks it disabled or deprecated. Report 14 section 3.3
 # is the source. specref actions generates actions.gen.go from this file
 # and api/reference/spacelift/introspection.json, and fails when either
-# names a value the other lacks or a flag disagrees with the schema.
+# names a value the other lacks or a flag disagrees with the schema. The
+# rows marked infraweave, at the end, are infraweave's own and in no enum.
 #
 # STACK_SCHEDULED_DELETE_UPDATE's fallback is undocumented (report 14,
 # C117); it takes admin, as the other scheduling actions do.
@@ -158,3 +159,24 @@ AI_INTEGRATION_CREATE: {subject: ai_integration, fallback: admin}
 AI_INTEGRATION_UPDATE: {subject: ai_integration, fallback: admin}
 AI_INTEGRATION_DELETE: {subject: ai_integration, fallback: admin}
 AI_INTEGRATION_TOGGLE: {subject: ai_integration, fallback: admin}
+# infraweave's account actions, which the reference's enum lacks: the
+# operations on API keys, sessions, managed users and their groups, none
+# of which lives in a space. Each is decided on the account's top space,
+# and an anywhere one in any space where the caller holds it, as report
+# 14's matrix lets the admin of any space read keys, users and groups.
+# Only space-admin, of the system roles, holds them.
+API_KEY_READ: {subject: api_key, fallback: admin, infraweave: true, anywhere: true}
+API_KEY_CREATE: {subject: api_key, fallback: admin, infraweave: true}
+API_KEY_UPDATE: {subject: api_key, fallback: admin, infraweave: true}
+API_KEY_RESET: {subject: api_key, fallback: admin, infraweave: true}
+API_KEY_DELETE: {subject: api_key, fallback: admin, infraweave: true}
+SESSION_READ: {subject: session, fallback: admin, infraweave: true}
+SESSION_DELETE: {subject: session, fallback: admin, infraweave: true}
+MANAGED_USER_READ: {subject: managed_user, fallback: admin, infraweave: true, anywhere: true}
+MANAGED_USER_INVITE: {subject: managed_user, fallback: admin, infraweave: true}
+MANAGED_USER_UPDATE: {subject: managed_user, fallback: admin, infraweave: true}
+MANAGED_USER_DELETE: {subject: managed_user, fallback: admin, infraweave: true}
+MANAGED_USER_GROUP_READ: {subject: managed_user_group, fallback: admin, infraweave: true, anywhere: true}
+MANAGED_USER_GROUP_CREATE: {subject: managed_user_group, fallback: admin, infraweave: true}
+MANAGED_USER_GROUP_UPDATE: {subject: managed_user_group, fallback: admin, infraweave: true}
+MANAGED_USER_GROUP_DELETE: {subject: managed_user_group, fallback: admin, infraweave: true}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
@@ -17,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	managed "github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -32,6 +34,8 @@ import (
 type Server struct {
 	auth     *authn.Service
 	keys     *apikey.Service
+	authz    accessapi.Authorizer
+	spaces   Spaces
 	accounts Accounts
 	settings *settings.Service
 	orgs     *orgadmin.Service
@@ -45,12 +49,20 @@ type Accounts interface {
 	Account(ctx context.Context, id kernel.AccountID) (account.Account, error)
 }
 
+// Spaces lists an account's spaces, top first; space.Service is one.
+type Spaces interface {
+	Spaces(ctx context.Context, acct kernel.AccountID) ([]space.Space, error)
+}
+
 // Services are what the partial serves through: Orgs the Organization
-// tag, Users and Groups the Managed Users tag, and OAuth the consent
-// operations of the authorization server.
+// tag, Users and Groups the Managed Users tag, OAuth the consent
+// operations of the authorization server, and Authz and Spaces the
+// actions each view lists.
 type Services struct {
 	Auth     *authn.Service
 	Keys     *apikey.Service
+	Authz    accessapi.Authorizer
+	Spaces   Spaces
 	Accounts Accounts
 	Settings *settings.Service
 	Orgs     *orgadmin.Service
@@ -62,7 +74,8 @@ type Services struct {
 // NewServer returns the partial serving through sv.
 func NewServer(sv Services) Server {
 	return Server{
-		auth: sv.Auth, keys: sv.Keys, accounts: sv.Accounts, settings: sv.Settings, orgs: sv.Orgs,
+		auth: sv.Auth, keys: sv.Keys, authz: sv.Authz, spaces: sv.Spaces, accounts: sv.Accounts,
+		settings: sv.Settings, orgs: sv.Orgs,
 		users: sv.Users, groups: sv.Groups, oauth: sv.OAuth,
 	}
 }
@@ -149,9 +162,13 @@ func (s Server) Sessions(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	acts, err := s.actionsOn(ctx, p, entitySession)
+	if err != nil {
+		return nil, err
+	}
 	body := api.SessionPage{Items: make([]api.Session, 0, min(len(ss), limit))}
 	for _, ss := range ss[:min(len(ss), limit)] {
-		body.Items = append(body.Items, view(ss, p.SessionID))
+		body.Items = append(body.Items, view(ss, p.SessionID, acts))
 	}
 	if len(ss) > limit {
 		last := ss[limit-1].ID.String()
@@ -186,7 +203,11 @@ func (s Server) SessionDelete(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
-	return api.SessionDelete200JSONResponse{Body: view(ss, p.SessionID)}, nil
+	acts, err := s.actionsOn(ctx, p, entitySession)
+	if err != nil {
+		return nil, err
+	}
+	return api.SessionDelete200JSONResponse{Body: view(ss, p.SessionID, acts)}, nil
 }
 
 // SessionDeleteAll revokes every session of the caller's account but its
@@ -203,9 +224,13 @@ func (s Server) SessionDeleteAll(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	acts, err := s.actionsOn(ctx, p, entitySession)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]api.Session, 0, len(ss))
 	for _, ss := range ss {
-		out = append(out, view(ss, p.SessionID))
+		out = append(out, view(ss, p.SessionID, acts))
 	}
 	return api.SessionDeleteAll200JSONResponse{Body: out}, nil
 }
@@ -224,7 +249,11 @@ func (s Server) Logout(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
-	out := api.Logout200JSONResponse{Body: view(ss, p.SessionID)}
+	acts, err := s.actionsOn(ctx, p, entitySession)
+	if err != nil {
+		return nil, err
+	}
+	out := api.Logout200JSONResponse{Body: view(ss, p.SessionID, acts)}
 	if from(ctx).browser {
 		c := clearedCookie()
 		out.Headers.SetCookie = &c
@@ -261,7 +290,67 @@ func (s Server) userOf(
 	}
 	u.ApiKeys, u.OwnedApiKeys = keyRefs(h.Created), keyRefs(h.Owned)
 	u.CanCreatePersonalApiKey = h.CanCreatePersonal
+	if u.Actions, err = s.spaceActions(ctx, p); err != nil {
+		return api.User{}, err
+	}
 	return u, nil
+}
+
+// The kinds of entity of the catalogue's account actions whose views list
+// the caller's actions.
+const (
+	entitySession     = "session"
+	entityManagedUser = "managed_user"
+)
+
+// actionsOn are the actions on an entity of kind entity that p holds, as
+// the route table decides each: the catalogue's actions on the kind,
+// which are account actions.
+func (s Server) actionsOn(
+	ctx context.Context,
+	p kernel.Principal,
+	entity string,
+) ([]api.Action, error) {
+	held, err := s.authz.Actions(ctx, p, p.AccountID.ULID)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	out := []api.Action{}
+	for _, a := range held {
+		if info, _ := accessapi.ActionOf(a); info.Subject == entity {
+			out = append(out, api.Action(a))
+		}
+	}
+	return out, nil
+}
+
+// spaceActions are the actions p holds on each space of its account that
+// it holds any on, in the tree's order.
+func (s Server) spaceActions(ctx context.Context, p kernel.Principal) ([]api.SpaceActions, error) {
+	spaces, err := s.spaces.Spaces(ctx, p.AccountID)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store marks an unreachable database
+	}
+	out := []api.SpaceActions{}
+	for _, sp := range spaces {
+		held, err := s.authz.Actions(ctx, p, sp.ID)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // as above
+		}
+		if len(held) > 0 {
+			out = append(out, api.SpaceActions{SpaceID: sp.Slug, Actions: actions(held)})
+		}
+	}
+	return out, nil
+}
+
+// actions is as in the API's Action type.
+func actions(as []accessapi.Action) []api.Action {
+	out := make([]api.Action, 0, len(as))
+	for _, a := range as {
+		out = append(out, api.Action(a))
+	}
+	return out
 }
 
 func keyRefs(ids []kernel.ULID) []api.ApiKeyRef {
@@ -273,8 +362,8 @@ func keyRefs(ids []kernel.ULID) []api.ApiKeyRef {
 }
 
 // user is the part of the User shape the principal alone decides. The
-// lists of what arrives with later phases (space actions and security
-// keys) are empty, never absent, as the shape requires.
+// lists userOf fills, and the security keys that arrive with a later
+// phase, are empty, never absent, as the shape requires.
 func user(p kernel.Principal, token string, until time.Time) api.User {
 	id := p.Login
 	if p.Kind == kernel.PrincipalAPIKey {
@@ -294,23 +383,25 @@ func user(p kernel.Principal, token string, until time.Time) api.User {
 	}
 }
 
-// view is ss in the reference's Session shape; current marks the caller's
-// own. type is the actor's kind in capitals, such as API_KEY.
-func view(ss session.Session, current kernel.ULID) api.Session {
+// view is ss in the reference's Session shape, with acts as its
+// allowedActions; current marks the caller's own. type is the actor's
+// kind in capitals, such as API_KEY.
+func view(ss session.Session, current kernel.ULID, acts []api.Action) api.Session {
 	return api.Session{
-		Admin:         ss.Admin,
-		Channel:       api.SessionChannel(ss.Channel),
-		CreatedAt:     unix(ss.CreatedAt),
-		Current:       ss.ID == current,
-		Email:         ss.Email,
-		ExpiresAt:     unix(ss.ExpiresAt),
-		Id:            ss.ID.String(),
-		IpAddress:     ss.IPAddress,
-		IsMachineUser: ss.ActorKind == kernel.PrincipalAPIKey,
-		Login:         ss.Login,
-		Name:          ss.Name,
-		Teams:         nonNil(ss.Teams),
-		Type:          strings.ToUpper(string(ss.ActorKind)),
+		Admin:          ss.Admin,
+		AllowedActions: acts,
+		Channel:        api.SessionChannel(ss.Channel),
+		CreatedAt:      unix(ss.CreatedAt),
+		Current:        ss.ID == current,
+		Email:          ss.Email,
+		ExpiresAt:      unix(ss.ExpiresAt),
+		Id:             ss.ID.String(),
+		IpAddress:      ss.IPAddress,
+		IsMachineUser:  ss.ActorKind == kernel.PrincipalAPIKey,
+		Login:          ss.Login,
+		Name:           ss.Name,
+		Teams:          nonNil(ss.Teams),
+		Type:           strings.ToUpper(string(ss.ActorKind)),
 	}
 }
 
