@@ -1,6 +1,6 @@
 @postgres
 Feature: The OAuth server for MCP clients
-  An MCP client authorizes through decision 0006's built-in OAuth server:
+  An MCP client authorizes through infraweave's built-in OAuth server:
   it registers itself (RFC 7591), sends the member to authorize with an
   S256 PKCE challenge for one MCP resource, and the console's consent page
   approves the request for one account the member is admitted to. The
@@ -8,6 +8,7 @@ Feature: The OAuth server for MCP clients
   and a refresh token that rotates on every use; presenting a spent one
   revokes the grant. The grant is a session of the member's, so removing
   the member from the account ends it.
+  ref: decision 0006
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

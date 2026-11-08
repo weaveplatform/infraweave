@@ -39,8 +39,11 @@ func (p parityProduct) baseline(t *testing.T) *specref.ParityBaseline {
 	return b
 }
 
-// registers reads decision 0001's rename table and the supersession
-// register for the product.
+// registers reads the rename table, which lists the reference names
+// infraweave serves under another name, and the supersession register for
+// the product.
+//
+// ref: decision 0001
 func (p parityProduct) registers(t *testing.T) *specref.ParityRegisters {
 	t.Helper()
 	renames, err := os.ReadFile(filepath.Join("..", "docs", "data", "renames.json"))
@@ -76,12 +79,14 @@ func (p parityProduct) compareWith(
 	return r
 }
 
-// checkParity fails on a breach of decision 0016's rules (an unrecorded
+// checkParity fails on a breach of the parity rules (an unrecorded
 // divergence, a served superseded operation), when the API loses a
 // reference operation that the baseline does not accept as missing, and
 // when the baseline lists an operation the comparison no longer needs, so
 // coverage of the reference can only go up and the baseline shrinks with
 // it.
+//
+// ref: decision 0016
 func checkParity(t *testing.T, p parityProduct) {
 	t.Helper()
 	r := p.compare(t, api.Served)
@@ -107,8 +112,10 @@ func TestUnitAPIParity(t *testing.T) { checkParity(t, deployParity) }
 
 // TestUnitFlowsParity checks the API against the Flows reference. Nothing
 // Flows is served before P18c, so the baseline accepts every operation as
-// missing; the test-scenario operations stay accepted until PD-16 is
-// decided.
+// missing; the test-scenario operations stay accepted until the design of
+// Flows test scenarios is decided.
+//
+// ref: PD-16
 func TestUnitFlowsParity(t *testing.T) {
 	checkParity(t, flowsParity)
 	b := flowsParity.baseline(t)

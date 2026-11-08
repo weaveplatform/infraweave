@@ -1,4 +1,4 @@
-// Package authz is decision 0007's evaluator. Build makes an account's
+// Package authz is the authorization evaluator. Build makes an account's
 // Snapshot from its authorization rows at one authz_version: the space
 // tree with each space's parent and inherit_entities, the roles with
 // their actions (a system role's from role.SystemActions), the bindings
@@ -27,6 +27,8 @@
 // the snapshot. A run
 // principal holds no grant until its stack and home space reach the
 // principal.
+//
+// ref: decision 0007
 //
 // # Input and output
 //

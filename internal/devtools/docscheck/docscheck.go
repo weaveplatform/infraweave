@@ -87,6 +87,9 @@ func Check(repo fs.FS) ([]Finding, error) {
 	if err := c.mentions(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
+	if err := c.refLines(); err != nil {
+		return nil, fmt.Errorf("docscheck: %w", err)
+	}
 	if err := c.packageDocs(); err != nil {
 		return nil, fmt.Errorf("docscheck: %w", err)
 	}
@@ -524,7 +527,8 @@ func (c *checker) supersededMembers() {
 
 // unverified checks that an open-questions record lists every report that
 // marks a claim *(unverified)*, so no open question is recorded only where it
-// was found. Report 30 is exempt: it defines the marker rather than using it.
+// was found. The open-questions report itself (30-open-questions.md) is
+// exempt: it defines the marker rather than using it.
 // Without the register there is nothing to check against, and a register
 // that does not decode is a finding of registers().
 func (c *checker) unverified() {
@@ -699,8 +703,9 @@ var phaseParts = []string{"Decisions:", "**Depends on:**", "**Tasks**", "**Exit 
 
 // phaseMembers says where each register assigns phases: "" for the whole
 // record, or the one member that holds infraweave's plan. A capability's
-// spacelift member keeps report 26's wording, which names the research's
-// provisional phases rather than the plan's, so it is not read.
+// spacelift member keeps the scope-and-tiers report's wording, which names
+// the research's provisional phases rather than the plan's, so it is not
+// read.
 var phaseMembers = []struct{ reg, member string }{
 	{featuresReg, ""}, {capsReg, "infraweave"}, {supersReg, ""},
 }

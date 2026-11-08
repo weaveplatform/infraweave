@@ -87,10 +87,11 @@ func from(ctx context.Context) request {
 
 // Middleware implements accessapi.Authenticator. A bearer token wins over
 // a cookie. A cookie authenticates a GET or HEAD, and a write only when
-// its Origin is the public URL's (decision 0006 § "Sessions"), so another
-// site cannot make a signed-in browser write. A store that cannot be read
-// answers 503, never 401, so a client retries rather than discards a good
-// credential.
+// its Origin is the public URL's, so another site cannot make a signed-in
+// browser write. A store that cannot be read answers 503, never 401, so a
+// client retries rather than discards a good credential.
+//
+// ref: decision 0006 § "Sessions"
 func (a Authenticator) Middleware(
 	access func(*http.Request) accessapi.Access,
 ) func(http.Handler) http.Handler {

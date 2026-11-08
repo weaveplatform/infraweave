@@ -21,7 +21,9 @@ import (
 
 // RequireDocker is the variable that turns a missing Docker daemon from a
 // skip into a failure, as in the acceptance harness: CI sets it, so a test
-// that needs PostgreSQL can never pass there by skipping (decision 0016).
+// that needs PostgreSQL can never pass there by skipping.
+//
+// ref: decision 0016
 const RequireDocker = "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"
 
 // Template is the database each test's database is copied from, the

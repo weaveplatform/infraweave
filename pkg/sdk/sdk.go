@@ -14,16 +14,20 @@ import (
 	"github.com/weaveplatform/infraweave/pkg/client/operator"
 )
 
-// APIPrefix is the path every served operation sits under (decision 0017),
-// the server URL of api/api.openapi.yaml.
+// APIPrefix is the path every served operation sits under, the server URL
+// of api/api.openapi.yaml.
+//
+// ref: decision 0003
 const APIPrefix = "/api/v1"
 
 // OperatorPrefix is the operator API's path, the server URL of
 // api/operator.openapi.yaml.
 const OperatorPrefix = "/operator/v1"
 
-// IdempotencyKeyHeader names the key every POST and PATCH carries
-// (decision 0003).
+// IdempotencyKeyHeader names the key every POST and PATCH carries, so a
+// retried write takes effect once.
+//
+// ref: decision 0003
 const IdempotencyKeyHeader = "Idempotency-Key"
 
 // Doer sends one HTTP request; *http.Client is one.

@@ -31,7 +31,10 @@ var (
 	ExpireKind = queue.Kind{Name: "blob.expire", Queue: queue.Maintenance, Policy: queue.Ignore}
 )
 
-// Decision 0005's expiry.
+// The expiry blob.expire applies, which is infraweave's own: nothing
+// relies on a bucket lifecycle rule.
+//
+// ref: decision 0005
 const (
 	// ExpireEvery is blob.expire's interval.
 	ExpireEvery = 10 * time.Minute

@@ -139,8 +139,10 @@ func TestAccVersionFloor(t *testing.T) {
 	}
 }
 
-// TestAccULIDColumn checks decision 0005's encoding: a ULID is stored in a
-// uuid column, sorts there in generation order and reads back unchanged.
+// TestAccULIDColumn checks the ULID encoding: a ULID is stored in a uuid
+// column, sorts there in generation order and reads back unchanged.
+//
+// ref: decision 0005
 func TestAccULIDColumn(t *testing.T) {
 	pool := sqltest.Open(t).Primary()
 	if _, err := pool.Exec(

@@ -420,9 +420,11 @@ func listen(t *testing.T, db *pgxpool.Pool) func() []string {
 	}
 }
 
-// TestAccSeed checks decision 0021's seeding: a seeded tier is installed
+// TestAccSeed checks the seeding of tiers: a seeded tier is installed
 // once, and a release replaces its content only while the operator has
 // not edited or deleted it, nor made a tier of its name first.
+//
+// ref: decision 0021
 func TestAccSeed(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)

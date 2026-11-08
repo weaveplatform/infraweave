@@ -1,4 +1,4 @@
-// Package role holds decision 0007's roles and role bindings. Seed is the
+// Package role holds the roles and role bindings. Seed is the
 // five system roles every account starts with: space-reader, space-writer
 // and space-admin, defined from the catalogue's fallback column, and
 // worker-pool-controller and drift-detection-manager. SystemActions is a
@@ -7,6 +7,8 @@
 // one grant of a role to an actor (a user, group, API key, stack or Flows
 // project) in a space, made as a role binding or from a legacy access
 // rule. Custom roles and the binding operations arrive with P4b.
+//
+// ref: decision 0007 § "Roles and the action catalogue"
 //
 // # Input and output
 //

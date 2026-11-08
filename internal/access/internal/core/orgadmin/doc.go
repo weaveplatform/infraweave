@@ -1,6 +1,6 @@
-// Package orgadmin is the Organization tag (decision 0021 § "The
-// organization API"): what an organization's admins do across its
-// accounts without reaching any account's stacks, runs, state or secrets.
+// Package orgadmin is the Organization tag: what an organization's admins
+// do across its accounts without reaching any account's stacks, runs,
+// state or secrets.
 // Service reads and renames the organization; lists, creates, claims,
 // renames and deletes its accounts; lists and deactivates its members and
 // grants or revokes their organization role; lists, creates, disables and
@@ -17,6 +17,8 @@
 // the organization's last account, is ErrInvalidState. Every write
 // carries its organization trail entry, and a revoked session is dropped
 // from the replica's cache at once.
+//
+// ref: decision 0021 § "The organization API"
 //
 // # Input and output
 //

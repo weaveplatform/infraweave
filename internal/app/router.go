@@ -65,8 +65,10 @@ var _ operatorapi.StrictServerInterface = operatorServer{}
 
 // Blobs is object storage as the API role holds it: records written
 // through an objectstore.Writer, which has no Delete, so serve can never
-// delete an object (decision 0005), and the fs driver's /blobs/{token}
-// routes, or nil for another driver.
+// delete an object, and the fs driver's /blobs/{token} routes, or nil for
+// another driver.
+//
+// ref: decision 0005
 type Blobs struct {
 	Objects *blobs.Objects
 	Routes  func(chi.Router)

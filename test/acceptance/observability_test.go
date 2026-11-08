@@ -18,8 +18,10 @@ import (
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
-// observeSteps drive decision 0017's logs, probes and shutdown through the
-// first server of the scenario's world.
+// observeSteps drive the logs, probes and shutdown through the first
+// server of the scenario's world.
+//
+// ref: decision 0017
 type observeSteps struct {
 	w *world
 	// header is the last response's header.

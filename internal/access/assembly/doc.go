@@ -1,7 +1,6 @@
-// Package assembly constructs the access domain: decision 0007's tenancy
-// (organizations, accounts, members and the members each account admits),
-// decision 0006's identity (API keys, sessions, tokens, signing keys and
-// the break-glass credential), the account settings no other domain
+// Package assembly constructs the access domain: tenancy (organizations,
+// accounts, members and the members each account admits), identity (API
+// keys, sessions, tokens, signing keys and the break-glass credential), the account settings no other domain
 // owns, each account's managed users and groups, and each account's
 // space tree. New builds the domain on its Deps; API
 // is its partial of the API's strict server, aliased AccessAPI, and
@@ -29,10 +28,9 @@
 // OperatorAuthenticator the one in front of the operator API; Routes
 // mounts the break-glass login at accessapi.LoginPattern and the
 // authorization server for MCP clients at the OAuth patterns;
-// HashPassword and VerifyPassword are decision 0006's break-glass
-// password hash, which infraweave auth hash-password prints; WatchSessions keeps the
+// HashPassword and VerifyPassword are the break-glass password hash, which infraweave auth hash-password prints; WatchSessions keeps the
 // replica's session cache in step with infraweave_invalidate.
-// Authorizer is decision 0007's evaluator for every domain, from the
+// Authorizer is the authorization evaluator for every domain, from the
 // replica's per-account snapshots; Requirer is the middleware deciding
 // each API operation's action on its subject, finding a space by its slug
 // and another domain's entity through the lookup ResolveSubjects
@@ -43,6 +41,8 @@
 // periodic tasks: ExpireSessions, authn.sessions.expire, hourly, which
 // also deletes ended authorization requests and unused OAuth clients, and
 // RotateKeys, authn.keys.rotate, daily unless rotation is manual.
+//
+// ref: decisions 0006 and 0007
 //
 // # Input and output
 //

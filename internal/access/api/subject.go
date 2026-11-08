@@ -7,7 +7,9 @@ import (
 )
 
 // SubjectKind is where an operation's x-infraweave-subject finds the space
-// its action is decided in (decision 0007 § "Enforcement point").
+// its action is decided in.
+//
+// ref: decision 0007 § "Enforcement point"
 type SubjectKind string
 
 const (

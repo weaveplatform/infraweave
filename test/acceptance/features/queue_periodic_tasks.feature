@@ -1,10 +1,11 @@
 @postgres
 Feature: The work queue and periodic tasks across instances
   Every infraweave all instance runs the queue's workers and the scheduler
-  ticker on one database (decision 0011). They share the work with no
-  leader: a due periodic task fires once, a job that keeps failing dies
-  with its last error, a rolled-back enqueue never runs, and a job whose
-  instance dies is taken over once its lease lapses.
+  ticker on one database. They share the work with no leader: a due periodic
+  task fires once, a job that keeps failing dies with its last error, a
+  rolled-back enqueue never runs, and a job whose instance dies is taken
+  over once its lease lapses.
+  ref: decision 0011
 
   Background:
     Given two infraweave all instances, A and B, on one database with a 2-second queue lease

@@ -69,10 +69,13 @@ func TestAccJobEntitlements(t *testing.T) {
 	}
 }
 
-// TestAccSeatRace checks decision 0021's last seat under PostgreSQL, through
-// both domains as the server wires them: two keys' first uses race for it,
-// and exactly one exchange is admitted while the other answers 403
-// limit-reached.
+// TestAccSeatRace checks the race for an organization's last seat under
+// PostgreSQL, through both domains as the server wires them: two keys' first
+// uses race for it, and exactly one exchange is admitted while the other
+// answers 403 limit-reached, since the count locks the organization's
+// entitlement row before counting.
+//
+// ref: decision 0021
 func TestAccSeatRace(t *testing.T) {
 	ctx := t.Context()
 	db := sqltest.Open(t)

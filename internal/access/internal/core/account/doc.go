@@ -1,8 +1,10 @@
-// Package account holds decision 0007's account: the data boundary every
+// Package account holds the account: the data boundary every
 // account-scoped row carries in account_id, with an immutable slug unique
 // across the installation, a display name, and the claim that names its
 // first account admin. DefaultRunnerImage is the runner image an
 // account's private worker pools default to.
+//
+// ref: decision 0007 § "Tenancy"
 //
 // # Input and output
 //

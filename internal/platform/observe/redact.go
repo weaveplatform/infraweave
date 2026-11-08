@@ -7,8 +7,10 @@ import (
 	"strings"
 )
 
-// Redacted replaces every value the log must not carry (decision 0013's
-// marker).
+// Redacted replaces every value the log must not carry, the marker
+// crypt.Value renders as too.
+//
+// ref: decision 0013
 const Redacted = "[redacted]"
 
 // Secret is a string that is never logged: slog writes it as Redacted under

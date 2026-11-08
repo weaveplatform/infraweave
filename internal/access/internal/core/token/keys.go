@@ -9,7 +9,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// Purpose is what a signing key signs (decision 0006).
+// Purpose is what a signing key signs.
+//
+// ref: decision 0006 § "Signing keys"
 type Purpose string
 
 // APIToken is the purpose of every API-facing JWT: API, organization, CLI,
@@ -19,10 +21,12 @@ const APIToken Purpose = "api-token"
 // State is where a signing key is in its rotation.
 type State string
 
-// The states of decision 0006's rotation, in the order a key passes
-// through them. A next key verifies but does not sign; an active key
+// The states of a key's rotation, in the order a key passes through
+// them. A next key verifies but does not sign; an active key
 // signs; a retiring key verifies what it signed until those tokens
 // expire; a retired key does neither.
+//
+// ref: decision 0006 § "Signing keys"
 const (
 	StateNext     State = "next"
 	StateActive   State = "active"
@@ -30,7 +34,9 @@ const (
 	StateRetired  State = "retired"
 )
 
-// Decision 0006's rotation schedule.
+// The rotation schedule.
+//
+// ref: decision 0006 § "Signing keys"
 const (
 	// KeyLifetime is how long a key signs before its successor takes over.
 	KeyLifetime = 90 * 24 * time.Hour

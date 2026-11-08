@@ -1,5 +1,6 @@
-# infraweave's own fragment: the Organization tag, which no Spacelift product has
-# (decision 0021 § "The organization API"). It is outside the parity surface.
+# infraweave's own fragment: the Organization tag, which no Spacelift product
+# has. It is outside the parity surface.
+# ref: decision 0021 § "The organization API"
 components:
   schemas:
     OrganizationView:

@@ -25,9 +25,11 @@ const ReplayedHeader = "Idempotency-Replayed"
 // maxLength in api/src/api/components-common.yaml.
 const MaxKeyLength = 255
 
-// MaxBody is the largest body fingerprinted, decision 0022's default for
+// MaxBody is the largest body fingerprinted, the default of
 // api.max_body_bytes. The body is held in memory to hash it before the
 // handler reads it, so without a bound one request could exhaust memory.
+//
+// ref: decision 0022
 const MaxBody = 1 << 20
 
 // Config holds the server.idempotency settings.
@@ -39,11 +41,12 @@ type Config struct {
 	Lock time.Duration `mapstructure:"lock"`
 }
 
-// Defaults keep a key for decision 0003's 24 hours. No request has a
-// deadline to derive the lock from, so it is five minutes, longer than any
-// request runs: taking over a request that is still running would run the
-// operation twice, where a lock that outlives a crashed replica only answers
-// 409 for longer.
+// Defaults keep a key for 24 hours. No request has a deadline to derive the
+// lock from, so it is five minutes, longer than any request runs: taking
+// over a request that is still running would run the operation twice, where
+// a lock that outlives a crashed replica only answers 409 for longer.
+//
+// ref: decision 0003
 func Defaults() Config { return Config{TTL: 24 * time.Hour, Lock: 5 * time.Minute} }
 
 var (
@@ -209,8 +212,10 @@ func (g guard) fail(w http.ResponseWriter, r *http.Request, op string, err error
 	problem.Failure(w, err)
 }
 
-// fingerprint is decision 0003's identity of a request: its method, its path
-// with the query string and a SHA-256 of its body.
+// fingerprint is what makes two requests with one key the same request: its
+// method, its path with the query string and a SHA-256 of its body.
+//
+// ref: decision 0003
 func fingerprint(r *http.Request, body []byte) string {
 	sum := sha256.Sum256(body)
 	return r.Method + " " + r.URL.RequestURI() + " " + hex.EncodeToString(sum[:])

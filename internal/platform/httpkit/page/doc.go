@@ -1,4 +1,4 @@
-// Package page is decision 0003's opaque cursors for family handlers.
+// Package page is the API's opaque pagination cursors for family handlers.
 //
 // Encode turns a kernel.Cursor, a keyset position, into base64url-encoded
 // versioned JSON that names the list it came from; Decode checks the version
@@ -6,6 +6,8 @@
 // > (cursor) ORDER BY sort_key, id LIMIT kernel.PageLimit + 1, and encodes the
 // last row it returns as the next cursor when the extra row shows there is
 // another page.
+//
+// ref: decision 0003
 //
 // # Input and output
 //

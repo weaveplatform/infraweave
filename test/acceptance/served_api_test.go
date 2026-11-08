@@ -320,9 +320,11 @@ func (s *servedSteps) retryAfter() error {
 	return nil
 }
 
-// namesRequest checks decision 0022's correlation: the last problem's
+// namesRequest checks that a problem names its request: the last problem's
 // instance is urn:infraweave:request: and the X-Request-Id it was answered
 // with.
+//
+// ref: decision 0022
 func (s *servedSteps) namesRequest() error {
 	resp := s.last()
 	p, ok := sdk.AsProblem(resp.err)

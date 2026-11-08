@@ -1,11 +1,11 @@
 @postgres
 Feature: Account reads
-  A credential works in one account (decision 0007), so the Account reads
-  take no account: id, name, type and defaultPrivateWorkerPoolRunnerImage
-  each answer for the caller's account. type is ORG, the reference's
-  GitHub account type for an organization's account, and the runner image
-  is decision 0008's Terraform runner image until worker pools set an
-  account's default.
+  A credential works in one account, so the Account reads take no account:
+  id, name, type and defaultPrivateWorkerPoolRunnerImage each answer for
+  the caller's account. type is ORG, the reference's GitHub account type
+  for an organization's account, and the runner image is infraweave's own
+  Terraform runner image until worker pools set an account's default.
+  ref: decisions 0007 and 0008
 
   @op:id @op:name @op:type @op:defaultPrivateWorkerPoolRunnerImage @case:success
   Scenario: Each read answers the caller's account

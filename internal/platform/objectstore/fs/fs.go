@@ -24,7 +24,9 @@ type Keys interface {
 	DerivedKey(purpose string, id uint32) ([]byte, error)
 }
 
-// Purpose is the derived key's purpose (decision 0013).
+// Purpose is the derived key's purpose.
+//
+// ref: decision 0013
 const Purpose = "objectstore-url"
 
 // tmp holds writes until they are renamed into place. No key starts with

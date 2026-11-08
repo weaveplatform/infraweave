@@ -14,8 +14,10 @@ type Key struct {
 	Value  string
 }
 
-// Response is what a replay sends: the status, the two headers decision 0003
-// names, and the body.
+// Response is what a replay sends: the status, the two headers a replay
+// repeats, Content-Type and Location, and the body.
+//
+// ref: decision 0003
 type Response struct {
 	Status      int
 	ContentType string

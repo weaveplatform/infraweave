@@ -111,7 +111,10 @@ type Retention struct {
 
 const day = 24 * time.Hour
 
-// Defaults are decision 0005's settings, with no driver.
+// Defaults are the objectstore settings a process starts with, with no
+// driver.
+//
+// ref: decision 0005
 func Defaults() Config {
 	return Config{
 		S3: S3Config{Region: "us-east-1", Encryption: "none"},

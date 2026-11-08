@@ -86,8 +86,10 @@ type Operated struct {
 	Grants Grants
 }
 
-// tierName is decision 0021's tier name: the seeded names, Starter+ among
-// them, and the operator's own.
+// tierName is a tier's name: the seeded names, Starter+ among them, and
+// the operator's own.
+//
+// ref: decision 0021
 var tierName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 +._-]{0,62}$`)
 
 // CheckTier validates a tier's content against the catalogue: each feature

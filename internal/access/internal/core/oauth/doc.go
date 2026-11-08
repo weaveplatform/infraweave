@@ -1,4 +1,4 @@
-// Package oauth is decision 0006's authorization server for MCP clients:
+// Package oauth is the authorization server for MCP clients:
 // public clients, the authorization code with PKCE S256 alone, and
 // rotating refresh tokens, where each grant is a session of the member in
 // one account.
@@ -10,10 +10,10 @@
 // URI on any port; AllowedRedirect is consent's, loopback or a host of
 // the account's oauthRedirectAllowedHosts. Resource names the MCP
 // surfaces: /mcp, /flows/mcp and each flow's server below it.
-// CheckChallenge and VerifyPKCE are RFC 7636's S256.
+// CheckChallenge and VerifyPKCE are the S256 method of RFC 7636.
 //
 // Service serves the protocol. Metadata is the RFC 8414 document;
-// Register is RFC 7591's registration; Authorize stores a request for
+// Register is RFC 7591 registration; Authorize stores a request for
 // RequestTTL and answers the console's consent page for it, or the
 // client's redirect URI with an error once that URI is known good.
 // ConsentRequest, Approve and Deny are the consent page's: the member
@@ -26,6 +26,8 @@
 // refresh; its sub is the member's login. Every refusal of the protocol
 // is an *Error carrying an OAuth error code. Expire deletes requests a
 // day after their end and clients unused for ClientRetention.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 //
 // # Input and output
 //

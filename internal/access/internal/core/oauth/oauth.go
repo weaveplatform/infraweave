@@ -14,7 +14,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// The scopes of decision 0006. ScopeWrite implies ScopeRead.
+// The scopes a grant may hold. ScopeWrite implies ScopeRead.
+//
+// ref: decision 0006 § "The OAuth authorization server for MCP"
 const (
 	ScopeRead  = "mcp:read"
 	ScopeWrite = "mcp:write"
@@ -31,13 +33,15 @@ const (
 	AuthorizePath = accessapi.OAuthAuthorizePattern
 	TokenPath     = accessapi.OAuthTokenPattern
 	// ConsentPath prefixes the console's consent page, /consent/{request
-	// ID} (decision 0023).
+	// ID}.
+	// ref: decision 0023
 	ConsentPath = "/consent/"
 )
 
-// The MCP surfaces a grant may name as its resource (decisions 0019 and
-// 0018), under the public URL: /mcp, /flows/mcp and each flow's server
-// below it.
+// The MCP surfaces a grant may name as its resource, under the public
+// URL: /mcp, /flows/mcp and each flow's server below it.
+//
+// ref: decisions 0018 and 0019
 const (
 	mcpPath      = "/mcp"
 	flowsMCPPath = "/flows/mcp"
@@ -142,7 +146,7 @@ func Within(want, have []string) bool {
 	return true
 }
 
-// loopbackHosts are RFC 8252's loopback redirect hosts.
+// loopbackHosts are the loopback redirect hosts of RFC 8252.
 var loopbackHosts = []string{"127.0.0.1", "::1", "localhost"}
 
 // Loopback reports whether u is a loopback redirect URI: http on

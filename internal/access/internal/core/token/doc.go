@@ -1,5 +1,5 @@
-// Package token issues and verifies decision 0006's API-facing JWTs and
-// rotates the keys that sign them.
+// Package token issues and verifies the API-facing JWTs and rotates the
+// keys that sign them.
 //
 // Service.Issue signs a Request with the api-token purpose's active key
 // (ES256, through go-jose and a platform/crypt/signer Signer), creating the
@@ -22,6 +22,8 @@
 // MinPublished, and retirement RetireGrace after the last token a retiring
 // key can have signed expires. Manual rotation creates the first key and
 // replaces none. Service.Rotate is authn.keys.rotate.
+//
+// ref: decision 0006
 //
 // # Input and output
 //

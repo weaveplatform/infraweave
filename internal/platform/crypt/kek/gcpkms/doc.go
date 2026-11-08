@@ -1,10 +1,12 @@
-// Package gcpkms is decision 0013's gcpkms KEK provider: it wraps data keys
-// with Cloud KMS Encrypt under the CryptoKey secrets.kek.gcpkms.key_name
-// names, with kek.AAD as additional authenticated data, and unwraps them
-// with Decrypt. Every request carries CRC32C checksums, and a response
-// whose integrity fields do not confirm them is ErrIntegrity. Cloud KMS's
-// INVALID_ARGUMENT on Decrypt is kek.ErrUnwrap; any other error names the
-// provider and the key as itself.
+// Package gcpkms is the gcpkms KEK provider: it wraps data keys with Cloud
+// KMS Encrypt under the CryptoKey secrets.kek.gcpkms.key_name names, with
+// kek.AAD as additional authenticated data, and unwraps them with Decrypt.
+// Every request carries CRC32C checksums, and a response whose integrity
+// fields do not confirm them is ErrIntegrity. Cloud KMS's INVALID_ARGUMENT
+// on Decrypt is kek.ErrUnwrap; any other error names the provider and the
+// key as itself.
+//
+// ref: decision 0013
 //
 // # Input and output
 //

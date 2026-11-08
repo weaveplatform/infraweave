@@ -1,5 +1,4 @@
-// Package space keeps each account's space tree (decision 0007 §
-// "Spaces"). Seed is the tree an account starts with: its top space,
+// Package space keeps each account's space tree. Seed is the tree an account starts with: its top space,
 // whose ID and slug are the account's, so no space is named root and
 // nothing sits above it, and legacy below it, an ordinary space with no
 // suffix on its slug. A created space's slug is SlugOf its name and ULID
@@ -23,6 +22,8 @@
 // spaces a caller may read through Store by Fields, the reference's
 // generic search over the tree, with the reachable spaces the caller
 // passes held in the query.
+//
+// ref: decision 0007 § "Spaces"
 //
 // # Input and output
 //

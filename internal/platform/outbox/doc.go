@@ -1,7 +1,7 @@
-// Package outbox is decision 0015's emit path, shared by Deploy and Flows:
-// a service appends an event in the transaction of the change it
-// describes, so the event exists exactly when the change commits, and the
-// event reaches every consumer of its kind at least once.
+// Package outbox is the event emit path, shared by Deploy and Flows: a
+// service appends an event in the transaction of the change it describes, so
+// the event exists exactly when the change commits, and the event reaches
+// every consumer of its kind at least once.
 //
 // Event is the envelope. Kinds holds each kind's JSON Schema per schema
 // version (draft 2020-12); Append refuses an event of a kind and version
@@ -16,6 +16,8 @@
 // own so a failing consumer retries without holding up the others. Prune,
 // which the scheduler's events.prune task runs, deletes events Config's
 // retention after their fan-out and never one not yet fanned out.
+//
+// ref: decision 0015
 //
 // # Input and output
 //

@@ -1,20 +1,21 @@
 @postgres
 Feature: Served API
-  infraweave serve answers the API on the API listener under /api/v1
-  and the probes on the admin listener alone (decision 0017). Every
-  operation answers 501 until a family implements it, and every error,
-  the router's own included, is a problem detail (decision 0003). Every
-  route, stubbed or not, is rate-limited per caller and cost class, honours
-  Idempotency-Key on POST and PATCH, and can be switched off for one caller.
-  A stubbed POST answers 501, which releases its key, so an idempotent replay
-  needs an operation that succeeds: TestUnitGuardedIdempotency proves it
-  until a family serves a POST. Every problem names the request it answers
-  in its instance, urn:infraweave:request: and the X-Request-Id. Every
-  route but POST /auth/token needs a bearer token (decision 0006): the
-  scenario's client holds one of a seeded API key, whose caller,
-  api_key:<key>, the controls count against, and a request without one
-  answers 401 unauthenticated with WWW-Authenticate: Bearer. Each scenario
-  runs its own infraweave all on a database of its own.
+  infraweave serve answers the API on the API listener under /api/v1 and the
+  probes on the admin listener alone. Every operation answers 501 until a
+  family implements it, and every error, the router's own included, is a
+  problem detail. Every route, stubbed or not, is rate-limited per caller
+  and cost class, honours Idempotency-Key on POST and PATCH, and can be
+  switched off for one caller. A stubbed POST answers 501, which releases
+  its key, so an idempotent replay needs an operation that succeeds:
+  TestUnitGuardedIdempotency proves it until a family serves a POST. Every
+  problem names the request it answers in its instance,
+  urn:infraweave:request: and the X-Request-Id. Every route but POST
+  /auth/token needs a bearer token: the scenario's client holds one of a
+  seeded API key, whose caller, api_key:<key>, the controls count against,
+  and a request without one answers 401 unauthenticated with
+  WWW-Authenticate: Bearer. Each scenario runs its own infraweave all on a
+  database of its own.
+  ref: decisions 0003, 0006 and 0017
 
   Scenario: The admin listener answers the liveness probe
     Given a running infraweave server

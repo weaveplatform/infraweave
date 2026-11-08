@@ -40,7 +40,10 @@ const (
 
 var (
 	// ErrForbidden refuses a member that does not hold the organization
-	// role: decision 0007's 403 forbidden for an account admin without it.
+	// role, which the API answers 403 forbidden even for an account admin,
+	// since the organization's operations describe what every account of
+	// the organization shares.
+	// ref: decision 0007 § "Tenancy"
 	ErrForbidden = errors.New("organization-admin required")
 	// ErrInvalidState refuses a claim of a claimed account and the deletion
 	// of an organization's last account.
@@ -227,10 +230,11 @@ type Deps struct {
 	Now  func() time.Time
 }
 
-// Service is the Organization tag (decision 0021 § "The organization
-// API"). The authenticator admits only principals that may hold the
-// organization role and organization tokens; the service refuses a member
-// that does not hold it.
+// Service is the Organization tag. The authenticator admits only
+// principals that may hold the organization role and organization tokens;
+// the service refuses a member that does not hold it.
+//
+// ref: decision 0021 § "The organization API"
 type Service struct{ d Deps }
 
 // NewService returns the service on d.

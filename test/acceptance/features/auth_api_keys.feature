@@ -1,17 +1,19 @@
 @postgres @oidc
 Feature: API keys
-  An account manages its API keys through the API (decision 0006). Create
-  and reset answer the secret once; only its SHA-256 is stored. Reset,
-  disable and delete revoke every session of the key, so its tokens stop
-  on every replica. A key of another account answers 404 (decision 0007).
-  ApiKeyInput has no admin field, so a body that sets it answers 400
-  (DV-013). An OIDC key exchanges a JWT of its issuer, which infraweave
-  fetches over HTTPS only and from the allowed issuers only (DV-014). The
-  home account's first key is seeded through SQL, as no credential exists
-  before it; every other key here is created through the API. Keys manage
-  keys here because the home account allows it, a setting only a member
-  turns on, which account_settings.feature covers. The servers trust the
-  shared OIDC issuer's certificate and allow it alone.
+  An account manages its API keys through the API. Create and reset answer
+  the secret once; only its SHA-256 is stored. Reset, disable and delete
+  revoke every session of the key, so its tokens stop on every replica. A
+  key of another account answers 404. ApiKeyInput has no admin field, since
+  a key is an administrator through a space-admin binding on the account's
+  top space, so a body that sets it answers 400. An OIDC key exchanges a JWT
+  of its issuer, which infraweave fetches over HTTPS only and from the
+  allowed issuers only, so a key cannot make the server fetch an arbitrary
+  URL. The home account's first key is seeded through SQL, as no credential
+  exists before it; every other key here is created through the API. Keys
+  manage keys here because the home account allows it, a setting only a
+  member turns on, which account_settings.feature covers. The servers trust
+  the shared OIDC issuer's certificate and allow it alone.
+  ref: decisions 0006 and 0007, DV-013, DV-014
 
   Background:
     Given two infraweave servers, A and B, on one database, allowing the shared OIDC issuer

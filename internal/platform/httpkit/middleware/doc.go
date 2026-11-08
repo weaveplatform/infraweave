@@ -8,7 +8,10 @@
 // in base32, echoes it, and carries it on the context for RequestIDFrom.
 // Recover turns a panic into a 500 problem whose detail reveals nothing, and
 // re-raises http.ErrAbortHandler. AccessLog logs one line per request.
-// Decision 0003's rate limits and idempotency keys are its subpackages.
+// The API's rate limits and idempotency keys are its subpackages,
+// ratelimit and idempotency.
+//
+// ref: decision 0003
 //
 // # Input and output
 //

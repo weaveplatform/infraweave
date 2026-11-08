@@ -1,5 +1,6 @@
-// Package assembly constructs the features domain, decision 0021's tiers,
-// entitlement and limits, at the bottom of the declared graph. New builds
+// Package assembly constructs the features domain, the tiers, entitlements
+// and limits that gate what an organization may use, at the bottom of the
+// declared graph. New builds
 // the domain on its Deps; Entitlements is the featuresapi.Entitlements the
 // access domain calls; Seed installs the seeded tiers at startup;
 // Middleware is the chi middleware internal/app runs after authentication;
@@ -12,6 +13,8 @@
 // access'; Settings are its features.* settings, features.disabled the
 // features no organization of the installation holds, which Validate
 // checks against the catalogue.
+//
+// ref: decision 0021
 //
 // # Input and output
 //

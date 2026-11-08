@@ -4,7 +4,7 @@
 // context, given each route's Access: Account, Organization or Public.
 // LoginPattern is the break-glass login's route, beside the APIs, and
 // the OAuth patterns are the authorization server's for MCP clients.
-// Authorizer decides decision 0007's checks for every domain: whether a
+// Authorizer decides the authorization checks for every domain: whether a
 // principal may perform an action in a space, the spaces in which it may,
 // whether it holds an action in any, and the actions it holds in one.
 // Requirer is the middleware internal/app puts after authentication,
@@ -16,14 +16,16 @@
 // account lacks. Spaces is what a domain that stores a space's ID calls to
 // hold the space in its transaction, ErrNoSpace for one the account lacks,
 // and SpaceGuard is what such a domain registers, so the space tree
-// refuses a delete or a move that would strand its rows. Action is
-// decision 0007's action catalogue: the reference's Action enum, which
+// refuses a delete or a move that would strand its rows. Action is the
+// action catalogue roles are built from: the reference's Action enum, which
 // specref generates into actions.gen.go from the introspection snapshot
 // and actions.yaml's rows (subject, fallback, disabled, deprecated), then
 // infraweave's own account actions on API keys, sessions, managed users
 // and groups (Infraweave, and Anywhere for the reads any space's admin
 // holds), and the pseudo-actions ACCOUNT_ADMIN, ORGANIZATION_ADMIN and
 // AUTHENTICATED; Actions and ActionOf read it.
+//
+// ref: decision 0007
 //
 // # Input and output
 //

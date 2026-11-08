@@ -1,8 +1,9 @@
 @postgres
 Feature: Break-glass sign-in rate limit
-  Each sign-in draws from the expensive budget of the client's address
-  (decision 0003), whichever replica it reaches, so a password guesser is
-  slowed to the expensive class's rate.
+  Each sign-in draws from the expensive budget of the client's address,
+  whichever replica it reaches, so a password guesser is slowed to the
+  expensive class's rate.
+  ref: decision 0003
 
   @case:denial
   Scenario: Sign-ins are rate-limited by the client's address

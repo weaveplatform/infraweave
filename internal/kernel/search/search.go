@@ -127,7 +127,10 @@ type Order struct {
 	Desc  bool
 }
 
-// The reasons of decision 0022's field errors that a search answers.
+// The field-error reasons that a search answers, from the API's fixed set
+// that clients branch on.
+//
+// ref: decision 0022
 const (
 	ReasonRequired     = "required"
 	ReasonEnum         = "enum"

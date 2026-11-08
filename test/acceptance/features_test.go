@@ -331,10 +331,12 @@ func slug(name string) string {
 	return strings.Trim(nonWord.ReplaceAllString(strings.ToLower(name), "-"), "-")
 }
 
-// evidence writes what decision 0016 asks of a failed scenario to
+// evidence writes what a failed scenario leaves for its reader to
 // out/<scenario>/: each server's output and configuration, the first's at
 // the top and each later one's in server-<n>/, and, for a scenario that
 // took a database, a dump of it.
+//
+// ref: decision 0016
 func (w *world) evidence(ctx context.Context) error {
 	dir := filepath.Join(w.s.out, slug(w.name))
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -445,8 +447,9 @@ func (w *world) launch(ctx context.Context, mode string, config []byte) (*Server
 	if srv.API == "" {
 		return srv, nil
 	}
-	// Every route but a few needs a credential (decision 0006), so the
-	// scenario's clients hold a token of the home tenant's key.
+	// Every route but a few needs a credential, so the scenario's clients
+	// hold a token of the home tenant's key.
+	// ref: decision 0006
 	db, err := w.querier(ctx)
 	if err != nil {
 		return nil, err

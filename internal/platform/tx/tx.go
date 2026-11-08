@@ -31,7 +31,9 @@ type Options struct {
 }
 
 // MaxRetries is how many times Do runs fn again after a serialization
-// failure or a deadlock, decision 0005's three.
+// failure or a deadlock.
+//
+// ref: decision 0005
 const MaxRetries = 3
 
 // retryable are the SQLSTATEs after which the whole transaction runs again:

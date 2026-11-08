@@ -2,22 +2,24 @@
 // domains exchange a cursor, an ID or a run state without importing each
 // other.
 //
-// It holds decision 0003's pagination values: Cursor, the keyset position a
-// list cursor carries, and PageLimit, which clamps a requested page size to
-// DefaultPageLimit and MaxPageLimit. It holds decision 0005's identifiers:
-// ULID, generated monotonically within a millisecond, written as 26
-// characters on the wire and as a uuid in PostgreSQL, whose text UUID
-// gives, and Slug. It holds
-// decision 0015's AuditEntry, which every domain records through
+// It holds the pagination values: Cursor, the keyset position a list
+// cursor carries, and PageLimit, which clamps a requested page size to
+// DefaultPageLimit and MaxPageLimit. It holds the identifiers: ULID,
+// generated monotonically within a millisecond, written as 26 characters
+// on the wire and as a uuid in PostgreSQL, whose text UUID gives, and
+// Slug. It holds AuditEntry, which every domain records through
 // platform/audit, and OrganizationAuditEntry, an entry of an
-// organization's own trail, above any account. It holds ErrUnavailable, the mark of a dependency that cannot be reached now, which
-// a store sets and the HTTP layer answers with 503. It holds decision
-// 0007's tenancy identifiers, OrganizationID, AccountID and MemberID, each a
-// ULID of its own type so one cannot stand in for another, and decision
-// 0006's Principal: its kind, the actor, and the organization, account and
-// member it acts in. Caller is the principal's `<kind>:<actor ID>` key,
-// which rate-limit buckets and idempotency keys use. Run states and the other
-// shared types join it with the phases that need them.
+// organization's own trail, above any account. It holds ErrUnavailable,
+// the mark of a dependency that cannot be reached now, which a store sets
+// and the HTTP layer answers with 503. It holds the tenancy identifiers,
+// OrganizationID, AccountID and MemberID, each a ULID of its own type so
+// one cannot stand in for another, and Principal: its kind, the actor, and
+// the organization, account and member it acts in. Caller is the
+// principal's `<kind>:<actor ID>` key, which rate-limit buckets and
+// idempotency keys use. Run states and the other shared types join it
+// with the phases that need them.
+//
+// ref: decisions 0003, 0005, 0006, 0007 and 0015
 //
 // # Input and output
 //

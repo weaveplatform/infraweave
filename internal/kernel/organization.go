@@ -1,9 +1,11 @@
 package kernel
 
 // OrganizationID identifies an organization: a customer's agreement with
-// the installation, which holds its members and one or more accounts
-// (decision 0007). Root, the installation's top node, has no row and so no
-// ID; only operator principals act on it.
+// the installation, which holds its members and one or more accounts.
+// Root, the installation's top node, has no row and so no ID; only
+// operator principals act on it.
+//
+// ref: decision 0007
 type OrganizationID struct{ ULID }
 
 // NewOrganizationID returns a new organization's ID.
@@ -16,7 +18,9 @@ func ParseOrganizationID(s string) (OrganizationID, error) {
 }
 
 // MemberID identifies a member: a person in an organization, however many
-// of its accounts admit them (decision 0006).
+// of its accounts admit them.
+//
+// ref: decision 0006
 type MemberID struct{ ULID }
 
 // NewMemberID returns a new member's ID.

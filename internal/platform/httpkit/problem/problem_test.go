@@ -135,8 +135,10 @@ func registryDiff(types, records []Type) []string {
 }
 
 // TestUnitProblemRegistry holds Types to the problem register, the one
-// complete list of slugs (decision 0022), in both directions, so the server
-// and every client that branches on Types agree with it.
+// complete list of slugs, in both directions, so the server and every
+// client that branches on Types agree with it.
+//
+// ref: decision 0022
 func TestUnitProblemRegistry(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "docs", "data", "problems.json"))
 	if err != nil {
@@ -223,9 +225,11 @@ func TestUnitResponseErrorUnavailable(t *testing.T) {
 	}
 }
 
-// TestUnitProblemMembers checks the extension members of decision 0021's
-// refusals and decision 0022's field errors, and that a limit of 0 still
-// names its value.
+// TestUnitProblemMembers checks the extension members of the feature, tier
+// and limit refusals and of field errors, and that a limit of 0 still names
+// its value.
+//
+// ref: decisions 0021 and 0022
 func TestUnitProblemMembers(t *testing.T) {
 	p := FeatureNotInTier.New("no")
 	p.Feature, p.Tiers = "policies", []string{"Starter", "Business"}

@@ -12,9 +12,11 @@ import (
 	"github.com/cucumber/godog"
 )
 
-// spaceSteps drive the Spaces tag (decision 0007 § "Spaces"). A created
-// space's slug ends in a new ULID, so a scenario names it {name} once its
-// creation is answered, as orgSteps resolves members.
+// spaceSteps drive the Spaces tag. A created space's slug ends in a new
+// ULID, so a scenario names it {name} once its creation is answered, as
+// orgSteps resolves members.
+//
+// ref: decision 0007
 type spaceSteps struct{ o *orgSteps }
 
 func (s *spaceSteps) register(sc *godog.ScenarioContext) {

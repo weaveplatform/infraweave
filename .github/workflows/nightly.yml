@@ -1,10 +1,12 @@
 name: go | Nightly acceptance
 
-# Every acceptance partition on main, each night. The job is informational
-# (decision 0016): a failure opens an issue, or comments on the open one,
-# rather than blocking merges. Once @terraform and @tofu scenarios exist
-# (P9), this is where they run on the newest Terraform and OpenTofu
-# releases; until then it runs the suite as the quality gate does.
+# Every acceptance partition on main, each night. The job is informational,
+# so a newer Terraform or OpenTofu release that breaks a case never stops a
+# merge: a failure opens an issue, or comments on the open one. Once
+# @terraform and @tofu scenarios exist (P9), this is where they run on the
+# newest Terraform and OpenTofu releases; until then it runs the suite as the
+# quality gate does.
+# ref: decision 0016
 on:
   schedule:
     - cron: '41 3 * * *'

@@ -29,8 +29,10 @@ var (
 )
 
 // lockKey is the session advisory lock every runner takes before it reads
-// the bookkeeping: the FNV-1a hash of infraweave.migrate (decision 0005),
-// the only advisory lock infraweave takes.
+// the bookkeeping: the FNV-1a hash of infraweave.migrate, the only advisory
+// lock infraweave takes.
+//
+// ref: decision 0005
 var lockKey = func() int64 {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte("infraweave.migrate"))

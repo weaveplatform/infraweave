@@ -1,8 +1,9 @@
 Feature: Served API specification
   infraweave serves its own API, authored as fragments in api/src/api and
   bundled into api/api.openapi.yaml. Families start as scaffolds of the
-  Spacelift reference, and every scaffolded operation follows decision 0003:
-  cursor pagination, idempotency keys and rate limits.
+  Spacelift reference, and every scaffolded operation follows the API
+  conventions: cursor pagination, idempotency keys and rate limits.
+  ref: decision 0003
 
   Background:
     Given the bundled API

@@ -14,7 +14,9 @@ import (
 )
 
 // Prefix starts every API key secret, so secret scanners and log masking
-// recognize a leaked one (decision 0006).
+// recognize a leaked one.
+//
+// ref: decision 0006 § "API keys and organization keys"
 const Prefix = "iwk_"
 
 // secretBytes is the random part of a secret, 43 base64url characters.
@@ -23,7 +25,9 @@ const secretBytes = 32
 // Type is how a key proves itself: a secret, or a JWT from an OIDC issuer.
 type Type string
 
-// The key types of decision 0006.
+// The key types.
+//
+// ref: decision 0006 § "API keys and organization keys"
 const (
 	TypeSecret Type = "SECRET"
 	TypeOIDC   Type = "OIDC"
@@ -60,7 +64,9 @@ type Key struct {
 	CreatedAt      time.Time
 	DeletedAt      time.Time
 	// Admin is whether the key holds space-admin on the account's top
-	// space, which makes it an account admin (DV-013).
+	// space, which makes it an account admin: the binding is the one source
+	// of truth, and no input sets the field.
+	// ref: DV-013
 	Admin bool
 }
 

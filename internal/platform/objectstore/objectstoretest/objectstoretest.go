@@ -34,8 +34,11 @@ type Options struct {
 }
 
 // Identity is what the credentials under test may do. The
-// objectstore-cloud job runs the contract as each of decision 0020's two
-// identities in turn; an emulator's credentials may do everything.
+// objectstore-cloud job runs the contract as each of a deployment's two
+// identities in turn, serve's writer and the scheduler's deleter; an
+// emulator's credentials may do everything.
+//
+// ref: decision 0020
 type Identity int
 
 const (
@@ -253,8 +256,9 @@ func deleteCase(t *testing.T, e env) {
 }
 
 // deleteRefused checks that serve's identity cannot delete, so serve
-// needs no delete permission (decision 0005): the delete fails and the
-// object stays.
+// needs no delete permission: the delete fails and the object stays.
+//
+// ref: decision 0005
 func deleteRefused(t *testing.T, e env) {
 	body := random(10)
 	e.put(t, e.key("a"), body)

@@ -1,17 +1,19 @@
-// Package sql opens infraweave's PostgreSQL pools under decision 0005's
-// database.* settings. Config is that section: the primary's url, an optional
-// read_url for a replica, max_conns, and the statement and idle-in-transaction
+// Package sql opens infraweave's PostgreSQL pools under the database.*
+// settings. Config is that section: the primary's url, an optional read_url
+// for a replica, max_conns, and the statement and idle-in-transaction
 // timeouts every session gets, migrate, what a process mode does with
 // pending migrations, and iam_auth, the cloud whose IAM token is each new
-// connection's password. Open validates it, connects both pools and
-// refuses a server below FloorVersion (PostgreSQL 18) with ErrBelowFloor, so
-// a feature the schema depends on never fails later as a syntax error. DB
+// connection's password. Open validates it, connects both pools and refuses
+// a server below FloorVersion (PostgreSQL 18) with ErrBelowFloor, so a
+// feature the schema depends on never fails later as a syntax error. DB
 // hands out the primary pool, the read pool (the primary when no replica is
 // set) and, through ConnConfig, the primary's connection settings for one
 // dedicated connection, with a fresh token under iam_auth: package notify's
 // LISTEN connection and the migration runner's. Unavailable marks an error
 // that says PostgreSQL cannot be reached with kernel.ErrUnavailable, so a
 // store's caller answers 503 rather than 500.
+//
+// ref: decision 0005
 //
 // # Input and output
 //

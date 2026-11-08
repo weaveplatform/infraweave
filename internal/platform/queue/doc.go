@@ -1,4 +1,4 @@
-// Package queue is decision 0011's job queue in PostgreSQL: background work
+// Package queue is infraweave's job queue in PostgreSQL: background work
 // that a change asks for in its own transaction and that runs after it
 // commits, at least once, on any replica.
 //
@@ -24,18 +24,21 @@
 //
 // A process that runs jobs registers a Handler per kind in a Registry, with
 // its timeout (at most MaxTimeout), the feature that gates it and its retry
-// delay, and runs Workers: a pool per logical queue with that queue's
-// worker count (Config). An idle pool claims when a notification names its
-// queue, when the listener resyncs, when one of its slots frees, or every
-// poll interval; it claims only the kinds this process registered, so a
-// newer kind waits for a replica that knows it. A running handler's lease is
+// delay, and runs Workers: a pool per logical queue with that queue's worker
+// count (Config). An idle pool claims when a notification names its queue,
+// when the listener resyncs, when one of its slots frees, or every poll
+// interval; it claims only the kinds this process registered, so a newer
+// kind waits for a replica that knows it. A running handler's lease is
 // renewed every third of the lease, and its context ends with ErrLeaseLost
-// once another claim takes the job. A nil result completes the job;
-// Snooze, Permanent, any other error, a panic and the timeout map to
-// decision 0011's outcomes. A job whose account's Entitlements lack its
-// kind's feature completes as skipped without running. Run stops claiming
-// when its context ends, lets handlers finish for the shutdown grace, then
-// cancels them and hands their jobs back without counting the attempt.
+// once another claim takes the job. A nil result completes the job; Snooze
+// puts it back for later without counting the attempt, Permanent marks it
+// dead at once, and any other error, a panic or the timeout retries it until
+// its attempts run out. A job whose account's Entitlements lack its kind's
+// feature completes as skipped without running. Run stops claiming when its
+// context ends, lets handlers finish for the shutdown grace, then cancels
+// them and hands their jobs back without counting the attempt.
+//
+// ref: decision 0011
 //
 // # Input and output
 //

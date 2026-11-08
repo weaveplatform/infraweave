@@ -107,7 +107,11 @@ Rules that apply to every change in every phase:
 - **HTTP**, including every test server that models an external API, uses chi.
 - **Builds** run with `GOWORK=off`.
 - **Comments** state what the code does and why, in the present tense, with no
-  change history; history belongs in commit messages.
+  change history; history belongs in commit messages. A comment stands on its
+  own: a decision, report or register record it rests on is cited only on a
+  `ref:` line of its own (`// ref: decision 0007`, `-- ref:`, `# ref:`), never
+  inline, and never in a served API description. `make docs-check` enforces
+  it.
 - **Commits and pull request titles** follow Conventional Commits.
 
 ## Coverage rules

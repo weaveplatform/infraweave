@@ -91,8 +91,11 @@ func (w *world) member(
 	return ss, secret
 }
 
-// TestUnitOriginRule is decision 0006's table: a cookie authenticates a
-// safe method whatever its Origin, and a write only with the public URL's.
+// TestUnitOriginRule checks the Origin rule for cookies: a cookie
+// authenticates a safe method whatever its Origin, and a write only with
+// the public URL's.
+//
+// ref: decision 0006 § "Sessions"
 func TestUnitOriginRule(t *testing.T) {
 	w := newWorld(t)
 	_, secret := w.member(w.acct)

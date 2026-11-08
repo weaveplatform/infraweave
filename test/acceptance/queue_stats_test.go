@@ -28,7 +28,10 @@ type queueStatsPage struct {
 	NextCursor *string     `json:"nextCursor"`
 }
 
-// logicalQueues are decision 0011's queues in its table order.
+// logicalQueues are the work queue's seven logical queues, in the order
+// messageQueueStats lists them.
+//
+// ref: decision 0011
 var logicalQueues = []string{
 	"default", "events", "vcs-inbox", "deliveries", "scheduler", "flows", "maintenance",
 }

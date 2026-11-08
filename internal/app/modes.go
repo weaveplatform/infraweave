@@ -26,7 +26,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 )
 
-// Mode is a process mode: the roles one process runs (decision 0020).
+// Mode is a process mode: the roles one process runs.
+//
+// ref: decision 0020
 type Mode struct {
 	// API serves the API on the API listener.
 	API bool
@@ -55,16 +57,18 @@ func (m Mode) String() string {
 	return strings.Join(roles, ",")
 }
 
-// Run runs mode m until ctx is done, then shuts down as decision 0017 says
-// (serve.Run): /readyz fails at once, the listeners keep accepting for
-// server.shutdown.ready_delay, and in-flight requests drain. It opens
-// PostgreSQL and brings the schema to this binary's (openDatabase) before
-// any listener binds, so a server below the version floor or a schema this
-// binary must not run on never answers. The keyring loads next, so a
-// replica with the wrong KEK, or none, never answers either. The API's
-// controls keep their state in the database (postgresGuards); the
-// listening connection and the pools close only after the drain, when no
-// request can use them.
+// Run runs mode m until ctx is done, then shuts down in order (serve.Run):
+// /readyz fails at once, the listeners keep accepting for
+// server.shutdown.ready_delay so load balancers stop routing to the
+// process, and in-flight requests drain. It opens PostgreSQL and brings the
+// schema to this binary's (openDatabase) before any listener binds, so a
+// server below the version floor or a schema this binary must not run on
+// never answers. The keyring loads next, so a replica with the wrong KEK,
+// or none, never answers either. The API's controls keep their state in the
+// database (postgresGuards); the listening connection and the pools close
+// only after the drain, when no request can use them.
+//
+// ref: decision 0017
 func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	errs := []error{c.Server.Validate(), c.Database.Validate(), c.ObjectStore.Require()}
 	if m.API {
@@ -228,11 +232,14 @@ func handlers(
 	return api, observe.Probes(log, health)
 }
 
-// postgresGuards keeps the controls' state in db, shared by every replica
-// (decision 0005), with stored bodies sealed under keys. The disabled
-// callers are both lists, the configuration's and api_disabled_callers; the
-// table's copy follows infraweave_invalidate through l, in a watcher that
-// runs, with wg, until ctx ends.
+// postgresGuards keeps the controls' state in db, shared by every replica,
+// since replicas are stateless and share state only through the stores,
+// with stored bodies sealed under keys. The disabled callers are both
+// lists, the configuration's and api_disabled_callers; the table's copy
+// follows infraweave_invalidate through l, in a watcher that runs, with wg,
+// until ctx ends.
+//
+// ref: decision 0005
 func postgresGuards(
 	ctx context.Context,
 	wg *sync.WaitGroup,

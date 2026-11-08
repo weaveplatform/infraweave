@@ -1,10 +1,11 @@
 @postgres
 Feature: Dead jobs through the operator API
-  A job that fails every attempt dies with its last error (decision 0011).
+  A job that fails every attempt dies with its last error.
   The operator lists the dead jobs of every organization under
   /operator/v1/queue/jobs, retries one, which makes it pending again with
   its attempts reset, or deletes one, which cancels it for pruning; each
   answers the job as it was.
+  ref: decision 0011
 
   Background:
     Given two infraweave all instances, A and B, on one database with a 2-second queue lease and an operator key

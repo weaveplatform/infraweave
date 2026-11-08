@@ -12,7 +12,9 @@ import (
 	"time"
 )
 
-// ExchangePath is where an API key exchanges for a token (decision 0006).
+// ExchangePath is where an API key exchanges for a token.
+//
+// ref: decision 0006
 const ExchangePath = APIPrefix + "/auth/token"
 
 // RefreshBefore is how long before a token's validUntil the client

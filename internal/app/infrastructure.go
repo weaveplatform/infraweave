@@ -19,10 +19,12 @@ type QueueStats interface {
 // is refused.
 const queueStatsList = "message-queue-stats"
 
-// MessageQueueStats reports every logical queue of decision 0011, in its
-// table order, with the jobs ready to claim as visible and the running
-// ones as in flight. The counts are installation-wide. The list is short
-// and fixed, so a cursor holds the position of a page's last queue.
+// MessageQueueStats reports every logical queue of the persistent work
+// queue, in its table order, with the jobs ready to claim as visible and
+// the running ones as in flight. The counts are installation-wide. The list
+// is short and fixed, so a cursor holds the position of a page's last queue.
+//
+// ref: decision 0011
 func (s apiServer) MessageQueueStats(
 	ctx context.Context,
 	req api.MessageQueueStatsRequestObject,

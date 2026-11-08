@@ -19,7 +19,9 @@ import (
 // Kind is a token's iw_kind claim: the kind of credential it stands for.
 type Kind string
 
-// The iw_kind values of decision 0006.
+// The iw_kind values.
+//
+// ref: decision 0006 § "Token kinds"
 const (
 	KindUser            Kind = "user"
 	KindAPIKey          Kind = "api_key"
@@ -33,7 +35,9 @@ const (
 var Kinds = []Kind{KindUser, KindAPIKey, KindOrganizationKey, KindOAuth, KindRun, KindOperator}
 
 // Leeway is the clock skew Verify allows on iat, nbf and exp, between
-// replicas of one installation (decision 0006's constraints).
+// replicas of one installation.
+//
+// ref: decision 0006 § "Constraints"
 const Leeway = 30 * time.Second
 
 // reloadEvery bounds how often a token naming an unknown kid reloads the
@@ -91,7 +95,7 @@ type Claims struct {
 type wire struct {
 	jwt.Claims
 
-	Kind  Kind   `json:"iw_kind"` //nolint:tagliatelle // decision 0006's claim name
+	Kind  Kind   `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
 	Scope string `json:"scope,omitempty"`
 }
 

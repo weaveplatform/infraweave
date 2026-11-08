@@ -21,9 +21,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
-// The secrets kinds of decision 0013. secrets.rotate is periodic and
-// rotates the data key once it is secrets.rotation_interval old;
-// secrets.reseal is enqueued with each rotation.
+// The secrets kinds. secrets.rotate is periodic and rotates the data key
+// once it is secrets.rotation_interval old; secrets.reseal is enqueued with
+// each rotation.
+//
+// ref: decision 0013
 var (
 	RotateKeys = queue.Kind{
 		Name:   "secrets.rotate",

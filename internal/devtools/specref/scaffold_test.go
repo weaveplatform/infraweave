@@ -13,7 +13,9 @@ import (
 )
 
 // conventionComponents are what api/src/api/components-common.yaml
-// defines for decision 0003, which every scaffold references.
+// defines for the API conventions, which every scaffold references.
+//
+// ref: decision 0003
 var conventionComponents = []string{
 	"parameters/IdempotencyKey", "parameters/Cursor", "parameters/Limit",
 	"headers/RateLimitLimit", "headers/RateLimitRemaining", "headers/RateLimitReset",

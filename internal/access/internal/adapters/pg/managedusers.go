@@ -172,8 +172,10 @@ func (s *Store) Invite(
 
 // invitee is the organization's member with in.Login, created pending when
 // there is none. Two members may share a login, two identities being two
-// members until linked (decision 0006), so a login of several is refused
-// rather than one picked.
+// members until linked, so a login of several is refused rather than one
+// picked.
+//
+// ref: decision 0006
 func invitee(ctx context.Context, q tx.Querier, org kernel.OrganizationID, in user.Invite) (
 	kernel.MemberID,
 	error,

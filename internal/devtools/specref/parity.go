@@ -14,15 +14,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Parity decides one of decision 0016's outcomes for every reference
-// operation: served, served with divergence, superseded or missing. A
-// reference operation is matched with the served one that has its
-// operationId, or the name decision 0001's rename table gives it. The match
-// is then compared by method, route and its query, header and cookie
-// parameters; path parameters are compared as part of the route, and
-// response shapes and headers are not compared. Decision 0003's conventions
+// Parity decides one of four outcomes for every reference operation:
+// served, served with divergence, superseded or missing. A reference
+// operation is matched with the served one that has its operationId, or the
+// name the rename table gives it. The match is then compared by method,
+// route and its query, header and cookie parameters; path parameters are
+// compared as part of the route, and response shapes and headers are not
+// compared. The API conventions (pagination, idempotency keys, rate limits)
 // are recorded by the scaffolder, so the parameters they add are never a
 // difference, and an operation that differs only by them is served.
+//
+// ref: decisions 0001, 0003 and 0016
 
 // Untagged groups the operations, reference and served alike, that carry no
 // tag.
@@ -43,8 +45,10 @@ const (
 	DivergenceParameter   = "parameter:"
 )
 
-// conventionParams are the parameters each decision 0003 convention adds,
-// keyed as ParityOperation.Params keys them.
+// conventionParams are the parameters each API convention adds, keyed as
+// ParityOperation.Params keys them.
+//
+// ref: decision 0003
 var conventionParams = map[string][]string{
 	ConventionPagination:  {"query cursor", "query limit"},
 	ConventionIdempotency: {"header Idempotency-Key"},
@@ -57,7 +61,9 @@ var (
 	ErrRegister      = errors.New("specref: invalid register")
 )
 
-// Outcome is decision 0016's verdict on one reference operation.
+// Outcome is the parity verdict on one reference operation.
+//
+// ref: decision 0016
 type Outcome string
 
 const (
@@ -135,8 +141,11 @@ func (t TagParity) Count(o Outcome) int {
 }
 
 // ParityReport is the whole comparison, one TagParity per tag in name order.
-// Failures are the breaches of decision 0016's rules, sorted: each fails the
+// Failures are the breaches of the parity rules, such as an unrecorded or
+// stale divergence or a served superseded operation, sorted: each fails the
 // check whatever the baseline accepts.
+//
+// ref: decision 0016
 type ParityReport struct {
 	Tags     []TagParity
 	Failures []string
@@ -178,7 +187,10 @@ func (r *ParityReport) Operation(id string) (OperationParity, bool) {
 // The zero value renames and supersedes nothing.
 type ParityRegisters struct {
 	// Renames maps a reference identifier to the one infraweave serves:
-	// decision 0001's identifier rows that name no schema and no wildcard.
+	// the rename table's identifier rows that name no schema and no
+	// wildcard.
+	//
+	// ref: decision 0001
 	Renames map[string]string
 	// Superseded maps each of the product's reference operationIds that a
 	// superseded record lists to that record's id.

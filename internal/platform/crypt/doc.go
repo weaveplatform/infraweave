@@ -1,6 +1,6 @@
-// Package crypt is decision 0013's keyring: the data keys every sealed
-// column and sealed object is sealed under, each wrapped by a KEK that
-// never enters the database.
+// Package crypt is the server's keyring: the data keys every sealed column
+// and sealed object is sealed under, each wrapped by a KEK that never enters
+// the database.
 //
 // Load unwraps every active and retiring key through a kek.Provider when
 // a process mode starts. The first replica on an empty keyring creates
@@ -20,16 +20,18 @@
 // the sealed columns of every stream, blob_objects.content_key_sealed among
 // them.
 //
-// Rotation follows decision 0013. Rotate makes a new active key and marks
-// the old one retiring, in the caller's transaction, and refuses with
-// ErrRotating while a retiring key remains. Reseal walks Registry and
-// reseals every value under the active key, ResealBatch rows per
-// transaction, until a walk finds nothing; then it marks the old key
-// retired, walks again with the retired key loaded, and deletes it.
-// Rewrap moves every data key from one KEK to another, one row per
-// transaction, touching no value. Each change to encryption_keys notifies
-// Changed on infraweave_invalidate; Watch reloads the keyring on it, and
-// Reload keeps the keys already loaded when the new ones do not unwrap.
+// Rotate makes a new active key and marks the old one retiring, in the
+// caller's transaction, and refuses with ErrRotating while a retiring key
+// remains. Reseal walks Registry and reseals every value under the active
+// key, ResealBatch rows per transaction, until a walk finds nothing; then it
+// marks the old key retired, walks again with the retired key loaded, and
+// deletes it. Rewrap moves every data key from one KEK to another, one row
+// per transaction, touching no value. Each change to encryption_keys
+// notifies Changed on infraweave_invalidate; Watch reloads the keyring on
+// it, and Reload keeps the keys already loaded when the new ones do not
+// unwrap.
+//
+// ref: decision 0013
 //
 // # Input and output
 //

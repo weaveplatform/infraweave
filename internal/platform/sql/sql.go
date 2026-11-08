@@ -12,7 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Config holds the database settings, decision 0005's database.* keys.
+// Config holds the database settings, the database.* keys.
+//
+// ref: decision 0005
 type Config struct {
 	// URL is the primary's connection string, database.url.
 	URL string `mapstructure:"url"`
@@ -115,9 +117,11 @@ func (c Config) Validate() error {
 }
 
 // FloorVersion is the oldest server_version_num infraweave runs on:
-// PostgreSQL 18, the newest major every managed service of decision 0005
-// offers generally available. A floor raise changes it and the message of
+// PostgreSQL 18, the newest major every supported managed service offers
+// generally available. A floor raise changes it and the message of
 // ErrBelowFloor together.
+//
+// ref: decision 0005
 const FloorVersion = 180000
 
 // ErrBelowFloor reports a server older than FloorVersion.

@@ -5,11 +5,12 @@ SHELL := /bin/bash
 export GOWORK := off
 
 GO ?= go
-# FIPS=1 is decision 0016's fips-only job: every binary, the test binaries
+# FIPS=1 is what the fips-only CI job runs: every binary, the test binaries
 # and the one under acceptance, is built with the certified FIPS 140-3 Go
 # Cryptographic Module, and every process, the go command's included, runs
 # with fips140=only, so a call to MD5, SHA-1 or another refused algorithm
 # fails where it is made.
+# ref: decision 0016
 ifeq ($(FIPS),1)
 export GOFIPS140 := certified
 export GODEBUG := fips140=only
@@ -98,8 +99,9 @@ build:
 ## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|runs|integrations for one CI partition); coverage and cucumber.json to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
-# accept-core also runs the TestAcc suites beside the code (decision 0016);
-# the other partitions hold Gherkin scenarios alone.
+# accept-core also runs the TestAcc suites beside the code; the other
+# partitions hold Gherkin scenarios alone.
+# ref: decision 0016
 ACCEPT_FEATURES_ONLY = $(filter runs integrations,$(PARTITION))
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
@@ -158,11 +160,11 @@ verify-generate: generate
 reference:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref generate --product $$p || exit 1; done
 
-## reference-inventory: regenerate each product's inventory: the GraphQL register and report 29 (deploy), the SDK register (flows)
+## reference-inventory: regenerate each product's inventory: the GraphQL register and the data-model inventory report (deploy), the SDK register (flows)
 reference-inventory:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref inventory --product $$p || exit 1; done
 
-## verify-reference: fail if a committed reference, report 29, an inventory register or the action catalogue is not what the snapshots generate
+## verify-reference: fail if a committed reference, the data-model inventory report, an inventory register or the action catalogue is not what the snapshots generate
 verify-reference:
 	@for p in $(PRODUCTS); do \
 		$(GO) run ./tools/specref check --product $$p && \

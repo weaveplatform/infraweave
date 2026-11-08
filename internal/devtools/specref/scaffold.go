@@ -13,15 +13,20 @@ import (
 )
 
 // Convention names recorded in x-infraweave-divergence, one per transform
-// decision 0003 makes to a scaffolded operation. Parity and reviewers use
-// them to tell a convention from a curation.
+// the API conventions make to a scaffolded operation. Parity and reviewers
+// use them to tell a convention from a curation.
+//
+// ref: decision 0003
 const (
 	ConventionPagination  = "cursor-pagination"
 	ConventionIdempotency = "idempotency-key"
 	ConventionRateLimit   = "rate-limit"
 )
 
-// Cost classes for x-infraweave-cost (decision 0003).
+// Cost classes for x-infraweave-cost: each caller has one token bucket per
+// class, and expensive's budget is the smaller.
+//
+// ref: decision 0003
 const (
 	CostStandard  = "standard"
 	CostExpensive = "expensive"
@@ -86,12 +91,14 @@ type ymap = map[string]any
 
 // Scaffold copies every path holding an operation tagged opts.Tag, plus the
 // transitive closure of the components those paths reference, into a
-// fragment (paths and components only). Each operation gets decision 0003's
+// fragment (paths and components only). Each operation gets the API
 // conventions: cursor pagination on collection GETs, an optional
 // Idempotency-Key on POST and PATCH, rate-limit responses and headers, and a
-// cost class, and decision 0007's action and subject where the catalogue
+// cost class, and its authorization action and subject where the catalogue
 // decides them. Provenance extensions (x-graphql, x-terraform, x-bruno) are
 // kept.
+//
+// ref: decisions 0003 and 0007
 func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 	var ref ymap
 	if err := yaml.Unmarshal(o.Reference, &ref); err != nil {
@@ -172,8 +179,10 @@ func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 	return out, nil
 }
 
-// applyConventions rewrites one operation per decision 0003 and records each
-// change in x-infraweave-divergence.
+// applyConventions rewrites one operation to the API conventions and
+// records each change in x-infraweave-divergence.
+//
+// ref: decision 0003
 func applyConventions(method, path string, op, refComps, added ymap) error {
 	responses, _ := op["responses"].(ymap)
 	if responses == nil {

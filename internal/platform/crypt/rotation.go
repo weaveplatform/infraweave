@@ -209,15 +209,16 @@ var (
 )
 
 // Reseal brings every sealed value of columns under the active data key,
-// then retires and deletes the keys no longer active, as decision 0013's
-// secrets.reseal does. It walks each column with keyset pagination,
-// ResealBatch rows per transaction, and repeats the walk until one finds
-// nothing to reseal, so a value a replica sealed with the old key before
-// it reloaded is caught. Only then is the old key marked retired, which
-// replicas stop opening with; a final walk, with the retired key loaded
-// here, reseals anything still under it, and the key is deleted once a
-// walk finds nothing. It is idempotent: one that stops part-way runs again
-// from the start.
+// then retires and deletes the keys no longer active, as the secrets.reseal
+// job does. It walks each column with keyset pagination, ResealBatch rows
+// per transaction, and repeats the walk until one finds nothing to reseal,
+// so a value a replica sealed with the old key before it reloaded is caught.
+// Only then is the old key marked retired, which replicas stop opening with;
+// a final walk, with the retired key loaded here, reseals anything still
+// under it, and the key is deleted once a walk finds nothing. It is
+// idempotent: one that stops part-way runs again from the start.
+//
+// ref: decision 0013
 func Reseal(ctx context.Context, db DB, p kek.Provider, columns []Column) (int, error) {
 	all, err := load(ctx, db, p, []string{"active", "retiring", "retired"})
 	if err != nil {

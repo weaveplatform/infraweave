@@ -12,8 +12,10 @@ import (
 	"github.com/cucumber/godog"
 )
 
-// kmsSteps drive decision 0006's kms signing backend on the @vault
-// container's Transit engine.
+// kmsSteps drive the kms token-signing backend on the @vault container's
+// Transit engine.
+//
+// ref: decision 0006
 type kmsSteps struct {
 	s *servedSteps
 	// ref is the scenario's kms_keys reference, <mount>/<key>/<version>.

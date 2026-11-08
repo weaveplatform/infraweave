@@ -29,9 +29,11 @@ func orgKey(w *world, f func(*apikey.OrganizationKey)) (kernel.ULID, string) {
 	return k.ID, secret
 }
 
-// TestUnitOrganizationKeyExchange checks decision 0006's organization
-// token: a session of the organization in no account, which only the
-// Organization tag's routes accept, and whose use takes no seat.
+// TestUnitOrganizationKeyExchange checks the organization token: a session
+// of the organization in no account, which only the Organization tag's
+// routes accept, and whose use takes no seat.
+//
+// ref: decision 0006 § "API keys and organization keys"
 func TestUnitOrganizationKeyExchange(t *testing.T) {
 	w := newWorld(t)
 	expires := t0.Add(2*time.Hour + 500*time.Millisecond)

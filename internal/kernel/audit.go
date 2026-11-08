@@ -5,9 +5,11 @@ import (
 	"time"
 )
 
-// AuditEntry is one entry of an account's audit trail, decision 0015's
+// AuditEntry is one entry of an account's audit trail, the API's
 // AuditTrailEntry: who changed what, recorded in the transaction of the
-// change.
+// change, so an entry exists exactly when the change does.
+//
+// ref: decision 0015
 type AuditEntry struct {
 	AccountID ULID
 	// ID is assigned when the entry is recorded.
@@ -46,9 +48,12 @@ type AuditResource struct {
 	Metadata json.RawMessage
 }
 
-// OrganizationAuditEntry is an entry of an organization's own trail
-// (decision 0015): a change to the organization with no account, made by
-// an operator, an organization admin or the break-glass admin.
+// OrganizationAuditEntry is an entry of an organization's own trail: a
+// change to the organization with no account, made by an operator, an
+// organization admin or the break-glass admin. It is kept apart from every
+// account's trail because it is not any account's data.
+//
+// ref: decision 0015
 type OrganizationAuditEntry struct {
 	OrganizationID OrganizationID
 	// ID is assigned when the entry is recorded.

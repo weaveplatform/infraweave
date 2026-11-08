@@ -1,5 +1,7 @@
 // Command infraweavectl is infraweave's client CLI, the command tree of
-// internal/ctl over pkg/sdk (decision 0001).
+// internal/ctl over pkg/sdk.
+//
+// ref: decision 0001
 package main
 
 import (

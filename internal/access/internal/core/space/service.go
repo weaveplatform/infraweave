@@ -102,8 +102,10 @@ func (d *Denied) Error() string { return d.Reason }
 // inherit, move them below another space they administer and delete
 // them, but never stop a space inheriting. The route table has decided
 // SPACE_ADMIN on the space named before a call reaches the service; the
-// service decides the rest, as decision 0007 has an operation that needs
-// two checks do.
+// service decides the rest, as a handler does for any operation that
+// needs a second check.
+//
+// ref: decision 0007 § "Enforcement point"
 type Service struct {
 	store Store
 	authz Authorizer

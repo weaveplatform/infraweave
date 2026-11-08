@@ -182,8 +182,10 @@ func TestUnitParityCompare(t *testing.T) {
 	}
 }
 
-// TestUnitParityFailures proves each of decision 0016's failure rules over
-// an edit of the served fixture.
+// TestUnitParityFailures proves each parity failure rule over an edit of
+// the served fixture.
+//
+// ref: decision 0016
 func TestUnitParityFailures(t *testing.T) {
 	for _, tc := range []struct {
 		name, old, new string

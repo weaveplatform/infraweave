@@ -410,8 +410,9 @@ func TestUnitGuardedIdempotency(t *testing.T) {
 		send(r, http.MethodPost, path, me, "k-"+path)
 	}
 	// /things runs once and the search twice; the route no operation
-	// names is refused, as decision 0007 denies by default, and /nope
+	// names is refused, since authorization denies by default, and /nope
 	// never reaches a handler.
+	// ref: decision 0007
 	if runs != 3 {
 		t.Errorf("handlers ran %d times, want 3", runs)
 	}

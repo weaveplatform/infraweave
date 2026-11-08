@@ -1,8 +1,10 @@
-// Package organization holds the rules of decision 0007's tenancy above
-// the account: an organization, its slug and display name. ParseSlug and
+// Package organization holds the tenancy rules above the account: an
+// organization, its slug and display name. ParseSlug and
 // CheckName are the rules accounts share, since an account slug names the
 // same external things an organization slug does and is unique across the
 // installation.
+//
+// ref: decision 0007 § "Tenancy"
 //
 // # Input and output
 //

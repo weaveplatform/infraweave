@@ -2,13 +2,14 @@
 Feature: Billing reads with infraweave's meaning
   Spacelift's Billing operations answer from infraweave's own data where a
   read has an honest local meaning, and refuse where only Spacelift's
-  billing service could act (decision 0021). tier is the organization's
-  tier as the operator defines it, Enterprise while billing is off; seats is
-  the organization's pooled seats limit with its use; billedExternally is
-  true, billingSubscription and onTrialUntil are null, and the add-on and
-  plan lists are empty. The subscription mutations answer 403
-  installation-unsupported: the operator sets an organization's tier
-  through the operator API.
+  billing service could act. tier is the organization's tier as the operator
+  defines it, Enterprise while billing is off; seats is the organization's
+  pooled seats limit with its use; billedExternally is true,
+  billingSubscription and onTrialUntil are null, and the add-on and plan
+  lists are empty. The subscription mutations answer 403
+  installation-unsupported: the operator sets an organization's tier through
+  the operator API.
+  ref: decision 0021
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

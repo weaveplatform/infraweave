@@ -83,7 +83,9 @@ func holdsStore(v reflect.Value, path string, seen map[uintptr]bool) string {
 
 // TestUnitServingHoldsNoStore checks that serve's composition holds object
 // storage only as an objectstore.Writer: nothing reachable from it is a
-// Store, so serve can never delete an object (decision 0005).
+// Store, so serve can never delete an object.
+//
+// ref: decision 0005
 func TestUnitServingHoldsNoStore(t *testing.T) {
 	c := objectstore.Defaults()
 	c.Driver = objectstore.DriverS3

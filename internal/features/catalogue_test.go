@@ -7,9 +7,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/features"
 )
 
-// TestUnitFeatureCatalogue checks the compiled-in catalogue against
-// decision 0021: names sorted and unique, every requirement a gated
-// feature, and the installation's own names of the kinds it treats them as.
+// TestUnitFeatureCatalogue checks the compiled-in catalogue's rules: names
+// sorted and unique, every requirement a gated feature, and the
+// installation's own names of the kinds it treats them as.
+//
+// ref: decision 0021
 func TestUnitFeatureCatalogue(t *testing.T) {
 	c := features.Catalogue()
 	if len(c) == 0 {

@@ -1,4 +1,4 @@
-// Package authn is decision 0006's authentication: Exchange trades an
+// Package authn is the access domain's authentication: Exchange trades an
 // API key for an API token at POST /auth/token, creating the session the
 // token's jti names. A secret key exchanges its secret; an OIDC key
 // exchanges a JWT of its issuer, which the OIDC port verifies and which
@@ -52,6 +52,8 @@
 // Authenticate and AuthenticateBrowser read sessions through the
 // replica's session.Cache, which the assembly's watcher drops a session
 // from on its revocation message.
+//
+// ref: decision 0006
 //
 // # Input and output
 //

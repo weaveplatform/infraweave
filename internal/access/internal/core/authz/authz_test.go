@@ -101,8 +101,10 @@ type check struct {
 	want   bool
 }
 
-// TestUnitAuthorize runs report 14's worked cases and decision 0007's
-// choices on one tree.
+// TestUnitAuthorize runs the reference's worked cases and infraweave's own
+// evaluation choices on one tree.
+//
+// ref: report 14, decision 0007
 func TestUnitAuthorize(t *testing.T) {
 	x := newAccount()
 	admin, writer, inheritor, deep := kernel.NewMemberID(), kernel.NewMemberID(),
@@ -361,8 +363,10 @@ func TestUnitBuildSkipsDangling(t *testing.T) {
 
 // TestUnitActions checks a space's actions: the space's own for the
 // enum's, the top space's for infraweave's account actions, and any
-// space's for an anywhere one, as report 14's matrix lets a space's admin
-// read keys and users but manage neither.
+// space's for an anywhere one, as the reference lets a space's admin read
+// keys and users but manage neither.
+//
+// ref: report 14
 func TestUnitActions(t *testing.T) {
 	x := newAccount()
 	admin, below, writer := kernel.NewMemberID(), kernel.NewMemberID(), kernel.NewMemberID()

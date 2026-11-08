@@ -279,7 +279,8 @@ func (r *register) text(rec map[string]any) map[string]any {
 }
 
 // mentions reports whether text names id as a whole token: C16 is not a
-// mention of C1, and RES-02.06-16 is not one of RES-02.06-1.
+// mention of C1, and an ID ending in .06-16 is not one of the same ID ending
+// in .06-1.
 func mentions(text, id string) bool {
 	for i := 0; ; {
 		j := strings.Index(text[i:], id)

@@ -10,8 +10,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
-// Batch is how many due rows one transaction fires per source, decision
-// 0011's 100.
+// Batch is how many due rows one transaction fires per source.
+//
+// ref: decision 0011
 const Batch = 100
 
 // Source is a table whose rows fire on a schedule, such as periodic_tasks.

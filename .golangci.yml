@@ -55,16 +55,19 @@ linters:
     # API/Terraform specific
     - musttag        # enforce field tags in (un)marshaled structs
     - tagliatelle    # checks struct tags (important for JSON/XML APIs)
-    - forbidigo      # forbids time.Sleep in tests (decision 0016)
-    - depguard       # the modular-monolith import rules (decision 0004)
+    - forbidigo      # forbids time.Sleep in tests
+    - depguard       # the modular-monolith import rules
 
   # 3) Per-linter configuration
   settings:
-    # decision 0004's shared dependency rules (repo-layout.md, "depguard
-    # rules"). depguard matches entries as string prefixes, so an allow entry
-    # ends in $ (that package) or / (the packages below it); deny entries stay
-    # bare. internal/app's TestUnitDepguardFixtures holds the file to that and
-    # to the domains under internal/; make lint-fixtures proves each rule fires.
+    # The shared dependency rules of the modular monolith, which keep a
+    # domain's reach into another domain to its api/ package (repo-layout.md,
+    # "depguard rules"). depguard matches entries as string prefixes, so an
+    # allow entry ends in $ (that package) or / (the packages below it); deny
+    # entries stay bare. internal/app's TestUnitDepguardFixtures holds the
+    # file to that and to the domains under internal/; make lint-fixtures
+    # proves each rule fires.
+    # ref: decision 0004
     depguard:
       rules:
         api-packages:
@@ -215,10 +218,11 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/httpkit/serve$
             - github.com/weaveplatform/infraweave/internal/platform/seal$
             - github.com/weaveplatform/infraweave/internal/platform/expr$
-        # decision 0004's declared graph (repo-layout.md, "Declared graph"):
-        # one rule per domain, which allows the shared packages, the
-        # domain's own tree and the api/ of each domain its row names, and
-        # denies the rest of internal/.
+        # The declared graph of which domain may import which, written only
+        # here (repo-layout.md, "Declared graph"): one rule per domain, which
+        # allows the shared packages, the domain's own tree and the api/ of
+        # each domain its row names, and denies the rest of internal/.
+        # ref: decision 0004
         graph-features:
           list-mode: lax
           files:
@@ -315,8 +319,9 @@ linters:
     forbidigo:
       analyze-types: true
       forbid:
+        # ref: decision 0016
         - pattern: ^time\.Sleep$
-          msg: tests wait on a channel or an injected clock (decision 0016)
+          msg: tests wait on a channel or an injected clock
     nakedret:
       max-func-lines: 40
 

@@ -1,9 +1,8 @@
 // Package sdk is infraweave's Go SDK, the supported way a Go program calls
-// the API (decision 0001). New returns a Client whose API field is the
-// generated client of every served operation (pkg/client/api), whose
-// Operator field is the operator API's (pkg/client/operator) and whose Do
-// sends any request; all three carry the API's conventions (decision
-// 0003):
+// the API. New returns a Client whose API field is the generated client of
+// every served operation (pkg/client/api), whose Operator field is the
+// operator API's (pkg/client/operator) and whose Do sends any request; all
+// three carry the API's conventions:
 //
 //   - a bearer token, set with WithToken, or exchanged for an API key with
 //     WithAPIKey and exchanged again before it expires;
@@ -11,10 +10,12 @@
 //     sent again on each of its retries;
 //   - retries after a 429, or a 503 with Retry-After, honouring the wait
 //     the server names, bounded by Retry and the caller's context;
-//   - typed problem errors, one per slug of docs/data/problems.json
-//     (decision 0022), tested with errors.As; Check makes one from an
-//     answer of the generated client;
+//   - typed problem errors, one per slug of docs/data/problems.json,
+//     tested with errors.As; Check makes one from an answer of the
+//     generated client;
 //   - Iterate, a Go iterator over a list operation that follows nextCursor.
+//
+// ref: decisions 0001, 0003 and 0022
 //
 // # Input and output
 //

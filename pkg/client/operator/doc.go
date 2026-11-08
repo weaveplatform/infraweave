@@ -1,11 +1,13 @@
 // Package operator is the generated Go client of api/operator.openapi.yaml,
-// the operator API infraweave serves under /operator/v1 (decision 0021).
+// the operator API infraweave serves under /operator/v1.
 //
 // client.gen.go is written by oapi-codegen from
 // api/oapi-client-operator.yaml (make generate): the request and response
 // models, Client with one method per operation, and ClientWithResponses,
 // which decodes each response into its typed form. make verify-generate
 // fails when it is stale; this file is the only one written by hand.
+//
+// ref: decisions 0004 and 0021
 //
 // # Input and output
 //
@@ -18,6 +20,6 @@
 // # Dependencies
 //
 // It imports oapi-codegen's runtime and the standard library, and nothing
-// under internal/, as nothing under pkg/ may (decision 0004). It is excluded
-// from the coverage gate.
+// under internal/, as nothing under pkg/ may, so the public client never
+// depends on project-only code. It is excluded from the coverage gate.
 package operator

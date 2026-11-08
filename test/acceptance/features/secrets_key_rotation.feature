@@ -1,6 +1,6 @@
 @postgres @vault
 Feature: Data key rotation and KEK migration
-  Decision 0013 seals values in PostgreSQL, and the content keys of sealed
+  infraweave seals values in PostgreSQL, and the content keys of sealed
   stores' objects, under data keys the KEK wraps. infraweave secrets rotate,
   or the operator API's POST /operator/v1/secrets/rotate, makes a new data
   key while the servers serve, and secrets.reseal moves every value onto
@@ -9,6 +9,7 @@ Feature: Data key rotation and KEK migration
   operation serves objects yet, so the scenarios write and read a sealed
   object as serve's blob store does, on the servers' database and object
   storage, with a keyring loaded at that moment.
+  ref: decision 0013
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

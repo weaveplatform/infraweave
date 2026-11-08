@@ -9,7 +9,9 @@ import (
 	"github.com/cucumber/godog"
 )
 
-// errorSteps check the answers the route table gives (decision 0007).
+// errorSteps check the answers the route table gives.
+//
+// ref: decision 0007
 type errorSteps struct{ s *servedSteps }
 
 func (e *errorSteps) register(sc *godog.ScenarioContext) {

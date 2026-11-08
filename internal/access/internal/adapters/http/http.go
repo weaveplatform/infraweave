@@ -177,7 +177,9 @@ func (s Server) Sessions(
 }
 
 // SessionDelete revokes a session of the caller's account; any other
-// answers 404 (decision 0007).
+// answers 404, as one the caller cannot see.
+//
+// ref: decision 0007
 func (s Server) SessionDelete(
 	ctx context.Context,
 	req api.SessionDeleteRequestObject,
@@ -269,9 +271,11 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 
 // userOf is p in the reference's User shape, with token as its jwt. Each
 // field another domain decides is that domain's answer from the rule its
-// operations enforce (decision 0007's grant views), never a copy of the
-// rule here: the API keys p created and owns and whether p may create a
-// personal key are the apikey service's.
+// operations enforce, never a copy of the rule here, so the view and the
+// operation cannot disagree: the API keys p created and owns and whether
+// p may create a personal key are the apikey service's.
+//
+// ref: decision 0007 § "Evaluation"
 func (s Server) userOf(
 	ctx context.Context,
 	p kernel.Principal,

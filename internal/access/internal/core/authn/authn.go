@@ -18,7 +18,9 @@ import (
 )
 
 // ErrUnauthenticated is every refused credential, whichever part failed,
-// so the answer tells a caller nothing it could probe with (decision 0006).
+// so the answer tells a caller nothing it could probe with.
+//
+// ref: decision 0006
 var ErrUnauthenticated = errors.New("unauthenticated")
 
 // Retention is how long a session's row outlives its end before

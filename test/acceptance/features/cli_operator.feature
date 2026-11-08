@@ -1,9 +1,10 @@
 @postgres
 Feature: infraweavectl operator
-  infraweavectl is infraweave's client CLI over pkg/sdk (decision 0001). A
-  profile names an endpoint and a credential; infraweavectl operator wraps
-  the operator API's tiers, organizations, grants and billing (decision
-  0021), printing each answer as JSON and, for an error, its problem.
+  infraweavectl is infraweave's client CLI over pkg/sdk. A profile names an
+  endpoint and a credential; infraweavectl operator wraps the operator
+  API's tiers, organizations, grants and billing, printing each answer as
+  JSON and, for an error, its problem.
+  ref: decisions 0001 and 0021
 
   @case:success
   Scenario: The operator manages a tier, an organization and billing with infraweavectl

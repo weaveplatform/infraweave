@@ -1,5 +1,5 @@
-// Package ratelimit enforces decision 0003's rate limits: one token bucket
-// per caller and cost class, the bucket's state in X-RateLimit-* headers on
+// Package ratelimit enforces the API's rate limits: one token bucket per
+// caller and cost class, the bucket's state in X-RateLimit-* headers on
 // every response, 429 when it is empty, and the operator's switch that turns
 // the API off for one caller.
 //
@@ -11,6 +11,8 @@
 // in-process one for tests. The switches are Callers, the configured list,
 // and Table, api_disabled_callers, which Switches consults together. Config
 // is server.rate_limit.
+//
+// ref: decision 0003
 //
 // # Input and output
 //

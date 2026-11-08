@@ -1,16 +1,17 @@
 @postgres
 Feature: API tokens and sessions
   A secret API key exchanges at POST /auth/token for an API token, which
-  stands for a session row whose ID is the token's jti (decision 0006).
-  Every refused exchange answers one problem, so the answer does not say
-  which part failed. An account's sessions can be listed and revoked, and
-  a revocation through one replica reaches the others through
-  infraweave_invalidate. A session of another account answers 404, whether
-  it is in the caller's organization or another (decision 0007). The
-  tenants and their keys are seeded through SQL: home, sibling (another
-  account of home's organization) and stranger (an account of another
-  organization). Each server's own client holds a token of the home key, so
-  the home account starts with one session per server.
+  stands for a session row whose ID is the token's jti. Every refused
+  exchange answers one problem, so the answer does not say which part
+  failed. An account's sessions can be listed and revoked, and a revocation
+  through one replica reaches the others through infraweave_invalidate. A
+  session of another account answers 404, whether it is in the caller's
+  organization or another. The tenants and their keys are seeded through
+  SQL: home, sibling (another account of home's organization) and stranger
+  (an account of another organization). Each server's own client holds a
+  token of the home key, so the home account starts with one session per
+  server.
+  ref: decisions 0006 and 0007
 
   Background:
     Given two infraweave servers, A and B, on one database

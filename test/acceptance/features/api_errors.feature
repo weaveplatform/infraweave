@@ -1,16 +1,17 @@
 @postgres
 Feature: The route table decides every API operation
-  Every operation names its action and where its subject's space comes
-  from (decision 0007). Before an operation runs, the server finds the
-  subject's space and decides the action there. A space or entity that
-  the account lacks answers 404, and so does one whose space the caller
-  cannot read, with one body for both (decision 0022). An action the
-  caller may not perform answers 403 forbidden, and the problem names the
-  action. The home key is space-admin on its account's top space; the
-  member key is a key of the same account with no binding. A view lists
-  the actions the rules of its operations let the caller perform, so an
-  API key that holds every action on API keys lists only their read while
-  the account lets only people manage keys.
+  Every operation names its action and where its subject's space comes from.
+  Before an operation runs, the server finds the subject's space and decides
+  the action there. A space or entity that the account lacks answers 404,
+  and so does one whose space the caller cannot read, with one body for
+  both, so a 404 does not say which. An action the caller may not perform
+  answers 403 forbidden, and the problem names the action. The home key is
+  space-admin on its account's top space; the member key is a key of the
+  same account with no binding. A view lists the actions the rules of its
+  operations let the caller perform, so an API key that holds every action
+  on API keys lists only their read while the account lets only people
+  manage keys.
+  ref: decisions 0007 and 0022
 
   Background:
     Given two infraweave servers, A and B, on one database

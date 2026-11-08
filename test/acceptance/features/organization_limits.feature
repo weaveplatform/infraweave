@@ -1,11 +1,12 @@
 @postgres
 Feature: Organization account limits and usage
   An organization admin sets an account's limit within the organization's
-  pool (decision 0021): a value above the pool answers 422, and a value
-  below it refuses the account a seat while the pool has room, naming the
-  account's limit. Usage counts each account of the organization and no
-  account of another: the home account's seats are its member's and the
-  home key's, which every launch uses.
+  pool: a value above the pool answers 422, and a value below it refuses the
+  account a seat while the pool has room, naming the account's limit. Usage
+  counts each account of the organization and no account of another: the
+  home account's seats are its member's and the home key's, which every
+  launch uses.
+  ref: decision 0021
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key

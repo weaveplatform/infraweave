@@ -150,9 +150,11 @@ func TestUnitEntitlementLessDisabled(t *testing.T) {
 	}
 }
 
-// TestUnitEntitlement checks decision 0021's billing switch: off, every
-// organization reads as Enterprise less the switched-off features; on, it
-// reads as its tier and grants, which the store has already merged.
+// TestUnitEntitlement checks the billing switch: off, every organization
+// reads as Enterprise less the switched-off features; on, it reads as its
+// tier and grants, which the store has already merged.
+//
+// ref: decision 0021
 func TestUnitEntitlement(t *testing.T) {
 	stored := &featuresapi.Entitlement{
 		Tier: "Free", Version: 2,

@@ -7,12 +7,14 @@ import (
 	"strings"
 )
 
-// States computes decision 0016's availability state for each record of
+// States computes the availability state of each record of
 // docs/data/capabilities.json from the parity report and the last
 // acceptance results. A scenario names the operations it exercises with
 // @op:<operationId>, its kind with @case:success, @case:denial or
 // @case:failure, and a Terraform provider scenario names its record with
 // @provider:<record id>, such as @provider:resource:spacelift_stack.
+//
+// ref: decision 0016
 
 // Scenario tag prefixes and the three kinds of the evidence rule. An @op:
 // tag may name the reference operationId or the one infraweave serves.
@@ -26,7 +28,9 @@ const (
 	CaseFailure = "failure"
 )
 
-// State is an availability state of decision 0021.
+// State is a capability's availability state.
+//
+// ref: decision 0021
 type State string
 
 const (
@@ -274,9 +278,14 @@ func (r *ParityReport) States(
 	return out
 }
 
-// computeState applies decision 0016's table to one record's operations.
-// Superseded operations are left out; a record whose every operation is
-// superseded is superseded, and one with no operations is missing.
+// computeState applies the state table to one record's operations: a record
+// is implemented when every operation is served and named by passing
+// success, denial and failure scenarios, partial when some are, stub when
+// every one is routed, and missing otherwise. Superseded operations are left
+// out; a record whose every operation is superseded is superseded, and one
+// with no operations is missing.
+//
+// ref: decision 0016
 func computeState(ids []string, ops map[string]OperationParity, proven map[string]evidence) State {
 	var live []string
 	for _, id := range ids {

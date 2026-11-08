@@ -112,8 +112,9 @@ var ErrExited = errors.New("infraweave exited")
 
 // StartServer writes config to dir/config.yaml and runs bin's process mode
 // mode, such as all, with it and KEK, writing coverage to coverDir. It returns once
-// the admin listener answers /livez, which decision 0017 puts on the admin
-// listener alone.
+// the admin listener answers /livez, which only the admin listener serves.
+//
+// ref: decision 0017
 func StartServer(
 	ctx context.Context,
 	bin, dir, coverDir, mode string,

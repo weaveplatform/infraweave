@@ -12,9 +12,11 @@ import (
 // does not exist.
 var ErrNotFound = errors.New("features: not found")
 
-// Entitlement is an organization's entitlement (decision 0021): its tier,
-// the version every change to it bumps, its features, sorted, and its limit
-// values by limit name. A limit absent from Limits has no limit.
+// Entitlement is an organization's entitlement: its tier, the version
+// every change to it bumps, its features, sorted, and its limit values by
+// limit name. A limit absent from Limits has no limit.
+//
+// ref: decision 0021
 type Entitlement struct {
 	Tier     string
 	Version  int64
@@ -22,8 +24,9 @@ type Entitlement struct {
 	Limits   map[string]int64
 }
 
-// Seats is the limit on members and API keys (decision 0021), which access
-// counts.
+// Seats is the limit on members and API keys, which access counts.
+//
+// ref: decision 0021
 const Seats = "seats"
 
 // Usage is a counted thing's use at the moment of a creation: across the
@@ -36,15 +39,20 @@ type Usage struct {
 // Scope is where a limit was reached.
 type Scope string
 
-// The scopes of decision 0021's limit-reached.
+// The scopes a limit-reached problem names: the organization's pool, or
+// one account's limit.
+//
+// ref: decision 0021
 const (
 	ScopeOrganization Scope = "organization"
 	ScopeAccount      Scope = "account"
 )
 
 // LimitError refuses a creation that would take the organization above its
-// pool or the account above its limit: decision 0021's limit-reached, whose
+// pool or the account above its limit: the limit-reached problem, whose
 // body members are Limit, Scope and Value.
+//
+// ref: decision 0021
 type LimitError struct {
 	Limit string
 	Scope Scope
@@ -56,9 +64,11 @@ func (e *LimitError) Error() string {
 	return fmt.Sprintf("features: %s reached its %s limit of %d", e.Limit, e.Scope, e.Value)
 }
 
-// AccountLimitError refuses an account limit (decision 0021 § "Limits"):
-// Unknown when Limit is no limit of the catalogue, else Value is negative
-// or above Pool, the organization's value of the limit.
+// AccountLimitError refuses an account limit: Unknown when Limit is no
+// limit of the catalogue, else Value is negative or above Pool, the
+// organization's value of the limit.
+//
+// ref: decision 0021 § "Limits"
 type AccountLimitError struct {
 	Limit   string
 	Value   int64

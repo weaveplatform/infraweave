@@ -48,10 +48,12 @@ func (s *Store) APIKey(ctx context.Context, id kernel.ULID) (apikey.Key, error) 
 }
 
 // SeatWindow is how long an API key holds a seat after its last use:
-// Spacelift's rolling 30 days (report 14, section 4.4).
+// Spacelift's rolling 30 days.
+//
+// ref: report 14 §4.4
 const SeatWindow = 30 * 24 * time.Hour
 
-// seats counts decision 0021's seats in organization $1 and account $2 as
+// seats counts the seats limit's seats in organization $1 and account $2 as
 // the first use of key $4 in SeatWindow ($3) finds them: each active or
 // pending member once, however many of the organization's accounts admit
 // it, and each other live key that is not personal and was used within

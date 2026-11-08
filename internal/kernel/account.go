@@ -2,7 +2,9 @@ package kernel
 
 // AccountID identifies an account: a business entity within an
 // organization, and the data boundary every account-scoped row carries in
-// account_id (decision 0007).
+// account_id.
+//
+// ref: decision 0007
 type AccountID struct{ ULID }
 
 // NewAccountID returns a new account's ID.

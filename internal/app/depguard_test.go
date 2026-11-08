@@ -14,8 +14,11 @@ import (
 
 const module = "github.com/weaveplatform/infraweave"
 
-// sharedRules are decision 0004's rules 3 to 10 (repo-layout.md, "depguard
-// rules"); make lint-fixtures proves each one fires.
+// sharedRules are the cross-cutting depguard rules, 3 to 10 in
+// repo-layout.md's "depguard rules"; the per-domain graph rules make up the
+// rest. make lint-fixtures proves each one fires.
+//
+// ref: decision 0004
 var sharedRules = []string{
 	"api-packages", "constructors", "core-not-adapters", "shared-below-domains",
 	"agent-isolation", "devtools", "public-packages", "ctl",

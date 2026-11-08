@@ -31,9 +31,11 @@ const (
 	vaultToken                     = "infraweave-root"                 //nolint:gosec // see above
 )
 
-// pgTemplate is the database every scenario's database is copied from
-// (decision 0016). Copying it costs one CREATE DATABASE, where migrating
-// each scenario's database would cost the whole schema.
+// pgTemplate is the database every scenario's database is copied from.
+// Copying it costs one CREATE DATABASE, where migrating each scenario's
+// database would cost the whole schema.
+//
+// ref: decision 0016
 const pgTemplate = "iw_template"
 
 // DockerReachable reports whether a Docker daemon answers, through the same

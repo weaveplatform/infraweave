@@ -17,10 +17,14 @@ import (
 )
 
 // revocationWithin is how soon a revocation through one replica reaches
-// another, by its infraweave_invalidate message (decision 0006).
+// another, by its infraweave_invalidate message.
+//
+// ref: decision 0006
 const revocationWithin = time.Second
 
-// authSteps are the steps of decision 0006's exchange and sessions.
+// authSteps are the steps of the token exchange and sessions.
+//
+// ref: decision 0006
 type authSteps struct {
 	s *servedSteps
 	// tokens are the scenario's named API tokens.
@@ -177,7 +181,7 @@ type apiClaims struct {
 	Subject  string   `json:"sub"`
 	Audience audience `json:"aud"`
 	ID       string   `json:"jti"`
-	Kind     string   `json:"iw_kind"` //nolint:tagliatelle // decision 0006's claim name
+	Kind     string   `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
 	IssuedAt int64    `json:"iat"`
 	Expiry   int64    `json:"exp"`
 }

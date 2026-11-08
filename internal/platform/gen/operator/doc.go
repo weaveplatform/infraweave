@@ -1,6 +1,8 @@
 // Package operator is the generated strict chi server of
 // api/operator.openapi.yaml, the operator API infraweave serves under
-// /operator/v1 to operator principals alone (decision 0021).
+// /operator/v1 to operator principals alone.
+//
+// ref: decision 0021
 //
 // server.gen.go comes from oapi-codegen (api/oapi-server-operator.yaml):
 // the request and response models, StrictServerInterface, the chi handler

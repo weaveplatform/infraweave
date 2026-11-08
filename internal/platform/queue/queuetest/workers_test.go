@@ -134,8 +134,10 @@ func kind(name string, attempts int) queue.Kind {
 	return queue.Kind{Name: name, Queue: queue.Default, Policy: queue.Ignore, MaxAttempts: attempts}
 }
 
-// TestAccWorkersOutcomes checks that each handler result ends its job as
-// decision 0011's outcome table says.
+// TestAccWorkersOutcomes checks the outcome each handler result ends its
+// job with: completed, snoozed, retried or dead.
+//
+// ref: decision 0011
 func TestAccWorkersOutcomes(t *testing.T) {
 	r := queue.NewRegistry()
 	var retried atomic.Int32

@@ -14,8 +14,10 @@ import (
 	"github.com/cucumber/godog"
 )
 
-// keySteps are the steps of decision 0006's API keys, on authSteps'
-// servers and named tokens.
+// keySteps are the steps of the API keys, on authSteps' servers and named
+// tokens.
+//
+// ref: decision 0006
 type keySteps struct {
 	a *authSteps
 	// keys are the scenario's created keys by name.

@@ -5,7 +5,9 @@ import (
 	"slices"
 )
 
-// Kind is a catalogue entry's kind (decision 0021).
+// Kind is a catalogue entry's kind.
+//
+// ref: decision 0021
 type Kind string
 
 // The kinds of catalogue entry.

@@ -13,8 +13,10 @@ import (
 )
 
 // ULID identifies a row: generated in Go, stored in a uuid column and
-// written on the wire as 26 characters of Crockford base32 (decision 0005).
-// The zero ULID is the absent ID.
+// written on the wire as 26 characters of Crockford base32. The zero ULID
+// is the absent ID.
+//
+// ref: decision 0005
 type ULID [16]byte
 
 // ErrULID reports text or a column value that is no ULID.
@@ -129,9 +131,11 @@ func (u ULID) UUID() string {
 
 // Slug is the account-unique name that stacks, modules, spaces, contexts,
 // policies, templates and blueprints are addressed by, beside their ULID
-// key (decision 0005). It is carried as opaque text: the alphabet and the
-// derivation from a name arrive with stack creation and reslugging, the
-// first operations that make one.
+// key. It is carried as opaque text: the alphabet and the derivation from
+// a name arrive with stack creation and reslugging, the first operations
+// that make one.
+//
+// ref: decision 0005
 type Slug string
 
 // String is the slug as written on the wire.

@@ -10,10 +10,14 @@ import (
 	"time"
 )
 
-// Name is a logical store: a key prefix in a bucket (decision 0005).
+// Name is a logical store: a key prefix in a bucket.
+//
+// ref: decision 0005
 type Name string
 
-// The logical stores of decision 0005.
+// The logical stores.
+//
+// ref: decision 0005
 const (
 	RunLogs          Name = "run-logs"
 	RunArtifacts     Name = "run-artifacts"
@@ -36,8 +40,10 @@ func Names() []Name {
 	}
 }
 
-// Sealed reports whether decision 0013 seals every object of the store
-// whatever the bucket's own encryption does.
+// Sealed reports whether every object of the store is sealed whatever the
+// bucket's own encryption does.
+//
+// ref: decision 0013
 func (n Name) Sealed() bool { return n == States || n == PolicyInputs || n == RunArtifacts }
 
 // Object is what a write stored: its size and the SHA-256 of its bytes,

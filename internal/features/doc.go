@@ -1,4 +1,5 @@
-// Package features is decision 0021's feature catalogue, compiled in:
+// Package features is the feature catalogue of capabilities, options,
+// limits and the billing switch, compiled in:
 // catalogue.gen.go, which make generate writes from docs/data/features.json
 // and the tier-feature records of docs/data/capabilities.json, holds every
 // Feature, and make verify-generate fails when it is stale. Catalogue and
@@ -8,6 +9,8 @@
 // option; Closed drops the features whose requirements an entitlement
 // lacks. Billing and Operator are the names the installation holds, which
 // features.disabled rejects.
+//
+// ref: decision 0021
 //
 // # Input and output
 //

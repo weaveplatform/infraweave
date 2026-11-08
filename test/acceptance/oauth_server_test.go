@@ -16,9 +16,11 @@ import (
 	"github.com/cucumber/godog"
 )
 
-// oauthSteps are an MCP client of decision 0006's authorization server:
+// oauthSteps are an MCP client of infraweave's OAuth authorization server:
 // it registers, authorizes, redeems and refreshes over plain HTTP, and the
 // scenario's browser consents through the API.
+//
+// ref: decision 0006
 type oauthSteps struct {
 	o *orgSteps
 	// client is the registered client's ID, and verifier the PKCE

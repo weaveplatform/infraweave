@@ -1,11 +1,11 @@
 // Package user is Spacelift's managed users as infraweave serves them: a
-// managed user is a member of the organization as one account sees it
-// (decision 0007). Invite admits the organization's member with the
+// managed user is a member of the organization as one account sees it.
+// Invite admits the organization's member with the
 // invited login to the caller's account, creating a pending member when
 // there is none, and records an Invitation with its e-mail address and
 // sentAt; no e-mail is sent (capture C251), and the person accepts by
-// signing in through the invitation's link, never by an e-mail match
-// (decision 0006), which P23's sign-in serves. Inviting a member the
+// signing in through the invitation's link, never by an e-mail match,
+// which P23's sign-in serves. Inviting a member the
 // account admits, a deactivated member, or an e-mail address with a
 // pending invitation in the account is ErrInvalidState, and the
 // invitation's seat is checked through the features domain unless
@@ -18,6 +18,8 @@
 // ErrBindingsUnsupported rather than dropped. RequestInvite and
 // RequestRoleChange record the request on the account's trail; only a
 // member asks for a role, on the root space until P4's spaces.
+//
+// ref: decisions 0006 and 0007
 //
 // # Input and output
 //
