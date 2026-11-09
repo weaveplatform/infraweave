@@ -5283,6 +5283,9 @@ type ProblemFieldError struct {
 	// Pointer A JSON Pointer (RFC 6901) into the body, or #/query/<name>, #/path/<name> or #/header/<name> for a parameter.
 	Pointer string `json:"pointer"`
 
+	// Range Where in an expression or template the fault lies, so an editor can underline it, from start up to but not including end. Only an error in source text carries one.
+	Range *SourceRange `json:"range,omitempty"`
+
 	// Reason Why the field was refused, for clients to branch on.
 	Reason ProblemFieldErrorReason `json:"reason"`
 }
@@ -6520,6 +6523,21 @@ type SessionSpaceAccessRoleGrant struct {
 
 	// Role A reference to a Role; fetch it with GET /roles/{roleId}.
 	Role RoleRef `json:"role"`
+}
+
+// SourcePosition A place in source text. Lines and columns are counted from 1, and a column counts Unicode code points.
+type SourcePosition struct {
+	Column int32 `json:"column"`
+	Line   int32 `json:"line"`
+}
+
+// SourceRange Where in an expression or template the fault lies, so an editor can underline it, from start up to but not including end. Only an error in source text carries one.
+type SourceRange struct {
+	// End A place in source text. Lines and columns are counted from 1, and a column counts Unicode code points.
+	End SourcePosition `json:"end"`
+
+	// Start A place in source text. Lines and columns are counted from 1, and a column counts Unicode code points.
+	Start SourcePosition `json:"start"`
 }
 
 // Space defines model for Space.

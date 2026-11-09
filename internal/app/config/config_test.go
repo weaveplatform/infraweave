@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
@@ -109,6 +110,39 @@ queue:
 	if c.Queue.Lease != time.Minute || c.Queue.Workers(queue.Events) != 2 ||
 		c.Queue.Workers(queue.VCSInbox) != 6 || c.Queue.Workers(queue.Default) != 8 {
 		t.Errorf("queue settings %+v", c.Queue)
+	}
+}
+
+// TestUnitLoadExpressions checks the expression limits: their defaults,
+// the file and the environment over it, and an unknown key refused.
+func TestUnitLoadExpressions(t *testing.T) {
+	c, err := loadArgs(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Expressions != expr.Defaults() || c.Expressions.CostLimit != 1_000_000 ||
+		c.Expressions.Timeout != time.Second || c.Expressions.MaxSource != 16<<10 ||
+		c.Expressions.MaxResult != 1<<20 {
+		t.Errorf("default expressions %+v", c.Expressions)
+	}
+	file := writeFile(t, `
+expressions:
+  cost_limit: 5000
+  timeout: 250ms
+  max_source: 2048
+  max_result: 4096
+`)
+	t.Setenv("INFRAWEAVE_EXPRESSIONS_TIMEOUT", "2s")
+	if c, err = loadArgs(t, "--config", file); err != nil {
+		t.Fatal(err)
+	}
+	want := expr.Config{CostLimit: 5000, Timeout: 2 * time.Second, MaxSource: 2048, MaxResult: 4096}
+	if c.Expressions != want {
+		t.Errorf("expressions %+v, want %+v", c.Expressions, want)
+	}
+	if _, err := loadArgs(t, "--config", writeFile(t, "expressions:\n  depth: 3\n")); err == nil ||
+		!strings.Contains(err.Error(), "depth") {
+		t.Errorf("an unknown expressions key: %v", err)
 	}
 }
 
@@ -223,6 +257,10 @@ func TestUnitLoadRejects(t *testing.T) {
 		{"unknown queue", "queue:\n  queues:\n    iot:\n      workers: 1\n", nil, "iot"},
 		{"bad queue lease", "queue:\n  lease: 0s\n", nil, "queue.lease"},
 		{"no event retention", "events:\n  retention: 0s\n", nil, "events.retention"},
+		{"no cost limit", "expressions:\n  cost_limit: 0\n", nil, "expressions.cost_limit"},
+		{"no timeout", "expressions:\n  timeout: 0s\n", nil, "expressions.timeout"},
+		{"no source size", "expressions:\n  max_source: 0\n", nil, "expressions.max_source"},
+		{"no result size", "expressions:\n  max_result: -1\n", nil, "expressions.max_result"},
 		{"unknown migrate mode", "database:\n  migrate: never\n", nil, "database.migrate"},
 		{"unknown IAM provider", "database:\n  iam_auth: ibm\n", nil, "database.iam_auth"},
 		{

@@ -8,6 +8,7 @@ tool (
 )
 
 require (
+	cel.dev/cel-go v0.33.2
 	cloud.google.com/go/kms v1.36.1
 	cloud.google.com/go/storage v1.70.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.24.0
@@ -67,6 +68,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.4 // indirect
 	github.com/alexflint/go-arg v1.6.1 // indirect
 	github.com/alexflint/go-scalar v1.2.0 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apache/arrow-go/v18 v18.8.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.26 // indirect

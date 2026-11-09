@@ -15,6 +15,7 @@ import (
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
@@ -34,6 +35,10 @@ type Config struct {
 	Queue    queue.Config      `mapstructure:"queue"`
 	Events   outbox.Config     `mapstructure:"events"`
 	Secrets  crypt.Config      `mapstructure:"secrets"`
+	// Expressions are the limits every expression evaluation runs under.
+	//
+	// ref: decision 0024
+	Expressions expr.Config `mapstructure:"expressions"`
 	// ObjectStore is the object storage that holds blobs beside
 	// PostgreSQL; Load checks its settings, and the process modes require
 	// its driver.
@@ -86,11 +91,12 @@ func Defaults() Config {
 			RateLimit:   ratelimit.Defaults(),
 			Idempotency: idempotency.Defaults(),
 		},
-		Database: sql.Defaults(),
-		Log:      observe.LogDefaults(),
-		Queue:    queue.Defaults(),
-		Events:   outbox.Defaults(),
-		Secrets:  crypt.Defaults(),
+		Database:    sql.Defaults(),
+		Log:         observe.LogDefaults(),
+		Queue:       queue.Defaults(),
+		Events:      outbox.Defaults(),
+		Secrets:     crypt.Defaults(),
+		Expressions: expr.Defaults(),
 
 		ObjectStore: objectstore.Defaults(),
 		Auth:        accessassembly.DefaultSettings(),
@@ -229,6 +235,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Queue.Validate(),
 		c.Events.Validate(),
 		c.Secrets.Validate(),
+		c.Expressions.Validate(),
 		c.ObjectStore.Validate(),
 		c.Auth.Validate(),
 		c.Features.Validate(),

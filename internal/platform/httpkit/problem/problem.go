@@ -216,6 +216,20 @@ type FieldError struct {
 	Pointer string `json:"pointer"`
 	Reason  string `json:"reason"`
 	Message string `json:"message"`
+	// Range is where in an expression or template the fault lies.
+	Range *Range `json:"range,omitempty"`
+}
+
+// Range is a span of source text, from Start up to but not including End.
+type Range struct {
+	Start Position `json:"start"`
+	End   Position `json:"end"`
+}
+
+// Position is a place in source text, its line and column counted from 1.
+type Position struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
 }
 
 // Write sends p with its status. The status line and the body's status are
@@ -314,7 +328,14 @@ func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 func refused(inv *kernel.Invalid) Problem {
 	p := ValidationFailed.New(inv.Detail)
 	for _, e := range inv.Errors {
-		p.Errors = append(p.Errors, FieldError(e))
+		fe := FieldError{Pointer: e.Pointer, Reason: e.Reason, Message: e.Message}
+		if e.Range != nil {
+			fe.Range = &Range{
+				Start: Position(e.Range.Start),
+				End:   Position(e.Range.End),
+			}
+		}
+		p.Errors = append(p.Errors, fe)
 	}
 	return p
 }

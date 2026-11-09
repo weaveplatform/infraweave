@@ -24,11 +24,28 @@ const (
 
 // FieldError is one field of an input that a rule refuses: a JSON Pointer
 // into the input's body, a reason clients branch on and a message for
-// people.
+// people. Range locates the fault inside a field that holds source text,
+// such as an expression; it is nil for any other field.
 type FieldError struct {
 	Pointer string
 	Reason  string
 	Message string
+	Range   *Range
+}
+
+// Range is a span of source text, from Start up to but not including End.
+//
+// ref: decision 0022
+type Range struct {
+	Start Position
+	End   Position
+}
+
+// Position is a place in source text: its line and its column, both
+// counted from 1, a column in Unicode code points.
+type Position struct {
+	Line   int
+	Column int
 }
 
 // Invalid is an input that rules refuse, naming every field they refuse,

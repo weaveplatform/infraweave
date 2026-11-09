@@ -12,7 +12,8 @@
 // with the problem it carries, a NotImplementedError with a 501 naming the
 // operation, a *kernel.Invalid, such as a refused search or vendor
 // setting, with 422 validation-failed and an errors member, a
-// FieldError for each field refused, kernel.ErrStale with 412
+// FieldError for each field refused, with its range when the fault lies
+// in source text, kernel.ErrStale with 412
 // precondition-failed, and anything else through Failure.
 //
 // ref: decision 0022
