@@ -17,6 +17,12 @@ tags:
     description: Health and version endpoints that need no authentication.
   - name: handwritten
     description: Marker tag. Operations with this tag are implemented by hand and excluded from code generation.
+  - name: Contexts
+    description: >-
+      Reusable bundles of environment variables, mounted files and hooks,
+      attached to stacks by priority so configuration is shared rather than
+      copied. Every value is sealed at rest, and a write-only one is
+      readable only by runs.
   - name: Runs
     description: >-
       The run lifecycle: trigger, confirm, discard, cancel, stop and retry

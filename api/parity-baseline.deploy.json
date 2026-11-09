@@ -118,21 +118,6 @@
       "stackIntegrationAwsCreate",
       "stackIntegrationAwsDelete"
     ],
-    "Contexts": [
-      "attachableContextsInSpace",
-      "context",
-      "contextAttach",
-      "contextAttachedStack",
-      "contextConfigAdd",
-      "contextConfigDelete",
-      "contextConfigElement",
-      "contextCreateV2",
-      "contextDelete",
-      "contextDetach",
-      "contextUpdateV2",
-      "contexts",
-      "searchContexts"
-    ],
     "Debug": [
       "debugInfo"
     ],
@@ -447,7 +432,6 @@
       "searchAnsibleTasksSuggestions",
       "searchAuditTrailEntriesSuggestions",
       "searchBlueprintsSuggestions",
-      "searchContextsSuggestions",
       "searchManagedEntitiesSuggestions",
       "searchModulesSuggestions",
       "searchNamedWebhooksIntegrationsSuggestions",
@@ -458,7 +442,6 @@
       "searchRepoFilesSuggestions",
       "searchReposSuggestions",
       "searchRunsSuggestions",
-      "searchSpaceContextsSuggestions",
       "searchSpacePoliciesSuggestions",
       "searchTofuWorkspacesSuggestions",
       "searchVCSIntegrationsSuggestions",

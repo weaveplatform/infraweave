@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"text/tabwriter"
 	"time"
 
@@ -43,7 +44,8 @@ func Streams() []migrate.Stream {
 // SealedColumns are the sealed columns of every stream Streams registers,
 // which secrets.reseal walks after a data key rotation.
 func SealedColumns() []crypt.Column {
-	return append(crypt.Registry(), accessassembly.SealedColumns()...)
+	return slices.Concat(crypt.Registry(), accessassembly.SealedColumns(),
+		configurationassembly.SealedColumns())
 }
 
 // openDatabase opens PostgreSQL and brings its schema to this binary's:

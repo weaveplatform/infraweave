@@ -24,7 +24,10 @@ func (st *stackSearchSteps) register(sc *godog.ScenarioContext) {
 			`through ([AB]) in pages of (\d+) finds "([^"]*)" forwards and back$`,
 		st.searches,
 	)
-	sc.Step(`^the answer suggests the (\w+) values "([^"]*)" of (\d+) stacks?$`, st.suggests)
+	sc.Step(
+		`^the answer suggests the (\w+) values "([^"]*)" of (\d+) (?:stacks?|contexts?)$`,
+		st.suggests,
+	)
 	sc.Step(
 		`^token "(\w+)" searches the stacks by (\w+) through ([AB]) after a cursor of a search by (\w+)(, cut short)?$`,
 		st.resumes,

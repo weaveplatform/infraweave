@@ -232,7 +232,8 @@
         "feature": "`contexts`",
         "lowestTier": "Free",
         "phase": "P6",
-        "state": "missing"
+        "state": "partial",
+        "notes": "Every operation is served (P6 task 1), with `searchSpaceContexts` and its suggestions on the Spaces tag; a context's `isAutoattached` attachments by label land with P6's auto-attachment task"
       }
     },
     {

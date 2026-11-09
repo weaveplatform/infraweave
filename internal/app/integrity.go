@@ -7,6 +7,7 @@ import (
 	"time"
 
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
+	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -31,7 +32,11 @@ const orphansEvery = 24 * time.Hour
 // Only internal/app sees every domain, so only it can pair them with
 // their owners' keys.
 func held() []integrity.Held {
-	return slices.Concat(featuresassembly.Held(), stacksassembly.Held())
+	return slices.Concat(
+		featuresassembly.Held(),
+		stacksassembly.Held(),
+		configurationassembly.Held(),
+	)
 }
 
 // orphansTask counts, through q, each held column's IDs whose row is gone,
@@ -44,7 +49,8 @@ func orphansTask(q tx.Querier, log *slog.Logger) cron.Task {
 		Kind:  CountOrphans,
 		Every: orphansEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
-			counts, err := integrity.Count(ctx, q, accessassembly.Keys(), held())
+			keys := slices.Concat(accessassembly.Keys(), stacksassembly.Keys())
+			counts, err := integrity.Count(ctx, q, keys, held())
 			if err != nil {
 				return err //nolint:wrapcheck // names the column
 			}

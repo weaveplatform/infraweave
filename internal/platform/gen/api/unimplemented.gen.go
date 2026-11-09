@@ -122,6 +122,10 @@ func (UnimplementedStrict) AttachableAzureIntegrationsInSpace(context.Context, A
 	return nil, &problem.NotImplementedError{OperationID: "attachableAzureIntegrationsInSpace", Route: "GET /attachable-azure-integrations-in-space"}
 }
 
+func (UnimplementedStrict) AttachableContextsInSpace(context.Context, AttachableContextsInSpaceRequestObject) (AttachableContextsInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachableContextsInSpace", Route: "GET /attachable-contexts-in-space"}
+}
+
 func (UnimplementedStrict) AttachableExternalIntegrationInSpace(context.Context, AttachableExternalIntegrationInSpaceRequestObject) (AttachableExternalIntegrationInSpaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "attachableExternalIntegrationInSpace", Route: "GET /attachable-external-integration-in-space"}
 }
@@ -208,6 +212,62 @@ func (UnimplementedStrict) BillingSubscriptionUpdateInfo(context.Context, Billin
 
 func (UnimplementedStrict) BillingSubscriptionUpdateTier(context.Context, BillingSubscriptionUpdateTierRequestObject) (BillingSubscriptionUpdateTierResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionUpdateTier", Route: "POST /billing-subscription/update-tier"}
+}
+
+func (UnimplementedStrict) ContextDetach(context.Context, ContextDetachRequestObject) (ContextDetachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextDetach", Route: "DELETE /context-attachments/{attachmentId}"}
+}
+
+func (UnimplementedStrict) Contexts(context.Context, ContextsRequestObject) (ContextsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contexts", Route: "GET /contexts"}
+}
+
+func (UnimplementedStrict) ContextCreateV2(context.Context, ContextCreateV2RequestObject) (ContextCreateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextCreateV2", Route: "POST /contexts"}
+}
+
+func (UnimplementedStrict) SearchContexts(context.Context, SearchContextsRequestObject) (SearchContextsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchContexts", Route: "POST /contexts/search"}
+}
+
+func (UnimplementedStrict) SearchContextsSuggestions(context.Context, SearchContextsSuggestionsRequestObject) (SearchContextsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchContextsSuggestions", Route: "POST /contexts/search/suggestions"}
+}
+
+func (UnimplementedStrict) ContextDelete(context.Context, ContextDeleteRequestObject) (ContextDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextDelete", Route: "DELETE /contexts/{contextId}"}
+}
+
+func (UnimplementedStrict) Context(context.Context, ContextRequestObject) (ContextResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "context", Route: "GET /contexts/{contextId}"}
+}
+
+func (UnimplementedStrict) ContextPatch(context.Context, ContextPatchRequestObject) (ContextPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextPatch", Route: "PATCH /contexts/{contextId}"}
+}
+
+func (UnimplementedStrict) ContextUpdateV2(context.Context, ContextUpdateV2RequestObject) (ContextUpdateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextUpdateV2", Route: "PUT /contexts/{contextId}"}
+}
+
+func (UnimplementedStrict) ContextAttachedStack(context.Context, ContextAttachedStackRequestObject) (ContextAttachedStackResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextAttachedStack", Route: "GET /contexts/{contextId}/attached-stack"}
+}
+
+func (UnimplementedStrict) ContextConfigElement(context.Context, ContextConfigElementRequestObject) (ContextConfigElementResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextConfigElement", Route: "GET /contexts/{contextId}/config-element"}
+}
+
+func (UnimplementedStrict) ContextConfigAdd(context.Context, ContextConfigAddRequestObject) (ContextConfigAddResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextConfigAdd", Route: "POST /contexts/{contextId}/configs"}
+}
+
+func (UnimplementedStrict) ContextConfigDelete(context.Context, ContextConfigDeleteRequestObject) (ContextConfigDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextConfigDelete", Route: "DELETE /contexts/{contextId}/configs/{configId}"}
+}
+
+func (UnimplementedStrict) ContextConfigSet(context.Context, ContextConfigSetRequestObject) (ContextConfigSetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextConfigSet", Route: "PUT /contexts/{contextId}/configs/{configId}"}
 }
 
 func (UnimplementedStrict) DefaultPrivateWorkerPoolRunnerImage(context.Context, DefaultPrivateWorkerPoolRunnerImageRequestObject) (DefaultPrivateWorkerPoolRunnerImageResponseObject, error) {
@@ -446,6 +506,10 @@ func (UnimplementedStrict) SearchSpaceContexts(context.Context, SearchSpaceConte
 	return nil, &problem.NotImplementedError{OperationID: "searchSpaceContexts", Route: "POST /space-contexts/search"}
 }
 
+func (UnimplementedStrict) SearchSpaceContextsSuggestions(context.Context, SearchSpaceContextsSuggestionsRequestObject) (SearchSpaceContextsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchSpaceContextsSuggestions", Route: "POST /space-contexts/search/suggestions"}
+}
+
 func (UnimplementedStrict) SearchSpacePolicies(context.Context, SearchSpacePoliciesRequestObject) (SearchSpacePoliciesResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchSpacePolicies", Route: "POST /space-policies/search"}
 }
@@ -596,6 +660,10 @@ func (UnimplementedStrict) StackConfigAdd(context.Context, StackConfigAddRequest
 
 func (UnimplementedStrict) StackConfigDelete(context.Context, StackConfigDeleteRequestObject) (StackConfigDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackConfigDelete", Route: "DELETE /stacks/{stackId}/configs/{configId}"}
+}
+
+func (UnimplementedStrict) ContextAttach(context.Context, ContextAttachRequestObject) (ContextAttachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "contextAttach", Route: "PUT /stacks/{stackId}/contexts/{contextId}"}
 }
 
 func (UnimplementedStrict) StackDependency(context.Context, StackDependencyRequestObject) (StackDependencyResponseObject, error) {

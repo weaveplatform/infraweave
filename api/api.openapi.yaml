@@ -13,6 +13,9 @@ tags:
     description: Health and version endpoints that need no authentication.
   - name: handwritten
     description: Marker tag. Operations with this tag are implemented by hand and excluded from code generation.
+  - name: Contexts
+    description: >-
+      Reusable bundles of environment variables, mounted files and hooks, attached to stacks by priority so configuration is shared rather than copied. Every value is sealed at rest, and a write-only one is readable only by runs.
   - name: Runs
     description: >-
       The run lifecycle: trigger, confirm, discard, cancel, stop and retry runs against a stack.
@@ -1373,6 +1376,58 @@ paths:
       x-infraweave-feature: spaces
       x-infraweave-subject: query:id
       x-rest-style: read
+  /attachable-contexts-in-space:
+    get:
+      description: >-
+        The contexts a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+      operationId: attachableContextsInSpace
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: query:id
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextPage'
+          description: The attachableContextsInSpace result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Attachable Contexts in Space
+      tags:
+        - Contexts
+      x-bruno: Contexts/Attachable Contexts in Space.bru
+      x-graphql:
+        field: attachableContextsInSpace
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
   /attachable-external-integration-in-space:
     get:
       operationId: attachableExternalIntegrationInSpace
@@ -2472,6 +2527,807 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /context-attachments/{attachmentId}:
+    delete:
+      description: Detach a context from a stack, by the attachment's ID.
+      operationId: contextDetach
+      x-infraweave-feature: contexts
+      x-infraweave-action: STACK_CONTEXT_DETACH
+      x-infraweave-subject: path:attachmentId:context_attachment
+      parameters:
+        - in: path
+          name: attachmentId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextStackAttachment'
+          description: The contextDetach result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Detach Context
+      tags:
+        - Contexts
+      x-bruno: Contexts/Detach Context.bru
+      x-graphql:
+        field: contextDetach
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: detach
+  /contexts:
+    get:
+      description: The contexts of the account in spaces the caller may read, by slug.
+      operationId: contexts
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextPage'
+          description: The contexts result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Contexts
+      tags:
+        - Contexts
+      x-bruno: Contexts/List Contexts.bru
+      x-graphql:
+        field: contexts
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+      operationId: contextCreateV2
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_CREATE
+      x-infraweave-subject: body:space
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: My context
+              labels: []
+              name: my-context
+              space: root
+            schema:
+              $ref: '#/components/schemas/ContextInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Context'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Context
+      tags:
+        - Contexts
+      x-bruno: Contexts/Create Context.bru
+      x-graphql:
+        field: contextCreateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /contexts/search:
+    post:
+      operationId: searchContexts
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example:
+              first: 50
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchContextsOutput'
+          description: The searchContexts result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Contexts
+      tags:
+        - Contexts
+      x-bruno: Contexts/Search Contexts.bru
+      x-graphql:
+        field: searchContexts
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /contexts/search/suggestions:
+    post:
+      description: >-
+        The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+      operationId: searchContextsSuggestions
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchContextsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Contexts Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Contexts Suggestions.bru
+      x-graphql:
+        field: searchContextsSuggestions
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /contexts/{contextId}:
+    delete:
+      description: >-
+        Delete a context with its config elements. A context attached to a stack is refused unless force is true, which detaches it first.
+      operationId: contextDelete
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_DELETE
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - in: query
+          name: force
+          schema:
+            type: boolean
+          x-graphql-arg: force
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Context'
+          description: The contextDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Context
+      tags:
+        - Contexts
+      x-bruno: Contexts/Delete Context.bru
+      x-graphql:
+        field: contextDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: Details of a single Context.
+      operationId: context
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Context'
+          description: The context result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Context
+      tags:
+        - Contexts
+      x-bruno: Contexts/Get Context.bru
+      x-graphql:
+        field: context
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+      operationId: contextPatch
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_UPDATE
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ContextUpdateV2Request.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Context'
+          description: The contextUpdateV2 result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Context
+      tags:
+        - Contexts
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: >-
+        Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+      operationId: contextUpdateV2
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_UPDATE
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              input:
+                description: Updated description
+                labels: []
+                name: my-context-updated
+                space: root
+            schema:
+              $ref: '#/components/schemas/ContextUpdateV2Request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Context'
+          description: The contextUpdateV2 result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Context
+      tags:
+        - Contexts
+      x-bruno: Contexts/Update Context.bru
+      x-graphql:
+        field: contextUpdateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /contexts/{contextId}/attached-stack:
+    get:
+      description: Single stack attachment for this context.
+      operationId: contextAttachedStack
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextStackAttachment'
+          description: The attachedStack result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Context attached stack
+      tags:
+        - Contexts
+      x-graphql:
+        field: attachedStack
+        operation: query
+        type: Context
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /contexts/{contextId}/config-element:
+    get:
+      description: Single context config element.
+      operationId: contextConfigElement
+      x-infraweave-feature: contexts
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: The configElement result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Context config element
+      tags:
+        - Contexts
+      x-graphql:
+        field: configElement
+        operation: query
+        type: Context
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /contexts/{contextId}/configs:
+    post:
+      description: >-
+        Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+      operationId: contextConfigAdd
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_UPDATE
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - description: ID of the context on which the environment variable is defined
+          in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: context
+          x-terraform:
+            - spacelift_environment_variable.context_id
+            - spacelift_mounted_file.context_id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: My environment variable
+              id: MY_ENV_VAR
+              type: ENVIRONMENT_VARIABLE
+              value: my-value
+              writeOnly: false
+            schema:
+              $ref: '#/components/schemas/ConfigInput'
+        required: true
+        x-graphql-arg: config
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Replaced.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Add Config
+      tags:
+        - Contexts
+      x-bruno: Contexts/Add Config.bru
+      x-graphql:
+        field: contextConfigAdd
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-085
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /contexts/{contextId}/configs/{configId}:
+    delete:
+      description: Delete a config element of a context.
+      operationId: contextConfigDelete
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_UPDATE
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: context
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: The contextConfigDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Config
+      tags:
+        - Contexts
+      x-bruno: Contexts/Delete Config.bru
+      x-graphql:
+        field: contextConfigDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: delete
+    put:
+      description: >-
+        Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+      operationId: contextConfigSet
+      x-infraweave-feature: contexts
+      x-infraweave-action: CONTEXT_UPDATE
+      x-infraweave-subject: path:contextId:context
+      parameters:
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: My environment variable
+              type: ENVIRONMENT_VARIABLE
+              value: my-value
+              writeOnly: false
+            schema:
+              $ref: '#/components/schemas/ConfigElementInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Replaced.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Set Config
+      tags:
+        - Contexts
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-085
+        - rate-limit
+      x-upstream: none
   /default-private-worker-pool-runner-image:
     get:
       description: >-
@@ -5249,6 +6105,8 @@ paths:
       x-rest-style: override
   /space-contexts/search:
     post:
+      description: >-
+        Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
       operationId: searchSpaceContexts
       requestBody:
         content:
@@ -5292,8 +6150,57 @@ paths:
       x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
-      x-infraweave-feature: spaces
-      x-infraweave-subject: list
+      x-infraweave-feature: contexts
+      x-infraweave-subject: body:space
+      x-rest-style: search
+  /space-contexts/search/suggestions:
+    post:
+      description: >-
+        The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+      operationId: searchSpaceContextsSuggestions
+      requestBody:
+        content:
+          application/json:
+            example:
+              input: {}
+              space: SPACE_ID_HERE
+            schema:
+              $ref: '#/components/schemas/SearchSpaceContextsSuggestionsRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchSpaceContextsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Space Contexts Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Space Contexts Suggestions.bru
+      x-graphql:
+        field: searchSpaceContextsSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: contexts
+      x-infraweave-subject: body:space
       x-rest-style: search
   /space-policies/search:
     post:
@@ -7441,6 +8348,72 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: delete
+  /stacks/{stackId}/contexts/{contextId}:
+    put:
+      description: >-
+        Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+      operationId: contextAttach
+      x-infraweave-feature: contexts
+      x-infraweave-action: STACK_CONTEXT_ATTACH
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - description: ID of the stack to attach the context to
+          in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+          x-terraform:
+            - spacelift_context_attachment.stack_id
+        - in: path
+          name: contextId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              priority: 1
+            schema:
+              $ref: '#/components/schemas/ContextAttachRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextStackAttachment'
+          description: The contextAttach result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Attach Context
+      tags:
+        - Contexts
+      x-bruno: Contexts/Attach Context.bru
+      x-graphql:
+        field: contextAttach
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: attach
   /stacks/{stackId}/dependency:
     get:
       description: An individual stack dependency.
@@ -13250,6 +14223,32 @@ components:
       x-enum-descriptions:
         INFRAWEAVE_ENVIRONMENT: Element is managed by infraweave (API tokens, OIDC tokens, TF_VAR_infraweave_* metadata).
       x-graphql-type: ConfigElementCategory
+    ConfigElementInput:
+      additionalProperties: false
+      description: >-
+        A config element to create or replace at the ID in the path. An absent value keeps a replaced element's value, so a write-only value need not be sent again; it cannot make a write-only element readable.
+      properties:
+        description:
+          description: Description of the config element.
+          nullable: true
+          type: string
+        fileMode:
+          description: File mode (user, group and other) of a file mount, in octal.
+          nullable: true
+          type: string
+        type:
+          $ref: '#/components/schemas/ConfigType'
+        value:
+          description: >-
+            The variable's value, or the file's content in Base64, at most 2 MB decoded.
+          type: string
+        writeOnly:
+          description: Whether the value is readable only by runs.
+          type: boolean
+      required:
+        - type
+        - writeOnly
+      type: object
     ConfigElementWithSource:
       properties:
         context:
@@ -13385,6 +14384,69 @@ components:
         attachedStack: served by GET /contexts/{contextId}/attached-stack
         configElement: served by GET /contexts/{contextId}/config-element
       x-graphql-type: Context
+    ContextAttachRequest:
+      additionalProperties: false
+      description: The arguments of contextAttach not carried in the path.
+      properties:
+        priority:
+          description: Priority of the context attachment. All the contexts attached to a stack are sorted by priority (lowest first), though values don't need to be unique. This ordering establishes precedence rules between contexts should there be a conflict and multiple contexts define the same value. Defaults to `0`.
+          format: int32
+          type: integer
+          x-terraform:
+            - spacelift_context_attachment.priority
+      required:
+        - priority
+      type: object
+      x-graphql-args-of: contextAttach
+    ContextInput:
+      additionalProperties: false
+      description: ContextInput represents the data used to configure a Context.
+      properties:
+        configAttachments:
+          description: >-
+            The context's config elements. A create adds each; an update replaces the context's elements with these only when replaceConfigElements is true, and ignores them otherwise. Two elements with one ID are refused.
+          items:
+            $ref: '#/components/schemas/ConfigInput'
+          nullable: true
+          type: array
+        description:
+          description: Free-form context description for users
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_context.description
+        hooks:
+          $ref: '#/components/schemas/HooksInput'
+        labels:
+          description: 'The labels of the context. To leverage the `autoattach` magic label, ensure your label follows the naming convention: `autoattach:<your-label-name>`'
+          items:
+            type: string
+          nullable: true
+          type: array
+          x-terraform:
+            - spacelift_context.labels
+        name:
+          description: Name of the context - should be unique in one account
+          type: string
+          x-terraform:
+            - spacelift_context.name
+        space:
+          description: ID (slug) of the space the context is in
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_context.space_id
+        stackAttachments:
+          description: >-
+            Stacks a create attaches the context to, each as contextAttach would. An update refuses a non-empty list; contextAttach and contextDetach change an existing context's attachments.
+          items:
+            $ref: '#/components/schemas/ContextStackAttachmentInput'
+          nullable: true
+          type: array
+      required:
+        - name
+      type: object
+      x-graphql-type: ContextInput
     ContextPage:
       description: One page of a cursor-paginated list.
       properties:
@@ -13446,6 +14508,45 @@ components:
         - stackSpaceDetails
       type: object
       x-graphql-type: ContextStackAttachment
+    ContextStackAttachmentInput:
+      additionalProperties: false
+      properties:
+        priority:
+          format: int32
+          type: integer
+        stack:
+          type: string
+      required:
+        - priority
+        - stack
+      type: object
+      x-graphql-type: ContextStackAttachmentInput
+    ContextUpdateV2Request:
+      additionalProperties: false
+      description: The arguments of contextUpdateV2 not carried in the path.
+      properties:
+        input:
+          $ref: '#/components/schemas/ContextInput'
+        replaceConfigElements:
+          description: >-
+            Whether input.configAttachments replaces the context's config elements. Absent or false leaves them as they are.
+          nullable: true
+          type: boolean
+      required:
+        - input
+      type: object
+      x-graphql-args-of: contextUpdateV2
+    ContextsConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/ContextRef'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: ContextsConnection
     DataPoint:
       properties:
         labels:
@@ -14162,6 +15263,67 @@ components:
         - beforePlan
       type: object
       x-graphql-type: Hooks
+    HooksInput:
+      additionalProperties: false
+      properties:
+        afterApply:
+          items:
+            type: string
+          type: array
+        afterDestroy:
+          items:
+            type: string
+          type: array
+        afterInit:
+          items:
+            type: string
+          type: array
+        afterPerform:
+          items:
+            type: string
+          type: array
+        afterPlan:
+          items:
+            type: string
+          type: array
+        afterRun:
+          items:
+            type: string
+          type: array
+        beforeApply:
+          items:
+            type: string
+          type: array
+        beforeDestroy:
+          items:
+            type: string
+          type: array
+        beforeInit:
+          items:
+            type: string
+          type: array
+        beforePerform:
+          items:
+            type: string
+          type: array
+        beforePlan:
+          items:
+            type: string
+          type: array
+      required:
+        - afterApply
+        - afterDestroy
+        - afterInit
+        - afterPerform
+        - afterPlan
+        - afterRun
+        - beforeApply
+        - beforeDestroy
+        - beforeInit
+        - beforePerform
+        - beforePlan
+      type: object
+      x-graphql-type: HooksInput
     Identity:
       description: Identity represents a V2 identity record linked to a user via federation.
       properties:
@@ -17481,6 +18643,19 @@ components:
         - command
       type: object
       x-graphql-type: ScheduledTaskInput
+    SearchContextsOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/ContextsConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchContextsOutput
     SearchInput:
       additionalProperties: false
       properties:
@@ -17758,6 +18933,19 @@ components:
         - space
       type: object
       x-graphql-args-of: searchSpaceContexts
+    SearchSpaceContextsSuggestionsRequest:
+      additionalProperties: false
+      description: The arguments of searchSpaceContextsSuggestions not carried in the path.
+      properties:
+        input:
+          $ref: '#/components/schemas/SearchSuggestionsInput'
+        space:
+          type: string
+      required:
+        - input
+        - space
+      type: object
+      x-graphql-args-of: searchSpaceContextsSuggestions
     SearchSpacePoliciesOutput:
       properties:
         edges:

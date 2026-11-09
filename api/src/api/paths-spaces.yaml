@@ -947,6 +947,19 @@ components:
         - space
       type: object
       x-graphql-args-of: searchSpaceContexts
+    SearchSpaceContextsSuggestionsRequest:
+      additionalProperties: false
+      description: The arguments of searchSpaceContextsSuggestions not carried in the path.
+      properties:
+        input:
+          $ref: '#/components/schemas/SearchSuggestionsInput'
+        space:
+          type: string
+      required:
+        - input
+        - space
+      type: object
+      x-graphql-args-of: searchSpaceContextsSuggestions
     SearchSpacePoliciesOutput:
       properties:
         edges:
@@ -2446,6 +2459,11 @@ paths:
       x-rest-style: read
   /space-contexts/search:
     post:
+      description: >-
+        Search the contexts a stack in the space may attach that the caller
+        may read: those in the space, and, marked inherited, those in each
+        ancestor reached through an unbroken chain of spaces that inherit
+        their parent's entities.
       operationId: searchSpaceContexts
       requestBody:
         content:
@@ -2489,8 +2507,58 @@ paths:
       x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
-      x-infraweave-feature: spaces
-      x-infraweave-subject: list
+      x-infraweave-feature: contexts
+      x-infraweave-subject: body:space
+      x-rest-style: search
+  /space-contexts/search/suggestions:
+    post:
+      description: >-
+        The fields a search of the space's contexts filters and orders by,
+        with the values the contexts it keeps hold and how many hold each.
+      operationId: searchSpaceContextsSuggestions
+      requestBody:
+        content:
+          application/json:
+            example:
+              input: {}
+              space: SPACE_ID_HERE
+            schema:
+              $ref: '#/components/schemas/SearchSpaceContextsSuggestionsRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchSpaceContextsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Space Contexts Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Space Contexts Suggestions.bru
+      x-graphql:
+        field: searchSpaceContextsSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: contexts
+      x-infraweave-subject: body:space
       x-rest-style: search
   /space-policies/search:
     post:

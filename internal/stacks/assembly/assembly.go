@@ -22,6 +22,10 @@ func Stream() migrate.Stream { return pg.Stream() }
 // nightly orphan count.
 func Held() []integrity.Held { return pg.Held() }
 
+// Keys are the stacks rows other domains hold, for the nightly orphan
+// count.
+func Keys() []integrity.Key { return pg.Keys() }
+
 // Entity is the kind of entity the access domain's middleware finds a
 // stack's space for, as the API's x-infraweave-subject names it.
 const Entity = "stack"

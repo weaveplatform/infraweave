@@ -47,11 +47,18 @@ func TestAccStore(t *testing.T) {
 		acct, id, space); err != nil {
 		t.Fatal(err)
 	}
-	want := stacksapi.Stack{ID: id, Account: acct, Slug: "infra", Space: space}
+	want := stacksapi.Stack{ID: id, Account: acct, Slug: "infra", Name: "Infra", Space: space}
 	if got, err := s.Get(ctx, acct, id); err != nil || got != want {
 		t.Errorf("Get = %+v, %v; want %+v", got, err, want)
 	}
-	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+	got, err := s.ByIDs(ctx, acct, []kernel.ULID{id, kernel.NewULID()})
+	if err != nil || len(got) != 1 || got[id] != want {
+		t.Errorf("ByIDs = %+v, %v; want only %+v", got, err, want)
+	}
+	if got, err := s.ByIDs(ctx, other, []kernel.ULID{id}); err != nil || len(got) != 0 {
+		t.Errorf("ByIDs of another account = %+v, %v", got, err)
+	}
+	err = tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
 		_, err := s.Get(ctx, acct, id)
 		return err
 	})

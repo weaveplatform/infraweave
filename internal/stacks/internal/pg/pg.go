@@ -47,6 +47,14 @@ func Held() []integrity.Held {
 	}
 }
 
+// Keys are the stacks domain's rows other domains hold: a stack, by its
+// account and ULID.
+func Keys() []integrity.Key {
+	return []integrity.Key{
+		{Entity: "stack", Table: "stacks", Columns: []string{"account_id", "id"}},
+	}
+}
+
 // DB is the pool the store queries, and begins a transaction on for a
 // write of several statements that its caller has not.
 type DB interface {
@@ -123,9 +131,8 @@ func (s *Store) Get(
 	acct kernel.AccountID,
 	id kernel.ULID,
 ) (stacksapi.Stack, error) {
-	st := stacksapi.Stack{Account: acct}
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id, slug, space_id FROM stacks
-		WHERE account_id = $1 AND id = $2`, acct, id).Scan(&st.ID, &st.Slug, &st.Space)
+	st, err := scanRef(acct, tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+refColumns+` FROM stacks
+		WHERE account_id = $1 AND id = $2`, acct, id))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return stacksapi.Stack{}, fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
@@ -133,6 +140,46 @@ func (s *Store) Get(
 		return stacksapi.Stack{}, fmt.Errorf("stacks: read stack %s: %w", id, sql.Unavailable(err))
 	}
 	return st, nil
+}
+
+// refColumns are a stacksapi.Stack's columns as scanRef reads them.
+const refColumns = `id, slug, name, space_id`
+
+// scanRef reads refColumns of acct's stack.
+func scanRef(acct kernel.AccountID, row pgx.Row) (stacksapi.Stack, error) {
+	st := stacksapi.Stack{Account: acct}
+	err := row.Scan(&st.ID, &st.Slug, &st.Name, &st.Space)
+	return st, err //nolint:wrapcheck // callers name the read
+}
+
+// refs lists the stacks rows holds, closing rows.
+func refs(acct kernel.AccountID, rows pgx.Rows) ([]stacksapi.Stack, error) {
+	//nolint:wrapcheck // callers name the read
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (stacksapi.Stack, error) {
+		return scanRef(acct, row)
+	})
+}
+
+// ByIDs reads those of acct's stacks ids that it has, keyed by ID.
+func (s *Store) ByIDs(
+	ctx context.Context,
+	acct kernel.AccountID,
+	ids []kernel.ULID,
+) (map[kernel.ULID]stacksapi.Stack, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
+		WHERE account_id = $1 AND id = ANY($2)`, acct, ids)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: read stacks: %w", sql.Unavailable(err))
+	}
+	all, err := refs(acct, rows)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: read stacks: %w", sql.Unavailable(err))
+	}
+	out := make(map[kernel.ULID]stacksapi.Stack, len(all))
+	for _, st := range all {
+		out[st.ID] = st
+	}
+	return out, nil
 }
 
 // Read reads acct's stack id whole.
@@ -184,17 +231,14 @@ func (s *Store) ByRepository(
 	integration *kernel.ULID,
 	repository, branch string,
 ) ([]stacksapi.Stack, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, slug, space_id FROM stacks
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
 		WHERE account_id = $1 AND repository = $2 AND branch = $3
 			AND vcs_integration_id IS NOT DISTINCT FROM $4
 		ORDER BY slug`, acct, repository, branch, integration)
 	if err != nil {
 		return nil, fmt.Errorf("stacks: list stacks of %s: %w", repository, sql.Unavailable(err))
 	}
-	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (stacksapi.Stack, error) {
-		st := stacksapi.Stack{Account: acct}
-		return st, row.Scan(&st.ID, &st.Slug, &st.Space)
-	})
+	out, err := refs(acct, rows)
 	if err != nil {
 		return nil, fmt.Errorf("stacks: list stacks of %s: %w", repository, sql.Unavailable(err))
 	}
@@ -227,7 +271,7 @@ func (s *Store) Find(
 	spaces []kernel.ULID,
 	labels []string,
 ) ([]stacksapi.Stack, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT s.id, s.slug, s.space_id FROM stacks s
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT s.id, s.slug, s.name, s.space_id FROM stacks s
 		WHERE s.account_id = $1 AND s.space_id = ANY($2) AND EXISTS (
 			SELECT 1 FROM stack_labels l
 			WHERE l.account_id = s.account_id AND l.stack_id = s.id AND l.label = ANY($3))
@@ -235,10 +279,7 @@ func (s *Store) Find(
 	if err != nil {
 		return nil, fmt.Errorf("stacks: find stacks by label: %w", sql.Unavailable(err))
 	}
-	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (stacksapi.Stack, error) {
-		st := stacksapi.Stack{Account: acct}
-		return st, row.Scan(&st.ID, &st.Slug, &st.Space)
-	})
+	out, err := refs(acct, rows)
 	if err != nil {
 		return nil, fmt.Errorf("stacks: find stacks by label: %w", sql.Unavailable(err))
 	}
