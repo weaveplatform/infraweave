@@ -256,15 +256,30 @@ const elementColumns = `e.account_id, e.id, e.context_id, e.stack_id, e.element,
 	CASE WHEN e.write_only THEN NULL ELSE e.value_sealed END, e.checksum, e.write_only,
 	e.description, e.file_mode, e.created_at`
 
+// openedColumns are elementColumns with every value, write-only or not.
+const openedColumns = `e.account_id, e.id, e.context_id, e.stack_id, e.element, e.file_mount,
+	e.value_sealed, e.checksum, e.write_only, e.description, e.file_mode, e.created_at`
+
 // scanElement reads elementColumns, opening a readable value.
 func (s *Store) scanElement(ctx context.Context, row pgx.Row) (core.Element, error) {
+	o, err := s.scanOpened(ctx, row)
+	if err == nil && o.Secret != nil {
+		plain := string(o.Secret.Reveal())
+		o.Value = &plain
+	}
+	return o.Element, err
+}
+
+// scanOpened reads elementColumns or openedColumns, opening the value it
+// reads into Secret.
+func (s *Store) scanOpened(ctx context.Context, row pgx.Row) (core.Opened, error) {
 	var e core.Element
 	var ctxID, stack *kernel.ULID
 	var sealed []byte
 	err := row.Scan(&e.Account, &e.ID, &ctxID, &stack, &e.Name, &e.FileMount, &sealed, &e.Checksum,
 		&e.WriteOnly, &e.Description, &e.FileMode, &e.CreatedAt)
 	if err != nil {
-		return core.Element{}, err //nolint:wrapcheck // callers name the read
+		return core.Opened{}, err //nolint:wrapcheck // callers name the read
 	}
 	if ctxID != nil {
 		e.Owner.Context = *ctxID
@@ -272,15 +287,15 @@ func (s *Store) scanElement(ctx context.Context, row pgx.Row) (core.Element, err
 	if stack != nil {
 		e.Owner.Stack = *stack
 	}
+	o := core.Opened{Element: e}
 	if sealed != nil {
 		v, err := s.seal.OpenColumn(ctx, value, []string{e.Account.UUID(), e.ID.UUID()}, sealed)
 		if err != nil {
-			return core.Element{}, fmt.Errorf("configuration: open element %s: %w", e.Name, err)
+			return core.Opened{}, fmt.Errorf("configuration: open element %s: %w", e.Name, err)
 		}
-		plain := string(v.Reveal())
-		e.Value = &plain
+		o.Secret = v
 	}
-	return e, nil
+	return o, nil
 }
 
 // owners are the context and stack IDs among owners.
@@ -324,6 +339,40 @@ func (s *Store) Elements(
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("configuration: read config elements: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// Opened reads the elements of each of owners with every value opened,
+// by name, keyed by the owner's ID: a run's spec is the one reader of a
+// write-only value.
+func (s *Store) Opened(
+	ctx context.Context,
+	acct kernel.AccountID,
+	all []core.Owner,
+) (map[kernel.ULID][]core.Opened, error) {
+	contexts, stacks := owners(all)
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+openedColumns+` FROM config_elements e
+		WHERE e.account_id = $1 AND (e.context_id = ANY($2) OR e.stack_id = ANY($3))
+		ORDER BY e.element COLLATE "C"`, acct, contexts, stacks)
+	if err != nil {
+		return nil, fmt.Errorf("configuration: open config elements: %w", sql.Unavailable(err))
+	}
+	defer rows.Close()
+	out := map[kernel.ULID][]core.Opened{}
+	for rows.Next() {
+		o, err := s.scanOpened(ctx, rows)
+		if err != nil {
+			return nil, fmt.Errorf("configuration: open config elements: %w", sql.Unavailable(err))
+		}
+		key := o.Owner.Context
+		if key.IsZero() {
+			key = o.Owner.Stack
+		}
+		out[key] = append(out[key], o)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("configuration: open config elements: %w", sql.Unavailable(err))
 	}
 	return out, nil
 }

@@ -63,6 +63,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 			return err
 		}(),
 		"LockAutoattach": s.LockAutoattach(ctx, acct),
+		"Opened":         func() error { _, err := s.Opened(ctx, acct, []core.Owner{owner}); return err }(),
 	} {
 		if err == nil || errors.Is(err, core.ErrNotFound) {
 			t.Errorf("%s on a closed pool = %v", name, err)
@@ -147,6 +148,7 @@ func TestAccServiceUnavailable(t *testing.T) {
 		},
 		"Config":       func() error { _, err := f.svc.Config(ctx, f.acct, []kernel.ULID{f.web.ID}); return err },
 		"StackChanged": func() error { return f.svc.StackChanged(ctx, f.acct, f.web.ID) },
+		"Resolve":      func() error { _, err := f.svc.Resolve(ctx, f.acct, f.web.ID); return err },
 	}
 
 	down := errors.New("down")
@@ -163,7 +165,7 @@ func TestAccServiceUnavailable(t *testing.T) {
 	f.stacks.err = down
 	for _, name := range []string{
 		"AttachmentSpaceOf", "Details", "AttachedStack", "Create", "Attach",
-		"Detach", "SpaceLostOnMove", "StackChanged",
+		"Detach", "SpaceLostOnMove", "StackChanged", "Resolve",
 	} {
 		if err := ops[name](); !errors.Is(err, down) {
 			t.Errorf("%s with the stacks down = %v", name, err)

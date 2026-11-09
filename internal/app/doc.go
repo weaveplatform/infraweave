@@ -4,7 +4,9 @@
 // process mode over it. Domains holds the business domains, which
 // newDomains builds in the declared graph's order on the primary pool and
 // the keyring, with their settings, beside the access domain's
-// Authenticator and OperatorAuthenticator;
+// Authenticator and OperatorAuthenticator, and the expression registry it
+// builds from the domains' surfaces under the expressions settings and
+// binds back into the configuration domain;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //
@@ -110,6 +112,7 @@
 // and sql/notify for the database, its streams and its notifications;
 // sql/integrity for the orphan count;
 // platform/queue, platform/cron and platform/outbox for the scheduler role;
+// platform/expr for the expression registry;
 // platform/crypt, crypt/kek and its providers for the keyring;
 // crypt/signer and its KMS backends for the kms signing keys; platform/objectstore, its
 // drivers and objectstore/blobs for object storage;

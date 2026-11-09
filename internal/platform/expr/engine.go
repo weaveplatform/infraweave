@@ -2,6 +2,7 @@ package expr
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -123,6 +124,17 @@ type Check struct {
 	// template's is string unless it is one whole expression.
 	Type string
 	Cost Cost
+	// Reads are the source's literal reads of its variables' keys, in
+	// source order. A key read any other way is not among them.
+	Reads []Read
+}
+
+// Read is one read of a variable's key with a literal, as v.KEY or
+// v["KEY"], and the range of the read.
+type Read struct {
+	Variable string
+	Key      string
+	Range    kernel.Range
 }
 
 // OK reports whether c has no error, so the source can be evaluated.
@@ -302,7 +314,9 @@ func (r *Registry) Check(req Request) (Check, error) {
 	if err != nil {
 		return Check{}, err
 	}
-	return p.check, nil
+	c := p.check
+	c.Reads = slices.Clone(p.check.Reads)
+	return c, nil
 }
 
 // Evaluate compiles req and runs it against in, under the limits. A
@@ -545,6 +559,7 @@ func (r *Registry) compileExpr(env *environment, p *program, seg segment) (part,
 	}
 	native := checked.NativeRep()
 	span := spanOf(seg)
+	p.check.Reads = append(p.check.Reads, literalReads(native, env.schemas, seg.at)...)
 	if bad := secretKeys(native, env.secrets, p.secrets); len(bad) > 0 {
 		for _, id := range bad {
 			p.check.Diagnostics = append(p.check.Diagnostics, Diagnostic{
@@ -693,6 +708,37 @@ func secretKeys(a *ast.AST, secret map[string]bool, keys map[string][]string) []
 		}
 	}
 	return bad
+}
+
+// literalReads are a's literal reads of the declared variables' keys, in
+// source order, a lying at at.
+func literalReads(a *ast.AST, declared map[string]*schema, at kernel.Position) []Read {
+	idents := ast.MatchDescendants(ast.NavigateAST(a), func(e ast.NavigableExpr) bool {
+		if e.Kind() != ast.IdentKind {
+			return false
+		}
+		_, ok := declared[e.AsIdent()]
+		return ok
+	})
+	var out []Read
+	for _, id := range idents {
+		key, ok := literalKey(id)
+		if !ok {
+			continue
+		}
+		// A selection's range is its field's name; an index's, its key.
+		parent, _ := id.Parent()
+		node := parent.ID()
+		if parent.Kind() == ast.CallKind {
+			node = parent.AsCall().Args()[1].ID()
+		}
+		out = append(out, Read{Variable: id.AsIdent(), Key: key, Range: rangeOf(a, node, at)})
+	}
+	slices.SortStableFunc(out, func(x, y Read) int {
+		return cmp.Or(cmp.Compare(x.Range.Start.Line, y.Range.Start.Line),
+			cmp.Compare(x.Range.Start.Column, y.Range.Start.Column))
+	})
+	return out
 }
 
 // literalKey is the key a reference to a secret variable reads, when its

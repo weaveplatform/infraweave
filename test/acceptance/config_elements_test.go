@@ -20,6 +20,39 @@ func (c *configSteps) register(sc *godog.ScenarioContext) {
 		`^the stack "([^"]+)" read through ([AB]) with token "(\w+)" eventually attaches the contexts "([^"]*)"$`,
 		c.attaches,
 	)
+	sc.Step(
+		`^the problem refuses the field "([^"]+)" from (\d+):(\d+) to (\d+):(\d+)$`,
+		c.refusesRange,
+	)
+}
+
+// refusesRange checks the last answer, a problem, for an error at pointer
+// whose range runs from one line and column up to another.
+func (c *configSteps) refusesRange(pointer string, l1, c1, l2, c2 int) error {
+	type position struct {
+		Line   int `json:"line"`
+		Column int `json:"column"`
+	}
+	var p struct {
+		Errors []struct {
+			Pointer string `json:"pointer"`
+			Range   *struct {
+				Start position `json:"start"`
+				End   position `json:"end"`
+			} `json:"range"`
+		} `json:"errors"`
+	}
+	r := c.o.a.s.last()
+	if json.Unmarshal(r.body, &p) == nil {
+		for _, e := range p.Errors {
+			if e.Pointer == pointer && e.Range != nil && e.Range.Start == (position{l1, c1}) &&
+				e.Range.End == (position{l2, c2}) {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("%w: no error at %s from %d:%d to %d:%d: %d %s",
+		errStep, pointer, l1, c1, l2, c2, r.status, r.body)
 }
 
 // attaches waits for the stack slug, read through replica, to attach the

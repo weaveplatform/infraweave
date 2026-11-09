@@ -7,7 +7,10 @@ Feature: A stack's own config elements
   answered again, by the element, the stack or the contexts the stack may
   attach, only its checksum. Deleting a stack deletes its elements. A
   space writer adds and deletes a stack's elements; a space reader reads
-  them. A stack in a space the caller cannot read answers as one that does
+  them. A value's ${{ … }} templates are checked when it is saved, a
+  stack's against the variables the stack resolves to, and kept
+  unrendered; one that reads a write-only value is write-only, and
+  ${NAME} is left to the shell. A stack in a space the caller cannot read answers as one that does
   not exist. The home key is space-admin on the account's top space; the
   member key holds only the bindings a scenario gives it. Team inherits
   from acme; stack infra lives in legacy and stack hidden in team.
@@ -129,3 +132,29 @@ Feature: A stack's own config elements
     Then it answers a 404 problem "not-found"
     When token "h" sends "DELETE /api/v1/stacks/gone/configs/A" through A
     Then it answers a 404 problem "not-found"
+
+  @op:stackConfigAdd @op:stackConfigSet @op:stackConfigElement @op:contextConfigAdd @case:failure @case:success
+  Scenario: A value's templates are checked when it is saved and kept unrendered
+    Given token "h" sends "PUT /api/v1/stacks/infra/configs/REGION" with '{"type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra/configs/TOKEN" with '{"type":"ENVIRONMENT_VARIABLE","value":"s3cret","writeOnly":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"URL","type":"ENVIRONMENT_VARIABLE","value":"https://${{ env.TYPO }}.example","writeOnly":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/value" from 1:17 to 1:21
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/URL" with '{"type":"ENVIRONMENT_VARIABLE","value":"${{ stack.nmae }}","writeOnly":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/value" from 1:11 to 1:15
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/URL" with '{"type":"ENVIRONMENT_VARIABLE","value":"https://${{ env.REGION }}.${{ stack.id }}/${HOME}","writeOnly":false}' through A
+    Then it answers 201
+    When token "h" sends "GET /api/v1/stacks/infra/config-element?id=URL" through B
+    Then the answer's value is '"https://${{ env.REGION }}.${{ stack.id }}/${HOME}"'
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"AUTH","type":"ENVIRONMENT_VARIABLE","value":"Bearer ${{ env.TOKEN }}","writeOnly":false}' through A
+    Then it answers 201
+    And the answer's writeOnly is 'true'
+    When token "h" sends "GET /api/v1/stacks/infra/config-element?id=AUTH" through B
+    Then the answer leaves out "Bearer"
+    Given token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy"}' through B
+    When token "h" sends "POST /api/v1/contexts/shared/configs" with '{"id":"URL","type":"ENVIRONMENT_VARIABLE","value":"${{ env.FROM_A_STACK }}","writeOnly":false}' through A
+    Then it answers 201
+    When token "h" sends "POST /api/v1/contexts/shared/configs" with '{"id":"BAD","type":"ENVIRONMENT_VARIABLE","value":"${{ env.FROM_A_STACK","writeOnly":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/value" from 1:1 to 1:4

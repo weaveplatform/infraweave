@@ -805,3 +805,38 @@ func TestUnitExprRegistry(t *testing.T) {
 		}
 	}
 }
+
+// TestUnitExprReads checks that a check reports each literal read of a
+// variable's key across a template's expressions, in source order with
+// its range, and leaves out a key the source computes.
+func TestUnitExprReads(t *testing.T) {
+	r := registry(t, expr.Defaults(), expr.Surface{Name: "s", Variables: []expr.Variable{
+		{
+			Name: "env",
+			Schema: json.RawMessage(
+				`{"type": "object", "additionalProperties": {"type": "string"}}`,
+			),
+		},
+		{Name: "other", Schema: json.RawMessage(`{"type": "object"}`)},
+	}})
+	req := expr.Request{
+		Surface: "s", Form: expr.FormTemplate,
+		Source: "${{ env.B }}-${{ env[\"A\"] }}-${{ env.B + env[other.k] }}",
+	}
+	chk, err := r.Check(req)
+	if err != nil || !chk.OK() {
+		t.Fatalf("%+v, %v", chk, err)
+	}
+	if want := []expr.Read{
+		{Variable: "env", Key: "B", Range: rng(1, 9, 1, 10)},
+		{Variable: "env", Key: "A", Range: rng(1, 22, 1, 25)},
+		{Variable: "env", Key: "B", Range: rng(1, 38, 1, 39)},
+		{Variable: "other", Key: "k", Range: rng(1, 52, 1, 53)},
+	}; !reflect.DeepEqual(chk.Reads, want) {
+		t.Errorf("reads %+v, want %+v", chk.Reads, want)
+	}
+	chk.Reads[0].Key = "Z"
+	if again, _ := r.Check(req); again.Reads[0].Key != "B" {
+		t.Errorf("the cached check, its caller's copy changed, reads %+v", again.Reads)
+	}
+}

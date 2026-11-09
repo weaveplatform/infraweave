@@ -44,6 +44,7 @@ type Service struct {
 	authz  accessapi.Authorizer
 	events Events
 	now    func() time.Time
+	exprs  Checker
 }
 
 // New returns the service over d.
@@ -581,6 +582,11 @@ func (s *Service) put(
 	} else if sum := checksum(*in.Value); sum != old.Checksum {
 		e.Checksum, e.CreatedAt = sum, s.now()
 	}
+	secret, err := s.template(ctx, acct, owner, in)
+	if err != nil {
+		return Element{}, err
+	}
+	e.WriteOnly = e.WriteOnly || secret
 	if e.ID.IsZero() {
 		e.ID = kernel.NewULID()
 	}
