@@ -218,6 +218,7 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/httpkit/serve$
             - github.com/weaveplatform/infraweave/internal/platform/seal$
             - github.com/weaveplatform/infraweave/internal/platform/expr$
+            - github.com/weaveplatform/infraweave/internal/platform/mask$
         # The declared graph of which domain may import which, written only
         # here (repo-layout.md, "Declared graph"): one rule per domain, which
         # allows the shared packages, the domain's own tree and the api/ of

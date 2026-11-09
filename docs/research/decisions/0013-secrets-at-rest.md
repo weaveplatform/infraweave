@@ -319,7 +319,9 @@ share one implementation: the server masks evaluated expressions
 | Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/platform/mask` |
 
 - **The mechanism.**
-  - **Replacement.** Each match becomes five asterisks.
+  - **Replacement.** Each run of matched bytes becomes five asterisks once,
+    however many overlapping or adjacent matches make it, so neither the
+    number of matches nor their length shows.
   - **Scanning.** Matching uses an Aho-Corasick automaton over the literal
     values, then the regular expressions, one line at a time.
   - **Lines.** A line is cut at 64 KiB before masking.
