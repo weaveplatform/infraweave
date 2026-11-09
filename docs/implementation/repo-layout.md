@@ -118,6 +118,7 @@ infraweave/
 │   │   │   └── signer/            token signing with a local key or a KMS signing key (decision 0006) (P3)
 │   │   ├── seal/                  sealed column, object stream and pool envelope formats; holds no keys (P2b)
 │   │   ├── expr/                  decision 0024's CEL engine and text templates; server and runner (P6)
+│   │   ├── mask/                  decision 0013's masker: literal values (P6), well-known patterns (P9); server and runner
 │   │   ├── rego/                  embedded OPA v1: prepared queries, capabilities, timeouts (P13)
 │   │   ├── httpkit/
 │   │   │   ├── problem/           RFC 9457 problems, decision 0003 slugs                   ← internal/server/problem
@@ -156,7 +157,6 @@ infraweave/
 │   │   ├── exec/                  runner: phases, hooks, workspace, log streaming (P9)
 │   │   ├── vendors/               command sets per vendor (P9, P20, P20b)
 │   │   ├── initpolicy/            worker-side initialization policy over platform/rego (P14)
-│   │   ├── mask/                  log masking of decision 0013 (P9)
 │   │   ├── tools/                 tool binary download, verification and caching (P9)
 │   │   ├── cloudauth/             assumes a cloud integration's role on the worker with the run's OIDC token (P15)
 │   │   ├── vcsagent/              long-polls /vcs-agent/v1 on serve (P19b)
@@ -324,7 +324,7 @@ them; read a record's package name through this table.
 | `internal/queue`, `internal/queue/queuetest`, `internal/cron` | `internal/platform/queue`, `internal/platform/queue/queuetest`, `internal/platform/cron` |
 | `internal/objectstore`, `internal/objectstore/objectstoretest` | `internal/platform/objectstore`, `internal/platform/objectstore/objectstoretest` |
 | `internal/secrets` | `internal/platform/crypt` |
-| `internal/secrets/mask` | `internal/agent/mask` |
+| `internal/secrets/mask` | `internal/platform/mask` |
 | `internal/policy`, `internal/policy/input`, `internal/policy/combine.go` | `internal/platform/rego` for the engine; `internal/policies` for types, inputs, combination, receipts and sampling |
 | `internal/run`, `internal/workerapi` | `internal/runs`; `internal/workers` (the `/worker/v1` adapter) |
 | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs/internal/adapters/<provider>`; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
@@ -538,7 +538,7 @@ it adds no import.
 | `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
 | `workers` | features, access | `runsapi.Scheduler`, `runsapi.Reports` for the worker protocol |
 | `vendors` | features, access | |
-| `stacks` | features, access, workers, vendors | `runsapi.StackStatus` |
+| `stacks` | features, access, workers, vendors | `runsapi.StackStatus`; `configurationapi.StackConfiguration` for the stack view's `attachedContexts` and `config` |
 | `configuration` | features, access, stacks | |
 | `policies` | features, access, stacks | |
 | `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |

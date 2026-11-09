@@ -22,6 +22,7 @@ var catalogue = []Feature{
 	{Name: "contexts", Kind: "capability", Phase: "P6", LowestTier: "Free"},
 	{Name: "debug", Kind: "capability", Phase: "P27", LowestTier: "Free"},
 	{Name: "drift-detection", Kind: "capability", Phase: "P16", LowestTier: "Starter+", Requires: []string{"private-worker-pools"}, TierFeatures: []string{"DRIFT_DETECTION"}},
+	{Name: "expressions", Kind: "capability", Phase: "P6", LowestTier: "Free"},
 	{Name: "flows-agents", Kind: "capability", Phase: "P18d", LowestTier: "Free", Requires: []string{"flows-engine"}},
 	{Name: "flows-apps", Kind: "capability", Phase: "P18d", LowestTier: "Free", Requires: []string{"flows-engine"}},
 	{Name: "flows-data-tables", Kind: "capability", Phase: "P18c", LowestTier: "Free", Requires: []string{"flows-engine"}},

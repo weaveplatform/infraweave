@@ -75,7 +75,11 @@ Rules that apply to every problem:
   `reason` is one of `required`, `type`, `enum`, `format`, `pattern`,
   `min-length`, `max-length`, `minimum`, `maximum`, `unknown-field`,
   `duplicate`, `not-found`, `rule`, and `message` is for people. Clients
-  branch on `reason`, never on `message`.
+  branch on `reason`, never on `message`. An error in an expression or a
+  template ([0024](0024-expression-language.md)) also carries `range`,
+  `{start: {line, column}, end: {line, column}}`, counted from 1 in the
+  source the pointer names, so an editor can underline it; no other error
+  carries one.
 - **Correlation.** `instance` is `urn:infraweave:request:<request ID>`. The same
   ID is in the `X-Request-Id` response header and in the server's log record;
   the request ID and trace propagation are decision 0017's.
@@ -119,14 +123,17 @@ path.
   `ETag` derived from the row's version column. `PUT`, `PATCH` and `DELETE`
   accept `If-Match`; a stale tag answers `412 precondition-failed`. Without
   `If-Match`, the last write wins, as in Spacelift.
-- **Configuration elements.** `PUT /stacks/{stackId}/config/{configId}` (and the
-  context and module equivalents) creates or replaces one element: `201` when
-  created, `200` when replaced. The element ID is the variable name or file
-  path ([13 section 8](../reference/13-configuration.md#8-typing-traps)), so the
-  client already knows it. The reference's `POST /stacks/{stackId}/config` keeps
-  the `stackConfigAdd` shape and the same upsert behaviour, answering `201` or
-  `200` the same way, so a capture of C97 that shows replacement in place needs
-  no change.
+- **Configuration elements.** `PUT /stacks/{stackId}/configs/{configId}`,
+  `PUT /contexts/{contextId}/configs/{configId}` and the module equivalent
+  create or replace one element: `201` when created, `200` when replaced. The
+  path extends the collection the reference's `POST` and `DELETE` already use.
+  The element ID is the variable name or file path
+  ([13 section 8](../reference/13-configuration.md#8-typing-traps)), so the
+  client already knows it. The reference's `POST /stacks/{stackId}/configs`
+  and `POST /contexts/{contextId}/configs` keep the `stackConfigAdd` and
+  `contextConfigAdd` shapes and the same upsert behaviour, answering `201` or
+  `200` the same way, so a capture of C97 that shows replacement in place
+  needs no change.
 - **Recorded divergences.** Each added `PATCH` and item `PUT` is listed in the
   operation's `x-infraweave-divergence`, as 0003 does for its additions.
 

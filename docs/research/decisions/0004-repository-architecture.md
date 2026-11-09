@@ -108,6 +108,13 @@ with its dependency rules as written there. In summary:
     they committed, so a hold and a delete cannot both succeed. A guard that
     answers in use refuses the delete with the owner's refusal, such as
     the `422` a space delete answers.
+    A guard whose rows belong to the held row, and mean nothing without
+    it, removes them instead, in the same transaction: `configuration`'s
+    `stacksapi.StackGuard` deletes a deleted stack's elements and
+    attachments. On a move, each guard answers what its rows would lose,
+    and the owner refuses the move with `422` naming each one, as
+    `stacksapi.StackGuard` and `accessapi.SpaceGuard` do for attachments a
+    move would leave out of reach.
   - **Purges.** Deleting an account or an organization is asynchronous.
     `access` marks it deleting, revokes its sessions and keys, and answers
     `404` for it from then on; it then enqueues one purge job per domain
@@ -188,7 +195,7 @@ with its dependency rules as written there. In summary:
   | `internal/store`, `internal/store/migrations` | `internal/platform/sql`; each domain's migrations under its `pg/migrations` |
   | `internal/queue`, `internal/cron` | `internal/platform/queue`, `internal/platform/cron` |
   | `internal/objectstore` | `internal/platform/objectstore` |
-  | `internal/secrets` | `internal/platform/crypt`; `internal/secrets/mask` is `internal/agent/mask` |
+  | `internal/secrets` | `internal/platform/crypt`; `internal/secrets/mask` is `internal/platform/mask` |
   | `internal/policy` | `internal/platform/rego` for the engine; `internal/policies` for types, inputs, combination, receipts and sampling |
   | `internal/run`, `internal/workerapi` | `internal/runs`; `internal/workers` (the `/worker/v1` adapter) |
   | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs` adapters; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
