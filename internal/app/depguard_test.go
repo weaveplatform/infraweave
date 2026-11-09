@@ -14,14 +14,14 @@ import (
 
 const module = "github.com/weaveplatform/infraweave"
 
-// sharedRules are the cross-cutting depguard rules, 3 to 10 in
+// sharedRules are the cross-cutting depguard rules, 3 to 11 in
 // repo-layout.md's "depguard rules"; the per-domain graph rules make up the
 // rest. make lint-fixtures proves each one fires.
 //
 // ref: decision 0004
 var sharedRules = []string{
 	"api-packages", "constructors", "core-not-adapters", "shared-below-domains",
-	"agent-isolation", "devtools", "public-packages", "ctl",
+	"agent-isolation", "devtools", "public-packages", "ctl", "iac-pure",
 }
 
 // notDomains are the directories under internal/ that sit beside the domains.

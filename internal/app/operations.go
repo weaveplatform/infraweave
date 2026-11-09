@@ -162,9 +162,9 @@ func requiredOf(op *openapi3.Operation) (*accessapi.Required, error) {
 
 var errFeature = errors.New("names no feature of its kind")
 
-// gateOf reads op's capability, and the options its JSON body's top-level
-// properties carry as x-infraweave-feature: {feature, value}, where no
-// value means any value but null.
+// gateOf reads op's capability, and the options its JSON body's
+// properties carry as x-infraweave-feature: {feature, value}, at any depth
+// of nested objects, where no value means any value but null.
 func gateOf(op *openapi3.Operation) (featuresapi.Gate, error) {
 	name, _ := op.Extensions["x-infraweave-feature"].(string)
 	if f, ok := features.Lookup(name); !ok || f.Kind != features.Capability {
@@ -178,27 +178,59 @@ func gateOf(op *openapi3.Operation) (featuresapi.Gate, error) {
 	if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
 		return g, nil
 	}
-	props := mt.Schema.Value.Properties
-	for _, prop := range slices.Sorted(maps.Keys(props)) {
-		ref := props[prop]
+	var err error
+	g.Options, err = optionsOf("", mt.Schema.Value, map[*openapi3.Schema]bool{}, nil)
+	if err != nil {
+		return featuresapi.Gate{}, err
+	}
+	return g, nil
+}
+
+// pointerEscape escapes a property name as a JSON Pointer reference token.
+var pointerEscape = strings.NewReplacer("~", "~0", "/", "~1")
+
+// optionsOf appends to out the option gates of s's properties, whose
+// pointers start with at, and of the objects below them. open holds the
+// schemas being walked, so a schema that contains itself is walked once
+// on each path, while one that two properties share is walked under both.
+func optionsOf(
+	at string,
+	s *openapi3.Schema,
+	open map[*openapi3.Schema]bool,
+	out []featuresapi.OptionGate,
+) ([]featuresapi.OptionGate, error) {
+	if open[s] {
+		return out, nil
+	}
+	open[s] = true
+	defer delete(open, s)
+	for _, prop := range slices.Sorted(maps.Keys(s.Properties)) {
+		ref := s.Properties[prop]
+		pointer := at + "/" + pointerEscape.Replace(prop)
 		ext, ok := ref.Extensions["x-infraweave-feature"].(map[string]any)
 		if !ok && ref.Value != nil {
 			ext, ok = ref.Value.Extensions["x-infraweave-feature"].(map[string]any)
 		}
-		if !ok {
-			continue
+		if ok {
+			option, _ := ext["feature"].(string)
+			if f, ok := features.Lookup(option); !ok || f.Kind != features.Option {
+				return nil, fmt.Errorf("property %s's x-infraweave-feature %q %w",
+					pointer, option, errFeature)
+			}
+			value, _ := ext["value"].(string)
+			out = append(
+				out,
+				featuresapi.OptionGate{Pointer: pointer, Value: value, Feature: option},
+			)
 		}
-		option, _ := ext["feature"].(string)
-		if f, ok := features.Lookup(option); !ok || f.Kind != features.Option {
-			return featuresapi.Gate{}, fmt.Errorf("property %s's x-infraweave-feature %q %w",
-				prop, option, errFeature)
+		if ref.Value != nil {
+			var err error
+			if out, err = optionsOf(pointer, ref.Value, open, out); err != nil {
+				return nil, err
+			}
 		}
-		value, _ := ext["value"].(string)
-		g.Options = append(g.Options, featuresapi.OptionGate{
-			Property: prop, Value: value, Feature: option,
-		})
 	}
-	return g, nil
+	return out, nil
 }
 
 // strictBody is op's request body when its JSON schema forbids properties

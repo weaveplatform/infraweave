@@ -40,8 +40,10 @@ func (a *allower) Allow(_ context.Context, feature string) error {
 var apiKeys = featuresapi.Gate{
 	Feature: "api-keys",
 	Options: []featuresapi.OptionGate{
-		{Property: "oidc", Feature: "oidc-api-keys"},
-		{Property: "kind", Value: "admin", Feature: "admin-keys"},
+		{Pointer: "/oidc", Feature: "oidc-api-keys"},
+		{Pointer: "/kind", Value: "admin", Feature: "admin-keys"},
+		{Pointer: "/vendorConfig/terraform", Feature: "vendor-terraform"},
+		{Pointer: "/a~1b", Value: "1", Feature: "escaped"},
 	},
 }
 
@@ -92,6 +94,12 @@ func TestUnitFeatureMiddleware(t *testing.T) {
 		{"an option's value", `{"kind":"admin"}`, []string{"api-keys", "admin-keys"}},
 		{"another value", `{"kind":"reader"}`, []string{"api-keys"}},
 		{"not an object", `[1]`, []string{"api-keys"}},
+		{"not JSON", `{`, []string{"api-keys"}},
+		{"a nested option", `{"vendorConfig":{"terraform":{}}}`, []string{"api-keys", "vendor-terraform"}},
+		{"a nested option set to null", `{"vendorConfig":{"terraform":null}}`, []string{"api-keys"}},
+		{"another nested member", `{"vendorConfig":{"opentofu":{}}}`, []string{"api-keys"}},
+		{"a parent that is no object", `{"vendorConfig":"terraform"}`, []string{"api-keys"}},
+		{"an escaped name", `{"a/b":1}`, []string{"api-keys", "escaped"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			a := &allower{}
@@ -148,6 +156,34 @@ func TestUnitFeatureMiddlewareRefusals(t *testing.T) {
 		p.Type != problem.TypePrefix+problem.FeatureNotInTier.Slug || p.Feature != "oidc-api-keys" ||
 		!reflect.DeepEqual(p.Tiers, []string{"Business", "Enterprise"}) {
 		t.Errorf("not in tier: %d %+v, handler read %q", rec.Code, p, read)
+	}
+
+	// A stack input that chooses a switched-off vendor, as stackCreate's
+	// gate names it under its input member.
+	stackCreate := featuresapi.Gate{Feature: "stacks", Options: []featuresapi.OptionGate{
+		{Pointer: "/input/vendorConfig/opentofu", Feature: "vendor-opentofu"},
+		{Pointer: "/input/vendorConfig/terraform", Feature: "vendor-terraform"},
+	}}
+	tofuOff := &allower{refuse: map[string]*features.Refusal{
+		"vendor-opentofu": {Disabled: true, Feature: "vendor-opentofu"},
+	}}
+	rec, read = serve(t, tofuOff, stackCreate, true,
+		strings.NewReader(`{"input":{"vendorConfig":{"opentofu":{"version":"1.8.0"}}}}`))
+	p = decode(t, rec)
+	if rec.Code != nethttp.StatusForbidden || read != "" ||
+		p.Type != problem.TypePrefix+problem.FeatureDisabled.Slug || p.Feature != "vendor-opentofu" {
+		t.Errorf("a switched-off vendor: %d %+v, handler read %q", rec.Code, p, read)
+	}
+	if rec, _ := serve(
+		t,
+		tofuOff,
+		stackCreate,
+		true,
+		strings.NewReader(
+			`{"input":{"vendorConfig":{"terraform":{}}}}`,
+		),
+	); rec.Code != nethttp.StatusNoContent {
+		t.Errorf("a vendor left on: %d", rec.Code)
 	}
 
 	rec, _ = serve(t, &allower{err: errDown}, apiKeys, true, strings.NewReader(`{}`))

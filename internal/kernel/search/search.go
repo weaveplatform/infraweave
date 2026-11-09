@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strconv"
 	"time"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 // Type is a field's type, which decides the constraints that apply to it.
@@ -127,35 +129,21 @@ type Order struct {
 	Desc  bool
 }
 
-// The field-error reasons that a search answers, from the API's fixed set
-// that clients branch on.
-//
-// ref: decision 0022
+// The field-error reasons that a search answers.
 const (
-	ReasonRequired     = "required"
-	ReasonEnum         = "enum"
-	ReasonUnknownField = "unknown-field"
-	ReasonDuplicate    = "duplicate"
-	ReasonRule         = "rule"
+	ReasonRequired     = kernel.ReasonRequired
+	ReasonEnum         = kernel.ReasonEnum
+	ReasonUnknownField = kernel.ReasonUnknownField
+	ReasonDuplicate    = kernel.ReasonDuplicate
+	ReasonRule         = kernel.ReasonRule
 )
 
-// FieldError is one field of an input that the entity refuses: a JSON
-// Pointer into the input's body, a reason clients branch on and a message
-// for people.
-type FieldError struct {
-	Pointer string
-	Reason  string
-	Message string
-}
-
-// Invalid is an input the entity refuses, every field it refuses.
-type Invalid struct {
-	Errors []FieldError
-}
-
-func (e *Invalid) Error() string {
-	return fmt.Sprintf("search: %s: %s", e.Errors[0].Pointer, e.Errors[0].Message)
-}
+// FieldError and Invalid are kernel's, so the HTTP layer answers a refused
+// search as it answers any refused input.
+type (
+	FieldError = kernel.FieldError
+	Invalid    = kernel.Invalid
+)
 
 // Lookup is the field of fields named name.
 func Lookup(fields []Field, name string) (Field, bool) {
@@ -181,13 +169,13 @@ func Check(fields []Field, in Input) error {
 			errs = append(errs, unknown(at, o.Field))
 		case !f.Orderable:
 			errs = append(errs, FieldError{
-				at, ReasonRule,
-				fmt.Sprintf("The field %s does not order a search.", o.Field),
+				Pointer: at, Reason: ReasonRule,
+				Message: fmt.Sprintf("The field %s does not order a search.", o.Field),
 			})
 		case seen[o.Field]:
 			errs = append(errs, FieldError{
-				at, ReasonDuplicate,
-				fmt.Sprintf("The search is already ordered by %s.", o.Field),
+				Pointer: at, Reason: ReasonDuplicate,
+				Message: fmt.Sprintf("The search is already ordered by %s.", o.Field),
 			})
 		}
 		seen[o.Field] = true
@@ -197,14 +185,14 @@ func Check(fields []Field, in Input) error {
 	case Next, Previous:
 		if in.After == "" {
 			errs = append(errs, FieldError{
-				"/after", ReasonRequired,
-				fmt.Sprintf("The %s page is read from a cursor.", in.Page),
+				Pointer: "/after", Reason: ReasonRequired,
+				Message: fmt.Sprintf("The %s page is read from a cursor.", in.Page),
 			})
 		}
 	default:
 		errs = append(errs, FieldError{
-			"/requestedPage", ReasonEnum,
-			fmt.Sprintf("%q is not a page.", in.Page),
+			Pointer: "/requestedPage", Reason: ReasonEnum,
+			Message: fmt.Sprintf("%q is not a page.", in.Page),
 		})
 	}
 	return invalid(errs)
@@ -220,8 +208,11 @@ func invalid(errs []FieldError) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return &Invalid{Errors: errs}
+	return &Invalid{Detail: invalidDetail, Errors: errs}
 }
+
+// invalidDetail is the detail of every refused search.
+const invalidDetail = "The search names fields or constraints this list does not have."
 
 func checkPredicates(fields []Field, preds []Predicate) []FieldError {
 	var errs []FieldError
@@ -279,34 +270,38 @@ func checkConstraint(f Field, c Constraint, at string) []FieldError {
 		}
 	}
 	if len(set) != 1 {
-		return []FieldError{{at, ReasonRule, fmt.Sprintf(
+		return []FieldError{{Pointer: at, Reason: ReasonRule, Message: fmt.Sprintf(
 			"A constraint sets exactly one member; this one sets %d.", len(set))}}
 	}
 	a := applies[set[0]]
 	if a.t != f.Type {
-		return []FieldError{{at + "/" + a.name, ReasonRule, fmt.Sprintf(
+		return []FieldError{{Pointer: at + "/" + a.name, Reason: ReasonRule, Message: fmt.Sprintf(
 			"%s does not apply to %s, a %s field.", a.name, f.Name, f.Type)}}
 	}
 	var errs []FieldError
 	for i, v := range c.EnumEquals {
 		if !slices.Contains(f.Values, v) {
 			errs = append(errs, FieldError{
-				at + "/enumEquals/" + strconv.Itoa(i), ReasonEnum,
-				fmt.Sprintf("%q is not a value of %s.", v, f.Name),
+				Pointer: at + "/enumEquals/" + strconv.Itoa(i), Reason: ReasonEnum,
+				Message: fmt.Sprintf("%q is not a value of %s.", v, f.Name),
 			})
 		}
 	}
 	if _, ok := c.TimeInLast.Duration(); c.TimeInLast != "" && !ok {
 		errs = append(errs, FieldError{
-			at + "/timeInLast", ReasonEnum,
-			fmt.Sprintf("%q is not a time window.", c.TimeInLast),
+			Pointer: at + "/timeInLast", Reason: ReasonEnum,
+			Message: fmt.Sprintf("%q is not a time window.", c.TimeInLast),
 		})
 	}
 	return errs
 }
 
 func unknown(at, name string) FieldError {
-	return FieldError{at, ReasonUnknownField, fmt.Sprintf("The search has no field %q.", name)}
+	return FieldError{
+		Pointer: at,
+		Reason:  ReasonUnknownField,
+		Message: fmt.Sprintf("The search has no field %q.", name),
+	}
 }
 
 // Edge is a row of a page and the cursor that reads on from it.

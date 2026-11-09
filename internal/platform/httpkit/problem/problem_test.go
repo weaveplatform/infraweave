@@ -92,9 +92,12 @@ func TestUnitResponseErrorProblem(t *testing.T) {
 
 func TestUnitResponseErrorSearch(t *testing.T) {
 	rec := httptest.NewRecorder()
-	err := fmt.Errorf("search spaces: %w", &search.Invalid{Errors: []search.FieldError{
-		{Pointer: "/predicates/0/field", Reason: search.ReasonUnknownField, Message: "no"},
-	}})
+	err := fmt.Errorf(
+		"search spaces: %w",
+		&search.Invalid{Detail: "bad", Errors: []search.FieldError{
+			{Pointer: "/predicates/0/field", Reason: search.ReasonUnknownField, Message: "no"},
+		}},
+	)
 	ResponseError(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil), err)
 	var p Problem
 	if err := json.NewDecoder(rec.Body).Decode(&p); err != nil {
@@ -102,7 +105,7 @@ func TestUnitResponseErrorSearch(t *testing.T) {
 	}
 	want := []FieldError{{Pointer: "/predicates/0/field", Reason: "unknown-field", Message: "no"}}
 	if rec.Code != http.StatusUnprocessableEntity || p.Type != TypePrefix+"validation-failed" ||
-		!reflect.DeepEqual(p.Errors, want) {
+		p.Detail != "bad" || !reflect.DeepEqual(p.Errors, want) {
 		t.Errorf("got %d %+v", rec.Code, p)
 	}
 }

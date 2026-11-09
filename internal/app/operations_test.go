@@ -50,22 +50,28 @@ func TestUnitAPIOperations(t *testing.T) {
 		t.Fatalf("%d operations, want every scaffolded one", len(ops))
 	}
 	for key, want := range map[string]Operation{
-		"POST /api/v1/stacks/search":                       {Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")},
-		"POST /api/v1/stack-dependencies/batch":            {Cost: ratelimit.Expensive, Gate: gate("stacks")},
-		"GET /api/v1/stacks":                               {Cost: ratelimit.Standard, Gate: gate("stacks")},
-		"POST /api/v1/stacks":                              {Cost: ratelimit.Standard, Gate: gate("stacks")},
+		"POST /api/v1/stacks/search":            {Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")},
+		"POST /api/v1/stack-dependencies/batch": {Cost: ratelimit.Expensive, Gate: gate("stacks")},
+		"GET /api/v1/stacks":                    {Cost: ratelimit.Standard, Gate: gate("stacks")},
+		// A stack input's vendorConfig member needs its vendor's option.
+		"POST /api/v1/stacks": {Cost: ratelimit.Standard, Gate: featuresapi.Gate{
+			Feature: "stacks", Options: []featuresapi.OptionGate{
+				{Pointer: "/input/vendorConfig/opentofu", Feature: "vendor-opentofu"},
+				{Pointer: "/input/vendorConfig/terraform", Feature: "vendor-terraform"},
+			},
+		}},
 		"DELETE /operator/v1/organizations/{organization}": {Cost: ratelimit.Standard, Gate: gate("operator")},
-		"GET /api/v1/viewer":                               {Cost: ratelimit.Standard, Organization: true, Gate: gate("viewer")},
-		"GET /api/v1/auth/oauth/requests/{requestId}":      {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
-		"GET /api/v1/auth/accounts":                        {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
-		"GET /admin-login/{organization}":                  {Public: true},
-		"POST /admin-login/{organization}":                 {Cost: ratelimit.Expensive, Public: true},
-		"GET /.well-known/oauth-authorization-server":      {Public: true},
-		"POST /oauth/register":                             {Cost: ratelimit.Expensive, Public: true},
-		"GET /oauth/authorize":                             {Public: true},
-		"POST /oauth/token":                                {Public: true},
-		"GET /blobs/{token}":                               {Public: true},
-		"PUT /blobs/{token}":                               {Public: true},
+		"GET /api/v1/viewer":                          {Cost: ratelimit.Standard, Organization: true, Gate: gate("viewer")},
+		"GET /api/v1/auth/oauth/requests/{requestId}": {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
+		"GET /api/v1/auth/accounts":                   {Cost: ratelimit.Standard, Organization: true, Gate: gate("auth")},
+		"GET /admin-login/{organization}":             {Public: true},
+		"POST /admin-login/{organization}":            {Cost: ratelimit.Expensive, Public: true},
+		"GET /.well-known/oauth-authorization-server": {Public: true},
+		"POST /oauth/register":                        {Cost: ratelimit.Expensive, Public: true},
+		"GET /oauth/authorize":                        {Public: true},
+		"POST /oauth/token":                           {Public: true},
+		"GET /blobs/{token}":                          {Public: true},
+		"PUT /blobs/{token}":                          {Public: true},
 	} {
 		got := ops[key]
 		got.Required = nil
@@ -102,8 +108,15 @@ func TestUnitAPIOperations(t *testing.T) {
 		}
 	}
 	if g := ops["POST "+BaseURL+"/api-keys"].Gate; !reflect.DeepEqual(g.Options,
-		[]featuresapi.OptionGate{{Property: "oidc", Feature: "oidc-api-keys"}}) {
+		[]featuresapi.OptionGate{{Pointer: "/oidc", Feature: "oidc-api-keys"}}) {
 		t.Errorf("apiKeyCreate's options: %+v", g.Options)
+	}
+	if g := ops["PUT "+BaseURL+"/stacks/{stackId}"].Gate; !reflect.DeepEqual(g.Options,
+		[]featuresapi.OptionGate{
+			{Pointer: "/vendorConfig/opentofu", Feature: "vendor-opentofu"},
+			{Pointer: "/vendorConfig/terraform", Feature: "vendor-terraform"},
+		}) {
+		t.Errorf("stackUpdate's options: %+v", g.Options)
 	}
 	// The fs driver's routes are mounted, so a table pattern the driver
 	// does not serve fails the walk below.
@@ -240,8 +253,8 @@ func TestUnitOperationOptions(t *testing.T) {
 		"oidc": beside, "vcsChecks": inside.NewRef(), "name": openapi3.NewStringSchema().NewRef(),
 	}), "", false)
 	want := []featuresapi.OptionGate{
-		{Property: "oidc", Feature: "oidc-api-keys"},
-		{Property: "vcsChecks", Value: "AGGREGATED", Feature: "aggregated-vcs-checks"},
+		{Pointer: "/oidc", Feature: "oidc-api-keys"},
+		{Pointer: "/vcsChecks", Value: "AGGREGATED", Feature: "aggregated-vcs-checks"},
 	}
 	if err != nil || !reflect.DeepEqual(ops["POST /keys"].Gate.Options, want) {
 		t.Errorf("options = %+v, %v", ops["POST /keys"].Gate, err)
@@ -273,6 +286,49 @@ func TestUnitOperationOptions(t *testing.T) {
 	); err != nil ||
 		ops["POST /x"].Gate.Options != nil {
 		t.Errorf("a body with no JSON schema: %+v, %v", ops, err)
+	}
+}
+
+// TestUnitOperationNestedOptions checks that an option on a property of a
+// nested object gates that property's pointer, under each property that
+// shares the object, and that a schema containing itself is walked once
+// on each path.
+func TestUnitOperationNestedOptions(t *testing.T) {
+	terraform := openapi3.NewObjectSchema().NewRef()
+	terraform.Extensions = map[string]any{
+		"x-infraweave-feature": map[string]any{"feature": "vendor-terraform"},
+	}
+	vendor := &openapi3.Schema{
+		Type: &openapi3.Types{openapi3.TypeObject},
+		Properties: openapi3.Schemas{
+			"terraform": terraform,
+		},
+	}
+	tree := openapi3.NewObjectSchema()
+	tree.Properties = openapi3.Schemas{"child": tree.NewRef()}
+	body := openapi3.NewRequestBody().WithJSONSchema(&openapi3.Schema{Properties: openapi3.Schemas{
+		"vendorConfig": vendor.NewRef(),
+		"a/b":          vendor.NewRef(),
+		"tree":         tree.NewRef(),
+	}})
+	doc := &openapi3.T{Paths: openapi3.NewPaths(openapi3.WithPath("/stacks", &openapi3.PathItem{
+		Post: &openapi3.Operation{
+			Extensions:  map[string]any{"x-infraweave-feature": "stacks"},
+			RequestBody: &openapi3.RequestBodyRef{Value: body},
+		},
+	}))}
+	ops, err := operationsOf(doc, "", false)
+	want := []featuresapi.OptionGate{
+		{Pointer: "/a~1b/terraform", Feature: "vendor-terraform"},
+		{Pointer: "/vendorConfig/terraform", Feature: "vendor-terraform"},
+	}
+	if err != nil || !reflect.DeepEqual(ops["POST /stacks"].Gate.Options, want) {
+		t.Errorf("options = %+v, %v", ops["POST /stacks"].Gate.Options, err)
+	}
+	terraform.Extensions["x-infraweave-feature"] = map[string]any{"feature": "stacks"}
+	if _, err := operationsOf(doc, "", false); !errors.Is(err, errFeature) ||
+		!strings.Contains(err.Error(), "/a~1b/terraform") {
+		t.Errorf("a nested capability: %v", err)
 	}
 }
 

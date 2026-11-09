@@ -316,6 +316,24 @@ linters:
             - github.com/weaveplatform/infraweave/internal/ctl$
             - github.com/weaveplatform/infraweave/internal/platform/buildinfo$
             - github.com/weaveplatform/infraweave/internal/platform/private$
+        # agent-isolation allows the whole iac tree, so an iac package that
+        # reached past kernel would carry that import into the agent unseen.
+        iac-pure:
+          list-mode: lax
+          files:
+            - "**/internal/iac/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: iac is pure, so the agent can link it, and imports only kernel
+            - pkg: github.com/weaveplatform/infraweave/pkg
+              desc: iac is pure, so the agent can link it, and imports only kernel
+            - pkg: github.com/jackc/pgx
+              desc: iac is pure, so the agent can link it, and imports only kernel
+          allow:
+            - github.com/weaveplatform/infraweave/internal/iac$
+            - github.com/weaveplatform/infraweave/internal/iac/
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
     forbidigo:
       analyze-types: true
       forbid:

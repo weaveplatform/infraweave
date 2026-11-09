@@ -95,12 +95,13 @@ type Gate struct {
 	Options []OptionGate
 }
 
-// OptionGate is one gated value: a request body whose top-level Property
-// is Value needs the option Feature.
+// OptionGate is one gated value: a request body whose value at Pointer, a
+// JSON Pointer such as /oidc or /vendorConfig/terraform, is Value needs
+// the option Feature; an empty Value is any value but null.
 type OptionGate struct {
-	Property string
-	Value    string
-	Feature  string
+	Pointer string
+	Value   string
+	Feature string
 }
 
 // Entitlements is what other domains call of the features domain. Each

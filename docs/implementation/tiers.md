@@ -49,13 +49,13 @@ A feature is in its lowest seeded tier and every tier above it.
 | `tofu-workspaces` | capability | The Tofu Workspaces tag | ✓ | ✓ | ✓ | ✓ | ✓ | P11 |
 | `usage` | capability | The Billing tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
 | `vcs-integrations` | capability | The VCS Integrations tag | ✓ | ✓ | ✓ | ✓ | ✓ | P12 |
-| `vendor-ansible` | option | `StackVendor` Ansible | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
-| `vendor-cloudformation` | option | `StackVendor` CloudFormation | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
-| `vendor-kubernetes` | option | `StackVendor` Kubernetes | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
-| `vendor-opentofu` | option | `StackVendor` OpenTofu | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `vendor-pulumi` | option | `StackVendor` Pulumi | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
-| `vendor-terraform` | option | `StackVendor` Terraform | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `vendor-terragrunt` | option | `StackVendor` Terragrunt | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-ansible` | option | `vendorConfig.ansible` | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
+| `vendor-cloudformation` | option | `vendorConfig.cloudFormation` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-kubernetes` | option | `vendorConfig.kubernetes` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-opentofu` | option | `vendorConfig.opentofu` | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
+| `vendor-pulumi` | option | `vendorConfig.pulumi` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-terraform` | option | `vendorConfig.terraform` | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
+| `vendor-terragrunt` | option | `vendorConfig.terragrunt` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
 | `version-catalog` | capability | The Version Catalog tag | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
 | `viewer` | capability | The Viewer tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
 | `worker-pools` | capability | The Worker Pools tag less private pools: the public worker pool and the reads every pool shares | ✓ | ✓ | ✓ | ✓ | ✓ | P8 |
