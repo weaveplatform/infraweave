@@ -14,7 +14,7 @@ import (
 
 	root "github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -264,7 +264,7 @@ func TestAccLimitCheckSerializes(t *testing.T) {
 	inTx := func(ctx context.Context, fn func(context.Context) error) error {
 		return tx.Do(ctx, db, tx.Options{}, fn)
 	}
-	svc := features.New(store, inTx, nil)
+	svc := core.New(store, inTx, nil)
 	exec(t, db, `UPDATE billing SET enabled = true`)
 
 	const racers = 4
@@ -454,7 +454,7 @@ func TestAccSeed(t *testing.T) {
 	) {
 		t.Errorf("first seed installed %+v", got)
 	}
-	if got := notified(); !slices.Equal(got, []string{features.TiersKey}) {
+	if got := notified(); !slices.Equal(got, []string{core.TiersKey}) {
 		t.Errorf("first seed notified %v", got)
 	}
 
@@ -502,7 +502,7 @@ func TestAccSeed(t *testing.T) {
 	if got := seedTiers(t, s, "Paid")["Paid"]; !reflect.DeepEqual(got, next[1]) {
 		t.Errorf("an unedited tier after a release = %+v, want %+v", got, next[1])
 	}
-	if got := notified(); !slices.Equal(got, []string{features.TiersKey}) {
+	if got := notified(); !slices.Equal(got, []string{core.TiersKey}) {
 		t.Errorf("a release notified %v", got)
 	}
 }

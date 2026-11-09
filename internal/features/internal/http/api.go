@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	core "github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"

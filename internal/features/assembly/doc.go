@@ -24,7 +24,7 @@
 // # Dependencies
 //
 // It imports the catalogue (internal/features), featuresapi, the domain's
-// features, http and pg packages, internal/kernel, platform/sql/migrate,
+// core, http and pg packages, internal/kernel, platform/sql/migrate,
 // platform/sql/notify and platform/tx. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.
 package assembly

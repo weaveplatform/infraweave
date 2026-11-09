@@ -15,7 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 )
 
 // Server is the stacks domain's partial of the API's strict server. The
@@ -23,14 +23,14 @@ import (
 // or on the space a create names, before its handler runs, and answered
 // 404 for a stack the caller cannot read.
 type Server struct {
-	stacks *stacks.Service
+	stacks *core.Service
 	authz  accessapi.Authorizer
 	spaces accessapi.Spaces
 }
 
 // New returns the partial over the service, deciding allowedActions with
 // authz and naming spaces through spaces.
-func New(svc *stacks.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
+func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
 	return Server{stacks: svc, authz: authz, spaces: spaces}
 }
 
@@ -52,7 +52,7 @@ func (s Server) Stacks(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a bad cursor is a problem
 	}
-	all := make([]stacks.Stack, 0, len(res.Edges))
+	all := make([]core.Stack, 0, len(res.Edges))
 	for _, e := range res.Edges {
 		all = append(all, e.Node)
 	}
@@ -211,10 +211,10 @@ func (s Server) StackPatch(
 		in, err := inputView(st, slugs[st.Space])
 		return in, st.Version, err
 	}
-	write := func(view api.StackInput, expect kernel.Expect) (stacks.Stack, error) {
+	write := func(view api.StackInput, expect kernel.Expect) (core.Stack, error) {
 		in, err := inputOf(view)
 		if err != nil {
-			return stacks.Stack{}, err
+			return core.Stack{}, err
 		}
 		return s.stacks.Update(ctx, p, req.StackId, expect, in) //nolint:wrapcheck // as above
 	}
@@ -258,7 +258,7 @@ func (s Server) StackReslug(
 	ctx context.Context,
 	req api.StackReslugRequestObject,
 ) (api.StackReslugResponseObject, error) {
-	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (stacks.Stack, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.Reslug(ctx, p, req.StackId)
 	})
 	if err != nil {
@@ -272,7 +272,7 @@ func (s Server) StackDisable(
 	ctx context.Context,
 	req api.StackDisableRequestObject,
 ) (api.StackDisableResponseObject, error) {
-	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (stacks.Stack, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetDisabled(ctx, p, req.StackId, true)
 	})
 	if err != nil {
@@ -286,7 +286,7 @@ func (s Server) StackEnable(
 	ctx context.Context,
 	req api.StackEnableRequestObject,
 ) (api.StackEnableResponseObject, error) {
-	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (stacks.Stack, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetDisabled(ctx, p, req.StackId, false)
 	})
 	if err != nil {
@@ -304,7 +304,7 @@ func (s Server) StackLock(
 	if req.Body != nil && req.Body.Note != nil {
 		note = *req.Body.Note
 	}
-	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (stacks.Stack, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.Lock(ctx, p, req.StackId, note)
 	})
 	if err != nil {
@@ -318,7 +318,7 @@ func (s Server) StackUnlock(
 	ctx context.Context,
 	req api.StackUnlockRequestObject,
 ) (api.StackUnlockResponseObject, error) {
-	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (stacks.Stack, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.Unlock(ctx, p, req.StackId)
 	})
 	if err != nil {
@@ -332,7 +332,7 @@ func (s Server) StarSet(
 	ctx context.Context,
 	req api.StarSetRequestObject,
 ) (api.StarSetResponseObject, error) {
-	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (stacks.Stack, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetStar(ctx, p, req.StackId, req.Body.Star)
 	})
 	if err != nil {
@@ -346,7 +346,7 @@ func (s Server) StarSet(
 func (s Server) change(
 	ctx context.Context,
 	slug string,
-	f func(p kernel.Principal) (stacks.Stack, error),
+	f func(p kernel.Principal) (core.Stack, error),
 ) (api.Stack, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -359,7 +359,7 @@ func (s Server) change(
 	return s.view(ctx, p, st)
 }
 
-func (s Server) view(ctx context.Context, p kernel.Principal, st stacks.Stack) (api.Stack, error) {
+func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (api.Stack, error) {
 	vs, err := s.views(ctx, p, st)
 	if err != nil {
 		return api.Stack{}, err
@@ -372,7 +372,7 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st stacks.Stack) (
 func (s Server) views(
 	ctx context.Context,
 	p kernel.Principal,
-	all ...stacks.Stack,
+	all ...core.Stack,
 ) ([]api.Stack, error) {
 	out := make([]api.Stack, 0, len(all))
 	if len(all) == 0 {
@@ -418,21 +418,21 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 // stackError answers the service's refusals; slug is the stack a not
 // found error names. A *kernel.Invalid is answered as it is.
 func stackError(err error, slug string) error {
-	if d, ok := errors.AsType[*stacks.Denied](err); ok {
+	if d, ok := errors.AsType[*core.Denied](err); ok {
 		p := problem.Forbidden.New(fmt.Sprintf("You may not perform %s here.", d.Action))
 		p.Action = string(d.Action)
 		return &problem.Error{Problem: p}
 	}
-	if l, ok := errors.AsType[*stacks.Locked](err); ok {
+	if l, ok := errors.AsType[*core.Locked](err); ok {
 		p := problem.ResourceLocked.New(fmt.Sprintf("The stack is locked by %s.", l.By))
 		p.LockedBy = l.By
 		return &problem.Error{Problem: p}
 	}
-	if sp, ok := errors.AsType[*stacks.SpaceError](err); ok {
+	if sp, ok := errors.AsType[*core.SpaceError](err); ok {
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.NotFound.Error(fmt.Sprintf("No space %q in this account.", sp.Slug))
 	}
-	if t, ok := errors.AsType[*stacks.SlugTaken](err); ok {
+	if t, ok := errors.AsType[*core.SlugTaken](err); ok {
 		//nolint:wrapcheck // as above
 		return problem.AlreadyExists.Error(
 			fmt.Sprintf("Another stack of this account has the slug %q.", t.Slug))
@@ -446,8 +446,8 @@ func stackError(err error, slug string) error {
 
 // inputOf is in as the service takes it. Its vendorConfig is encoded
 // back to JSON, so the iac vendors check it as the request sent it.
-func inputOf(in api.StackInput) (stacks.Input, error) {
-	out := stacks.Input{
+func inputOf(in api.StackInput) (core.Input, error) {
+	out := core.Input{
 		Name: in.Name, Description: in.Description, Repository: in.Repository,
 		RepositoryURL: in.RepositoryURL, Branch: in.Branch, Namespace: in.Namespace,
 		ProjectRoot: in.ProjectRoot, RunnerImage: in.RunnerImage, WorkerPool: in.WorkerPool,
@@ -487,7 +487,7 @@ func inputOf(in api.StackInput) (stacks.Input, error) {
 	if in.VendorConfig != nil {
 		raw, err := json.Marshal(in.VendorConfig)
 		if err != nil {
-			return stacks.Input{}, fmt.Errorf("stacks: encode vendorConfig: %w", err)
+			return core.Input{}, fmt.Errorf("stacks: encode vendorConfig: %w", err)
 		}
 		out.VendorConfig = raw
 	}
@@ -498,7 +498,7 @@ func inputOf(in api.StackInput) (stacks.Input, error) {
 // them, with its space by slug: the document a merge patch applies to.
 // A Terraform stack with no vendor settings sends no vendorConfig, so a
 // patch that names another vendor does not also have to null Terraform.
-func inputView(st stacks.Stack, space string) (api.StackInput, error) {
+func inputView(st core.Stack, space string) (api.StackInput, error) {
 	in := api.StackInput{
 		Name: st.Name, Description: st.Description, Repository: st.Repository,
 		RepositoryURL: st.RepositoryURL, Branch: st.Branch, Space: &space,
@@ -542,7 +542,7 @@ func inputView(st stacks.Stack, space string) (api.StackInput, error) {
 }
 
 // etag is st's entity tag, which an If-Match names to change it.
-func etag(st stacks.Stack) *string {
+func etag(st core.Stack) *string {
 	t := strict.ETag(st.Version)
 	return &t
 }

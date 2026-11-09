@@ -15,7 +15,7 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, the domain's stacks, http and pg
+// It imports accessapi, stacksapi, the domain's core, http and pg
 // packages, platform/outbox and platform/sql/migrate. Only internal/app
 // and cmd/ import it, as the constructors rule enforces.
 package assembly

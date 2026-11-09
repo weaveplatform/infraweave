@@ -24,7 +24,7 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, the domain's stacks package,
+// It imports accessapi, stacksapi, the domain's core package,
 // internal/iac, internal/kernel, kernel/search, platform/gen/api,
 // platform/httpkit/apisearch, platform/httpkit/page,
 // platform/httpkit/problem and platform/httpkit/strict. The stacks

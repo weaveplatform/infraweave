@@ -9,12 +9,12 @@ import (
 
 	root "github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-func held(t *testing.T, s *pg.Store, name string) features.Held {
+func held(t *testing.T, s *pg.Store, name string) core.Held {
 	t.Helper()
 	ts, err := s.HeldTiers(t.Context())
 	if err != nil {
@@ -26,7 +26,7 @@ func held(t *testing.T, s *pg.Store, name string) features.Held {
 		}
 	}
 	t.Fatalf("no tier %q in %+v", name, ts)
-	return features.Held{}
+	return core.Held{}
 }
 
 func version(t *testing.T, s *pg.Store, org kernel.OrganizationID) int64 {
@@ -51,7 +51,7 @@ func TestAccOperatorTiers(t *testing.T) {
 	if err := s.CreateTier(ctx, gold); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateTier(ctx, gold); !errors.Is(err, features.ErrExists) {
+	if err := s.CreateTier(ctx, gold); !errors.Is(err, core.ErrExists) {
 		t.Errorf("a name in use = %v", err)
 	}
 	if h := held(t, s, "Gold"); !slices.Equal(h.Features, gold.Features) ||
@@ -77,7 +77,7 @@ func TestAccOperatorTiers(t *testing.T) {
 		t.Errorf("versions %d and %d, want the holder's bumped alone",
 			version(t, s, org), version(t, s, other))
 	}
-	if got := notified(); !slices.Equal(got, []string{features.TiersKey}) {
+	if got := notified(); !slices.Equal(got, []string{core.TiersKey}) {
 		t.Errorf("a replaced tier notified %v", got)
 	}
 	if err := s.ReplaceTier(
@@ -90,7 +90,7 @@ func TestAccOperatorTiers(t *testing.T) {
 		t.Errorf("replacing a tier that does not exist = %v", err)
 	}
 
-	if err := s.DeleteTier(ctx, "Gold"); !errors.Is(err, features.ErrInvalidState) {
+	if err := s.DeleteTier(ctx, "Gold"); !errors.Is(err, core.ErrInvalidState) {
 		t.Errorf("deleting a held tier = %v", err)
 	}
 	if h := held(t, s, "Gold"); len(h.Features) != 1 {
@@ -100,7 +100,7 @@ func TestAccOperatorTiers(t *testing.T) {
 	if err := s.SetBilling(ctx, false, &spare); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.DeleteTier(ctx, spare); !errors.Is(err, features.ErrInvalidState) {
+	if err := s.DeleteTier(ctx, spare); !errors.Is(err, core.ErrInvalidState) {
 		t.Errorf("deleting the default tier = %v", err)
 	}
 	unused := tier(t, db, []string{"stacks"}, map[string]int64{"seats": 1})
@@ -114,7 +114,7 @@ func TestAccOperatorTiers(t *testing.T) {
 		Scan(&seeds); err != nil || seeds != 1 {
 		t.Errorf("the deleted tier's seed row: %d, %v; want it kept", seeds, err)
 	}
-	if got := notified(); !slices.Equal(got, []string{features.TiersKey}) {
+	if got := notified(); !slices.Equal(got, []string{core.TiersKey}) {
 		t.Errorf("a deleted tier notified %v", got)
 	}
 	if err := s.DeleteTier(ctx, unused); !errors.Is(err, featuresapi.ErrNotFound) {
@@ -140,7 +140,7 @@ func TestAccOperatorBilling(t *testing.T) {
 	if b, err := s.BillingState(ctx); err != nil || !b.Enabled || b.DefaultTier != gold {
 		t.Errorf("BillingState = %+v, %v", b, err)
 	}
-	if got := notified(); !slices.Equal(got, []string{features.BillingKey, features.BillingKey}) {
+	if got := notified(); !slices.Equal(got, []string{core.BillingKey, core.BillingKey}) {
 		t.Errorf("SetBilling notified %v", got)
 	}
 	missing := "Missing"
@@ -174,7 +174,7 @@ func TestAccOperatorGrants(t *testing.T) {
 	starter := tier(t, db, []string{"stacks"}, map[string]int64{"seats": 2})
 	entitle(t, db, org, tier(t, db, nil, nil))
 	notified := listen(t, db)
-	if err := s.SetTier(ctx, org, "No such tier"); !errors.Is(err, features.ErrUnknownTier) {
+	if err := s.SetTier(ctx, org, "No such tier"); !errors.Is(err, core.ErrUnknownTier) {
 		t.Errorf("an unknown tier = %v", err)
 	}
 	for _, step := range []error{
@@ -199,7 +199,7 @@ func TestAccOperatorGrants(t *testing.T) {
 		!maps.Equal(e.Limits, map[string]int64{"seats": 5}) {
 		t.Errorf("Entitlement = %+v, %v", e, err)
 	}
-	key := features.InvalidateKey(org)
+	key := core.InvalidateKey(org)
 	if got := notified(); !slices.Equal(got, []string{key, key, key, key, key}) {
 		t.Errorf("five writes notified %v", got)
 	}

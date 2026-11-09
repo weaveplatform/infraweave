@@ -109,7 +109,9 @@ func depguardProblems(rules map[string]depguardRule, internal fs.FS) ([]string, 
 		if !rules["shared-below-domains"].denies(root) {
 			out = append(out, d+": shared-below-domains does not deny "+root)
 		}
-		if _, err := fs.Stat(internal, d+"/internal/core"); err == nil &&
+		// A flat domain has internal/core too, so only adapters mark a
+		// hexagon.
+		if _, err := fs.Stat(internal, d+"/internal/adapters"); err == nil &&
 			!rules["core-not-adapters"].denies(root+"/internal/adapters") {
 			out = append(out, d+": core-not-adapters does not deny "+root+"/internal/adapters")
 		}
@@ -136,7 +138,11 @@ func TestUnitDepguardFixtures(t *testing.T) {
 		}
 		return r
 	}
-	stacks := fstest.MapFS{"stacks/api/api.go": {}, "stacks/assembly/assembly.go": {}}
+	stacks := fstest.MapFS{
+		"stacks/api/api.go":            {},
+		"stacks/assembly/assembly.go":  {},
+		"stacks/internal/core/core.go": {},
+	}
 	runs := fstest.MapFS{"runs/internal/core/core.go": {}, "runs/internal/adapters/pg/pg.go": {}}
 	for name, tc := range map[string]struct {
 		tree   fstest.MapFS

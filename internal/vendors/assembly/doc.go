@@ -15,7 +15,7 @@
 //
 // # Dependencies
 //
-// It imports vendorsapi, the domain's http, index, pg and vendors
+// It imports vendorsapi, the domain's core, http, index and pg
 // packages, internal/iac, platform/cron, platform/queue,
 // platform/sql/migrate and platform/tx. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.

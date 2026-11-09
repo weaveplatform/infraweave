@@ -1,4 +1,4 @@
-package features_test
+package core_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 
 	root "github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -66,7 +66,7 @@ func TestUnitOrganizationTier(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var n int
-			got, err := features.New(tc.s, inTx(&n), nil).
+			got, err := core.New(tc.s, inTx(&n), nil).
 				OrganizationTier(t.Context(), kernel.NewOrganizationID())
 			if tc.err != nil {
 				if !errors.Is(err, tc.err) {
@@ -96,16 +96,16 @@ func TestUnitEntitled(t *testing.T) {
 	on := &store{entitlement: &featuresapi.Entitlement{
 		Tier: root.Free, Features: []string{"api-keys", "scans", "stacks"},
 	}}
-	got, err := features.New(on, inTx(&n), []string{"scans"}).Entitled(ctx, org)
+	got, err := core.New(on, inTx(&n), []string{"scans"}).Entitled(ctx, org)
 	if err != nil || !slices.Equal(got, []string{"api-keys", "stacks"}) {
 		t.Errorf("billing on = %v, %v", got, err)
 	}
-	got, err = features.New(&store{}, inTx(&n), []string{"scans"}).Entitled(ctx, org)
+	got, err = core.New(&store{}, inTx(&n), []string{"scans"}).Entitled(ctx, org)
 	want := slices.DeleteFunc(root.Gated(), func(f string) bool { return f == "scans" })
 	if err != nil || !slices.Equal(got, root.Closed(want)) {
 		t.Errorf("no entitlement = %v, %v, want %v", got, err, want)
 	}
-	if _, err := features.New(&store{err: errStore}, inTx(&n), nil).
+	if _, err := core.New(&store{err: errStore}, inTx(&n), nil).
 		Entitled(ctx, org); !errors.Is(err, errStore) {
 		t.Errorf("entitlement unreadable = %v", err)
 	}
@@ -120,7 +120,7 @@ func TestUnitSeats(t *testing.T) {
 	cases := []struct {
 		name string
 		s    *store
-		want features.Seats
+		want core.Seats
 		err  error
 	}{
 		{
@@ -129,12 +129,12 @@ func TestUnitSeats(t *testing.T) {
 				billingOff: true, entitlement: pooled,
 				accounts: map[string]int64{featuresapi.Seats: three},
 			},
-			want: features.Seats{Organization: features.SeatLimit{InUse: 7}},
+			want: core.Seats{Organization: core.SeatLimit{InUse: 7}},
 		},
 		{
 			name: "billing on reads the pool",
 			s:    &store{entitlement: pooled},
-			want: features.Seats{Organization: features.SeatLimit{InUse: 7, Limit: &ten}},
+			want: core.Seats{Organization: core.SeatLimit{InUse: 7, Limit: &ten}},
 		},
 		{
 			name: "billing on reads the account's limit when one is set",
@@ -142,20 +142,20 @@ func TestUnitSeats(t *testing.T) {
 				entitlement: pooled,
 				accounts:    map[string]int64{featuresapi.Seats: three},
 			},
-			want: features.Seats{
-				Organization: features.SeatLimit{InUse: 7, Limit: &ten},
-				Account:      &features.SeatLimit{InUse: 2, Limit: &three},
+			want: core.Seats{
+				Organization: core.SeatLimit{InUse: 7, Limit: &ten},
+				Account:      &core.SeatLimit{InUse: 2, Limit: &three},
 			},
 		},
 		{
 			name: "no pool is no limit",
 			s:    &store{entitlement: &featuresapi.Entitlement{Tier: root.Enterprise}},
-			want: features.Seats{Organization: features.SeatLimit{InUse: 7}},
+			want: core.Seats{Organization: core.SeatLimit{InUse: 7}},
 		},
 		{
 			name: "an organization without an entitlement has no limit",
 			s:    &store{accounts: map[string]int64{featuresapi.Seats: three}},
-			want: features.Seats{Organization: features.SeatLimit{InUse: 7}},
+			want: core.Seats{Organization: core.SeatLimit{InUse: 7}},
 		},
 		{name: "billing unreadable", s: &store{billingErr: errStore}, err: errStore},
 		{name: "entitlement unreadable", s: &store{err: errStore}, err: errStore},
@@ -168,7 +168,7 @@ func TestUnitSeats(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var n int
-			got, err := features.New(tc.s, inTx(&n), nil).
+			got, err := core.New(tc.s, inTx(&n), nil).
 				Seats(t.Context(), kernel.NewOrganizationID(), kernel.NewAccountID(), used)
 			if tc.err != nil {
 				if !errors.Is(err, tc.err) {
@@ -237,7 +237,7 @@ func TestUnitSetAccountLimit(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var n int
-			err := features.New(tc.s, inTx(&n), nil).SetAccountLimit(
+			err := core.New(tc.s, inTx(&n), nil).SetAccountLimit(
 				t.Context(), kernel.NewOrganizationID(), kernel.NewAccountID(), tc.limit, tc.value)
 			le, _ := errors.AsType[*featuresapi.AccountLimitError](err)
 			switch {
@@ -254,7 +254,7 @@ func TestUnitSetAccountLimit(t *testing.T) {
 		})
 	}
 	var n int
-	svc := features.New(&store{accounts: map[string]int64{"seats": 3}}, inTx(&n), nil)
+	svc := core.New(&store{accounts: map[string]int64{"seats": 3}}, inTx(&n), nil)
 	limits, err := svc.AccountLimits(t.Context(), kernel.NewAccountID())
 	if err != nil || limits["seats"] != 3 {
 		t.Errorf("AccountLimits = %v, %v", limits, err)

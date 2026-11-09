@@ -9,7 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 )
 
 // viewOf is st as the API answers it, in the space slug, with the
@@ -18,7 +18,7 @@ import (
 // is terminal, and no blocker; nothing attached, no dependencies and no
 // managed resources.
 func viewOf(
-	st stacks.Stack,
+	st core.Stack,
 	space string,
 	held []accessapi.Action,
 	starred bool,
@@ -95,7 +95,7 @@ func viewOf(
 // vendorView is st's vendorConfig in the shape of its vendor, each
 // setting its input left out at its default. A Terraform stack's version
 // is its terraformVersion when it has one, which takes precedence.
-func vendorView(st stacks.Stack) (*api.StackConfigVendor, error) {
+func vendorView(st core.Stack) (*api.StackConfigVendor, error) {
 	var c struct {
 		Version                    *string `json:"version"`
 		WorkflowTool               *string `json:"workflowTool"`

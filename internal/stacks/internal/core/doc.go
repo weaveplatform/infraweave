@@ -1,4 +1,4 @@
-// Package stacks is the stacks domain's logic: Service creates, reads,
+// Package core is the stacks domain's logic: Service creates, reads,
 // searches, changes, moves, reslugs, disables, enables, locks, unlocks,
 // stars and deletes an account's stacks for the HTTP adapter, suggests
 // the values of their searchable Fields, and reads them for other domains
@@ -28,4 +28,4 @@
 // It imports accessapi, stacksapi, internal/iac, internal/kernel,
 // kernel/search, platform/outbox and platform/tx. The stacks domain's
 // assembly constructs it over the pg package's Store.
-package stacks
+package core

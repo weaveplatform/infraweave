@@ -1,4 +1,4 @@
-package features_test
+package core_test
 
 import (
 	"context"
@@ -11,20 +11,20 @@ import (
 
 	root "github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 // The operator half of store: held are the tiers HeldTiers answers, and
 // each write records itself in calls and fails with opErr.
-func (s *store) HeldTiers(context.Context) ([]features.Held, error) {
+func (s *store) HeldTiers(context.Context) ([]core.Held, error) {
 	return slices.Clone(s.held), s.tiersErr
 }
 
 func (s *store) CreateTier(_ context.Context, t root.Tier) error {
 	s.calls = append(s.calls, "create tier "+t.Name)
 	if s.opErr == nil {
-		s.held = append(s.held, features.Held{Tier: t})
+		s.held = append(s.held, core.Held{Tier: t})
 	}
 	return s.opErr
 }
@@ -44,7 +44,7 @@ func (s *store) DeleteTier(_ context.Context, name string) error {
 	return s.opErr
 }
 
-func (s *store) BillingState(context.Context) (features.Billing, error) {
+func (s *store) BillingState(context.Context) (core.Billing, error) {
 	return s.billing, s.billingErr
 }
 
@@ -59,7 +59,7 @@ func (s *store) SetBilling(_ context.Context, enabled bool, tier *string) error 
 	return s.opErr
 }
 
-func (s *store) Grants(context.Context, kernel.OrganizationID) (features.Grants, error) {
+func (s *store) Grants(context.Context, kernel.OrganizationID) (core.Grants, error) {
 	return s.grants, s.grantsErr
 }
 
@@ -90,7 +90,7 @@ func (s *store) RevokeLimit(_ context.Context, _ kernel.OrganizationID, l string
 
 func TestUnitCheckTier(t *testing.T) {
 	ok := root.Tier{Features: []string{"stacks", "scans"}, Limits: map[string]int64{"seats": 3}}
-	if err := features.CheckTier(ok); err != nil {
+	if err := core.CheckTier(ok); err != nil {
 		t.Errorf("a valid tier: %v", err)
 	}
 	for name, c := range map[string]struct {
@@ -104,8 +104,8 @@ func TestUnitCheckTier(t *testing.T) {
 		"no limit": {root.Tier{Limits: map[string]int64{"stacks": 1}}, `limits.stacks: "stacks"`},
 		"negative": {root.Tier{Limits: map[string]int64{"seats": -1}}, "below 0"},
 	} {
-		err := features.CheckTier(c.tier)
-		if !errors.Is(err, features.ErrInvalid) || !strings.Contains(err.Error(), c.says) {
+		err := core.CheckTier(c.tier)
+		if !errors.Is(err, core.ErrInvalid) || !strings.Contains(err.Error(), c.says) {
 			t.Errorf("%s: %v, want ErrInvalid naming %s", name, err, c.says)
 		}
 	}
@@ -113,11 +113,11 @@ func TestUnitCheckTier(t *testing.T) {
 
 func TestUnitOperatorTiers(t *testing.T) {
 	ctx := t.Context()
-	s := &store{held: []features.Held{
+	s := &store{held: []core.Held{
 		{Tier: root.Tier{Name: root.Enterprise}, Organizations: 2},
 		{Tier: root.Tier{Name: "Starter"}},
 	}}
-	svc := features.New(s, inTx(new(int)), nil)
+	svc := core.New(s, inTx(new(int)), nil)
 
 	if ts, err := svc.Tiers(ctx); err != nil || len(ts) != 2 || ts[0].Editable() ||
 		!ts[1].Editable() {
@@ -137,7 +137,7 @@ func TestUnitOperatorTiers(t *testing.T) {
 			root.Tier{Name: bad},
 		); !errors.Is(
 			err,
-			features.ErrInvalid,
+			core.ErrInvalid,
 		) {
 			t.Errorf("name %q = %v", bad, err)
 		}
@@ -147,17 +147,17 @@ func TestUnitOperatorTiers(t *testing.T) {
 		root.Tier{Name: "Bad", Features: []string{"nope"}},
 	); !errors.Is(
 		err,
-		features.ErrInvalid,
+		core.ErrInvalid,
 	) {
 		t.Errorf("a bad feature = %v", err)
 	}
 
 	for _, name := range []string{root.Enterprise} {
 		if _, err := svc.ReplaceTier(ctx, root.Tier{Name: name}); !errors.Is(err,
-			features.ErrInvalidState) {
+			core.ErrInvalidState) {
 			t.Errorf("replacing %s = %v", name, err)
 		}
-		if _, err := svc.DeleteTier(ctx, name); !errors.Is(err, features.ErrInvalidState) {
+		if _, err := svc.DeleteTier(ctx, name); !errors.Is(err, core.ErrInvalidState) {
 			t.Errorf("deleting %s = %v", name, err)
 		}
 	}
@@ -170,7 +170,7 @@ func TestUnitOperatorTiers(t *testing.T) {
 		root.Tier{Name: "Starter", Features: []string{"x"}},
 	); !errors.Is(
 		err,
-		features.ErrInvalid,
+		core.ErrInvalid,
 	) {
 		t.Errorf("replacing with a bad feature = %v", err)
 	}
@@ -211,8 +211,8 @@ func second[T any](_ T, err error) error { return err }
 
 func TestUnitOperatorBilling(t *testing.T) {
 	ctx := t.Context()
-	s := &store{billing: features.Billing{DefaultTier: root.Enterprise}}
-	svc := features.New(s, inTx(new(int)), nil)
+	s := &store{billing: core.Billing{DefaultTier: root.Enterprise}}
+	svc := core.New(s, inTx(new(int)), nil)
 	free := root.Free
 	if b, err := svc.SetBilling(
 		ctx,
@@ -226,12 +226,12 @@ func TestUnitOperatorBilling(t *testing.T) {
 		t.Errorf("SetBilling keeping the default = %+v, %v", b, err)
 	}
 	s.opErr = featuresapi.ErrNotFound
-	if _, err := svc.SetBilling(ctx, true, &free); !errors.Is(err, features.ErrUnknownTier) {
+	if _, err := svc.SetBilling(ctx, true, &free); !errors.Is(err, core.ErrUnknownTier) {
 		t.Errorf("an unknown default tier = %v", err)
 	}
 	s.opErr = errStore
 	if _, err := svc.SetBilling(ctx, true, nil); !errors.Is(err, errStore) ||
-		errors.Is(err, features.ErrUnknownTier) {
+		errors.Is(err, core.ErrUnknownTier) {
 		t.Errorf("SetBilling with the store down = %v", err)
 	}
 }
@@ -246,14 +246,14 @@ func TestUnitOperatorEntitlement(t *testing.T) {
 			Features: []string{"drift-detection", "scans", "stacks"},
 			Limits:   map[string]int64{"seats": 10},
 		},
-		grants: features.Grants{
+		grants: core.Grants{
 			Features: []string{"scans"},
 			Limits:   map[string]*int64{"seats": &ten},
 		},
 	}
 	// Switching private-worker-pools off takes drift-detection, which
 	// requires it, with it.
-	svc := features.New(s, inTx(new(int)), []string{"private-worker-pools"})
+	svc := core.New(s, inTx(new(int)), []string{"private-worker-pools"})
 	s.billingOff = true
 
 	o, err := svc.OrganizationEntitlement(ctx, org)
@@ -270,37 +270,37 @@ func TestUnitOperatorEntitlement(t *testing.T) {
 
 	steps := []struct {
 		name string
-		do   func() (features.Operated, error)
+		do   func() (core.Operated, error)
 		call string
 	}{
 		{
 			"tier",
-			func() (features.Operated, error) { return svc.SetTier(ctx, org, "Free") },
+			func() (core.Operated, error) { return svc.SetTier(ctx, org, "Free") },
 			"tier Free",
 		},
 		{
 			"grant feature",
-			func() (features.Operated, error) { return svc.GrantFeature(ctx, org, "policies") },
+			func() (core.Operated, error) { return svc.GrantFeature(ctx, org, "policies") },
 			"grant policies",
 		},
 		{
 			"revoke feature",
-			func() (features.Operated, error) { return svc.RevokeFeature(ctx, org, "policies") },
+			func() (core.Operated, error) { return svc.RevokeFeature(ctx, org, "policies") },
 			"revoke policies",
 		},
 		{
 			"grant limit",
-			func() (features.Operated, error) { return svc.GrantLimit(ctx, org, "seats", &ten) },
+			func() (core.Operated, error) { return svc.GrantLimit(ctx, org, "seats", &ten) },
 			"grant seats",
 		},
 		{
 			"lift limit",
-			func() (features.Operated, error) { return svc.GrantLimit(ctx, org, "seats", nil) },
+			func() (core.Operated, error) { return svc.GrantLimit(ctx, org, "seats", nil) },
 			"grant seats",
 		},
 		{
 			"revoke limit",
-			func() (features.Operated, error) { return svc.RevokeLimit(ctx, org, "seats") },
+			func() (core.Operated, error) { return svc.RevokeLimit(ctx, org, "seats") },
 			"revoke seats",
 		},
 	}
@@ -318,7 +318,7 @@ func TestUnitOperatorEntitlement(t *testing.T) {
 		"a feature as a limit": second(svc.GrantLimit(ctx, org, "stacks", &ten)),
 		"a negative value":     second(svc.GrantLimit(ctx, org, "seats", &minus)),
 	} {
-		if !errors.Is(err, features.ErrInvalid) {
+		if !errors.Is(err, core.ErrInvalid) {
 			t.Errorf("%s = %v", name, err)
 		}
 	}

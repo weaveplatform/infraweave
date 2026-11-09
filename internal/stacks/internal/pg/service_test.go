@@ -21,8 +21,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
 )
 
 // spaces are an account's spaces by slug, recording each hold.
@@ -128,7 +128,7 @@ func (a authz) Actions(
 // two, a writer who may write in the team space, and a reader of it.
 type fixture struct {
 	db                    *pgxpool.Pool
-	svc                   *stacks.Service
+	svc                   *core.Service
 	spaces                *spaces
 	authz                 authz
 	acct                  kernel.AccountID
@@ -164,7 +164,7 @@ func newFixture(t *testing.T) fixture {
 		writer.Caller(): {team: write},
 		reader.Caller(): {team: read},
 	}
-	svc := stacks.New(stacks.Deps{
+	svc := core.New(core.Deps{
 		Store: pg.New(db), DB: db, Spaces: sp, Authz: az,
 		Events: outbox.New(db, queue.New(db), kinds),
 		Now:    func() time.Time { return time.Unix(1_800_000_000, 0) },
@@ -196,8 +196,8 @@ func (f fixture) changes(t *testing.T, id kernel.ULID) []string {
 	return out
 }
 
-func input(name string) stacks.Input {
-	return stacks.Input{Space: "team", Name: name, Repository: "infra", Branch: "main"}
+func input(name string) core.Input {
+	return core.Input{Space: "team", Name: name, Repository: "infra", Branch: "main"}
 }
 
 // pointers are the refused fields' pointers of err, a *kernel.Invalid.
@@ -240,7 +240,7 @@ func TestAccServiceCreate(t *testing.T) {
 			map[string][]string{stacksapi.BeforePlan: {"echo 1", "echo 2"}},
 		) ||
 		got.Vendor != "opentofu" || string(got.VendorConfig) != `{"version": "~> 1.8.0"}` ||
-		got.Provider != stacks.DefaultProvider || !got.GithubActionDeploy {
+		got.Provider != core.DefaultProvider || !got.GithubActionDeploy {
 		t.Errorf("read back %+v", got)
 	}
 	if !slices.Contains(f.spaces.holds, f.team) {
@@ -249,7 +249,7 @@ func TestAccServiceCreate(t *testing.T) {
 	if c := f.changes(t, st.ID); !reflect.DeepEqual(c, []string{stacksapi.ChangeCreated}) {
 		t.Errorf("events %v", c)
 	}
-	plain, err := f.svc.Create(ctx, f.admin, "custom-1", false, stacks.Input{
+	plain, err := f.svc.Create(ctx, f.admin, "custom-1", false, core.Input{
 		Name: "Plain", Repository: "r", Branch: "b",
 	})
 	if err != nil || plain.Slug != "custom-1" || plain.Space != f.acct.ULID ||
@@ -274,7 +274,7 @@ func TestAccServiceCreate(t *testing.T) {
 	}()); !reflect.DeepEqual(got, []string{"/slug"}) {
 		t.Errorf("a bad slug's pointers = %v", got)
 	}
-	bad := stacks.Input{
+	bad := core.Input{
 		Name: "!!!", WorkerPool: new("wp"), VCSIntegration: new("vcs"),
 		VendorConfig:     json.RawMessage(`{"terraform":{"version":"1.x"},"opentofu":{}}`),
 		TerraformVersion: new("latest"),
@@ -300,12 +300,12 @@ func TestAccServiceCreate(t *testing.T) {
 }
 
 func isSlugTaken(err error, slug string) bool {
-	t, ok := errors.AsType[*stacks.SlugTaken](err)
+	t, ok := errors.AsType[*core.SlugTaken](err)
 	return ok && t.Slug == slug
 }
 
 func isNoSpace(err error, slug string) bool {
-	s, ok := errors.AsType[*stacks.SpaceError](err)
+	s, ok := errors.AsType[*core.SpaceError](err)
 	return ok && s.Slug == slug
 }
 
@@ -441,7 +441,7 @@ func TestAccServiceUpdate(t *testing.T) {
 	}
 	moved := input("Infra Two")
 	moved.Space = ""
-	var denied *stacks.Denied
+	var denied *core.Denied
 	if _, err := f.svc.Update(
 		ctx,
 		f.writer,
@@ -500,7 +500,7 @@ func TestAccServiceUpdate(t *testing.T) {
 		f.admin,
 		"infra-two",
 		kernel.Expect{},
-		stacks.Input{},
+		core.Input{},
 	); err == nil {
 		t.Error("an empty input was accepted")
 	}
@@ -549,7 +549,7 @@ func TestAccServiceLocks(t *testing.T) {
 		!st.Lock.At.Equal(time.Unix(1_800_000_000, 0)) {
 		t.Fatalf("Lock = %+v, %v", st.Lock, err)
 	}
-	var locked *stacks.Locked
+	var locked *core.Locked
 	if _, err := f.svc.Lock(
 		ctx,
 		f.admin,
@@ -568,7 +568,7 @@ func TestAccServiceLocks(t *testing.T) {
 		st.Lock.Note != "still" {
 		t.Errorf("the holder's relock = %+v, %v", st.Lock, err)
 	}
-	var denied *stacks.Denied
+	var denied *core.Denied
 	if _, err := f.svc.Unlock(ctx, f.reader, "infra"); !errors.As(err, &denied) ||
 		denied.Action != accessapi.ActionStackUnlockForce {
 		t.Errorf("another caller's unlock without force = %v", err)
@@ -632,7 +632,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 		if got, err := f.svc.Starred(
 			ctx,
 			c.p,
-			[]stacks.Stack{st},
+			[]core.Stack{st},
 		); err != nil ||
 			got[st.ID] != c.want {
 			t.Errorf("Starred for %s = %v, %v", c.p.Login, got, err)
@@ -641,7 +641,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 	if _, err := f.svc.SetStar(ctx, f.reader, "infra", false); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := f.svc.Starred(ctx, f.reader, []stacks.Stack{st}); err != nil || got[st.ID] {
+	if got, err := f.svc.Starred(ctx, f.reader, []core.Stack{st}); err != nil || got[st.ID] {
 		t.Errorf("Starred after unstarring = %v, %v", got, err)
 	}
 	if _, err := f.svc.SetStar(

@@ -7,9 +7,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/http"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
 )
 
 // Stream is the stacks domain's migration stream.
@@ -33,13 +33,13 @@ type Deps struct {
 
 // Domain is the stacks domain, constructed once per process.
 type Domain struct {
-	stacks *stacks.Service
+	stacks *core.Service
 	api    http.Server
 }
 
 // New constructs the domain on d.
 func New(d Deps) *Domain {
-	svc := stacks.New(stacks.Deps{
+	svc := core.New(core.Deps{
 		Store: pg.New(d.DB), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Events: d.Events,
 		Now: d.Now,
 	})

@@ -1,4 +1,4 @@
-package stacks
+package core
 
 import (
 	"context"

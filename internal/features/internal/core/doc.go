@@ -1,4 +1,4 @@
-// Package features is the features domain's logic of tiers, entitlements
+// Package core is the features domain's logic of tiers, entitlements
 // and limits: Service implements featuresapi.Entitlements over a Store. An
 // organization's entitlement is its tier's features and its granted
 // features, less the installation's features.disabled, less every feature
@@ -34,4 +34,4 @@
 //
 // It imports the catalogue (internal/features), featuresapi and
 // internal/kernel. The features domain's assembly constructs it.
-package features
+package core
