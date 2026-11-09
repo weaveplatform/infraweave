@@ -140,6 +140,13 @@
       "phase": "P16"
     },
     {
+      "id": "expressions",
+      "kind": "capability",
+      "gates": "The Expressions tag: checking, completing and evaluating expressions over each domain's surfaces",
+      "lowestTier": "Free",
+      "phase": "P6"
+    },
+    {
       "id": "flows-agents",
       "kind": "capability",
       "gates": "Flows agent pools, their tokens and the agent gateway",

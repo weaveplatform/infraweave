@@ -306,14 +306,17 @@ the owning record beside it.
 ### Masking
 
 Masking happens in the runner, before a log line leaves the container. The
-server never has unmasked output to leak.
+server never has unmasked output to leak. The masker is
+`internal/platform/mask`, below every domain, so the runner and the server
+share one implementation: the server masks evaluated expressions
+([0024](0024-expression-language.md)) and policy print output with it.
 
 | Source of masked values | Rule |
 |---|---|
 | Secret configuration elements | The value of every element with `write_only` set, as delivered in the spec. A mounted file's content is masked line by line |
 | `INFRAWEAVE_LAUNCHER_MASK_ENVS` on the launcher | The values of the named variables |
 | `::add-mask v1 v2 ...` printed by a hook or phase | Each whitespace-separated word, from that line on |
-| Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/agent/mask` |
+| Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/platform/mask` |
 
 - **The mechanism.**
   - **Replacement.** Each match becomes five asterisks.
@@ -493,7 +496,7 @@ nothing about them is secret:
     variable, an `::add-mask` word and a well-known token. It asserts the log
     holds five asterisks for each, and that the bucket holds no plaintext copy
     of the plan.
-  - `internal/agent/mask` has table tests for overlapping values, the
+  - `internal/platform/mask` has table tests for overlapping values, the
     4-byte minimum and the 64 KiB line cap.
 
 ## References

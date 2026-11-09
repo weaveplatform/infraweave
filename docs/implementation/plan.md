@@ -140,7 +140,7 @@ and lint is clean.
 | P4 Spaces and authorization | Done | Epic [#209](https://github.com/weaveplatform/infraweave/issues/209). Done: [#211](https://github.com/weaveplatform/infraweave/issues/211) each account's space tree, its top space and `legacy`, and the closure table; [#212](https://github.com/weaveplatform/infraweave/issues/212) the generated action catalogue, the system roles, the role tables and each account admin's `space-admin` binding; [#213](https://github.com/weaveplatform/infraweave/issues/213) the evaluator, `Authorize`, `Reachable` and the explaining variant, from per-account snapshots each replica rebuilds on `authz:<account>` or a moved `authz_version`; [#214](https://github.com/weaveplatform/infraweave/issues/214) every operation's action and subject in the spec, the route table that denies a route no operation names, the middleware that decides each operation's action on its subject's space, infraweave's account actions on API keys, sessions, managed users and groups, and the `allowedActions` of their views; [#215](https://github.com/weaveplatform/infraweave/issues/215) the Spaces operations but search, the `query:` subject, and the non-admin space creation setting with the second check it gives space admins below the top space; [#216](https://github.com/weaveplatform/infraweave/issues/216) the generic search that compiles `SearchInput` to SQL under the caller's reachable spaces, `searchSpaces` and `searchSpacesSuggestions`, the `spaces` list on the compiled filter, and the action catalogue's `GET /actions` |
 | P4b Roles and role bindings | Not started | |
 | P5 Stacks | In progress | **M2**. Epic [#227](https://github.com/weaveplatform/infraweave/issues/227). Done: [#228](https://github.com/weaveplatform/infraweave/issues/228) the `vendors` and `stacks` domains after `access`, the stacks stream, `stacksapi.Stacks`, `accessapi.Spaces.Hold`, and the space guard that refuses deleting a space a stack lives in; [#229](https://github.com/weaveplatform/infraweave/issues/229) `internal/iac` with the `terraform` and `opentofu` settings checks, refused at write time as `422 validation-failed`, the `iactest` contract suite, and the `vendor-terraform` and `vendor-opentofu` options on their `vendorConfig` members; [#230](https://github.com/weaveplatform/infraweave/issues/230) stacks created, read, listed, replaced with `PUT`, moved, reslugged, disabled, enabled, locked, unlocked, starred and deleted in spaces, each change a `stack.changed` event in the outbox; [#231](https://github.com/weaveplatform/infraweave/issues/231) a `PATCH` merge patch beside every update `PUT`, `ETag` on reads and writes, `If-Match` answering `412 precondition-failed` when stale, every input schema refusing an unknown field as `400` with its pointer, and the one label rule on stacks and spaces; [#232](https://github.com/weaveplatform/infraweave/issues/232) `searchStacks` and `searchStacksSuggestions` over the reachable spaces, the space tree read through `accessapi.Spaces.Tree`, and `searchtest.FuzzCompile` holding every entity's search to parameterized SQL; [#233](https://github.com/weaveplatform/infraweave/issues/233) the Version Catalog's `terraformVersions`, `openTofuVersions`, `terraformEffectiveVersion` and `openTofuEffectiveVersion` from `vendor_releases`, which the hourly `vendors.refresh` task reads from HashiCorp's and OpenTofu's release indexes, `vendorsapi.Catalog`, the `indextest` contract suite over fixtures from `make vendors-fixtures`, and the nightly `vendors-upstream` job; [#234](https://github.com/weaveplatform/infraweave/issues/234) `stackRuns`, `stackRunsInRange`, `stackProposedRuns` and `stackTasks` answering empty pages, and `stackRun` answering `404`, on the stack's space until P7 |
-| P6 Contexts, configuration and expressions | In progress | Epic [#254](https://github.com/weaveplatform/infraweave/issues/254). Done: [#255](https://github.com/weaveplatform/infraweave/issues/255) each flat domain's logic package named `internal/core` |
+| P6 Contexts, configuration and expressions | In progress | Epic [#254](https://github.com/weaveplatform/infraweave/issues/254). Done: [#255](https://github.com/weaveplatform/infraweave/issues/255) each flat domain's logic package named `internal/core`; [#256](https://github.com/weaveplatform/infraweave/issues/256) P6's contracts in the plan and decisions: the masker in `internal/platform/mask`, the error `range`, the `/configs/{configId}` item routes, the expression endpoints, the `environment` surface, the stack guard and back edge, and captures C98 and C101 to C103 moved to P9 |
 | P7 Run state machine and scheduling | Not started | |
 | P8 Worker protocol, private pools and the Docker launcher | Not started | |
 | P8b Managed state backend | Not started | |
@@ -1384,37 +1384,53 @@ environment, and the expression engine every later surface uses.
    `contextAttachedStack`, `contextConfigElement`, `contextConfigAdd`,
    `contextConfigDelete`, `searchContexts`, `searchContextsSuggestions`,
    `attachableContextsInSpace`, `searchSpaceContexts`,
-   `searchSpaceContextsSuggestions`. Feature: `config_contexts.feature`.
+   `searchSpaceContextsSuggestions`, and the item
+   `PUT /contexts/{contextId}/configs/{configId}`; `contextConfigAdd`
+   answers `201` or `200` as an upsert (decision 0022). Feature:
+   `config_contexts.feature`.
 2. Stack configuration: `stackConfigElement`, `stackConfigAdd`,
    `stackConfigDelete`, `stackAttachableContexts`, and the item
-   `PUT /stacks/{stackId}/config/{configId}` answering `201` then `200`
-   (decision 0022). Write-only values are never readable. Feature:
+   `PUT /stacks/{stackId}/configs/{configId}` answering `201` then `200`;
+   `stackConfigAdd` answers `201` or `200` as an upsert (decision 0022).
+   Write-only values are never readable. Feature:
    `config_stack_elements.feature`.
 3. Auto-attachment: `autoattach:<label>` matching with `text[]` and GIN
    indexes, reaching child spaces by decision 0007's inheritance.
 4. `configuration/api.Environment.Resolve(target)`: the ordered elements and
    hooks report 13 defines, with `${{ env.NAME }}` text templates rendered
-   in `serve` at the run handover in P8 and `${NAME}` left to the shell.
+   in `serve` at the run handover in P8 and `${NAME}` left to the shell;
+   `Resolve` hands the templates on unrendered. `configuration` declares
+   the `environment` surface
+   (`env`, `stack`; `runs` adds `run` in P7), and a value's templates are
+   type-checked against it when the value is saved.
    Tests: `TestUnitEnvironmentPrecedence` from report 13's tables. Records
    DV-105.
 5. `internal/platform/expr` ([0024](../research/decisions/0024-expression-language.md)): CEL through cel-go and text templates, one
    environment per surface, type-checking against the surface's context,
    the cost limit and timeout, `now` and the random seed fixed per
-   evaluation, results masked by decision 0013's masker. The
-   `expressions` domain, `internal/expressions`, serves `POST
-   /expressions/check`, `/complete` and `/evaluate` over the
-   surfaces each domain's assembly lists through `Surfaces()`. Tests:
+   evaluation, results masked by decision 0013's masker,
+   `internal/platform/mask`, which this phase creates for literal values
+   and P9 extends with the well-known patterns. The `expressions` domain,
+   `internal/expressions`, serves `POST /expressions/check`, `/complete`
+   and `/evaluate` over the surfaces each domain's assembly lists through
+   `Surfaces()`, as decision 0024 specifies them. Tests:
    `TestUnitExprLibrary`, `TestUnitExprTemplates`,
    `TestUnitExprDeterminism`, `TestUnitExprCostLimit`,
-   `TestUnitExprTimeout`, `TestUnitExprSchemaTypes`. Features:
-   `expressions_editor.feature` against a stack, which later phases extend,
-   and the interpolation scenario of `expressions_deploy.feature`. Records
-   DV-103.
+   `TestUnitExprTimeout`, `TestUnitExprSchemaTypes`, `TestUnitMaskOverlaps`
+   and `TestUnitMaskMinimum` (the 4-byte rule, DV-051). Feature:
+   `expressions_editor.feature` against a stack, which later phases extend.
+   Records DV-103.
 6. The [domain wiring](#adding-a-domain) of
    `configuration` and `expressions`. `configuration` follows `stacks` in
    `domains.go` and the migration order and imports `features`, `access`
    and `stacks`; its attachments and stack elements reference `stacks`.
    `runs`' edge to `configuration` lands here if P7 has landed.
+   `stacksapi` gains `Stacks.Hold`, a `StackGuard` whose `LostOnMove`
+   refuses a stack move that would lose an attachment and whose `Deleting`
+   removes the holder's rows in the stack delete's transaction, and
+   `Stacks.Find` by space and label; `accessapi.SpaceNode` gains `Inherit`.
+   The stack view's `attachedContexts` and `config` come through the back
+   edge `stacks` → `configurationapi`, bound in `internal/app`.
    `expressions` has no `api/` and no migration stream, imports no domain
    and is constructed last, from every domain's `Surfaces()`
    ([declared graph](repo-layout.md#declared-graph)).
@@ -1424,7 +1440,8 @@ environment, and the expression engine every later surface uses.
   evidence rule; the parity baseline drops them.
 - A secret element's value never appears in any response, log line or
   audit entry; its checksum does.
-- Captures C97, C98, C99, C101, C102 and C103 replay once recorded.
+- Captures C97 and C99 replay once recorded. C98 and C101 to C103 need a
+  run, and replay with P9.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P7: Run state machine and scheduling
@@ -1563,6 +1580,9 @@ container runs a stub runner until P9.
   with the note `worker lost`.
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
 - Two instances write one `worker_pool_samples` row per pool per minute.
+- The interpolation scenario of `expressions_deploy.feature`: a
+  `${{ env.NAME }}` value reaches the run's specification rendered, and one
+  that reads a secret arrives sealed and write-only.
 - Captures C58, C59, C60, C61, C62, C63 and C64 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1634,12 +1654,12 @@ through the backend.
    PGP key) and OpenTofu (OpenTofu signing key) per version, the cache and
    `launcher.tool_mirror`. Tests: `TestUnitToolVerification` with a
    tampered sum.
-3. `internal/agent/mask`: masking of secret values, `::add-mask` words and
-   patterns; log chunks of 1 MiB or two seconds uploaded by pre-signed `PUT`
+3. Log masking through `internal/platform/mask`: secret values,
+   `::add-mask` words and the well-known patterns, which this phase adds;
+   log chunks of 1 MiB or two seconds uploaded by pre-signed `PUT`
    and indexed in `run_log_chunks`; sealed artifacts with the run's artifact
-   key; the encrypted workspace saved for confirmation. Tests:
-   `TestUnitMaskOverlaps`, `TestUnitMaskMinimum` (the 4-byte rule, DV-051).
-   Feature: `secrets_run_delivery.feature`.
+   key; the encrypted workspace saved for confirmation. Feature:
+   `secrets_run_delivery.feature`.
 4. Sources: `internal/vcs` skeleton with the `Source` interface and the
    `rawgit` provider (public HTTPS clone) in
    `internal/vcs/internal/adapters/rawgit`, served in acceptance by Gitea as
@@ -1674,6 +1694,8 @@ through the backend.
   unchanged.
 - The operations of task 5 meet decision 0016's evidence rule.
 - Captures C17, C39, C42 and C104 replay once recorded.
+- Captures C98, C101, C102 and C103, which need a run, replay once
+  recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P10: Run lifecycle completeness

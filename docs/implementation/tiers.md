@@ -22,6 +22,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `console` | capability | The console, and the Feature Flags, Forms, UI State and User Guide tags it alone uses | ✓ | ✓ | ✓ | ✓ | ✓ | P24c |
 | `contexts` | capability | The Contexts tag | ✓ | ✓ | ✓ | ✓ | ✓ | P6 |
 | `debug` | capability | The Debug tag | ✓ | ✓ | ✓ | ✓ | ✓ | P27 |
+| `expressions` | capability | The Expressions tag: checking, completing and evaluating expressions over each domain's surfaces | ✓ | ✓ | ✓ | ✓ | ✓ | P6 |
 | `flows-agents` | capability | Flows agent pools, their tokens and the agent gateway | ✓ | ✓ | ✓ | ✓ | ✓ | P18d |
 | `flows-apps` | capability | App installations, custom apps, app versions and registry subscriptions | ✓ | ✓ | ✓ | ✓ | ✓ | P18d |
 | `flows-data-tables` | capability | Data tables, their rows and the Data Table blocks | ✓ | ✓ | ✓ | ✓ | ✓ | P18c |

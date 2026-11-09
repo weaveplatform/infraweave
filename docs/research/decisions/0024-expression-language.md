@@ -116,6 +116,11 @@ doublestar globs stay as the standard mini-languages they are
   secret: sealed, write-only and masked
   ([0013](0013-secrets-at-rest.md)). `${NAME}` without braces is passed
   through untouched, so the shell in a hook expands it as usual.
+- **Who declares a surface.** The domain that owns a surface's context
+  declares it through its assembly's `Surfaces()`. `configuration` declares
+  the environment surface with `env` and `stack`, and `runs` adds `run`.
+  A variable's templates are type-checked against the surface when the
+  variable is saved, so a misspelt reference is refused before any run.
 
 ### Multi-step logic
 
@@ -254,6 +259,22 @@ block as the context, so Flows has no copies of them under
 `infraweavectl` exposes them as `infraweavectl expr check`, `complete` and
 `eval`, and the provider calls Check during plan for flows, blueprints and
 templates.
+
+- **Requests.** Each body names the `surface`, the `ref` of its context (a
+  stack's slug, a flow block, a template), the `source` and its `form`,
+  `expression` or `template`. Complete adds the cursor's position, and
+  Evaluate optional sample data.
+- **Authorization.** Each operation's action is `AUTHENTICATED` on the
+  account. The surface's `Env(ctx, principal, ref)` then decides the read
+  of its context and answers `404` for a context the caller cannot read, as
+  a hidden one is answered everywhere
+  ([0022](0022-api-errors-and-update-semantics.md)).
+- **In the served document.** The operations are tagged `Expressions`, carry
+  `x-upstream: none`, and are gated by the `expressions` capability, in
+  every tier. Check and Complete cost `standard`; Evaluate costs `expensive`.
+- **Diagnostics.** A diagnostic is 0022's field error with its `range`. An
+  unknown surface answers `422` at `#/body/surface`; a source that does not
+  type-check is diagnostics on Check and `422` on Evaluate.
 
 ### Workflow command templates
 

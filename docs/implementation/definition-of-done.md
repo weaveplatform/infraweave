@@ -101,7 +101,7 @@ Rules that apply to every change in every phase:
   [0022](../research/decisions/0022-api-errors-and-update-semantics.md).
 - **Secrets** are sealed through `internal/platform/crypt`
   ([0013](../research/decisions/0013-secrets-at-rest.md)); run logs pass
-  through `internal/agent/mask`; nothing logs a credential.
+  through `internal/platform/mask`; nothing logs a credential.
 - **Configuration** is strict YAML decoded with `UnmarshalExact`, with flag >
   environment > file precedence; only setting flags are bound.
 - **HTTP**, including every test server that models an external API, uses chi.
