@@ -9,7 +9,10 @@
 // platform/httpkit/strict. The route table has already authorized each
 // request on the stack's space, or on the space its body names; Server
 // answers a stack in its space's slug, with the actions the caller holds
-// there, and the members later phases own at their empty values. The
+// there, its attached contexts and config elements from the
+// stacksapi.StackConfiguration BindConfiguration binds, read once for a
+// whole page and empty until one is bound, with a write-only value left
+// out, and the members later phases own at their empty values. The
 // service's errors answer as problems: a missing action 403 naming it, a
 // stack locked by another 409 resource-locked naming the holder, a taken
 // slug 409 already-exists, a missing stack or space 404, and a stale

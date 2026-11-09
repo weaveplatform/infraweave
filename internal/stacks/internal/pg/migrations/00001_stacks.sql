@@ -75,6 +75,9 @@ CREATE TABLE stack_labels (
     FOREIGN KEY (account_id, stack_id) REFERENCES stacks (account_id, id) ON DELETE CASCADE
 );
 
+-- Auto-attachment finds an account's stacks by label.
+CREATE INDEX stack_labels_label ON stack_labels (account_id, label);
+
 -- A star is one caller's: a session's member or an API key, by its
 -- principal kind and actor ID.
 CREATE TABLE stack_stars (

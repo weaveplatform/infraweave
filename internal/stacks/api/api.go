@@ -105,6 +105,98 @@ type Stacks interface {
 	// before a run created in that transaction commits; ErrNotFound when
 	// acct lacks it.
 	LockForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Settings, error)
+	// Hold locks acct's stack id in the context's transaction until it
+	// ends, as accessapi.Spaces.Hold does a space, for a domain about to
+	// store the stack's ID: a delete or move of the stack waits for the
+	// caller to commit, and each StackGuard it then asks sees what the
+	// caller wrote. ErrNotFound when acct lacks it.
+	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// Find lists acct's stacks in spaces that carry any of labels, by
+	// slug.
+	Find(
+		ctx context.Context,
+		acct kernel.AccountID,
+		spaces []kernel.ULID,
+		labels []string,
+	) ([]Stack, error)
+}
+
+// StackGuard is a domain's say in a stack's moves and deletes: a domain
+// whose rows name stacks registers one, which the stacks domain asks in
+// the move's or delete's transaction, which the context carries, after it
+// locks the stack's row FOR UPDATE. That lock waits for every transaction
+// holding the stack, and each method's statement then sees what it
+// committed, so a row written under a hold is never missed.
+//
+// ref: decision 0004
+type StackGuard interface {
+	// LostOnMove lists each entity the stack would no longer reach if m
+	// were made, by its kind and name, such as "context prod", which
+	// refuses the move.
+	LostOnMove(ctx context.Context, m StackMove) ([]string, error)
+	// Deleting deletes the domain's rows of st, which belong to the stack
+	// and mean nothing without it.
+	Deleting(ctx context.Context, st Stack) error
+}
+
+// StackMove is a proposed move of a stack from the space it lives in to
+// To.
+type StackMove struct {
+	Stack
+	To kernel.ULID
+}
+
+// StackConfiguration is what the stack view reads of the configuration
+// domain, which is constructed after stacks and implements it: the
+// contexts attached to each of the account's stacks, by priority, and
+// each stack's own config elements, by ID, keyed by stack ID, with a
+// stack that has none absent. The stacks domain declares it, so the back
+// edge internal/app binds after construction adds no import.
+//
+// ref: decision 0004
+type StackConfiguration interface {
+	AttachedContexts(
+		ctx context.Context,
+		acct kernel.AccountID,
+		stacks []kernel.ULID,
+	) (map[kernel.ULID][]AttachedContext, error)
+	Config(
+		ctx context.Context,
+		acct kernel.AccountID,
+		stacks []kernel.ULID,
+	) (map[kernel.ULID][]ConfigElement, error)
+}
+
+// AttachedContext is a context attached to a stack as the stack's view
+// shows it: the attachment's ID; the context's slug, name, description,
+// labels, hooks by phase and config elements; the attachment's priority,
+// lower first; and whether one of the context's autoattach labels
+// attached it.
+type AttachedContext struct {
+	ID           kernel.ULID
+	Context      string
+	Name         string
+	Description  *string
+	Labels       []string
+	Hooks        map[string][]string
+	Config       []ConfigElement
+	Priority     int32
+	Autoattached bool
+}
+
+// ConfigElement is an environment variable, or a file mounted in the
+// workspace when FileMount is set, as a view shows it: ID is the
+// variable's name or the file's path, Value is nil when WriteOnly is set,
+// and Checksum is the value's SHA-256 in hex.
+type ConfigElement struct {
+	ID          string
+	FileMount   bool
+	Value       *string
+	WriteOnly   bool
+	Checksum    string
+	Description string
+	FileMode    *string
+	CreatedAt   time.Time
 }
 
 // ChangedKind is the outbox event a stack's write appends in its

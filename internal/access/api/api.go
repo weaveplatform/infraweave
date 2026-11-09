@@ -155,13 +155,17 @@ type Spaces interface {
 	Tree(ctx context.Context, acct kernel.AccountID) ([]SpaceNode, error)
 }
 
-// SpaceNode is a space of an account's tree: its ID, slug and name, and
-// its parent's ID, zero for the top space.
+// SpaceNode is a space of an account's tree: its ID, slug and name, its
+// parent's ID, zero for the top space, and whether it inherits its
+// parent's entities, which decides what a stack in it reaches.
+//
+// ref: decision 0007 § "Evaluation"
 type SpaceNode struct {
-	ID     kernel.ULID
-	Slug   string
-	Name   string
-	Parent kernel.ULID
+	ID      kernel.ULID
+	Slug    string
+	Name    string
+	Parent  kernel.ULID
+	Inherit bool
 }
 
 // SpaceMove is a proposed move of Space, with every space below it, to a

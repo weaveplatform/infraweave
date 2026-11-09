@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -14,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // awaitLockWait returns once a session of q's database waits on a lock,
@@ -33,12 +38,19 @@ func awaitLockWait(ctx context.Context, t *testing.T, q tx.Querier) {
 	t.Fatal("no session waited on a lock")
 }
 
-// TestAccSpaceHoldRace checks the space hold and the stacks guard as the
-// server wires access and stacks: a space delete that starts while a
-// transaction holds the space waits for it. When that transaction then
-// writes a stack in the space and commits, the stacks guard sees the stack
-// and the delete answers 422; when it rolls back, the delete goes ahead.
-func TestAccSpaceHoldRace(t *testing.T) {
+// holdWorld is the domains as the server wires them over a fresh
+// database, with an account whose top space holds two spaces, kept and
+// gone, and a member who administers the top space.
+type holdWorld struct {
+	d          Domains
+	q          *pgxpool.Pool
+	acct       kernel.AccountID
+	kept, gone kernel.ULID
+	admin      context.Context
+}
+
+func newHoldWorld(t *testing.T) holdWorld {
+	t.Helper()
 	ctx := t.Context()
 	db := sqltest.Open(t)
 	q := db.Primary()
@@ -104,7 +116,20 @@ func TestAccSpaceHoldRace(t *testing.T) {
 		Kind: kernel.PrincipalUser, ActorID: member.ULID,
 		OrganizationID: org, AccountID: acct, MemberID: member,
 	})
-	errRollback := errors.New("rolled back")
+	return holdWorld{d: d, q: q, acct: acct, kept: kept, gone: gone, admin: admin}
+}
+
+var errRollback = errors.New("rolled back")
+
+// TestAccSpaceHoldRace checks the space hold and the stacks guard as the
+// server wires access and stacks: a space delete that starts while a
+// transaction holds the space waits for it. When that transaction then
+// writes a stack in the space and commits, the stacks guard sees the stack
+// and the delete answers 422; when it rolls back, the delete goes ahead.
+func TestAccSpaceHoldRace(t *testing.T) {
+	ctx := t.Context()
+	w := newHoldWorld(t)
+	d, q, acct, kept, gone, admin := w.d, w.q, w.acct, w.kept, w.gone, w.admin
 	// race holds space id, starts deleting slug, and once the delete
 	// waits, writes a stack there and commits, or rolls back; it answers
 	// the hold's transaction's error and the delete's.
@@ -172,5 +197,157 @@ func TestAccSpaceHoldRace(t *testing.T) {
 	}
 	if err := d.Access.Spaces().Hold(ctx, acct, gone); err == nil {
 		t.Error("a deleted space was held")
+	}
+}
+
+// holders is a StackGuard over a scratch table of rows that name stacks,
+// standing in for a domain that holds them: a stack with a row would lose
+// it on a move, and a deleted stack's rows go with it.
+type holders struct{ q tx.Querier }
+
+func (h holders) LostOnMove(ctx context.Context, m stacksapi.StackMove) ([]string, error) {
+	var n int
+	err := tx.Q(ctx, h.q).QueryRow(ctx, `SELECT count(*) FROM stack_holders
+		WHERE account_id = $1 AND stack_id = $2`, m.Account, m.ID).Scan(&n)
+	if err != nil || n == 0 {
+		return nil, err //nolint:wrapcheck // the test reads it as it is
+	}
+	return []string{"context held"}, nil
+}
+
+func (h holders) Deleting(ctx context.Context, st stacksapi.Stack) error {
+	_, err := tx.Q(ctx, h.q).Exec(ctx, `DELETE FROM stack_holders
+		WHERE account_id = $1 AND stack_id = $2`, st.Account, st.ID)
+	return err //nolint:wrapcheck // as above
+}
+
+// TestAccStackHoldRace checks the stack hold and a registered StackGuard
+// as the server wires stacks: a stack move or delete that starts while a
+// transaction holds the stack waits for it. When that transaction then
+// writes a row naming the stack and commits, the move answers 422 and the
+// delete removes the row with the stack; when it rolls back, the move
+// goes ahead. A stack deleted first is not found by a later hold.
+func TestAccStackHoldRace(t *testing.T) {
+	ctx := t.Context()
+	w := newHoldWorld(t)
+	d, q, acct := w.d, w.q, w.acct
+	if _, err := q.Exec(
+		ctx,
+		`CREATE TABLE stack_holders (account_id uuid, stack_id uuid)`,
+	); err != nil {
+		t.Fatal(err)
+	}
+	d.Stacks.GuardStacks(holders{q: q})
+	in := func(name, space string) api.StackInput {
+		return api.StackInput{Name: name, Repository: "infra", Branch: "main", Space: &space}
+	}
+	ids := map[string]kernel.ULID{}
+	for _, name := range []string{"moved", "kept", "deleted"} {
+		res, err := d.Stacks.API().StackCreate(w.admin, api.StackCreateRequestObject{
+			Body: &api.StackCreateRequest{Input: in(name, "gone")},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		slug := res.(api.StackCreate201JSONResponse).Body.Id
+		var id kernel.ULID
+		if err := q.QueryRow(ctx, `SELECT id FROM stacks WHERE account_id = $1 AND slug = $2`,
+			acct, slug).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		ids[name] = id
+	}
+	// race holds the stack slug, starts change on it, and once change
+	// waits, writes a row naming the stack and commits, or rolls back; it
+	// answers the hold's transaction's error and the change's.
+	race := func(slug string, commit bool, change func() error) (held, changed error) {
+		holding, release := make(chan struct{}), make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			held = tx.Do(ctx, q, tx.Options{}, func(ctx context.Context) error {
+				err := d.Stacks.Stacks().Hold(ctx, acct, ids[slug])
+				close(holding)
+				if err != nil {
+					return err //nolint:wrapcheck // the test reads it as it is
+				}
+				<-release
+				if !commit {
+					return errRollback
+				}
+				_, err = tx.Q(ctx, q).Exec(ctx, `INSERT INTO stack_holders (account_id, stack_id)
+					VALUES ($1, $2)`, acct, ids[slug])
+				return err //nolint:wrapcheck // as above
+			})
+		})
+		<-holding
+		wg.Go(func() { changed = change() })
+		awaitLockWait(ctx, t, q)
+		close(release)
+		wg.Wait()
+		return held, changed
+	}
+	move := func(slug string) func() error {
+		return func() error {
+			_, err := d.Stacks.API().StackUpdate(w.admin, api.StackUpdateRequestObject{
+				StackId: slug, Body: new(in(slug, "kept")),
+			})
+			return err
+		}
+	}
+	holderRows := func(slug string) int {
+		var n int
+		if err := q.QueryRow(ctx, `SELECT count(*) FROM stack_holders WHERE stack_id = $1`,
+			ids[slug]).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	spaceOf := func(slug string) kernel.ULID {
+		var space kernel.ULID
+		if err := q.QueryRow(ctx, `SELECT space_id FROM stacks WHERE id = $1`,
+			ids[slug]).Scan(&space); err != nil {
+			t.Fatal(err)
+		}
+		return space
+	}
+
+	held, moved := race("kept", true, move("kept"))
+	if held != nil {
+		t.Fatalf("the holding transaction = %v", held)
+	}
+	answer := httptest.NewRecorder()
+	problem.ResponseError(answer, nil, moved)
+	if answer.Code != http.StatusUnprocessableEntity ||
+		!strings.Contains(answer.Body.String(), "Stack kept would no longer reach context held.") {
+		t.Errorf("moving a stack a committed row holds = %d %s, want 422 naming it",
+			answer.Code, answer.Body)
+	}
+	if spaceOf("kept") != w.gone {
+		t.Error("a refused move moved the stack")
+	}
+
+	held, moved = race("moved", false, move("moved"))
+	if !errors.Is(held, errRollback) || moved != nil || spaceOf("moved") != w.kept {
+		t.Errorf("after a rolled-back hold: hold = %v, move = %v", held, moved)
+	}
+
+	held, deleted := race("deleted", true, func() error {
+		_, err := d.Stacks.API().StackDelete(w.admin,
+			api.StackDeleteRequestObject{StackId: "deleted"})
+		return err
+	})
+	if held != nil || deleted != nil {
+		t.Fatalf("hold = %v, delete = %v", held, deleted)
+	}
+	if n := holderRows("deleted"); n != 0 {
+		t.Errorf("%d rows still name the deleted stack", n)
+	}
+	if n := holderRows("kept"); n != 1 {
+		t.Errorf("%d rows name the kept stack, want 1", n)
+	}
+	if err := tx.Do(ctx, q, tx.Options{}, func(ctx context.Context) error {
+		return d.Stacks.Stacks().Hold(ctx, acct, ids["deleted"]) //nolint:wrapcheck // read as is
+	}); !errors.Is(err, stacksapi.ErrNotFound) {
+		t.Errorf("a hold of a deleted stack = %v, want ErrNotFound", err)
 	}
 }

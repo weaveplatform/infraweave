@@ -208,7 +208,13 @@ func (s *Service) Tree(ctx context.Context, acct kernel.AccountID) ([]accessapi.
 	}
 	out := make([]accessapi.SpaceNode, len(all))
 	for i, sp := range all {
-		out[i] = accessapi.SpaceNode{ID: sp.ID, Slug: sp.Slug, Name: sp.Name, Parent: sp.ParentID}
+		out[i] = accessapi.SpaceNode{
+			ID:      sp.ID,
+			Slug:    sp.Slug,
+			Name:    sp.Name,
+			Parent:  sp.ParentID,
+			Inherit: sp.InheritEntities,
+		}
 	}
 	return out, nil
 }

@@ -7,8 +7,10 @@
 // ID, by slug or by the repository's branch it tracks,
 // stacksapi.ErrNotFound when the account lacks it, writes it whole,
 // searches an account's stacks and suggests their values by
-// stacks.Fields through platform/sql/search, and answers whether a stack
-// lives in a space. A search joins the caller's stars, and reads the space
+// stacks.Fields through platform/sql/search, answers whether a stack
+// lives in a space, finds an account's stacks in some spaces by label
+// through stack_labels_label, and holds a stack FOR KEY SHARE, the lock a
+// key check takes, so a move or delete that locks it FOR UPDATE waits. A search joins the caller's stars, and reads the space
 // tree from its scope, since the spaces tables belong to the access
 // domain. Purge deletes a batch of a deleted account's stacks, with their
 // hooks, labels and stars, and reports whether none is left. Held names

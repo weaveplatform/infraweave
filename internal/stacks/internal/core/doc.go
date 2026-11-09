@@ -7,7 +7,12 @@
 // through accessapi.Spaces, and the caller's own stars. Each write checks the
 // caller's action in the stack's space through the access domain, holds
 // that space, and moving a stack needs STACK_CREATE in the space it moves
-// to. A write bumps the stack's version and appends stacksapi.Changed in
+// to, and asks each registered stacksapi.StackGuard what the stack would
+// lose, refusing the move as a *kernel.Invalid naming every entity; a
+// delete lets each guard delete its rows of the stack first, in its
+// transaction. Both ask after the stack's row is locked FOR UPDATE, which
+// waits for every Hold. A write bumps the stack's version and appends
+// stacksapi.Changed in
 // the same transaction; Update and Delete take the kernel.Expect of the
 // request's If-Match and check it against the version they read under
 // the row's lock, so a stale one changes nothing. Input's settings are
@@ -15,8 +20,10 @@
 // follow kernel.CheckLabels, and Terraform and OpenTofu settings are
 // checked by internal/iac. Service is also the domain's
 // accessapi.SpaceGuard, refusing deleting a space a stack lives in, and
-// the accessapi.SpaceOf of the entity "stack". It refuses no move yet,
-// since nothing a stack reaches through its space is attached to it.
+// the accessapi.SpaceOf of the entity "stack". It refuses no space move,
+// since a stack keeps its space through one. Find lists the stacks in
+// some spaces that carry some labels, and none without a space or a
+// label.
 //
 // # Input and output
 //
@@ -26,6 +33,7 @@
 // # Dependencies
 //
 // It imports accessapi, stacksapi, internal/iac, internal/kernel,
-// kernel/search, platform/outbox and platform/tx. The stacks domain's
+// kernel/search, platform/outbox and platform/tx, and the standard
+// library's slices, strings and sync. The stacks domain's
 // assembly constructs it over the pg package's Store.
 package core

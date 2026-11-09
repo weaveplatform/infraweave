@@ -201,6 +201,50 @@ func (s *Store) ByRepository(
 	return out, nil
 }
 
+// Hold takes FOR KEY SHARE on acct's stack id in the context's
+// transaction, the lock PostgreSQL's own key check takes: a move or
+// delete, which locks the row FOR UPDATE before asking its guards, waits
+// for the holder to commit and then sees what it wrote.
+//
+// ref: decision 0004
+func (s *Store) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
+	var got kernel.ULID
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM stacks
+		WHERE account_id = $1 AND id = $2 FOR KEY SHARE`, acct, id).Scan(&got)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
+	case err != nil:
+		return fmt.Errorf("stacks: hold stack %s: %w", id, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// Find lists acct's stacks in spaces that carry any of labels, by slug.
+func (s *Store) Find(
+	ctx context.Context,
+	acct kernel.AccountID,
+	spaces []kernel.ULID,
+	labels []string,
+) ([]stacksapi.Stack, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT s.id, s.slug, s.space_id FROM stacks s
+		WHERE s.account_id = $1 AND s.space_id = ANY($2) AND EXISTS (
+			SELECT 1 FROM stack_labels l
+			WHERE l.account_id = s.account_id AND l.stack_id = s.id AND l.label = ANY($3))
+		ORDER BY s.slug`, acct, spaces, labels)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: find stacks by label: %w", sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (stacksapi.Stack, error) {
+		st := stacksapi.Stack{Account: acct}
+		return st, row.Scan(&st.ID, &st.Slug, &st.Space)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("stacks: find stacks by label: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 // Create writes a new stack with its hooks and labels.
 func (s *Store) Create(ctx context.Context, st core.Stack) error {
 	//nolint:wrapcheck // each statement in the transaction names itself
