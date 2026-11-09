@@ -324,6 +324,19 @@ func TestAccServiceReads(t *testing.T) {
 	if got, err := f.svc.Settings(ctx, f.acct, st.ID); err != nil || got.Name != "Infra" {
 		t.Errorf("Settings = %+v, %v", got, err)
 	}
+	if got, err := f.svc.BySlug(ctx, f.acct, "infra"); err != nil || got != st.Stack {
+		t.Errorf("BySlug = %+v, %v", got, err)
+	}
+	if _, err := f.svc.BySlug(ctx, f.acct, "nope"); !errors.Is(err, stacksapi.ErrNotFound) {
+		t.Errorf("BySlug a missing stack = %v", err)
+	}
+	if got, err := f.svc.ByIDs(ctx, f.acct, []kernel.ULID{st.ID}); err != nil ||
+		got[st.ID] != st.Stack {
+		t.Errorf("ByIDs = %+v, %v", got, err)
+	}
+	if got, err := f.svc.ByIDs(ctx, f.acct, nil); err != nil || len(got) != 0 {
+		t.Errorf("ByIDs of none = %+v, %v", got, err)
+	}
 	if got, err := f.svc.SpaceOf(ctx, f.acct, "infra"); err != nil || got != f.team {
 		t.Errorf("SpaceOf = %v, %v", got, err)
 	}

@@ -3674,6 +3674,24 @@ type ConfigElement struct {
 // ConfigElementCategory defines model for ConfigElementCategory.
 type ConfigElementCategory string
 
+// ConfigElementInput A config element to create or replace at the ID in the path. An absent value keeps a replaced element's value, so a write-only value need not be sent again; it cannot make a write-only element readable.
+type ConfigElementInput struct {
+	// Description Description of the config element.
+	Description *string `json:"description,omitempty"`
+
+	// FileMode File mode (user, group and other) of a file mount, in octal.
+	FileMode *string `json:"fileMode,omitempty"`
+
+	// Type ConfigType is the type of the configuration element.
+	Type ConfigType `json:"type"`
+
+	// Value The variable's value, or the file's content in Base64, at most 2 MB decoded.
+	Value *string `json:"value,omitempty"`
+
+	// WriteOnly Whether the value is readable only by runs.
+	WriteOnly bool `json:"writeOnly"`
+}
+
 // ConfigElementWithSource defines model for ConfigElementWithSource.
 type ConfigElementWithSource struct {
 	// Context StackContextAttachment is the stack attachment viewed from the Stack.
@@ -3758,6 +3776,34 @@ type Context struct {
 // ContextKind The concrete type, for union and interface responses.
 type ContextKind string
 
+// ContextAttachRequest The arguments of contextAttach not carried in the path.
+type ContextAttachRequest struct {
+	// Priority Priority of the context attachment. All the contexts attached to a stack are sorted by priority (lowest first), though values don't need to be unique. This ordering establishes precedence rules between contexts should there be a conflict and multiple contexts define the same value. Defaults to `0`.
+	Priority int32 `json:"priority"`
+}
+
+// ContextInput ContextInput represents the data used to configure a Context.
+type ContextInput struct {
+	// ConfigAttachments The context's config elements. A create adds each; an update replaces the context's elements with these only when replaceConfigElements is true, and ignores them otherwise. Two elements with one ID are refused.
+	ConfigAttachments *[]ConfigInput `json:"configAttachments,omitempty"`
+
+	// Description Free-form context description for users
+	Description *string     `json:"description,omitempty"`
+	Hooks       *HooksInput `json:"hooks,omitempty"`
+
+	// Labels The labels of the context. To leverage the `autoattach` magic label, ensure your label follows the naming convention: `autoattach:<your-label-name>`
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Name Name of the context - should be unique in one account
+	Name string `json:"name"`
+
+	// Space ID (slug) of the space the context is in
+	Space *string `json:"space,omitempty"`
+
+	// StackAttachments Stacks a create attaches the context to, each as contextAttach would. An update refuses a non-empty list; contextAttach and contextDetach change an existing context's attachments.
+	StackAttachments *[]ContextStackAttachmentInput `json:"stackAttachments,omitempty"`
+}
+
 // ContextPage One page of a cursor-paginated list.
 type ContextPage struct {
 	Items []Context `json:"items"`
@@ -3796,6 +3842,29 @@ type ContextStackAttachment struct {
 
 	// StackSpaceDetails A reference to a Space; fetch it with GET /spaces/{spaceId}.
 	StackSpaceDetails SpaceRef `json:"stackSpaceDetails"`
+}
+
+// ContextStackAttachmentInput defines model for ContextStackAttachmentInput.
+type ContextStackAttachmentInput struct {
+	Priority int32  `json:"priority"`
+	Stack    string `json:"stack"`
+}
+
+// ContextUpdateV2Request The arguments of contextUpdateV2 not carried in the path.
+type ContextUpdateV2Request struct {
+	// Input ContextInput represents the data used to configure a Context.
+	Input ContextInput `json:"input"`
+
+	// ReplaceConfigElements Whether input.configAttachments replaces the context's config elements. Absent or false leaves them as they are.
+	ReplaceConfigElements *bool `json:"replaceConfigElements,omitempty"`
+}
+
+// ContextsConnection defines model for ContextsConnection.
+type ContextsConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node A reference to a Context; fetch it with GET /contexts/{contextId}.
+	Node ContextRef `json:"node"`
 }
 
 // DataPoint defines model for DataPoint.
@@ -4211,6 +4280,21 @@ type Hooks struct {
 
 	// BeforePlan List of before-plan scripts.
 	BeforePlan []string `json:"beforePlan"`
+}
+
+// HooksInput defines model for HooksInput.
+type HooksInput struct {
+	AfterApply    []string `json:"afterApply"`
+	AfterDestroy  []string `json:"afterDestroy"`
+	AfterInit     []string `json:"afterInit"`
+	AfterPerform  []string `json:"afterPerform"`
+	AfterPlan     []string `json:"afterPlan"`
+	AfterRun      []string `json:"afterRun"`
+	BeforeApply   []string `json:"beforeApply"`
+	BeforeDestroy []string `json:"beforeDestroy"`
+	BeforeInit    []string `json:"beforeInit"`
+	BeforePerform []string `json:"beforePerform"`
+	BeforePlan    []string `json:"beforePlan"`
 }
 
 // Identity Identity represents a V2 identity record linked to a user via federation.
@@ -6136,6 +6220,12 @@ type ScheduledTaskInput struct {
 	Timezone *string `json:"timezone,omitempty"`
 }
 
+// SearchContextsOutput defines model for SearchContextsOutput.
+type SearchContextsOutput struct {
+	Edges    []ContextsConnection `json:"edges"`
+	PageInfo PageInfo             `json:"pageInfo"`
+}
+
 // SearchInput defines model for SearchInput.
 type SearchInput struct {
 	// After List the entity changes after this ID
@@ -6275,6 +6365,12 @@ type SearchSpaceContextsOutput struct {
 type SearchSpaceContextsRequest struct {
 	Input SearchInput `json:"input"`
 	Space string      `json:"space"`
+}
+
+// SearchSpaceContextsSuggestionsRequest The arguments of searchSpaceContextsSuggestions not carried in the path.
+type SearchSpaceContextsSuggestionsRequest struct {
+	Input SearchSuggestionsInput `json:"input"`
+	Space string                 `json:"space"`
 }
 
 // SearchSpacePoliciesOutput defines model for SearchSpacePoliciesOutput.
@@ -8887,6 +8983,17 @@ type AttachableAzureIntegrationsInSpaceParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// AttachableContextsInSpaceParams defines parameters for AttachableContextsInSpace.
+type AttachableContextsInSpaceParams struct {
+	Id string `form:"id" json:"id"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // AttachableExternalIntegrationInSpaceParams defines parameters for AttachableExternalIntegrationInSpace.
 type AttachableExternalIntegrationInSpaceParams struct {
 	Id string `form:"id" json:"id"`
@@ -8998,6 +9105,60 @@ type BillingSubscriptionUpdateInfoParams struct {
 
 // BillingSubscriptionUpdateTierParams defines parameters for BillingSubscriptionUpdateTier.
 type BillingSubscriptionUpdateTierParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ContextsParams defines parameters for Contexts.
+type ContextsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ContextCreateV2Params defines parameters for ContextCreateV2.
+type ContextCreateV2Params struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ContextDeleteParams defines parameters for ContextDelete.
+type ContextDeleteParams struct {
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ContextPatchParams defines parameters for ContextPatch.
+type ContextPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ContextUpdateV2Params defines parameters for ContextUpdateV2.
+type ContextUpdateV2Params struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ContextAttachedStackParams defines parameters for ContextAttachedStack.
+type ContextAttachedStackParams struct {
+	Id string `form:"id" json:"id"`
+}
+
+// ContextConfigElementParams defines parameters for ContextConfigElement.
+type ContextConfigElementParams struct {
+	Id string `form:"id" json:"id"`
+}
+
+// ContextConfigAddParams defines parameters for ContextConfigAdd.
+type ContextConfigAddParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -9863,6 +10024,27 @@ type BillingSubscriptionUpdateInfoJSONRequestBody = SubscriptionInput
 // BillingSubscriptionUpdateTierJSONRequestBody defines body for BillingSubscriptionUpdateTier for application/json ContentType.
 type BillingSubscriptionUpdateTierJSONRequestBody = BillingSubscriptionUpdateTierRequest
 
+// ContextCreateV2JSONRequestBody defines body for ContextCreateV2 for application/json ContentType.
+type ContextCreateV2JSONRequestBody = ContextInput
+
+// SearchContextsJSONRequestBody defines body for SearchContexts for application/json ContentType.
+type SearchContextsJSONRequestBody = SearchInput
+
+// SearchContextsSuggestionsJSONRequestBody defines body for SearchContextsSuggestions for application/json ContentType.
+type SearchContextsSuggestionsJSONRequestBody = SearchSuggestionsInput
+
+// ContextPatchApplicationMergePatchPlusJSONRequestBody defines body for ContextPatch for application/merge-patch+json ContentType.
+type ContextPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// ContextUpdateV2JSONRequestBody defines body for ContextUpdateV2 for application/json ContentType.
+type ContextUpdateV2JSONRequestBody = ContextUpdateV2Request
+
+// ContextConfigAddJSONRequestBody defines body for ContextConfigAdd for application/json ContentType.
+type ContextConfigAddJSONRequestBody = ConfigInput
+
+// ContextConfigSetJSONRequestBody defines body for ContextConfigSet for application/json ContentType.
+type ContextConfigSetJSONRequestBody = ConfigElementInput
+
 // ManagedUserGroupCreateV2JSONRequestBody defines body for ManagedUserGroupCreateV2 for application/json ContentType.
 type ManagedUserGroupCreateV2JSONRequestBody = ManagedUserGroupCreateInputV2
 
@@ -9907,6 +10089,9 @@ type PersonalApiKeyCreateJSONRequestBody = PersonalApiKeyInput
 
 // SearchSpaceContextsJSONRequestBody defines body for SearchSpaceContexts for application/json ContentType.
 type SearchSpaceContextsJSONRequestBody = SearchSpaceContextsRequest
+
+// SearchSpaceContextsSuggestionsJSONRequestBody defines body for SearchSpaceContextsSuggestions for application/json ContentType.
+type SearchSpaceContextsSuggestionsJSONRequestBody = SearchSpaceContextsSuggestionsRequest
 
 // SearchSpacePoliciesJSONRequestBody defines body for SearchSpacePolicies for application/json ContentType.
 type SearchSpacePoliciesJSONRequestBody = SearchSpacePoliciesRequest
@@ -9970,6 +10155,9 @@ type StackUpdateJSONRequestBody = StackInput
 
 // StackConfigAddJSONRequestBody defines body for StackConfigAdd for application/json ContentType.
 type StackConfigAddJSONRequestBody = ConfigInput
+
+// ContextAttachJSONRequestBody defines body for ContextAttach for application/json ContentType.
+type ContextAttachJSONRequestBody = ContextAttachRequest
 
 // StackLockJSONRequestBody defines body for StackLock for application/json ContentType.
 type StackLockJSONRequestBody = StackLockRequest
@@ -11919,6 +12107,13 @@ type ClientInterface interface {
 	// Corresponds with GET /attachable-azure-integrations-in-space (the `AttachableAzureIntegrationsInSpace` operationId).
 	AttachableAzureIntegrationsInSpace(ctx context.Context, params *AttachableAzureIntegrationsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AttachableContextsInSpace Attachable Contexts in Space
+	//
+	// The contexts a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+	//
+	// Corresponds with GET /attachable-contexts-in-space (the `AttachableContextsInSpace` operationId).
+	AttachableContextsInSpace(ctx context.Context, params *AttachableContextsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AttachableExternalIntegrationInSpace Attachable External Integrations
 	//
 	// Corresponds with GET /attachable-external-integration-in-space (the `AttachableExternalIntegrationInSpace` operationId).
@@ -12186,6 +12381,177 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
 	BillingSubscriptionUpdateTier(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextDetach Detach Context
+	//
+	// Detach a context from a stack, by the attachment's ID.
+	//
+	// Corresponds with DELETE /context-attachments/{attachmentId} (the `ContextDetach` operationId).
+	ContextDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Contexts List Contexts
+	//
+	// The contexts of the account in spaces the caller may read, by slug.
+	//
+	// Corresponds with GET /contexts (the `Contexts` operationId).
+	Contexts(ctx context.Context, params *ContextsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextCreateV2WithBody Create Context
+	//
+	// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+	ContextCreateV2WithBody(ctx context.Context, params *ContextCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextCreateV2 Create Context
+	//
+	// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+	ContextCreateV2(ctx context.Context, params *ContextCreateV2Params, body ContextCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchContextsWithBody Search Contexts
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+	SearchContextsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchContexts Search Contexts
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+	SearchContexts(ctx context.Context, body SearchContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchContextsSuggestionsWithBody Search Contexts Suggestions
+	//
+	// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+	SearchContextsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchContextsSuggestions Search Contexts Suggestions
+	//
+	// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+	SearchContextsSuggestions(ctx context.Context, body SearchContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextDelete Delete Context
+	//
+	// Delete a context with its config elements. A context attached to a stack is refused unless force is true, which detaches it first.
+	//
+	// Corresponds with DELETE /contexts/{contextId} (the `ContextDelete` operationId).
+	ContextDelete(ctx context.Context, contextId string, params *ContextDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Context Get Context
+	//
+	// Details of a single Context.
+	//
+	// Corresponds with GET /contexts/{contextId} (the `Context` operationId).
+	Context(ctx context.Context, contextId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextPatchWithBody Patch Context
+	//
+	// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+	ContextPatchWithBody(ctx context.Context, contextId string, params *ContextPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextPatchWithApplicationMergePatchPlusJSONBody Patch Context
+	//
+	// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+	ContextPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, contextId string, params *ContextPatchParams, body ContextPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextUpdateV2WithBody Update Context
+	//
+	// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+	ContextUpdateV2WithBody(ctx context.Context, contextId string, params *ContextUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextUpdateV2 Update Context
+	//
+	// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+	ContextUpdateV2(ctx context.Context, contextId string, params *ContextUpdateV2Params, body ContextUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextAttachedStack Context attached stack
+	//
+	// Single stack attachment for this context.
+	//
+	// Corresponds with GET /contexts/{contextId}/attached-stack (the `ContextAttachedStack` operationId).
+	ContextAttachedStack(ctx context.Context, contextId string, params *ContextAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextConfigElement Context config element
+	//
+	// Single context config element.
+	//
+	// Corresponds with GET /contexts/{contextId}/config-element (the `ContextConfigElement` operationId).
+	ContextConfigElement(ctx context.Context, contextId string, params *ContextConfigElementParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextConfigAddWithBody Add Config
+	//
+	// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+	ContextConfigAddWithBody(ctx context.Context, contextId string, params *ContextConfigAddParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextConfigAdd Add Config
+	//
+	// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+	ContextConfigAdd(ctx context.Context, contextId string, params *ContextConfigAddParams, body ContextConfigAddJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextConfigDelete Delete Config
+	//
+	// Delete a config element of a context.
+	//
+	// Corresponds with DELETE /contexts/{contextId}/configs/{configId} (the `ContextConfigDelete` operationId).
+	ContextConfigDelete(ctx context.Context, contextId string, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextConfigSetWithBody Set Config
+	//
+	// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+	ContextConfigSetWithBody(ctx context.Context, contextId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextConfigSet Set Config
+	//
+	// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+	ContextConfigSet(ctx context.Context, contextId string, configId string, body ContextConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 	//
@@ -12771,6 +13137,8 @@ type ClientInterface interface {
 
 	// SearchSpaceContextsWithBody Search Space Contexts
 	//
+	// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
@@ -12778,10 +13146,30 @@ type ClientInterface interface {
 
 	// SearchSpaceContexts Search Space Contexts
 	//
+	// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
 	SearchSpaceContexts(ctx context.Context, body SearchSpaceContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchSpaceContextsSuggestionsWithBody Search Space Contexts Suggestions
+	//
+	// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+	SearchSpaceContextsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchSpaceContextsSuggestions Search Space Contexts Suggestions
+	//
+	// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+	SearchSpaceContextsSuggestions(ctx context.Context, body SearchSpaceContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchSpacePoliciesWithBody Search Space Policies
 	//
@@ -13286,6 +13674,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /stacks/{stackId}/configs/{configId} (the `StackConfigDelete` operationId).
 	StackConfigDelete(ctx context.Context, stackId string, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextAttachWithBody Attach Context
+	//
+	// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+	ContextAttachWithBody(ctx context.Context, stackId string, contextId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ContextAttach Attach Context
+	//
+	// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+	ContextAttach(ctx context.Context, stackId string, contextId string, body ContextAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDependency Stack dependency
 	//
@@ -14640,6 +15046,23 @@ func (c *Client) AttachableAzureIntegrationsInSpace(ctx context.Context, params 
 	return c.Client.Do(req)
 }
 
+// AttachableContextsInSpace Attachable Contexts in Space
+//
+// The contexts a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+//
+// Corresponds with GET /attachable-contexts-in-space (the `AttachableContextsInSpace` operationId).
+func (c *Client) AttachableContextsInSpace(ctx context.Context, params *AttachableContextsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAttachableContextsInSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AttachableExternalIntegrationInSpace Attachable External Integrations
 //
 // Corresponds with GET /attachable-external-integration-in-space (the `AttachableExternalIntegrationInSpace` operationId).
@@ -15198,6 +15621,387 @@ func (c *Client) BillingSubscriptionUpdateTierWithBody(ctx context.Context, para
 // Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
 func (c *Client) BillingSubscriptionUpdateTier(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBillingSubscriptionUpdateTierRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextDetach Detach Context
+//
+// Detach a context from a stack, by the attachment's ID.
+//
+// Corresponds with DELETE /context-attachments/{attachmentId} (the `ContextDetach` operationId).
+func (c *Client) ContextDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextDetachRequest(c.Server, attachmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Contexts List Contexts
+//
+// The contexts of the account in spaces the caller may read, by slug.
+//
+// Corresponds with GET /contexts (the `Contexts` operationId).
+func (c *Client) Contexts(ctx context.Context, params *ContextsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextCreateV2WithBody Create Context
+//
+// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+func (c *Client) ContextCreateV2WithBody(ctx context.Context, params *ContextCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextCreateV2RequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextCreateV2 Create Context
+//
+// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+func (c *Client) ContextCreateV2(ctx context.Context, params *ContextCreateV2Params, body ContextCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextCreateV2Request(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchContextsWithBody Search Contexts
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+func (c *Client) SearchContextsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchContextsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchContexts Search Contexts
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+func (c *Client) SearchContexts(ctx context.Context, body SearchContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchContextsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchContextsSuggestionsWithBody Search Contexts Suggestions
+//
+// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+func (c *Client) SearchContextsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchContextsSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchContextsSuggestions Search Contexts Suggestions
+//
+// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+func (c *Client) SearchContextsSuggestions(ctx context.Context, body SearchContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchContextsSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextDelete Delete Context
+//
+// Delete a context with its config elements. A context attached to a stack is refused unless force is true, which detaches it first.
+//
+// Corresponds with DELETE /contexts/{contextId} (the `ContextDelete` operationId).
+func (c *Client) ContextDelete(ctx context.Context, contextId string, params *ContextDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextDeleteRequest(c.Server, contextId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Context Get Context
+//
+// Details of a single Context.
+//
+// Corresponds with GET /contexts/{contextId} (the `Context` operationId).
+func (c *Client) Context(ctx context.Context, contextId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextRequest(c.Server, contextId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextPatchWithBody Patch Context
+//
+// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+func (c *Client) ContextPatchWithBody(ctx context.Context, contextId string, params *ContextPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextPatchRequestWithBody(c.Server, contextId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextPatchWithApplicationMergePatchPlusJSONBody Patch Context
+//
+// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+func (c *Client) ContextPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, contextId string, params *ContextPatchParams, body ContextPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, contextId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextUpdateV2WithBody Update Context
+//
+// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+func (c *Client) ContextUpdateV2WithBody(ctx context.Context, contextId string, params *ContextUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextUpdateV2RequestWithBody(c.Server, contextId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextUpdateV2 Update Context
+//
+// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+func (c *Client) ContextUpdateV2(ctx context.Context, contextId string, params *ContextUpdateV2Params, body ContextUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextUpdateV2Request(c.Server, contextId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextAttachedStack Context attached stack
+//
+// Single stack attachment for this context.
+//
+// Corresponds with GET /contexts/{contextId}/attached-stack (the `ContextAttachedStack` operationId).
+func (c *Client) ContextAttachedStack(ctx context.Context, contextId string, params *ContextAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextAttachedStackRequest(c.Server, contextId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextConfigElement Context config element
+//
+// Single context config element.
+//
+// Corresponds with GET /contexts/{contextId}/config-element (the `ContextConfigElement` operationId).
+func (c *Client) ContextConfigElement(ctx context.Context, contextId string, params *ContextConfigElementParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextConfigElementRequest(c.Server, contextId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextConfigAddWithBody Add Config
+//
+// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+func (c *Client) ContextConfigAddWithBody(ctx context.Context, contextId string, params *ContextConfigAddParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextConfigAddRequestWithBody(c.Server, contextId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextConfigAdd Add Config
+//
+// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+func (c *Client) ContextConfigAdd(ctx context.Context, contextId string, params *ContextConfigAddParams, body ContextConfigAddJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextConfigAddRequest(c.Server, contextId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextConfigDelete Delete Config
+//
+// Delete a config element of a context.
+//
+// Corresponds with DELETE /contexts/{contextId}/configs/{configId} (the `ContextConfigDelete` operationId).
+func (c *Client) ContextConfigDelete(ctx context.Context, contextId string, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextConfigDeleteRequest(c.Server, contextId, configId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextConfigSetWithBody Set Config
+//
+// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+func (c *Client) ContextConfigSetWithBody(ctx context.Context, contextId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextConfigSetRequestWithBody(c.Server, contextId, configId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextConfigSet Set Config
+//
+// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+func (c *Client) ContextConfigSet(ctx context.Context, contextId string, configId string, body ContextConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextConfigSetRequest(c.Server, contextId, configId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16512,6 +17316,8 @@ func (c *Client) SessionDelete(ctx context.Context, sessionId string, reqEditors
 
 // SearchSpaceContextsWithBody Search Space Contexts
 //
+// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+//
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
@@ -16529,11 +17335,51 @@ func (c *Client) SearchSpaceContextsWithBody(ctx context.Context, contentType st
 
 // SearchSpaceContexts Search Space Contexts
 //
+// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
 func (c *Client) SearchSpaceContexts(ctx context.Context, body SearchSpaceContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchSpaceContextsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchSpaceContextsSuggestionsWithBody Search Space Contexts Suggestions
+//
+// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+func (c *Client) SearchSpaceContextsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSpaceContextsSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchSpaceContextsSuggestions Search Space Contexts Suggestions
+//
+// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+func (c *Client) SearchSpaceContextsSuggestions(ctx context.Context, body SearchSpaceContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSpaceContextsSuggestionsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17628,6 +18474,44 @@ func (c *Client) StackConfigAdd(ctx context.Context, stackId string, params *Sta
 // Corresponds with DELETE /stacks/{stackId}/configs/{configId} (the `StackConfigDelete` operationId).
 func (c *Client) StackConfigDelete(ctx context.Context, stackId string, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackConfigDeleteRequest(c.Server, stackId, configId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextAttachWithBody Attach Context
+//
+// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+func (c *Client) ContextAttachWithBody(ctx context.Context, stackId string, contextId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextAttachRequestWithBody(c.Server, stackId, contextId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ContextAttach Attach Context
+//
+// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+func (c *Client) ContextAttach(ctx context.Context, stackId string, contextId string, body ContextAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewContextAttachRequest(c.Server, stackId, contextId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -20459,6 +21343,80 @@ func NewAttachableAzureIntegrationsInSpaceRequest(server string, params *Attacha
 	return req, nil
 }
 
+// NewAttachableContextsInSpaceRequest constructs an http.Request for the AttachableContextsInSpace method
+func NewAttachableContextsInSpaceRequest(server string, params *AttachableContextsInSpaceParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/attachable-contexts-in-space")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAttachableExternalIntegrationInSpaceRequest constructs an http.Request for the AttachableExternalIntegrationInSpace method
 func NewAttachableExternalIntegrationInSpaceRequest(server string, params *AttachableExternalIntegrationInSpaceParams) (*http.Request, error) {
 	var err error
@@ -21575,6 +22533,757 @@ func NewBillingSubscriptionUpdateTierRequestWithBody(server string, params *Bill
 		}
 
 	}
+
+	return req, nil
+}
+
+// NewContextDetachRequest constructs an http.Request for the ContextDetach method
+func NewContextDetachRequest(server string, attachmentId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/context-attachments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewContextsRequest constructs an http.Request for the Contexts method
+func NewContextsRequest(server string, params *ContextsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewContextCreateV2Request calls the generic ContextCreateV2 builder with application/json body
+func NewContextCreateV2Request(server string, params *ContextCreateV2Params, body ContextCreateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewContextCreateV2RequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewContextCreateV2RequestWithBody constructs an http.Request for the ContextCreateV2 method, with any body, and a specified content type
+func NewContextCreateV2RequestWithBody(server string, params *ContextCreateV2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewSearchContextsRequest calls the generic SearchContexts builder with application/json body
+func NewSearchContextsRequest(server string, body SearchContextsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchContextsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchContextsRequestWithBody constructs an http.Request for the SearchContexts method, with any body, and a specified content type
+func NewSearchContextsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchContextsSuggestionsRequest calls the generic SearchContextsSuggestions builder with application/json body
+func NewSearchContextsSuggestionsRequest(server string, body SearchContextsSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchContextsSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchContextsSuggestionsRequestWithBody constructs an http.Request for the SearchContextsSuggestions method, with any body, and a specified content type
+func NewSearchContextsSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewContextDeleteRequest constructs an http.Request for the ContextDelete method
+func NewContextDeleteRequest(server string, contextId string, params *ContextDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "force", *params.Force, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewContextRequest constructs an http.Request for the Context method
+func NewContextRequest(server string, contextId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewContextPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic ContextPatch builder with application/merge-patch+json body
+func NewContextPatchRequestWithApplicationMergePatchPlusJSONBody(server string, contextId string, params *ContextPatchParams, body ContextPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewContextPatchRequestWithBody(server, contextId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewContextPatchRequestWithBody constructs an http.Request for the ContextPatch method, with any body, and a specified content type
+func NewContextPatchRequestWithBody(server string, contextId string, params *ContextPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewContextUpdateV2Request calls the generic ContextUpdateV2 builder with application/json body
+func NewContextUpdateV2Request(server string, contextId string, params *ContextUpdateV2Params, body ContextUpdateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewContextUpdateV2RequestWithBody(server, contextId, params, "application/json", bodyReader)
+}
+
+// NewContextUpdateV2RequestWithBody constructs an http.Request for the ContextUpdateV2 method, with any body, and a specified content type
+func NewContextUpdateV2RequestWithBody(server string, contextId string, params *ContextUpdateV2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewContextAttachedStackRequest constructs an http.Request for the ContextAttachedStack method
+func NewContextAttachedStackRequest(server string, contextId string, params *ContextAttachedStackParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s/attached-stack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewContextConfigElementRequest constructs an http.Request for the ContextConfigElement method
+func NewContextConfigElementRequest(server string, contextId string, params *ContextConfigElementParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s/config-element", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewContextConfigAddRequest calls the generic ContextConfigAdd builder with application/json body
+func NewContextConfigAddRequest(server string, contextId string, params *ContextConfigAddParams, body ContextConfigAddJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewContextConfigAddRequestWithBody(server, contextId, params, "application/json", bodyReader)
+}
+
+// NewContextConfigAddRequestWithBody constructs an http.Request for the ContextConfigAdd method, with any body, and a specified content type
+func NewContextConfigAddRequestWithBody(server string, contextId string, params *ContextConfigAddParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s/configs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewContextConfigDeleteRequest constructs an http.Request for the ContextConfigDelete method
+func NewContextConfigDeleteRequest(server string, contextId string, configId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s/configs/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewContextConfigSetRequest calls the generic ContextConfigSet builder with application/json body
+func NewContextConfigSetRequest(server string, contextId string, configId string, body ContextConfigSetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewContextConfigSetRequestWithBody(server, contextId, configId, "application/json", bodyReader)
+}
+
+// NewContextConfigSetRequestWithBody constructs an http.Request for the ContextConfigSet method, with any body, and a specified content type
+func NewContextConfigSetRequestWithBody(server string, contextId string, configId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/contexts/%s/configs/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -24419,6 +26128,46 @@ func NewSearchSpaceContextsRequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
+// NewSearchSpaceContextsSuggestionsRequest calls the generic SearchSpaceContextsSuggestions builder with application/json body
+func NewSearchSpaceContextsSuggestionsRequest(server string, body SearchSpaceContextsSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchSpaceContextsSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchSpaceContextsSuggestionsRequestWithBody constructs an http.Request for the SearchSpaceContextsSuggestions method, with any body, and a specified content type
+func NewSearchSpaceContextsSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/space-contexts/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSearchSpacePoliciesRequest calls the generic SearchSpacePolicies builder with application/json body
 func NewSearchSpacePoliciesRequest(server string, body SearchSpacePoliciesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -26578,6 +28327,60 @@ func NewStackConfigDeleteRequest(server string, stackId string, configId string)
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewContextAttachRequest calls the generic ContextAttach builder with application/json body
+func NewContextAttachRequest(server string, stackId string, contextId string, body ContextAttachJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewContextAttachRequestWithBody(server, stackId, contextId, "application/json", bodyReader)
+}
+
+// NewContextAttachRequestWithBody constructs an http.Request for the ContextAttach method, with any body, and a specified content type
+func NewContextAttachRequestWithBody(server string, stackId string, contextId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "contextId", contextId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/contexts/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -30621,6 +32424,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /attachable-azure-integrations-in-space (the `AttachableAzureIntegrationsInSpace` operationId).
 	AttachableAzureIntegrationsInSpaceWithResponse(ctx context.Context, params *AttachableAzureIntegrationsInSpaceParams, reqEditors ...RequestEditorFn) (*AttachableAzureIntegrationsInSpaceResponse, error)
 
+	// AttachableContextsInSpaceWithResponse Attachable Contexts in Space
+	//
+	// The contexts a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /attachable-contexts-in-space (the `AttachableContextsInSpace` operationId).
+	AttachableContextsInSpaceWithResponse(ctx context.Context, params *AttachableContextsInSpaceParams, reqEditors ...RequestEditorFn) (*AttachableContextsInSpaceResponse, error)
+
 	// AttachableExternalIntegrationInSpaceWithResponse Attachable External Integrations
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -30916,6 +32728,191 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
 	BillingSubscriptionUpdateTierWithResponse(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateTierResponse, error)
+
+	// ContextDetachWithResponse Detach Context
+	//
+	// Detach a context from a stack, by the attachment's ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /context-attachments/{attachmentId} (the `ContextDetach` operationId).
+	ContextDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*ContextDetachResponse, error)
+
+	// ContextsWithResponse List Contexts
+	//
+	// The contexts of the account in spaces the caller may read, by slug.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /contexts (the `Contexts` operationId).
+	ContextsWithResponse(ctx context.Context, params *ContextsParams, reqEditors ...RequestEditorFn) (*ContextsResponse, error)
+
+	// ContextCreateV2WithBodyWithResponse Create Context
+	//
+	// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+	ContextCreateV2WithBodyWithResponse(ctx context.Context, params *ContextCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextCreateV2Response, error)
+
+	// ContextCreateV2WithResponse Create Context
+	//
+	// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+	ContextCreateV2WithResponse(ctx context.Context, params *ContextCreateV2Params, body ContextCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ContextCreateV2Response, error)
+
+	// SearchContextsWithBodyWithResponse Search Contexts
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+	SearchContextsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchContextsResponse, error)
+
+	// SearchContextsWithResponse Search Contexts
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+	SearchContextsWithResponse(ctx context.Context, body SearchContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchContextsResponse, error)
+
+	// SearchContextsSuggestionsWithBodyWithResponse Search Contexts Suggestions
+	//
+	// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+	SearchContextsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchContextsSuggestionsResponse, error)
+
+	// SearchContextsSuggestionsWithResponse Search Contexts Suggestions
+	//
+	// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+	SearchContextsSuggestionsWithResponse(ctx context.Context, body SearchContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchContextsSuggestionsResponse, error)
+
+	// ContextDeleteWithResponse Delete Context
+	//
+	// Delete a context with its config elements. A context attached to a stack is refused unless force is true, which detaches it first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /contexts/{contextId} (the `ContextDelete` operationId).
+	ContextDeleteWithResponse(ctx context.Context, contextId string, params *ContextDeleteParams, reqEditors ...RequestEditorFn) (*ContextDeleteResponse, error)
+
+	// ContextWithResponse Get Context
+	//
+	// Details of a single Context.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /contexts/{contextId} (the `Context` operationId).
+	ContextWithResponse(ctx context.Context, contextId string, reqEditors ...RequestEditorFn) (*ContextResponse, error)
+
+	// ContextPatchWithBodyWithResponse Patch Context
+	//
+	// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+	ContextPatchWithBodyWithResponse(ctx context.Context, contextId string, params *ContextPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextPatchResponse, error)
+
+	// ContextPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Context
+	//
+	// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+	ContextPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, contextId string, params *ContextPatchParams, body ContextPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextPatchResponse, error)
+
+	// ContextUpdateV2WithBodyWithResponse Update Context
+	//
+	// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+	ContextUpdateV2WithBodyWithResponse(ctx context.Context, contextId string, params *ContextUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextUpdateV2Response, error)
+
+	// ContextUpdateV2WithResponse Update Context
+	//
+	// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+	ContextUpdateV2WithResponse(ctx context.Context, contextId string, params *ContextUpdateV2Params, body ContextUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ContextUpdateV2Response, error)
+
+	// ContextAttachedStackWithResponse Context attached stack
+	//
+	// Single stack attachment for this context.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /contexts/{contextId}/attached-stack (the `ContextAttachedStack` operationId).
+	ContextAttachedStackWithResponse(ctx context.Context, contextId string, params *ContextAttachedStackParams, reqEditors ...RequestEditorFn) (*ContextAttachedStackResponse, error)
+
+	// ContextConfigElementWithResponse Context config element
+	//
+	// Single context config element.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /contexts/{contextId}/config-element (the `ContextConfigElement` operationId).
+	ContextConfigElementWithResponse(ctx context.Context, contextId string, params *ContextConfigElementParams, reqEditors ...RequestEditorFn) (*ContextConfigElementResponse, error)
+
+	// ContextConfigAddWithBodyWithResponse Add Config
+	//
+	// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+	ContextConfigAddWithBodyWithResponse(ctx context.Context, contextId string, params *ContextConfigAddParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextConfigAddResponse, error)
+
+	// ContextConfigAddWithResponse Add Config
+	//
+	// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+	ContextConfigAddWithResponse(ctx context.Context, contextId string, params *ContextConfigAddParams, body ContextConfigAddJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextConfigAddResponse, error)
+
+	// ContextConfigDeleteWithResponse Delete Config
+	//
+	// Delete a config element of a context.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /contexts/{contextId}/configs/{configId} (the `ContextConfigDelete` operationId).
+	ContextConfigDeleteWithResponse(ctx context.Context, contextId string, configId string, reqEditors ...RequestEditorFn) (*ContextConfigDeleteResponse, error)
+
+	// ContextConfigSetWithBodyWithResponse Set Config
+	//
+	// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+	ContextConfigSetWithBodyWithResponse(ctx context.Context, contextId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextConfigSetResponse, error)
+
+	// ContextConfigSetWithResponse Set Config
+	//
+	// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+	ContextConfigSetWithResponse(ctx context.Context, contextId string, configId string, body ContextConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextConfigSetResponse, error)
 
 	// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 	//
@@ -31589,6 +33586,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchSpaceContextsWithBodyWithResponse Search Space Contexts
 	//
+	// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
@@ -31596,10 +33595,30 @@ type ClientWithResponsesInterface interface {
 
 	// SearchSpaceContextsWithResponse Search Space Contexts
 	//
+	// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
 	SearchSpaceContextsWithResponse(ctx context.Context, body SearchSpaceContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpaceContextsResponse, error)
+
+	// SearchSpaceContextsSuggestionsWithBodyWithResponse Search Space Contexts Suggestions
+	//
+	// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+	SearchSpaceContextsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSpaceContextsSuggestionsResponse, error)
+
+	// SearchSpaceContextsSuggestionsWithResponse Search Space Contexts Suggestions
+	//
+	// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+	SearchSpaceContextsSuggestionsWithResponse(ctx context.Context, body SearchSpaceContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpaceContextsSuggestionsResponse, error)
 
 	// SearchSpacePoliciesWithBodyWithResponse Search Space Policies
 	//
@@ -32138,6 +34157,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /stacks/{stackId}/configs/{configId} (the `StackConfigDelete` operationId).
 	StackConfigDeleteWithResponse(ctx context.Context, stackId string, configId string, reqEditors ...RequestEditorFn) (*StackConfigDeleteResponse, error)
+
+	// ContextAttachWithBodyWithResponse Attach Context
+	//
+	// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+	ContextAttachWithBodyWithResponse(ctx context.Context, stackId string, contextId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextAttachResponse, error)
+
+	// ContextAttachWithResponse Attach Context
+	//
+	// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+	ContextAttachWithResponse(ctx context.Context, stackId string, contextId string, body ContextAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextAttachResponse, error)
 
 	// StackDependencyWithResponse Stack dependency
 	//
@@ -35540,6 +37577,101 @@ func (r AttachableAzureIntegrationsInSpaceResponse) ContentType() string {
 	return ""
 }
 
+// AttachableContextsInSpaceResponse200Headers the declared response headers of an HTTP 200 response for AttachableContextsInSpace
+type AttachableContextsInSpaceResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AttachableContextsInSpaceResponse429Headers the declared response headers of an HTTP 429 response for AttachableContextsInSpace
+type AttachableContextsInSpaceResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AttachableContextsInSpaceResponse503Headers the declared response headers of an HTTP 503 response for AttachableContextsInSpace
+type AttachableContextsInSpaceResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AttachableContextsInSpaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContextPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AttachableContextsInSpaceResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AttachableContextsInSpaceResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AttachableContextsInSpaceResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AttachableContextsInSpaceResponse) GetJSON200() *ContextPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AttachableContextsInSpaceResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AttachableContextsInSpaceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AttachableContextsInSpaceResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AttachableContextsInSpaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AttachableContextsInSpaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AttachableContextsInSpaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AttachableContextsInSpaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AttachableContextsInSpaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AttachableExternalIntegrationInSpaceResponse200Headers the declared response headers of an HTTP 200 response for AttachableExternalIntegrationInSpace
 type AttachableExternalIntegrationInSpaceResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -37675,6 +39807,1413 @@ func (r BillingSubscriptionUpdateTierResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r BillingSubscriptionUpdateTierResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextDetachResponse200Headers the declared response headers of an HTTP 200 response for ContextDetach
+type ContextDetachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextDetachResponse429Headers the declared response headers of an HTTP 429 response for ContextDetach
+type ContextDetachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextDetachResponse503Headers the declared response headers of an HTTP 503 response for ContextDetach
+type ContextDetachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextDetachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContextStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextDetachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextDetachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextDetachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextDetachResponse) GetJSON200() *ContextStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextDetachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextDetachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextDetachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextDetachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextDetachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextDetachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextDetachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextDetachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextsResponse200Headers the declared response headers of an HTTP 200 response for Contexts
+type ContextsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextsResponse429Headers the declared response headers of an HTTP 429 response for Contexts
+type ContextsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextsResponse503Headers the declared response headers of an HTTP 503 response for Contexts
+type ContextsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContextPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextsResponse) GetJSON200() *ContextPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ContextsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextCreateV2Response201Headers the declared response headers of an HTTP 201 response for ContextCreateV2
+type ContextCreateV2Response201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextCreateV2Response429Headers the declared response headers of an HTTP 429 response for ContextCreateV2
+type ContextCreateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextCreateV2Response503Headers the declared response headers of an HTTP 503 response for ContextCreateV2
+type ContextCreateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type ContextCreateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Context
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ContextCreateV2Response201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextCreateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextCreateV2Response503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ContextCreateV2Response) GetJSON201() *Context {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ContextCreateV2Response) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ContextCreateV2Response) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextCreateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextCreateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextCreateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextCreateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextCreateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextCreateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextCreateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchContextsResponse200Headers the declared response headers of an HTTP 200 response for SearchContexts
+type SearchContextsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchContextsResponse429Headers the declared response headers of an HTTP 429 response for SearchContexts
+type SearchContextsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchContextsResponse503Headers the declared response headers of an HTTP 503 response for SearchContexts
+type SearchContextsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchContextsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchContextsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchContextsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchContextsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchContextsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchContextsResponse) GetJSON200() *SearchContextsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchContextsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchContextsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchContextsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchContextsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchContextsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchContextsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchContextsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchContextsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchContextsSuggestions
+type SearchContextsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchContextsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchContextsSuggestions
+type SearchContextsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchContextsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchContextsSuggestions
+type SearchContextsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchContextsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchContextsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchContextsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchContextsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchContextsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchContextsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchContextsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchContextsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchContextsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchContextsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchContextsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchContextsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextDeleteResponse200Headers the declared response headers of an HTTP 200 response for ContextDelete
+type ContextDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextDeleteResponse429Headers the declared response headers of an HTTP 429 response for ContextDelete
+type ContextDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextDeleteResponse503Headers the declared response headers of an HTTP 503 response for ContextDelete
+type ContextDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Context
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextDeleteResponse) GetJSON200() *Context {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ContextDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextResponse200Headers the declared response headers of an HTTP 200 response for Context
+type ContextResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextResponse429Headers the declared response headers of an HTTP 429 response for Context
+type ContextResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextResponse503Headers the declared response headers of an HTTP 503 response for Context
+type ContextResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Context
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextResponse) GetJSON200() *Context {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextPatchResponse200Headers the declared response headers of an HTTP 200 response for ContextPatch
+type ContextPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextPatchResponse429Headers the declared response headers of an HTTP 429 response for ContextPatch
+type ContextPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextPatchResponse503Headers the declared response headers of an HTTP 503 response for ContextPatch
+type ContextPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Context
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextPatchResponse) GetJSON200() *Context {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextUpdateV2Response200Headers the declared response headers of an HTTP 200 response for ContextUpdateV2
+type ContextUpdateV2Response200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextUpdateV2Response429Headers the declared response headers of an HTTP 429 response for ContextUpdateV2
+type ContextUpdateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextUpdateV2Response503Headers the declared response headers of an HTTP 503 response for ContextUpdateV2
+type ContextUpdateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type ContextUpdateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Context
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextUpdateV2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextUpdateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextUpdateV2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextUpdateV2Response) GetJSON200() *Context {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextUpdateV2Response) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ContextUpdateV2Response) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextUpdateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextUpdateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextUpdateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextUpdateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextUpdateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextUpdateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextUpdateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextAttachedStackResponse200Headers the declared response headers of an HTTP 200 response for ContextAttachedStack
+type ContextAttachedStackResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextAttachedStackResponse429Headers the declared response headers of an HTTP 429 response for ContextAttachedStack
+type ContextAttachedStackResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextAttachedStackResponse503Headers the declared response headers of an HTTP 503 response for ContextAttachedStack
+type ContextAttachedStackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextAttachedStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContextStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextAttachedStackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextAttachedStackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextAttachedStackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextAttachedStackResponse) GetJSON200() *ContextStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextAttachedStackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextAttachedStackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextAttachedStackResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextAttachedStackResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextAttachedStackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextAttachedStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextAttachedStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextAttachedStackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextConfigElementResponse200Headers the declared response headers of an HTTP 200 response for ContextConfigElement
+type ContextConfigElementResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigElementResponse429Headers the declared response headers of an HTTP 429 response for ContextConfigElement
+type ContextConfigElementResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigElementResponse503Headers the declared response headers of an HTTP 503 response for ContextConfigElement
+type ContextConfigElementResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextConfigElementResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ConfigElement
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextConfigElementResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextConfigElementResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextConfigElementResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextConfigElementResponse) GetJSON200() *ConfigElement {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextConfigElementResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextConfigElementResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextConfigElementResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextConfigElementResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextConfigElementResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextConfigElementResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextConfigElementResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextConfigElementResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextConfigAddResponse200Headers the declared response headers of an HTTP 200 response for ContextConfigAdd
+type ContextConfigAddResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigAddResponse201Headers the declared response headers of an HTTP 201 response for ContextConfigAdd
+type ContextConfigAddResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigAddResponse429Headers the declared response headers of an HTTP 429 response for ContextConfigAdd
+type ContextConfigAddResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigAddResponse503Headers the declared response headers of an HTTP 503 response for ContextConfigAdd
+type ContextConfigAddResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextConfigAddResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ConfigElement
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ConfigElement
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextConfigAddResponse200Headers
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ContextConfigAddResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextConfigAddResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextConfigAddResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextConfigAddResponse) GetJSON200() *ConfigElement {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ContextConfigAddResponse) GetJSON201() *ConfigElement {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextConfigAddResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ContextConfigAddResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ContextConfigAddResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextConfigAddResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextConfigAddResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextConfigAddResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextConfigAddResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextConfigAddResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextConfigAddResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextConfigAddResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextConfigDeleteResponse200Headers the declared response headers of an HTTP 200 response for ContextConfigDelete
+type ContextConfigDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigDeleteResponse429Headers the declared response headers of an HTTP 429 response for ContextConfigDelete
+type ContextConfigDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigDeleteResponse503Headers the declared response headers of an HTTP 503 response for ContextConfigDelete
+type ContextConfigDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextConfigDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ConfigElement
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextConfigDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextConfigDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextConfigDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextConfigDeleteResponse) GetJSON200() *ConfigElement {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextConfigDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextConfigDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextConfigDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextConfigDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextConfigDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextConfigDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextConfigDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextConfigDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextConfigSetResponse200Headers the declared response headers of an HTTP 200 response for ContextConfigSet
+type ContextConfigSetResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigSetResponse201Headers the declared response headers of an HTTP 201 response for ContextConfigSet
+type ContextConfigSetResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigSetResponse429Headers the declared response headers of an HTTP 429 response for ContextConfigSet
+type ContextConfigSetResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextConfigSetResponse503Headers the declared response headers of an HTTP 503 response for ContextConfigSet
+type ContextConfigSetResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextConfigSetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ConfigElement
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ConfigElement
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextConfigSetResponse200Headers
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ContextConfigSetResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextConfigSetResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextConfigSetResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextConfigSetResponse) GetJSON200() *ConfigElement {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ContextConfigSetResponse) GetJSON201() *ConfigElement {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextConfigSetResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextConfigSetResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextConfigSetResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextConfigSetResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextConfigSetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextConfigSetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextConfigSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextConfigSetResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -43663,6 +47202,94 @@ func (r SearchSpaceContextsResponse) ContentType() string {
 	return ""
 }
 
+// SearchSpaceContextsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchSpaceContextsSuggestions
+type SearchSpaceContextsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchSpaceContextsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchSpaceContextsSuggestions
+type SearchSpaceContextsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchSpaceContextsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchSpaceContextsSuggestions
+type SearchSpaceContextsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchSpaceContextsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchSpaceContextsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchSpaceContextsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchSpaceContextsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchSpaceContextsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchSpaceContextsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchSpaceContextsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchSpaceContextsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchSpaceContextsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchSpaceContextsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchSpaceContextsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchSpaceContextsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SearchSpacePoliciesResponse200Headers the declared response headers of an HTTP 200 response for SearchSpacePolicies
 type SearchSpacePoliciesResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -47443,6 +51070,101 @@ func (r StackConfigDeleteResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StackConfigDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ContextAttachResponse200Headers the declared response headers of an HTTP 200 response for ContextAttach
+type ContextAttachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextAttachResponse429Headers the declared response headers of an HTTP 429 response for ContextAttach
+type ContextAttachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ContextAttachResponse503Headers the declared response headers of an HTTP 503 response for ContextAttach
+type ContextAttachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ContextAttachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContextStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ContextAttachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ContextAttachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ContextAttachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ContextAttachResponse) GetJSON200() *ContextStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ContextAttachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ContextAttachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ContextAttachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ContextAttachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ContextAttachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ContextAttachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ContextAttachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ContextAttachResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -54183,6 +57905,21 @@ func (c *ClientWithResponses) AttachableAzureIntegrationsInSpaceWithResponse(ctx
 	return ParseAttachableAzureIntegrationsInSpaceResponse(rsp)
 }
 
+// AttachableContextsInSpaceWithResponse Attachable Contexts in Space
+//
+// The contexts a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /attachable-contexts-in-space (the `AttachableContextsInSpace` operationId).
+func (c *ClientWithResponses) AttachableContextsInSpaceWithResponse(ctx context.Context, params *AttachableContextsInSpaceParams, reqEditors ...RequestEditorFn) (*AttachableContextsInSpaceResponse, error) {
+	rsp, err := c.AttachableContextsInSpace(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAttachableContextsInSpaceResponse(rsp)
+}
+
 // AttachableExternalIntegrationInSpaceWithResponse Attachable External Integrations
 //
 // Returns a wrapper object for the known response body format(s).
@@ -54657,6 +58394,317 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateTierWithResponse(ctx cont
 		return nil, err
 	}
 	return ParseBillingSubscriptionUpdateTierResponse(rsp)
+}
+
+// ContextDetachWithResponse Detach Context
+//
+// Detach a context from a stack, by the attachment's ID.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /context-attachments/{attachmentId} (the `ContextDetach` operationId).
+func (c *ClientWithResponses) ContextDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*ContextDetachResponse, error) {
+	rsp, err := c.ContextDetach(ctx, attachmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextDetachResponse(rsp)
+}
+
+// ContextsWithResponse List Contexts
+//
+// The contexts of the account in spaces the caller may read, by slug.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /contexts (the `Contexts` operationId).
+func (c *ClientWithResponses) ContextsWithResponse(ctx context.Context, params *ContextsParams, reqEditors ...RequestEditorFn) (*ContextsResponse, error) {
+	rsp, err := c.Contexts(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextsResponse(rsp)
+}
+
+// ContextCreateV2WithBodyWithResponse Create Context
+//
+// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+func (c *ClientWithResponses) ContextCreateV2WithBodyWithResponse(ctx context.Context, params *ContextCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextCreateV2Response, error) {
+	rsp, err := c.ContextCreateV2WithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextCreateV2Response(rsp)
+}
+
+// ContextCreateV2WithResponse Create Context
+//
+// Create a context in the space the input names, the account's top space when it names none, with its config elements and stack attachments. Its slug is made from its name and never changes.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts (the `ContextCreateV2` operationId).
+func (c *ClientWithResponses) ContextCreateV2WithResponse(ctx context.Context, params *ContextCreateV2Params, body ContextCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ContextCreateV2Response, error) {
+	rsp, err := c.ContextCreateV2(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextCreateV2Response(rsp)
+}
+
+// SearchContextsWithBodyWithResponse Search Contexts
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+func (c *ClientWithResponses) SearchContextsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchContextsResponse, error) {
+	rsp, err := c.SearchContextsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchContextsResponse(rsp)
+}
+
+// SearchContextsWithResponse Search Contexts
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts/search (the `SearchContexts` operationId).
+func (c *ClientWithResponses) SearchContextsWithResponse(ctx context.Context, body SearchContextsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchContextsResponse, error) {
+	rsp, err := c.SearchContexts(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchContextsResponse(rsp)
+}
+
+// SearchContextsSuggestionsWithBodyWithResponse Search Contexts Suggestions
+//
+// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+func (c *ClientWithResponses) SearchContextsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchContextsSuggestionsResponse, error) {
+	rsp, err := c.SearchContextsSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchContextsSuggestionsResponse(rsp)
+}
+
+// SearchContextsSuggestionsWithResponse Search Contexts Suggestions
+//
+// The fields a context search filters and orders by, with the values the contexts the predicates keep hold and how many hold each. Only contexts in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts/search/suggestions (the `SearchContextsSuggestions` operationId).
+func (c *ClientWithResponses) SearchContextsSuggestionsWithResponse(ctx context.Context, body SearchContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchContextsSuggestionsResponse, error) {
+	rsp, err := c.SearchContextsSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchContextsSuggestionsResponse(rsp)
+}
+
+// ContextDeleteWithResponse Delete Context
+//
+// Delete a context with its config elements. A context attached to a stack is refused unless force is true, which detaches it first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /contexts/{contextId} (the `ContextDelete` operationId).
+func (c *ClientWithResponses) ContextDeleteWithResponse(ctx context.Context, contextId string, params *ContextDeleteParams, reqEditors ...RequestEditorFn) (*ContextDeleteResponse, error) {
+	rsp, err := c.ContextDelete(ctx, contextId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextDeleteResponse(rsp)
+}
+
+// ContextWithResponse Get Context
+//
+// Details of a single Context.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /contexts/{contextId} (the `Context` operationId).
+func (c *ClientWithResponses) ContextWithResponse(ctx context.Context, contextId string, reqEditors ...RequestEditorFn) (*ContextResponse, error) {
+	rsp, err := c.Context(ctx, contextId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextResponse(rsp)
+}
+
+// ContextPatchWithBodyWithResponse Patch Context
+//
+// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+func (c *ClientWithResponses) ContextPatchWithBodyWithResponse(ctx context.Context, contextId string, params *ContextPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextPatchResponse, error) {
+	rsp, err := c.ContextPatchWithBody(ctx, contextId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextPatchResponse(rsp)
+}
+
+// ContextPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Context
+//
+// Change the members of ContextUpdateV2Request that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through contextUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /contexts/{contextId} (the `ContextPatch` operationId).
+func (c *ClientWithResponses) ContextPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, contextId string, params *ContextPatchParams, body ContextPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextPatchResponse, error) {
+	rsp, err := c.ContextPatchWithApplicationMergePatchPlusJSONBody(ctx, contextId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextPatchResponse(rsp)
+}
+
+// ContextUpdateV2WithBodyWithResponse Update Context
+//
+// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+func (c *ClientWithResponses) ContextUpdateV2WithBodyWithResponse(ctx context.Context, contextId string, params *ContextUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextUpdateV2Response, error) {
+	rsp, err := c.ContextUpdateV2WithBody(ctx, contextId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextUpdateV2Response(rsp)
+}
+
+// ContextUpdateV2WithResponse Update Context
+//
+// Replace a context's name, description, labels, hooks and space. Its config elements change only when replaceConfigElements is true: they become input.configAttachments, and an element left out is deleted. A move to another space needs CONTEXT_CREATE there, and is refused with 422 when a stack attached to the context could no longer reach it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /contexts/{contextId} (the `ContextUpdateV2` operationId).
+func (c *ClientWithResponses) ContextUpdateV2WithResponse(ctx context.Context, contextId string, params *ContextUpdateV2Params, body ContextUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ContextUpdateV2Response, error) {
+	rsp, err := c.ContextUpdateV2(ctx, contextId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextUpdateV2Response(rsp)
+}
+
+// ContextAttachedStackWithResponse Context attached stack
+//
+// Single stack attachment for this context.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /contexts/{contextId}/attached-stack (the `ContextAttachedStack` operationId).
+func (c *ClientWithResponses) ContextAttachedStackWithResponse(ctx context.Context, contextId string, params *ContextAttachedStackParams, reqEditors ...RequestEditorFn) (*ContextAttachedStackResponse, error) {
+	rsp, err := c.ContextAttachedStack(ctx, contextId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextAttachedStackResponse(rsp)
+}
+
+// ContextConfigElementWithResponse Context config element
+//
+// Single context config element.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /contexts/{contextId}/config-element (the `ContextConfigElement` operationId).
+func (c *ClientWithResponses) ContextConfigElementWithResponse(ctx context.Context, contextId string, params *ContextConfigElementParams, reqEditors ...RequestEditorFn) (*ContextConfigElementResponse, error) {
+	rsp, err := c.ContextConfigElement(ctx, contextId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextConfigElementResponse(rsp)
+}
+
+// ContextConfigAddWithBodyWithResponse Add Config
+//
+// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+func (c *ClientWithResponses) ContextConfigAddWithBodyWithResponse(ctx context.Context, contextId string, params *ContextConfigAddParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextConfigAddResponse, error) {
+	rsp, err := c.ContextConfigAddWithBody(ctx, contextId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextConfigAddResponse(rsp)
+}
+
+// ContextConfigAddWithResponse Add Config
+//
+// Add a config element to a context, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /contexts/{contextId}/configs (the `ContextConfigAdd` operationId).
+func (c *ClientWithResponses) ContextConfigAddWithResponse(ctx context.Context, contextId string, params *ContextConfigAddParams, body ContextConfigAddJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextConfigAddResponse, error) {
+	rsp, err := c.ContextConfigAdd(ctx, contextId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextConfigAddResponse(rsp)
+}
+
+// ContextConfigDeleteWithResponse Delete Config
+//
+// Delete a config element of a context.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /contexts/{contextId}/configs/{configId} (the `ContextConfigDelete` operationId).
+func (c *ClientWithResponses) ContextConfigDeleteWithResponse(ctx context.Context, contextId string, configId string, reqEditors ...RequestEditorFn) (*ContextConfigDeleteResponse, error) {
+	rsp, err := c.ContextConfigDelete(ctx, contextId, configId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextConfigDeleteResponse(rsp)
+}
+
+// ContextConfigSetWithBodyWithResponse Set Config
+//
+// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+func (c *ClientWithResponses) ContextConfigSetWithBodyWithResponse(ctx context.Context, contextId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextConfigSetResponse, error) {
+	rsp, err := c.ContextConfigSetWithBody(ctx, contextId, configId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextConfigSetResponse(rsp)
+}
+
+// ContextConfigSetWithResponse Set Config
+//
+// Create or replace the config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /contexts/{contextId}/configs/{configId} (the `ContextConfigSet` operationId).
+func (c *ClientWithResponses) ContextConfigSetWithResponse(ctx context.Context, contextId string, configId string, body ContextConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextConfigSetResponse, error) {
+	rsp, err := c.ContextConfigSet(ctx, contextId, configId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextConfigSetResponse(rsp)
 }
 
 // DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
@@ -55763,6 +59811,8 @@ func (c *ClientWithResponses) SessionDeleteWithResponse(ctx context.Context, ses
 
 // SearchSpaceContextsWithBodyWithResponse Search Space Contexts
 //
+// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
@@ -55776,6 +59826,8 @@ func (c *ClientWithResponses) SearchSpaceContextsWithBodyWithResponse(ctx contex
 
 // SearchSpaceContextsWithResponse Search Space Contexts
 //
+// Search the contexts a stack in the space may attach that the caller may read: those in the space, and, marked inherited, those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities.
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /space-contexts/search (the `SearchSpaceContexts` operationId).
@@ -55785,6 +59837,36 @@ func (c *ClientWithResponses) SearchSpaceContextsWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseSearchSpaceContextsResponse(rsp)
+}
+
+// SearchSpaceContextsSuggestionsWithBodyWithResponse Search Space Contexts Suggestions
+//
+// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+func (c *ClientWithResponses) SearchSpaceContextsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSpaceContextsSuggestionsResponse, error) {
+	rsp, err := c.SearchSpaceContextsSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSpaceContextsSuggestionsResponse(rsp)
+}
+
+// SearchSpaceContextsSuggestionsWithResponse Search Space Contexts Suggestions
+//
+// The fields a search of the space's contexts filters and orders by, with the values the contexts it keeps hold and how many hold each.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /space-contexts/search/suggestions (the `SearchSpaceContextsSuggestions` operationId).
+func (c *ClientWithResponses) SearchSpaceContextsSuggestionsWithResponse(ctx context.Context, body SearchSpaceContextsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpaceContextsSuggestionsResponse, error) {
+	rsp, err := c.SearchSpaceContextsSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSpaceContextsSuggestionsResponse(rsp)
 }
 
 // SearchSpacePoliciesWithBodyWithResponse Search Space Policies
@@ -56677,6 +60759,36 @@ func (c *ClientWithResponses) StackConfigDeleteWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseStackConfigDeleteResponse(rsp)
+}
+
+// ContextAttachWithBodyWithResponse Attach Context
+//
+// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+func (c *ClientWithResponses) ContextAttachWithBodyWithResponse(ctx context.Context, stackId string, contextId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ContextAttachResponse, error) {
+	rsp, err := c.ContextAttachWithBody(ctx, stackId, contextId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextAttachResponse(rsp)
+}
+
+// ContextAttachWithResponse Attach Context
+//
+// Attach a context to a stack with a priority, or change the priority of its attachment. Contexts attached to a stack sort by priority, lowest first, and a lower value takes precedence. A context outside the stack's space and the ancestors it inherits from is refused with 422.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/contexts/{contextId} (the `ContextAttach` operationId).
+func (c *ClientWithResponses) ContextAttachWithResponse(ctx context.Context, stackId string, contextId string, body ContextAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*ContextAttachResponse, error) {
+	rsp, err := c.ContextAttach(ctx, stackId, contextId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseContextAttachResponse(rsp)
 }
 
 // StackDependencyWithResponse Stack dependency
@@ -61324,6 +65436,128 @@ func ParseAttachableAzureIntegrationsInSpaceResponse(rsp *http.Response) (*Attac
 	return response, nil
 }
 
+// ParseAttachableContextsInSpaceResponse parses an HTTP response from a AttachableContextsInSpaceWithResponse call
+func ParseAttachableContextsInSpaceResponse(rsp *http.Response) (*AttachableContextsInSpaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AttachableContextsInSpaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContextPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AttachableContextsInSpaceResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AttachableContextsInSpaceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AttachableContextsInSpaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAttachableExternalIntegrationInSpaceResponse parses an HTTP response from a AttachableExternalIntegrationInSpaceWithResponse call
 func ParseAttachableExternalIntegrationInSpaceResponse(rsp *http.Response) (*AttachableExternalIntegrationInSpaceResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -64058,6 +68292,1839 @@ func ParseBillingSubscriptionUpdateTierResponse(rsp *http.Response) (*BillingSub
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers BillingSubscriptionUpdateTierResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextDetachResponse parses an HTTP response from a ContextDetachWithResponse call
+func ParseContextDetachResponse(rsp *http.Response) (*ContextDetachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextDetachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContextStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextDetachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextDetachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextDetachResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextsResponse parses an HTTP response from a ContextsWithResponse call
+func ParseContextsResponse(rsp *http.Response) (*ContextsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContextPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextCreateV2Response parses an HTTP response from a ContextCreateV2WithResponse call
+func ParseContextCreateV2Response(rsp *http.Response) (*ContextCreateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextCreateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Context
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ContextCreateV2Response201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextCreateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextCreateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchContextsResponse parses an HTTP response from a SearchContextsWithResponse call
+func ParseSearchContextsResponse(rsp *http.Response) (*SearchContextsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchContextsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchContextsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchContextsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchContextsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchContextsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchContextsSuggestionsResponse parses an HTTP response from a SearchContextsSuggestionsWithResponse call
+func ParseSearchContextsSuggestionsResponse(rsp *http.Response) (*SearchContextsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchContextsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchContextsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchContextsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchContextsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextDeleteResponse parses an HTTP response from a ContextDeleteWithResponse call
+func ParseContextDeleteResponse(rsp *http.Response) (*ContextDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Context
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextResponse parses an HTTP response from a ContextWithResponse call
+func ParseContextResponse(rsp *http.Response) (*ContextResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Context
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextPatchResponse parses an HTTP response from a ContextPatchWithResponse call
+func ParseContextPatchResponse(rsp *http.Response) (*ContextPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Context
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextUpdateV2Response parses an HTTP response from a ContextUpdateV2WithResponse call
+func ParseContextUpdateV2Response(rsp *http.Response) (*ContextUpdateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextUpdateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Context
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextUpdateV2Response200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextUpdateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextUpdateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextAttachedStackResponse parses an HTTP response from a ContextAttachedStackWithResponse call
+func ParseContextAttachedStackResponse(rsp *http.Response) (*ContextAttachedStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextAttachedStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContextStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextAttachedStackResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextAttachedStackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextAttachedStackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextConfigElementResponse parses an HTTP response from a ContextConfigElementWithResponse call
+func ParseContextConfigElementResponse(rsp *http.Response) (*ContextConfigElementResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextConfigElementResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextConfigElementResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextConfigElementResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextConfigElementResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextConfigAddResponse parses an HTTP response from a ContextConfigAddWithResponse call
+func ParseContextConfigAddResponse(rsp *http.Response) (*ContextConfigAddResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextConfigAddResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextConfigAddResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 201:
+		var headers ContextConfigAddResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextConfigAddResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextConfigAddResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextConfigDeleteResponse parses an HTTP response from a ContextConfigDeleteWithResponse call
+func ParseContextConfigDeleteResponse(rsp *http.Response) (*ContextConfigDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextConfigDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextConfigDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextConfigDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextConfigDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextConfigSetResponse parses an HTTP response from a ContextConfigSetWithResponse call
+func ParseContextConfigSetResponse(rsp *http.Response) (*ContextConfigSetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextConfigSetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextConfigSetResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 201:
+		var headers ContextConfigSetResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextConfigSetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextConfigSetResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -71682,6 +77749,121 @@ func ParseSearchSpaceContextsResponse(rsp *http.Response) (*SearchSpaceContextsR
 	return response, nil
 }
 
+// ParseSearchSpaceContextsSuggestionsResponse parses an HTTP response from a SearchSpaceContextsSuggestionsWithResponse call
+func ParseSearchSpaceContextsSuggestionsResponse(rsp *http.Response) (*SearchSpaceContextsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchSpaceContextsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchSpaceContextsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchSpaceContextsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchSpaceContextsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSearchSpacePoliciesResponse parses an HTTP response from a SearchSpacePoliciesWithResponse call
 func ParseSearchSpacePoliciesResponse(rsp *http.Response) (*SearchSpacePoliciesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -76529,6 +82711,128 @@ func ParseStackConfigDeleteResponse(rsp *http.Response) (*StackConfigDeleteRespo
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackConfigDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseContextAttachResponse parses an HTTP response from a ContextAttachWithResponse call
+func ParseContextAttachResponse(rsp *http.Response) (*ContextAttachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ContextAttachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContextStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ContextAttachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ContextAttachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ContextAttachResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

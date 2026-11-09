@@ -12,9 +12,11 @@
 // through stack_labels_label, and holds a stack FOR KEY SHARE, the lock a
 // key check takes, so a move or delete that locks it FOR UPDATE waits. A search joins the caller's stars, and reads the space
 // tree from its scope, since the spaces tables belong to the access
-// domain. Purge deletes a batch of a deleted account's stacks, with their
-// hooks, labels and stars, and reports whether none is left. Held names
-// the columns that hold the access domain's accounts and spaces. Every
+// domain. ByIDs reads the stacks of some IDs at once. Purge deletes a
+// batch of a deleted account's stacks, with their hooks, labels and
+// stars, and reports whether none is left. Held names the columns that
+// hold the access domain's accounts and spaces, and Keys declares the
+// stacks' key, which other domains' held columns name. Every
 // method joins the transaction its context carries, and a write of a taken
 // slug is a *stacks.SlugTaken.
 //

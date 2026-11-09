@@ -81,12 +81,28 @@ func newDomains(
 	})
 	access.GuardSpaces(stacks.SpaceGuard())
 	access.ResolveSubjects(stacksassembly.Entity, stacks.SpaceOf())
+	configuration := configurationassembly.New(configurationassembly.Deps{
+		DB:     db.Primary(),
+		Keys:   keys,
+		Spaces: access.Spaces(),
+		Stacks: stacks.Stacks(),
+		Authz:  access.Authorizer(),
+		Events: events,
+	})
+	access.GuardSpaces(configuration.SpaceGuard())
+	access.ResolveSubjects(configurationassembly.Entity, configuration.SpaceOf())
+	access.ResolveSubjects(
+		configurationassembly.AttachmentEntity,
+		configuration.AttachmentSpaceOf(),
+	)
+	stacks.GuardStacks(configuration.StackGuard())
+	stacks.BindConfiguration(configuration.Configuration())
 	d := Domains{
 		Features:      features,
 		Access:        access,
 		Vendors:       vendors,
 		Stacks:        stacks,
-		Configuration: configurationassembly.New(),
+		Configuration: configuration,
 		Expressions:   expressionsassembly.New(),
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),
@@ -118,6 +134,7 @@ func newKinds() *outbox.Kinds {
 	// Each kind's schema is a constant, registered once, so never an error.
 	_ = accessassembly.RegisterEvents(kinds)
 	_ = stacksassembly.RegisterEvents(kinds)
+	_ = configurationassembly.RegisterEvents(kinds)
 	return kinds
 }
 

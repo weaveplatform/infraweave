@@ -13,12 +13,13 @@ import (
 var ErrNotFound = errors.New("stacks: not found")
 
 // Stack is a stack as other domains read it: its ULID, which every other
-// domain holds, its slug, which a reslug changes, and the space it lives
-// in.
+// domain holds, its slug, which a reslug changes, its name, and the space
+// it lives in.
 type Stack struct {
 	ID      kernel.ULID
 	Account kernel.AccountID
 	Slug    string
+	Name    string
 	Space   kernel.ULID
 }
 
@@ -60,7 +61,6 @@ type Lock struct {
 // stack's writes.
 type Settings struct {
 	Stack
-	Name                   string
 	Repository             string
 	RepositoryURL          *string
 	Branch                 string
@@ -88,6 +88,14 @@ type Settings struct {
 type Stacks interface {
 	// Get reads acct's stack id; ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Stack, error)
+	// BySlug reads acct's stack slug; ErrNotFound when acct lacks it.
+	BySlug(ctx context.Context, acct kernel.AccountID, slug string) (Stack, error)
+	// ByIDs reads those of acct's stacks ids that it has, keyed by ID.
+	ByIDs(
+		ctx context.Context,
+		acct kernel.AccountID,
+		ids []kernel.ULID,
+	) (map[kernel.ULID]Stack, error)
 	// Settings reads acct's stack id's settings; ErrNotFound when acct
 	// lacks it.
 	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Settings, error)

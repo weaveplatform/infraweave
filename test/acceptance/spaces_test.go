@@ -21,7 +21,7 @@ type spaceSteps struct{ o *orgSteps }
 
 func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's id is the space "(\w+)"$`, s.remember)
-	sc.Step(`^the answer lists the (?:spaces|stacks) "([^"]*)"$`, s.lists)
+	sc.Step(`^the answer lists the (?:spaces|stacks|contexts) "([^"]*)"$`, s.lists)
 	sc.Step(
 		`^the member key is (space-reader|space-writer|space-admin) on the space "([^"]+)"$`,
 		s.bind,
@@ -60,13 +60,17 @@ func (s *spaceSteps) remember(name string) error {
 	return nil
 }
 
-// lists checks the last answer, a page of spaces or stacks, against
-// want's slugs, comma-separated, in order.
+// lists checks the last answer, a page or a search of spaces, stacks or
+// contexts, against want's slugs, comma-separated, in order.
 func (s *spaceSteps) lists(want string) error {
+	type ref struct {
+		ID string `json:"id"`
+	}
 	var page struct {
-		Items []struct {
-			ID string `json:"id"`
-		} `json:"items"`
+		Items []ref `json:"items"`
+		Edges []struct {
+			Node ref `json:"node"`
+		} `json:"edges"`
 	}
 	r := s.o.a.s.last()
 	if err := json.Unmarshal(r.body, &page); err != nil || r.status != http.StatusOK {
@@ -75,6 +79,9 @@ func (s *spaceSteps) lists(want string) error {
 	got := []string{}
 	for _, it := range page.Items {
 		got = append(got, it.ID)
+	}
+	for _, e := range page.Edges {
+		got = append(got, e.Node.ID)
 	}
 	if w := s.slugList(want); !reflect.DeepEqual(got, w) {
 		return fmt.Errorf("%w: the page lists %v, want %v", errStep, got, w)

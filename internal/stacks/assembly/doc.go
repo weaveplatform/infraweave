@@ -12,7 +12,8 @@
 // partial of the API's strict server, aliased StacksAPI; Purge deletes a
 // deleted account's stacks PurgeBatch at a time, which internal/app runs
 // for each accessapi.Deleted, and Held declares the columns that hold the
-// access domain's accounts and spaces, for the nightly orphan count;
+// access domain's accounts and spaces, and Keys the stacks' key that
+// other domains' columns hold, for the nightly orphan count;
 // Stream is its migration stream, which internal/app registers after
 // access'.
 //

@@ -75,6 +75,12 @@ type Scope struct {
 type Store interface {
 	// Get reads acct's stack id; stacksapi.ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error)
+	// ByIDs reads those of acct's stacks ids that it has, keyed by ID.
+	ByIDs(
+		ctx context.Context,
+		acct kernel.AccountID,
+		ids []kernel.ULID,
+	) (map[kernel.ULID]stacksapi.Stack, error)
 	// Read reads acct's stack id whole, locking its row FOR UPDATE when
 	// lock is set; stacksapi.ErrNotFound when acct lacks it.
 	Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Stack, error)
@@ -231,6 +237,28 @@ func (s *Service) Get(
 	id kernel.ULID,
 ) (stacksapi.Stack, error) {
 	return s.store.Get(ctx, acct, id) //nolint:wrapcheck // the store names the read
+}
+
+// BySlug reads acct's stack slug.
+func (s *Service) BySlug(
+	ctx context.Context,
+	acct kernel.AccountID,
+	slug string,
+) (stacksapi.Stack, error) {
+	st, err := s.store.BySlug(ctx, acct, slug, false)
+	return st.Stack, err //nolint:wrapcheck // the store names the read
+}
+
+// ByIDs reads those of acct's stacks ids that it has.
+func (s *Service) ByIDs(
+	ctx context.Context,
+	acct kernel.AccountID,
+	ids []kernel.ULID,
+) (map[kernel.ULID]stacksapi.Stack, error) {
+	if len(ids) == 0 {
+		return map[kernel.ULID]stacksapi.Stack{}, nil
+	}
+	return s.store.ByIDs(ctx, acct, ids) //nolint:wrapcheck // the store names the read
 }
 
 // Settings reads acct's stack id's settings.
