@@ -110,6 +110,9 @@ func newDomains(
 	if err := subscribePurges(events, d); err != nil {
 		return Domains{}, err
 	}
+	if err := configuration.Subscribe(events); err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the consumer
+	}
 	return d, nil
 }
 

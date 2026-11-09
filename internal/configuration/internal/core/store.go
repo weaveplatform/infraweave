@@ -111,9 +111,24 @@ type Store interface {
 	// is nil.
 	DeleteElements(ctx context.Context, acct kernel.AccountID, owner Owner, names []string) error
 
-	// Attach writes a, or the priority of the attachment its context
-	// already has to its stack, and answers the attachment as stored.
+	// Labelled reads acct's contexts in spaces that carry any of labels,
+	// by name.
+	Labelled(
+		ctx context.Context,
+		acct kernel.AccountID,
+		spaces []kernel.ULID,
+		labels []string,
+	) ([]Context, error)
+	// Attach writes a, or the priority and kind of the attachment its
+	// context already has to its stack, and answers the attachment as
+	// stored.
 	Attach(ctx context.Context, a Attachment) (Attachment, error)
+	// AutoAttach writes a as an auto-attachment unless its context is
+	// attached to its stack already, and reports whether it wrote it.
+	AutoAttach(ctx context.Context, a Attachment) (bool, error)
+	// LockAutoattach locks acct's auto-attachments until the transaction
+	// ends, so a context's change and a stack's take turns matching them.
+	LockAutoattach(ctx context.Context, acct kernel.AccountID) error
 	// Attachment reads acct's attachment id; ErrNotFound when acct lacks
 	// it.
 	Attachment(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Attachment, error)

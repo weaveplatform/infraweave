@@ -6,7 +6,8 @@
 // rotation; SpaceGuard and StackGuard are its say in space and stack
 // deletes and moves; Configuration is the stack view's reader; SpaceOf and
 // AttachmentSpaceOf find the space the access domain decides a context's
-// and an attachment's operations on.
+// and an attachment's operations on; Subscribe subscribes Autoattach,
+// which follows each stack change with the stack's automatic attachments.
 //
 // # Input and output
 //
@@ -15,7 +16,7 @@
 // # Dependencies
 //
 // It imports the domain's api, core, http and pg packages, the access and
-// stacks api packages, platform/crypt, platform/outbox and
-// platform/sql/integrity and migrate. Only internal/app and cmd/ import
+// stacks api packages, internal/kernel, platform/crypt, platform/outbox,
+// platform/queue and platform/sql/integrity and migrate. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.
 package assembly

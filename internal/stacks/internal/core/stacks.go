@@ -126,6 +126,19 @@ type Store interface {
 		spaces []kernel.ULID,
 		labels []string,
 	) ([]stacksapi.Stack, error)
+	// InSpaces lists acct's stacks in spaces, by slug.
+	InSpaces(
+		ctx context.Context,
+		acct kernel.AccountID,
+		spaces []kernel.ULID,
+	) ([]stacksapi.Stack, error)
+	// Labels reads the labels of acct's stacks ids, sorted, keyed by ID;
+	// a stack with none is left out.
+	Labels(
+		ctx context.Context,
+		acct kernel.AccountID,
+		ids []kernel.ULID,
+	) (map[kernel.ULID][]string, error)
 	// Search reads a page of acct's stacks in the scope that in keeps, by
 	// Fields; an input they cannot answer is a *search.Invalid.
 	Search(
@@ -312,6 +325,42 @@ func (s *Service) Find(
 		return nil, nil
 	}
 	return s.store.Find(ctx, acct, spaces, labels) //nolint:wrapcheck // the store names the read
+}
+
+// InSpaces lists every stack of acct in spaces.
+func (s *Service) InSpaces(
+	ctx context.Context,
+	acct kernel.AccountID,
+	spaces []kernel.ULID,
+) ([]stacksapi.Stack, error) {
+	if len(spaces) == 0 {
+		return nil, nil
+	}
+	return s.store.InSpaces(ctx, acct, spaces) //nolint:wrapcheck // the store names the read
+}
+
+// Labels reads the labels of acct's stacks ids, an empty list for a stack
+// with none.
+func (s *Service) Labels(
+	ctx context.Context,
+	acct kernel.AccountID,
+	ids []kernel.ULID,
+) (map[kernel.ULID][]string, error) {
+	out := make(map[kernel.ULID][]string, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	got, err := s.store.Labels(ctx, acct, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	for _, id := range ids {
+		out[id] = got[id]
+		if out[id] == nil {
+			out[id] = []string{}
+		}
+	}
+	return out, nil
 }
 
 // SpaceOf is the space of acct's stack slug, which the access domain's

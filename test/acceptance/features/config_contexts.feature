@@ -6,6 +6,10 @@ Feature: Contexts
   attaches the contexts of its own space and of the spaces it reaches
   while each inherits, and neither the stack nor the context moves, nor a
   space between them, so as to leave the other out of reach. A context
+  labelled autoattach:<label> attaches itself to every stack in its reach
+  that carries the label, and one labelled autoattach:* to every stack in
+  its reach; the attachments follow label changes on either side, a
+  stack's once its change is processed, on whichever server. A context
   attached to a stack is deleted only when forced. Account admins,
   space-admin on the top space, create, change and delete contexts and
   attach them; a space reader reads them. A context in a space the caller
@@ -247,6 +251,34 @@ Feature: Contexts
     Then it answers 200
     When token "h" sends "DELETE /api/v1/contexts/shared" through B
     Then it answers 200
+
+  @op:contextCreateV2 @op:contextUpdateV2 @op:stackCreate @op:stackUpdate @op:stack @case:success
+  Scenario: A context attaches itself to the stacks in its reach that carry the label it names
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Solo","description":"","inheritEntities":false,"parentSpace":"{team}"}' through B
+    And the answer's id is the space "solo"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lone","repository":"lone","branch":"main","space":"{solo}","labels":["infra"]},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Hand","space":"{team}","stackAttachments":[{"stack":"infra","priority":1}]}' through B
+    When token "h" sends "POST /api/v1/contexts" with '{"name":"Infra Wide","space":"{team}","labels":["autoattach:infra"]}' through A
+    Then it answers 201
+    And the stack "infra" read through B with token "h" eventually attaches the contexts "hand"
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{child}","labels":["infra"]}' through A
+    Then it answers 200
+    And the stack "infra" read through B with token "h" eventually attaches the contexts "hand, auto:infra-wide"
+    When token "h" sends "POST /api/v1/contexts" with '{"name":"Everything","space":"acme","labels":["autoattach:*"]}' through B
+    Then it answers 201
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "hand, auto:everything, auto:infra-wide"
+    And the stack "lone" read through B with token "h" eventually attaches the contexts ""
+    When token "h" sends "POST /api/v1/contexts" with '{"name":"Below","space":"{child}","labels":["autoattach:infra"]}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Web","repository":"web","branch":"main","space":"{team}","labels":["infra"]},"manageState":false}' through B
+    Then it answers 201
+    And the stack "web" read through A with token "h" eventually attaches the contexts "auto:everything, auto:infra-wide"
+    When token "h" sends "PUT /api/v1/contexts/everything" with '{"input":{"name":"Everything","space":"acme"}}' through B
+    Then it answers 200
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "hand, auto:below, auto:infra-wide"
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{child}"}' through B
+    Then it answers 200
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "hand"
+    And the stack "web" read through B with token "h" eventually attaches the contexts "auto:infra-wide"
 
   @op:context @op:contextPatch @op:contextUpdateV2 @op:contextDelete @case:failure @case:success
   Scenario: On a context, an If-Match of a version since changed answers 412

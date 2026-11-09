@@ -2529,7 +2529,8 @@ paths:
       x-rest-style: singleton
   /context-attachments/{attachmentId}:
     delete:
-      description: Detach a context from a stack, by the attachment's ID.
+      description: >-
+        Detach a context from a stack, by the attachment's ID. An attachment the context's autoattach label made is refused; removing the label from the context, or the label it names from the stack, detaches it.
       operationId: contextDetach
       x-infraweave-feature: contexts
       x-infraweave-action: STACK_CONTEXT_DETACH

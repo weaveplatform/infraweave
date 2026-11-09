@@ -61,7 +61,9 @@
 // platform's sealed columns and each domain's; every
 // domain appends to and subscribes on Run's one outbox, where
 // subscribePurges subscribes the features and stacks purges to
-// accessapi.Deleted, since features cannot read access' event itself. It stops the ticker, then
+// accessapi.Deleted, since features cannot read access' event itself, and
+// the configuration domain subscribes its automatic attachments to
+// stacksapi.Changed. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns, as are the operator
 // API's dead-job operations and its data key rotation, the same rotation

@@ -1,8 +1,9 @@
 // Package api is what other domains call of the stacks domain: Stacks,
 // which reads an account's stack by its ID or slug as a Stack, several by
 // their IDs, its Settings, the stacks that track a repository's branch
-// and the stacks in some spaces that carry some labels, locks a stack for
-// a run, and holds a stack for a domain about to store its ID;
+// the stacks in some spaces that carry some labels, every stack in some
+// spaces and some stacks' labels, locks a stack for a run, and holds a
+// stack for a domain about to store its ID;
 // ErrNotFound when the account lacks the stack. A domain whose rows name stacks registers a StackGuard, which a
 // stack's move asks what the stack would lose, as a StackMove, and its
 // delete asks to delete the domain's rows of it, both after the stack's

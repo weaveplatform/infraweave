@@ -2,13 +2,19 @@
 // a space, its config elements, environment variables and mounted files
 // whose values the store seals, and its attachments to stacks. Service
 // creates, changes and deletes contexts, sets and deletes their elements
-// and a stack's own, and attaches contexts to the stacks within reach: a stack in a space reaches
-// the contexts of that space and of each ancestor it climbs to while every
-// space on the way inherits. SpaceGuard and StackGuard refuse a space
-// delete or move, and a stack move, that would leave an attachment out of
-// reach, and delete a deleted stack's attachments and elements; the
-// Service is also the stack view's reader of a stack's contexts and
-// elements.
+// and a stack's own, and attaches contexts to the stacks within reach: a
+// stack in a space reaches the contexts of that space and of each
+// ancestor it climbs to while every space on the way inherits. A context
+// labelled autoattach:<label> attaches itself to every stack in reach
+// that carries the label, and autoattach:* to every stack in reach: a
+// context's write brings its automatic attachments in line in its
+// transaction, and StackChanged a stack's, after each stack change, both
+// under one lock per account so neither misses the other's commit. An
+// automatic attachment is not detached by hand. SpaceGuard and StackGuard
+// refuse a space delete or move, and a stack move, that would leave an
+// attachment made by hand out of reach, and delete a deleted stack's
+// attachments and elements; the Service is also the stack view's reader
+// of a stack's contexts and elements.
 //
 // # Input and output
 //

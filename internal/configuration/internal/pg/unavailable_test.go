@@ -54,6 +54,15 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"Attachments":    func() error { _, err := s.Attachments(ctx, acct, ids, true); return err }(),
 		"AttachedStacks": func() error { _, err := s.AttachedStacks(ctx, acct); return err }(),
 		"DeleteStack":    s.DeleteStack(ctx, acct, id),
+		"Labelled": func() error {
+			_, err := s.Labelled(ctx, acct, ids, []string{"autoattach:*"})
+			return err
+		}(),
+		"AutoAttach": func() error {
+			_, err := s.AutoAttach(ctx, core.Attachment{ID: id, Account: acct, Context: id, Stack: id})
+			return err
+		}(),
+		"LockAutoattach": s.LockAutoattach(ctx, acct),
 	} {
 		if err == nil || errors.Is(err, core.ErrNotFound) {
 			t.Errorf("%s on a closed pool = %v", name, err)
@@ -136,14 +145,15 @@ func TestAccServiceUnavailable(t *testing.T) {
 			_, err := f.svc.AttachedContexts(ctx, f.acct, []kernel.ULID{f.web.ID})
 			return err
 		},
-		"Config": func() error { _, err := f.svc.Config(ctx, f.acct, []kernel.ULID{f.web.ID}); return err },
+		"Config":       func() error { _, err := f.svc.Config(ctx, f.acct, []kernel.ULID{f.web.ID}); return err },
+		"StackChanged": func() error { return f.svc.StackChanged(ctx, f.acct, f.web.ID) },
 	}
 
 	down := errors.New("down")
 	f.spaces.err = down
 	for _, name := range []string{
 		"Search", "Suggest", "Attachable", "AttachableSuggest", "Create",
-		"Update", "Attach", "SpaceLostOnMove", "StackLostOnMove",
+		"Update", "Attach", "SpaceLostOnMove", "StackLostOnMove", "StackChanged",
 	} {
 		if err := ops[name](); !errors.Is(err, down) {
 			t.Errorf("%s with the spaces down = %v", name, err)
@@ -153,7 +163,7 @@ func TestAccServiceUnavailable(t *testing.T) {
 	f.stacks.err = down
 	for _, name := range []string{
 		"AttachmentSpaceOf", "Details", "AttachedStack", "Create", "Attach",
-		"Detach", "SpaceLostOnMove",
+		"Detach", "SpaceLostOnMove", "StackChanged",
 	} {
 		if err := ops[name](); !errors.Is(err, down) {
 			t.Errorf("%s with the stacks down = %v", name, err)
