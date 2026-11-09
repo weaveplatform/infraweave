@@ -14,10 +14,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
+	"github.com/weaveplatform/infraweave/internal/vendors/internal/core"
 	vhttp "github.com/weaveplatform/infraweave/internal/vendors/internal/http"
 	"github.com/weaveplatform/infraweave/internal/vendors/internal/index"
 	"github.com/weaveplatform/infraweave/internal/vendors/internal/pg"
-	"github.com/weaveplatform/infraweave/internal/vendors/internal/vendors"
 )
 
 // Stream is the vendors domain's migration stream.
@@ -71,7 +71,7 @@ type Deps struct {
 // Domain is the vendors domain, the tool version catalogue, constructed
 // once per process after access and ahead of stacks.
 type Domain struct {
-	catalog *vendors.Service
+	catalog *core.Service
 	api     vhttp.Server
 }
 
@@ -82,7 +82,7 @@ const indexTimeout = time.Minute
 // New constructs the domain on d.
 func New(d Deps) *Domain {
 	client := &http.Client{Timeout: indexTimeout}
-	svc := vendors.New(pg.New(d.DB), map[vendorsapi.Vendor]index.Reader{
+	svc := core.New(pg.New(d.DB), map[vendorsapi.Vendor]index.Reader{
 		vendorsapi.Terraform: index.HashiCorp{URL: d.Settings.TerraformIndex, Client: client},
 		vendorsapi.OpenTofu:  index.OpenTofu{URL: d.Settings.OpenTofuIndex, Client: client},
 	})

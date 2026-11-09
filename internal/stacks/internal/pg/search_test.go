@@ -12,8 +12,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/search/searchtest"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
 )
 
 // FuzzStackSearch holds every search of the stack entity to
@@ -21,28 +21,28 @@ import (
 func FuzzStackSearch(f *testing.F) {
 	acct := kernel.NewAccountID()
 	team := kernel.NewULID()
-	searchtest.FuzzCompile(f, pg.StackSearch, pg.SearchScope(acct, stacks.Scope{
+	searchtest.FuzzCompile(f, pg.StackSearch, pg.SearchScope(acct, core.Scope{
 		Reachable: []kernel.ULID{acct.ULID, team},
 		Spaces: []accessapi.SpaceNode{
 			{ID: acct.ULID, Slug: "acme", Name: "Acme"},
 			{ID: team, Slug: "team", Name: "Team", Parent: acct.ULID},
 		},
-		Actor: stacks.Actor{Kind: kernel.PrincipalAPIKey, ID: kernel.NewULID()},
+		Actor: core.Actor{Kind: kernel.PrincipalAPIKey, ID: kernel.NewULID()},
 	}))
 }
 
-// TestUnitStackFields holds stacks.Fields to the filters the reference's
+// TestUnitStackFields holds core.Fields to the filters the reference's
 // Terraform provider sends that this phase holds data for, and maps each
 // field to SQL that answers it: a column for every field, a cast for every
 // order, and the space tree for space.
 func TestUnitStackFields(t *testing.T) {
 	for _, name := range []string{"label", "name", "repository", "branch", "vendor", "locked"} {
-		if _, ok := search.Lookup(stacks.Fields, name); !ok {
+		if _, ok := search.Lookup(core.Fields, name); !ok {
 			t.Errorf("no field %q, which the reference's stack filters name", name)
 		}
 	}
-	if len(pg.StackSearch.Columns) != len(stacks.Fields) {
-		t.Fatalf("%d columns for %d fields", len(pg.StackSearch.Columns), len(stacks.Fields))
+	if len(pg.StackSearch.Columns) != len(core.Fields) {
+		t.Fatalf("%d columns for %d fields", len(pg.StackSearch.Columns), len(core.Fields))
 	}
 	for _, c := range pg.StackSearch.Columns {
 		switch {
@@ -56,7 +56,7 @@ func TestUnitStackFields(t *testing.T) {
 			t.Errorf("%s is an enum of no values", c.Name)
 		}
 	}
-	if v, _ := search.Lookup(stacks.Fields, "vendor"); !slices.Equal(
+	if v, _ := search.Lookup(core.Fields, "vendor"); !slices.Equal(
 		v.Values, []string{"terraform", "opentofu"},
 	) {
 		t.Errorf("vendor's values = %v", v.Values)
@@ -218,7 +218,7 @@ func TestAccServiceSearch(t *testing.T) {
 	for _, sg := range got.Fields {
 		by[sg.Field.Name] = sg
 	}
-	if got.Count != 3 || len(got.Fields) != len(stacks.Fields) ||
+	if got.Count != 3 || len(got.Fields) != len(core.Fields) ||
 		!slices.Equal(by["label"].Values, []string{"prod", "eu"}) ||
 		!slices.Equal(by["label"].Counts, []int{2, 1}) ||
 		!slices.Equal(by["vendor"].Values, []string{"terraform", "opentofu"}) {

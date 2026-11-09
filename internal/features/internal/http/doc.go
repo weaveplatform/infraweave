@@ -25,7 +25,7 @@
 // # Dependencies
 //
 // It imports the catalogue (internal/features), featuresapi, the domain's
-// features package for Refusal and the service, internal/kernel,
+// core package for Refusal and the service, internal/kernel,
 // platform/gen/api, platform/gen/operator, platform/httpkit/page and
 // platform/httpkit/problem. The features domain's assembly constructs it.
 package http

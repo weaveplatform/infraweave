@@ -14,7 +14,7 @@ import (
 	"testing/iotest"
 
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
@@ -24,7 +24,7 @@ var errDown = errors.New("store down")
 // allower refuses the features in refuse, failing every feature with err,
 // and records each feature it was asked about.
 type allower struct {
-	refuse map[string]*features.Refusal
+	refuse map[string]*core.Refusal
 	err    error
 	asked  []string
 }
@@ -135,7 +135,7 @@ func TestUnitFeatureMiddleware(t *testing.T) {
 }
 
 func TestUnitFeatureMiddlewareRefusals(t *testing.T) {
-	disabled := &allower{refuse: map[string]*features.Refusal{
+	disabled := &allower{refuse: map[string]*core.Refusal{
 		"api-keys": {Disabled: true, Feature: "api-keys"},
 	}}
 	rec, _ := serve(t, disabled, apiKeys, true, strings.NewReader(`{}`))
@@ -147,7 +147,7 @@ func TestUnitFeatureMiddlewareRefusals(t *testing.T) {
 		t.Errorf("disabled: %d %+v", rec.Code, p)
 	}
 
-	lacked := &allower{refuse: map[string]*features.Refusal{
+	lacked := &allower{refuse: map[string]*core.Refusal{
 		"oidc-api-keys": {Feature: "oidc-api-keys", Tiers: []string{"Business", "Enterprise"}},
 	}}
 	rec, read := serve(t, lacked, apiKeys, true, strings.NewReader(`{"oidc":{}}`))
@@ -164,7 +164,7 @@ func TestUnitFeatureMiddlewareRefusals(t *testing.T) {
 		{Pointer: "/input/vendorConfig/opentofu", Feature: "vendor-opentofu"},
 		{Pointer: "/input/vendorConfig/terraform", Feature: "vendor-terraform"},
 	}}
-	tofuOff := &allower{refuse: map[string]*features.Refusal{
+	tofuOff := &allower{refuse: map[string]*core.Refusal{
 		"vendor-opentofu": {Disabled: true, Feature: "vendor-opentofu"},
 	}}
 	rec, read = serve(t, tofuOff, stackCreate, true,

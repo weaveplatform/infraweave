@@ -14,8 +14,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
 )
 
 // TestMain migrates the platform stream and the stacks stream alone: no
@@ -95,9 +95,9 @@ func TestAccStoreUnavailable(t *testing.T) {
 	if _, err := s.SpaceInUse(ctx, acct, id); err == nil {
 		t.Error("SpaceInUse on a closed pool succeeded")
 	}
-	st := stacks.Stack{}
+	st := core.Stack{}
 	st.Account, st.ID = acct, id
-	actor := stacks.Actor{Kind: kernel.PrincipalAPIKey, ID: id}
+	actor := core.Actor{Kind: kernel.PrincipalAPIKey, ID: id}
 	for name, err := range map[string]error{
 		"Read":         func() error { _, err := s.Read(ctx, acct, id, false); return err }(),
 		"ByRepository": func() error { _, err := s.ByRepository(ctx, acct, nil, "r", "b"); return err }(),
@@ -107,11 +107,11 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"SetStar":      s.SetStar(ctx, acct, id, actor, true),
 		"Starred":      func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
 		"Search": func() error {
-			_, err := s.Search(ctx, acct, search.Input{}, stacks.Scope{Reachable: []kernel.ULID{id}})
+			_, err := s.Search(ctx, acct, search.Input{}, core.Scope{Reachable: []kernel.ULID{id}})
 			return err
 		}(),
 		"Suggest": func() error {
-			_, err := s.Suggest(ctx, acct, search.SuggestionsInput{}, stacks.Scope{Actor: actor})
+			_, err := s.Suggest(ctx, acct, search.SuggestionsInput{}, core.Scope{Actor: actor})
 			return err
 		}(),
 	} {

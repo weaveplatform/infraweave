@@ -28,7 +28,7 @@
 // # Dependencies
 //
 // It imports the catalogue (internal/features) for Tier, featuresapi, the
-// domain's features package for the payload, internal/kernel,
+// domain's core package for the payload, internal/kernel,
 // platform/sql, platform/sql/migrate, platform/sql/notify, platform/tx and
 // pgx. The features domain's assembly constructs it.
 package pg

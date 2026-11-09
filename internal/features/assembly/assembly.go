@@ -9,7 +9,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	entitlement "github.com/weaveplatform/infraweave/internal/features/internal/features"
+	entitlement "github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/features/internal/http"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"

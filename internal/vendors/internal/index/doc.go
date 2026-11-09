@@ -18,6 +18,6 @@
 // # Dependencies
 //
 // It imports the standard library and iac/version. The vendors domain's
-// vendors package reads its releases; its assembly constructs the
+// core package reads its releases; its assembly constructs the
 // readers.
 package index

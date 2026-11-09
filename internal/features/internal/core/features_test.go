@@ -1,4 +1,4 @@
-package features_test
+package core_test
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 
 	root "github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 var errStore = errors.New("store down")
 
-// store is an in-memory features.Store of one organization, with billing
+// store is an in-memory core.Store of one organization, with billing
 // on unless billingOff.
 type store struct {
 	entitlement *featuresapi.Entitlement
@@ -30,9 +30,9 @@ type store struct {
 	locked      bool
 	calls       []string
 	reads       map[string]int
-	held        []features.Held
-	billing     features.Billing
-	grants      features.Grants
+	held        []core.Held
+	billing     core.Billing
+	grants      core.Grants
 	grantsErr   error
 	opErr       error
 }
@@ -118,7 +118,7 @@ func (s *store) AccountLimits(context.Context, kernel.AccountID) (map[string]int
 }
 
 // inTx runs fn directly, counting the transactions it stands for.
-func inTx(n *int) features.Transactor {
+func inTx(n *int) core.Transactor {
 	return func(ctx context.Context, fn func(context.Context) error) error {
 		*n++
 		return fn(ctx)
@@ -132,7 +132,7 @@ func TestUnitEntitlementLessDisabled(t *testing.T) {
 		Limits:   map[string]int64{"seats": 10},
 	}}
 	var n int
-	svc := features.New(s, inTx(&n), []string{"scans", "ai-integrations"})
+	svc := core.New(s, inTx(&n), []string{"scans", "ai-integrations"})
 	e, err := svc.Entitlement(t.Context(), kernel.NewOrganizationID())
 	if err != nil || e.Tier != "Business" || e.Version != 3 ||
 		!slices.Equal(e.Features, []string{"stacks"}) || e.Limits["seats"] != 10 || s.locked {
@@ -164,19 +164,19 @@ func TestUnitEntitlement(t *testing.T) {
 	var n int
 	ctx, org := t.Context(), kernel.NewOrganizationID()
 	off := &store{billingOff: true, entitlement: stored}
-	e, err := features.New(off, inTx(&n), []string{"scans"}).Entitlement(ctx, org)
+	e, err := core.New(off, inTx(&n), []string{"scans"}).Entitlement(ctx, org)
 	want := slices.DeleteFunc(root.Gated(), func(f string) bool { return f == "scans" })
 	if err != nil || e.Tier != "Free" || e.Version != 2 || !slices.Equal(e.Features, want) ||
 		len(e.Limits) != 0 {
 		t.Errorf("billing off = %+v, %v", e, err)
 	}
 	on := &store{entitlement: stored}
-	e, err = features.New(on, inTx(&n), []string{"scans"}).Entitlement(ctx, org)
+	e, err = core.New(on, inTx(&n), []string{"scans"}).Entitlement(ctx, org)
 	if err != nil || !slices.Equal(e.Features, stored.Features) || e.Limits["seats"] != 2 {
 		t.Errorf("billing on = %+v, %v", e, err)
 	}
 	broken := &store{billingErr: errStore, entitlement: stored}
-	if _, err := features.New(broken, inTx(&n), nil).
+	if _, err := core.New(broken, inTx(&n), nil).
 		Entitlement(ctx, org); !errors.Is(
 		err,
 		errStore,
@@ -188,7 +188,7 @@ func TestUnitEntitlement(t *testing.T) {
 func TestUnitEntitlementWritesPassThrough(t *testing.T) {
 	s := &store{err: errStore}
 	var n int
-	svc := features.New(s, inTx(&n), nil)
+	svc := core.New(s, inTx(&n), nil)
 	ctx, org, acct := t.Context(), kernel.NewOrganizationID(), kernel.NewAccountID()
 	for name, err := range map[string]error{
 		"create":         svc.CreateOrganization(ctx, org),
@@ -292,7 +292,7 @@ func TestUnitPooledLimits(t *testing.T) {
 			}
 			var n int
 			counted := false
-			err := features.New(s, inTx(&n), nil).CheckLimit(t.Context(),
+			err := core.New(s, inTx(&n), nil).CheckLimit(t.Context(),
 				kernel.NewOrganizationID(), kernel.NewAccountID(), "seats",
 				func(context.Context) (featuresapi.Usage, error) {
 					counted = true
@@ -318,18 +318,18 @@ func TestUnitPooledLimitsFailures(t *testing.T) {
 		t.Error("counted after a failed read")
 		return featuresapi.Usage{}, nil
 	}
-	if err := features.New(&store{err: errStore}, inTx(&n), nil).
+	if err := core.New(&store{err: errStore}, inTx(&n), nil).
 		CheckLimit(ctx, org, acct, "seats", never); !errors.Is(err, errStore) {
 		t.Errorf("a failed entitlement read = %v", err)
 	}
 	s := &store{entitlement: &featuresapi.Entitlement{Limits: map[string]int64{"seats": 1}}}
-	if err := features.New(s, inTx(&n), nil).CheckLimit(ctx, org, acct, "seats",
+	if err := core.New(s, inTx(&n), nil).CheckLimit(ctx, org, acct, "seats",
 		func(context.Context) (featuresapi.Usage, error) { return featuresapi.Usage{}, errStore },
 	); !errors.Is(err, errStore) {
 		t.Errorf("a failed count = %v", err)
 	}
 	s.accountErr = errStore
-	if err := features.New(s, inTx(&n), nil).
+	if err := core.New(s, inTx(&n), nil).
 		CheckLimit(ctx, org, acct, "seats", never); !errors.Is(err, errStore) {
 		t.Errorf("a failed account limit read = %v", err)
 	}
@@ -345,7 +345,7 @@ func TestUnitLimitError(t *testing.T) {
 func TestUnitSeed(t *testing.T) {
 	s := &store{}
 	var n int
-	if err := features.New(s, inTx(&n), nil).Seed(t.Context()); err != nil {
+	if err := core.New(s, inTx(&n), nil).Seed(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	names := make([]string, 0, len(s.seeded))
@@ -356,7 +356,7 @@ func TestUnitSeed(t *testing.T) {
 		t.Errorf("seeded %v, want %v", names, root.SeededTiers)
 	}
 	s.err = errStore
-	if err := features.New(s, inTx(&n), nil).Seed(t.Context()); !errors.Is(err, errStore) {
+	if err := core.New(s, inTx(&n), nil).Seed(t.Context()); !errors.Is(err, errStore) {
 		t.Errorf("a failed seed = %v", err)
 	}
 }
@@ -367,7 +367,7 @@ func TestUnitSeed(t *testing.T) {
 func TestUnitEntitlementSnapshot(t *testing.T) {
 	s := &store{entitlement: &featuresapi.Entitlement{Tier: "Free", Features: []string{"stacks"}}}
 	var n int
-	svc := features.New(s, inTx(&n), nil)
+	svc := core.New(s, inTx(&n), nil)
 	ctx, org, other := t.Context(), kernel.NewOrganizationID(), kernel.NewOrganizationID()
 	read := func() {
 		t.Helper()
@@ -386,8 +386,8 @@ func TestUnitEntitlementSnapshot(t *testing.T) {
 		{"first read", func() {}, 1, 1},
 		{"cached", func() {}, 1, 1},
 		{"another domain's payload", func() { svc.Invalidate("access:" + org.String()) }, 1, 1},
-		{"another organization", func() { svc.Invalidate(features.InvalidateKey(other)) }, 1, 1},
-		{"this organization", func() { svc.Invalidate(features.InvalidateKey(org)) }, 2, 1},
+		{"another organization", func() { svc.Invalidate(core.InvalidateKey(other)) }, 1, 1},
+		{"this organization", func() { svc.Invalidate(core.InvalidateKey(org)) }, 2, 1},
 		{"the billing switch", func() { svc.Invalidate("features:billing") }, 3, 2},
 		{"a missed notification", svc.Flush, 4, 3},
 	} {
@@ -422,7 +422,7 @@ func TestUnitEntitlementClosed(t *testing.T) {
 		Features: append([]string{dependent.Name}, dependent.Requires...),
 	}}
 	var n int
-	e, err := features.New(s, inTx(&n), dependent.Requires[:1]).
+	e, err := core.New(s, inTx(&n), dependent.Requires[:1]).
 		Entitlement(t.Context(), kernel.NewOrganizationID())
 	if err != nil || slices.Contains(e.Features, dependent.Name) {
 		t.Errorf("Entitlement = %v, %v; want %s dropped with %s",
@@ -446,13 +446,13 @@ func TestUnitAllow(t *testing.T) {
 		ctx     context.Context
 		store   *store
 		feature string
-		want    *features.Refusal
+		want    *core.Refusal
 		err     error
 	}{
 		{
 			name: "switched off refuses every principal", ctx: operator,
 			store: &store{}, feature: "scans",
-			want: &features.Refusal{Disabled: true, Feature: "scans"},
+			want: &core.Refusal{Disabled: true, Feature: "scans"},
 		},
 		{name: "no principal", ctx: t.Context(), store: &store{}, feature: "policies"},
 		{name: "an operator", ctx: operator, store: &store{}, feature: "policies"},
@@ -467,7 +467,7 @@ func TestUnitAllow(t *testing.T) {
 			ctx:     member,
 			store:   &store{entitlement: free, tiers: tiers},
 			feature: "policies",
-			want: &features.Refusal{
+			want: &core.Refusal{
 				Feature: "policies",
 				Tiers:   []string{"Alpha", "Starter", "Business"},
 			},
@@ -475,7 +475,7 @@ func TestUnitAllow(t *testing.T) {
 		{
 			name: "lacked by every tier", ctx: member,
 			store: &store{entitlement: free, tiers: tiers}, feature: "audit-trail",
-			want: &features.Refusal{Feature: "audit-trail", Tiers: []string{}},
+			want: &core.Refusal{Feature: "audit-trail", Tiers: []string{}},
 		},
 		{
 			name: "billing unreadable", ctx: member,
@@ -499,8 +499,8 @@ func TestUnitAllow(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var n int
-			err := features.New(c.store, inTx(&n), []string{"scans"}).Allow(c.ctx, c.feature)
-			got, _ := errors.AsType[*features.Refusal](err)
+			err := core.New(c.store, inTx(&n), []string{"scans"}).Allow(c.ctx, c.feature)
+			got, _ := errors.AsType[*core.Refusal](err)
 			if c.err != nil && !errors.Is(err, c.err) ||
 				c.err == nil && c.want == nil && err != nil ||
 				!reflect.DeepEqual(got, c.want) {
@@ -518,7 +518,7 @@ func TestUnitAllowTiersSnapshot(t *testing.T) {
 		tiers:       []root.Tier{{Name: "Free", Features: []string{"stacks"}}},
 	}
 	var n int
-	svc := features.New(s, inTx(&n), nil)
+	svc := core.New(s, inTx(&n), nil)
 	ctx := kernel.WithPrincipal(
 		t.Context(),
 		kernel.Principal{OrganizationID: kernel.NewOrganizationID()},
@@ -526,7 +526,7 @@ func TestUnitAllowTiersSnapshot(t *testing.T) {
 	refused := func() {
 		t.Helper()
 		err := svc.Allow(ctx, "stacks")
-		if r, ok := errors.AsType[*features.Refusal](
+		if r, ok := errors.AsType[*core.Refusal](
 			err,
 		); !ok ||
 			!slices.Equal(r.Tiers, []string{"Free"}) {
@@ -551,12 +551,12 @@ func TestUnitPooledLimitsBillingOff(t *testing.T) {
 	s := &store{billingOff: true, entitlement: &featuresapi.Entitlement{
 		Limits: map[string]int64{"seats": 0},
 	}}
-	if err := features.New(s, inTx(&n), nil).CheckLimit(t.Context(),
+	if err := core.New(s, inTx(&n), nil).CheckLimit(t.Context(),
 		kernel.NewOrganizationID(), kernel.NewAccountID(), "seats", never); err != nil {
 		t.Errorf("CheckLimit with billing off = %v", err)
 	}
 	s = &store{billingErr: errStore}
-	if err := features.New(s, inTx(&n), nil).CheckLimit(t.Context(),
+	if err := core.New(s, inTx(&n), nil).CheckLimit(t.Context(),
 		kernel.NewOrganizationID(),
 		kernel.NewAccountID(), "seats", never); !errors.Is(err, errStore) {
 		t.Errorf("CheckLimit with billing unreadable = %v", err)
@@ -564,7 +564,7 @@ func TestUnitPooledLimitsBillingOff(t *testing.T) {
 }
 
 func TestUnitRefusalError(t *testing.T) {
-	for r, want := range map[*features.Refusal]string{
+	for r, want := range map[*core.Refusal]string{
 		{Disabled: true, Feature: "scans"}: "features: scans is switched off",
 		{Feature: "scans"}:                 "features: scans is not in the organization's tier",
 	} {

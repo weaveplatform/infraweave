@@ -1,4 +1,4 @@
-// Package vendors is the version catalogue: Service refreshes each
+// Package core is the version catalogue: Service refreshes each
 // vendor's stored releases from its release index, adding the ones it
 // lacks, and logs an index it cannot read, keeping that vendor's stored
 // releases as they are; it lists a vendor's stored releases newest first
@@ -18,4 +18,4 @@
 //
 // It imports internal/iac and iac/version, internal/kernel and the
 // domain's index package. The vendors domain's assembly constructs it.
-package vendors
+package core

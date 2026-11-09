@@ -19,7 +19,7 @@ import (
 	sqlsearch "github.com/weaveplatform/infraweave/internal/platform/sql/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
-	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 )
 
 // StreamName is the stacks stream's name in schema_migrations.
@@ -51,7 +51,7 @@ type Store struct{ db DB }
 // New returns the store on db.
 func New(db DB) *Store { return &Store{db: db} }
 
-var _ stacks.Store = (*Store)(nil)
+var _ core.Store = (*Store)(nil)
 
 // columns are a stack's columns as scan reads them, over stacks s. Hooks
 // read as one JSON object of each phase's commands in order, and labels
@@ -71,9 +71,9 @@ const columns = `s.account_id, s.id, s.slug, s.space_id, s.name, s.description, 
 		WHERE l.account_id = s.account_id AND l.stack_id = s.id ORDER BY l.label)`
 
 // scan reads columns, then into extra.
-func scan(row pgx.Row, extra ...any) (stacks.Stack, error) {
+func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 	var (
-		st                     stacks.Stack
+		st                     core.Stack
 		config, hooks          []byte
 		lockedAt               *time.Time
 		holder, lockedBy, note *string
@@ -89,11 +89,11 @@ func scan(row pgx.Row, extra ...any) (stacks.Stack, error) {
 		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &hooks, &st.Labels,
 	}, extra...)...)
 	if err != nil {
-		return stacks.Stack{}, err //nolint:wrapcheck // callers name the read
+		return core.Stack{}, err //nolint:wrapcheck // callers name the read
 	}
 	st.VendorConfig = config
 	if err := json.Unmarshal(hooks, &st.Hooks); err != nil {
-		return stacks.Stack{}, fmt.Errorf("stacks: hooks of %s: %w", st.Slug, err)
+		return core.Stack{}, fmt.Errorf("stacks: hooks of %s: %w", st.Slug, err)
 	}
 	if holder != nil {
 		st.Lock = &stacksapi.Lock{Holder: *holder, At: *lockedAt}
@@ -131,7 +131,7 @@ func (s *Store) Read(
 	acct kernel.AccountID,
 	id kernel.ULID,
 	lock bool,
-) (stacks.Stack, error) {
+) (core.Stack, error) {
 	return s.one(ctx, "s.id = $2", acct, id, lock)
 }
 
@@ -141,7 +141,7 @@ func (s *Store) BySlug(
 	acct kernel.AccountID,
 	slug string,
 	lock bool,
-) (stacks.Stack, error) {
+) (core.Stack, error) {
 	return s.one(ctx, "s.slug = $2", acct, slug, lock)
 }
 
@@ -151,7 +151,7 @@ func (s *Store) one(
 	acct kernel.AccountID,
 	key any,
 	lock bool,
-) (stacks.Stack, error) {
+) (core.Stack, error) {
 	q := `SELECT ` + columns + ` FROM stacks s WHERE s.account_id = $1 AND ` + where
 	if lock {
 		q += ` FOR UPDATE OF s`
@@ -159,9 +159,9 @@ func (s *Store) one(
 	st, err := scan(tx.Q(ctx, s.db).QueryRow(ctx, q, acct, key))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return stacks.Stack{}, fmt.Errorf("%w: stack %v", stacksapi.ErrNotFound, key)
+		return core.Stack{}, fmt.Errorf("%w: stack %v", stacksapi.ErrNotFound, key)
 	case err != nil:
-		return stacks.Stack{}, fmt.Errorf("stacks: read stack %v: %w", key, sql.Unavailable(err))
+		return core.Stack{}, fmt.Errorf("stacks: read stack %v: %w", key, sql.Unavailable(err))
 	}
 	return st, nil
 }
@@ -192,7 +192,7 @@ func (s *Store) ByRepository(
 }
 
 // Create writes a new stack with its hooks and labels.
-func (s *Store) Create(ctx context.Context, st stacks.Stack) error {
+func (s *Store) Create(ctx context.Context, st core.Stack) error {
 	//nolint:wrapcheck // each statement in the transaction names itself
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO stacks (account_id, id, slug, space_id,
@@ -207,14 +207,14 @@ func (s *Store) Create(ctx context.Context, st stacks.Stack) error {
 }
 
 // Write replaces the stack's settings, hooks, labels, slug and lock.
-func (s *Store) Write(ctx context.Context, st stacks.Stack) error {
+func (s *Store) Write(ctx context.Context, st core.Stack) error {
 	//nolint:wrapcheck // each statement in the transaction names itself
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		return s.write(ctx, st)
 	})
 }
 
-func (s *Store) write(ctx context.Context, st stacks.Stack) error {
+func (s *Store) write(ctx context.Context, st core.Stack) error {
 	q := tx.Q(ctx, s.db)
 	var lockedAt *time.Time
 	var holder, by, note *string
@@ -291,11 +291,11 @@ func (s *Store) write(ctx context.Context, st stacks.Stack) error {
 	return nil
 }
 
-// writeError names a failed write of st, a *stacks.SlugTaken when another
+// writeError names a failed write of st, a *core.SlugTaken when another
 // stack of its account holds its slug.
-func writeError(st stacks.Stack, err error) error {
+func writeError(st core.Stack, err error) error {
 	if pe, ok := errors.AsType[*pgconn.PgError](err); ok && pe.Code == "23505" {
-		return &stacks.SlugTaken{Slug: st.Slug}
+		return &core.SlugTaken{Slug: st.Slug}
 	}
 	return fmt.Errorf("stacks: write stack %s: %w", st.Slug, sql.Unavailable(err))
 }
@@ -314,7 +314,7 @@ func (s *Store) SetStar(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
-	actor stacks.Actor,
+	actor core.Actor,
 	on bool,
 ) error {
 	q := `DELETE FROM stack_stars
@@ -334,7 +334,7 @@ func (s *Store) Starred(
 	ctx context.Context,
 	acct kernel.AccountID,
 	ids []kernel.ULID,
-	actor stacks.Actor,
+	actor core.Actor,
 ) (map[kernel.ULID]bool, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT stack_id FROM stack_stars
 		WHERE account_id = $1 AND stack_id = ANY($2) AND actor_kind = $3 AND actor_id = $4`,
@@ -367,7 +367,7 @@ func (s *Store) SpaceInUse(
 	return used, nil
 }
 
-// stackColumn is the SQL of each of stacks.Fields. The account's space
+// stackColumn is the SQL of each of core.Fields. The account's space
 // tree belongs to the access domain, so space reads it from the scope
 // rather than from a table this domain does not own.
 var stackColumn = map[string]sqlsearch.Column{
@@ -392,7 +392,7 @@ var stackColumn = map[string]sqlsearch.Column{
 	"createdAt":   {Expr: "s.created_at", Cast: "timestamptz"},
 }
 
-// stackSearch is the stacks table as stacks.Fields search it. The caller's
+// stackSearch is the stacks table as core.Fields search it. The caller's
 // star joins every query, $2 and $3 naming the caller, and its key holds
 // one star per caller and stack, so the join never repeats a stack.
 var stackSearch = func() sqlsearch.Entity {
@@ -403,7 +403,7 @@ var stackSearch = func() sqlsearch.Entity {
 		Select: columns, Space: "s.space_id", ID: "s.slug",
 		Order: []search.Order{{Field: "id"}},
 	}
-	for _, f := range stacks.Fields {
+	for _, f := range core.Fields {
 		c := stackColumn[f.Name]
 		c.Field = f
 		e.Columns = append(e.Columns, c)
@@ -412,7 +412,7 @@ var stackSearch = func() sqlsearch.Entity {
 }()
 
 // searchScope is scope as the search of acct's stacks reads it.
-func searchScope(acct kernel.AccountID, scope stacks.Scope) sqlsearch.Scope {
+func searchScope(acct kernel.AccountID, scope core.Scope) sqlsearch.Scope {
 	spaces := make([]sqlsearch.SpaceNode, len(scope.Spaces))
 	for i, n := range scope.Spaces {
 		spaces[i] = sqlsearch.SpaceNode{Space: n.ID, Parent: n.Parent, ID: n.Slug, Display: n.Name}
@@ -430,8 +430,8 @@ func (s *Store) Search(
 	ctx context.Context,
 	acct kernel.AccountID,
 	in search.Input,
-	scope stacks.Scope,
-) (search.Result[stacks.Stack], error) {
+	scope core.Scope,
+) (search.Result[core.Stack], error) {
 	out, err := sqlsearch.Find(
 		ctx,
 		tx.Q(ctx, s.db),
@@ -451,7 +451,7 @@ func (s *Store) Suggest(
 	ctx context.Context,
 	acct kernel.AccountID,
 	in search.SuggestionsInput,
-	scope stacks.Scope,
+	scope core.Scope,
 ) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), stackSearch, searchScope(acct, scope), in)
 	if err != nil {

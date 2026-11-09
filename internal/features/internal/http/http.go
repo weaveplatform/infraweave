@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
-	"github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
 // Allower decides whether the request ctx carries may use a feature,
-// refusing it with a *features.Refusal; features.Service is one.
+// refusing it with a *core.Refusal; core.Service is one.
 type Allower interface {
 	Allow(ctx context.Context, feature string) error
 }
@@ -48,7 +48,7 @@ func Middleware(
 			}
 			for _, f := range needs {
 				err := a.Allow(r.Context(), f)
-				if refused, ok := errors.AsType[*features.Refusal](err); ok {
+				if refused, ok := errors.AsType[*core.Refusal](err); ok {
 					problem.Write(w, refusal(refused))
 					return
 				}
@@ -115,7 +115,7 @@ func valueAt(doc any, pointer string) any {
 	return doc
 }
 
-func refusal(r *features.Refusal) problem.Problem {
+func refusal(r *core.Refusal) problem.Problem {
 	if r.Disabled {
 		p := problem.FeatureDisabled.New(fmt.Sprintf(
 			"The operator has switched off %s for this installation.", r.Feature))

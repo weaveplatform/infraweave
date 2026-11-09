@@ -164,13 +164,13 @@ infraweave/
 │   │   └── agenttest/             fake server over the generated worker spec
 │   │
 │   │   Business domains. Hexagon domains split internal/core from internal/adapters;
-│   │   flat domains hold one logic package, an http package and a pg package.
+│   │   flat domains hold one logic package, internal/core, beside an http package and a pg package.
 │   │
 │   ├── features/                  flat, at the bottom of the domain graph: catalogue, tiers, grants, entitlement,
 │   │   │                          the feature middleware and the operator API's features operations (P3b)
-│   │   └── api/ assembly/ internal/{features,operator,http,pg}/ catalogue.gen.go
+│   │   └── api/ assembly/ internal/{core,operator,http,pg}/ catalogue.gen.go
 │   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
-│   │   └── assembly/ internal/{expressions,http}/   no api/: no domain calls it
+│   │   └── assembly/ internal/{core,http}/   no api/: no domain calls it
 │   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, the OAuth
 │   │                              authorization server, spaces, RBAC, the Organization tag (P3 to P4b, P13b, P23)
 │   │   ├── api/                   Authenticator, Authorizer, Spaces, Tokens, identity reads, events
@@ -180,9 +180,9 @@ infraweave/
 │   │       │                      space authz (P4); role binding (P4b); login (P13b); sso scim mfa (P23); port
 │   │       └── adapters/          http (incl. login.v1, P17); pg; saml oidc (P23)
 │   ├── stacks/                    flat: stacks, settings, hooks, labels, human lock (P5); dependency (P16)
-│   │   └── api/ assembly/ internal/{stacks,dependency,http,pg}/
+│   │   └── api/ assembly/ internal/{core,dependency,http,pg}/
 │   ├── configuration/             flat: config elements, contexts, attachments, auto-attach (P6)
-│   │   └── api/ assembly/ internal/{configuration,http,pg}/
+│   │   └── api/ assembly/ internal/{core,http,pg}/
 │   ├── runs/                      hexagon: owns every table a run transition writes (P7, P9, P10, P16)
 │   │   ├── api/                   Runs, Scheduler, Reports, StackStatus, StateAccess, events
 │   │   ├── assembly/
@@ -194,26 +194,26 @@ infraweave/
 │   ├── workers/                   hexagon: pools, workers, credentials, worker protocol endpoints, pool samples (P8, P14)
 │   │   └── api/ assembly/ internal/{core/{pool,worker,credential,drain,waiter,sample,port},adapters/{http,protocol,pg}}/
 │   ├── vendors/                   flat: tool version catalogue (P5, P20), refreshed from the release indexes
-│   │   └── api/ assembly/ internal/{vendors,http,pg,index/indextest}/
+│   │   └── api/ assembly/ internal/{core,http,pg,index/indextest}/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
-│   │   └── api/ assembly/ internal/{state,backend,http,pg}/
+│   │   └── api/ assembly/ internal/{core,backend,http,pg}/
 │   ├── vcs/                       hexagon: integrations, webhooks, routing, feedback (P9, P12, P19, P19b)
 │   │   └── api/ assembly/ internal/{core/{integration,intake,normalize,route,feedback,pullrequest,port},
 │   │                              adapters/{http,github,gitlab,bitbucketcloud,bitbucketdc,azuredevops,rawgit,agentgateway,pg}}/
 │   ├── policies/                  flat: policies, attachments, inputs, combination, samples, simulation (P13, P13b)
-│   │   └── api/ assembly/ internal/{policies,inputs,combine,sample,http,pg}/
+│   │   └── api/ assembly/ internal/{core,inputs,combine,sample,http,pg}/
 │   ├── cloud/                     flat: AWS, Azure, GCP integrations, attachments, OIDC run tokens (P15)
-│   │   └── api/ assembly/ internal/{cloud,oidc,aws,azure,gcp,http,pg}/
+│   │   └── api/ assembly/ internal/{core,oidc,aws,azure,gcp,http,pg}/
 │   ├── schedules/                 flat: scheduled runs, tasks, deletes, drift detection (P16)
-│   │   └── api/ assembly/ internal/{schedules,http,pg}/
+│   │   └── api/ assembly/ internal/{core,http,pg}/
 │   ├── registry/                  hexagon: modules, versions, test cases, providers, GPG keys (P17, P17b)
 │   │   └── api/ assembly/ internal/{core/{module,version,testcase,provider,gpg,sharing,port},adapters/{http,protocol,pg}}/
 │   ├── events/                    hexagon: the sinks: inbox, named and stack webhooks, streams, audit trail, Slack, Teams (P18, P18b)
 │   │   └── api/ assembly/ internal/{core/{inbox,webhook,delivery,stream,audit,metrics,port},adapters/{http,slack,pg}}/
 │   ├── templates/                 flat: blueprints, templates, versions, deployments (P21)
-│   │   └── api/ assembly/ internal/{templates,render,http,pg}/
+│   │   └── api/ assembly/ internal/{core,render,http,pg}/
 │   ├── resources/                 flat: managed entities, scans, generic search (P22, P22b)
-│   │   └── api/ assembly/ internal/{resources,search,scans,http,pg}/
+│   │   └── api/ assembly/ internal/{core,search,scans,http,pg}/
 │   ├── intelligence/              hexagon: AI integrations, Infra Assistant, Intent, MCP (P25, P25b)
 │   │   └── api/ assembly/ internal/{core/{aiintegration,assistant,intent,tools,port},adapters/{http,mcp,providers,pg}}/
 │   └── flows/                     hexagon: Flows, belonging to the account, in its own PostgreSQL schema; its Deploy

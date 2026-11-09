@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/features"
-	core "github.com/weaveplatform/infraweave/internal/features/internal/features"
+	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	opapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"

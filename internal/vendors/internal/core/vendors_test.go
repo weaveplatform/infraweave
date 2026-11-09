@@ -1,4 +1,4 @@
-package vendors_test
+package core_test
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/iac/version"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
+	"github.com/weaveplatform/infraweave/internal/vendors/internal/core"
 	"github.com/weaveplatform/infraweave/internal/vendors/internal/index"
-	"github.com/weaveplatform/infraweave/internal/vendors/internal/vendors"
 )
 
 // store keeps releases in memory, in the order it was given them.
@@ -71,7 +71,7 @@ func TestUnitRefresh(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(&logs, nil))
 	st := &store{held: map[vendorsapi.Vendor][]string{vendorsapi.OpenTofu: {"1.6.0"}}}
 	tofu := &reader{versions: []string{"1.7.0", "1.6.0"}}
-	svc := vendors.New(st, map[vendorsapi.Vendor]index.Reader{
+	svc := core.New(st, map[vendorsapi.Vendor]index.Reader{
 		vendorsapi.Terraform: reader{versions: []string{"1.5.7", "1.6.0", "1.5.0"}},
 		vendorsapi.OpenTofu:  tofu,
 	})
@@ -123,7 +123,7 @@ func TestUnitRefresh(t *testing.T) {
 	}
 
 	// A vendor with no index is not refreshed.
-	if err := vendors.New(&store{held: map[vendorsapi.Vendor][]string{}}, nil).
+	if err := core.New(&store{held: map[vendorsapi.Vendor][]string{}}, nil).
 		Refresh(ctx, log); err != nil {
 		t.Errorf("Refresh with no indexes = %v", err)
 	}
@@ -134,7 +134,7 @@ func TestUnitRefresh(t *testing.T) {
 // or that no stored release meets.
 func TestUnitEffective(t *testing.T) {
 	ctx := t.Context()
-	svc := vendors.New(&store{held: map[vendorsapi.Vendor][]string{
+	svc := core.New(&store{held: map[vendorsapi.Vendor][]string{
 		vendorsapi.Terraform: {"1.5.0", "1.6.0", "1.5.7", "1.10.0"},
 	}}, nil)
 	for constraints, want := range map[string]string{
@@ -168,11 +168,11 @@ func TestUnitEffective(t *testing.T) {
 		t.Error("an empty catalogue resolved a version")
 	}
 
-	bad := vendors.New(
+	bad := core.New(
 		&store{held: map[vendorsapi.Vendor][]string{vendorsapi.Terraform: {"one"}}},
 		nil,
 	)
-	if _, err := bad.Versions(ctx, vendorsapi.Terraform); !errors.Is(err, vendors.ErrStored) {
+	if _, err := bad.Versions(ctx, vendorsapi.Terraform); !errors.Is(err, core.ErrStored) {
 		t.Errorf("a stored release that does not parse = %v", err)
 	}
 }
@@ -188,7 +188,7 @@ func TestUnitVendorsAreKinds(t *testing.T) {
 			t.Errorf("vendor %q, kind %q", v, k)
 		}
 	}
-	if len(vendors.Kinds) != 2 {
-		t.Errorf("vendors %v", vendors.Kinds)
+	if len(core.Kinds) != 2 {
+		t.Errorf("vendors %v", core.Kinds)
 	}
 }
