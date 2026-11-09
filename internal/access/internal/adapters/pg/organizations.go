@@ -230,14 +230,18 @@ func (s *Store) DeleteOrganization(
 		for _, ss := range revoked {
 			ids = append(ids, ss.ID)
 		}
+		rows, err := q.Query(ctx,
+			`SELECT id FROM accounts WHERE organization_id = $1 ORDER BY id`, id)
+		if err != nil {
+			return fmt.Errorf("access: %w", sql.Unavailable(err))
+		}
+		accts, err := pgx.CollectRows(rows, pgx.RowTo[kernel.AccountID])
+		if err != nil {
+			return fmt.Errorf("access: read accounts: %w", sql.Unavailable(err))
+		}
 		for _, stmt := range deleteOrganization {
 			if _, err := q.Exec(ctx, stmt, id); err != nil {
 				return fmt.Errorf("access: %w", sql.Unavailable(err))
-			}
-		}
-		if s.features != nil {
-			if err := s.features.DeleteOrganization(ctx, id); err != nil {
-				return fmt.Errorf("access: %w", err)
 			}
 		}
 		tag, err := q.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, id)
@@ -246,6 +250,9 @@ func (s *Store) DeleteOrganization(
 		}
 		if tag.RowsAffected() == 0 {
 			return fmt.Errorf("%w: organization %s", port.ErrNotFound, id)
+		}
+		if err := s.deleted(ctx, id, accts, true); err != nil {
+			return err
 		}
 		_, err = audit.RecordOrganization(ctx, e)
 		return err //nolint:wrapcheck // names itself

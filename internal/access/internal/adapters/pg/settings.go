@@ -275,13 +275,11 @@ func (s *Store) removeAccount(
 				return fmt.Errorf("access: %w", sql.Unavailable(err))
 			}
 		}
-		if s.features != nil {
-			if err := s.features.DeleteAccount(ctx, acct); err != nil {
-				return fmt.Errorf("access: %w", err)
-			}
-		}
 		if _, err := q.Exec(ctx, `DELETE FROM accounts WHERE id = $1`, acct); err != nil {
 			return fmt.Errorf("access: %w", sql.Unavailable(err))
+		}
+		if err := s.deleted(ctx, held, []kernel.AccountID{acct}, false); err != nil {
+			return err
 		}
 		_, err = audit.RecordOrganization(ctx, e)
 		return err //nolint:wrapcheck // names itself

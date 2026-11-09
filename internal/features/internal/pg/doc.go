@@ -14,7 +14,8 @@
 // bumps the entitlement version of every organization it touches. A tier an
 // organization holds or the default names cannot be deleted
 // (core.ErrInvalidState). Every method joins the transaction its context
-// carries.
+// carries. Held names the columns that hold the access domain's
+// organizations and accounts.
 //
 // ref: decisions 0004 and 0021
 //
@@ -29,6 +30,7 @@
 //
 // It imports the catalogue (internal/features) for Tier, featuresapi, the
 // domain's core package for the payload, internal/kernel,
-// platform/sql, platform/sql/migrate, platform/sql/notify, platform/tx and
+// platform/sql, platform/sql/integrity, platform/sql/migrate,
+// platform/sql/notify, platform/tx and
 // pgx. The features domain's assembly constructs it.
 package pg

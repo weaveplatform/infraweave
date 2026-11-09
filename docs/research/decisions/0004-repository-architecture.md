@@ -115,14 +115,20 @@ with its dependency rules as written there. In summary:
     and the owner refuses the move with `422` naming each one, as
     `stacksapi.StackGuard` and `accessapi.SpaceGuard` do for attachments a
     move would leave out of reach.
-  - **Purges.** Deleting an account or an organization is asynchronous.
-    `access` marks it deleting, revokes its sessions and keys, and answers
-    `404` for it from then on; it then enqueues one purge job per domain
-    that registered a purge. Each purge deletes the domain's rows of that
-    account in batches, as queue jobs ([0011](0011-persistent-work-queue.md)),
-    and reports done. `access` deletes its own rows once every purge has.
-    A purge removes rows the account owns whatever guards would say, since
-    nothing outside the account can hold them.
+  - **Purges.** Deleting an account or an organization deletes `access`'
+    rows of it in one transaction, revoking its sessions and keys, so it
+    answers `404` from then on. The same transaction appends an
+    `account.deleted` event per account to the outbox
+    ([0015](0015-events-notifications-webhooks-audit.md)). Each domain
+    that keeps rows of an account consumes the event and deletes them in
+    batches, a transaction each; the outbox retries a consumer that fails
+    or stops part way until it finishes
+    ([0011](0011-persistent-work-queue.md)). Nothing waits for the
+    purges, and `access` registers none. A purge removes rows the account
+    owns whatever guards would say, since nothing outside the account can
+    hold them. The nightly `integrity.orphans` task counts, per held
+    column, the IDs whose row is gone, so a purge that never finishes is
+    seen.
   - **Reads across domains.** A list that filters by another domain's data
     takes an ID set from that domain's `api/`, as stack search takes the
     caller's reachable spaces from `accessapi`. Data a list must also sort
@@ -290,9 +296,9 @@ three reasons:
 - **Deletion.** A key from `stacks` to `access`' spaces and accounts must
   not cascade, or one domain would remove rows another owns. Without a
   cascade, deleting an account fails on every domain's rows, and `access`,
-  which imports none of those domains, cannot remove them first. An
-  asynchronous purge per domain is the only order that works, and it needs
-  no key.
+  which imports none of those domains, cannot remove them first.
+  Deleting `access`' rows first, with each domain purging its own after
+  from an event, is the only order that works, and it needs no key.
 - **Test isolation.** With keys, a domain's store tests must migrate every
   stream it references, so a test of `stacks` would carry `access`' schema
   and seed data. Without them each domain tests on its own stream, with

@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/features/internal/http"
 	"github.com/weaveplatform/infraweave/internal/features/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -62,6 +63,10 @@ func (s Settings) Validate() error {
 
 // Stream is the features domain's migration stream.
 func Stream() migrate.Stream { return pg.Stream() }
+
+// Held are the features columns that hold other domains' rows, for the
+// nightly orphan count.
+func Held() []integrity.Held { return pg.Held() }
 
 // Deps are what the features domain takes from the platform.
 type Deps struct {
@@ -120,6 +125,22 @@ func (d *Domain) OperatorAPI(orgs Organizations) FeaturesOperatorAPI {
 
 // Entitlements is what other domains call of this one.
 func (d *Domain) Entitlements() featuresapi.Entitlements { return d.entitlements }
+
+// Purge deletes the domain's rows of the deleted account acct: its
+// limits, or, when its organization org went with it, the organization's
+// entitlement, grants and every account's limits. internal/app runs it for
+// each accessapi.Deleted; a purge that runs again finds nothing left.
+func (d *Domain) Purge(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	acct kernel.AccountID,
+	whole bool,
+) error {
+	if whole {
+		return d.entitlements.DeleteOrganization(ctx, org) //nolint:wrapcheck // names the delete
+	}
+	return d.entitlements.DeleteAccount(ctx, acct) //nolint:wrapcheck // as above
+}
 
 // Seed installs the seeded tiers the first time, and brings forward those
 // the operator has not changed since; every mode that opens the database

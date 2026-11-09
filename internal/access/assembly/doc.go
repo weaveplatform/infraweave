@@ -15,7 +15,11 @@
 // accessapi.Spaces such a domain holds a space through and reads the
 // tree from; Stream is its
 // migration stream and SealedColumns its sealed columns, which
-// internal/app registers in construction order. Settings are its
+// internal/app registers in construction order. Deleting an account or an
+// organization appends accessapi.Deleted to Deps.Events for each account,
+// whose kind RegisterEvents registers; Keys are the accounts,
+// organizations and spaces other domains hold by ID, for the nightly
+// orphan count. Settings are its
 // auth.* settings: the issuer, auth.tokens.api.ttl, the authorization
 // server's auth.tokens.oauth_access.ttl, oauth_refresh.ttl and
 // oauth_code.ttl (an hour, 30 days and a minute), auth.session's
@@ -54,10 +58,12 @@
 // # Dependencies
 //
 // It imports accessapi, featuresapi, whose Entitlements Deps.Features
-// carries for the organization and account deletes and the account limits, the access domain's adapters (oidc among them) and
+// carries for the organization's entitlement and the account limits, the
+// access domain's adapters (oidc among them) and
 // its apikey, authn, authz, breakglass, group, operator, orgadmin, session,
 // settings, space, token and user packages, platform/cron and platform/queue for its
-// tasks, platform/crypt and platform/crypt/signer, platform/sql/migrate
+// tasks, platform/outbox for its event, platform/crypt and
+// platform/crypt/signer, platform/sql/integrity, platform/sql/migrate,
 // platform/sql/notify, platform/httpkit/problem and chi. Only
 // internal/app and cmd/ import it, as the
 // constructors rule enforces.

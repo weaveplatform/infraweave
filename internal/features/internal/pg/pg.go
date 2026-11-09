@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/features/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -35,6 +36,29 @@ var files embed.FS
 func Stream() migrate.Stream {
 	sub, _ := fs.Sub(files, "migrations") // a valid path, so never an error
 	return migrate.Stream{Name: StreamName, Files: sub}
+}
+
+// Held are the features columns that hold the access domain's rows: each
+// organization's entitlement and grants, and each account's limits.
+func Held() []integrity.Held {
+	return []integrity.Held{
+		{
+			Entity:  "organization",
+			Table:   "organization_entitlements",
+			Columns: []string{"organization_id"},
+		},
+		{
+			Entity:  "organization",
+			Table:   "organization_feature_grants",
+			Columns: []string{"organization_id"},
+		},
+		{
+			Entity:  "organization",
+			Table:   "organization_limit_grants",
+			Columns: []string{"organization_id"},
+		},
+		{Entity: "account", Table: "account_limits", Columns: []string{"account_id"}},
+	}
 }
 
 // DB is what the store needs of PostgreSQL: queries, and transactions for

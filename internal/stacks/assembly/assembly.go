@@ -1,10 +1,13 @@
 package assembly
 
 import (
+	"context"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
@@ -14,6 +17,10 @@ import (
 
 // Stream is the stacks domain's migration stream.
 func Stream() migrate.Stream { return pg.Stream() }
+
+// Held are the stacks columns that hold other domains' rows, for the
+// nightly orphan count.
+func Held() []integrity.Held { return pg.Held() }
 
 // Entity is the kind of entity the access domain's middleware finds a
 // stack's space for, as the API's x-infraweave-subject names it.
@@ -34,16 +41,35 @@ type Deps struct {
 // Domain is the stacks domain, constructed once per process.
 type Domain struct {
 	stacks *core.Service
+	store  *pg.Store
 	api    http.Server
 }
 
 // New constructs the domain on d.
 func New(d Deps) *Domain {
+	store := pg.New(d.DB)
 	svc := core.New(core.Deps{
-		Store: pg.New(d.DB), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Events: d.Events,
+		Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Events: d.Events,
 		Now: d.Now,
 	})
-	return &Domain{stacks: svc, api: http.New(svc, d.Authz, d.Spaces)}
+	return &Domain{stacks: svc, store: store, api: http.New(svc, d.Authz, d.Spaces)}
+}
+
+// PurgeBatch is how many stacks one statement of Purge deletes, so no
+// transaction holds an account's every stack and its rows at once.
+const PurgeBatch = 500
+
+// Purge deletes the deleted account acct's stacks, with their hooks,
+// labels and stars, PurgeBatch at a time. internal/app runs it for each
+// accessapi.Deleted; a purge stopped part way keeps what it deleted, and
+// running it again finishes.
+func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.store.Purge(ctx, acct, PurgeBatch)
+		if err != nil || done {
+			return err //nolint:wrapcheck // the store names the purge
+		}
+	}
 }
 
 // RegisterEvents adds the domain's event kinds to kinds, before the

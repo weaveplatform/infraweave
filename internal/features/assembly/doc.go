@@ -9,6 +9,10 @@
 // by its slug; API is its partial of the API's strict server, aliased
 // FeaturesAPI, over the SeatCounter that counts an organization's seats;
 // WatchEntitlements drops the replica's snapshots on infraweave_invalidate;
+// Purge deletes a deleted account's limits, or its organization's
+// entitlement, grants and limits when the organization went with it, which
+// internal/app runs for each accessapi.Deleted; Held declares the columns
+// that hold organizations and accounts, for the nightly orphan count;
 // Stream is its migration stream, which internal/app registers ahead of
 // access'; Settings are its features.* settings, features.disabled the
 // features no organization of the installation holds, which Validate
@@ -24,7 +28,8 @@
 // # Dependencies
 //
 // It imports the catalogue (internal/features), featuresapi, the domain's
-// core, http and pg packages, internal/kernel, platform/sql/migrate,
+// core, http and pg packages, internal/kernel, platform/sql/integrity,
+// platform/sql/migrate,
 // platform/sql/notify and platform/tx. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.
 package assembly

@@ -3,9 +3,11 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
@@ -314,8 +316,7 @@ func TestAccRemoveAccount(t *testing.T) {
 	db := pool(t)
 	x := seed(t, db, "pied-piper")
 	other := seed(t, db, "nucleus")
-	f := &accountFeatures{}
-	s := pg.New(db).WithFeatures(f)
+	s := pg.New(db).WithEvents(events(t, db, true))
 	two := second(t, x, "pied-piper-two")
 	e := byAdmin(x, orgadmin.ActionAccountDelete)
 	if _, err := s.RemoveAccount(ctx, other.org, two, e); !errors.Is(err, port.ErrNotFound) {
@@ -324,8 +325,9 @@ func TestAccRemoveAccount(t *testing.T) {
 	if _, err := s.RemoveAccount(ctx, x.org, two, e); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.deleted) != 1 || f.deleted[0] != two || !f.inTx {
-		t.Errorf("features deleted %v, in a transaction %t", f.deleted, f.inTx)
+	want := []accessapi.Deleted{{Account: two.ULID, Organization: x.org.ULID}}
+	if got := deletedOf(t, db, two); !slices.Equal(got, want) {
+		t.Errorf("events = %+v, want %+v", got, want)
 	}
 	if _, err := s.RemoveAccount(ctx, x.org, x.acct, e); !errors.Is(err, orgadmin.ErrInvalidState) {
 		t.Errorf("remove the last account = %v", err)

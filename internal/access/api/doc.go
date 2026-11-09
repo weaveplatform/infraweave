@@ -24,7 +24,10 @@
 // infraweave's own account actions on API keys, sessions, managed users
 // and groups (Infraweave, and Anywhere for the reads any space's admin
 // holds), and the pseudo-actions ACCOUNT_ADMIN, ORGANIZATION_ADMIN and
-// AUTHENTICATED; Actions and ActionOf read it.
+// AUTHENTICATED; Actions and ActionOf read it. Deleted is the event an
+// account's deletion appends, one per account of a deleted organization,
+// with DeletedSchema its document's schema; the domains that keep an
+// account's rows consume it and delete them.
 //
 // ref: decision 0007
 //

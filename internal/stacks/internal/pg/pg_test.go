@@ -3,6 +3,7 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -81,6 +82,68 @@ func TestAccStore(t *testing.T) {
 	}
 }
 
+// TestAccPurge deletes a deleted account's stacks a batch at a time, with
+// their hooks, labels and stars, and none of another account's: a purge
+// stopped after its first batch keeps what that batch deleted, and running
+// it again finishes.
+func TestAccPurge(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	gone, kept := kernel.NewAccountID(), kernel.NewAccountID()
+	for i, acct := range []kernel.AccountID{gone, gone, gone, kept} {
+		id, n := kernel.NewULID(), fmt.Sprint(i)
+		for _, stmt := range []struct {
+			sql  string
+			args []any
+		}{
+			{
+				`INSERT INTO stacks (account_id, id, slug, space_id, name, repository, branch,
+				provider, vendor)
+			VALUES ($1, $2, 'infra-' || $3, $2, 'Infra', 'infra', 'main', 'GITHUB', 'terraform')`,
+				[]any{acct, id, n},
+			},
+			{`INSERT INTO stack_hooks (account_id, stack_id, phase, position, command)
+			VALUES ($1, $2, 'before_init', 0, 'echo')`, []any{acct, id}},
+			{
+				`INSERT INTO stack_labels (account_id, stack_id, label) VALUES ($1, $2, 'infra')`,
+				[]any{acct, id},
+			},
+			{`INSERT INTO stack_stars (account_id, stack_id, actor_kind, actor_id)
+			VALUES ($1, $2, 'api_key', $2)`, []any{acct, id}},
+		} {
+			if _, err := db.Exec(ctx, stmt.sql, stmt.args...); err != nil {
+				t.Fatalf("%s: %v", stmt.sql, err)
+			}
+		}
+	}
+	rows := func(acct kernel.AccountID) int {
+		var n int
+		if err := db.QueryRow(ctx, `SELECT
+			(SELECT count(*) FROM stacks WHERE account_id = $1)
+			+ (SELECT count(*) FROM stack_hooks WHERE account_id = $1)
+			+ (SELECT count(*) FROM stack_labels WHERE account_id = $1)
+			+ (SELECT count(*) FROM stack_stars WHERE account_id = $1)`, acct).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if done, err := s.Purge(ctx, gone, 2); err != nil || done || rows(gone) != 4 {
+		t.Fatalf("the first batch: done %t, %v, %d rows left", done, err, rows(gone))
+	}
+	for _, want := range []bool{true, true} {
+		if done, err := s.Purge(ctx, gone, 2); err != nil || done != want {
+			t.Fatalf("a later batch: done %t, %v", done, err)
+		}
+	}
+	if n := rows(gone); n != 0 {
+		t.Errorf("%d rows of the deleted account left", n)
+	}
+	if n := rows(kept); n != 4 {
+		t.Errorf("another account keeps %d rows, want 4", n)
+	}
+}
+
 // TestAccStoreUnavailable checks that a read on a closed pool fails, and
 // not as a missing stack.
 func TestAccStoreUnavailable(t *testing.T) {
@@ -104,6 +167,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"Create":       s.Create(ctx, st),
 		"Write":        s.Write(ctx, st),
 		"Delete":       s.Delete(ctx, acct, id),
+		"Purge":        func() error { _, err := s.Purge(ctx, acct, 1); return err }(),
 		"SetStar":      s.SetStar(ctx, acct, id, actor, true),
 		"Starred":      func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
 		"Search": func() error {

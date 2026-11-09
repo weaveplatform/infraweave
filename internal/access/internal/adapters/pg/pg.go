@@ -3,6 +3,7 @@ package pg
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -11,13 +12,16 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
@@ -41,6 +45,16 @@ func Stream() migrate.Stream {
 // with the platform's.
 func SealedColumns() []crypt.Column { return []crypt.Column{privateKey} }
 
+// Keys are how the access domain finds the rows other domains hold by ID:
+// an account, an organization, and a space within its account.
+func Keys() []integrity.Key {
+	return []integrity.Key{
+		{Entity: "account", Table: "accounts", Columns: []string{"id"}},
+		{Entity: "organization", Table: "organizations", Columns: []string{"id"}},
+		{Entity: "space", Table: "spaces", Columns: []string{"account_id", "id"}},
+	}
+}
+
 // DB is what the store needs of PostgreSQL: queries, and transactions for
 // a write of several rows.
 type DB interface {
@@ -51,10 +65,12 @@ type DB interface {
 // Store is port.Tenancy on PostgreSQL.
 type Store struct {
 	db DB
-	// features holds the features domain's rows of each organization and
-	// its limits; nil leaves the rows to whoever holds them and checks no
-	// limit.
+	// features checks the seats limit; nil checks none.
 	features featuresapi.Entitlements
+	// events receives an accessapi.Deleted for each account a deletion
+	// removes, which the domains that keep the account's rows consume; nil
+	// appends none, and leaves those rows to the nightly orphan count.
+	events *outbox.Outbox
 }
 
 var _ port.Tenancy = (*Store)(nil)
@@ -62,13 +78,50 @@ var _ port.Tenancy = (*Store)(nil)
 // New returns the store on db.
 func New(db DB) *Store { return &Store{db: db} }
 
-// WithFeatures returns s deleting an organization's rows in the features
-// domain, through f, in the transaction that deletes the organization, and
-// checking the seats limit through f in the transaction that records an
-// API key's first use in SeatWindow.
+// WithFeatures returns s checking the seats limit through f in the
+// transaction that records an API key's first use in SeatWindow.
 func (s *Store) WithFeatures(f featuresapi.Entitlements) *Store {
 	s.features = f
 	return s
+}
+
+// WithEvents returns s appending an accessapi.Deleted to events in the
+// transaction that deletes each account.
+func (s *Store) WithEvents(events *outbox.Outbox) *Store {
+	s.events = events
+	return s
+}
+
+// deleted appends an accessapi.Deleted for each of org's accounts accts,
+// with whole set when the organization goes with them.
+func (s *Store) deleted(
+	ctx context.Context,
+	org kernel.OrganizationID,
+	accts []kernel.AccountID,
+	whole bool,
+) error {
+	if s.events == nil {
+		return nil
+	}
+	for _, acct := range accts {
+		doc, err := json.Marshal(accessapi.Deleted{
+			Account: acct.ULID, Organization: org.ULID, OrganizationDeleted: whole,
+		})
+		if err != nil {
+			return fmt.Errorf("access: %w", err)
+		}
+		if _, err := s.events.Append(ctx, outbox.Event{
+			Account:       acct.ULID,
+			Kind:          accessapi.DeletedKind,
+			SchemaVersion: accessapi.DeletedVersion,
+			Subject:       outbox.Subject{Kind: "account", ID: acct.String()},
+			Sequence:      1,
+			Document:      doc,
+		}); err != nil {
+			return fmt.Errorf("access: %w", err)
+		}
+	}
+	return nil
 }
 
 // Organization reads the organization id.

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -18,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
@@ -42,8 +44,9 @@ type Domains struct {
 
 // newDomains constructs every domain on db, sealing under keys and signing
 // tokens through kms under the kms backend, with c's settings; the domains
-// append their events to events, whose kinds newKinds registered. It fails
-// only on a setting a domain reads a file for.
+// append their events to events, whose kinds newKinds registered, and
+// subscribe their purges there. It fails on a setting a domain reads a file
+// for, and on an outbox whose purges are already subscribed.
 func newDomains(
 	c config.Config,
 	db *sql.DB,
@@ -58,6 +61,7 @@ func newDomains(
 	access, err := accessassembly.New(accessassembly.Deps{
 		DB:               db.Primary(),
 		Features:         features.Entitlements(),
+		Events:           events,
 		Keys:             keys,
 		KMS:              kms,
 		Settings:         c.Auth,
@@ -77,7 +81,7 @@ func newDomains(
 	})
 	access.GuardSpaces(stacks.SpaceGuard())
 	access.ResolveSubjects(stacksassembly.Entity, stacks.SpaceOf())
-	return Domains{
+	d := Domains{
 		Features:      features,
 		Access:        access,
 		Vendors:       vendors,
@@ -86,7 +90,11 @@ func newDomains(
 		Expressions:   expressionsassembly.New(),
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),
-	}, nil
+	}
+	if err := subscribePurges(events, d); err != nil {
+		return Domains{}, err
+	}
+	return d, nil
 }
 
 // Allowed is queue.Entitlements over the domains: a job's account names
@@ -108,12 +116,13 @@ var _ queue.Entitlements = Domains{}
 func newKinds() *outbox.Kinds {
 	kinds := outbox.NewKinds()
 	// Each kind's schema is a constant, registered once, so never an error.
+	_ = accessassembly.RegisterEvents(kinds)
 	_ = stacksassembly.RegisterEvents(kinds)
 	return kinds
 }
 
-// cron is every domain's periodic tasks, which the scheduler role runs,
-// logging to log.
-func (d Domains) cron(log *slog.Logger) []cron.Task {
-	return append(d.Access.Cron(), d.Vendors.Cron(log)...)
+// cron is every domain's periodic tasks, with the nightly orphan count
+// over q, which the scheduler role runs, logging to log.
+func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
+	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), []cron.Task{orphansTask(q, log)})
 }

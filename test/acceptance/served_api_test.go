@@ -71,6 +71,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	browser := &browserSteps{a: auth, jar: newJar()}
 	browser.register(sc)
 	(&settingsSteps{a: auth, b: browser}).register(sc)
+	(&purgeSteps{s: s, held: map[string][2]string{}}).register(sc)
 	org := &orgSteps{
 		a: auth, b: browser,
 		ids: map[string]string{}, secrets: map[string]string{}, tag: map[string][][]byte{},

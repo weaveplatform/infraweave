@@ -112,9 +112,6 @@ type Entitlements interface {
 	// CreateOrganization gives org its entitlement on the installation's
 	// default tier, Enterprise unless the operator changed it.
 	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
-	// DeleteOrganization deletes org's entitlement, grants and account
-	// limits; an organization without any is no error.
-	DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error
 	// SetAccountLimit sets acct's limit on the counted thing limit, which
 	// org's entitlement must exist to hold. A name that is no limit of the
 	// catalogue, a negative value, or a value above the organization's
@@ -134,8 +131,6 @@ type Entitlements interface {
 	LimitNames() []string
 	// AccountLimits are acct's limits by limit name.
 	AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error)
-	// DeleteAccount deletes acct's limits.
-	DeleteAccount(ctx context.Context, acct kernel.AccountID) error
 	// Entitlement reads org's entitlement.
 	Entitlement(ctx context.Context, org kernel.OrganizationID) (Entitlement, error)
 	// CheckLimit admits the creation of one more limit in acct: it locks
