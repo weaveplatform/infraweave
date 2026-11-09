@@ -15,7 +15,9 @@
 // settings under secrets.kek, as in secrets.kek.vault.auth.method;
 // ObjectStore holds the objectstore.* settings of platform/objectstore,
 // whose per-store keys are the stores' hyphenated names, as in
-// objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS.
+// objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS;
+// Vendors holds the vendors.* release indexes the version catalogue
+// refreshes from, the vendors domain's assembly Settings.
 // Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags

@@ -80,6 +80,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	spaces := &spaceSteps{o: org}
 	spaces.register(sc)
 	(&stackSearchSteps{s: spaces}).register(sc)
+	(&catalogSteps{o: org}).register(sc)
 	(&updateSteps{o: org, etags: map[string]string{}}).register(sc)
 	(&personalSteps{o: org, k: keys}).register(sc)
 	(&oauthSteps{o: org}).register(sc)
@@ -135,11 +136,21 @@ func serverConfigKEK(dsn, objects string, settings, kek map[string]any) ([]byte,
 		"database":    map[string]any{"url": dsn},
 		"secrets":     secretsWith(kek),
 		"objectstore": objectStore(objects),
+		"vendors":     offlineIndexes,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)
 	}
 	return out, nil
+}
+
+// offlineIndexes are release indexes on a closed local port, which every
+// server reads unless its scenario serves the recorded ones: no
+// acceptance run reaches the vendors' real indexes, and a refresh that
+// cannot read them keeps the empty catalogue.
+var offlineIndexes = map[string]any{
+	"terraform_index": "http://127.0.0.1:1/terraform",
+	"opentofu_index":  "http://127.0.0.1:1/opentofu",
 }
 
 // withSection is config with its top-level key set to section.

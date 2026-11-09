@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -63,6 +64,7 @@ func newDomains(
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
+	vendors := vendorsassembly.New(vendorsassembly.Deps{DB: db.Primary(), Settings: c.Vendors})
 	stacks := stacksassembly.New(stacksassembly.Deps{
 		DB:     db.Primary(),
 		Spaces: access.Spaces(),
@@ -74,7 +76,7 @@ func newDomains(
 	return Domains{
 		Features:     features,
 		Access:       access,
-		Vendors:      vendorsassembly.New(),
+		Vendors:      vendors,
 		Stacks:       stacks,
 		Auth:         access.Authenticator(),
 		OperatorAuth: access.OperatorAuthenticator(),
@@ -104,5 +106,8 @@ func newKinds() *outbox.Kinds {
 	return kinds
 }
 
-// cron is every domain's periodic tasks, which the scheduler role runs.
-func (d Domains) cron() []cron.Task { return d.Access.Cron() }
+// cron is every domain's periodic tasks, which the scheduler role runs,
+// logging to log.
+func (d Domains) cron(log *slog.Logger) []cron.Task {
+	return append(d.Access.Cron(), d.Vendors.Cron(log)...)
+}

@@ -165,6 +165,7 @@ jobs their rows name:
 | `postgres-next` (from P2, not required) | `make accept PARTITION=core` with `INFRAWEAVE_POSTGRES=next`: the `sqltest` suites and `accept-core` on the next PostgreSQL major, its beta or release candidate, with the version it ran in the job summary; `queuetest` from P2c. `gate` does not need it and its coverage is not merged | 20 min |
 | `nightly` (`nightly.yml`, scheduled, not required) | every partition on `main`, on the newest Terraform and OpenTofu releases once `@terraform` and `@tofu` exist; a failure opens an issue, or comments on the open one | 60 min |
 | `objectstore-cloud` (from P2b, scheduled nightly, not required) | `objectstoretest` against Amazon S3, Google Cloud Storage and Azure Blob Storage through OIDC federation, in buckets with a one-day lifecycle rule; a failure opens or updates an issue | 20 min |
+| `vendors-upstream` (from P5, scheduled nightly, not required) | `indextest` against HashiCorp's and OpenTofu's real release indexes, which pull requests run against fixtures recorded from them by `make vendors-fixtures`; a failure opens or updates an issue | 15 min |
 
 - **Placement.** A scenario runs in the first of `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so it

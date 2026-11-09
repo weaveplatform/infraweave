@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
 // Config is every setting, keyed as in the YAML file.
@@ -49,6 +50,11 @@ type Config struct {
 	//
 	// ref: decision 0021
 	Features featuresassembly.Settings `mapstructure:"features"`
+	// Vendors is the vendors domain's: the release indexes the version
+	// catalogue refreshes from.
+	//
+	// ref: decision 0011
+	Vendors vendorsassembly.Settings `mapstructure:"vendors"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -88,6 +94,7 @@ func Defaults() Config {
 
 		ObjectStore: objectstore.Defaults(),
 		Auth:        accessassembly.DefaultSettings(),
+		Vendors:     vendorsassembly.DefaultSettings(),
 	}
 }
 
@@ -225,6 +232,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.ObjectStore.Validate(),
 		c.Auth.Validate(),
 		c.Features.Validate(),
+		c.Vendors.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}

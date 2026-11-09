@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	"github.com/weaveplatform/infraweave/test/acceptance"
 )
 
@@ -36,6 +37,12 @@ func local(t testing.TB) config.Config {
 	c.ObjectStore.Driver = objectstore.DriverFS
 	c.ObjectStore.FS.Root, c.ObjectStore.FS.URL = t.TempDir(), "http://infraweave.test"
 	c.Server.PublicURL = "http://infraweave.test"
+	// No test reaches the vendors' real indexes: a refresh here fails at
+	// once against a closed port and keeps the empty catalogue.
+	c.Vendors = vendorsassembly.Settings{
+		TerraformIndex: "http://127.0.0.1:1/terraform",
+		OpenTofuIndex:  "http://127.0.0.1:1/opentofu",
+	}
 	return c
 }
 

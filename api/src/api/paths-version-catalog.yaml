@@ -1,0 +1,229 @@
+# Scaffolded by `specref scaffold --tag Version Catalog` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    OpenTofuVersionsPage:
+      description: >-
+        One page of the OpenTofu versions the catalogue lists, newest first.
+      properties:
+        items:
+          items:
+            type: string
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    TerraformVersionsPage:
+      description: >-
+        One page of the Terraform versions the catalogue lists, newest first.
+      properties:
+        items:
+          items:
+            type: string
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+paths:
+  /open-tofu-effective-version:
+    get:
+      description: >-
+        The newest OpenTofu version the catalogue lists that satisfies the
+        constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints
+        that do not parse, or that no listed version satisfies, answer 422
+        validation-failed naming the constraints parameter.
+      operationId: openTofuEffectiveVersion
+      x-infraweave-feature: version-catalog
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - in: query
+          name: constraints
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: constraints
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The openTofuEffectiveVersion result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get OpenTofu Effective Version
+      tags:
+        - Version Catalog
+      x-bruno: Version Catalog/Get OpenTofu Effective Version.bru
+      x-graphql:
+        field: openTofuEffectiveVersion
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /open-tofu-versions:
+    get:
+      description: >-
+        The OpenTofu versions a stack may use, newest first: the stable releases
+        the vendor's release index lists, which the server refreshes from it
+        periodically.
+      operationId: openTofuVersions
+      x-infraweave-feature: version-catalog
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenTofuVersionsPage'
+          description: The openTofuVersions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List OpenTofu Versions
+      tags:
+        - Version Catalog
+      x-bruno: Version Catalog/List OpenTofu Versions.bru
+      x-graphql:
+        field: openTofuVersions
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
+  /terraform-effective-version:
+    get:
+      description: >-
+        The newest Terraform version the catalogue lists that satisfies the
+        constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints
+        that do not parse, or that no listed version satisfies, answer 422
+        validation-failed naming the constraints parameter.
+      operationId: terraformEffectiveVersion
+      x-infraweave-feature: version-catalog
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - in: query
+          name: constraints
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: constraints
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The terraformEffectiveVersion result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Terraform Effective Version
+      tags:
+        - Version Catalog
+      x-bruno: Version Catalog/Get Terraform Effective Version.bru
+      x-graphql:
+        field: terraformEffectiveVersion
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /terraform-versions:
+    get:
+      description: >-
+        The Terraform versions a stack may use, newest first: the stable releases
+        the vendor's release index lists, which the server refreshes from it
+        periodically.
+      operationId: terraformVersions
+      x-infraweave-feature: version-catalog
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerraformVersionsPage'
+          description: The terraformVersions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Terraform Versions
+      tags:
+        - Version Catalog
+      x-bruno: Version Catalog/List Terraform Versions.bru
+      x-graphql:
+        field: terraformVersions
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read

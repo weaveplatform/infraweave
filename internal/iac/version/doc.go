@@ -2,8 +2,11 @@
 // stacks name: ParseConstraints reads a field such as ">= 1.5, < 2.0" or
 // "~> 1.6.0" into Constraints, each an Op and a Version, and Parse reads
 // one Version. A constraint that does not parse is ErrSyntax, with an error
-// that says which part. Which release a constraint resolves to is the
-// Version Catalog's answer, not this package's.
+// that says which part. Version.Compare orders versions, a prerelease
+// before its release, and Constraints.Allows decides whether a version
+// meets every constraint as Terraform decides its required_version, ~>
+// letting only the last segment it names grow. Which release a constraint
+// resolves to is the Version Catalog's answer, not this package's.
 //
 // # Input and output
 //
@@ -12,5 +15,5 @@
 // # Dependencies
 //
 // It imports the standard library only. The terraform and opentofu
-// vendors import it, and the Version Catalog may.
+// vendors import it, and so does the Version Catalog.
 package version

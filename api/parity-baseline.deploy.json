@@ -613,10 +613,6 @@
     ],
     "Version Catalog": [
       "kubectlVersions",
-      "openTofuEffectiveVersion",
-      "openTofuVersions",
-      "terraformEffectiveVersion",
-      "terraformVersions",
       "terragruntEffectiveVersion",
       "terragruntVersions"
     ],
