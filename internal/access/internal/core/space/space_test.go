@@ -114,6 +114,7 @@ func (f *tree) UpdateSpace(
 	if err != nil {
 		return space.Space{}, err
 	}
+	out.Version = cur.Version + 1
 	f.spaces[slug] = out
 	return out, nil
 }
@@ -269,13 +270,13 @@ func (w world) move(t *testing.T, slug, parent string) error {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = w.svc.Update(t.Context(), w.p, slug, parent, cur)
+	_, err = w.svc.Update(t.Context(), w.p, slug, parent, kernel.Expect{}, cur)
 	return err
 }
 
 func (w world) del(t *testing.T, slug string) error {
 	t.Helper()
-	_, err := w.svc.Delete(t.Context(), w.p, slug)
+	_, err := w.svc.Delete(t.Context(), w.p, slug, kernel.Expect{})
 	return err
 }
 
@@ -323,7 +324,7 @@ func TestUnitSpaceService(t *testing.T) {
 		t.Errorf("Suggest = %v, want the store's", err)
 	}
 
-	renamed, err := w.svc.Update(ctx, w.p, prod.Slug, legacy.Slug, space.Space{
+	renamed, err := w.svc.Update(ctx, w.p, prod.Slug, legacy.Slug, kernel.Expect{}, space.Space{
 		Name: "Prod", Description: "live", Labels: []string{"tier"},
 	})
 	if err != nil || renamed.Name != "Prod" || renamed.Description != "live" ||
@@ -335,6 +336,7 @@ func TestUnitSpaceService(t *testing.T) {
 		w.p,
 		prod.Slug,
 		top.Slug,
+		kernel.Expect{},
 		space.Space{},
 	); !errors.Is(
 		err,
@@ -343,19 +345,27 @@ func TestUnitSpaceService(t *testing.T) {
 		t.Errorf("unnamed Update = %v, want ErrName", err)
 	}
 	refusal(t, w.move(t, top.Slug, legacy.Slug), "top space acme cannot move")
-	_, err = w.svc.Update(ctx, w.p, top.Slug, "", space.Space{Name: "Acme", InheritEntities: true})
+	_, err = w.svc.Update(
+		ctx,
+		w.p,
+		top.Slug,
+		"",
+		kernel.Expect{},
+		space.Space{Name: "Acme", InheritEntities: true},
+	)
 	refusal(t, err, "top space acme has no parent to inherit from")
 	if got, err := w.svc.Update(
 		ctx,
 		w.p,
 		top.Slug,
 		"",
+		kernel.Expect{},
 		space.Space{Name: "Acme Corp"},
 	); err != nil ||
 		got.Name != "Acme Corp" {
 		t.Errorf("rename the top space = %+v, %v", got, err)
 	}
-	_, err = w.svc.Update(ctx, w.p, prod.Slug, "", space.Space{Name: "Prod"})
+	_, err = w.svc.Update(ctx, w.p, prod.Slug, "", kernel.Expect{}, space.Space{Name: "Prod"})
 	refusal(t, err, "space "+prod.Slug+" needs a parent space")
 	refusal(t, w.del(t, top.Slug), "top space acme cannot be deleted")
 	refusal(t, w.del(t, legacy.Slug), "legacy space cannot be deleted")
@@ -373,6 +383,7 @@ func TestUnitSpaceService(t *testing.T) {
 		w.p,
 		prod.Slug,
 		legacy.Slug,
+		kernel.Expect{},
 		space.Space{Name: "P"},
 	); err != nil {
 		t.Errorf("a rename, which no guard sees = %v", err)
@@ -390,7 +401,13 @@ func TestUnitSpaceService(t *testing.T) {
 	if err := w.move(t, prod.Slug, top.Slug); err != nil {
 		t.Errorf("Move a guard allows = %v", err)
 	}
-	if gone, err := w.svc.Delete(ctx, w.p, prod.Slug); err != nil || gone.ID != prod.ID {
+	if gone, err := w.svc.Delete(
+		ctx,
+		w.p,
+		prod.Slug,
+		kernel.Expect{},
+	); err != nil ||
+		gone.ID != prod.ID {
 		t.Errorf("Delete a guard allows = %+v, %v", gone, err)
 	}
 	// Each change that succeeded dropped the snapshot, and no refusal did:
@@ -452,7 +469,7 @@ func TestUnitSpaceAdminBelowTop(t *testing.T) {
 	}
 	w.authz.on = map[kernel.ULID]bool{team.ID: true}
 
-	got, err := w.svc.Update(ctx, w.p, team.Slug, w.top.Slug, space.Space{
+	got, err := w.svc.Update(ctx, w.p, team.Slug, w.top.Slug, kernel.Expect{}, space.Space{
 		Name: "Team A", Description: "ours", Labels: []string{"x"},
 	})
 	if err != nil || got.Name != "Team A" || got.Description != "ours" {
@@ -466,11 +483,19 @@ func TestUnitSpaceAdminBelowTop(t *testing.T) {
 		w.p,
 		team.Slug,
 		w.top.Slug,
+		kernel.Expect{},
 		space.Space{Name: "T", InheritEntities: true},
 	)
 	denied(t, err, "change their inheritance")
 	denied(t, w.del(t, team.Slug), "Only account admins delete spaces")
-	_, err = w.svc.Update(ctx, w.p, other.Slug, w.top.Slug, space.Space{Name: "Mine"})
+	_, err = w.svc.Update(
+		ctx,
+		w.p,
+		other.Slug,
+		w.top.Slug,
+		kernel.Expect{},
+		space.Space{Name: "Mine"},
+	)
 	denied(t, err, "You may not perform SPACE_ADMIN on space "+other.Slug)
 
 	if on, err := w.svc.ToggleNonAdminCreation(ctx, w.p); err != nil || !on {
@@ -489,9 +514,10 @@ func TestUnitSpaceAdminBelowTop(t *testing.T) {
 	_, err = w.svc.Create(ctx, w.p, other.Slug, space.Space{Name: "No", InheritEntities: true})
 	denied(t, err, "on space "+other.Slug)
 	denied(t, w.move(t, sub.Slug, other.Slug), "on space "+other.Slug)
-	_, err = w.svc.Update(ctx, w.p, sub.Slug, team.Slug, space.Space{Name: "Sub"})
+	_, err = w.svc.Update(ctx, w.p, sub.Slug, team.Slug, kernel.Expect{}, space.Space{Name: "Sub"})
 	denied(t, err, "Only account admins stop space "+sub.Slug+" inheriting")
 	if got, err := w.svc.Update(ctx, w.p, team.Slug, w.top.Slug,
+		kernel.Expect{},
 		space.Space{Name: "Team", InheritEntities: true}); err != nil || !got.InheritEntities {
 		t.Errorf("start inheriting = %+v, %v", got, err)
 	}
@@ -508,7 +534,13 @@ func TestUnitSpaceAdminBelowTop(t *testing.T) {
 	if err := w.move(t, sub.Slug, second.Slug); err != nil {
 		t.Errorf("move between administered spaces = %v", err)
 	}
-	if gone, err := w.svc.Delete(ctx, w.p, sub.Slug); err != nil || gone.ID != sub.ID {
+	if gone, err := w.svc.Delete(
+		ctx,
+		w.p,
+		sub.Slug,
+		kernel.Expect{},
+	); err != nil ||
+		gone.ID != sub.ID {
 		t.Errorf("delete an administered space = %+v, %v", gone, err)
 	}
 
@@ -526,5 +558,118 @@ func TestUnitSpaceAdminBelowTop(t *testing.T) {
 	w.f.err = errors.New("store down")
 	if err := w.del(t, second.Slug); !errors.Is(err, w.f.err) {
 		t.Errorf("delete when the setting cannot be read = %v", err)
+	}
+}
+
+// TestUnitSpaceVersions checks that an update or delete whose expect does
+// not accept the space's version is kernel.ErrStale and changes nothing,
+// and that the version read, or any, is accepted.
+func TestUnitSpaceVersions(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	dev, err := w.svc.Create(ctx, w.p, w.top.Slug, space.Space{Name: "Dev"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dev.Version = 1
+	w.f.spaces[dev.Slug] = dev
+	stale := kernel.ExpectVersions(7)
+
+	if _, err := w.svc.Update(ctx, w.p, dev.Slug, w.top.Slug, stale,
+		space.Space{Name: "Changed"}); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale update = %v, want ErrStale", err)
+	}
+	if _, err := w.svc.Delete(ctx, w.p, dev.Slug, stale); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale delete = %v, want ErrStale", err)
+	}
+	if got := w.f.spaces[dev.Slug]; got.Name != "Dev" || got.Version != 1 {
+		t.Errorf("after the stale writes = %+v", got)
+	}
+	// The drop follows the create alone.
+	if n := len(*w.dropped); n != 1 {
+		t.Errorf("dropped %d snapshots", n)
+	}
+
+	got, err := w.svc.Update(ctx, w.p, dev.Slug, w.top.Slug, kernel.ExpectVersions(1),
+		space.Space{Name: "Development"})
+	if err != nil || got.Name != "Development" || got.Version != 2 {
+		t.Errorf("an update naming the version = %+v, %v", got, err)
+	}
+	if _, err := w.svc.Delete(ctx, w.p, dev.Slug, kernel.ExpectAny()); err != nil {
+		t.Errorf("a delete of any version = %v", err)
+	}
+}
+
+// TestUnitSpaceLabels checks that a create and an update keep labels in
+// the order given and refuse each one breaking the label rule at its
+// pointer, a repeat included, writing nothing.
+func TestUnitSpaceLabels(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	dev, err := w.svc.Create(ctx, w.p, w.top.Slug, space.Space{
+		Name: "Dev", Labels: []string{"zeta", "alpha", "Alpha"},
+	})
+	if err != nil || !slices.Equal(dev.Labels, []string{"zeta", "alpha", "Alpha"}) {
+		t.Fatalf("Create = %+v, %v", dev, err)
+	}
+	bad := []string{"ok", "", " edge", "ok", "tab\there"}
+	want := []kernel.FieldError{
+		{Pointer: "/labels/1", Reason: kernel.ReasonMinLength},
+		{Pointer: "/labels/2", Reason: kernel.ReasonPattern},
+		{Pointer: "/labels/3", Reason: kernel.ReasonDuplicate},
+		{Pointer: "/labels/4", Reason: kernel.ReasonPattern},
+	}
+	for name, call := range map[string]func() error{
+		"create": func() error {
+			_, err := w.svc.Create(ctx, w.p, w.top.Slug, space.Space{Name: "X", Labels: bad})
+			return err
+		},
+		"update": func() error {
+			_, err := w.svc.Update(ctx, w.p, dev.Slug, w.top.Slug,
+				kernel.Expect{},
+				space.Space{Name: "Dev", Labels: bad})
+			return err
+		},
+	} {
+		inv, ok := errors.AsType[*kernel.Invalid](call())
+		if !ok || len(inv.Errors) != len(want) {
+			t.Errorf("%s with bad labels = %v", name, inv)
+			continue
+		}
+		for i, e := range inv.Errors {
+			if e.Pointer != want[i].Pointer || e.Reason != want[i].Reason || e.Message == "" {
+				t.Errorf("%s refusal %d = %+v, want %+v", name, i, e, want[i])
+			}
+		}
+	}
+	if got := w.f.spaces[dev.Slug]; !slices.Equal(got.Labels, dev.Labels) || len(w.f.spaces) != 3 {
+		t.Errorf("a refused write changed the tree: %+v, %d spaces", got, len(w.f.spaces))
+	}
+	if _, err := w.svc.Update(ctx, w.p, dev.Slug, w.top.Slug,
+		kernel.Expect{},
+		space.Space{Name: "Dev", Labels: make([]string, kernel.MaxLabels+1)}); err == nil {
+		t.Error("an update with too many labels succeeded")
+	}
+}
+
+// TestUnitSpaceFind finds a space's ID by slug, names a missing one by
+// accessapi.ErrNoSpace, and names every space by its slug.
+func TestUnitSpaceFind(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	if id, err := w.svc.Find(ctx, w.f.acct, space.LegacySlug); err != nil || id != w.legacy.ID {
+		t.Errorf("Find(legacy) = %v, %v", id, err)
+	}
+	if _, err := w.svc.Find(ctx, w.f.acct, "nope"); !errors.Is(err, accessapi.ErrNoSpace) {
+		t.Errorf("Find(nope) = %v, want ErrNoSpace", err)
+	}
+	slugs, err := w.svc.Slugs(ctx, w.f.acct)
+	if err != nil || len(slugs) != 2 || slugs[w.top.ID] != w.top.Slug ||
+		slugs[w.legacy.ID] != space.LegacySlug {
+		t.Errorf("Slugs = %v, %v", slugs, err)
+	}
+	w.f.err = errors.New("store down")
+	if _, err := w.svc.Slugs(ctx, w.f.acct); !errors.Is(err, w.f.err) {
+		t.Errorf("Slugs on a failing store = %v", err)
 	}
 }

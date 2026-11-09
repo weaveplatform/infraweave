@@ -67,12 +67,12 @@ func (a adminTree) Move(ctx context.Context, acct kernel.AccountID, slug, parent
 	if err != nil {
 		return err
 	}
-	_, err = a.svc.Update(ctx, admin(acct), slug, parent, cur)
+	_, err = a.svc.Update(ctx, admin(acct), slug, parent, kernel.Expect{}, cur)
 	return err
 }
 
 func (a adminTree) Delete(ctx context.Context, acct kernel.AccountID, slug string) error {
-	_, err := a.svc.Delete(ctx, admin(acct), slug)
+	_, err := a.svc.Delete(ctx, admin(acct), slug, kernel.Expect{})
 	return err
 }
 
@@ -487,9 +487,16 @@ func TestAccSpaceUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := tr.svc.Update(ctx, admin(x.acct), dev.Slug, space.LegacySlug, space.Space{
-		Name: "Development", Description: "shared", InheritEntities: true,
-	})
+	got, err := tr.svc.Update(
+		ctx,
+		admin(x.acct),
+		dev.Slug,
+		space.LegacySlug,
+		kernel.Expect{},
+		space.Space{
+			Name: "Development", Description: "shared", InheritEntities: true,
+		},
+	)
 	if err != nil || got.Name != "Development" || got.ParentID == dev.ParentID {
 		t.Fatalf("Update = %+v, %v", got, err)
 	}

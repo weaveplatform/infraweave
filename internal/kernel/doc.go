@@ -13,7 +13,11 @@
 // the mark of a dependency that cannot be reached now, which a store sets
 // and the HTTP layer answers with 503, and Invalid, an input that rules
 // refuse, naming each refused field as a FieldError with one of the fixed
-// reasons, which the HTTP layer answers with 422. It holds the tenancy
+// reasons, which the HTTP layer answers with 422. It holds CheckLabels,
+// the one rule every entity's labels follow, and Expect, the versions a
+// conditional write accepts, with ErrStale, which a write whose entity
+// has moved past them returns and the HTTP layer answers with 412. It
+// holds the tenancy
 // identifiers, OrganizationID, AccountID and MemberID, each a ULID of its
 // own type so one cannot stand in for another, and Principal: its kind,
 // the actor, and the organization, account and member it acts in. Caller

@@ -72,6 +72,44 @@ func TestAccHandlers(t *testing.T) {
 		*vendor.Version != "1.9.0" {
 		t.Errorf("updated %+v, vendor %+v", v, vendor)
 	}
+	tag := updated.(api.StackUpdate200JSONResponse).Headers.ETag
+	if tag == nil || *tag != `"2"` {
+		t.Errorf("the update's ETag = %v", tag)
+	}
+	stale := `"1"`
+	_, err = s.StackPatch(admin, api.StackPatchRequestObject{
+		StackId: "infra", Params: api.StackPatchParams{IfMatch: &stale},
+		Body: &api.MergePatch{"branch": "dev"},
+	})
+	if !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a patch of a stale version = %v", err)
+	}
+	patched, err := s.StackPatch(admin, api.StackPatchRequestObject{
+		StackId: "infra", Params: api.StackPatchParams{IfMatch: tag},
+		Body: &api.MergePatch{"description": nil, "labels": []any{"c"}, "autodeploy": true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := patched.(api.StackPatch200JSONResponse)
+	if vendor, _ := p.Body.VendorConfig.AsStackConfigVendorTerraform(); p.Body.Description != nil ||
+		!reflect.DeepEqual(p.Body.Labels, []string{"c"}) || !p.Body.Autodeploy ||
+		p.Body.Branch != "main" || p.Body.Space != "team" || p.Body.Provider != api.VCSProviderGITLAB ||
+		!reflect.DeepEqual(p.Body.Hooks.BeforePlan, []string{"make"}) ||
+		*vendor.Version != "1.9.0" || *vendor.Workspace != "prod" || *p.Headers.ETag != `"3"` {
+		t.Errorf("patched %+v, vendor %+v", p.Body, vendor)
+	}
+	_, err = s.StackPatch(admin, api.StackPatchRequestObject{
+		StackId: "infra", Body: &api.MergePatch{"labels": []any{"a", "a"}},
+	})
+	if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Pointer != "/labels/1" {
+		t.Errorf("a patch with a duplicate label = %v", err)
+	}
+	_, err = s.StackPatch(admin, api.StackPatchRequestObject{StackId: "gone"})
+	if p := problemOf(t, err); p.Status != 404 {
+		t.Errorf("a patch of a missing stack = %+v", p)
+	}
+	in.Description = new("ours")
 
 	tofu := api.StackInput{
 		Name: "Tofu", Repository: "infra", Branch: "main", Space: new("team"),
@@ -151,6 +189,9 @@ func TestAccHandlers(t *testing.T) {
 		*v.LockNote != "mine" || v.LockedAt == nil || v.IsDisabled {
 		t.Errorf("read %+v", v)
 	}
+	if tag := read.(api.Stack200JSONResponse).Headers.ETag; tag == nil || *tag == `"3"` {
+		t.Errorf("the read's ETag after four writes = %v", tag)
+	}
 	_, err = s.StackLock(admin, api.StackLockRequestObject{StackId: "infra"})
 	if p := problemOf(t, err); p.Status != 409 || p.LockedBy != "writer" {
 		t.Errorf("a second lock = %+v", p)
@@ -202,6 +243,12 @@ func TestAccHandlers(t *testing.T) {
 	if err != nil || reslugged.(api.StackReslug200JSONResponse).Body.Id != "infra-renamed" {
 		t.Errorf("Reslug = %+v, %v", reslugged, err)
 	}
+	_, err = s.StackDelete(admin, api.StackDeleteRequestObject{
+		StackId: "infra-renamed", Params: api.StackDeleteParams{IfMatch: &stale},
+	})
+	if !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a delete of a stale version = %v", err)
+	}
 	deleted, err := s.StackDelete(admin, api.StackDeleteRequestObject{StackId: "infra-renamed"})
 	if err != nil {
 		t.Fatal(err)
@@ -233,6 +280,10 @@ func TestAccHandlers(t *testing.T) {
 		},
 		"stackDelete": func() error {
 			_, err := s.StackDelete(anonymous, api.StackDeleteRequestObject{StackId: "tofu"})
+			return err
+		},
+		"stackPatch": func() error {
+			_, err := s.StackPatch(anonymous, api.StackPatchRequestObject{StackId: "tofu"})
 			return err
 		},
 		"stackReslug": func() error {
@@ -280,6 +331,10 @@ func TestAccHandlersUnavailable(t *testing.T) {
 		},
 		"stackDelete": func() error {
 			_, err := s.StackDelete(ctx, api.StackDeleteRequestObject{StackId: "infra"})
+			return err
+		},
+		"stackPatch": func() error {
+			_, err := s.StackPatch(ctx, api.StackPatchRequestObject{StackId: "infra"})
 			return err
 		},
 		"stackDisable": func() error {

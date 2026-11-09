@@ -492,6 +492,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -508,6 +509,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -524,6 +527,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -546,6 +550,8 @@ paths:
                 $ref: '#/components/schemas/ApiKey'
           description: The apiKey result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -570,8 +576,73 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names
+        and keep the rest; null resets a member to its default. It runs
+        through apiKeyUpdate, so it validates and persists as the PUT does.
+      operationId: apiKeyPatch
+      x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_UPDATE
+      x-infraweave-subject: any
+      parameters:
+        - in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ApiKeyUpdateInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The apiKeyPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch API Key
+      tags:
+        - API Keys
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update an API key.
       operationId: apiKeyUpdate
@@ -585,6 +656,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -603,6 +675,8 @@ paths:
                 $ref: '#/components/schemas/ApiKey'
           description: The apiKeyUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -611,6 +685,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -627,6 +703,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /api-keys/{apiKeyId}/reset:

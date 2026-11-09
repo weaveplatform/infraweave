@@ -91,6 +91,9 @@ CREATE TABLE account_users (
     latest_groups   text[]      NOT NULL DEFAULT '{}',
     -- The Slack user that acts as the member in the account.
     slack_member_id text,
+    -- Raised by every change of the row; the API serves it as the managed
+    -- user's ETag.
+    version         bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, member_id),
     FOREIGN KEY (organization_id, account_id)
         REFERENCES accounts (organization_id, id) ON DELETE RESTRICT,

@@ -26,7 +26,7 @@ const userSelect = `SELECT u.account_id, m.organization_id, m.id, m.login, m.nam
 	m.status, m.created_at, m.last_seen_at, coalesce(u.slack_member_id, ''), u.latest_groups,
 	(SELECT count(*) FROM managed_user_groups g
 		WHERE g.account_id = u.account_id AND g.name = ANY(u.latest_groups)),
-	i.id, i.email, i.created_at, i.sent_at
+	i.id, i.email, i.created_at, i.sent_at, u.version
 FROM account_users u JOIN members m ON m.id = u.member_id
 LEFT JOIN LATERAL (SELECT id, email, created_at, sent_at FROM account_invitations
 	WHERE account_id = u.account_id AND member_id = u.member_id
@@ -44,7 +44,7 @@ func scanUser(r pgx.Row) (user.User, error) {
 	err := r.Scan(&u.AccountID, &u.Member.OrganizationID, &u.Member.ID, &u.Member.Login,
 		&u.Member.Name, &u.Member.Email, &u.Member.Status, &u.Member.CreatedAt,
 		&u.Member.LastSeenAt, &u.SlackMemberID, &u.LatestGroups, &groups,
-		&invID, &invMail, &created, &sent)
+		&invID, &invMail, &created, &sent, &u.Version)
 	if err != nil {
 		return user.User{}, err //nolint:wrapcheck // the caller names the read
 	}
@@ -212,22 +212,23 @@ func invitee(ctx context.Context, q tx.Querier, org kernel.OrganizationID, in us
 }
 
 // SetSlackMemberID sets the managed user's Slack member, none when empty,
-// and records e.
+// and records e, unless expect does not accept the admission's version.
 func (s *Store) SetSlackMemberID(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.MemberID,
+	expect kernel.Expect,
 	slack string,
 	e kernel.AuditEntry,
 ) (user.User, error) {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
-		tag, err := q.Exec(ctx, `UPDATE account_users SET slack_member_id = nullif($3, '')
-			WHERE account_id = $1 AND member_id = $2`, acct, id, slack)
-		if err != nil {
-			return fmt.Errorf("access: set Slack member: %w", sql.Unavailable(err))
+		if err := lockUser(ctx, q, acct, id, expect); err != nil {
+			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("%w: managed user %s", port.ErrNotFound, id)
+		if _, err := q.Exec(ctx, `UPDATE account_users
+			SET slack_member_id = nullif($3, ''), version = version + 1
+			WHERE account_id = $1 AND member_id = $2`, acct, id, slack); err != nil {
+			return fmt.Errorf("access: set Slack member: %w", sql.Unavailable(err))
 		}
 		return nil
 	})
@@ -235,6 +236,25 @@ func (s *Store) SetSlackMemberID(
 		return user.User{}, fmt.Errorf("update managed user %s: %w", id, err)
 	}
 	return s.User(ctx, acct, id)
+}
+
+// lockUser locks acct's admission of member id FOR UPDATE, so the version
+// expect checks is the one the change replaces; a version it does not
+// accept is kernel.ErrStale.
+func lockUser(
+	ctx context.Context,
+	q tx.Querier,
+	acct kernel.AccountID,
+	id kernel.MemberID,
+	expect kernel.Expect,
+) error {
+	var version int64
+	err := q.QueryRow(ctx, `SELECT version FROM account_users
+		WHERE account_id = $1 AND member_id = $2 FOR UPDATE`, acct, id).Scan(&version)
+	if err != nil {
+		return read(err, "managed user", id)
+	}
+	return expect.Check(version) //nolint:wrapcheck // kernel.ErrStale, answered as it is
 }
 
 // Resend moves the latest invitation's sent_at of acct's pending managed
@@ -280,11 +300,13 @@ func (s *Store) Resend(
 // Remove stops acct admitting member id: it deletes the admission and the
 // member's invitations to acct, disables their personal keys in acct as
 // DEPROVISIONED and revokes their sessions in acct and those keys', and
-// records e, in one transaction, returning the revoked sessions.
+// records e, in one transaction, returning the revoked sessions; an
+// admission whose version expect does not accept stays.
 func (s *Store) Remove(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.MemberID,
+	expect kernel.Expect,
 	e kernel.AuditEntry,
 ) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
@@ -292,20 +314,15 @@ func (s *Store) Remove(
 		// A personal key's creation holds a share lock on the admission, so
 		// locking it first lets the key commit before the keys are
 		// disabled below, or find no admission.
-		tag, err := q.Exec(ctx, `SELECT 1 FROM account_users
-			WHERE account_id = $1 AND member_id = $2 FOR UPDATE`, acct, id)
-		if err != nil {
-			return fmt.Errorf("access: lock managed user: %w", sql.Unavailable(err))
-		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("%w: managed user %s", port.ErrNotFound, id)
+		if err := lockUser(ctx, q, acct, id, expect); err != nil {
+			return err
 		}
 		if _, err := q.Exec(ctx, `DELETE FROM account_invitations
 			WHERE account_id = $1 AND member_id = $2`, acct, id); err != nil {
 			return fmt.Errorf("access: delete invitations: %w", sql.Unavailable(err))
 		}
 		rows, err := q.Query(ctx, `UPDATE api_keys SET disabled_at = coalesce(disabled_at, now()),
-				disabled_reason = coalesce(disabled_reason, 'DEPROVISIONED')
+				disabled_reason = coalesce(disabled_reason, 'DEPROVISIONED'), version = version + 1
 			WHERE account_id = $1 AND owner_user_id = $2 AND deleted_at IS NULL RETURNING id`,
 			acct, id)
 		if err != nil {
@@ -392,12 +409,14 @@ func (s *Store) recordAccount(
 // groupSelect reads groups as g with their members' logins.
 const groupSelect = `SELECT g.account_id, g.id, g.name, g.description, g.created_at,
 	ARRAY(SELECT m.login FROM account_users u JOIN members m ON m.id = u.member_id
-		WHERE u.account_id = g.account_id AND g.name = ANY(u.latest_groups) ORDER BY m.login)
+		WHERE u.account_id = g.account_id AND g.name = ANY(u.latest_groups) ORDER BY m.login),
+	g.version
 FROM managed_user_groups g`
 
 func scanGroup(r pgx.Row) (group.Group, error) {
 	var g group.Group
-	err := r.Scan(&g.AccountID, &g.ID, &g.Name, &g.Description, &g.CreatedAt, &g.Members)
+	err := r.Scan(&g.AccountID, &g.ID, &g.Name, &g.Description, &g.CreatedAt, &g.Members,
+		&g.Version)
 	return g, err //nolint:wrapcheck // the caller names the read
 }
 
@@ -464,22 +483,24 @@ func (s *Store) CreateGroup(
 	return s.Group(ctx, g.AccountID, g.ID)
 }
 
-// SetDescription sets the description of acct's group id and records e.
+// SetDescription sets the description of acct's group id and records e,
+// unless expect does not accept the group's version.
 func (s *Store) SetDescription(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	description string,
 	e kernel.AuditEntry,
 ) (group.Group, error) {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
-		tag, err := q.Exec(ctx, `UPDATE managed_user_groups SET description = $3
-			WHERE account_id = $1 AND id = $2`, acct, id, description)
-		if err != nil {
-			return fmt.Errorf("access: update group: %w", sql.Unavailable(err))
+		if err := lockGroup(ctx, q, acct, id, expect); err != nil {
+			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("%w: managed user group %s", port.ErrNotFound, id)
+		if _, err := q.Exec(ctx, `UPDATE managed_user_groups
+			SET description = $3, version = version + 1
+			WHERE account_id = $1 AND id = $2`, acct, id, description); err != nil {
+			return fmt.Errorf("access: update group: %w", sql.Unavailable(err))
 		}
 		return nil
 	})
@@ -489,21 +510,26 @@ func (s *Store) SetDescription(
 	return s.Group(ctx, acct, id)
 }
 
-// DeleteGroup deletes acct's group id and records e.
+// DeleteGroup deletes acct's group id and records e, unless expect does
+// not accept the group's version.
 func (s *Store) DeleteGroup(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	e kernel.AuditEntry,
 ) error {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
-		tag, err := q.Exec(ctx, `DELETE FROM managed_user_groups WHERE account_id = $1 AND id = $2`,
-			acct, id)
-		if err != nil {
-			return fmt.Errorf("access: delete group: %w", sql.Unavailable(err))
+		if err := lockGroup(ctx, q, acct, id, expect); err != nil {
+			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("%w: managed user group %s", port.ErrNotFound, id)
+		if _, err := q.Exec(
+			ctx,
+			`DELETE FROM managed_user_groups WHERE account_id = $1 AND id = $2`,
+			acct,
+			id,
+		); err != nil {
+			return fmt.Errorf("access: delete group: %w", sql.Unavailable(err))
 		}
 		return bumpAuthz(ctx, q, acct)
 	})
@@ -511,6 +537,25 @@ func (s *Store) DeleteGroup(
 		return fmt.Errorf("delete group %s: %w", id, err)
 	}
 	return nil
+}
+
+// lockGroup locks acct's group id FOR UPDATE, so the version expect
+// checks is the one the change replaces; a version it does not accept is
+// kernel.ErrStale.
+func lockGroup(
+	ctx context.Context,
+	q tx.Querier,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	expect kernel.Expect,
+) error {
+	var version int64
+	err := q.QueryRow(ctx, `SELECT version FROM managed_user_groups
+		WHERE account_id = $1 AND id = $2 FOR UPDATE`, acct, id).Scan(&version)
+	if err != nil {
+		return read(err, "managed user group", id)
+	}
+	return expect.Check(version) //nolint:wrapcheck // kernel.ErrStale, answered as it is
 }
 
 // GroupUsers are up to limit of the managed users of acct whose latest

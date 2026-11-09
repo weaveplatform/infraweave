@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -91,13 +92,32 @@ func (o *orgSteps) homeAdmin(ctx context.Context) error {
 	return err
 }
 
-// resolve replaces each {name} in s with the scenario's ID of name.
+// resolve replaces each {name} in s with the scenario's ID of name, each
+// {n × c} with the character c n times and each {n labels} with n
+// distinct JSON strings, comma-separated, for bodies too long to write out.
 func (o *orgSteps) resolve(s string) string {
 	for name, id := range o.ids {
 		s = strings.ReplaceAll(s, "{"+name+"}", id)
 	}
-	return s
+	s = repeated.ReplaceAllStringFunc(s, func(m string) string {
+		g := repeated.FindStringSubmatch(m)
+		n, _ := strconv.Atoi(g[1])
+		return strings.Repeat(g[2], n)
+	})
+	return labelList.ReplaceAllStringFunc(s, func(m string) string {
+		n, _ := strconv.Atoi(labelList.FindStringSubmatch(m)[1])
+		labels := make([]string, n)
+		for i := range labels {
+			labels[i] = fmt.Sprintf(`"label-%d"`, i)
+		}
+		return strings.Join(labels, ",")
+	})
 }
+
+var (
+	repeated  = regexp.MustCompile(`\{(\d+) × (.)\}`)
+	labelList = regexp.MustCompile(`\{(\d+) labels\}`)
+)
 
 // send sends the request through the browser, as a write from the public
 // URL's page, or with the named token.

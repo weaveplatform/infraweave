@@ -33,10 +33,15 @@ type Group struct {
 	CreatedAt   time.Time
 	// Members are the logins of the group's members, in login order.
 	Members []string
+	// Version is raised by every change of the group; a conditional
+	// change names the version it expects.
+	Version int64
 }
 
 // Store keeps the account's groups. A group of another account is
-// port.ErrNotFound.
+// port.ErrNotFound. A method given an expect locks the group and changes
+// nothing, answering kernel.ErrStale, when expect does not accept its
+// version; each change raises it.
 type Store interface {
 	// Groups are up to limit of acct's groups in ID order from the first
 	// after after.
@@ -54,6 +59,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		id kernel.ULID,
+		expect kernel.Expect,
 		description string,
 		e kernel.AuditEntry,
 	) (Group, error)
@@ -61,6 +67,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		id kernel.ULID,
+		expect kernel.Expect,
 		e kernel.AuditEntry,
 	) error
 	// GroupUsers are up to limit of the group's members in member ID order
@@ -141,11 +148,14 @@ func (s *Service) Create(
 	return s.d.Store.CreateGroup(ctx, g, e) //nolint:wrapcheck // the store names the write
 }
 
-// Update sets the description of the group id names.
+// Update sets the description of the group id names. A group whose
+// version expect does not accept is kernel.ErrStale and is not changed.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
-	remoteIP, id, description string,
+	remoteIP, id string,
+	expect kernel.Expect,
+	description string,
 ) (Group, error) {
 	g, err := parse(id)
 	if err != nil {
@@ -154,21 +164,23 @@ func (s *Service) Update(
 	e := s.entry(p, remoteIP, ActionUpdate, "UPDATE", g,
 		map[string]any{"description": description})
 	//nolint:wrapcheck // as above
-	return s.d.Store.SetDescription(ctx, p.AccountID, g, description, e)
+	return s.d.Store.SetDescription(ctx, p.AccountID, g, expect, description, e)
 }
 
 // Delete deletes the group id names and answers it as it was. Its members
-// stay managed users of the account.
+// stay managed users of the account. A group whose version expect does
+// not accept is kernel.ErrStale and is kept.
 func (s *Service) Delete(
 	ctx context.Context,
 	p kernel.Principal,
 	remoteIP, id string,
+	expect kernel.Expect,
 ) (Group, error) {
 	g, err := s.Group(ctx, p, id)
 	if err != nil {
 		return Group{}, err
 	}
-	err = s.d.Store.DeleteGroup(ctx, p.AccountID, g.ID,
+	err = s.d.Store.DeleteGroup(ctx, p.AccountID, g.ID, expect,
 		s.entry(p, remoteIP, ActionDelete, "DELETE", g.ID, nil))
 	if err != nil {
 		return Group{}, err //nolint:wrapcheck // as above

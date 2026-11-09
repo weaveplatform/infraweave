@@ -139,7 +139,7 @@ func TestAccAuthzInvalidation(t *testing.T) {
 		{"make a space inherit", func() error {
 			in := created
 			in.InheritEntities = true
-			_, err := svc.svc.Update(ctx, admin(x.acct), created.Slug, "endframe", in)
+			_, err := svc.svc.Update(ctx, admin(x.acct), created.Slug, "endframe", kernel.Expect{}, in)
 			return err
 		}},
 		{"move a space", func() error {
@@ -153,7 +153,7 @@ func TestAccAuthzInvalidation(t *testing.T) {
 			return err
 		}},
 		{"delete a group", func() error {
-			return x.s.DeleteGroup(ctx, x.acct, ops.ID, onTrail(x, group.ActionDelete))
+			return x.s.DeleteGroup(ctx, x.acct, ops.ID, kernel.Expect{}, onTrail(x, group.ActionDelete))
 		}},
 		{"claim the account", func() error {
 			_, err := x.s.ClaimAccount(ctx, x.org, x.acct, x.member, spacesAt,
@@ -181,6 +181,7 @@ func TestAccAuthzInvalidation(t *testing.T) {
 		t.Fatal("deleting the top space succeeded")
 	}
 	if _, err := svc.svc.Update(ctx, admin(x.acct), space.LegacySlug, "endframe",
+		kernel.Expect{},
 		space.Space{Name: "Old", Labels: []string{"kept"}}); err != nil {
 		t.Fatalf("rename legacy: %v", err)
 	}

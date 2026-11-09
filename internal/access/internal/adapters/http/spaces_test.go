@@ -62,6 +62,8 @@ func (f *spaceTree) Space(
 }
 
 func (f *spaceTree) CreateSpace(_ context.Context, s space.Space) error {
+	// A new row's version is the column's default.
+	s.Version = 1
 	f.spaces[s.Slug] = s
 	return f.st.err()
 }
@@ -88,6 +90,7 @@ func (f *spaceTree) UpdateSpace(
 	}
 	out, err := edit(ctx, cur, parent, m)
 	if err == nil {
+		out.Version = cur.Version + 1
 		f.spaces[slug] = out
 	}
 	return out, err

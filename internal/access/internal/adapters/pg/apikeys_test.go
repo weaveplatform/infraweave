@@ -84,20 +84,28 @@ func TestAccAPIKeyStore(t *testing.T) {
 
 	name, teams := "renamed", []string{}
 	m := []apikey.Mapping{{Name: "cognito:groups", Value: apikey.TeamsClaim}}
-	if got, err := x.s.UpdateAPIKey(ctx, x.acct, oidc.ID, apikey.Change{
+	if got, err := x.s.UpdateAPIKey(ctx, x.acct, oidc.ID, kernel.Expect{}, apikey.Change{
 		Name: &name, Teams: &teams, ClaimMapping: &m,
 	}); err != nil || got.Name != "renamed" || len(got.Teams) != 0 ||
 		!slices.Equal(got.OIDC.ClaimMapping, m) {
 		t.Errorf("UpdateAPIKey = %+v, %v", got, err)
 	}
-	if got, err := x.s.UpdateAPIKey(ctx, x.acct, oidc.ID, apikey.Change{}); err != nil ||
-		got.Name != "renamed" || !slices.Equal(got.OIDC.ClaimMapping, m) {
+	if got, err := x.s.UpdateAPIKey(
+		ctx,
+		x.acct,
+		oidc.ID,
+		kernel.Expect{},
+		apikey.Change{},
+	); err != nil ||
+		got.Name != "renamed" ||
+		!slices.Equal(got.OIDC.ClaimMapping, m) {
 		t.Errorf("an empty update changed %+v, %v", got, err)
 	}
 	if _, err := y.s.UpdateAPIKey(
 		ctx,
 		y.acct,
 		oidc.ID,
+		kernel.Expect{},
 		apikey.Change{Name: &name},
 	); !errors.Is(
 		err,
@@ -141,7 +149,7 @@ func TestAccAPIKeyStore(t *testing.T) {
 	}
 
 	s3 := sessionOf(secret.ID)
-	gone, ids, err := x.s.DeleteAPIKey(ctx, x.acct, secret.ID)
+	gone, ids, err := x.s.DeleteAPIKey(ctx, x.acct, secret.ID, kernel.Expect{})
 	if err != nil || gone.DeletedAt.IsZero() || !slices.Equal(ids, []kernel.ULID{s3}) {
 		t.Errorf("DeleteAPIKey = %+v, %v, %v", gone, ids, err)
 	}
@@ -150,11 +158,14 @@ func TestAccAPIKeyStore(t *testing.T) {
 		t.Errorf("another key's session = %+v, %v", ss, err)
 	}
 	for name, err := range map[string]error{
-		"read":   func() error { _, err := x.s.AccountAPIKey(ctx, x.acct, secret.ID); return err }(),
-		"update": func() error { _, err := x.s.UpdateAPIKey(ctx, x.acct, secret.ID, apikey.Change{}); return err }(),
+		"read": func() error { _, err := x.s.AccountAPIKey(ctx, x.acct, secret.ID); return err }(),
+		"update": func() error {
+			_, err := x.s.UpdateAPIKey(ctx, x.acct, secret.ID, kernel.Expect{}, apikey.Change{})
+			return err
+		}(),
 		"reset":  func() error { _, _, err := x.s.ResetAPIKey(ctx, x.acct, secret.ID, h2); return err }(),
-		"delete": func() error { _, _, err := x.s.DeleteAPIKey(ctx, x.acct, secret.ID); return err }(),
-		"theirs": func() error { _, _, err := y.s.DeleteAPIKey(ctx, y.acct, oidc.ID); return err }(),
+		"delete": func() error { _, _, err := x.s.DeleteAPIKey(ctx, x.acct, secret.ID, kernel.Expect{}); return err }(),
+		"theirs": func() error { _, _, err := y.s.DeleteAPIKey(ctx, y.acct, oidc.ID, kernel.Expect{}); return err }(),
 	} {
 		if !errors.Is(err, port.ErrNotFound) {
 			t.Errorf("%s of a deleted or foreign key: %v", name, err)
@@ -209,7 +220,7 @@ func TestAccAPIKeyStoreUnavailable(t *testing.T) {
 		"create":   s.CreateAPIKey(ctx, apikey.Key{ID: id, AccountID: acct, Type: apikey.TypeOIDC}),
 		"list":     func() error { _, err := s.AccountAPIKeys(ctx, acct, id, 1); return err }(),
 		"read":     func() error { _, err := s.AccountAPIKey(ctx, acct, id); return err }(),
-		"update":   func() error { _, err := s.UpdateAPIKey(ctx, acct, id, apikey.Change{}); return err }(),
+		"update":   func() error { _, err := s.UpdateAPIKey(ctx, acct, id, kernel.Expect{}, apikey.Change{}); return err }(),
 		"reset":    func() error { _, _, err := s.ResetAPIKey(ctx, acct, id, nil); return err }(),
 		"managers": s.SetNonAdminManagers(ctx, acct, true),
 	} {
@@ -230,7 +241,7 @@ func TestAccAPIKeyStoreAborted(t *testing.T) {
 		_, _ = tx.Q(ctx, db).Exec(ctx, `SELECT 1/0`)
 		for name, err := range map[string]error{
 			"list":   func() error { _, err := x.s.AccountAPIKeys(ctx, x.acct, kernel.ULID{}, 1); return err }(),
-			"delete": func() error { _, _, err := x.s.DeleteAPIKey(ctx, x.acct, x.key); return err }(),
+			"delete": func() error { _, _, err := x.s.DeleteAPIKey(ctx, x.acct, x.key, kernel.Expect{}); return err }(),
 		} {
 			if err == nil || errors.Is(err, port.ErrNotFound) {
 				t.Errorf("%s in an aborted transaction = %v", name, err)

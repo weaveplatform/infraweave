@@ -80,12 +80,17 @@ func (m *mem) UpdateAPIKey(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	c Change,
 ) (Key, error) {
 	k, err := m.AccountAPIKey(ctx, acct, id)
 	if err != nil {
 		return Key{}, err
 	}
+	if err := expect.Check(k.Version); err != nil {
+		return Key{}, err
+	}
+	k.Version++
 	if c.Name != nil {
 		k.Name = *c.Name
 	}
@@ -145,7 +150,13 @@ func (m *mem) DeleteAPIKey(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 ) (Key, []kernel.ULID, error) {
+	if k, err := m.AccountAPIKey(ctx, acct, id); err == nil {
+		if err := expect.Check(k.Version); err != nil {
+			return Key{}, nil, err
+		}
+	}
 	return m.change(ctx, acct, id, func(k *Key) { k.DeletedAt = t0 })
 }
 
@@ -243,7 +254,7 @@ func TestUnitServiceSecretKey(t *testing.T) {
 	}
 
 	name, desc, teams := "deploy", "", []string{}
-	if got, err := w.svc.Update(ctx, w.me, k.ID, Change{
+	if got, err := w.svc.Update(ctx, w.me, k.ID, kernel.Expect{}, Change{
 		Name: &name, Description: &desc, Teams: &teams,
 	}); err != nil || got.Name != "deploy" || got.Description != "" || len(got.Teams) != 0 {
 		t.Errorf("Update = %+v, %v", got, err)
@@ -252,12 +263,22 @@ func TestUnitServiceSecretKey(t *testing.T) {
 		ctx,
 		w.other,
 		k.ID,
+		kernel.Expect{},
 		Change{Name: &name},
 	); !errors.Is(
 		err,
 		errMissing,
 	) {
 		t.Errorf("another account's Update: %v", err)
+	}
+
+	// The store sees the expect each change carries.
+	stale := kernel.ExpectVersions(9)
+	if _, err := w.svc.Update(ctx, w.me, k.ID, stale, Change{}); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale Update: %v", err)
+	}
+	if _, err := w.svc.Delete(ctx, w.me, k.ID, stale); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale Delete: %v", err)
 	}
 
 	session := kernel.NewULID()
@@ -282,11 +303,11 @@ func TestUnitServiceSecretKey(t *testing.T) {
 	}
 
 	w.st.sessions[k.ID] = []kernel.ULID{kernel.NewULID()}
-	gone, err := w.svc.Delete(ctx, w.me, k.ID)
+	gone, err := w.svc.Delete(ctx, w.me, k.ID, kernel.Expect{})
 	if err != nil || gone.DeletedAt.IsZero() || len(w.dropped) != 3 {
 		t.Errorf("Delete = %+v, %v, dropped %v", gone, err, w.dropped)
 	}
-	if _, err := w.svc.Delete(ctx, w.me, k.ID); !errors.Is(err, errMissing) {
+	if _, err := w.svc.Delete(ctx, w.me, k.ID, kernel.Expect{}); !errors.Is(err, errMissing) {
 		t.Errorf("deleting twice: %v", err)
 	}
 
@@ -322,7 +343,13 @@ func TestUnitServiceOIDCKey(t *testing.T) {
 		t.Errorf("Reset of an OIDC key: %v", err)
 	}
 	m := []Mapping{{Name: "cognito:groups", Value: TeamsClaim}}
-	if got, err := w.svc.Update(ctx, w.me, k.ID, Change{ClaimMapping: &m}); err != nil ||
+	if got, err := w.svc.Update(
+		ctx,
+		w.me,
+		k.ID,
+		kernel.Expect{},
+		Change{ClaimMapping: &m},
+	); err != nil ||
 		!slices.Equal(got.OIDC.ClaimMapping, m) {
 		t.Errorf("Update of the claim mapping = %+v, %v", got, err)
 	}
@@ -330,6 +357,7 @@ func TestUnitServiceOIDCKey(t *testing.T) {
 		ctx,
 		w.other,
 		k.ID,
+		kernel.Expect{},
 		Change{ClaimMapping: &m},
 	); !errors.Is(
 		err,
@@ -345,6 +373,7 @@ func TestUnitServiceOIDCKey(t *testing.T) {
 		ctx,
 		w.me,
 		plain.ID,
+		kernel.Expect{},
 		Change{ClaimMapping: &m},
 	); !errors.Is(
 		err,
@@ -396,6 +425,7 @@ func TestUnitServiceInvalid(t *testing.T) {
 		ctx,
 		w.me,
 		k.ID,
+		kernel.Expect{},
 		Change{Name: &blank, Teams: &teams},
 	); !errors.Is(
 		err,
@@ -408,6 +438,7 @@ func TestUnitServiceInvalid(t *testing.T) {
 		ctx,
 		w.me,
 		k.ID,
+		kernel.Expect{},
 		Change{Teams: &none},
 	); err != nil ||
 		got.Teams == nil {
@@ -457,12 +488,12 @@ func TestUnitServiceNonHumans(t *testing.T) {
 	for op, err := range map[string]error{
 		"create": func() error { _, _, err := w.svc.Create(ctx, w.me, Input{Name: "x"}); return err }(),
 		"update": func() error {
-			_, err := w.svc.Update(ctx, w.me, k.ID, Change{Name: &name})
+			_, err := w.svc.Update(ctx, w.me, k.ID, kernel.Expect{}, Change{Name: &name})
 			return err
 		}(),
 		"reset":    func() error { _, _, err := w.svc.Reset(ctx, w.me, k.ID); return err }(),
 		"disable":  func() error { _, err := w.svc.Disable(ctx, w.me, k.ID); return err }(),
-		"delete":   func() error { _, err := w.svc.Delete(ctx, w.me, k.ID); return err }(),
+		"delete":   func() error { _, err := w.svc.Delete(ctx, w.me, k.ID, kernel.Expect{}); return err }(),
 		"managers": func() error { _, err := w.svc.SetNonAdminManagers(ctx, w.me, true); return err }(),
 	} {
 		if !errors.Is(err, ErrNonHuman) {
@@ -479,12 +510,12 @@ func TestUnitServiceNonHumans(t *testing.T) {
 	}
 	member := w.me
 	member.Kind = kernel.PrincipalUser
-	if _, err := w.svc.Update(ctx, member, k.ID, Change{Name: &name}); err != nil {
+	if _, err := w.svc.Update(ctx, member, k.ID, kernel.Expect{}, Change{Name: &name}); err != nil {
 		t.Errorf("a member's update = %v", err)
 	}
 	w.st.peopleOnly[w.me.AccountID] = false
 	w.st.err = errors.New("down")
-	if _, err := w.svc.Delete(ctx, w.me, k.ID); !errors.Is(err, w.st.err) {
+	if _, err := w.svc.Delete(ctx, w.me, k.ID, kernel.Expect{}); !errors.Is(err, w.st.err) {
 		t.Errorf("a delete with the store down = %v", err)
 	}
 }
@@ -746,7 +777,7 @@ func TestUnitServiceManagers(t *testing.T) {
 
 	*w.role = role{below: true}
 	actions(accessapi.ActionApiKeyRead)
-	_, err = w.svc.Update(ctx, w.me, k.ID, Change{})
+	_, err = w.svc.Update(ctx, w.me, k.ID, kernel.Expect{}, Change{})
 	if d, ok := errors.AsType[*Denied](err); !ok || d.Action != accessapi.ActionApiKeyUpdate ||
 		!strings.Contains(err.Error(), "API_KEY_UPDATE") {
 		t.Errorf("an update by a space's admin = %v, want Denied", err)
@@ -759,7 +790,7 @@ func TestUnitServiceManagers(t *testing.T) {
 
 	*w.role = role{}
 	actions()
-	if _, err := w.svc.Delete(ctx, w.me, k.ID); !errors.As(err, new(*Denied)) {
+	if _, err := w.svc.Delete(ctx, w.me, k.ID, kernel.Expect{}); !errors.As(err, new(*Denied)) {
 		t.Errorf("a delete by a caller with no binding = %v, want Denied", err)
 	}
 

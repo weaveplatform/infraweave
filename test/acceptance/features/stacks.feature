@@ -170,3 +170,23 @@ Feature: Stacks
     And the answer's isDisabled is 'true'
     When token "h" sends "POST /api/v1/stacks/infra/enable" through A
     Then the answer's isDisabled is 'false'
+
+  @op:stackCreate @op:stackPatch @case:failure @case:success
+  Scenario: A stack's labels are 1 to 255 characters with no control characters or edge whitespace, at most 100, each once
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["{256 × x}","a\u0007b"," edge","ok","ok"]},"manageState":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/input/labels/0" as "max-length"
+    And the problem refuses the field "/input/labels/1" as "pattern"
+    And the problem refuses the field "/input/labels/2" as "pattern"
+    And the problem refuses the field "/input/labels/4" as "duplicate"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":[{101 labels}]},"manageState":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/input/labels" as "max-length"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["prod","Prod","{255 × x}"]},"manageState":false}' through A
+    Then it answers 201
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"labels":["prod","Prod"]}' through B
+    Then it answers 200
+    And the answer's labels is '["Prod","prod"]'
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"labels":["Prod","Prod"]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/labels/1" as "duplicate"

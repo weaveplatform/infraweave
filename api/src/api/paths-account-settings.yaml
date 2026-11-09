@@ -3,6 +3,7 @@
 components:
   schemas:
     AccountSetOAuthRedirectAllowlistRequest:
+      additionalProperties: false
       description: The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
       properties:
         hosts:
@@ -14,6 +15,7 @@ components:
       type: object
       x-graphql-args-of: accountSetOAuthRedirectAllowlist
     AccountSetPersonalApiKeysEnabledRequest:
+      additionalProperties: false
       description: The arguments of accountSetPersonalApiKeysEnabled not carried in the path.
       properties:
         disableExistingKeys:
@@ -26,6 +28,7 @@ components:
       type: object
       x-graphql-args-of: accountSetPersonalApiKeysEnabled
     AccountToggleDeletionMarkRequest:
+      additionalProperties: false
       description: The arguments of accountToggleDeletionMark not carried in the path.
       properties:
         description:
@@ -37,6 +40,7 @@ components:
       type: object
       x-graphql-args-of: accountToggleDeletionMark
     AccountUpdateAwarenessSourceSurveyRequest:
+      additionalProperties: false
       description: The arguments of accountUpdateAwarenessSourceSurvey not carried in the path.
       properties:
         completed:
@@ -49,6 +53,7 @@ components:
       type: object
       x-graphql-args-of: accountUpdateAwarenessSourceSurvey
     AccountUpdateSecurityEmailRequest:
+      additionalProperties: false
       description: The arguments of accountUpdateSecurityEmail not carried in the path.
       properties:
         securityEmail:

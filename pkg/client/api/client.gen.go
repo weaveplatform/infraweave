@@ -4670,6 +4670,9 @@ type ManagedUserUpdateInputBody struct {
 	SlackMemberID *string `json:"slackMemberID,omitempty"`
 }
 
+// MergePatch A JSON Merge Patch (RFC 7396) of an update's input. Each member it names replaces the input's, an object member merges into the input's object, an array replaces the input's whole, and null resets the member to its default. Members it does not name keep their values.
+type MergePatch map[string]interface{}
+
 // MessageQueueStats MessageQueueStats is a point-in-time snapshot of how many messages a single
 // queue currently holds. Surfaces only the two signals that drive the
 // parallelism decision: messages ready to be picked up and messages already in
@@ -7539,7 +7542,8 @@ type StackInput struct {
 	// a list of paths defined using the glob pattern.
 	AdditionalProjectGlobs *[]string `json:"additionalProjectGlobs,omitempty"`
 
-	// Administrative Administrative stacks can manage other Stacks at runtime.
+	// Administrative Accepted and ignored: a stack manages other stacks through the role bindings its runs act with.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	Administrative *bool `json:"administrative,omitempty"`
 
 	// AfterApply Optional list of after-apply scripts.
@@ -8680,6 +8684,9 @@ type Cursor = string
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
 
+// IfMatch defines model for IfMatch.
+type IfMatch = string
+
 // Limit defines model for Limit.
 type Limit = int32
 
@@ -8709,6 +8716,9 @@ type InvalidCursor = Problem
 
 // NotFound An RFC 9457 problem detail. Every error response uses the status code and this body.
 type NotFound = Problem
+
+// PreconditionFailed An RFC 9457 problem detail. Every error response uses the status code and this body.
+type PreconditionFailed = Problem
 
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
@@ -8792,6 +8802,27 @@ type ApiKeyCreateParams struct {
 type ApiKeysWithAccessToSpaceParams struct {
 	Space string      `form:"space" json:"space"`
 	Input SearchInput `form:"input" json:"input"`
+}
+
+// ApiKeyDeleteParams defines parameters for ApiKeyDelete.
+type ApiKeyDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ApiKeyPatchParams defines parameters for ApiKeyPatch.
+type ApiKeyPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ApiKeyUpdateParams defines parameters for ApiKeyUpdate.
+type ApiKeyUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // ApiKeyResetParams defines parameters for ApiKeyReset.
@@ -8963,6 +8994,27 @@ type ManagedUserGroupCreateV2Params struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// ManagedUserGroupDeleteParams defines parameters for ManagedUserGroupDelete.
+type ManagedUserGroupDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ManagedUserGroupPatchParams defines parameters for ManagedUserGroupPatch.
+type ManagedUserGroupPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ManagedUserGroupUpdateV2Params defines parameters for ManagedUserGroupUpdateV2.
+type ManagedUserGroupUpdateV2Params struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // ManagedUserGroupManagedUsersParams defines parameters for ManagedUserGroupManagedUsers.
 type ManagedUserGroupManagedUsersParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -8991,6 +9043,27 @@ type ManagedUsersParams struct {
 type ManagedUserInviteV2Params struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ManagedUserDeleteParams defines parameters for ManagedUserDelete.
+type ManagedUserDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ManagedUserPatchParams defines parameters for ManagedUserPatch.
+type ManagedUserPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ManagedUserUpdateParams defines parameters for ManagedUserUpdate.
+type ManagedUserUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // ManagedUserPersonalApiKeysParams defines parameters for ManagedUserPersonalApiKeys.
@@ -9144,6 +9217,27 @@ type SpaceCreateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// SpaceDeleteParams defines parameters for SpaceDelete.
+type SpaceDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// SpacePatchParams defines parameters for SpacePatch.
+type SpacePatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// SpaceUpdateParams defines parameters for SpaceUpdate.
+type SpaceUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // ManagedUserRequestRoleChangeParams defines parameters for ManagedUserRequestRoleChange.
 type ManagedUserRequestRoleChangeParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -9160,6 +9254,27 @@ type StackDependencyCreateParams struct {
 type StackDependenciesCreateInBatchParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// StackDependencyDeleteParams defines parameters for StackDependencyDelete.
+type StackDependencyDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackDependencyPatchParams defines parameters for StackDependencyPatch.
+type StackDependencyPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackDependencyUpdateParams defines parameters for StackDependencyUpdate.
+type StackDependencyUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // StackDependenciesAddReferenceParams defines parameters for StackDependenciesAddReference.
@@ -9204,6 +9319,24 @@ type StacksWithAccessToSpaceParams struct {
 // StackDeleteParams defines parameters for StackDelete.
 type StackDeleteParams struct {
 	DestroyResources *bool `form:"destroyResources,omitempty" json:"destroyResources,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackPatchParams defines parameters for StackPatch.
+type StackPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackUpdateParams defines parameters for StackUpdate.
+type StackUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // StackAttachableAwsIntegrationsParams defines parameters for StackAttachableAwsIntegrations.
@@ -9396,6 +9529,27 @@ type StackScheduledDeleteCreateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// StackScheduledDeleteDeleteParams defines parameters for StackScheduledDeleteDelete.
+type StackScheduledDeleteDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackScheduledDeletePatchParams defines parameters for StackScheduledDeletePatch.
+type StackScheduledDeletePatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackScheduledDeleteUpdateParams defines parameters for StackScheduledDeleteUpdate.
+type StackScheduledDeleteUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // StackScheduledRunParams defines parameters for StackScheduledRun.
 type StackScheduledRunParams struct {
 	Id string `form:"id" json:"id"`
@@ -9407,6 +9561,27 @@ type StackScheduledRunCreateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// StackScheduledRunDeleteParams defines parameters for StackScheduledRunDelete.
+type StackScheduledRunDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackScheduledRunPatchParams defines parameters for StackScheduledRunPatch.
+type StackScheduledRunPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackScheduledRunUpdateParams defines parameters for StackScheduledRunUpdate.
+type StackScheduledRunUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // StackScheduledTaskParams defines parameters for StackScheduledTask.
 type StackScheduledTaskParams struct {
 	Id string `form:"id" json:"id"`
@@ -9416,6 +9591,27 @@ type StackScheduledTaskParams struct {
 type StackScheduledTaskCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// StackScheduledTaskDeleteParams defines parameters for StackScheduledTaskDelete.
+type StackScheduledTaskDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackScheduledTaskPatchParams defines parameters for StackScheduledTaskPatch.
+type StackScheduledTaskPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackScheduledTaskUpdateParams defines parameters for StackScheduledTaskUpdate.
+type StackScheduledTaskUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // StackSearchManagedEntitiesParams defines parameters for StackSearchManagedEntities.
@@ -9500,6 +9696,27 @@ type WebhooksIntegrationCreateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// WebhooksIntegrationDeleteParams defines parameters for WebhooksIntegrationDelete.
+type WebhooksIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// WebhooksIntegrationPatchParams defines parameters for WebhooksIntegrationPatch.
+type WebhooksIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// WebhooksIntegrationUpdateParams defines parameters for WebhooksIntegrationUpdate.
+type WebhooksIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // StateUploadUrlParams defines parameters for StateUploadUrl.
 type StateUploadUrlParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -9554,6 +9771,9 @@ type AccountUpdateSecurityEmailJSONRequestBody = AccountUpdateSecurityEmailReque
 // ApiKeyCreateJSONRequestBody defines body for ApiKeyCreate for application/json ContentType.
 type ApiKeyCreateJSONRequestBody = ApiKeyInput
 
+// ApiKeyPatchApplicationMergePatchPlusJSONRequestBody defines body for ApiKeyPatch for application/merge-patch+json ContentType.
+type ApiKeyPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
 // ApiKeyUpdateJSONRequestBody defines body for ApiKeyUpdate for application/json ContentType.
 type ApiKeyUpdateJSONRequestBody = ApiKeyUpdateInput
 
@@ -9584,6 +9804,9 @@ type BillingSubscriptionUpdateTierJSONRequestBody = BillingSubscriptionUpdateTie
 // ManagedUserGroupCreateV2JSONRequestBody defines body for ManagedUserGroupCreateV2 for application/json ContentType.
 type ManagedUserGroupCreateV2JSONRequestBody = ManagedUserGroupCreateInputV2
 
+// ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody defines body for ManagedUserGroupPatch for application/merge-patch+json ContentType.
+type ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
 // ManagedUserGroupUpdateV2JSONRequestBody defines body for ManagedUserGroupUpdateV2 for application/json ContentType.
 type ManagedUserGroupUpdateV2JSONRequestBody = ManagedUserGroupUpdateInputV2Body
 
@@ -9593,17 +9816,20 @@ type ManagedUserRequestInviteJSONRequestBody = ManagedUserRequestInviteRequest
 // ManagedUserInviteV2JSONRequestBody defines body for ManagedUserInviteV2 for application/json ContentType.
 type ManagedUserInviteV2JSONRequestBody = ManagedUserInviteInputV2
 
+// ManagedUserPatchApplicationMergePatchPlusJSONRequestBody defines body for ManagedUserPatch for application/merge-patch+json ContentType.
+type ManagedUserPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
 // ManagedUserUpdateJSONRequestBody defines body for ManagedUserUpdate for application/json ContentType.
 type ManagedUserUpdateJSONRequestBody = ManagedUserUpdateInputBody
 
-// OrganizationUpdateJSONRequestBody defines body for OrganizationUpdate for application/json ContentType.
-type OrganizationUpdateJSONRequestBody = OrganizationUpdateRequest
+// OrganizationUpdateApplicationMergePatchPlusJSONRequestBody defines body for OrganizationUpdate for application/merge-patch+json ContentType.
+type OrganizationUpdateApplicationMergePatchPlusJSONRequestBody = OrganizationUpdateRequest
 
 // OrganizationAccountCreateJSONRequestBody defines body for OrganizationAccountCreate for application/json ContentType.
 type OrganizationAccountCreateJSONRequestBody = OrganizationAccountCreateRequest
 
-// OrganizationAccountUpdateJSONRequestBody defines body for OrganizationAccountUpdate for application/json ContentType.
-type OrganizationAccountUpdateJSONRequestBody = OrganizationAccountUpdateRequest
+// OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody defines body for OrganizationAccountUpdate for application/merge-patch+json ContentType.
+type OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody = OrganizationAccountUpdateRequest
 
 // OrganizationAccountClaimJSONRequestBody defines body for OrganizationAccountClaim for application/json ContentType.
 type OrganizationAccountClaimJSONRequestBody = OrganizationAccountClaimRequest
@@ -9632,6 +9858,9 @@ type SearchSpacesJSONRequestBody = SearchInput
 // SearchSpacesSuggestionsJSONRequestBody defines body for SearchSpacesSuggestions for application/json ContentType.
 type SearchSpacesSuggestionsJSONRequestBody = SearchSuggestionsInput
 
+// SpacePatchApplicationMergePatchPlusJSONRequestBody defines body for SpacePatch for application/merge-patch+json ContentType.
+type SpacePatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
 // SpaceUpdateJSONRequestBody defines body for SpaceUpdate for application/json ContentType.
 type SpaceUpdateJSONRequestBody = SpaceInput
 
@@ -9643,6 +9872,9 @@ type StackDependencyCreateJSONRequestBody = StackDependencyInput
 
 // StackDependenciesCreateInBatchJSONRequestBody defines body for StackDependenciesCreateInBatch for application/json ContentType.
 type StackDependenciesCreateInBatchJSONRequestBody = StackDependencyBatchInput
+
+// StackDependencyPatchApplicationMergePatchPlusJSONRequestBody defines body for StackDependencyPatch for application/merge-patch+json ContentType.
+type StackDependencyPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // StackDependencyUpdateJSONRequestBody defines body for StackDependencyUpdate for application/json ContentType.
 type StackDependencyUpdateJSONRequestBody = StackDependencyUpdateInputBody
@@ -9664,6 +9896,9 @@ type StackCreateJSONRequestBody = StackCreateRequest
 
 // SearchStacksJSONRequestBody defines body for SearchStacks for application/json ContentType.
 type SearchStacksJSONRequestBody = SearchInput
+
+// StackPatchApplicationMergePatchPlusJSONRequestBody defines body for StackPatch for application/merge-patch+json ContentType.
+type StackPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // StackUpdateJSONRequestBody defines body for StackUpdate for application/json ContentType.
 type StackUpdateJSONRequestBody = StackInput
@@ -9692,17 +9927,26 @@ type RunTriggerJSONRequestBody = RunTriggerRequest
 // StackScheduledDeleteCreateJSONRequestBody defines body for StackScheduledDeleteCreate for application/json ContentType.
 type StackScheduledDeleteCreateJSONRequestBody = ScheduledDeleteInput
 
+// StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody defines body for StackScheduledDeletePatch for application/merge-patch+json ContentType.
+type StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
 // StackScheduledDeleteUpdateJSONRequestBody defines body for StackScheduledDeleteUpdate for application/json ContentType.
 type StackScheduledDeleteUpdateJSONRequestBody = ScheduledDeleteInput
 
 // StackScheduledRunCreateJSONRequestBody defines body for StackScheduledRunCreate for application/json ContentType.
 type StackScheduledRunCreateJSONRequestBody = ScheduledRunInput
 
+// StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody defines body for StackScheduledRunPatch for application/merge-patch+json ContentType.
+type StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
 // StackScheduledRunUpdateJSONRequestBody defines body for StackScheduledRunUpdate for application/json ContentType.
 type StackScheduledRunUpdateJSONRequestBody = ScheduledRunInput
 
 // StackScheduledTaskCreateJSONRequestBody defines body for StackScheduledTaskCreate for application/json ContentType.
 type StackScheduledTaskCreateJSONRequestBody = ScheduledTaskInput
+
+// StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody defines body for StackScheduledTaskPatch for application/merge-patch+json ContentType.
+type StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // StackScheduledTaskUpdateJSONRequestBody defines body for StackScheduledTaskUpdate for application/json ContentType.
 type StackScheduledTaskUpdateJSONRequestBody = ScheduledTaskInput
@@ -9721,6 +9965,9 @@ type TaskCreateJSONRequestBody = TaskCreateRequest
 
 // WebhooksIntegrationCreateJSONRequestBody defines body for WebhooksIntegrationCreate for application/json ContentType.
 type WebhooksIntegrationCreateJSONRequestBody = WebhooksIntegrationInput
+
+// WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for WebhooksIntegrationPatch for application/merge-patch+json ContentType.
+type WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // WebhooksIntegrationUpdateJSONRequestBody defines body for WebhooksIntegrationUpdate for application/json ContentType.
 type WebhooksIntegrationUpdateJSONRequestBody = WebhooksIntegrationInput
@@ -11543,12 +11790,30 @@ type ClientInterface interface {
 	// Delete an API key.
 	//
 	// Corresponds with DELETE /api-keys/{apiKeyId} (the `ApiKeyDelete` operationId).
-	ApiKeyDelete(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ApiKeyDelete(ctx context.Context, apiKeyId string, params *ApiKeyDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKey Get API Key
 	//
 	// Corresponds with GET /api-keys/{apiKeyId} (the `ApiKey` operationId).
 	ApiKey(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyPatchWithBody Patch API Key
+	//
+	// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+	ApiKeyPatchWithBody(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyPatchWithApplicationMergePatchPlusJSONBody Patch API Key
+	//
+	// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+	ApiKeyPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, body ApiKeyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeyUpdateWithBody Update API Key
 	//
@@ -11557,7 +11822,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-	ApiKeyUpdateWithBody(ctx context.Context, apiKeyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ApiKeyUpdateWithBody(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeyUpdate Update API Key
 	//
@@ -11566,7 +11831,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-	ApiKeyUpdate(ctx context.Context, apiKeyId string, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ApiKeyUpdate(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeyReset Reset API Key
 	//
@@ -11915,7 +12180,7 @@ type ClientInterface interface {
 	// Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
 	//
 	// Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
-	ManagedUserGroupDelete(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ManagedUserGroupDelete(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUserGroup Get User Group
 	//
@@ -11924,6 +12189,24 @@ type ClientInterface interface {
 	// Corresponds with GET /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroup` operationId).
 	ManagedUserGroup(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ManagedUserGroupPatchWithBody Patch User Group
+	//
+	// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+	ManagedUserGroupPatchWithBody(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBody Patch User Group
+	//
+	// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+	ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, body ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ManagedUserGroupUpdateV2WithBody Update User Group
 	//
 	// Set the description of the account's managed user group.
@@ -11931,7 +12214,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-	ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUserGroupUpdateV2 Update User Group
 	//
@@ -11940,7 +12223,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-	ManagedUserGroupUpdateV2(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ManagedUserGroupUpdateV2(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUserGroupManagedUsers Managed user group managed users
 	//
@@ -11997,7 +12280,7 @@ type ClientInterface interface {
 	// Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
 	//
 	// Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
-	ManagedUserDelete(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ManagedUserDelete(ctx context.Context, managedUserId string, params *ManagedUserDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUser Get Managed User
 	//
@@ -12006,6 +12289,24 @@ type ClientInterface interface {
 	// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
 	ManagedUser(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ManagedUserPatchWithBody Patch Managed User
+	//
+	// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+	ManagedUserPatchWithBody(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserPatchWithApplicationMergePatchPlusJSONBody Patch Managed User
+	//
+	// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+	ManagedUserPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, body ManagedUserPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ManagedUserUpdateWithBody Update Managed User
 	//
 	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
@@ -12013,7 +12314,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-	ManagedUserUpdateWithBody(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ManagedUserUpdateWithBody(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUserUpdate Update Managed User
 	//
@@ -12022,7 +12323,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-	ManagedUserUpdate(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ManagedUserUpdate(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUserPersonalApiKeys Managed user personal api keys
 	//
@@ -12105,14 +12406,14 @@ type ClientInterface interface {
 	// Corresponds with PATCH /organization (the `OrganizationUpdate` operationId).
 	OrganizationUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// OrganizationUpdate Organization Update
+	// OrganizationUpdateWithApplicationMergePatchPlusJSONBody Organization Update
 	//
 	// Rename the caller's organization; its slug never changes.
 	//
-	// Takes a body of the `application/json` content type.
+	// Takes a body of the `application/merge-patch+json` content type.
 	//
 	// Corresponds with PATCH /organization (the `OrganizationUpdate` operationId).
-	OrganizationUpdate(ctx context.Context, body OrganizationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	OrganizationUpdateWithApplicationMergePatchPlusJSONBody(ctx context.Context, body OrganizationUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OrganizationAccounts Organization Accounts
 	//
@@ -12160,14 +12461,14 @@ type ClientInterface interface {
 	// Corresponds with PATCH /organization/accounts/{account} (the `OrganizationAccountUpdate` operationId).
 	OrganizationAccountUpdateWithBody(ctx context.Context, account OrganizationAccountSlug, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// OrganizationAccountUpdate Organization Account Update
+	// OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBody Organization Account Update
 	//
 	// Rename an account of the organization; its slug never changes.
 	//
-	// Takes a body of the `application/json` content type.
+	// Takes a body of the `application/merge-patch+json` content type.
 	//
 	// Corresponds with PATCH /organization/accounts/{account} (the `OrganizationAccountUpdate` operationId).
-	OrganizationAccountUpdate(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBody(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OrganizationAccountClaimWithBody Organization Account Claim
 	//
@@ -12487,7 +12788,7 @@ type ClientInterface interface {
 	// Delete a space and answer it as it was. The top space, legacy, a space with child spaces and a space that still holds entities are refused. Admins of a space below the top space may delete it only while allowNonAdminSpaceCreation is on.
 	//
 	// Corresponds with DELETE /spaces/{spaceId} (the `SpaceDelete` operationId).
-	SpaceDelete(ctx context.Context, spaceId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SpaceDelete(ctx context.Context, spaceId string, params *SpaceDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Space Get Space
 	//
@@ -12496,6 +12797,24 @@ type ClientInterface interface {
 	// Corresponds with GET /spaces/{spaceId} (the `Space` operationId).
 	Space(ctx context.Context, spaceId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SpacePatchWithBody Patch Space
+	//
+	// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+	SpacePatchWithBody(ctx context.Context, spaceId string, params *SpacePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SpacePatchWithApplicationMergePatchPlusJSONBody Patch Space
+	//
+	// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+	SpacePatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, spaceId string, params *SpacePatchParams, body SpacePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SpaceUpdateWithBody Update Space
 	//
 	// Change a space's name, description, labels and inheritance, and move it, with its subtree, below parentSpace. A move below its own subtree, or one that would cut a stack off an entity it uses, is refused, as is a change of the top space's parentSpace or inheritEntities. Admins of a space below the top space change only its name, description and labels while allowNonAdminSpaceCreation is off; while it is on they also move it below a space they administer, and may not stop it inheriting.
@@ -12503,7 +12822,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-	SpaceUpdateWithBody(ctx context.Context, spaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SpaceUpdateWithBody(ctx context.Context, spaceId string, params *SpaceUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SpaceUpdate Update Space
 	//
@@ -12512,7 +12831,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-	SpaceUpdate(ctx context.Context, spaceId string, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SpaceUpdate(ctx context.Context, spaceId string, params *SpaceUpdateParams, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ManagedUserRequestRoleChangeWithBody Request Role Change
 	//
@@ -12573,7 +12892,25 @@ type ClientInterface interface {
 	// Delete a stack dependency.
 	//
 	// Corresponds with DELETE /stack-dependencies/{stackDependencyId} (the `StackDependencyDelete` operationId).
-	StackDependencyDelete(ctx context.Context, stackDependencyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackDependencyDelete(ctx context.Context, stackDependencyId string, params *StackDependencyDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackDependencyPatchWithBody Patch Dependency
+	//
+	// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+	StackDependencyPatchWithBody(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackDependencyPatchWithApplicationMergePatchPlusJSONBody Patch Dependency
+	//
+	// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+	StackDependencyPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, body StackDependencyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDependencyUpdateWithBody Update Dependency
 	//
@@ -12582,7 +12919,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-	StackDependencyUpdateWithBody(ctx context.Context, stackDependencyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackDependencyUpdateWithBody(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDependencyUpdate Update Dependency
 	//
@@ -12591,7 +12928,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-	StackDependencyUpdate(ctx context.Context, stackDependencyId string, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackDependencyUpdate(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDependenciesAddReferenceWithBody Add Reference
 	//
@@ -12750,6 +13087,24 @@ type ClientInterface interface {
 	// Corresponds with GET /stacks/{stackId} (the `Stack` operationId).
 	Stack(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// StackPatchWithBody Patch Stack
+	//
+	// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+	StackPatchWithBody(ctx context.Context, stackId string, params *StackPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackPatchWithApplicationMergePatchPlusJSONBody Patch Stack
+	//
+	// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+	StackPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, params *StackPatchParams, body StackPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StackUpdateWithBody Update Stack
 	//
 	// Update an existing stack.
@@ -12757,7 +13112,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-	StackUpdateWithBody(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackUpdateWithBody(ctx context.Context, stackId string, params *StackUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackUpdate Update Stack
 	//
@@ -12766,7 +13121,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-	StackUpdate(ctx context.Context, stackId string, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackUpdate(ctx context.Context, stackId string, params *StackUpdateParams, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackAttachableAwsIntegrations Stack attachable aws integrations
 	//
@@ -13079,7 +13434,25 @@ type ClientInterface interface {
 	// Delete ScheduledDelete for stack.
 	//
 	// Corresponds with DELETE /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteDelete` operationId).
-	StackScheduledDeleteDelete(ctx context.Context, stackId string, scheduledDeleteId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledDeleteDelete(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackScheduledDeletePatchWithBody Patch Scheduled Delete
+	//
+	// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+	StackScheduledDeletePatchWithBody(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBody Patch Scheduled Delete
+	//
+	// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+	StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, body StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledDeleteUpdateWithBody Update Scheduled Delete
 	//
@@ -13088,7 +13461,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-	StackScheduledDeleteUpdateWithBody(ctx context.Context, stackId string, scheduledDeleteId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledDeleteUpdateWithBody(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledDeleteUpdate Update Scheduled Delete
 	//
@@ -13097,7 +13470,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-	StackScheduledDeleteUpdate(ctx context.Context, stackId string, scheduledDeleteId string, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledDeleteUpdate(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledRun Stack scheduled run
 	//
@@ -13129,7 +13502,25 @@ type ClientInterface interface {
 	// Delete ScheduledRun for stack.
 	//
 	// Corresponds with DELETE /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunDelete` operationId).
-	StackScheduledRunDelete(ctx context.Context, stackId string, scheduledRunId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledRunDelete(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackScheduledRunPatchWithBody Patch Scheduled Run
+	//
+	// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+	StackScheduledRunPatchWithBody(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackScheduledRunPatchWithApplicationMergePatchPlusJSONBody Patch Scheduled Run
+	//
+	// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+	StackScheduledRunPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, body StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledRunUpdateWithBody Update Scheduled Run
 	//
@@ -13138,7 +13529,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-	StackScheduledRunUpdateWithBody(ctx context.Context, stackId string, scheduledRunId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledRunUpdateWithBody(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledRunUpdate Update Scheduled Run
 	//
@@ -13147,7 +13538,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-	StackScheduledRunUpdate(ctx context.Context, stackId string, scheduledRunId string, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledRunUpdate(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledTask Stack scheduled task
 	//
@@ -13179,7 +13570,25 @@ type ClientInterface interface {
 	// Delete ScheduledTask for stack.
 	//
 	// Corresponds with DELETE /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskDelete` operationId).
-	StackScheduledTaskDelete(ctx context.Context, stackId string, scheduledTaskId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledTaskDelete(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackScheduledTaskPatchWithBody Patch Scheduled Task
+	//
+	// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+	StackScheduledTaskPatchWithBody(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBody Patch Scheduled Task
+	//
+	// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+	StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, body StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledTaskUpdateWithBody Update Scheduled Task
 	//
@@ -13188,7 +13597,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-	StackScheduledTaskUpdateWithBody(ctx context.Context, stackId string, scheduledTaskId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledTaskUpdateWithBody(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledTaskUpdate Update Scheduled Task
 	//
@@ -13197,7 +13606,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-	StackScheduledTaskUpdate(ctx context.Context, stackId string, scheduledTaskId string, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StackScheduledTaskUpdate(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackSearchManagedEntities Stack search managed entities
 	//
@@ -13369,7 +13778,25 @@ type ClientInterface interface {
 	// Delete WebhooksIntegration for stack.
 	//
 	// Corresponds with DELETE /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationDelete` operationId).
-	WebhooksIntegrationDelete(ctx context.Context, stackId string, webhooksIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	WebhooksIntegrationDelete(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WebhooksIntegrationPatchWithBody Patch Stack Webhook
+	//
+	// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+	WebhooksIntegrationPatchWithBody(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Stack Webhook
+	//
+	// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+	WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, body WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// WebhooksIntegrationUpdateWithBody Update Stack Webhook
 	//
@@ -13378,7 +13805,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-	WebhooksIntegrationUpdateWithBody(ctx context.Context, stackId string, webhooksIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	WebhooksIntegrationUpdateWithBody(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// WebhooksIntegrationUpdate Update Stack Webhook
 	//
@@ -13387,7 +13814,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-	WebhooksIntegrationUpdate(ctx context.Context, stackId string, webhooksIntegrationId string, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	WebhooksIntegrationUpdate(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StateUploadUrl Get State Upload URL
 	//
@@ -13948,8 +14375,8 @@ func (c *Client) ApiKeysWithAccessToSpace(ctx context.Context, params *ApiKeysWi
 // Delete an API key.
 //
 // Corresponds with DELETE /api-keys/{apiKeyId} (the `ApiKeyDelete` operationId).
-func (c *Client) ApiKeyDelete(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewApiKeyDeleteRequest(c.Server, apiKeyId)
+func (c *Client) ApiKeyDelete(ctx context.Context, apiKeyId string, params *ApiKeyDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyDeleteRequest(c.Server, apiKeyId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -13975,6 +14402,44 @@ func (c *Client) ApiKey(ctx context.Context, apiKeyId string, reqEditors ...Requ
 	return c.Client.Do(req)
 }
 
+// ApiKeyPatchWithBody Patch API Key
+//
+// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+func (c *Client) ApiKeyPatchWithBody(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyPatchRequestWithBody(c.Server, apiKeyId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyPatchWithApplicationMergePatchPlusJSONBody Patch API Key
+//
+// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+func (c *Client) ApiKeyPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, body ApiKeyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, apiKeyId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ApiKeyUpdateWithBody Update API Key
 //
 // Update an API key.
@@ -13982,8 +14447,8 @@ func (c *Client) ApiKey(ctx context.Context, apiKeyId string, reqEditors ...Requ
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-func (c *Client) ApiKeyUpdateWithBody(ctx context.Context, apiKeyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewApiKeyUpdateRequestWithBody(c.Server, apiKeyId, contentType, body)
+func (c *Client) ApiKeyUpdateWithBody(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyUpdateRequestWithBody(c.Server, apiKeyId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14001,8 +14466,8 @@ func (c *Client) ApiKeyUpdateWithBody(ctx context.Context, apiKeyId string, cont
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-func (c *Client) ApiKeyUpdate(ctx context.Context, apiKeyId string, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewApiKeyUpdateRequest(c.Server, apiKeyId, body)
+func (c *Client) ApiKeyUpdate(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyUpdateRequest(c.Server, apiKeyId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14760,8 +15225,8 @@ func (c *Client) ManagedUserGroupCreateV2(ctx context.Context, params *ManagedUs
 // Delete the account's managed user group and answer it as it was. Its members stay managed users of the account.
 //
 // Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
-func (c *Client) ManagedUserGroupDelete(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewManagedUserGroupDeleteRequest(c.Server, managedUserGroupId)
+func (c *Client) ManagedUserGroupDelete(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupDeleteRequest(c.Server, managedUserGroupId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -14789,6 +15254,44 @@ func (c *Client) ManagedUserGroup(ctx context.Context, managedUserGroupId string
 	return c.Client.Do(req)
 }
 
+// ManagedUserGroupPatchWithBody Patch User Group
+//
+// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+func (c *Client) ManagedUserGroupPatchWithBody(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupPatchRequestWithBody(c.Server, managedUserGroupId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBody Patch User Group
+//
+// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+func (c *Client) ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, body ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, managedUserGroupId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ManagedUserGroupUpdateV2WithBody Update User Group
 //
 // Set the description of the account's managed user group.
@@ -14796,8 +15299,8 @@ func (c *Client) ManagedUserGroup(ctx context.Context, managedUserGroupId string
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-func (c *Client) ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewManagedUserGroupUpdateV2RequestWithBody(c.Server, managedUserGroupId, contentType, body)
+func (c *Client) ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupUpdateV2RequestWithBody(c.Server, managedUserGroupId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14815,8 +15318,8 @@ func (c *Client) ManagedUserGroupUpdateV2WithBody(ctx context.Context, managedUs
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-func (c *Client) ManagedUserGroupUpdateV2(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewManagedUserGroupUpdateV2Request(c.Server, managedUserGroupId, body)
+func (c *Client) ManagedUserGroupUpdateV2(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupUpdateV2Request(c.Server, managedUserGroupId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14942,8 +15445,8 @@ func (c *Client) ManagedUserInviteV2(ctx context.Context, params *ManagedUserInv
 // Remove the managed user from the account and answer them as they were: the account no longer admits them, their sessions in the account are revoked, their invitations to it are deleted and their personal API keys in it are disabled as DEPROVISIONED. They stay a member of the organization, and keep their seat while another account admits them.
 //
 // Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
-func (c *Client) ManagedUserDelete(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewManagedUserDeleteRequest(c.Server, managedUserId)
+func (c *Client) ManagedUserDelete(ctx context.Context, managedUserId string, params *ManagedUserDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserDeleteRequest(c.Server, managedUserId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -14971,6 +15474,44 @@ func (c *Client) ManagedUser(ctx context.Context, managedUserId string, reqEdito
 	return c.Client.Do(req)
 }
 
+// ManagedUserPatchWithBody Patch Managed User
+//
+// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+func (c *Client) ManagedUserPatchWithBody(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserPatchRequestWithBody(c.Server, managedUserId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserPatchWithApplicationMergePatchPlusJSONBody Patch Managed User
+//
+// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+func (c *Client) ManagedUserPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, body ManagedUserPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, managedUserId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ManagedUserUpdateWithBody Update Managed User
 //
 // Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
@@ -14978,8 +15519,8 @@ func (c *Client) ManagedUser(ctx context.Context, managedUserId string, reqEdito
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-func (c *Client) ManagedUserUpdateWithBody(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewManagedUserUpdateRequestWithBody(c.Server, managedUserId, contentType, body)
+func (c *Client) ManagedUserUpdateWithBody(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserUpdateRequestWithBody(c.Server, managedUserId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14997,8 +15538,8 @@ func (c *Client) ManagedUserUpdateWithBody(ctx context.Context, managedUserId st
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-func (c *Client) ManagedUserUpdate(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewManagedUserUpdateRequest(c.Server, managedUserId, body)
+func (c *Client) ManagedUserUpdate(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserUpdateRequest(c.Server, managedUserId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -15200,15 +15741,15 @@ func (c *Client) OrganizationUpdateWithBody(ctx context.Context, contentType str
 	return c.Client.Do(req)
 }
 
-// OrganizationUpdate Organization Update
+// OrganizationUpdateWithApplicationMergePatchPlusJSONBody Organization Update
 //
 // Rename the caller's organization; its slug never changes.
 //
-// Takes a body of the `application/json` content type.
+// Takes a body of the `application/merge-patch+json` content type.
 //
 // Corresponds with PATCH /organization (the `OrganizationUpdate` operationId).
-func (c *Client) OrganizationUpdate(ctx context.Context, body OrganizationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewOrganizationUpdateRequest(c.Server, body)
+func (c *Client) OrganizationUpdateWithApplicationMergePatchPlusJSONBody(ctx context.Context, body OrganizationUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationUpdateRequestWithApplicationMergePatchPlusJSONBody(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -15315,15 +15856,15 @@ func (c *Client) OrganizationAccountUpdateWithBody(ctx context.Context, account 
 	return c.Client.Do(req)
 }
 
-// OrganizationAccountUpdate Organization Account Update
+// OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBody Organization Account Update
 //
 // Rename an account of the organization; its slug never changes.
 //
-// Takes a body of the `application/json` content type.
+// Takes a body of the `application/merge-patch+json` content type.
 //
 // Corresponds with PATCH /organization/accounts/{account} (the `OrganizationAccountUpdate` operationId).
-func (c *Client) OrganizationAccountUpdate(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewOrganizationAccountUpdateRequest(c.Server, account, body)
+func (c *Client) OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBody(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationAccountUpdateRequestWithApplicationMergePatchPlusJSONBody(c.Server, account, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16032,8 +16573,8 @@ func (c *Client) SearchSpacesSuggestions(ctx context.Context, body SearchSpacesS
 // Delete a space and answer it as it was. The top space, legacy, a space with child spaces and a space that still holds entities are refused. Admins of a space below the top space may delete it only while allowNonAdminSpaceCreation is on.
 //
 // Corresponds with DELETE /spaces/{spaceId} (the `SpaceDelete` operationId).
-func (c *Client) SpaceDelete(ctx context.Context, spaceId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSpaceDeleteRequest(c.Server, spaceId)
+func (c *Client) SpaceDelete(ctx context.Context, spaceId string, params *SpaceDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpaceDeleteRequest(c.Server, spaceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -16061,6 +16602,44 @@ func (c *Client) Space(ctx context.Context, spaceId string, reqEditors ...Reques
 	return c.Client.Do(req)
 }
 
+// SpacePatchWithBody Patch Space
+//
+// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+func (c *Client) SpacePatchWithBody(ctx context.Context, spaceId string, params *SpacePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpacePatchRequestWithBody(c.Server, spaceId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SpacePatchWithApplicationMergePatchPlusJSONBody Patch Space
+//
+// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+func (c *Client) SpacePatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, spaceId string, params *SpacePatchParams, body SpacePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpacePatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, spaceId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SpaceUpdateWithBody Update Space
 //
 // Change a space's name, description, labels and inheritance, and move it, with its subtree, below parentSpace. A move below its own subtree, or one that would cut a stack off an entity it uses, is refused, as is a change of the top space's parentSpace or inheritEntities. Admins of a space below the top space change only its name, description and labels while allowNonAdminSpaceCreation is off; while it is on they also move it below a space they administer, and may not stop it inheriting.
@@ -16068,8 +16647,8 @@ func (c *Client) Space(ctx context.Context, spaceId string, reqEditors ...Reques
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-func (c *Client) SpaceUpdateWithBody(ctx context.Context, spaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSpaceUpdateRequestWithBody(c.Server, spaceId, contentType, body)
+func (c *Client) SpaceUpdateWithBody(ctx context.Context, spaceId string, params *SpaceUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpaceUpdateRequestWithBody(c.Server, spaceId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16087,8 +16666,8 @@ func (c *Client) SpaceUpdateWithBody(ctx context.Context, spaceId string, conten
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-func (c *Client) SpaceUpdate(ctx context.Context, spaceId string, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSpaceUpdateRequest(c.Server, spaceId, body)
+func (c *Client) SpaceUpdate(ctx context.Context, spaceId string, params *SpaceUpdateParams, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSpaceUpdateRequest(c.Server, spaceId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16218,8 +16797,46 @@ func (c *Client) StackDependenciesCreateInBatch(ctx context.Context, params *Sta
 // Delete a stack dependency.
 //
 // Corresponds with DELETE /stack-dependencies/{stackDependencyId} (the `StackDependencyDelete` operationId).
-func (c *Client) StackDependencyDelete(ctx context.Context, stackDependencyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackDependencyDeleteRequest(c.Server, stackDependencyId)
+func (c *Client) StackDependencyDelete(ctx context.Context, stackDependencyId string, params *StackDependencyDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackDependencyDeleteRequest(c.Server, stackDependencyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackDependencyPatchWithBody Patch Dependency
+//
+// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+func (c *Client) StackDependencyPatchWithBody(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackDependencyPatchRequestWithBody(c.Server, stackDependencyId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackDependencyPatchWithApplicationMergePatchPlusJSONBody Patch Dependency
+//
+// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+func (c *Client) StackDependencyPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, body StackDependencyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackDependencyPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackDependencyId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16237,8 +16854,8 @@ func (c *Client) StackDependencyDelete(ctx context.Context, stackDependencyId st
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-func (c *Client) StackDependencyUpdateWithBody(ctx context.Context, stackDependencyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackDependencyUpdateRequestWithBody(c.Server, stackDependencyId, contentType, body)
+func (c *Client) StackDependencyUpdateWithBody(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackDependencyUpdateRequestWithBody(c.Server, stackDependencyId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16256,8 +16873,8 @@ func (c *Client) StackDependencyUpdateWithBody(ctx context.Context, stackDepende
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-func (c *Client) StackDependencyUpdate(ctx context.Context, stackDependencyId string, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackDependencyUpdateRequest(c.Server, stackDependencyId, body)
+func (c *Client) StackDependencyUpdate(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackDependencyUpdateRequest(c.Server, stackDependencyId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16605,6 +17222,44 @@ func (c *Client) Stack(ctx context.Context, stackId string, reqEditors ...Reques
 	return c.Client.Do(req)
 }
 
+// StackPatchWithBody Patch Stack
+//
+// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+func (c *Client) StackPatchWithBody(ctx context.Context, stackId string, params *StackPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackPatchRequestWithBody(c.Server, stackId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackPatchWithApplicationMergePatchPlusJSONBody Patch Stack
+//
+// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+func (c *Client) StackPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, params *StackPatchParams, body StackPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // StackUpdateWithBody Update Stack
 //
 // Update an existing stack.
@@ -16612,8 +17267,8 @@ func (c *Client) Stack(ctx context.Context, stackId string, reqEditors ...Reques
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-func (c *Client) StackUpdateWithBody(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackUpdateRequestWithBody(c.Server, stackId, contentType, body)
+func (c *Client) StackUpdateWithBody(ctx context.Context, stackId string, params *StackUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackUpdateRequestWithBody(c.Server, stackId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16631,8 +17286,8 @@ func (c *Client) StackUpdateWithBody(ctx context.Context, stackId string, conten
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-func (c *Client) StackUpdate(ctx context.Context, stackId string, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackUpdateRequest(c.Server, stackId, body)
+func (c *Client) StackUpdate(ctx context.Context, stackId string, params *StackUpdateParams, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackUpdateRequest(c.Server, stackId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17314,8 +17969,46 @@ func (c *Client) StackScheduledDeleteCreate(ctx context.Context, stackId string,
 // Delete ScheduledDelete for stack.
 //
 // Corresponds with DELETE /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteDelete` operationId).
-func (c *Client) StackScheduledDeleteDelete(ctx context.Context, stackId string, scheduledDeleteId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledDeleteDeleteRequest(c.Server, stackId, scheduledDeleteId)
+func (c *Client) StackScheduledDeleteDelete(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledDeleteDeleteRequest(c.Server, stackId, scheduledDeleteId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackScheduledDeletePatchWithBody Patch Scheduled Delete
+//
+// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+func (c *Client) StackScheduledDeletePatchWithBody(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledDeletePatchRequestWithBody(c.Server, stackId, scheduledDeleteId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBody Patch Scheduled Delete
+//
+// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+func (c *Client) StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, body StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledDeletePatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackId, scheduledDeleteId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17333,8 +18026,8 @@ func (c *Client) StackScheduledDeleteDelete(ctx context.Context, stackId string,
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-func (c *Client) StackScheduledDeleteUpdateWithBody(ctx context.Context, stackId string, scheduledDeleteId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledDeleteUpdateRequestWithBody(c.Server, stackId, scheduledDeleteId, contentType, body)
+func (c *Client) StackScheduledDeleteUpdateWithBody(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledDeleteUpdateRequestWithBody(c.Server, stackId, scheduledDeleteId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17352,8 +18045,8 @@ func (c *Client) StackScheduledDeleteUpdateWithBody(ctx context.Context, stackId
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-func (c *Client) StackScheduledDeleteUpdate(ctx context.Context, stackId string, scheduledDeleteId string, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledDeleteUpdateRequest(c.Server, stackId, scheduledDeleteId, body)
+func (c *Client) StackScheduledDeleteUpdate(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledDeleteUpdateRequest(c.Server, stackId, scheduledDeleteId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17424,8 +18117,46 @@ func (c *Client) StackScheduledRunCreate(ctx context.Context, stackId string, pa
 // Delete ScheduledRun for stack.
 //
 // Corresponds with DELETE /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunDelete` operationId).
-func (c *Client) StackScheduledRunDelete(ctx context.Context, stackId string, scheduledRunId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledRunDeleteRequest(c.Server, stackId, scheduledRunId)
+func (c *Client) StackScheduledRunDelete(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledRunDeleteRequest(c.Server, stackId, scheduledRunId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackScheduledRunPatchWithBody Patch Scheduled Run
+//
+// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+func (c *Client) StackScheduledRunPatchWithBody(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledRunPatchRequestWithBody(c.Server, stackId, scheduledRunId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackScheduledRunPatchWithApplicationMergePatchPlusJSONBody Patch Scheduled Run
+//
+// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+func (c *Client) StackScheduledRunPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, body StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledRunPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackId, scheduledRunId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17443,8 +18174,8 @@ func (c *Client) StackScheduledRunDelete(ctx context.Context, stackId string, sc
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-func (c *Client) StackScheduledRunUpdateWithBody(ctx context.Context, stackId string, scheduledRunId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledRunUpdateRequestWithBody(c.Server, stackId, scheduledRunId, contentType, body)
+func (c *Client) StackScheduledRunUpdateWithBody(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledRunUpdateRequestWithBody(c.Server, stackId, scheduledRunId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17462,8 +18193,8 @@ func (c *Client) StackScheduledRunUpdateWithBody(ctx context.Context, stackId st
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-func (c *Client) StackScheduledRunUpdate(ctx context.Context, stackId string, scheduledRunId string, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledRunUpdateRequest(c.Server, stackId, scheduledRunId, body)
+func (c *Client) StackScheduledRunUpdate(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledRunUpdateRequest(c.Server, stackId, scheduledRunId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17534,8 +18265,46 @@ func (c *Client) StackScheduledTaskCreate(ctx context.Context, stackId string, p
 // Delete ScheduledTask for stack.
 //
 // Corresponds with DELETE /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskDelete` operationId).
-func (c *Client) StackScheduledTaskDelete(ctx context.Context, stackId string, scheduledTaskId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledTaskDeleteRequest(c.Server, stackId, scheduledTaskId)
+func (c *Client) StackScheduledTaskDelete(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledTaskDeleteRequest(c.Server, stackId, scheduledTaskId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackScheduledTaskPatchWithBody Patch Scheduled Task
+//
+// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+func (c *Client) StackScheduledTaskPatchWithBody(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledTaskPatchRequestWithBody(c.Server, stackId, scheduledTaskId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBody Patch Scheduled Task
+//
+// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+func (c *Client) StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, body StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledTaskPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackId, scheduledTaskId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17553,8 +18322,8 @@ func (c *Client) StackScheduledTaskDelete(ctx context.Context, stackId string, s
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-func (c *Client) StackScheduledTaskUpdateWithBody(ctx context.Context, stackId string, scheduledTaskId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledTaskUpdateRequestWithBody(c.Server, stackId, scheduledTaskId, contentType, body)
+func (c *Client) StackScheduledTaskUpdateWithBody(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledTaskUpdateRequestWithBody(c.Server, stackId, scheduledTaskId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17572,8 +18341,8 @@ func (c *Client) StackScheduledTaskUpdateWithBody(ctx context.Context, stackId s
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-func (c *Client) StackScheduledTaskUpdate(ctx context.Context, stackId string, scheduledTaskId string, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStackScheduledTaskUpdateRequest(c.Server, stackId, scheduledTaskId, body)
+func (c *Client) StackScheduledTaskUpdate(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackScheduledTaskUpdateRequest(c.Server, stackId, scheduledTaskId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17954,8 +18723,46 @@ func (c *Client) WebhooksIntegrationCreate(ctx context.Context, stackId string, 
 // Delete WebhooksIntegration for stack.
 //
 // Corresponds with DELETE /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationDelete` operationId).
-func (c *Client) WebhooksIntegrationDelete(ctx context.Context, stackId string, webhooksIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewWebhooksIntegrationDeleteRequest(c.Server, stackId, webhooksIntegrationId)
+func (c *Client) WebhooksIntegrationDelete(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWebhooksIntegrationDeleteRequest(c.Server, stackId, webhooksIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WebhooksIntegrationPatchWithBody Patch Stack Webhook
+//
+// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+func (c *Client) WebhooksIntegrationPatchWithBody(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWebhooksIntegrationPatchRequestWithBody(c.Server, stackId, webhooksIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Stack Webhook
+//
+// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+func (c *Client) WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, body WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWebhooksIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackId, webhooksIntegrationId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17973,8 +18780,8 @@ func (c *Client) WebhooksIntegrationDelete(ctx context.Context, stackId string, 
 // Takes any type of body and a specified content type.
 //
 // Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-func (c *Client) WebhooksIntegrationUpdateWithBody(ctx context.Context, stackId string, webhooksIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewWebhooksIntegrationUpdateRequestWithBody(c.Server, stackId, webhooksIntegrationId, contentType, body)
+func (c *Client) WebhooksIntegrationUpdateWithBody(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWebhooksIntegrationUpdateRequestWithBody(c.Server, stackId, webhooksIntegrationId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17992,8 +18799,8 @@ func (c *Client) WebhooksIntegrationUpdateWithBody(ctx context.Context, stackId 
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-func (c *Client) WebhooksIntegrationUpdate(ctx context.Context, stackId string, webhooksIntegrationId string, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewWebhooksIntegrationUpdateRequest(c.Server, stackId, webhooksIntegrationId, body)
+func (c *Client) WebhooksIntegrationUpdate(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWebhooksIntegrationUpdateRequest(c.Server, stackId, webhooksIntegrationId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -19021,7 +19828,7 @@ func NewApiKeysWithAccessToSpaceRequest(server string, params *ApiKeysWithAccess
 }
 
 // NewApiKeyDeleteRequest constructs an http.Request for the ApiKeyDelete method
-func NewApiKeyDeleteRequest(server string, apiKeyId string) (*http.Request, error) {
+func NewApiKeyDeleteRequest(server string, apiKeyId string, params *ApiKeyDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -19049,6 +19856,21 @@ func NewApiKeyDeleteRequest(server string, apiKeyId string) (*http.Request, erro
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -19088,19 +19910,92 @@ func NewApiKeyRequest(server string, apiKeyId string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewApiKeyUpdateRequest calls the generic ApiKeyUpdate builder with application/json body
-func NewApiKeyUpdateRequest(server string, apiKeyId string, body ApiKeyUpdateJSONRequestBody) (*http.Request, error) {
+// NewApiKeyPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic ApiKeyPatch builder with application/merge-patch+json body
+func NewApiKeyPatchRequestWithApplicationMergePatchPlusJSONBody(server string, apiKeyId string, params *ApiKeyPatchParams, body ApiKeyPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewApiKeyUpdateRequestWithBody(server, apiKeyId, "application/json", bodyReader)
+	return NewApiKeyPatchRequestWithBody(server, apiKeyId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewApiKeyPatchRequestWithBody constructs an http.Request for the ApiKeyPatch method, with any body, and a specified content type
+func NewApiKeyPatchRequestWithBody(server string, apiKeyId string, params *ApiKeyPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "apiKeyId", apiKeyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-keys/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewApiKeyUpdateRequest calls the generic ApiKeyUpdate builder with application/json body
+func NewApiKeyUpdateRequest(server string, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewApiKeyUpdateRequestWithBody(server, apiKeyId, params, "application/json", bodyReader)
 }
 
 // NewApiKeyUpdateRequestWithBody constructs an http.Request for the ApiKeyUpdate method, with any body, and a specified content type
-func NewApiKeyUpdateRequestWithBody(server string, apiKeyId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewApiKeyUpdateRequestWithBody(server string, apiKeyId string, params *ApiKeyUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -19131,6 +20026,21 @@ func NewApiKeyUpdateRequestWithBody(server string, apiKeyId string, contentType 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -20727,7 +21637,7 @@ func NewManagedUserGroupCreateV2RequestWithBody(server string, params *ManagedUs
 }
 
 // NewManagedUserGroupDeleteRequest constructs an http.Request for the ManagedUserGroupDelete method
-func NewManagedUserGroupDeleteRequest(server string, managedUserGroupId string) (*http.Request, error) {
+func NewManagedUserGroupDeleteRequest(server string, managedUserGroupId string, params *ManagedUserGroupDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -20755,6 +21665,21 @@ func NewManagedUserGroupDeleteRequest(server string, managedUserGroupId string) 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -20794,19 +21719,92 @@ func NewManagedUserGroupRequest(server string, managedUserGroupId string) (*http
 	return req, nil
 }
 
-// NewManagedUserGroupUpdateV2Request calls the generic ManagedUserGroupUpdateV2 builder with application/json body
-func NewManagedUserGroupUpdateV2Request(server string, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody) (*http.Request, error) {
+// NewManagedUserGroupPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic ManagedUserGroupPatch builder with application/merge-patch+json body
+func NewManagedUserGroupPatchRequestWithApplicationMergePatchPlusJSONBody(server string, managedUserGroupId string, params *ManagedUserGroupPatchParams, body ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewManagedUserGroupUpdateV2RequestWithBody(server, managedUserGroupId, "application/json", bodyReader)
+	return NewManagedUserGroupPatchRequestWithBody(server, managedUserGroupId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewManagedUserGroupPatchRequestWithBody constructs an http.Request for the ManagedUserGroupPatch method, with any body, and a specified content type
+func NewManagedUserGroupPatchRequestWithBody(server string, managedUserGroupId string, params *ManagedUserGroupPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserGroupId", managedUserGroupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewManagedUserGroupUpdateV2Request calls the generic ManagedUserGroupUpdateV2 builder with application/json body
+func NewManagedUserGroupUpdateV2Request(server string, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, body ManagedUserGroupUpdateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserGroupUpdateV2RequestWithBody(server, managedUserGroupId, params, "application/json", bodyReader)
 }
 
 // NewManagedUserGroupUpdateV2RequestWithBody constructs an http.Request for the ManagedUserGroupUpdateV2 method, with any body, and a specified content type
-func NewManagedUserGroupUpdateV2RequestWithBody(server string, managedUserGroupId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewManagedUserGroupUpdateV2RequestWithBody(server string, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -20837,6 +21835,21 @@ func NewManagedUserGroupUpdateV2RequestWithBody(server string, managedUserGroupI
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -21091,7 +22104,7 @@ func NewManagedUserInviteV2RequestWithBody(server string, params *ManagedUserInv
 }
 
 // NewManagedUserDeleteRequest constructs an http.Request for the ManagedUserDelete method
-func NewManagedUserDeleteRequest(server string, managedUserId string) (*http.Request, error) {
+func NewManagedUserDeleteRequest(server string, managedUserId string, params *ManagedUserDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -21119,6 +22132,21 @@ func NewManagedUserDeleteRequest(server string, managedUserId string) (*http.Req
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -21158,19 +22186,92 @@ func NewManagedUserRequest(server string, managedUserId string) (*http.Request, 
 	return req, nil
 }
 
-// NewManagedUserUpdateRequest calls the generic ManagedUserUpdate builder with application/json body
-func NewManagedUserUpdateRequest(server string, managedUserId string, body ManagedUserUpdateJSONRequestBody) (*http.Request, error) {
+// NewManagedUserPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic ManagedUserPatch builder with application/merge-patch+json body
+func NewManagedUserPatchRequestWithApplicationMergePatchPlusJSONBody(server string, managedUserId string, params *ManagedUserPatchParams, body ManagedUserPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewManagedUserUpdateRequestWithBody(server, managedUserId, "application/json", bodyReader)
+	return NewManagedUserPatchRequestWithBody(server, managedUserId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewManagedUserPatchRequestWithBody constructs an http.Request for the ManagedUserPatch method, with any body, and a specified content type
+func NewManagedUserPatchRequestWithBody(server string, managedUserId string, params *ManagedUserPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewManagedUserUpdateRequest calls the generic ManagedUserUpdate builder with application/json body
+func NewManagedUserUpdateRequest(server string, managedUserId string, params *ManagedUserUpdateParams, body ManagedUserUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewManagedUserUpdateRequestWithBody(server, managedUserId, params, "application/json", bodyReader)
 }
 
 // NewManagedUserUpdateRequestWithBody constructs an http.Request for the ManagedUserUpdate method, with any body, and a specified content type
-func NewManagedUserUpdateRequestWithBody(server string, managedUserId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewManagedUserUpdateRequestWithBody(server string, managedUserId string, params *ManagedUserUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -21201,6 +22302,21 @@ func NewManagedUserUpdateRequestWithBody(server string, managedUserId string, co
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -21646,15 +22762,15 @@ func NewOrganizationRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewOrganizationUpdateRequest calls the generic OrganizationUpdate builder with application/json body
-func NewOrganizationUpdateRequest(server string, body OrganizationUpdateJSONRequestBody) (*http.Request, error) {
+// NewOrganizationUpdateRequestWithApplicationMergePatchPlusJSONBody calls the generic OrganizationUpdate builder with application/merge-patch+json body
+func NewOrganizationUpdateRequestWithApplicationMergePatchPlusJSONBody(server string, body OrganizationUpdateApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewOrganizationUpdateRequestWithBody(server, "application/json", bodyReader)
+	return NewOrganizationUpdateRequestWithBody(server, "application/merge-patch+json", bodyReader)
 }
 
 // NewOrganizationUpdateRequestWithBody constructs an http.Request for the OrganizationUpdate method, with any body, and a specified content type
@@ -21841,15 +22957,15 @@ func NewOrganizationAccountDeleteRequest(server string, account OrganizationAcco
 	return req, nil
 }
 
-// NewOrganizationAccountUpdateRequest calls the generic OrganizationAccountUpdate builder with application/json body
-func NewOrganizationAccountUpdateRequest(server string, account OrganizationAccountSlug, body OrganizationAccountUpdateJSONRequestBody) (*http.Request, error) {
+// NewOrganizationAccountUpdateRequestWithApplicationMergePatchPlusJSONBody calls the generic OrganizationAccountUpdate builder with application/merge-patch+json body
+func NewOrganizationAccountUpdateRequestWithApplicationMergePatchPlusJSONBody(server string, account OrganizationAccountSlug, body OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewOrganizationAccountUpdateRequestWithBody(server, account, "application/json", bodyReader)
+	return NewOrganizationAccountUpdateRequestWithBody(server, account, "application/merge-patch+json", bodyReader)
 }
 
 // NewOrganizationAccountUpdateRequestWithBody constructs an http.Request for the OrganizationAccountUpdate method, with any body, and a specified content type
@@ -23222,7 +24338,7 @@ func NewSearchSpacesSuggestionsRequestWithBody(server string, contentType string
 }
 
 // NewSpaceDeleteRequest constructs an http.Request for the SpaceDelete method
-func NewSpaceDeleteRequest(server string, spaceId string) (*http.Request, error) {
+func NewSpaceDeleteRequest(server string, spaceId string, params *SpaceDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -23250,6 +24366,21 @@ func NewSpaceDeleteRequest(server string, spaceId string) (*http.Request, error)
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -23289,19 +24420,92 @@ func NewSpaceRequest(server string, spaceId string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewSpaceUpdateRequest calls the generic SpaceUpdate builder with application/json body
-func NewSpaceUpdateRequest(server string, spaceId string, body SpaceUpdateJSONRequestBody) (*http.Request, error) {
+// NewSpacePatchRequestWithApplicationMergePatchPlusJSONBody calls the generic SpacePatch builder with application/merge-patch+json body
+func NewSpacePatchRequestWithApplicationMergePatchPlusJSONBody(server string, spaceId string, params *SpacePatchParams, body SpacePatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSpaceUpdateRequestWithBody(server, spaceId, "application/json", bodyReader)
+	return NewSpacePatchRequestWithBody(server, spaceId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewSpacePatchRequestWithBody constructs an http.Request for the SpacePatch method, with any body, and a specified content type
+func NewSpacePatchRequestWithBody(server string, spaceId string, params *SpacePatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "spaceId", spaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewSpaceUpdateRequest calls the generic SpaceUpdate builder with application/json body
+func NewSpaceUpdateRequest(server string, spaceId string, params *SpaceUpdateParams, body SpaceUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSpaceUpdateRequestWithBody(server, spaceId, params, "application/json", bodyReader)
 }
 
 // NewSpaceUpdateRequestWithBody constructs an http.Request for the SpaceUpdate method, with any body, and a specified content type
-func NewSpaceUpdateRequestWithBody(server string, spaceId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSpaceUpdateRequestWithBody(server string, spaceId string, params *SpaceUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -23332,6 +24536,21 @@ func NewSpaceUpdateRequestWithBody(server string, spaceId string, contentType st
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -23509,7 +24728,7 @@ func NewStackDependenciesCreateInBatchRequestWithBody(server string, params *Sta
 }
 
 // NewStackDependencyDeleteRequest constructs an http.Request for the StackDependencyDelete method
-func NewStackDependencyDeleteRequest(server string, stackDependencyId string) (*http.Request, error) {
+func NewStackDependencyDeleteRequest(server string, stackDependencyId string, params *StackDependencyDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -23539,22 +24758,110 @@ func NewStackDependencyDeleteRequest(server string, stackDependencyId string) (*
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
 	return req, nil
 }
 
-// NewStackDependencyUpdateRequest calls the generic StackDependencyUpdate builder with application/json body
-func NewStackDependencyUpdateRequest(server string, stackDependencyId string, body StackDependencyUpdateJSONRequestBody) (*http.Request, error) {
+// NewStackDependencyPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic StackDependencyPatch builder with application/merge-patch+json body
+func NewStackDependencyPatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackDependencyId string, params *StackDependencyPatchParams, body StackDependencyPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStackDependencyUpdateRequestWithBody(server, stackDependencyId, "application/json", bodyReader)
+	return NewStackDependencyPatchRequestWithBody(server, stackDependencyId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewStackDependencyPatchRequestWithBody constructs an http.Request for the StackDependencyPatch method, with any body, and a specified content type
+func NewStackDependencyPatchRequestWithBody(server string, stackDependencyId string, params *StackDependencyPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackDependencyId", stackDependencyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-dependencies/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackDependencyUpdateRequest calls the generic StackDependencyUpdate builder with application/json body
+func NewStackDependencyUpdateRequest(server string, stackDependencyId string, params *StackDependencyUpdateParams, body StackDependencyUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackDependencyUpdateRequestWithBody(server, stackDependencyId, params, "application/json", bodyReader)
 }
 
 // NewStackDependencyUpdateRequestWithBody constructs an http.Request for the StackDependencyUpdate method, with any body, and a specified content type
-func NewStackDependencyUpdateRequestWithBody(server string, stackDependencyId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewStackDependencyUpdateRequestWithBody(server string, stackDependencyId string, params *StackDependencyUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -23585,6 +24892,21 @@ func NewStackDependencyUpdateRequestWithBody(server string, stackDependencyId st
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -24175,6 +25497,21 @@ func NewStackDeleteRequest(server string, stackId string, params *StackDeletePar
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
 	return req, nil
 }
 
@@ -24212,19 +25549,92 @@ func NewStackRequest(server string, stackId string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewStackUpdateRequest calls the generic StackUpdate builder with application/json body
-func NewStackUpdateRequest(server string, stackId string, body StackUpdateJSONRequestBody) (*http.Request, error) {
+// NewStackPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic StackPatch builder with application/merge-patch+json body
+func NewStackPatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackId string, params *StackPatchParams, body StackPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStackUpdateRequestWithBody(server, stackId, "application/json", bodyReader)
+	return NewStackPatchRequestWithBody(server, stackId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewStackPatchRequestWithBody constructs an http.Request for the StackPatch method, with any body, and a specified content type
+func NewStackPatchRequestWithBody(server string, stackId string, params *StackPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackUpdateRequest calls the generic StackUpdate builder with application/json body
+func NewStackUpdateRequest(server string, stackId string, params *StackUpdateParams, body StackUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackUpdateRequestWithBody(server, stackId, params, "application/json", bodyReader)
 }
 
 // NewStackUpdateRequestWithBody constructs an http.Request for the StackUpdate method, with any body, and a specified content type
-func NewStackUpdateRequestWithBody(server string, stackId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewStackUpdateRequestWithBody(server string, stackId string, params *StackUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -24255,6 +25665,21 @@ func NewStackUpdateRequestWithBody(server string, stackId string, contentType st
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -26056,7 +27481,7 @@ func NewStackScheduledDeleteCreateRequestWithBody(server string, stackId string,
 }
 
 // NewStackScheduledDeleteDeleteRequest constructs an http.Request for the StackScheduledDeleteDelete method
-func NewStackScheduledDeleteDeleteRequest(server string, stackId string, scheduledDeleteId string) (*http.Request, error) {
+func NewStackScheduledDeleteDeleteRequest(server string, stackId string, scheduledDeleteId string, params *StackScheduledDeleteDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26093,22 +27518,117 @@ func NewStackScheduledDeleteDeleteRequest(server string, stackId string, schedul
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
 	return req, nil
 }
 
-// NewStackScheduledDeleteUpdateRequest calls the generic StackScheduledDeleteUpdate builder with application/json body
-func NewStackScheduledDeleteUpdateRequest(server string, stackId string, scheduledDeleteId string, body StackScheduledDeleteUpdateJSONRequestBody) (*http.Request, error) {
+// NewStackScheduledDeletePatchRequestWithApplicationMergePatchPlusJSONBody calls the generic StackScheduledDeletePatch builder with application/merge-patch+json body
+func NewStackScheduledDeletePatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, body StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStackScheduledDeleteUpdateRequestWithBody(server, stackId, scheduledDeleteId, "application/json", bodyReader)
+	return NewStackScheduledDeletePatchRequestWithBody(server, stackId, scheduledDeleteId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewStackScheduledDeletePatchRequestWithBody constructs an http.Request for the StackScheduledDeletePatch method, with any body, and a specified content type
+func NewStackScheduledDeletePatchRequestWithBody(server string, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "scheduledDeleteId", scheduledDeleteId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/scheduled-deletes/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackScheduledDeleteUpdateRequest calls the generic StackScheduledDeleteUpdate builder with application/json body
+func NewStackScheduledDeleteUpdateRequest(server string, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, body StackScheduledDeleteUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackScheduledDeleteUpdateRequestWithBody(server, stackId, scheduledDeleteId, params, "application/json", bodyReader)
 }
 
 // NewStackScheduledDeleteUpdateRequestWithBody constructs an http.Request for the StackScheduledDeleteUpdate method, with any body, and a specified content type
-func NewStackScheduledDeleteUpdateRequestWithBody(server string, stackId string, scheduledDeleteId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewStackScheduledDeleteUpdateRequestWithBody(server string, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26146,6 +27666,21 @@ func NewStackScheduledDeleteUpdateRequestWithBody(server string, stackId string,
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -26270,7 +27805,7 @@ func NewStackScheduledRunCreateRequestWithBody(server string, stackId string, pa
 }
 
 // NewStackScheduledRunDeleteRequest constructs an http.Request for the StackScheduledRunDelete method
-func NewStackScheduledRunDeleteRequest(server string, stackId string, scheduledRunId string) (*http.Request, error) {
+func NewStackScheduledRunDeleteRequest(server string, stackId string, scheduledRunId string, params *StackScheduledRunDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26307,22 +27842,117 @@ func NewStackScheduledRunDeleteRequest(server string, stackId string, scheduledR
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
 	return req, nil
 }
 
-// NewStackScheduledRunUpdateRequest calls the generic StackScheduledRunUpdate builder with application/json body
-func NewStackScheduledRunUpdateRequest(server string, stackId string, scheduledRunId string, body StackScheduledRunUpdateJSONRequestBody) (*http.Request, error) {
+// NewStackScheduledRunPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic StackScheduledRunPatch builder with application/merge-patch+json body
+func NewStackScheduledRunPatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, body StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStackScheduledRunUpdateRequestWithBody(server, stackId, scheduledRunId, "application/json", bodyReader)
+	return NewStackScheduledRunPatchRequestWithBody(server, stackId, scheduledRunId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewStackScheduledRunPatchRequestWithBody constructs an http.Request for the StackScheduledRunPatch method, with any body, and a specified content type
+func NewStackScheduledRunPatchRequestWithBody(server string, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "scheduledRunId", scheduledRunId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/scheduled-runs/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackScheduledRunUpdateRequest calls the generic StackScheduledRunUpdate builder with application/json body
+func NewStackScheduledRunUpdateRequest(server string, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, body StackScheduledRunUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackScheduledRunUpdateRequestWithBody(server, stackId, scheduledRunId, params, "application/json", bodyReader)
 }
 
 // NewStackScheduledRunUpdateRequestWithBody constructs an http.Request for the StackScheduledRunUpdate method, with any body, and a specified content type
-func NewStackScheduledRunUpdateRequestWithBody(server string, stackId string, scheduledRunId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewStackScheduledRunUpdateRequestWithBody(server string, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26360,6 +27990,21 @@ func NewStackScheduledRunUpdateRequestWithBody(server string, stackId string, sc
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -26484,7 +28129,7 @@ func NewStackScheduledTaskCreateRequestWithBody(server string, stackId string, p
 }
 
 // NewStackScheduledTaskDeleteRequest constructs an http.Request for the StackScheduledTaskDelete method
-func NewStackScheduledTaskDeleteRequest(server string, stackId string, scheduledTaskId string) (*http.Request, error) {
+func NewStackScheduledTaskDeleteRequest(server string, stackId string, scheduledTaskId string, params *StackScheduledTaskDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26521,22 +28166,117 @@ func NewStackScheduledTaskDeleteRequest(server string, stackId string, scheduled
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
 	return req, nil
 }
 
-// NewStackScheduledTaskUpdateRequest calls the generic StackScheduledTaskUpdate builder with application/json body
-func NewStackScheduledTaskUpdateRequest(server string, stackId string, scheduledTaskId string, body StackScheduledTaskUpdateJSONRequestBody) (*http.Request, error) {
+// NewStackScheduledTaskPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic StackScheduledTaskPatch builder with application/merge-patch+json body
+func NewStackScheduledTaskPatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, body StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStackScheduledTaskUpdateRequestWithBody(server, stackId, scheduledTaskId, "application/json", bodyReader)
+	return NewStackScheduledTaskPatchRequestWithBody(server, stackId, scheduledTaskId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewStackScheduledTaskPatchRequestWithBody constructs an http.Request for the StackScheduledTaskPatch method, with any body, and a specified content type
+func NewStackScheduledTaskPatchRequestWithBody(server string, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "scheduledTaskId", scheduledTaskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/scheduled-tasks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackScheduledTaskUpdateRequest calls the generic StackScheduledTaskUpdate builder with application/json body
+func NewStackScheduledTaskUpdateRequest(server string, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, body StackScheduledTaskUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackScheduledTaskUpdateRequestWithBody(server, stackId, scheduledTaskId, params, "application/json", bodyReader)
 }
 
 // NewStackScheduledTaskUpdateRequestWithBody constructs an http.Request for the StackScheduledTaskUpdate method, with any body, and a specified content type
-func NewStackScheduledTaskUpdateRequestWithBody(server string, stackId string, scheduledTaskId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewStackScheduledTaskUpdateRequestWithBody(server string, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26574,6 +28314,21 @@ func NewStackScheduledTaskUpdateRequestWithBody(server string, stackId string, s
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -27442,7 +29197,7 @@ func NewWebhooksIntegrationCreateRequestWithBody(server string, stackId string, 
 }
 
 // NewWebhooksIntegrationDeleteRequest constructs an http.Request for the WebhooksIntegrationDelete method
-func NewWebhooksIntegrationDeleteRequest(server string, stackId string, webhooksIntegrationId string) (*http.Request, error) {
+func NewWebhooksIntegrationDeleteRequest(server string, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -27479,22 +29234,117 @@ func NewWebhooksIntegrationDeleteRequest(server string, stackId string, webhooks
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
 	return req, nil
 }
 
-// NewWebhooksIntegrationUpdateRequest calls the generic WebhooksIntegrationUpdate builder with application/json body
-func NewWebhooksIntegrationUpdateRequest(server string, stackId string, webhooksIntegrationId string, body WebhooksIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+// NewWebhooksIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic WebhooksIntegrationPatch builder with application/merge-patch+json body
+func NewWebhooksIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, body WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewWebhooksIntegrationUpdateRequestWithBody(server, stackId, webhooksIntegrationId, "application/json", bodyReader)
+	return NewWebhooksIntegrationPatchRequestWithBody(server, stackId, webhooksIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewWebhooksIntegrationPatchRequestWithBody constructs an http.Request for the WebhooksIntegrationPatch method, with any body, and a specified content type
+func NewWebhooksIntegrationPatchRequestWithBody(server string, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "webhooksIntegrationId", webhooksIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/webhooks-integrations/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewWebhooksIntegrationUpdateRequest calls the generic WebhooksIntegrationUpdate builder with application/json body
+func NewWebhooksIntegrationUpdateRequest(server string, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, body WebhooksIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWebhooksIntegrationUpdateRequestWithBody(server, stackId, webhooksIntegrationId, params, "application/json", bodyReader)
 }
 
 // NewWebhooksIntegrationUpdateRequestWithBody constructs an http.Request for the WebhooksIntegrationUpdate method, with any body, and a specified content type
-func NewWebhooksIntegrationUpdateRequestWithBody(server string, stackId string, webhooksIntegrationId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewWebhooksIntegrationUpdateRequestWithBody(server string, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -27532,6 +29382,21 @@ func NewWebhooksIntegrationUpdateRequestWithBody(server string, stackId string, 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -28195,7 +30060,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /api-keys/{apiKeyId} (the `ApiKeyDelete` operationId).
-	ApiKeyDeleteWithResponse(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*ApiKeyDeleteResponse, error)
+	ApiKeyDeleteWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyDeleteParams, reqEditors ...RequestEditorFn) (*ApiKeyDeleteResponse, error)
 
 	// ApiKeyWithResponse Get API Key
 	//
@@ -28204,6 +30069,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /api-keys/{apiKeyId} (the `ApiKey` operationId).
 	ApiKeyWithResponse(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*ApiKeyResponse, error)
 
+	// ApiKeyPatchWithBodyWithResponse Patch API Key
+	//
+	// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+	ApiKeyPatchWithBodyWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyPatchResponse, error)
+
+	// ApiKeyPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch API Key
+	//
+	// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+	ApiKeyPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, body ApiKeyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyPatchResponse, error)
+
 	// ApiKeyUpdateWithBodyWithResponse Update API Key
 	//
 	// Update an API key.
@@ -28211,7 +30094,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-	ApiKeyUpdateWithBodyWithResponse(ctx context.Context, apiKeyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error)
+	ApiKeyUpdateWithBodyWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error)
 
 	// ApiKeyUpdateWithResponse Update API Key
 	//
@@ -28220,7 +30103,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-	ApiKeyUpdateWithResponse(ctx context.Context, apiKeyId string, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error)
+	ApiKeyUpdateWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error)
 
 	// ApiKeyResetWithResponse Reset API Key
 	//
@@ -28615,7 +30498,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
-	ManagedUserGroupDeleteWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupDeleteResponse, error)
+	ManagedUserGroupDeleteWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupDeleteParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupDeleteResponse, error)
 
 	// ManagedUserGroupWithResponse Get User Group
 	//
@@ -28626,6 +30509,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroup` operationId).
 	ManagedUserGroupWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupResponse, error)
 
+	// ManagedUserGroupPatchWithBodyWithResponse Patch User Group
+	//
+	// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+	ManagedUserGroupPatchWithBodyWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupPatchResponse, error)
+
+	// ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch User Group
+	//
+	// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+	ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, body ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupPatchResponse, error)
+
 	// ManagedUserGroupUpdateV2WithBodyWithResponse Update User Group
 	//
 	// Set the description of the account's managed user group.
@@ -28633,7 +30534,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-	ManagedUserGroupUpdateV2WithBodyWithResponse(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error)
+	ManagedUserGroupUpdateV2WithBodyWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error)
 
 	// ManagedUserGroupUpdateV2WithResponse Update User Group
 	//
@@ -28642,7 +30543,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-	ManagedUserGroupUpdateV2WithResponse(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error)
+	ManagedUserGroupUpdateV2WithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error)
 
 	// ManagedUserGroupManagedUsersWithResponse Managed user group managed users
 	//
@@ -28705,7 +30606,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
-	ManagedUserDeleteWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserDeleteResponse, error)
+	ManagedUserDeleteWithResponse(ctx context.Context, managedUserId string, params *ManagedUserDeleteParams, reqEditors ...RequestEditorFn) (*ManagedUserDeleteResponse, error)
 
 	// ManagedUserWithResponse Get Managed User
 	//
@@ -28716,6 +30617,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
 	ManagedUserWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserResponse, error)
 
+	// ManagedUserPatchWithBodyWithResponse Patch Managed User
+	//
+	// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+	ManagedUserPatchWithBodyWithResponse(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserPatchResponse, error)
+
+	// ManagedUserPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Managed User
+	//
+	// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+	ManagedUserPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, body ManagedUserPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserPatchResponse, error)
+
 	// ManagedUserUpdateWithBodyWithResponse Update Managed User
 	//
 	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
@@ -28723,7 +30642,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-	ManagedUserUpdateWithBodyWithResponse(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error)
+	ManagedUserUpdateWithBodyWithResponse(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error)
 
 	// ManagedUserUpdateWithResponse Update Managed User
 	//
@@ -28732,7 +30651,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-	ManagedUserUpdateWithResponse(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error)
+	ManagedUserUpdateWithResponse(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error)
 
 	// ManagedUserPersonalApiKeysWithResponse Managed user personal api keys
 	//
@@ -28835,14 +30754,14 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /organization (the `OrganizationUpdate` operationId).
 	OrganizationUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationUpdateResponse, error)
 
-	// OrganizationUpdateWithResponse Organization Update
+	// OrganizationUpdateWithApplicationMergePatchPlusJSONBodyWithResponse Organization Update
 	//
 	// Rename the caller's organization; its slug never changes.
 	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PATCH /organization (the `OrganizationUpdate` operationId).
-	OrganizationUpdateWithResponse(ctx context.Context, body OrganizationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationUpdateResponse, error)
+	OrganizationUpdateWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, body OrganizationUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationUpdateResponse, error)
 
 	// OrganizationAccountsWithResponse Organization Accounts
 	//
@@ -28894,14 +30813,14 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /organization/accounts/{account} (the `OrganizationAccountUpdate` operationId).
 	OrganizationAccountUpdateWithBodyWithResponse(ctx context.Context, account OrganizationAccountSlug, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationAccountUpdateResponse, error)
 
-	// OrganizationAccountUpdateWithResponse Organization Account Update
+	// OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBodyWithResponse Organization Account Update
 	//
 	// Rename an account of the organization; its slug never changes.
 	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PATCH /organization/accounts/{account} (the `OrganizationAccountUpdate` operationId).
-	OrganizationAccountUpdateWithResponse(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationAccountUpdateResponse, error)
+	OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationAccountUpdateResponse, error)
 
 	// OrganizationAccountClaimWithBodyWithResponse Organization Account Claim
 	//
@@ -29263,7 +31182,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /spaces/{spaceId} (the `SpaceDelete` operationId).
-	SpaceDeleteWithResponse(ctx context.Context, spaceId string, reqEditors ...RequestEditorFn) (*SpaceDeleteResponse, error)
+	SpaceDeleteWithResponse(ctx context.Context, spaceId string, params *SpaceDeleteParams, reqEditors ...RequestEditorFn) (*SpaceDeleteResponse, error)
 
 	// SpaceWithResponse Get Space
 	//
@@ -29274,6 +31193,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /spaces/{spaceId} (the `Space` operationId).
 	SpaceWithResponse(ctx context.Context, spaceId string, reqEditors ...RequestEditorFn) (*SpaceResponse, error)
 
+	// SpacePatchWithBodyWithResponse Patch Space
+	//
+	// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+	SpacePatchWithBodyWithResponse(ctx context.Context, spaceId string, params *SpacePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpacePatchResponse, error)
+
+	// SpacePatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Space
+	//
+	// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+	SpacePatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, spaceId string, params *SpacePatchParams, body SpacePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*SpacePatchResponse, error)
+
 	// SpaceUpdateWithBodyWithResponse Update Space
 	//
 	// Change a space's name, description, labels and inheritance, and move it, with its subtree, below parentSpace. A move below its own subtree, or one that would cut a stack off an entity it uses, is refused, as is a change of the top space's parentSpace or inheritEntities. Admins of a space below the top space change only its name, description and labels while allowNonAdminSpaceCreation is off; while it is on they also move it below a space they administer, and may not stop it inheriting.
@@ -29281,7 +31218,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-	SpaceUpdateWithBodyWithResponse(ctx context.Context, spaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error)
+	SpaceUpdateWithBodyWithResponse(ctx context.Context, spaceId string, params *SpaceUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error)
 
 	// SpaceUpdateWithResponse Update Space
 	//
@@ -29290,7 +31227,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-	SpaceUpdateWithResponse(ctx context.Context, spaceId string, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error)
+	SpaceUpdateWithResponse(ctx context.Context, spaceId string, params *SpaceUpdateParams, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error)
 
 	// ManagedUserRequestRoleChangeWithBodyWithResponse Request Role Change
 	//
@@ -29353,7 +31290,25 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /stack-dependencies/{stackDependencyId} (the `StackDependencyDelete` operationId).
-	StackDependencyDeleteWithResponse(ctx context.Context, stackDependencyId string, reqEditors ...RequestEditorFn) (*StackDependencyDeleteResponse, error)
+	StackDependencyDeleteWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyDeleteParams, reqEditors ...RequestEditorFn) (*StackDependencyDeleteResponse, error)
+
+	// StackDependencyPatchWithBodyWithResponse Patch Dependency
+	//
+	// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+	StackDependencyPatchWithBodyWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackDependencyPatchResponse, error)
+
+	// StackDependencyPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Dependency
+	//
+	// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+	StackDependencyPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, body StackDependencyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependencyPatchResponse, error)
 
 	// StackDependencyUpdateWithBodyWithResponse Update Dependency
 	//
@@ -29362,7 +31317,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-	StackDependencyUpdateWithBodyWithResponse(ctx context.Context, stackDependencyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error)
+	StackDependencyUpdateWithBodyWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error)
 
 	// StackDependencyUpdateWithResponse Update Dependency
 	//
@@ -29371,7 +31326,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-	StackDependencyUpdateWithResponse(ctx context.Context, stackDependencyId string, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error)
+	StackDependencyUpdateWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error)
 
 	// StackDependenciesAddReferenceWithBodyWithResponse Add Reference
 	//
@@ -29542,6 +31497,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /stacks/{stackId} (the `Stack` operationId).
 	StackWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*StackResponse, error)
 
+	// StackPatchWithBodyWithResponse Patch Stack
+	//
+	// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+	StackPatchWithBodyWithResponse(ctx context.Context, stackId string, params *StackPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackPatchResponse, error)
+
+	// StackPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Stack
+	//
+	// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+	StackPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, params *StackPatchParams, body StackPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackPatchResponse, error)
+
 	// StackUpdateWithBodyWithResponse Update Stack
 	//
 	// Update an existing stack.
@@ -29549,7 +31522,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-	StackUpdateWithBodyWithResponse(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error)
+	StackUpdateWithBodyWithResponse(ctx context.Context, stackId string, params *StackUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error)
 
 	// StackUpdateWithResponse Update Stack
 	//
@@ -29558,7 +31531,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-	StackUpdateWithResponse(ctx context.Context, stackId string, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error)
+	StackUpdateWithResponse(ctx context.Context, stackId string, params *StackUpdateParams, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error)
 
 	// StackAttachableAwsIntegrationsWithResponse Stack attachable aws integrations
 	//
@@ -29913,7 +31886,25 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteDelete` operationId).
-	StackScheduledDeleteDeleteWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, reqEditors ...RequestEditorFn) (*StackScheduledDeleteDeleteResponse, error)
+	StackScheduledDeleteDeleteWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteDeleteParams, reqEditors ...RequestEditorFn) (*StackScheduledDeleteDeleteResponse, error)
+
+	// StackScheduledDeletePatchWithBodyWithResponse Patch Scheduled Delete
+	//
+	// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+	StackScheduledDeletePatchWithBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledDeletePatchResponse, error)
+
+	// StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Scheduled Delete
+	//
+	// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+	StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, body StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledDeletePatchResponse, error)
 
 	// StackScheduledDeleteUpdateWithBodyWithResponse Update Scheduled Delete
 	//
@@ -29922,7 +31913,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-	StackScheduledDeleteUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error)
+	StackScheduledDeleteUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error)
 
 	// StackScheduledDeleteUpdateWithResponse Update Scheduled Delete
 	//
@@ -29931,7 +31922,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-	StackScheduledDeleteUpdateWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error)
+	StackScheduledDeleteUpdateWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error)
 
 	// StackScheduledRunWithResponse Stack scheduled run
 	//
@@ -29967,7 +31958,25 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunDelete` operationId).
-	StackScheduledRunDeleteWithResponse(ctx context.Context, stackId string, scheduledRunId string, reqEditors ...RequestEditorFn) (*StackScheduledRunDeleteResponse, error)
+	StackScheduledRunDeleteWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunDeleteParams, reqEditors ...RequestEditorFn) (*StackScheduledRunDeleteResponse, error)
+
+	// StackScheduledRunPatchWithBodyWithResponse Patch Scheduled Run
+	//
+	// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+	StackScheduledRunPatchWithBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledRunPatchResponse, error)
+
+	// StackScheduledRunPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Scheduled Run
+	//
+	// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+	StackScheduledRunPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, body StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledRunPatchResponse, error)
 
 	// StackScheduledRunUpdateWithBodyWithResponse Update Scheduled Run
 	//
@@ -29976,7 +31985,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-	StackScheduledRunUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error)
+	StackScheduledRunUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error)
 
 	// StackScheduledRunUpdateWithResponse Update Scheduled Run
 	//
@@ -29985,7 +31994,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-	StackScheduledRunUpdateWithResponse(ctx context.Context, stackId string, scheduledRunId string, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error)
+	StackScheduledRunUpdateWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error)
 
 	// StackScheduledTaskWithResponse Stack scheduled task
 	//
@@ -30021,7 +32030,25 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskDelete` operationId).
-	StackScheduledTaskDeleteWithResponse(ctx context.Context, stackId string, scheduledTaskId string, reqEditors ...RequestEditorFn) (*StackScheduledTaskDeleteResponse, error)
+	StackScheduledTaskDeleteWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskDeleteParams, reqEditors ...RequestEditorFn) (*StackScheduledTaskDeleteResponse, error)
+
+	// StackScheduledTaskPatchWithBodyWithResponse Patch Scheduled Task
+	//
+	// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+	StackScheduledTaskPatchWithBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledTaskPatchResponse, error)
+
+	// StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Scheduled Task
+	//
+	// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+	StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, body StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledTaskPatchResponse, error)
 
 	// StackScheduledTaskUpdateWithBodyWithResponse Update Scheduled Task
 	//
@@ -30030,7 +32057,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-	StackScheduledTaskUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error)
+	StackScheduledTaskUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error)
 
 	// StackScheduledTaskUpdateWithResponse Update Scheduled Task
 	//
@@ -30039,7 +32066,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-	StackScheduledTaskUpdateWithResponse(ctx context.Context, stackId string, scheduledTaskId string, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error)
+	StackScheduledTaskUpdateWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error)
 
 	// StackSearchManagedEntitiesWithResponse Stack search managed entities
 	//
@@ -30233,7 +32260,25 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationDelete` operationId).
-	WebhooksIntegrationDeleteWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, reqEditors ...RequestEditorFn) (*WebhooksIntegrationDeleteResponse, error)
+	WebhooksIntegrationDeleteWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*WebhooksIntegrationDeleteResponse, error)
+
+	// WebhooksIntegrationPatchWithBodyWithResponse Patch Stack Webhook
+	//
+	// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+	WebhooksIntegrationPatchWithBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WebhooksIntegrationPatchResponse, error)
+
+	// WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Stack Webhook
+	//
+	// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+	WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, body WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*WebhooksIntegrationPatchResponse, error)
 
 	// WebhooksIntegrationUpdateWithBodyWithResponse Update Stack Webhook
 	//
@@ -30242,7 +32287,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-	WebhooksIntegrationUpdateWithBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error)
+	WebhooksIntegrationUpdateWithBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error)
 
 	// WebhooksIntegrationUpdateWithResponse Update Stack Webhook
 	//
@@ -30251,7 +32296,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-	WebhooksIntegrationUpdateWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error)
+	WebhooksIntegrationUpdateWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error)
 
 	// StateUploadUrlWithResponse Get State Upload URL
 	//
@@ -32262,6 +34307,8 @@ type ApiKeyDeleteResponse struct {
 	JSON200 *ApiKey
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -32284,6 +34331,11 @@ func (r ApiKeyDeleteResponse) GetJSON200() *ApiKey {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r ApiKeyDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ApiKeyDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -32332,6 +34384,7 @@ func (r ApiKeyDeleteResponse) ContentType() string {
 
 // ApiKeyResponse200Headers the declared response headers of an HTTP 200 response for ApiKey
 type ApiKeyResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -32425,8 +34478,126 @@ func (r ApiKeyResponse) ContentType() string {
 	return ""
 }
 
+// ApiKeyPatchResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyPatch
+type ApiKeyPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyPatchResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyPatch
+type ApiKeyPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyPatchResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyPatch
+type ApiKeyPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKey
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeyPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeyPatchResponse) GetJSON200() *ApiKey {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ApiKeyUpdateResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyUpdate
 type ApiKeyUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -32452,6 +34623,8 @@ type ApiKeyUpdateResponse struct {
 	JSON200 *ApiKey
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -32474,6 +34647,11 @@ func (r ApiKeyUpdateResponse) GetJSON200() *ApiKey {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r ApiKeyUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ApiKeyUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -35543,6 +37721,8 @@ type ManagedUserGroupDeleteResponse struct {
 	JSON200 *ManagedUserGroup
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -35565,6 +37745,11 @@ func (r ManagedUserGroupDeleteResponse) GetJSON200() *ManagedUserGroup {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r ManagedUserGroupDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ManagedUserGroupDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -35613,6 +37798,7 @@ func (r ManagedUserGroupDeleteResponse) ContentType() string {
 
 // ManagedUserGroupResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroup
 type ManagedUserGroupResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -35706,8 +37892,126 @@ func (r ManagedUserGroupResponse) ContentType() string {
 	return ""
 }
 
+// ManagedUserGroupPatchResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroupPatch
+type ManagedUserGroupPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupPatchResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserGroupPatch
+type ManagedUserGroupPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupPatchResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserGroupPatch
+type ManagedUserGroupPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUserGroup
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupPatchResponse) GetJSON200() *ManagedUserGroup {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ManagedUserGroupUpdateV2Response200Headers the declared response headers of an HTTP 200 response for ManagedUserGroupUpdateV2
 type ManagedUserGroupUpdateV2Response200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -35733,6 +38037,8 @@ type ManagedUserGroupUpdateV2Response struct {
 	JSON200 *ManagedUserGroup
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -35755,6 +38061,11 @@ func (r ManagedUserGroupUpdateV2Response) GetJSON200() *ManagedUserGroup {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r ManagedUserGroupUpdateV2Response) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ManagedUserGroupUpdateV2Response) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -36229,6 +38540,8 @@ type ManagedUserDeleteResponse struct {
 	JSON200 *ManagedUser
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -36251,6 +38564,11 @@ func (r ManagedUserDeleteResponse) GetJSON200() *ManagedUser {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r ManagedUserDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ManagedUserDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -36299,6 +38617,7 @@ func (r ManagedUserDeleteResponse) ContentType() string {
 
 // ManagedUserResponse200Headers the declared response headers of an HTTP 200 response for ManagedUser
 type ManagedUserResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -36392,8 +38711,126 @@ func (r ManagedUserResponse) ContentType() string {
 	return ""
 }
 
+// ManagedUserPatchResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserPatch
+type ManagedUserPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserPatchResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserPatch
+type ManagedUserPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserPatchResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserPatch
+type ManagedUserPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ManagedUser
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserPatchResponse) GetJSON200() *ManagedUser {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ManagedUserUpdateResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserUpdate
 type ManagedUserUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -36419,6 +38856,8 @@ type ManagedUserUpdateResponse struct {
 	JSON200 *ManagedUser
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -36441,6 +38880,11 @@ func (r ManagedUserUpdateResponse) GetJSON200() *ManagedUser {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r ManagedUserUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ManagedUserUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -40981,6 +43425,8 @@ type SpaceDeleteResponse struct {
 	JSON200 *Space
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -41003,6 +43449,11 @@ func (r SpaceDeleteResponse) GetJSON200() *Space {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r SpaceDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r SpaceDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -41051,6 +43502,7 @@ func (r SpaceDeleteResponse) ContentType() string {
 
 // SpaceResponse200Headers the declared response headers of an HTTP 200 response for Space
 type SpaceResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -41144,8 +43596,126 @@ func (r SpaceResponse) ContentType() string {
 	return ""
 }
 
+// SpacePatchResponse200Headers the declared response headers of an HTTP 200 response for SpacePatch
+type SpacePatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SpacePatchResponse429Headers the declared response headers of an HTTP 429 response for SpacePatch
+type SpacePatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SpacePatchResponse503Headers the declared response headers of an HTTP 503 response for SpacePatch
+type SpacePatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SpacePatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Space
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SpacePatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SpacePatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SpacePatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SpacePatchResponse) GetJSON200() *Space {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SpacePatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SpacePatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SpacePatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SpacePatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SpacePatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SpaceUpdateResponse200Headers the declared response headers of an HTTP 200 response for SpaceUpdate
 type SpaceUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -41171,6 +43741,8 @@ type SpaceUpdateResponse struct {
 	JSON200 *Space
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -41193,6 +43765,11 @@ func (r SpaceUpdateResponse) GetJSON200() *Space {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r SpaceUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r SpaceUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -41579,6 +44156,8 @@ type StackDependencyDeleteResponse struct {
 	JSON200 *StackDependency
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -41601,6 +44180,11 @@ func (r StackDependencyDeleteResponse) GetJSON200() *StackDependency {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackDependencyDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackDependencyDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -41647,8 +44231,126 @@ func (r StackDependencyDeleteResponse) ContentType() string {
 	return ""
 }
 
+// StackDependencyPatchResponse200Headers the declared response headers of an HTTP 200 response for StackDependencyPatch
+type StackDependencyPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackDependencyPatchResponse429Headers the declared response headers of an HTTP 429 response for StackDependencyPatch
+type StackDependencyPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackDependencyPatchResponse503Headers the declared response headers of an HTTP 503 response for StackDependencyPatch
+type StackDependencyPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackDependencyPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackDependency
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackDependencyPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackDependencyPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackDependencyPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackDependencyPatchResponse) GetJSON200() *StackDependency {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackDependencyPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackDependencyPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackDependencyPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackDependencyPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackDependencyPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackDependencyUpdateResponse200Headers the declared response headers of an HTTP 200 response for StackDependencyUpdate
 type StackDependencyUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -41674,6 +44376,8 @@ type StackDependencyUpdateResponse struct {
 	JSON200 *StackDependency
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -41696,6 +44400,11 @@ func (r StackDependencyUpdateResponse) GetJSON200() *StackDependency {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackDependencyUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackDependencyUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -42726,6 +45435,8 @@ type StackDeleteResponse struct {
 	JSON200 *Stack
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -42748,6 +45459,11 @@ func (r StackDeleteResponse) GetJSON200() *Stack {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -42796,6 +45512,7 @@ func (r StackDeleteResponse) ContentType() string {
 
 // StackResponse200Headers the declared response headers of an HTTP 200 response for Stack
 type StackResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -42889,8 +45606,126 @@ func (r StackResponse) ContentType() string {
 	return ""
 }
 
+// StackPatchResponse200Headers the declared response headers of an HTTP 200 response for StackPatch
+type StackPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackPatchResponse429Headers the declared response headers of an HTTP 429 response for StackPatch
+type StackPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackPatchResponse503Headers the declared response headers of an HTTP 503 response for StackPatch
+type StackPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Stack
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackPatchResponse) GetJSON200() *Stack {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackUpdateResponse200Headers the declared response headers of an HTTP 200 response for StackUpdate
 type StackUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -42916,6 +45751,8 @@ type StackUpdateResponse struct {
 	JSON200 *Stack
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -42938,6 +45775,11 @@ func (r StackUpdateResponse) GetJSON200() *Stack {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -45888,6 +48730,8 @@ type StackScheduledDeleteDeleteResponse struct {
 	JSON200 *ScheduledDelete
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -45910,6 +48754,11 @@ func (r StackScheduledDeleteDeleteResponse) GetJSON200() *ScheduledDelete {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackScheduledDeleteDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledDeleteDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -45956,8 +48805,126 @@ func (r StackScheduledDeleteDeleteResponse) ContentType() string {
 	return ""
 }
 
+// StackScheduledDeletePatchResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledDeletePatch
+type StackScheduledDeletePatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackScheduledDeletePatchResponse429Headers the declared response headers of an HTTP 429 response for StackScheduledDeletePatch
+type StackScheduledDeletePatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackScheduledDeletePatchResponse503Headers the declared response headers of an HTTP 503 response for StackScheduledDeletePatch
+type StackScheduledDeletePatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackScheduledDeletePatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ScheduledDelete
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackScheduledDeletePatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackScheduledDeletePatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackScheduledDeletePatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackScheduledDeletePatchResponse) GetJSON200() *ScheduledDelete {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackScheduledDeletePatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackScheduledDeletePatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackScheduledDeletePatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackScheduledDeletePatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackScheduledDeletePatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackScheduledDeleteUpdateResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledDeleteUpdate
 type StackScheduledDeleteUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -45983,6 +48950,8 @@ type StackScheduledDeleteUpdateResponse struct {
 	JSON200 *ScheduledDelete
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -46005,6 +48974,11 @@ func (r StackScheduledDeleteUpdateResponse) GetJSON200() *ScheduledDelete {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackScheduledDeleteUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledDeleteUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -46282,6 +49256,8 @@ type StackScheduledRunDeleteResponse struct {
 	JSON200 *ScheduledRun
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -46304,6 +49280,11 @@ func (r StackScheduledRunDeleteResponse) GetJSON200() *ScheduledRun {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackScheduledRunDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledRunDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -46350,8 +49331,126 @@ func (r StackScheduledRunDeleteResponse) ContentType() string {
 	return ""
 }
 
+// StackScheduledRunPatchResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledRunPatch
+type StackScheduledRunPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackScheduledRunPatchResponse429Headers the declared response headers of an HTTP 429 response for StackScheduledRunPatch
+type StackScheduledRunPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackScheduledRunPatchResponse503Headers the declared response headers of an HTTP 503 response for StackScheduledRunPatch
+type StackScheduledRunPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackScheduledRunPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ScheduledRun
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackScheduledRunPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackScheduledRunPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackScheduledRunPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackScheduledRunPatchResponse) GetJSON200() *ScheduledRun {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackScheduledRunPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackScheduledRunPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackScheduledRunPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackScheduledRunPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackScheduledRunPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackScheduledRunUpdateResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledRunUpdate
 type StackScheduledRunUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -46377,6 +49476,8 @@ type StackScheduledRunUpdateResponse struct {
 	JSON200 *ScheduledRun
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -46399,6 +49500,11 @@ func (r StackScheduledRunUpdateResponse) GetJSON200() *ScheduledRun {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackScheduledRunUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledRunUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -46676,6 +49782,8 @@ type StackScheduledTaskDeleteResponse struct {
 	JSON200 *ScheduledTask
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -46698,6 +49806,11 @@ func (r StackScheduledTaskDeleteResponse) GetJSON200() *ScheduledTask {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackScheduledTaskDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledTaskDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -46744,8 +49857,126 @@ func (r StackScheduledTaskDeleteResponse) ContentType() string {
 	return ""
 }
 
+// StackScheduledTaskPatchResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledTaskPatch
+type StackScheduledTaskPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackScheduledTaskPatchResponse429Headers the declared response headers of an HTTP 429 response for StackScheduledTaskPatch
+type StackScheduledTaskPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackScheduledTaskPatchResponse503Headers the declared response headers of an HTTP 503 response for StackScheduledTaskPatch
+type StackScheduledTaskPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackScheduledTaskPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ScheduledTask
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackScheduledTaskPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackScheduledTaskPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackScheduledTaskPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackScheduledTaskPatchResponse) GetJSON200() *ScheduledTask {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackScheduledTaskPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackScheduledTaskPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackScheduledTaskPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackScheduledTaskPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackScheduledTaskPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackScheduledTaskUpdateResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledTaskUpdate
 type StackScheduledTaskUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -46771,6 +50002,8 @@ type StackScheduledTaskUpdateResponse struct {
 	JSON200 *ScheduledTask
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -46793,6 +50026,11 @@ func (r StackScheduledTaskUpdateResponse) GetJSON200() *ScheduledTask {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StackScheduledTaskUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackScheduledTaskUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -48382,6 +51620,8 @@ type WebhooksIntegrationDeleteResponse struct {
 	JSON200 *WebhooksIntegration
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -48404,6 +51644,11 @@ func (r WebhooksIntegrationDeleteResponse) GetJSON200() *WebhooksIntegration {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r WebhooksIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r WebhooksIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -48450,8 +51695,126 @@ func (r WebhooksIntegrationDeleteResponse) ContentType() string {
 	return ""
 }
 
+// WebhooksIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for WebhooksIntegrationPatch
+type WebhooksIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WebhooksIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for WebhooksIntegrationPatch
+type WebhooksIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WebhooksIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for WebhooksIntegrationPatch
+type WebhooksIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WebhooksIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhooksIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WebhooksIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WebhooksIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WebhooksIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WebhooksIntegrationPatchResponse) GetJSON200() *WebhooksIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WebhooksIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WebhooksIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WebhooksIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WebhooksIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WebhooksIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // WebhooksIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for WebhooksIntegrationUpdate
 type WebhooksIntegrationUpdateResponse200Headers struct {
+	ETag                *string
 	XRateLimitLimit     *int
 	XRateLimitRemaining *int
 	XRateLimitReset     *int
@@ -48477,6 +51840,8 @@ type WebhooksIntegrationUpdateResponse struct {
 	JSON200 *WebhooksIntegration
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -48499,6 +51864,11 @@ func (r WebhooksIntegrationUpdateResponse) GetJSON200() *WebhooksIntegration {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r WebhooksIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r WebhooksIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -49690,8 +53060,8 @@ func (c *ClientWithResponses) ApiKeysWithAccessToSpaceWithResponse(ctx context.C
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /api-keys/{apiKeyId} (the `ApiKeyDelete` operationId).
-func (c *ClientWithResponses) ApiKeyDeleteWithResponse(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*ApiKeyDeleteResponse, error) {
-	rsp, err := c.ApiKeyDelete(ctx, apiKeyId, reqEditors...)
+func (c *ClientWithResponses) ApiKeyDeleteWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyDeleteParams, reqEditors ...RequestEditorFn) (*ApiKeyDeleteResponse, error) {
+	rsp, err := c.ApiKeyDelete(ctx, apiKeyId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -49711,6 +53081,36 @@ func (c *ClientWithResponses) ApiKeyWithResponse(ctx context.Context, apiKeyId s
 	return ParseApiKeyResponse(rsp)
 }
 
+// ApiKeyPatchWithBodyWithResponse Patch API Key
+//
+// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+func (c *ClientWithResponses) ApiKeyPatchWithBodyWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyPatchResponse, error) {
+	rsp, err := c.ApiKeyPatchWithBody(ctx, apiKeyId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyPatchResponse(rsp)
+}
+
+// ApiKeyPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch API Key
+//
+// Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /api-keys/{apiKeyId} (the `ApiKeyPatch` operationId).
+func (c *ClientWithResponses) ApiKeyPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyPatchParams, body ApiKeyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyPatchResponse, error) {
+	rsp, err := c.ApiKeyPatchWithApplicationMergePatchPlusJSONBody(ctx, apiKeyId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyPatchResponse(rsp)
+}
+
 // ApiKeyUpdateWithBodyWithResponse Update API Key
 //
 // Update an API key.
@@ -49718,8 +53118,8 @@ func (c *ClientWithResponses) ApiKeyWithResponse(ctx context.Context, apiKeyId s
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-func (c *ClientWithResponses) ApiKeyUpdateWithBodyWithResponse(ctx context.Context, apiKeyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error) {
-	rsp, err := c.ApiKeyUpdateWithBody(ctx, apiKeyId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) ApiKeyUpdateWithBodyWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error) {
+	rsp, err := c.ApiKeyUpdateWithBody(ctx, apiKeyId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -49733,8 +53133,8 @@ func (c *ClientWithResponses) ApiKeyUpdateWithBodyWithResponse(ctx context.Conte
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
-func (c *ClientWithResponses) ApiKeyUpdateWithResponse(ctx context.Context, apiKeyId string, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error) {
-	rsp, err := c.ApiKeyUpdate(ctx, apiKeyId, body, reqEditors...)
+func (c *ClientWithResponses) ApiKeyUpdateWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error) {
+	rsp, err := c.ApiKeyUpdate(ctx, apiKeyId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50374,8 +53774,8 @@ func (c *ClientWithResponses) ManagedUserGroupCreateV2WithResponse(ctx context.C
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupDelete` operationId).
-func (c *ClientWithResponses) ManagedUserGroupDeleteWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupDeleteResponse, error) {
-	rsp, err := c.ManagedUserGroupDelete(ctx, managedUserGroupId, reqEditors...)
+func (c *ClientWithResponses) ManagedUserGroupDeleteWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupDeleteParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupDeleteResponse, error) {
+	rsp, err := c.ManagedUserGroupDelete(ctx, managedUserGroupId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50397,6 +53797,36 @@ func (c *ClientWithResponses) ManagedUserGroupWithResponse(ctx context.Context, 
 	return ParseManagedUserGroupResponse(rsp)
 }
 
+// ManagedUserGroupPatchWithBodyWithResponse Patch User Group
+//
+// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+func (c *ClientWithResponses) ManagedUserGroupPatchWithBodyWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupPatchResponse, error) {
+	rsp, err := c.ManagedUserGroupPatchWithBody(ctx, managedUserGroupId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupPatchResponse(rsp)
+}
+
+// ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch User Group
+//
+// Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupPatch` operationId).
+func (c *ClientWithResponses) ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupPatchParams, body ManagedUserGroupPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupPatchResponse, error) {
+	rsp, err := c.ManagedUserGroupPatchWithApplicationMergePatchPlusJSONBody(ctx, managedUserGroupId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupPatchResponse(rsp)
+}
+
 // ManagedUserGroupUpdateV2WithBodyWithResponse Update User Group
 //
 // Set the description of the account's managed user group.
@@ -50404,8 +53834,8 @@ func (c *ClientWithResponses) ManagedUserGroupWithResponse(ctx context.Context, 
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithBodyWithResponse(ctx context.Context, managedUserGroupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error) {
-	rsp, err := c.ManagedUserGroupUpdateV2WithBody(ctx, managedUserGroupId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithBodyWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error) {
+	rsp, err := c.ManagedUserGroupUpdateV2WithBody(ctx, managedUserGroupId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50419,8 +53849,8 @@ func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithBodyWithResponse(ctx c
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /managed-user-groups/{managedUserGroupId} (the `ManagedUserGroupUpdateV2` operationId).
-func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithResponse(ctx context.Context, managedUserGroupId string, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error) {
-	rsp, err := c.ManagedUserGroupUpdateV2(ctx, managedUserGroupId, body, reqEditors...)
+func (c *ClientWithResponses) ManagedUserGroupUpdateV2WithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupUpdateV2Params, body ManagedUserGroupUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserGroupUpdateV2Response, error) {
+	rsp, err := c.ManagedUserGroupUpdateV2(ctx, managedUserGroupId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50524,8 +53954,8 @@ func (c *ClientWithResponses) ManagedUserInviteV2WithResponse(ctx context.Contex
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /managed-users/{managedUserId} (the `ManagedUserDelete` operationId).
-func (c *ClientWithResponses) ManagedUserDeleteWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserDeleteResponse, error) {
-	rsp, err := c.ManagedUserDelete(ctx, managedUserId, reqEditors...)
+func (c *ClientWithResponses) ManagedUserDeleteWithResponse(ctx context.Context, managedUserId string, params *ManagedUserDeleteParams, reqEditors ...RequestEditorFn) (*ManagedUserDeleteResponse, error) {
+	rsp, err := c.ManagedUserDelete(ctx, managedUserId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50547,6 +53977,36 @@ func (c *ClientWithResponses) ManagedUserWithResponse(ctx context.Context, manag
 	return ParseManagedUserResponse(rsp)
 }
 
+// ManagedUserPatchWithBodyWithResponse Patch Managed User
+//
+// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+func (c *ClientWithResponses) ManagedUserPatchWithBodyWithResponse(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserPatchResponse, error) {
+	rsp, err := c.ManagedUserPatchWithBody(ctx, managedUserId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserPatchResponse(rsp)
+}
+
+// ManagedUserPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Managed User
+//
+// Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /managed-users/{managedUserId} (the `ManagedUserPatch` operationId).
+func (c *ClientWithResponses) ManagedUserPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, managedUserId string, params *ManagedUserPatchParams, body ManagedUserPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserPatchResponse, error) {
+	rsp, err := c.ManagedUserPatchWithApplicationMergePatchPlusJSONBody(ctx, managedUserId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserPatchResponse(rsp)
+}
+
 // ManagedUserUpdateWithBodyWithResponse Update Managed User
 //
 // Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
@@ -50554,8 +54014,8 @@ func (c *ClientWithResponses) ManagedUserWithResponse(ctx context.Context, manag
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-func (c *ClientWithResponses) ManagedUserUpdateWithBodyWithResponse(ctx context.Context, managedUserId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error) {
-	rsp, err := c.ManagedUserUpdateWithBody(ctx, managedUserId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) ManagedUserUpdateWithBodyWithResponse(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error) {
+	rsp, err := c.ManagedUserUpdateWithBody(ctx, managedUserId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50569,8 +54029,8 @@ func (c *ClientWithResponses) ManagedUserUpdateWithBodyWithResponse(ctx context.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /managed-users/{managedUserId} (the `ManagedUserUpdate` operationId).
-func (c *ClientWithResponses) ManagedUserUpdateWithResponse(ctx context.Context, managedUserId string, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error) {
-	rsp, err := c.ManagedUserUpdate(ctx, managedUserId, body, reqEditors...)
+func (c *ClientWithResponses) ManagedUserUpdateWithResponse(ctx context.Context, managedUserId string, params *ManagedUserUpdateParams, body ManagedUserUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ManagedUserUpdateResponse, error) {
+	rsp, err := c.ManagedUserUpdate(ctx, managedUserId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50744,15 +54204,15 @@ func (c *ClientWithResponses) OrganizationUpdateWithBodyWithResponse(ctx context
 	return ParseOrganizationUpdateResponse(rsp)
 }
 
-// OrganizationUpdateWithResponse Organization Update
+// OrganizationUpdateWithApplicationMergePatchPlusJSONBodyWithResponse Organization Update
 //
 // Rename the caller's organization; its slug never changes.
 //
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PATCH /organization (the `OrganizationUpdate` operationId).
-func (c *ClientWithResponses) OrganizationUpdateWithResponse(ctx context.Context, body OrganizationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationUpdateResponse, error) {
-	rsp, err := c.OrganizationUpdate(ctx, body, reqEditors...)
+func (c *ClientWithResponses) OrganizationUpdateWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, body OrganizationUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationUpdateResponse, error) {
+	rsp, err := c.OrganizationUpdateWithApplicationMergePatchPlusJSONBody(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -50839,15 +54299,15 @@ func (c *ClientWithResponses) OrganizationAccountUpdateWithBodyWithResponse(ctx 
 	return ParseOrganizationAccountUpdateResponse(rsp)
 }
 
-// OrganizationAccountUpdateWithResponse Organization Account Update
+// OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBodyWithResponse Organization Account Update
 //
 // Rename an account of the organization; its slug never changes.
 //
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PATCH /organization/accounts/{account} (the `OrganizationAccountUpdate` operationId).
-func (c *ClientWithResponses) OrganizationAccountUpdateWithResponse(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationAccountUpdateResponse, error) {
-	rsp, err := c.OrganizationAccountUpdate(ctx, account, body, reqEditors...)
+func (c *ClientWithResponses) OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, account OrganizationAccountSlug, body OrganizationAccountUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationAccountUpdateResponse, error) {
+	rsp, err := c.OrganizationAccountUpdateWithApplicationMergePatchPlusJSONBody(ctx, account, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51442,8 +54902,8 @@ func (c *ClientWithResponses) SearchSpacesSuggestionsWithResponse(ctx context.Co
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /spaces/{spaceId} (the `SpaceDelete` operationId).
-func (c *ClientWithResponses) SpaceDeleteWithResponse(ctx context.Context, spaceId string, reqEditors ...RequestEditorFn) (*SpaceDeleteResponse, error) {
-	rsp, err := c.SpaceDelete(ctx, spaceId, reqEditors...)
+func (c *ClientWithResponses) SpaceDeleteWithResponse(ctx context.Context, spaceId string, params *SpaceDeleteParams, reqEditors ...RequestEditorFn) (*SpaceDeleteResponse, error) {
+	rsp, err := c.SpaceDelete(ctx, spaceId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51465,6 +54925,36 @@ func (c *ClientWithResponses) SpaceWithResponse(ctx context.Context, spaceId str
 	return ParseSpaceResponse(rsp)
 }
 
+// SpacePatchWithBodyWithResponse Patch Space
+//
+// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+func (c *ClientWithResponses) SpacePatchWithBodyWithResponse(ctx context.Context, spaceId string, params *SpacePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpacePatchResponse, error) {
+	rsp, err := c.SpacePatchWithBody(ctx, spaceId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSpacePatchResponse(rsp)
+}
+
+// SpacePatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Space
+//
+// Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /spaces/{spaceId} (the `SpacePatch` operationId).
+func (c *ClientWithResponses) SpacePatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, spaceId string, params *SpacePatchParams, body SpacePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*SpacePatchResponse, error) {
+	rsp, err := c.SpacePatchWithApplicationMergePatchPlusJSONBody(ctx, spaceId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSpacePatchResponse(rsp)
+}
+
 // SpaceUpdateWithBodyWithResponse Update Space
 //
 // Change a space's name, description, labels and inheritance, and move it, with its subtree, below parentSpace. A move below its own subtree, or one that would cut a stack off an entity it uses, is refused, as is a change of the top space's parentSpace or inheritEntities. Admins of a space below the top space change only its name, description and labels while allowNonAdminSpaceCreation is off; while it is on they also move it below a space they administer, and may not stop it inheriting.
@@ -51472,8 +54962,8 @@ func (c *ClientWithResponses) SpaceWithResponse(ctx context.Context, spaceId str
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-func (c *ClientWithResponses) SpaceUpdateWithBodyWithResponse(ctx context.Context, spaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error) {
-	rsp, err := c.SpaceUpdateWithBody(ctx, spaceId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SpaceUpdateWithBodyWithResponse(ctx context.Context, spaceId string, params *SpaceUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error) {
+	rsp, err := c.SpaceUpdateWithBody(ctx, spaceId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51487,8 +54977,8 @@ func (c *ClientWithResponses) SpaceUpdateWithBodyWithResponse(ctx context.Contex
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /spaces/{spaceId} (the `SpaceUpdate` operationId).
-func (c *ClientWithResponses) SpaceUpdateWithResponse(ctx context.Context, spaceId string, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error) {
-	rsp, err := c.SpaceUpdate(ctx, spaceId, body, reqEditors...)
+func (c *ClientWithResponses) SpaceUpdateWithResponse(ctx context.Context, spaceId string, params *SpaceUpdateParams, body SpaceUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*SpaceUpdateResponse, error) {
+	rsp, err := c.SpaceUpdate(ctx, spaceId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51592,12 +55082,42 @@ func (c *ClientWithResponses) StackDependenciesCreateInBatchWithResponse(ctx con
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /stack-dependencies/{stackDependencyId} (the `StackDependencyDelete` operationId).
-func (c *ClientWithResponses) StackDependencyDeleteWithResponse(ctx context.Context, stackDependencyId string, reqEditors ...RequestEditorFn) (*StackDependencyDeleteResponse, error) {
-	rsp, err := c.StackDependencyDelete(ctx, stackDependencyId, reqEditors...)
+func (c *ClientWithResponses) StackDependencyDeleteWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyDeleteParams, reqEditors ...RequestEditorFn) (*StackDependencyDeleteResponse, error) {
+	rsp, err := c.StackDependencyDelete(ctx, stackDependencyId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseStackDependencyDeleteResponse(rsp)
+}
+
+// StackDependencyPatchWithBodyWithResponse Patch Dependency
+//
+// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+func (c *ClientWithResponses) StackDependencyPatchWithBodyWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackDependencyPatchResponse, error) {
+	rsp, err := c.StackDependencyPatchWithBody(ctx, stackDependencyId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackDependencyPatchResponse(rsp)
+}
+
+// StackDependencyPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Dependency
+//
+// Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stack-dependencies/{stackDependencyId} (the `StackDependencyPatch` operationId).
+func (c *ClientWithResponses) StackDependencyPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyPatchParams, body StackDependencyPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependencyPatchResponse, error) {
+	rsp, err := c.StackDependencyPatchWithApplicationMergePatchPlusJSONBody(ctx, stackDependencyId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackDependencyPatchResponse(rsp)
 }
 
 // StackDependencyUpdateWithBodyWithResponse Update Dependency
@@ -51607,8 +55127,8 @@ func (c *ClientWithResponses) StackDependencyDeleteWithResponse(ctx context.Cont
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-func (c *ClientWithResponses) StackDependencyUpdateWithBodyWithResponse(ctx context.Context, stackDependencyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error) {
-	rsp, err := c.StackDependencyUpdateWithBody(ctx, stackDependencyId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StackDependencyUpdateWithBodyWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error) {
+	rsp, err := c.StackDependencyUpdateWithBody(ctx, stackDependencyId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51622,8 +55142,8 @@ func (c *ClientWithResponses) StackDependencyUpdateWithBodyWithResponse(ctx cont
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stack-dependencies/{stackDependencyId} (the `StackDependencyUpdate` operationId).
-func (c *ClientWithResponses) StackDependencyUpdateWithResponse(ctx context.Context, stackDependencyId string, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error) {
-	rsp, err := c.StackDependencyUpdate(ctx, stackDependencyId, body, reqEditors...)
+func (c *ClientWithResponses) StackDependencyUpdateWithResponse(ctx context.Context, stackDependencyId string, params *StackDependencyUpdateParams, body StackDependencyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependencyUpdateResponse, error) {
+	rsp, err := c.StackDependencyUpdate(ctx, stackDependencyId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51907,6 +55427,36 @@ func (c *ClientWithResponses) StackWithResponse(ctx context.Context, stackId str
 	return ParseStackResponse(rsp)
 }
 
+// StackPatchWithBodyWithResponse Patch Stack
+//
+// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+func (c *ClientWithResponses) StackPatchWithBodyWithResponse(ctx context.Context, stackId string, params *StackPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackPatchResponse, error) {
+	rsp, err := c.StackPatchWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackPatchResponse(rsp)
+}
+
+// StackPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Stack
+//
+// Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId} (the `StackPatch` operationId).
+func (c *ClientWithResponses) StackPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, params *StackPatchParams, body StackPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackPatchResponse, error) {
+	rsp, err := c.StackPatchWithApplicationMergePatchPlusJSONBody(ctx, stackId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackPatchResponse(rsp)
+}
+
 // StackUpdateWithBodyWithResponse Update Stack
 //
 // Update an existing stack.
@@ -51914,8 +55464,8 @@ func (c *ClientWithResponses) StackWithResponse(ctx context.Context, stackId str
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-func (c *ClientWithResponses) StackUpdateWithBodyWithResponse(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error) {
-	rsp, err := c.StackUpdateWithBody(ctx, stackId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StackUpdateWithBodyWithResponse(ctx context.Context, stackId string, params *StackUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error) {
+	rsp, err := c.StackUpdateWithBody(ctx, stackId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -51929,8 +55479,8 @@ func (c *ClientWithResponses) StackUpdateWithBodyWithResponse(ctx context.Contex
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId} (the `StackUpdate` operationId).
-func (c *ClientWithResponses) StackUpdateWithResponse(ctx context.Context, stackId string, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error) {
-	rsp, err := c.StackUpdate(ctx, stackId, body, reqEditors...)
+func (c *ClientWithResponses) StackUpdateWithResponse(ctx context.Context, stackId string, params *StackUpdateParams, body StackUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackUpdateResponse, error) {
+	rsp, err := c.StackUpdate(ctx, stackId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -52506,12 +56056,42 @@ func (c *ClientWithResponses) StackScheduledDeleteCreateWithResponse(ctx context
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteDelete` operationId).
-func (c *ClientWithResponses) StackScheduledDeleteDeleteWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, reqEditors ...RequestEditorFn) (*StackScheduledDeleteDeleteResponse, error) {
-	rsp, err := c.StackScheduledDeleteDelete(ctx, stackId, scheduledDeleteId, reqEditors...)
+func (c *ClientWithResponses) StackScheduledDeleteDeleteWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteDeleteParams, reqEditors ...RequestEditorFn) (*StackScheduledDeleteDeleteResponse, error) {
+	rsp, err := c.StackScheduledDeleteDelete(ctx, stackId, scheduledDeleteId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseStackScheduledDeleteDeleteResponse(rsp)
+}
+
+// StackScheduledDeletePatchWithBodyWithResponse Patch Scheduled Delete
+//
+// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+func (c *ClientWithResponses) StackScheduledDeletePatchWithBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledDeletePatchResponse, error) {
+	rsp, err := c.StackScheduledDeletePatchWithBody(ctx, stackId, scheduledDeleteId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackScheduledDeletePatchResponse(rsp)
+}
+
+// StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Scheduled Delete
+//
+// Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeletePatch` operationId).
+func (c *ClientWithResponses) StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeletePatchParams, body StackScheduledDeletePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledDeletePatchResponse, error) {
+	rsp, err := c.StackScheduledDeletePatchWithApplicationMergePatchPlusJSONBody(ctx, stackId, scheduledDeleteId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackScheduledDeletePatchResponse(rsp)
 }
 
 // StackScheduledDeleteUpdateWithBodyWithResponse Update Scheduled Delete
@@ -52521,8 +56101,8 @@ func (c *ClientWithResponses) StackScheduledDeleteDeleteWithResponse(ctx context
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-func (c *ClientWithResponses) StackScheduledDeleteUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error) {
-	rsp, err := c.StackScheduledDeleteUpdateWithBody(ctx, stackId, scheduledDeleteId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StackScheduledDeleteUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error) {
+	rsp, err := c.StackScheduledDeleteUpdateWithBody(ctx, stackId, scheduledDeleteId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -52536,8 +56116,8 @@ func (c *ClientWithResponses) StackScheduledDeleteUpdateWithBodyWithResponse(ctx
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId} (the `StackScheduledDeleteUpdate` operationId).
-func (c *ClientWithResponses) StackScheduledDeleteUpdateWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error) {
-	rsp, err := c.StackScheduledDeleteUpdate(ctx, stackId, scheduledDeleteId, body, reqEditors...)
+func (c *ClientWithResponses) StackScheduledDeleteUpdateWithResponse(ctx context.Context, stackId string, scheduledDeleteId string, params *StackScheduledDeleteUpdateParams, body StackScheduledDeleteUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledDeleteUpdateResponse, error) {
+	rsp, err := c.StackScheduledDeleteUpdate(ctx, stackId, scheduledDeleteId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -52596,12 +56176,42 @@ func (c *ClientWithResponses) StackScheduledRunCreateWithResponse(ctx context.Co
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunDelete` operationId).
-func (c *ClientWithResponses) StackScheduledRunDeleteWithResponse(ctx context.Context, stackId string, scheduledRunId string, reqEditors ...RequestEditorFn) (*StackScheduledRunDeleteResponse, error) {
-	rsp, err := c.StackScheduledRunDelete(ctx, stackId, scheduledRunId, reqEditors...)
+func (c *ClientWithResponses) StackScheduledRunDeleteWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunDeleteParams, reqEditors ...RequestEditorFn) (*StackScheduledRunDeleteResponse, error) {
+	rsp, err := c.StackScheduledRunDelete(ctx, stackId, scheduledRunId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseStackScheduledRunDeleteResponse(rsp)
+}
+
+// StackScheduledRunPatchWithBodyWithResponse Patch Scheduled Run
+//
+// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+func (c *ClientWithResponses) StackScheduledRunPatchWithBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledRunPatchResponse, error) {
+	rsp, err := c.StackScheduledRunPatchWithBody(ctx, stackId, scheduledRunId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackScheduledRunPatchResponse(rsp)
+}
+
+// StackScheduledRunPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Scheduled Run
+//
+// Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunPatch` operationId).
+func (c *ClientWithResponses) StackScheduledRunPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunPatchParams, body StackScheduledRunPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledRunPatchResponse, error) {
+	rsp, err := c.StackScheduledRunPatchWithApplicationMergePatchPlusJSONBody(ctx, stackId, scheduledRunId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackScheduledRunPatchResponse(rsp)
 }
 
 // StackScheduledRunUpdateWithBodyWithResponse Update Scheduled Run
@@ -52611,8 +56221,8 @@ func (c *ClientWithResponses) StackScheduledRunDeleteWithResponse(ctx context.Co
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-func (c *ClientWithResponses) StackScheduledRunUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error) {
-	rsp, err := c.StackScheduledRunUpdateWithBody(ctx, stackId, scheduledRunId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StackScheduledRunUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error) {
+	rsp, err := c.StackScheduledRunUpdateWithBody(ctx, stackId, scheduledRunId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -52626,8 +56236,8 @@ func (c *ClientWithResponses) StackScheduledRunUpdateWithBodyWithResponse(ctx co
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId} (the `StackScheduledRunUpdate` operationId).
-func (c *ClientWithResponses) StackScheduledRunUpdateWithResponse(ctx context.Context, stackId string, scheduledRunId string, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error) {
-	rsp, err := c.StackScheduledRunUpdate(ctx, stackId, scheduledRunId, body, reqEditors...)
+func (c *ClientWithResponses) StackScheduledRunUpdateWithResponse(ctx context.Context, stackId string, scheduledRunId string, params *StackScheduledRunUpdateParams, body StackScheduledRunUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledRunUpdateResponse, error) {
+	rsp, err := c.StackScheduledRunUpdate(ctx, stackId, scheduledRunId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -52686,12 +56296,42 @@ func (c *ClientWithResponses) StackScheduledTaskCreateWithResponse(ctx context.C
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskDelete` operationId).
-func (c *ClientWithResponses) StackScheduledTaskDeleteWithResponse(ctx context.Context, stackId string, scheduledTaskId string, reqEditors ...RequestEditorFn) (*StackScheduledTaskDeleteResponse, error) {
-	rsp, err := c.StackScheduledTaskDelete(ctx, stackId, scheduledTaskId, reqEditors...)
+func (c *ClientWithResponses) StackScheduledTaskDeleteWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskDeleteParams, reqEditors ...RequestEditorFn) (*StackScheduledTaskDeleteResponse, error) {
+	rsp, err := c.StackScheduledTaskDelete(ctx, stackId, scheduledTaskId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseStackScheduledTaskDeleteResponse(rsp)
+}
+
+// StackScheduledTaskPatchWithBodyWithResponse Patch Scheduled Task
+//
+// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+func (c *ClientWithResponses) StackScheduledTaskPatchWithBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledTaskPatchResponse, error) {
+	rsp, err := c.StackScheduledTaskPatchWithBody(ctx, stackId, scheduledTaskId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackScheduledTaskPatchResponse(rsp)
+}
+
+// StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Scheduled Task
+//
+// Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskPatch` operationId).
+func (c *ClientWithResponses) StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskPatchParams, body StackScheduledTaskPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledTaskPatchResponse, error) {
+	rsp, err := c.StackScheduledTaskPatchWithApplicationMergePatchPlusJSONBody(ctx, stackId, scheduledTaskId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackScheduledTaskPatchResponse(rsp)
 }
 
 // StackScheduledTaskUpdateWithBodyWithResponse Update Scheduled Task
@@ -52701,8 +56341,8 @@ func (c *ClientWithResponses) StackScheduledTaskDeleteWithResponse(ctx context.C
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-func (c *ClientWithResponses) StackScheduledTaskUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error) {
-	rsp, err := c.StackScheduledTaskUpdateWithBody(ctx, stackId, scheduledTaskId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StackScheduledTaskUpdateWithBodyWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error) {
+	rsp, err := c.StackScheduledTaskUpdateWithBody(ctx, stackId, scheduledTaskId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -52716,8 +56356,8 @@ func (c *ClientWithResponses) StackScheduledTaskUpdateWithBodyWithResponse(ctx c
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/scheduled-tasks/{scheduledTaskId} (the `StackScheduledTaskUpdate` operationId).
-func (c *ClientWithResponses) StackScheduledTaskUpdateWithResponse(ctx context.Context, stackId string, scheduledTaskId string, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error) {
-	rsp, err := c.StackScheduledTaskUpdate(ctx, stackId, scheduledTaskId, body, reqEditors...)
+func (c *ClientWithResponses) StackScheduledTaskUpdateWithResponse(ctx context.Context, stackId string, scheduledTaskId string, params *StackScheduledTaskUpdateParams, body StackScheduledTaskUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackScheduledTaskUpdateResponse, error) {
+	rsp, err := c.StackScheduledTaskUpdate(ctx, stackId, scheduledTaskId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -53036,12 +56676,42 @@ func (c *ClientWithResponses) WebhooksIntegrationCreateWithResponse(ctx context.
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationDelete` operationId).
-func (c *ClientWithResponses) WebhooksIntegrationDeleteWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, reqEditors ...RequestEditorFn) (*WebhooksIntegrationDeleteResponse, error) {
-	rsp, err := c.WebhooksIntegrationDelete(ctx, stackId, webhooksIntegrationId, reqEditors...)
+func (c *ClientWithResponses) WebhooksIntegrationDeleteWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*WebhooksIntegrationDeleteResponse, error) {
+	rsp, err := c.WebhooksIntegrationDelete(ctx, stackId, webhooksIntegrationId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseWebhooksIntegrationDeleteResponse(rsp)
+}
+
+// WebhooksIntegrationPatchWithBodyWithResponse Patch Stack Webhook
+//
+// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+func (c *ClientWithResponses) WebhooksIntegrationPatchWithBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WebhooksIntegrationPatchResponse, error) {
+	rsp, err := c.WebhooksIntegrationPatchWithBody(ctx, stackId, webhooksIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWebhooksIntegrationPatchResponse(rsp)
+}
+
+// WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Stack Webhook
+//
+// Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationPatch` operationId).
+func (c *ClientWithResponses) WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationPatchParams, body WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*WebhooksIntegrationPatchResponse, error) {
+	rsp, err := c.WebhooksIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, stackId, webhooksIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWebhooksIntegrationPatchResponse(rsp)
 }
 
 // WebhooksIntegrationUpdateWithBodyWithResponse Update Stack Webhook
@@ -53051,8 +56721,8 @@ func (c *ClientWithResponses) WebhooksIntegrationDeleteWithResponse(ctx context.
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-func (c *ClientWithResponses) WebhooksIntegrationUpdateWithBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error) {
-	rsp, err := c.WebhooksIntegrationUpdateWithBody(ctx, stackId, webhooksIntegrationId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) WebhooksIntegrationUpdateWithBodyWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error) {
+	rsp, err := c.WebhooksIntegrationUpdateWithBody(ctx, stackId, webhooksIntegrationId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -53066,8 +56736,8 @@ func (c *ClientWithResponses) WebhooksIntegrationUpdateWithBodyWithResponse(ctx 
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId} (the `WebhooksIntegrationUpdate` operationId).
-func (c *ClientWithResponses) WebhooksIntegrationUpdateWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error) {
-	rsp, err := c.WebhooksIntegrationUpdate(ctx, stackId, webhooksIntegrationId, body, reqEditors...)
+func (c *ClientWithResponses) WebhooksIntegrationUpdateWithResponse(ctx context.Context, stackId string, webhooksIntegrationId string, params *WebhooksIntegrationUpdateParams, body WebhooksIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*WebhooksIntegrationUpdateResponse, error) {
+	rsp, err := c.WebhooksIntegrationUpdate(ctx, stackId, webhooksIntegrationId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -55671,6 +59341,13 @@ func ParseApiKeyDeleteResponse(rsp *http.Response) (*ApiKeyDeleteResponse, error
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -55819,6 +59496,13 @@ func ParseApiKeyResponse(rsp *http.Response) (*ApiKeyResponse, error) {
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ApiKeyResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -55887,6 +59571,156 @@ func ParseApiKeyResponse(rsp *http.Response) (*ApiKeyResponse, error) {
 	return response, nil
 }
 
+// ParseApiKeyPatchResponse parses an HTTP response from a ApiKeyPatchWithResponse call
+func ParseApiKeyPatchResponse(rsp *http.Response) (*ApiKeyPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKey
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeyPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseApiKeyUpdateResponse parses an HTTP response from a ApiKeyUpdateWithResponse call
 func ParseApiKeyUpdateResponse(rsp *http.Response) (*ApiKeyUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -55915,6 +59749,13 @@ func ParseApiKeyUpdateResponse(rsp *http.Response) (*ApiKeyUpdateResponse, error
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -55941,6 +59782,13 @@ func ParseApiKeyUpdateResponse(rsp *http.Response) (*ApiKeyUpdateResponse, error
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ApiKeyUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -59882,6 +63730,13 @@ func ParseManagedUserGroupDeleteResponse(rsp *http.Response) (*ManagedUserGroupD
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -60030,6 +63885,13 @@ func ParseManagedUserGroupResponse(rsp *http.Response) (*ManagedUserGroupRespons
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ManagedUserGroupResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -60098,6 +63960,156 @@ func ParseManagedUserGroupResponse(rsp *http.Response) (*ManagedUserGroupRespons
 	return response, nil
 }
 
+// ParseManagedUserGroupPatchResponse parses an HTTP response from a ManagedUserGroupPatchWithResponse call
+func ParseManagedUserGroupPatchResponse(rsp *http.Response) (*ManagedUserGroupPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUserGroup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseManagedUserGroupUpdateV2Response parses an HTTP response from a ManagedUserGroupUpdateV2WithResponse call
 func ParseManagedUserGroupUpdateV2Response(rsp *http.Response) (*ManagedUserGroupUpdateV2Response, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -60126,6 +64138,13 @@ func ParseManagedUserGroupUpdateV2Response(rsp *http.Response) (*ManagedUserGrou
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -60152,6 +64171,13 @@ func ParseManagedUserGroupUpdateV2Response(rsp *http.Response) (*ManagedUserGrou
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ManagedUserGroupUpdateV2Response200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -60757,6 +64783,13 @@ func ParseManagedUserDeleteResponse(rsp *http.Response) (*ManagedUserDeleteRespo
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -60905,6 +64938,13 @@ func ParseManagedUserResponse(rsp *http.Response) (*ManagedUserResponse, error) 
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ManagedUserResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -60973,6 +65013,156 @@ func ParseManagedUserResponse(rsp *http.Response) (*ManagedUserResponse, error) 
 	return response, nil
 }
 
+// ParseManagedUserPatchResponse parses an HTTP response from a ManagedUserPatchWithResponse call
+func ParseManagedUserPatchResponse(rsp *http.Response) (*ManagedUserPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseManagedUserUpdateResponse parses an HTTP response from a ManagedUserUpdateWithResponse call
 func ParseManagedUserUpdateResponse(rsp *http.Response) (*ManagedUserUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -61001,6 +65191,13 @@ func ParseManagedUserUpdateResponse(rsp *http.Response) (*ManagedUserUpdateRespo
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -61027,6 +65224,13 @@ func ParseManagedUserUpdateResponse(rsp *http.Response) (*ManagedUserUpdateRespo
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ManagedUserUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -66778,6 +70982,13 @@ func ParseSpaceDeleteResponse(rsp *http.Response) (*SpaceDeleteResponse, error) 
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -66926,6 +71137,13 @@ func ParseSpaceResponse(rsp *http.Response) (*SpaceResponse, error) {
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SpaceResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -66994,6 +71212,156 @@ func ParseSpaceResponse(rsp *http.Response) (*SpaceResponse, error) {
 	return response, nil
 }
 
+// ParseSpacePatchResponse parses an HTTP response from a SpacePatchWithResponse call
+func ParseSpacePatchResponse(rsp *http.Response) (*SpacePatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SpacePatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Space
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SpacePatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SpacePatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SpacePatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSpaceUpdateResponse parses an HTTP response from a SpaceUpdateWithResponse call
 func ParseSpaceUpdateResponse(rsp *http.Response) (*SpaceUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -67022,6 +71390,13 @@ func ParseSpaceUpdateResponse(rsp *http.Response) (*SpaceUpdateResponse, error) 
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -67048,6 +71423,13 @@ func ParseSpaceUpdateResponse(rsp *http.Response) (*SpaceUpdateResponse, error) 
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SpaceUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -67538,6 +71920,13 @@ func ParseStackDependencyDeleteResponse(rsp *http.Response) (*StackDependencyDel
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -67632,6 +72021,156 @@ func ParseStackDependencyDeleteResponse(rsp *http.Response) (*StackDependencyDel
 	return response, nil
 }
 
+// ParseStackDependencyPatchResponse parses an HTTP response from a StackDependencyPatchWithResponse call
+func ParseStackDependencyPatchResponse(rsp *http.Response) (*StackDependencyPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackDependencyPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackDependency
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackDependencyPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackDependencyPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackDependencyPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackDependencyUpdateResponse parses an HTTP response from a StackDependencyUpdateWithResponse call
 func ParseStackDependencyUpdateResponse(rsp *http.Response) (*StackDependencyUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -67660,6 +72199,13 @@ func ParseStackDependencyUpdateResponse(rsp *http.Response) (*StackDependencyUpd
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -67686,6 +72232,13 @@ func ParseStackDependencyUpdateResponse(rsp *http.Response) (*StackDependencyUpd
 	switch {
 	case rsp.StatusCode == 200:
 		var headers StackDependencyUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -69009,6 +73562,13 @@ func ParseStackDeleteResponse(rsp *http.Response) (*StackDeleteResponse, error) 
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -69157,6 +73717,13 @@ func ParseStackResponse(rsp *http.Response) (*StackResponse, error) {
 	switch {
 	case rsp.StatusCode == 200:
 		var headers StackResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -69225,6 +73792,156 @@ func ParseStackResponse(rsp *http.Response) (*StackResponse, error) {
 	return response, nil
 }
 
+// ParseStackPatchResponse parses an HTTP response from a StackPatchWithResponse call
+func ParseStackPatchResponse(rsp *http.Response) (*StackPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Stack
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackUpdateResponse parses an HTTP response from a StackUpdateWithResponse call
 func ParseStackUpdateResponse(rsp *http.Response) (*StackUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -69253,6 +73970,13 @@ func ParseStackUpdateResponse(rsp *http.Response) (*StackUpdateResponse, error) 
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -69279,6 +74003,13 @@ func ParseStackUpdateResponse(rsp *http.Response) (*StackUpdateResponse, error) 
 	switch {
 	case rsp.StatusCode == 200:
 		var headers StackUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -73008,6 +77739,13 @@ func ParseStackScheduledDeleteDeleteResponse(rsp *http.Response) (*StackSchedule
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73102,6 +77840,156 @@ func ParseStackScheduledDeleteDeleteResponse(rsp *http.Response) (*StackSchedule
 	return response, nil
 }
 
+// ParseStackScheduledDeletePatchResponse parses an HTTP response from a StackScheduledDeletePatchWithResponse call
+func ParseStackScheduledDeletePatchResponse(rsp *http.Response) (*StackScheduledDeletePatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackScheduledDeletePatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ScheduledDelete
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackScheduledDeletePatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackScheduledDeletePatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackScheduledDeletePatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackScheduledDeleteUpdateResponse parses an HTTP response from a StackScheduledDeleteUpdateWithResponse call
 func ParseStackScheduledDeleteUpdateResponse(rsp *http.Response) (*StackScheduledDeleteUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -73130,6 +78018,13 @@ func ParseStackScheduledDeleteUpdateResponse(rsp *http.Response) (*StackSchedule
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73156,6 +78051,13 @@ func ParseStackScheduledDeleteUpdateResponse(rsp *http.Response) (*StackSchedule
 	switch {
 	case rsp.StatusCode == 200:
 		var headers StackScheduledDeleteUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -73510,6 +78412,13 @@ func ParseStackScheduledRunDeleteResponse(rsp *http.Response) (*StackScheduledRu
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73604,6 +78513,156 @@ func ParseStackScheduledRunDeleteResponse(rsp *http.Response) (*StackScheduledRu
 	return response, nil
 }
 
+// ParseStackScheduledRunPatchResponse parses an HTTP response from a StackScheduledRunPatchWithResponse call
+func ParseStackScheduledRunPatchResponse(rsp *http.Response) (*StackScheduledRunPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackScheduledRunPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ScheduledRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackScheduledRunPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackScheduledRunPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackScheduledRunPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackScheduledRunUpdateResponse parses an HTTP response from a StackScheduledRunUpdateWithResponse call
 func ParseStackScheduledRunUpdateResponse(rsp *http.Response) (*StackScheduledRunUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -73632,6 +78691,13 @@ func ParseStackScheduledRunUpdateResponse(rsp *http.Response) (*StackScheduledRu
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73658,6 +78724,13 @@ func ParseStackScheduledRunUpdateResponse(rsp *http.Response) (*StackScheduledRu
 	switch {
 	case rsp.StatusCode == 200:
 		var headers StackScheduledRunUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -74012,6 +79085,13 @@ func ParseStackScheduledTaskDeleteResponse(rsp *http.Response) (*StackScheduledT
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -74106,6 +79186,156 @@ func ParseStackScheduledTaskDeleteResponse(rsp *http.Response) (*StackScheduledT
 	return response, nil
 }
 
+// ParseStackScheduledTaskPatchResponse parses an HTTP response from a StackScheduledTaskPatchWithResponse call
+func ParseStackScheduledTaskPatchResponse(rsp *http.Response) (*StackScheduledTaskPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackScheduledTaskPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ScheduledTask
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackScheduledTaskPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackScheduledTaskPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackScheduledTaskPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackScheduledTaskUpdateResponse parses an HTTP response from a StackScheduledTaskUpdateWithResponse call
 func ParseStackScheduledTaskUpdateResponse(rsp *http.Response) (*StackScheduledTaskUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -74134,6 +79364,13 @@ func ParseStackScheduledTaskUpdateResponse(rsp *http.Response) (*StackScheduledT
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -74160,6 +79397,13 @@ func ParseStackScheduledTaskUpdateResponse(rsp *http.Response) (*StackScheduledT
 	switch {
 	case rsp.StatusCode == 200:
 		var headers StackScheduledTaskUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -76177,6 +81421,13 @@ func ParseWebhooksIntegrationDeleteResponse(rsp *http.Response) (*WebhooksIntegr
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -76271,6 +81522,156 @@ func ParseWebhooksIntegrationDeleteResponse(rsp *http.Response) (*WebhooksIntegr
 	return response, nil
 }
 
+// ParseWebhooksIntegrationPatchResponse parses an HTTP response from a WebhooksIntegrationPatchWithResponse call
+func ParseWebhooksIntegrationPatchResponse(rsp *http.Response) (*WebhooksIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WebhooksIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhooksIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WebhooksIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WebhooksIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WebhooksIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseWebhooksIntegrationUpdateResponse parses an HTTP response from a WebhooksIntegrationUpdateWithResponse call
 func ParseWebhooksIntegrationUpdateResponse(rsp *http.Response) (*WebhooksIntegrationUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -76299,6 +81700,13 @@ func ParseWebhooksIntegrationUpdateResponse(rsp *http.Response) (*WebhooksIntegr
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -76325,6 +81733,13 @@ func ParseWebhooksIntegrationUpdateResponse(rsp *http.Response) (*WebhooksIntegr
 	switch {
 	case rsp.StatusCode == 200:
 		var headers WebhooksIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

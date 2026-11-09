@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
 	"slices"
@@ -488,4 +489,125 @@ func TestUnitServedNames(t *testing.T) {
 			)
 		}
 	})
+}
+
+// TestUnitAPIStrictInputs fails when a request body reaches an object
+// schema that does not set additionalProperties: false, so a misspelt field
+// is refused instead of ignored. The MergePatch body of a PATCH beside an
+// update PUT names no members; the route table checks it against its PUT's
+// input.
+//
+// ref: decision 0022
+func TestUnitAPIStrictInputs(t *testing.T) {
+	doc := loadServed(t)
+	merge := doc.Components.Schemas["MergePatch"]
+	if merge == nil {
+		t.Fatal("no MergePatch schema")
+	}
+	seen := map[*openapi3.Schema]bool{}
+	var walk func(at string, r *openapi3.SchemaRef)
+	walk = func(at string, r *openapi3.SchemaRef) {
+		if r == nil || r.Value == nil || seen[r.Value] || r.Value == merge.Value {
+			return
+		}
+		s := r.Value
+		seen[s] = true
+		if len(s.Properties) > 0 {
+			if has := s.AdditionalProperties.Has; has == nil || *has {
+				t.Errorf("%s (%s) allows members it does not name", at, r.Ref)
+			}
+			for _, name := range slices.Sorted(maps.Keys(s.Properties)) {
+				walk(at+"/"+name, s.Properties[name])
+			}
+		}
+		for _, p := range s.AllOf {
+			if len(p.Value.Properties) > 0 {
+				t.Errorf("%s composes members with allOf, which a strict schema cannot", at)
+			}
+		}
+		walk(at+"/items", s.Items)
+		for _, e := range append(slices.Clone(s.OneOf), s.AnyOf...) {
+			walk(at, e)
+		}
+	}
+	for path, item := range doc.Paths.Map() {
+		for method, op := range item.Operations() {
+			if op.RequestBody == nil || op.RequestBody.Value == nil {
+				continue
+			}
+			for typ, mt := range op.RequestBody.Value.Content {
+				walk(method+" "+path+" "+typ, mt.Schema)
+			}
+		}
+	}
+}
+
+// TestUnitAPIUpdateRoutes fails unless every update PUT has a PATCH
+// beside it taking a merge patch, both recording merge-patch, and its item
+// is versioned: ETag on the 200 of its GET, PUT and PATCH, and If-Match
+// with a 412 on its PUT, PATCH and DELETE, each recording if-match. The
+// PATCH, like every PATCH, takes an Idempotency-Key.
+//
+// ref: decision 0022
+func TestUnitAPIUpdateRoutes(t *testing.T) {
+	doc := loadServed(t)
+	divergence := func(op *openapi3.Operation) []string {
+		raw, _ := op.Extensions["x-infraweave-divergence"].([]any)
+		out := make([]string, 0, len(raw))
+		for _, d := range raw {
+			out = append(out, fmt.Sprint(d))
+		}
+		return out
+	}
+	takes := func(op *openapi3.Operation, name string) bool {
+		return slices.ContainsFunc(op.Parameters, func(p *openapi3.ParameterRef) bool {
+			return p.Value != nil && p.Value.In == "header" && p.Value.Name == name
+		})
+	}
+	updates := 0
+	for path, item := range doc.Paths.Map() {
+		if item.Put == nil || item.Put.Extensions["x-rest-style"] != "update" {
+			continue
+		}
+		updates++
+		patch := item.Patch
+		if patch == nil {
+			t.Errorf("PUT %s has no PATCH beside it", path)
+			continue
+		}
+		if patch.RequestBody == nil ||
+			patch.RequestBody.Value.Content.Get("application/merge-patch+json") == nil {
+			t.Errorf("PATCH %s takes no merge patch", path)
+		}
+		if !takes(patch, "Idempotency-Key") {
+			t.Errorf("PATCH %s takes no Idempotency-Key", path)
+		}
+		for _, op := range []*openapi3.Operation{item.Put, patch} {
+			if !slices.Contains(divergence(op), "merge-patch") {
+				t.Errorf("%s %s does not record merge-patch", op.OperationID, path)
+			}
+		}
+		for method, op := range map[string]*openapi3.Operation{
+			"GET": item.Get, "PUT": item.Put, "PATCH": patch, "DELETE": item.Delete,
+		} {
+			if op == nil {
+				continue
+			}
+			if !slices.Contains(divergence(op), "if-match") {
+				t.Errorf("%s %s does not record if-match", method, path)
+			}
+			if method != "DELETE" {
+				ok := op.Responses.Status(200)
+				if ok == nil || ok.Value.Headers["ETag"] == nil {
+					t.Errorf("%s %s's 200 carries no ETag", method, path)
+				}
+			}
+			if method != "GET" && (!takes(op, "If-Match") || op.Responses.Status(412) == nil) {
+				t.Errorf("%s %s takes no If-Match, or answers no 412", method, path)
+			}
+		}
+	}
+	if updates < 5 {
+		t.Errorf("%d update routes, want every served one", updates)
+	}
 }

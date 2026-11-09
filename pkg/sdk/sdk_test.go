@@ -592,6 +592,29 @@ func TestUnitSDKDoHeaders(t *testing.T) {
 	}
 }
 
+// TestUnitSDKContentType checks that a body is sent as JSON, and a PATCH's
+// as a JSON Merge Patch.
+func TestUnitSDKContentType(t *testing.T) {
+	got := map[string]string{}
+	r := chi.NewRouter()
+	record := func(w http.ResponseWriter, req *http.Request) {
+		got[req.Method] = req.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}
+	r.Put("/api/v1/things/x", record)
+	r.Patch("/api/v1/things/x", record)
+	c := client(t, r)
+	for _, m := range []string{http.MethodPut, http.MethodPatch} {
+		if _, err := c.Do(t.Context(), m, "/api/v1/things/x", map[string]any{"a": 1}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got[http.MethodPut] != "application/json" ||
+		got[http.MethodPatch] != "application/merge-patch+json" {
+		t.Errorf("sent %v", got)
+	}
+}
+
 // TestUnitSDKOperator checks that the operator client sends under
 // OperatorPrefix with the client's token and an Idempotency-Key on a
 // write, as API does.

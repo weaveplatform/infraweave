@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 )
 
 // apiKeysList names the API key list's cursors.
@@ -104,7 +105,8 @@ func (s Server) ApiKeyCreate(
 	return api.ApiKeyCreate201JSONResponse{Body: v}, nil
 }
 
-// ApiKey reads an API key of the caller's account; any other answers 404.
+// ApiKey reads an API key of the caller's account, tagged with its
+// version; any other answers 404.
 //
 //nolint:revive // the generated interface names it
 func (s Server) ApiKey(
@@ -119,30 +121,20 @@ func (s Server) ApiKey(
 	if err != nil {
 		return nil, err
 	}
-	return api.ApiKey200JSONResponse{Body: v}, nil
+	return api.ApiKey200JSONResponse{
+		Body: v, Headers: api.ApiKey200ResponseHeaders{ETag: new(strict.ETag(k.Version))},
+	}, nil
 }
 
 // ApiKeyUpdate changes the fields the body sets of an API key of the
-// caller's account.
+// caller's account, when its If-Match, if any, names the key's version.
 //
 //nolint:revive // the generated interface names it
 func (s Server) ApiKeyUpdate(
 	ctx context.Context,
 	req api.ApiKeyUpdateRequestObject,
 ) (api.ApiKeyUpdateResponseObject, error) {
-	c := apikey.Change{
-		Name:        req.Body.Name,
-		Description: req.Body.Description,
-		Teams:       req.Body.Teams,
-	}
-	if req.Body.OidcClaimMappings != nil {
-		m := claimMapping(req.Body.OidcClaimMappings)
-		c.ClaimMapping = &m
-	}
-	k, err := s.onKey(ctx, req.ApiKeyId,
-		func(ctx context.Context, p kernel.Principal, id kernel.ULID) (apikey.Key, error) {
-			return s.keys.Update(ctx, p, id, c)
-		})
+	k, err := s.updateKey(ctx, req.ApiKeyId, strict.IfMatch(req.Params.IfMatch), *req.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +142,80 @@ func (s Server) ApiKeyUpdate(
 	if err != nil {
 		return nil, err
 	}
-	return api.ApiKeyUpdate200JSONResponse{Body: v}, nil
+	return api.ApiKeyUpdate200JSONResponse{
+		Body: v, Headers: api.ApiKeyUpdate200ResponseHeaders{ETag: new(strict.ETag(k.Version))},
+	}, nil
+}
+
+// ApiKeyPatch changes the fields its merge patch names and keeps the
+// rest, writing the result as ApiKeyUpdate writes its body. A member the
+// patch sets to null is kept, as ApiKeyUpdate keeps a member its body
+// leaves out.
+//
+//nolint:revive // the generated interface names it
+func (s Server) ApiKeyPatch(
+	ctx context.Context,
+	req api.ApiKeyPatchRequestObject,
+) (api.ApiKeyPatchResponseObject, error) {
+	var patch map[string]any
+	if req.Body != nil {
+		patch = *req.Body
+	}
+	read := func() (api.ApiKeyUpdateInput, int64, error) {
+		k, err := s.onKey(ctx, req.ApiKeyId, s.keys.Get)
+		return keyInput(k), k.Version, err
+	}
+	write := func(in api.ApiKeyUpdateInput, expect kernel.Expect) (apikey.Key, error) {
+		return s.updateKey(ctx, req.ApiKeyId, expect, in)
+	}
+	k, err := strict.Apply(strict.IfMatch(req.Params.IfMatch), patch, read, write)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // read and write answer their problems
+	}
+	v, err := s.keyView(ctx, k, "")
+	if err != nil {
+		return nil, err
+	}
+	return api.ApiKeyPatch200JSONResponse{
+		Body: v, Headers: api.ApiKeyPatch200ResponseHeaders{ETag: new(strict.ETag(k.Version))},
+	}, nil
+}
+
+// updateKey applies in to the key raw names in the caller's account, as
+// ApiKeyUpdate and ApiKeyPatch do, when expect accepts its version.
+func (s Server) updateKey(
+	ctx context.Context,
+	raw string,
+	expect kernel.Expect,
+	in api.ApiKeyUpdateInput,
+) (apikey.Key, error) {
+	c := apikey.Change{Name: in.Name, Description: in.Description, Teams: in.Teams}
+	if in.OidcClaimMappings != nil {
+		m := claimMapping(in.OidcClaimMappings)
+		c.ClaimMapping = &m
+	}
+	return s.onKey(ctx, raw,
+		func(ctx context.Context, p kernel.Principal, id kernel.ULID) (apikey.Key, error) {
+			return s.keys.Update(ctx, p, id, expect, c)
+		})
+}
+
+// keyInput is k as the ApiKeyUpdateInput that writes it, with a claim
+// mapping for an OIDC key alone, as no other key takes one.
+func keyInput(k apikey.Key) api.ApiKeyUpdateInput {
+	in := api.ApiKeyUpdateInput{
+		Name: &k.Name, Description: &k.Description, Teams: new(nonNil(k.Teams)),
+	}
+	if k.Type == apikey.TypeOIDC {
+		m := api.ClaimMappingInput{
+			Entries: make([]api.ClaimMappingEntryInput, 0, len(k.OIDC.ClaimMapping)),
+		}
+		for _, e := range k.OIDC.ClaimMapping {
+			m.Entries = append(m.Entries, api.ClaimMappingEntryInput{Name: e.Name, Value: e.Value})
+		}
+		in.OidcClaimMappings = &m
+	}
+	return in
 }
 
 // ApiKeyReset replaces the secret of an API key of the caller's account,
@@ -179,15 +244,20 @@ func (s Server) ApiKeyReset(
 	return api.ApiKeyReset200JSONResponse{Body: v}, nil
 }
 
-// ApiKeyDelete deletes an API key of the caller's account and revokes
-// every session of the key.
+// ApiKeyDelete deletes an API key of the caller's account, when its
+// If-Match, if any, names the key's version, and revokes every session of
+// the key.
 //
 //nolint:revive // the generated interface names it
 func (s Server) ApiKeyDelete(
 	ctx context.Context,
 	req api.ApiKeyDeleteRequestObject,
 ) (api.ApiKeyDeleteResponseObject, error) {
-	k, err := s.onKey(ctx, req.ApiKeyId, s.keys.Delete)
+	expect := strict.IfMatch(req.Params.IfMatch)
+	k, err := s.onKey(ctx, req.ApiKeyId,
+		func(ctx context.Context, p kernel.Principal, id kernel.ULID) (apikey.Key, error) {
+			return s.keys.Delete(ctx, p, id, expect)
+		})
 	if err != nil {
 		return nil, err
 	}

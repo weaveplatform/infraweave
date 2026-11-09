@@ -1004,6 +1004,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -1020,6 +1021,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -1036,6 +1039,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -1058,6 +1062,8 @@ paths:
                 $ref: '#/components/schemas/ApiKey'
           description: The apiKey result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -1082,8 +1088,71 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of ApiKeyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyUpdate, so it validates and persists as the PUT does.
+      operationId: apiKeyPatch
+      x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_UPDATE
+      x-infraweave-subject: any
+      parameters:
+        - in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ApiKeyUpdateInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+          description: The apiKeyPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch API Key
+      tags:
+        - API Keys
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update an API key.
       operationId: apiKeyUpdate
@@ -1097,6 +1166,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -1115,6 +1185,8 @@ paths:
                 $ref: '#/components/schemas/ApiKey'
           description: The apiKeyUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -1123,6 +1195,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -1139,6 +1213,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /api-keys/{apiKeyId}/reset:
@@ -2688,6 +2764,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -2704,6 +2781,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -2720,6 +2799,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -2744,6 +2824,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUserGroup'
           description: The managedUserGroup result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -2768,8 +2850,72 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+      operationId: managedUserGroupPatch
+      x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_UPDATE
+      x-infraweave-subject: account
+      parameters:
+        - description: Globally unique, immutable ID of ManagedUserGroup.
+          in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ManagedUserGroupUpdateInputV2Body.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroup'
+          description: The managedUserGroupPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch User Group
+      tags:
+        - Managed Users
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: >-
         Set the description of the account's managed user group.
@@ -2785,6 +2931,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: input.id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -2802,6 +2949,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUserGroup'
           description: The managedUserGroupUpdateV2 result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -2810,6 +2959,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -2826,6 +2977,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /managed-user-groups/{managedUserGroupId}/managed-users:
@@ -3057,6 +3210,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -3073,6 +3227,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -3089,6 +3245,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -3113,6 +3270,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUser'
           description: The managedUser result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -3137,8 +3296,72 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through managedUserUpdate, so it validates and persists as the PUT does.
+      operationId: managedUserPatch
+      x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_UPDATE
+      x-infraweave-subject: account
+      parameters:
+        - description: Globally unique, immutable ID of ManagedUser to update.
+          in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ManagedUserUpdateInputBody.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: The managedUserPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Managed User
+      tags:
+        - Managed Users
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: >-
         Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
@@ -3154,6 +3377,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: input.id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -3174,6 +3398,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUser'
           description: The managedUserUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -3182,6 +3408,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -3198,6 +3426,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /managed-users/{managedUserId}/personal-api-keys:
@@ -3656,7 +3886,7 @@ paths:
       x-infraweave-subject: organization
       requestBody:
         content:
-          application/json:
+          application/merge-patch+json:
             schema:
               $ref: '#/components/schemas/OrganizationUpdateRequest'
         required: true
@@ -3842,7 +4072,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationAccountSlug'
       requestBody:
         content:
-          application/json:
+          application/merge-patch+json:
             schema:
               $ref: '#/components/schemas/OrganizationAccountUpdateRequest'
         required: true
@@ -5242,6 +5472,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: space
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -5258,6 +5489,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -5275,6 +5508,7 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: path:spaceId:space
@@ -5298,6 +5532,8 @@ paths:
                 $ref: '#/components/schemas/Space'
           description: The space result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -5323,10 +5559,73 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: path:spaceId:space
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through spaceUpdate, so it validates and persists as the PUT does.
+      operationId: spacePatch
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of SpaceInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+          description: The spacePatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Space
+      tags:
+        - Spaces
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: path:spaceId:space
+      x-upstream: none
     put:
       description: >-
         Change a space's name, description, labels and inheritance, and move it, with its subtree, below parentSpace. A move below its own subtree, or one that would cut a stack off an entity it uses, is refused, as is a change of the top space's parentSpace or inheritEntities. Admins of a space below the top space change only its name, description and labels while allowNonAdminSpaceCreation is off; while it is on they also move it below a space they administer, and may not stop it inheriting.
@@ -5338,6 +5637,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: space
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -5359,6 +5659,8 @@ paths:
                 $ref: '#/components/schemas/Space'
           description: The spaceUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -5367,6 +5669,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -5384,6 +5688,8 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: path:spaceId:space
@@ -5582,6 +5888,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -5598,6 +5905,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -5614,8 +5923,72 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
+    patch:
+      description: >-
+        Change the members of StackDependencyUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackDependencyUpdate, so it validates and persists as the PUT does.
+      operationId: stackDependencyPatch
+      x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackDependencyId:stack_dependency
+      parameters:
+        - description: ID of the stack dependency to update.
+          in: path
+          name: stackDependencyId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of StackDependencyUpdateInputBody.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackDependency'
+          description: The stackDependencyPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Dependency
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update an existing stack dependency.
       operationId: stackDependencyUpdate
@@ -5630,6 +6003,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: input.id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -5647,6 +6021,8 @@ paths:
                 $ref: '#/components/schemas/StackDependency'
           description: The stackDependencyUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -5655,6 +6031,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -5671,6 +6049,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /stack-dependencies/{stackDependencyId}/references:
@@ -6261,6 +6641,7 @@ paths:
           schema:
             type: boolean
           x-graphql-arg: destroyResources
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -6277,6 +6658,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -6293,6 +6676,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -6316,6 +6700,8 @@ paths:
                 $ref: '#/components/schemas/Stack'
           description: The stack result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -6340,8 +6726,71 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of StackInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackUpdate, so it validates and persists as the PUT does.
+      operationId: stackPatch
+      x-infraweave-feature: stacks
+      x-infraweave-action: STACK_UPDATE
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of StackInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stack'
+          description: The stackPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Stack
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update an existing stack.
       operationId: stackUpdate
@@ -6355,6 +6804,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -6380,6 +6830,8 @@ paths:
                 $ref: '#/components/schemas/Stack'
           description: The stackUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -6388,6 +6840,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -6404,6 +6858,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /stacks/{stackId}/attachable-aws-integrations:
@@ -8036,6 +8492,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: scheduledDelete
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -8052,6 +8509,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -8068,8 +8527,76 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
+    patch:
+      description: >-
+        Change the members of ScheduledDeleteInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledDeleteUpdate, so it validates and persists as the PUT does.
+      operationId: stackScheduledDeletePatch
+      x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_DELETE_UPDATE
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: scheduledDeleteId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ScheduledDeleteInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledDelete'
+          description: The stackScheduledDeletePatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Scheduled Delete
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update ScheduledDelete for stack
       operationId: stackScheduledDeleteUpdate
@@ -8089,6 +8616,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: scheduledDelete
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -8108,6 +8636,8 @@ paths:
                 $ref: '#/components/schemas/ScheduledDelete'
           description: The stackScheduledDeleteUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -8116,6 +8646,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -8132,6 +8664,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /stacks/{stackId}/scheduled-run:
@@ -8276,6 +8810,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: scheduledRun
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -8292,6 +8827,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -8308,8 +8845,76 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
+    patch:
+      description: >-
+        Change the members of ScheduledRunInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledRunUpdate, so it validates and persists as the PUT does.
+      operationId: stackScheduledRunPatch
+      x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_RUN_UPDATE
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: scheduledRunId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ScheduledRunInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledRun'
+          description: The stackScheduledRunPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Scheduled Run
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update ScheduledRun for stack
       operationId: stackScheduledRunUpdate
@@ -8329,6 +8934,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: scheduledRun
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -8349,6 +8955,8 @@ paths:
                 $ref: '#/components/schemas/ScheduledRun'
           description: The stackScheduledRunUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -8357,6 +8965,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -8373,6 +8983,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /stacks/{stackId}/scheduled-task:
@@ -8512,6 +9124,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: scheduledTask
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -8528,6 +9141,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -8544,8 +9159,76 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
+    patch:
+      description: >-
+        Change the members of ScheduledTaskInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackScheduledTaskUpdate, so it validates and persists as the PUT does.
+      operationId: stackScheduledTaskPatch
+      x-infraweave-feature: scheduling
+      x-infraweave-action: STACK_SCHEDULED_TASK_UPDATE
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: scheduledTaskId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ScheduledTaskInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+          description: The stackScheduledTaskPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Scheduled Task
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update ScheduledTask for stack
       operationId: stackScheduledTaskUpdate
@@ -8565,6 +9248,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: scheduledTask
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -8580,6 +9264,8 @@ paths:
                 $ref: '#/components/schemas/ScheduledTask'
           description: The stackScheduledTaskUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -8588,6 +9274,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -8604,6 +9292,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /stacks/{stackId}/search-managed-entities:
@@ -9496,6 +10186,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -9512,6 +10203,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -9528,8 +10221,76 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
+    patch:
+      description: >-
+        Change the members of WebhooksIntegrationInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through webhooksIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: webhooksIntegrationPatch
+      x-infraweave-feature: stacks
+      x-infraweave-action: STACK_WEBHOOK_UPDATE
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: webhooksIntegrationId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of WebhooksIntegrationInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhooksIntegration'
+          description: The webhooksIntegrationPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Stack Webhook
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: Update WebhooksIntegration for stack
       operationId: webhooksIntegrationUpdate
@@ -9549,6 +10310,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -9568,6 +10330,8 @@ paths:
                 $ref: '#/components/schemas/WebhooksIntegration'
           description: The webhooksIntegrationUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -9576,6 +10340,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -9592,6 +10358,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /state/upload-url:
@@ -9974,6 +10742,11 @@ paths:
       x-rest-style: read
 components:
   headers:
+    ETag:
+      description: >-
+        The strong entity tag of the version answered, which If-Match takes to make a later change conditional on it.
+      schema:
+        type: string
     IdempotencyReplayed:
       description: >-
         Present and true when this response is a replay of the first request made with the same Idempotency-Key.
@@ -10014,6 +10787,14 @@ components:
         type: string
         minLength: 1
         maxLength: 255
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: >-
+        The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+      schema:
+        type: string
     Limit:
       name: limit
       in: query
@@ -10106,6 +10887,18 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    PreconditionFailed:
+      description: >-
+        The If-Match names no version the entity has now: it changed since the caller read it. Read it again and reapply the change.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:precondition-failed
+            title: precondition failed
+            status: 412
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     Problem:
       description: The request failed; the body says why.
       content:
@@ -10374,6 +11167,7 @@ components:
         recentStacks: takes arguments; not reachable from an item route
       x-graphql-type: SpaceliftMetrics
     AccountSetOAuthRedirectAllowlistRequest:
+      additionalProperties: false
       description: The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
       properties:
         hosts:
@@ -10385,6 +11179,7 @@ components:
       type: object
       x-graphql-args-of: accountSetOAuthRedirectAllowlist
     AccountSetPersonalApiKeysEnabledRequest:
+      additionalProperties: false
       description: The arguments of accountSetPersonalApiKeysEnabled not carried in the path.
       properties:
         disableExistingKeys:
@@ -10397,6 +11192,7 @@ components:
       type: object
       x-graphql-args-of: accountSetPersonalApiKeysEnabled
     AccountToggleDeletionMarkRequest:
+      additionalProperties: false
       description: The arguments of accountToggleDeletionMark not carried in the path.
       properties:
         description:
@@ -10421,6 +11217,7 @@ components:
         USER: Individual user account.
       x-graphql-type: AccountType
     AccountUpdateAwarenessSourceSurveyRequest:
+      additionalProperties: false
       description: The arguments of accountUpdateAwarenessSourceSurvey not carried in the path.
       properties:
         completed:
@@ -10433,6 +11230,7 @@ components:
       type: object
       x-graphql-args-of: accountUpdateAwarenessSourceSurvey
     AccountUpdateSecurityEmailRequest:
+      additionalProperties: false
       description: The arguments of accountUpdateSecurityEmail not carried in the path.
       properties:
         securityEmail:
@@ -10968,6 +11766,7 @@ components:
       type: object
       x-graphql-type: ApiKeyUpdateInput
     ApiKeyUserRequest:
+      additionalProperties: false
       description: The arguments of apiKeyUser not carried in the path.
       properties:
         id:
@@ -11679,6 +12478,7 @@ components:
       type: object
       x-graphql-type: BillingSubscriptionAddon
     BillingSubscriptionCreateRequest:
+      additionalProperties: false
       description: The arguments of billingSubscriptionCreate not carried in the path.
       properties:
         addons:
@@ -11700,6 +12500,7 @@ components:
       type: object
       x-graphql-args-of: billingSubscriptionCreate
     BillingSubscriptionUpdateTierRequest:
+      additionalProperties: false
       description: The arguments of billingSubscriptionUpdateTier not carried in the path.
       properties:
         interval:
@@ -12228,6 +13029,7 @@ components:
       type: object
       x-graphql-type: ConfigElementWithSource
     ConfigInput:
+      additionalProperties: false
       description: Arguments used to create and update an individual ConfigElement.
       properties:
         description:
@@ -12663,6 +13465,7 @@ components:
       type: object
       x-graphql-type: EnvVar
     EnvVarInput:
+      additionalProperties: false
       properties:
         key:
           type: string
@@ -12674,6 +13477,7 @@ components:
       type: object
       x-graphql-type: EnvVarInput
     EnvironmentVariable:
+      additionalProperties: false
       description: A generic environment variable structure
       properties:
         key:
@@ -13762,6 +14566,7 @@ components:
         userRoleBindings: served by GET /managed-user-groups/{managedUserGroupId}/user-role-bindings
       x-graphql-type: ManagedUserGroup
     ManagedUserGroupCreateInputV2:
+      additionalProperties: false
       properties:
         description:
           nullable: true
@@ -13800,6 +14605,7 @@ components:
       type: object
       x-graphql-type: ManagedUserGroup
     ManagedUserGroupUpdateInputV2Body:
+      additionalProperties: false
       properties:
         description:
           nullable: true
@@ -13823,6 +14629,7 @@ components:
       type: object
       x-graphql-type: ManagedUserInvitation
     ManagedUserInviteInputV2:
+      additionalProperties: false
       properties:
         invitationEmail:
           description: Email address of the user to invite.
@@ -13868,6 +14675,7 @@ components:
       type: object
       x-graphql-type: ManagedUser
     ManagedUserRequestInviteRequest:
+      additionalProperties: false
       description: The arguments of managedUserRequestInvite not carried in the path.
       properties:
         email:
@@ -13880,6 +14688,7 @@ components:
       type: object
       x-graphql-args-of: managedUserRequestInvite
     ManagedUserRequestRoleChangeRequest:
+      additionalProperties: false
       description: The arguments of managedUserRequestRoleChange not carried in the path.
       properties:
         requestedAccessLevel:
@@ -13889,6 +14698,7 @@ components:
       type: object
       x-graphql-args-of: managedUserRequestRoleChange
     ManagedUserUpdateInputBody:
+      additionalProperties: false
       properties:
         accessRules:
           description: new access rules
@@ -13904,6 +14714,11 @@ components:
       type: object
       x-graphql-in-path: id
       x-graphql-type: ManagedUserUpdateInput
+    MergePatch:
+      description: >-
+        A JSON Merge Patch (RFC 7396) of an update's input. Each member it names replaces the input's, an object member merges into the input's object, an array replaces the input's whole, and null resets the member to its default. Members it does not name keep their values.
+      type: object
+      additionalProperties: true
     MessageQueueStats:
       description: |-
         MessageQueueStats is a point-in-time snapshot of how many messages a single
@@ -14559,6 +15374,7 @@ components:
       type: object
       x-graphql-type: PageInfo
     PersonalApiKeyInput:
+      additionalProperties: false
       properties:
         description:
           description: Free-form description of the key.
@@ -14949,6 +15765,7 @@ components:
           type: string
           description: The refusal, for people.
     ProposeWithOverridesRequest:
+      additionalProperties: false
       description: The arguments of proposeWithOverrides not carried in the path.
       properties:
         commitSha:
@@ -15108,6 +15925,7 @@ components:
       type: object
       x-graphql-type: PulumiStack
     RoleBindingInput:
+      additionalProperties: false
       properties:
         roleID:
           description: ID of the role.
@@ -15803,6 +16621,7 @@ components:
       type: object
       x-graphql-type: RunTileWithApproval
     RunTriggerRequest:
+      additionalProperties: false
       description: The arguments of runTrigger not carried in the path.
       properties:
         commitSha:
@@ -16055,6 +16874,7 @@ components:
       type: object
       x-graphql-type: RuntimeConfig
     RuntimeConfigInput:
+      additionalProperties: false
       properties:
         afterApply:
           description: List of after-apply scripts.
@@ -16236,6 +17056,7 @@ components:
       type: object
       x-graphql-type: ScheduledDelete
     ScheduledDeleteInput:
+      additionalProperties: false
       properties:
         cronSchedule:
           items:
@@ -16300,6 +17121,7 @@ components:
       type: object
       x-graphql-type: ScheduledRun
     ScheduledRunInput:
+      additionalProperties: false
       description: Arguments used to create and update an individual ScheduledRun configuration.
       properties:
         cronSchedule:
@@ -16377,6 +17199,7 @@ components:
       type: object
       x-graphql-type: ScheduledTask
     ScheduledTaskInput:
+      additionalProperties: false
       properties:
         command:
           description: Command to be run as a task
@@ -16409,6 +17232,7 @@ components:
       type: object
       x-graphql-type: ScheduledTaskInput
     SearchInput:
+      additionalProperties: false
       properties:
         after:
           description: |-
@@ -16494,6 +17318,7 @@ components:
       type: object
       x-graphql-type: SearchManagedEntitiesOutput
     SearchQueryFieldConstraint:
+      additionalProperties: false
       description: SearchQueryFieldConstraint constraints the values of a field.
       properties:
         booleanEquals:
@@ -16542,6 +17367,7 @@ components:
       type: object
       x-graphql-type: SearchQueryFieldConstraint
     SearchQueryFieldConstraintHierarchyNode:
+      additionalProperties: false
       properties:
         equals:
           description: ID fields of SearchSuggestionsPossibleValuesHierarchyNode's are expected here as value.
@@ -16555,6 +17381,7 @@ components:
       type: object
       x-graphql-type: SearchQueryFieldConstraintHierarchyNode
     SearchQueryFieldConstraintHierarchyNodeList:
+      additionalProperties: false
       properties:
         nodes:
           description: List of hierarchy node constraints
@@ -16577,6 +17404,7 @@ components:
       type: string
       x-graphql-type: SearchQueryFieldConstraintTimeInLast
     SearchQueryFieldConstraintTimeInRange:
+      additionalProperties: false
       properties:
         end:
           description: End of the time range.
@@ -16591,6 +17419,7 @@ components:
       type: object
       x-graphql-type: SearchQueryFieldConstraintTimeInRange
     SearchQueryOrder:
+      additionalProperties: false
       description: SearchQueryOrder is used to order the results of a search query.
       properties:
         direction:
@@ -16610,6 +17439,7 @@ components:
       type: string
       x-graphql-type: SearchQueryOrderDirection
     SearchQueryPredicate:
+      additionalProperties: false
       description: SearchQueryPredicate is used to filter the results of a search query.
       properties:
         constraint:
@@ -16666,6 +17496,7 @@ components:
       type: object
       x-graphql-type: SearchSpaceContextsOutput
     SearchSpaceContextsRequest:
+      additionalProperties: false
       description: The arguments of searchSpaceContexts not carried in the path.
       properties:
         input:
@@ -16691,6 +17522,7 @@ components:
       type: object
       x-graphql-type: SearchSpacePoliciesOutput
     SearchSpacePoliciesRequest:
+      additionalProperties: false
       description: The arguments of searchSpacePolicies not carried in the path.
       properties:
         input:
@@ -16781,6 +17613,7 @@ components:
       type: string
       x-graphql-type: SearchSuggestionsFieldType
     SearchSuggestionsInput:
+      additionalProperties: false
       properties:
         fields:
           description: |-
@@ -17215,6 +18048,7 @@ components:
       type: object
       x-graphql-type: SpaceAccessRule
     SpaceAccessRuleInput:
+      additionalProperties: false
       properties:
         space:
           description: Slug of the space that this access rule affects.
@@ -17320,6 +18154,7 @@ components:
       type: object
       x-graphql-type: SpaceContextConnection
     SpaceInput:
+      additionalProperties: false
       description: >-
         A space to create, or a space's new fields. A change of the top space's parentSpace or inheritEntities is refused.
       properties:
@@ -17998,6 +18833,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorAnsible
     StackConfigVendorAnsibleInput:
+      additionalProperties: false
       description: Configuration specific to Ansible stacks.
       properties:
         playbook:
@@ -18036,6 +18872,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorCloudFormation
     StackConfigVendorCloudFormationInput:
+      additionalProperties: false
       description: Configuration specific to CloudFormation stacks.
       properties:
         entryTemplateFile:
@@ -18058,6 +18895,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorCloudFormationInput
     StackConfigVendorInput:
+      additionalProperties: false
       description: |-
         Configuration which varies depending on the used vendor.
         All but one field should be left empty.
@@ -18107,6 +18945,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorKubernetes
     StackConfigVendorKubernetesInput:
+      additionalProperties: false
       description: Configuration specific to Kubernetes stacks.
       properties:
         kubectlVersion:
@@ -18182,6 +19021,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorOpenTofu
     StackConfigVendorOpenTofuInput:
+      additionalProperties: false
       description: Configuration specific to OpenTofu stacks.
       properties:
         concise:
@@ -18242,6 +19082,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorPulumi
     StackConfigVendorPulumiInput:
+      additionalProperties: false
       description: Configuration specific to Pulumi stacks.
       properties:
         loginURL:
@@ -18289,6 +19130,7 @@ components:
       type: object
       x-graphql-type: StackConfigVendorTerraform
     StackConfigVendorTerraformInput:
+      additionalProperties: false
       description: Configuration specific to Terraform stacks.
       properties:
         externalStateAccessEnabled:
@@ -18371,6 +19213,7 @@ components:
         skipReplanWhenRunAll: superseded under rule S2; use skipReplan
       x-graphql-type: StackConfigVendorTerragrunt
     StackConfigVendorTerragruntInput:
+      additionalProperties: false
       properties:
         prefixResourceNamesWithModuleName:
           description: |-
@@ -18485,6 +19328,7 @@ components:
       type: object
       x-graphql-type: StackContextAttachment
     StackCreateRequest:
+      additionalProperties: false
       description: The arguments of stackCreate not carried in the path.
       properties:
         input:
@@ -18509,6 +19353,7 @@ components:
       type: object
       x-graphql-args-of: stackCreate
     StackDependenciesAddReferencesRequest:
+      additionalProperties: false
       description: The arguments of stackDependenciesAddReferences not carried in the path.
       properties:
         references:
@@ -18520,6 +19365,7 @@ components:
       type: object
       x-graphql-args-of: stackDependenciesAddReferences
     StackDependenciesUpdateReferencesRequest:
+      additionalProperties: false
       description: The arguments of stackDependenciesUpdateReferences not carried in the path.
       properties:
         references:
@@ -18568,6 +19414,7 @@ components:
         stackId: superseded under rule S2; use stack
       x-graphql-type: StackDependency
     StackDependencyBatchInput:
+      additionalProperties: false
       properties:
         dependencies:
           description: The list of dependencies to add.
@@ -18604,6 +19451,7 @@ components:
       type: object
       x-graphql-type: StackDependencyDetail
     StackDependencyInput:
+      additionalProperties: false
       properties:
         dependsOnStackId:
           description: ID of the dependency.
@@ -18654,6 +19502,7 @@ components:
       type: object
       x-graphql-type: StackDependencyReference
     StackDependencyReferenceInput:
+      additionalProperties: false
       properties:
         inputName:
           description: Name of the input of the stack dependency reference
@@ -18679,6 +19528,7 @@ components:
       type: object
       x-graphql-type: StackDependencyReferenceInput
     StackDependencyReferenceUpdateInput:
+      additionalProperties: false
       properties:
         id:
           type: string
@@ -18698,6 +19548,7 @@ components:
       type: object
       x-graphql-type: StackDependencyReferenceUpdateInput
     StackDependencyReferenceUpdateInputBody:
+      additionalProperties: false
       properties:
         inputName:
           type: string
@@ -18715,6 +19566,7 @@ components:
       x-graphql-in-path: id
       x-graphql-type: StackDependencyReferenceUpdateInput
     StackDependencyUpdateInputBody:
+      additionalProperties: false
       properties:
         triggerAlways:
           description: When enabled, the downstream stack will be triggered even if none of the dependency outputs have changed.
@@ -18725,6 +19577,7 @@ components:
       x-graphql-in-path: id
       x-graphql-type: StackDependencyUpdateInput
     StackInput:
+      additionalProperties: false
       description: Arguments used to create and update an individual Stack.
       properties:
         additionalProjectGlobs:
@@ -18739,7 +19592,9 @@ components:
           x-terraform:
             - spacelift_stack.additional_project_globs
         administrative:
-          description: Administrative stacks can manage other Stacks at runtime.
+          deprecated: true
+          description: >-
+            Accepted and ignored: a stack manages other stacks through the role bindings its runs act with.
           nullable: true
           type: boolean
           x-terraform:
@@ -19083,6 +19938,7 @@ components:
         webhook: takes arguments; not reachable from an item route
       x-graphql-type: StackIntegrations
     StackLockRequest:
+      additionalProperties: false
       description: The arguments of stackLock not carried in the path.
       properties:
         note:
@@ -19091,6 +19947,7 @@ components:
       type: object
       x-graphql-args-of: stackLock
     StackManagedStateImportRequest:
+      additionalProperties: false
       description: The arguments of stackManagedStateImport not carried in the path.
       properties:
         state:
@@ -19100,6 +19957,7 @@ components:
       type: object
       x-graphql-args-of: stackManagedStateImport
     StackManagedStateRollbackRequest:
+      additionalProperties: false
       description: The arguments of stackManagedStateRollback not carried in the path.
       properties:
         managedStateVersionId:
@@ -19109,6 +19967,7 @@ components:
       type: object
       x-graphql-args-of: stackManagedStateRollback
     StackMigrateVendorRequest:
+      additionalProperties: false
       description: The arguments of stackMigrateVendor not carried in the path.
       properties:
         config:
@@ -19261,6 +20120,7 @@ components:
       type: object
       x-graphql-type: StackRoleBinding
     StackSetCurrentCommitRequest:
+      additionalProperties: false
       description: The arguments of stackSetCurrentCommit not carried in the path.
       properties:
         sha:
@@ -19396,6 +20256,7 @@ components:
       type: string
       x-graphql-type: StackVendor
     StackVendorMigrationInput:
+      additionalProperties: false
       description: Configuration for vendor migration. Used when migrating stacks between vendor types
       properties:
         labels:
@@ -19453,6 +20314,7 @@ components:
       type: object
       x-graphql-type: StacksWithAccessToSpaceOutput
     StarSetRequest:
+      additionalProperties: false
       description: The arguments of starSet not carried in the path.
       properties:
         star:
@@ -19474,6 +20336,7 @@ components:
       type: object
       x-graphql-type: StateDownloadUrl
     StateDownloadUrlInputBody:
+      additionalProperties: false
       description: |-
         StateDownloadUrlInput provides parameters for generating a pre-signed URL
         to download a stack's state file.
@@ -19531,6 +20394,7 @@ components:
       type: string
       x-graphql-type: StripeSubscriptionStatus
     SubscriptionInput:
+      additionalProperties: false
       properties:
         address:
           description: Address visible on invoice
@@ -19576,6 +20440,7 @@ components:
       type: object
       x-graphql-type: SubscriptionInput
     SubscriptionUpdateV2Input:
+      additionalProperties: false
       properties:
         addons:
           description: addons that the subscription should have (can be ignored because it has not implemented yet).
@@ -19592,6 +20457,7 @@ components:
       type: object
       x-graphql-type: SubscriptionUpdateV2Input
     TaskCreateRequest:
+      additionalProperties: false
       description: The arguments of taskCreate not carried in the path.
       properties:
         command:
@@ -19733,6 +20599,7 @@ components:
         TERRAFORM_FOSS: The open source licensed version of Terraform.
       x-graphql-type: TerraformWorkflowTool
     TerragruntMigrationInput:
+      additionalProperties: false
       description: Configuration options specific to Terragrunt vendor migration.
       properties:
         terragruntVersion:
@@ -20424,6 +21291,7 @@ components:
         deliveryDetails: takes arguments; not reachable from an item route
       x-graphql-type: WebhooksIntegration
     WebhooksIntegrationInput:
+      additionalProperties: false
       properties:
         enabled:
           description: Enable or disable sending webhooks

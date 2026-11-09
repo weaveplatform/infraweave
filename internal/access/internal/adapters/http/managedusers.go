@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 )
 
 // The managed user lists' cursor names.
@@ -170,7 +171,8 @@ func (s Server) ManagedUsers(
 	}, nil
 }
 
-// ManagedUser reads one of the account's managed users.
+// ManagedUser reads one of the account's managed users, tagged with its
+// version.
 func (s Server) ManagedUser(
 	ctx context.Context,
 	req api.ManagedUserRequestObject,
@@ -187,7 +189,9 @@ func (s Server) ManagedUser(
 	if err != nil {
 		return nil, err
 	}
-	return api.ManagedUser200JSONResponse{Body: v}, nil
+	return api.ManagedUser200JSONResponse{
+		Body: v, Headers: api.ManagedUser200ResponseHeaders{ETag: new(strict.ETag(u.Version))},
+	}, nil
 }
 
 // ManagedUserInviteV2 invites a person to the account.
@@ -214,7 +218,8 @@ func (s Server) ManagedUserInviteV2(
 	return api.ManagedUserInviteV2201JSONResponse{Body: v}, nil
 }
 
-// ManagedUserUpdate sets a managed user's Slack member.
+// ManagedUserUpdate sets a managed user's Slack member, when its
+// If-Match, if any, names the managed user's version.
 func (s Server) ManagedUserUpdate(
 	ctx context.Context,
 	req api.ManagedUserUpdateRequestObject,
@@ -223,20 +228,88 @@ func (s Server) ManagedUserUpdate(
 	if err != nil {
 		return nil, err
 	}
-	u, err := s.users.Update(ctx, p, from(ctx).addr, req.ManagedUserId,
-		len(req.Body.AccessRules), deref(req.Body.SlackMemberID))
+	u, err := s.updateUser(ctx, p, req.ManagedUserId, strict.IfMatch(req.Params.IfMatch),
+		*req.Body)
 	if err != nil {
-		return nil, managedError(err, "managed user")
+		return nil, err
 	}
 	v, err := s.userView(ctx, p, u)
 	if err != nil {
 		return nil, err
 	}
-	return api.ManagedUserUpdate200JSONResponse{Body: v}, nil
+	return api.ManagedUserUpdate200JSONResponse{
+		Body:    v,
+		Headers: api.ManagedUserUpdate200ResponseHeaders{ETag: new(strict.ETag(u.Version))},
+	}, nil
 }
 
-// ManagedUserDelete removes a managed user from the account and answers
-// them as they were.
+// ManagedUserPatch changes the members its merge patch names and keeps
+// the rest, writing the result as ManagedUserUpdate writes its body.
+func (s Server) ManagedUserPatch(
+	ctx context.Context,
+	req api.ManagedUserPatchRequestObject,
+) (api.ManagedUserPatchResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var patch map[string]any
+	if req.Body != nil {
+		patch = *req.Body
+	}
+	read := func() (api.ManagedUserUpdateInputBody, int64, error) {
+		u, err := s.users.User(ctx, p, req.ManagedUserId)
+		if err != nil {
+			return api.ManagedUserUpdateInputBody{}, 0, managedError(err, "managed user")
+		}
+		return userInput(u), u.Version, nil
+	}
+	write := func(in api.ManagedUserUpdateInputBody, expect kernel.Expect) (managed.User, error) {
+		return s.updateUser(ctx, p, req.ManagedUserId, expect, in)
+	}
+	u, err := strict.Apply(strict.IfMatch(req.Params.IfMatch), patch, read, write)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // read and write answer their problems
+	}
+	v, err := s.userView(ctx, p, u)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUserPatch200JSONResponse{
+		Body: v, Headers: api.ManagedUserPatch200ResponseHeaders{ETag: new(strict.ETag(u.Version))},
+	}, nil
+}
+
+// updateUser writes in to the managed user id, as ManagedUserUpdate and
+// ManagedUserPatch do, when expect accepts its version.
+func (s Server) updateUser(
+	ctx context.Context,
+	p kernel.Principal,
+	id string,
+	expect kernel.Expect,
+	in api.ManagedUserUpdateInputBody,
+) (managed.User, error) {
+	u, err := s.users.Update(ctx, p, from(ctx).addr, id, expect, len(in.AccessRules),
+		deref(in.SlackMemberID))
+	if err != nil {
+		return managed.User{}, managedError(err, "managed user")
+	}
+	return u, nil
+}
+
+// userInput is u as the ManagedUserUpdateInputBody that writes it: no
+// access rules, which nothing stores yet, and its Slack member, if any.
+func userInput(u managed.User) api.ManagedUserUpdateInputBody {
+	in := api.ManagedUserUpdateInputBody{AccessRules: []api.SpaceAccessRuleInput{}}
+	if u.SlackMemberID != "" {
+		in.SlackMemberID = &u.SlackMemberID
+	}
+	return in
+}
+
+// ManagedUserDelete removes a managed user from the account, when its
+// If-Match, if any, names the managed user's version, and answers them as
+// they were.
 func (s Server) ManagedUserDelete(
 	ctx context.Context,
 	req api.ManagedUserDeleteRequestObject,
@@ -245,7 +318,8 @@ func (s Server) ManagedUserDelete(
 	if err != nil {
 		return nil, err
 	}
-	u, err := s.users.Delete(ctx, p, from(ctx).addr, req.ManagedUserId)
+	u, err := s.users.Delete(ctx, p, from(ctx).addr, req.ManagedUserId,
+		strict.IfMatch(req.Params.IfMatch))
 	if err != nil {
 		return nil, managedError(err, "managed user")
 	}
@@ -366,7 +440,8 @@ func (s Server) ManagedUserGroups(
 	return api.ManagedUserGroups200JSONResponse{Body: body}, nil
 }
 
-// ManagedUserGroup reads one of the account's managed user groups.
+// ManagedUserGroup reads one of the account's managed user groups, tagged
+// with its version.
 func (s Server) ManagedUserGroup(
 	ctx context.Context,
 	req api.ManagedUserGroupRequestObject,
@@ -379,7 +454,10 @@ func (s Server) ManagedUserGroup(
 	if err != nil {
 		return nil, managedError(err, "managed user group")
 	}
-	return api.ManagedUserGroup200JSONResponse{Body: managedGroup(g)}, nil
+	return api.ManagedUserGroup200JSONResponse{
+		Body:    managedGroup(g),
+		Headers: api.ManagedUserGroup200ResponseHeaders{ETag: new(strict.ETag(g.Version))},
+	}, nil
 }
 
 // ManagedUserGroupCreateV2 creates a managed user group of the account.
@@ -399,8 +477,8 @@ func (s Server) ManagedUserGroupCreateV2(
 	return api.ManagedUserGroupCreateV2201JSONResponse{Body: managedGroup(g)}, nil
 }
 
-// ManagedUserGroupUpdateV2 sets a managed user group's description; none
-// clears it.
+// ManagedUserGroupUpdateV2 sets a managed user group's description, when
+// its If-Match, if any, names the group's version; none clears it.
 func (s Server) ManagedUserGroupUpdateV2(
 	ctx context.Context,
 	req api.ManagedUserGroupUpdateV2RequestObject,
@@ -409,16 +487,75 @@ func (s Server) ManagedUserGroupUpdateV2(
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.groups.Update(ctx, p, from(ctx).addr, req.ManagedUserGroupId,
-		deref(req.Body.Description))
+	g, err := s.updateGroup(ctx, p, req.ManagedUserGroupId, strict.IfMatch(req.Params.IfMatch),
+		*req.Body)
 	if err != nil {
-		return nil, managedError(err, "managed user group")
+		return nil, err
 	}
-	return api.ManagedUserGroupUpdateV2200JSONResponse{Body: managedGroup(g)}, nil
+	return api.ManagedUserGroupUpdateV2200JSONResponse{
+		Body:    managedGroup(g),
+		Headers: api.ManagedUserGroupUpdateV2200ResponseHeaders{ETag: new(strict.ETag(g.Version))},
+	}, nil
 }
 
-// ManagedUserGroupDelete deletes a managed user group and answers it as it
-// was.
+// ManagedUserGroupPatch changes the members its merge patch names and
+// keeps the rest, writing the result as ManagedUserGroupUpdateV2 writes
+// its body.
+func (s Server) ManagedUserGroupPatch(
+	ctx context.Context,
+	req api.ManagedUserGroupPatchRequestObject,
+) (api.ManagedUserGroupPatchResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var patch map[string]any
+	if req.Body != nil {
+		patch = *req.Body
+	}
+	read := func() (api.ManagedUserGroupUpdateInputV2Body, int64, error) {
+		g, err := s.groups.Group(ctx, p, req.ManagedUserGroupId)
+		if err != nil {
+			return api.ManagedUserGroupUpdateInputV2Body{}, 0,
+				managedError(err, "managed user group")
+		}
+		return api.ManagedUserGroupUpdateInputV2Body{Description: &g.Description}, g.Version, nil
+	}
+	write := func(
+		in api.ManagedUserGroupUpdateInputV2Body,
+		expect kernel.Expect,
+	) (group.Group, error) {
+		return s.updateGroup(ctx, p, req.ManagedUserGroupId, expect, in)
+	}
+	g, err := strict.Apply(strict.IfMatch(req.Params.IfMatch), patch, read, write)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // read and write answer their problems
+	}
+	return api.ManagedUserGroupPatch200JSONResponse{
+		Body:    managedGroup(g),
+		Headers: api.ManagedUserGroupPatch200ResponseHeaders{ETag: new(strict.ETag(g.Version))},
+	}, nil
+}
+
+// updateGroup writes in to the managed user group id, as
+// ManagedUserGroupUpdateV2 and ManagedUserGroupPatch do, when expect
+// accepts its version.
+func (s Server) updateGroup(
+	ctx context.Context,
+	p kernel.Principal,
+	id string,
+	expect kernel.Expect,
+	in api.ManagedUserGroupUpdateInputV2Body,
+) (group.Group, error) {
+	g, err := s.groups.Update(ctx, p, from(ctx).addr, id, expect, deref(in.Description))
+	if err != nil {
+		return group.Group{}, managedError(err, "managed user group")
+	}
+	return g, nil
+}
+
+// ManagedUserGroupDelete deletes a managed user group, when its If-Match,
+// if any, names the group's version, and answers it as it was.
 func (s Server) ManagedUserGroupDelete(
 	ctx context.Context,
 	req api.ManagedUserGroupDeleteRequestObject,
@@ -427,7 +564,8 @@ func (s Server) ManagedUserGroupDelete(
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.groups.Delete(ctx, p, from(ctx).addr, req.ManagedUserGroupId)
+	g, err := s.groups.Delete(ctx, p, from(ctx).addr, req.ManagedUserGroupId,
+		strict.IfMatch(req.Params.IfMatch))
 	if err != nil {
 		return nil, managedError(err, "managed user group")
 	}

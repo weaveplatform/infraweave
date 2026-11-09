@@ -87,6 +87,7 @@ func (s *store) SetDescription(
 	_ context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	description string,
 	e kernel.AuditEntry,
 ) (group.Group, error) {
@@ -94,7 +95,10 @@ func (s *store) SetDescription(
 	if err != nil {
 		return g, err
 	}
-	g.Description = description
+	if err := expect.Check(g.Version); err != nil {
+		return group.Group{}, err
+	}
+	g.Description, g.Version = description, g.Version+1
 	s.groups[id] = g
 	s.trail = append(s.trail, e)
 	return g, nil
@@ -104,9 +108,14 @@ func (s *store) DeleteGroup(
 	_ context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	e kernel.AuditEntry,
 ) error {
-	if _, err := s.group(acct, id); err != nil {
+	g, err := s.group(acct, id)
+	if err != nil {
+		return err
+	}
+	if err := expect.Check(g.Version); err != nil {
 		return err
 	}
 	delete(s.groups, id)
@@ -149,6 +158,7 @@ func (deleteFails) DeleteGroup(
 	context.Context,
 	kernel.AccountID,
 	kernel.ULID,
+	kernel.Expect,
 	kernel.AuditEntry,
 ) error {
 	return errDown
@@ -211,12 +221,23 @@ func TestUnitGroups(t *testing.T) {
 		p,
 		"",
 		id,
+		kernel.Expect{},
 		"ops people",
 	); err != nil ||
 		got.Description != "ops people" {
 		t.Errorf("update = %+v, %v", got, err)
 	}
-	if _, err := svc.Update(ctx, p, "", "nope", ""); !errors.Is(err, port.ErrNotFound) {
+	if _, err := svc.Update(
+		ctx,
+		p,
+		"",
+		"nope",
+		kernel.Expect{},
+		"",
+	); !errors.Is(
+		err,
+		port.ErrNotFound,
+	) {
 		t.Errorf("update of no group: %v", err)
 	}
 	if us, err := svc.Users(ctx, p, id, kernel.MemberID{}, 10); err != nil || len(us) != 1 {
@@ -238,16 +259,25 @@ func TestUnitGroups(t *testing.T) {
 		t.Errorf("available = %v, %v", names, err)
 	}
 
+	// The store sees the expect each change carries.
+	stale := kernel.ExpectVersions(9)
+	if _, err := svc.Update(ctx, p, "", id, stale, "x"); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale update: %v", err)
+	}
+	if _, err := svc.Delete(ctx, p, "", id, stale); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale delete: %v", err)
+	}
+
 	failing := group.NewService(
 		group.Deps{Store: deleteFails{s}, Now: func() time.Time { return t0 }},
 	)
-	if _, err := failing.Delete(ctx, p, "", id); !errors.Is(err, errDown) {
+	if _, err := failing.Delete(ctx, p, "", id, kernel.Expect{}); !errors.Is(err, errDown) {
 		t.Errorf("a failing delete: %v", err)
 	}
-	if got, err := svc.Delete(ctx, p, "", id); err != nil || got.ID != g.ID {
+	if got, err := svc.Delete(ctx, p, "", id, kernel.Expect{}); err != nil || got.ID != g.ID {
 		t.Errorf("delete = %+v, %v", got, err)
 	}
-	if _, err := svc.Delete(ctx, p, "", id); !errors.Is(err, port.ErrNotFound) {
+	if _, err := svc.Delete(ctx, p, "", id, kernel.Expect{}); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("delete again: %v", err)
 	}
 }

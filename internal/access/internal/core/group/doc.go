@@ -7,7 +7,11 @@
 // reported. A name another group of the account holds is
 // port.ErrSlugTaken, and role bindings, which arrive with P4b, are
 // user.ErrBindingsUnsupported. Every write carries its entry on the
-// account's trail.
+// account's trail. A Group's Version is raised by every change; Update
+// and Delete carry a kernel.Expect, and the store refuses a group whose
+// version it does not accept with kernel.ErrStale, changing nothing.
+//
+// ref: decision 0022
 //
 // # Input and output
 //

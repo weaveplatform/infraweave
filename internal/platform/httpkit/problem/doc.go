@@ -12,7 +12,8 @@
 // with the problem it carries, a NotImplementedError with a 501 naming the
 // operation, a *kernel.Invalid, such as a refused search or vendor
 // setting, with 422 validation-failed and an errors member, a
-// FieldError for each field refused, and anything else through Failure.
+// FieldError for each field refused, kernel.ErrStale with 412
+// precondition-failed, and anything else through Failure.
 //
 // ref: decision 0022
 //
@@ -24,8 +25,8 @@
 //
 // # Dependencies
 //
-// It imports the standard library and internal/kernel, for ErrUnavailable
-// and the inputs a rule refuses.
+// It imports the standard library and internal/kernel, for ErrUnavailable,
+// ErrStale and the inputs a rule refuses.
 // Every HTTP package imports it: the
 // generated server's stubs, the middleware, the page codec, internal/app and,
 // from P3, each domain's HTTP adapter.

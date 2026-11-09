@@ -192,7 +192,7 @@ func TestAccServiceCreate(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
 	in := input("Prod / EU")
-	in.Labels = []string{"b", "a", "b"}
+	in.Labels = []string{"b", "a"}
 	in.Hooks = map[string][]string{stacksapi.BeforePlan: {"echo 1", "echo 2"}}
 	in.VendorConfig = json.RawMessage(`{"opentofu":{"version":"~> 1.8.0"},"terraform":null}`)
 	st, err := f.svc.Create(ctx, f.admin, "", true, in)
@@ -375,16 +375,34 @@ func TestAccServiceUpdate(t *testing.T) {
 	in := input("Renamed")
 	in.Labels = []string{"x"}
 	in.Autodeploy = new(true)
-	got, err := f.svc.Update(ctx, f.admin, "infra", in)
+	got, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in)
 	if err != nil || got.Name != "Renamed" || got.Slug != "infra" || !got.Autodeploy ||
 		!reflect.DeepEqual(got.Labels, []string{"x"}) || got.Version != 2 {
 		t.Errorf("Update = %+v, %v", got, err)
+	}
+	if _, err := f.svc.Update(
+		ctx, f.admin, "infra", kernel.ExpectVersions(st.Version), in,
+	); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("an Update of a stale version = %v", err)
+	}
+	if again, err := f.svc.Update(
+		ctx, f.admin, "infra", kernel.ExpectVersions(got.Version), in,
+	); err != nil || again.Version != got.Version+1 {
+		t.Errorf("an Update of the version read = %+v, %v", again, err)
+	}
+	labels := in
+	labels.Labels = []string{"Prod", "prod", " edge", "Prod"}
+	if got := pointers(t, func() error {
+		_, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, labels)
+		return err
+	}()); !reflect.DeepEqual(got, []string{"/labels/2", "/labels/3"}) {
+		t.Errorf("refused labels name %v", got)
 	}
 	if _, err := f.svc.Reslug(ctx, f.admin, "infra"); !isSlugTaken(err, "renamed") {
 		t.Errorf("Reslug to a taken slug = %v", err)
 	}
 	in.Name = "Infra Two"
-	if _, err := f.svc.Update(ctx, f.admin, "infra", in); err != nil {
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := f.svc.Reslug(ctx, f.admin, "infra"); err != nil || got.Slug != "infra-two" {
@@ -396,19 +414,46 @@ func TestAccServiceUpdate(t *testing.T) {
 	moved := input("Infra Two")
 	moved.Space = ""
 	var denied *stacks.Denied
-	if _, err := f.svc.Update(ctx, f.writer, "infra-two", moved); !isNoSpace(err, "") {
+	if _, err := f.svc.Update(
+		ctx,
+		f.writer,
+		"infra-two",
+		kernel.Expect{},
+		moved,
+	); !isNoSpace(
+		err,
+		"",
+	) {
 		t.Errorf("a move to a space the writer cannot read = %v", err)
 	}
 	f2 := moved
 	f2.Space = "team"
-	if _, err := f.svc.Update(ctx, f.writer, "infra-two", f2); err != nil {
+	if _, err := f.svc.Update(ctx, f.writer, "infra-two", kernel.Expect{}, f2); err != nil {
 		t.Errorf("an update in place by the writer = %v", err)
 	}
-	if _, err := f.svc.Update(ctx, f.reader, "infra-two", moved); !isNoSpace(err, "") {
+	if _, err := f.svc.Update(
+		ctx,
+		f.reader,
+		"infra-two",
+		kernel.Expect{},
+		moved,
+	); !isNoSpace(
+		err,
+		"",
+	) {
 		t.Errorf("a move by the reader = %v", err)
 	}
 	f.authzGrant(f.writer, f.acct.ULID, accessapi.ActionSpaceRead)
-	if _, err := f.svc.Update(ctx, f.writer, "infra-two", moved); !errors.As(err, &denied) ||
+	if _, err := f.svc.Update(
+		ctx,
+		f.writer,
+		"infra-two",
+		kernel.Expect{},
+		moved,
+	); !errors.As(
+		err,
+		&denied,
+	) ||
 		denied.Action != accessapi.ActionStackCreate {
 		t.Errorf("a move without STACK_CREATE there = %v", err)
 	}
@@ -416,18 +461,26 @@ func TestAccServiceUpdate(t *testing.T) {
 		ctx,
 		f.admin,
 		"infra-two",
+		kernel.Expect{},
 		moved,
 	); err != nil ||
 		got.Space != f.acct.ULID {
 		t.Errorf("a move by the admin = %+v, %v", got, err)
 	}
-	if _, err := f.svc.Update(ctx, f.admin, "infra-two", stacks.Input{}); err == nil {
+	if _, err := f.svc.Update(
+		ctx,
+		f.admin,
+		"infra-two",
+		kernel.Expect{},
+		stacks.Input{},
+	); err == nil {
 		t.Error("an empty input was accepted")
 	}
 	if _, err := f.svc.Update(
 		ctx,
 		f.admin,
 		"gone",
+		kernel.Expect{},
 		input("x"),
 	); !errors.Is(
 		err,
@@ -437,7 +490,8 @@ func TestAccServiceUpdate(t *testing.T) {
 	}
 	want := []string{
 		stacksapi.ChangeCreated, stacksapi.ChangeUpdated, stacksapi.ChangeUpdated,
-		stacksapi.ChangeReslugged, stacksapi.ChangeUpdated, stacksapi.ChangeUpdated,
+		stacksapi.ChangeUpdated, stacksapi.ChangeReslugged, stacksapi.ChangeUpdated,
+		stacksapi.ChangeUpdated,
 	}
 	if c := f.changes(t, st.ID); !reflect.DeepEqual(c, want) {
 		t.Errorf("events %v, want %v", c, want)
@@ -574,19 +628,38 @@ func TestAccServiceStateChanges(t *testing.T) {
 		t.Errorf("SetStar of a missing stack = %v", err)
 	}
 	if got := pointers(t, func() error {
-		_, err := f.svc.Delete(ctx, f.admin, "infra")
+		_, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{})
 		return err
 	}()); len(got) != 0 {
 		t.Errorf("a protected stack's delete names %v", got)
 	}
 	in.ProtectFromDeletion = nil
-	if _, err := f.svc.Update(ctx, f.admin, "infra", in); err != nil {
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := f.svc.Delete(ctx, f.admin, "infra"); err != nil || got.ID != st.ID {
+	if _, err := f.svc.Delete(
+		ctx, f.admin, "infra", kernel.ExpectVersions(st.Version),
+	); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a Delete of a stale version = %v", err)
+	}
+	if got, err := f.svc.Delete(
+		ctx,
+		f.admin,
+		"infra",
+		kernel.ExpectAny(),
+	); err != nil ||
+		got.ID != st.ID {
 		t.Errorf("Delete = %+v, %v", got, err)
 	}
-	if _, err := f.svc.Delete(ctx, f.admin, "infra"); !errors.Is(err, stacksapi.ErrNotFound) {
+	if _, err := f.svc.Delete(
+		ctx,
+		f.admin,
+		"infra",
+		kernel.Expect{},
+	); !errors.Is(
+		err,
+		stacksapi.ErrNotFound,
+	) {
 		t.Errorf("a second Delete = %v", err)
 	}
 	if used, err := f.svc.SpaceInUse(ctx, f.acct, f.team); err != nil || used {

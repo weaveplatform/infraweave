@@ -71,7 +71,7 @@ func (s *Store) SetPersonalAPIKeys(
 		}
 		q := tx.Q(ctx, s.db)
 		rows, err := q.Query(ctx, `UPDATE api_keys SET disabled_at = coalesce(disabled_at, now()),
-				disabled_reason = coalesce(disabled_reason, 'ACCOUNT')
+				disabled_reason = coalesce(disabled_reason, 'ACCOUNT'), version = version + 1
 			WHERE account_id = $1 AND is_personal AND deleted_at IS NULL RETURNING id`, acct)
 		if err != nil {
 			return fmt.Errorf("access: disable personal keys: %w", sql.Unavailable(err))
