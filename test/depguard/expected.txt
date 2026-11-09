@@ -1,8 +1,10 @@
 internal/access/graph/graph.go graph-access github.com/weaveplatform/infraweave/internal/stacks/api
 internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/internal/platform/sql
 internal/agent/z/z.go agent-isolation github.com/weaveplatform/infraweave/pkg/sdk
+internal/configuration/down/down.go graph-configuration github.com/weaveplatform/infraweave/internal/runs/api
 internal/ctl/z/z.go ctl github.com/weaveplatform/infraweave/internal/kernel
 internal/ctl/z/z.go ctl github.com/weaveplatform/infraweave/pkg/client/api
+internal/expressions/up/up.go graph-expressions github.com/weaveplatform/infraweave/internal/stacks/api
 internal/features/up/up.go graph-features github.com/weaveplatform/infraweave/internal/access/api
 internal/iac/x/x.go iac-pure github.com/jackc/pgx/v5
 internal/iac/x/x.go iac-pure github.com/weaveplatform/infraweave/internal/platform/sql

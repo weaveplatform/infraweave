@@ -10,6 +10,8 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
+	expressionsassembly "github.com/weaveplatform/infraweave/internal/expressions/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
@@ -38,6 +40,8 @@ type apiServer struct {
 	featuresassembly.FeaturesAPI
 	vendorsassembly.VendorsAPI
 	stacksassembly.StacksAPI
+	configurationassembly.ConfigurationAPI
+	expressionsassembly.ExpressionsAPI
 	unimplemented
 	queues QueueStats
 	blobs  *blobs.Objects
@@ -108,12 +112,14 @@ func API(
 	d.Access.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
 		apiServer{
-			AccessAPI:   d.Access.API(),
-			FeaturesAPI: d.Features.API(d.Access.Seats),
-			VendorsAPI:  d.Vendors.API(),
-			StacksAPI:   d.Stacks.API(),
-			queues:      p.Queues,
-			blobs:       b.Objects,
+			AccessAPI:        d.Access.API(),
+			FeaturesAPI:      d.Features.API(d.Access.Seats),
+			VendorsAPI:       d.Vendors.API(),
+			StacksAPI:        d.Stacks.API(),
+			ConfigurationAPI: d.Configuration.API(),
+			ExpressionsAPI:   d.Expressions.API(),
+			queues:           p.Queues,
+			blobs:            b.Objects,
 		},
 		nil,
 		api.StrictHTTPServerOptions{

@@ -8,6 +8,8 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
+	expressionsassembly "github.com/weaveplatform/infraweave/internal/expressions/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
@@ -25,10 +27,12 @@ import (
 // domain whose api/ it imports. A back edge, a call to a domain built
 // later, is bound here after construction.
 type Domains struct {
-	Features *featuresassembly.Domain
-	Access   *accessassembly.Domain
-	Vendors  *vendorsassembly.Domain
-	Stacks   *stacksassembly.Domain
+	Features      *featuresassembly.Domain
+	Access        *accessassembly.Domain
+	Vendors       *vendorsassembly.Domain
+	Stacks        *stacksassembly.Domain
+	Configuration *configurationassembly.Domain
+	Expressions   *expressionsassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
 	Auth accessapi.Authenticator
 	// OperatorAuth authenticates the operator API's requests, admitting
@@ -74,12 +78,14 @@ func newDomains(
 	access.GuardSpaces(stacks.SpaceGuard())
 	access.ResolveSubjects(stacksassembly.Entity, stacks.SpaceOf())
 	return Domains{
-		Features:     features,
-		Access:       access,
-		Vendors:      vendors,
-		Stacks:       stacks,
-		Auth:         access.Authenticator(),
-		OperatorAuth: access.OperatorAuthenticator(),
+		Features:      features,
+		Access:        access,
+		Vendors:       vendors,
+		Stacks:        stacks,
+		Configuration: configurationassembly.New(),
+		Expressions:   expressionsassembly.New(),
+		Auth:          access.Authenticator(),
+		OperatorAuth:  access.OperatorAuthenticator(),
 	}, nil
 }
 

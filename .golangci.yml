@@ -284,6 +284,35 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/
             - github.com/weaveplatform/infraweave/internal/iac$
             - github.com/weaveplatform/infraweave/internal/iac/
+        graph-configuration:
+          list-mode: lax
+          files:
+            - "**/internal/configuration/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: configuration imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/configuration/
+            - github.com/weaveplatform/infraweave/internal/features/api$
+            - github.com/weaveplatform/infraweave/internal/access/api$
+            - github.com/weaveplatform/infraweave/internal/stacks/api$
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
+            - github.com/weaveplatform/infraweave/internal/iac$
+            - github.com/weaveplatform/infraweave/internal/iac/
+        graph-expressions:
+          list-mode: lax
+          files:
+            - "**/internal/expressions/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: expressions imports no domain; internal/app hands it what it reads of them
+          allow:
+            - github.com/weaveplatform/infraweave/internal/expressions/
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
         devtools:
           files:
             - $all
