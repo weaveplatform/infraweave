@@ -198,6 +198,29 @@ func (s *Store) ByIDs(
 	return out, nil
 }
 
+// Labelled reads acct's contexts in spaces that carry any of labels, by
+// name, through the labels' GIN index.
+func (s *Store) Labelled(
+	ctx context.Context,
+	acct kernel.AccountID,
+	spaces []kernel.ULID,
+	labels []string,
+) ([]core.Context, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+columns+` FROM contexts c
+		WHERE c.account_id = $1 AND c.space_id = ANY($2) AND c.labels && $3::text[]
+		ORDER BY c.name COLLATE "C", c.slug`, acct, spaces, labels)
+	if err != nil {
+		return nil, fmt.Errorf("configuration: read contexts by label: %w", sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (core.Context, error) {
+		return scan(row)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configuration: read contexts by label: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 // Delete deletes acct's context id; its elements and attachments go with
 // it by their foreign keys.
 func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
@@ -434,7 +457,8 @@ func (s *Store) Attach(ctx context.Context, a core.Attachment) (core.Attachment,
 	out, err := scanAttachment(tx.Q(ctx, s.db).QueryRow(ctx, `INSERT INTO context_attachments
 			(account_id, id, context_id, stack_id, priority, is_autoattached, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (account_id, context_id, stack_id) DO UPDATE SET priority = EXCLUDED.priority
+		ON CONFLICT (account_id, context_id, stack_id) DO UPDATE SET priority = EXCLUDED.priority,
+			is_autoattached = EXCLUDED.is_autoattached
 		RETURNING `+attachmentColumns,
 		a.Account, a.ID, a.Context, a.Stack, a.Priority, a.Autoattached, a.CreatedAt))
 	if err != nil {
@@ -442,6 +466,35 @@ func (s *Store) Attach(ctx context.Context, a core.Attachment) (core.Attachment,
 			sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// AutoAttach writes a unless its context is attached to its stack
+// already, and reports whether it wrote it.
+func (s *Store) AutoAttach(ctx context.Context, a core.Attachment) (bool, error) {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO context_attachments
+			(account_id, id, context_id, stack_id, priority, is_autoattached, created_at)
+		VALUES ($1, $2, $3, $4, $5, true, $6)
+		ON CONFLICT (account_id, context_id, stack_id) DO NOTHING`,
+		a.Account, a.ID, a.Context, a.Stack, a.Priority, a.CreatedAt)
+	if err != nil {
+		return false, fmt.Errorf(
+			"configuration: attach context %s: %w",
+			a.Context,
+			sql.Unavailable(err),
+		)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// LockAutoattach takes the transaction's advisory lock on acct's
+// auto-attachments, in the two-key form LockElements uses.
+func (s *Store) LockAutoattach(ctx context.Context, acct kernel.AccountID) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtext('context_attachments'), hashtext($1::text))`, acct)
+	if err != nil {
+		return fmt.Errorf("configuration: lock auto-attachments: %w", sql.Unavailable(err))
+	}
+	return nil
 }
 
 // Attachment reads acct's attachment id.

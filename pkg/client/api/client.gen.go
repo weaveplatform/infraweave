@@ -12387,7 +12387,7 @@ type ClientInterface interface {
 
 	// ContextDetach Detach Context
 	//
-	// Detach a context from a stack, by the attachment's ID.
+	// Detach a context from a stack, by the attachment's ID. An attachment the context's autoattach label made is refused; removing the label from the context, or the label it names from the stack, detaches it.
 	//
 	// Corresponds with DELETE /context-attachments/{attachmentId} (the `ContextDetach` operationId).
 	ContextDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15654,7 +15654,7 @@ func (c *Client) BillingSubscriptionUpdateTier(ctx context.Context, params *Bill
 
 // ContextDetach Detach Context
 //
-// Detach a context from a stack, by the attachment's ID.
+// Detach a context from a stack, by the attachment's ID. An attachment the context's autoattach label made is refused; removing the label from the context, or the label it names from the stack, detaches it.
 //
 // Corresponds with DELETE /context-attachments/{attachmentId} (the `ContextDetach` operationId).
 func (c *Client) ContextDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -32844,7 +32844,7 @@ type ClientWithResponsesInterface interface {
 
 	// ContextDetachWithResponse Detach Context
 	//
-	// Detach a context from a stack, by the attachment's ID.
+	// Detach a context from a stack, by the attachment's ID. An attachment the context's autoattach label made is refused; removing the label from the context, or the label it names from the stack, detaches it.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -58656,7 +58656,7 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateTierWithResponse(ctx cont
 
 // ContextDetachWithResponse Detach Context
 //
-// Detach a context from a stack, by the attachment's ID.
+// Detach a context from a stack, by the attachment's ID. An attachment the context's autoattach label made is refused; removing the label from the context, or the label it names from the stack, detaches it.
 //
 // Returns a wrapper object for the known response body format(s).
 //

@@ -107,7 +107,8 @@ func TestAccServiceGuards(t *testing.T) {
 }
 
 // TestAccServiceHoldFind checks that the service holds and finds stacks
-// through the store, and finds none without a space or a label.
+// through the store, and finds none without a space or a label; it lists
+// a space's stacks and reads stacks' labels.
 func TestAccServiceHoldFind(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -128,7 +129,25 @@ func TestAccServiceHoldFind(t *testing.T) {
 		!reflect.DeepEqual(got, []stacksapi.Stack{st.Stack}) {
 		t.Errorf("Find = %v, %v", got, err)
 	}
+	if got, err := f.svc.InSpaces(ctx, f.acct, []kernel.ULID{f.team}); err != nil ||
+		!reflect.DeepEqual(got, []stacksapi.Stack{st.Stack}) {
+		t.Errorf("InSpaces = %v, %v", got, err)
+	}
+	other := kernel.NewULID()
+	if got, err := f.svc.Labels(ctx, f.acct, []kernel.ULID{st.ID, other}); err != nil ||
+		!reflect.DeepEqual(got, map[kernel.ULID][]string{st.ID: labels, other: {}}) {
+		t.Errorf("Labels = %v, %v", got, err)
+	}
 	f.db.Close()
+	if got, err := f.svc.InSpaces(ctx, f.acct, nil); got != nil || err != nil {
+		t.Errorf("InSpaces of no space = %v, %v", got, err)
+	}
+	if got, err := f.svc.Labels(ctx, f.acct, nil); len(got) != 0 || err != nil {
+		t.Errorf("Labels of no stack = %v, %v", got, err)
+	}
+	if _, err := f.svc.Labels(ctx, f.acct, []kernel.ULID{st.ID}); err == nil {
+		t.Error("Labels on a closed pool succeeded")
+	}
 	for name, spaces := range map[string][]kernel.ULID{"no space": nil, "no label": {f.team}} {
 		l := labels
 		if spaces != nil {

@@ -23,8 +23,9 @@
 // the accessapi.SpaceOf of the entity "stack". It refuses no space move,
 // since a stack keeps its space through one. Find lists the stacks in
 // some spaces that carry some labels, and none without a space or a
-// label; BySlug and ByIDs read stacks for the domains that attach to
-// them.
+// label; InSpaces lists every stack in some spaces and Labels some
+// stacks' labels; BySlug and ByIDs read stacks for the domains that
+// attach to them.
 //
 // # Input and output
 //

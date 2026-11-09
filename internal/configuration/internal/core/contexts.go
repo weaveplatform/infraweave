@@ -308,15 +308,22 @@ func (s *Service) AttachedStack(
 }
 
 // Create creates a context of p's account from in, with its elements and
-// stack attachments. The route has decided CONTEXT_CREATE on in's space;
+// stack attachments, and the automatic attachments its labels name. The route has decided CONTEXT_CREATE on in's space;
 // each attachment needs STACK_CONTEXT_ATTACH in its stack's space. Its
 // refusals point into contextCreateV2's body.
 func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Context, error) {
 	if err := check("", in); err != nil {
 		return Context{}, err
 	}
+	names, all := autoLabels(in.Labels)
+	auto := all || len(names) > 0
 	var c Context
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		if auto {
+			if err := s.store.LockAutoattach(ctx, p.AccountID); err != nil {
+				return err //nolint:wrapcheck // the store names the lock
+			}
+		}
 		space, err := s.space(ctx, p, in.Space)
 		if err != nil {
 			return err
@@ -341,6 +348,11 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Con
 				return err
 			}
 		}
+		if auto {
+			if err := s.autoattach(ctx, c); err != nil {
+				return err
+			}
+		}
 		return s.changed(ctx, c, configapi.ChangeCreated, nil)
 	})
 	return c, err //nolint:wrapcheck // each step in the transaction names itself
@@ -350,8 +362,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Con
 // when expect accepts its version, and its elements with in's Config when
 // replace is set. The route has decided CONTEXT_UPDATE on the context's
 // space; a move to another space also needs CONTEXT_CREATE there, and is
-// refused when a stack attached to the context could no longer reach it.
-// Its refusals point into contextUpdateV2's body.
+// refused when a stack attached to the context by hand could no longer
+// reach it. The context's automatic attachments follow its labels and
+// space. Its refusals point into contextUpdateV2's body.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
@@ -372,6 +385,29 @@ func (s *Service) Update(
 			Message: "An update attaches no stack; attach one with contextAttach.",
 		}}}
 	}
+	var c Context
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		if err := s.store.LockAutoattach(ctx, p.AccountID); err != nil {
+			return err //nolint:wrapcheck // the store names the lock
+		}
+		var err error
+		c, err = s.update(ctx, p, slug, expect, in, replace)
+		return err
+	})
+	return c, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// update is Update's write, under LockAutoattach: it brings the
+// context's auto-attachments in line with its labels and space once in
+// is applied.
+func (s *Service) update(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	expect kernel.Expect,
+	in Input,
+	replace bool,
+) (Context, error) {
 	return s.write(ctx, p.AccountID, slug, expect, configapi.ChangeUpdated, nil,
 		func(ctx context.Context, c *Context) error {
 			space, err := s.space(ctx, p, in.Space)
@@ -387,6 +423,9 @@ func (s *Service) Update(
 				}
 			}
 			apply(c, space, in)
+			if err := s.autoattach(ctx, *c); err != nil {
+				return err
+			}
 			if !replace {
 				return nil
 			}
@@ -671,7 +710,7 @@ func (s *Service) attach(
 }
 
 // Detach deletes p's account's attachment id and answers it as it was,
-// with the stack it attached to. The route has decided
+// with the stack it attached to; an automatic attachment is refused. The route has decided
 // STACK_CONTEXT_DETACH in the stack's space.
 func (s *Service) Detach(
 	ctx context.Context,
@@ -681,6 +720,9 @@ func (s *Service) Detach(
 	a, err := s.attachment(ctx, p.AccountID, id)
 	if err != nil {
 		return Attachment{}, stacksapi.Stack{}, err
+	}
+	if a.Autoattached {
+		return Attachment{}, stacksapi.Stack{}, autoDetach(id)
 	}
 	cs, err := s.store.ByIDs(ctx, p.AccountID, []kernel.ULID{a.Context})
 	if err != nil {
@@ -695,8 +737,10 @@ func (s *Service) Detach(
 		configapi.ChangeDetached,
 		&a.Stack,
 		func(ctx context.Context, _ *Context) error {
-			if _, err := s.attachment(ctx, p.AccountID, id); err != nil {
+			if a, err := s.attachment(ctx, p.AccountID, id); err != nil {
 				return err
+			} else if a.Autoattached {
+				return autoDetach(id)
 			}
 			if st, err = s.stacks.Get(ctx, p.AccountID, a.Stack); err != nil {
 				return err //nolint:wrapcheck // the stacks domain names the read
@@ -712,6 +756,20 @@ func (s *Service) Detach(
 		return Attachment{}, stacksapi.Stack{}, &Missing{Kind: "attachment", ID: id}
 	}
 	return a, st, err //nolint:wrapcheck // the stores name the reads and the write
+}
+
+// autoDetach refuses detaching attachment id, which a context's
+// autoattach label made: the label would attach it again at the next
+// change, so it is removed from the context or the stack instead.
+func autoDetach(id string) error {
+	return &kernel.Invalid{
+		Detail: fmt.Sprintf("Attachment %s follows an autoattach label.", id),
+		Errors: []kernel.FieldError{{
+			Pointer: "/attachmentId", Reason: kernel.ReasonRule,
+			Message: "An automatic attachment is detached by removing the context's autoattach " +
+				"label or the stack's label it names.",
+		}},
+	}
 }
 
 // attachment reads acct's attachment by its ID as the API gives it.

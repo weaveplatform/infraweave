@@ -1,6 +1,9 @@
 package assembly
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -8,8 +11,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/core"
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/http"
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/pg"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -68,6 +73,34 @@ func New(d Deps) *Domain {
 func RegisterEvents(kinds *outbox.Kinds) error {
 	//nolint:wrapcheck // names the kind
 	return kinds.Register(configapi.ChangedKind, configapi.ChangedVersion, configapi.ChangedSchema)
+}
+
+// Autoattach is the consumer that brings a stack's automatic attachments
+// in line with its labels and space after each stacksapi.Changed; every
+// replica subscribes it, and the outbox runs each event once.
+const Autoattach = "configuration.autoattach"
+
+// Subscribe subscribes the domain's consumers on events.
+func (d *Domain) Subscribe(events *outbox.Outbox) error {
+	//nolint:wrapcheck // names the consumer
+	return events.Subscribe(stacksapi.ChangedKind, Autoattach, stackChanged(d.svc.StackChanged))
+}
+
+// stackChanged is the outbox handler that decodes a stacksapi.Changed and
+// runs run on its stack; a document that does not decode never will, so
+// its job dies at once.
+func stackChanged(
+	run func(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error,
+) outbox.Handler {
+	return func(ctx context.Context, ev outbox.Event, _ queue.Job) error {
+		var ch stacksapi.Changed
+		if err := json.Unmarshal(ev.Document, &ch); err != nil {
+			return queue.Permanent(
+				fmt.Errorf("%s %s: %w", ev.Kind, ev.ID, err),
+			) //nolint:wrapcheck // marks it
+		}
+		return run(ctx, kernel.AccountID{ULID: ev.Account}, ch.Stack)
+	}
 }
 
 // SpaceGuard is the domain's say in the access domain's space deletes and

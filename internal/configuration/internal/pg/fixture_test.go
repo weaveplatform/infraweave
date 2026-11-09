@@ -127,12 +127,14 @@ func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode,
 	return out, nil
 }
 
-// stacks are an account's stacks by slug, recording each hold.
+// stacks are an account's stacks by slug, with their labels by slug,
+// recording each hold.
 type stacks struct {
-	mu    sync.Mutex
-	all   map[string]stacksapi.Stack
-	holds []kernel.ULID
-	err   error
+	mu     sync.Mutex
+	all    map[string]stacksapi.Stack
+	labels map[string][]string
+	holds  []kernel.ULID
+	err    error
 }
 
 func (s *stacks) byID(id kernel.ULID) (stacksapi.Stack, bool) {
@@ -225,13 +227,64 @@ func (*stacks) LockForRun(
 	return stacksapi.Settings{}, errors.ErrUnsupported
 }
 
-func (*stacks) Find(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-	[]string,
+func (s *stacks) Find(
+	_ context.Context,
+	_ kernel.AccountID,
+	spaces []kernel.ULID,
+	labels []string,
 ) ([]stacksapi.Stack, error) {
-	return nil, errors.ErrUnsupported
+	return s.matching(spaces, func(slug string) bool {
+		return slices.ContainsFunc(
+			s.labels[slug],
+			func(l string) bool { return slices.Contains(labels, l) },
+		)
+	})
+}
+
+func (s *stacks) InSpaces(
+	_ context.Context,
+	_ kernel.AccountID,
+	spaces []kernel.ULID,
+) ([]stacksapi.Stack, error) {
+	return s.matching(spaces, func(string) bool { return true })
+}
+
+// matching lists the stacks in spaces whose slug keep keeps, by slug.
+func (s *stacks) matching(
+	spaces []kernel.ULID,
+	keep func(slug string) bool,
+) ([]stacksapi.Stack, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return nil, s.err
+	}
+	var out []stacksapi.Stack
+	for _, slug := range slices.Sorted(maps.Keys(s.all)) {
+		if st := s.all[slug]; slices.Contains(spaces, st.Space) && keep(slug) {
+			out = append(out, st)
+		}
+	}
+	return out, nil
+}
+
+func (s *stacks) Labels(
+	_ context.Context,
+	_ kernel.AccountID,
+	ids []kernel.ULID,
+) (map[kernel.ULID][]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return nil, s.err
+	}
+	out := map[kernel.ULID][]string{}
+	for slug, st := range s.all {
+		if slices.Contains(ids, st.ID) {
+			out[st.ID] = slices.Sorted(slices.Values(s.labels[slug]))
+		}
+	}
+	return out, nil
 }
 
 // authz allows each caller the actions it lists in each space.
@@ -324,7 +377,10 @@ func newFixture(t *testing.T) *fixture {
 		Name:    "DB",
 		Space:   sp["hidden"],
 	}
-	st := &stacks{all: map[string]stacksapi.Stack{"web": web, "db": data}}
+	st := &stacks{
+		all:    map[string]stacksapi.Stack{"web": web, "db": data},
+		labels: map[string][]string{},
+	}
 	principal := func(login string) kernel.Principal {
 		return kernel.Principal{
 			Kind: kernel.PrincipalAPIKey, ActorID: kernel.NewULID(), AccountID: acct, Login: login,

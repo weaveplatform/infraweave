@@ -152,13 +152,19 @@ func (s *Service) lost(
 	return nil
 }
 
-// LostOnMove names each context attached to the stack that m would leave
-// outside its reach, as "context <slug>", by slug.
+// LostOnMove names each context attached to the stack by hand that m
+// would leave outside its reach, as "context <slug>", by slug. An
+// automatic attachment follows the move instead, once its event is
+// processed.
 func (g StackGuard) LostOnMove(ctx context.Context, m stacksapi.StackMove) ([]string, error) {
 	s := g.s
 	attached, err := s.store.Attachments(ctx, m.Account, []kernel.ULID{m.ID}, true)
-	if err != nil || len(attached) == 0 {
+	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	attached[m.ID] = manual(attached[m.ID])
+	if len(attached[m.ID]) == 0 {
+		return nil, nil
 	}
 	nodes, err := s.spaces.Tree(ctx, m.Account)
 	if err != nil {
@@ -182,16 +188,21 @@ func (g StackGuard) Deleting(ctx context.Context, st stacksapi.Stack) error {
 	return err //nolint:wrapcheck // the store names the write
 }
 
-// contextMove refuses moving c to space when a stack attached to it could
-// no longer reach it, naming each stack. c's row is locked FOR UPDATE, so
-// no attachment is made meanwhile.
+// contextMove refuses moving c to space when a stack attached to it by
+// hand could no longer reach it, naming each stack; the move recomputes
+// its automatic attachments instead. c's row is locked FOR UPDATE, so no
+// attachment is made meanwhile.
 func (s *Service) contextMove(ctx context.Context, c Context, space kernel.ULID) error {
 	attached, err := s.store.Attachments(ctx, c.Account, []kernel.ULID{c.ID}, false)
-	if err != nil || len(attached[c.ID]) == 0 {
+	if err != nil {
 		return err //nolint:wrapcheck // the store names the read
 	}
-	ids := make([]kernel.ULID, 0, len(attached[c.ID]))
-	for _, a := range attached[c.ID] {
+	as := manual(attached[c.ID])
+	if len(as) == 0 {
+		return nil
+	}
+	ids := make([]kernel.ULID, 0, len(as))
+	for _, a := range as {
 		ids = append(ids, a.Stack)
 	}
 	stacks, err := s.stacks.ByIDs(ctx, c.Account, ids)
@@ -225,9 +236,15 @@ func (s *Service) contextMove(ctx context.Context, c Context, space kernel.ULID)
 	return inv
 }
 
-// AttachedContexts reads the contexts attached to each of stacks, by
-// priority, lowest first, then by slug, with their hooks and elements;
-// a write-only element's value is left out.
+// manual are those of as attached by hand.
+func manual(as []Attachment) []Attachment {
+	return slices.DeleteFunc(slices.Clone(as), func(a Attachment) bool { return a.Autoattached })
+}
+
+// AttachedContexts reads the contexts attached to each of stacks, with
+// their hooks and elements: those attached by hand by priority, lowest
+// first, then by slug, and then those attached automatically, by name; a
+// write-only element's value is left out.
 func (s *Service) AttachedContexts(
 	ctx context.Context,
 	acct kernel.AccountID,
@@ -269,6 +286,17 @@ func (s *Service) AttachedContexts(
 			})
 		}
 		slices.SortStableFunc(out[stack], func(a, b stacksapi.AttachedContext) int {
+			switch {
+			case a.Autoattached && !b.Autoattached:
+				return 1
+			case !a.Autoattached && b.Autoattached:
+				return -1
+			case a.Autoattached:
+				return cmp.Or(
+					strings.Compare(a.Name, b.Name),
+					strings.Compare(a.Context, b.Context),
+				)
+			}
 			return cmp.Or(
 				cmp.Compare(a.Priority, b.Priority),
 				strings.Compare(a.Context, b.Context),

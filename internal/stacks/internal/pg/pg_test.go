@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -231,7 +234,8 @@ func TestAccHold(t *testing.T) {
 }
 
 // TestAccFind finds an account's stacks in the given spaces that carry
-// any of the given labels, by slug, and no other account's.
+// any of the given labels, by slug, and no other account's; lists those
+// in a space; and reads their labels.
 func TestAccFind(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -268,6 +272,42 @@ func TestAccFind(t *testing.T) {
 			t.Errorf("Find(%v) = %v, want %v", tc.labels, slugs, tc.want)
 		}
 	}
+	all, err := s.InSpaces(ctx, acct, []kernel.ULID{team})
+	if err != nil {
+		t.Fatal(err)
+	}
+	slugs := map[kernel.ULID]string{}
+	ids := make([]kernel.ULID, 0, len(all))
+	for _, st := range all {
+		slugs[st.ID] = st.Slug
+		ids = append(ids, st.ID)
+	}
+	if got := slices.Sorted(
+		maps.Values(slugs),
+	); !reflect.DeepEqual(
+		got,
+		[]string{"alpha", "beta", "delta"},
+	) ||
+		all[0].Slug != "alpha" {
+		t.Errorf("InSpaces = %v", all)
+	}
+	labels, err := s.Labels(ctx, acct, ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][]string{}
+	for id, ls := range labels {
+		got[slugs[id]] = ls
+	}
+	if want := map[string][]string{
+		"alpha": {"db"},
+		"beta":  {"autoattach:prod", "web"},
+	}; !reflect.DeepEqual(
+		got,
+		want,
+	) {
+		t.Errorf("Labels = %v", got)
+	}
 }
 
 // TestAccStoreUnavailable checks that a read on a closed pool fails, and
@@ -299,8 +339,10 @@ func TestAccStoreUnavailable(t *testing.T) {
 			_, err := s.Find(ctx, acct, []kernel.ULID{id}, []string{"l"})
 			return err
 		}(),
-		"SetStar": s.SetStar(ctx, acct, id, actor, true),
-		"Starred": func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
+		"InSpaces": func() error { _, err := s.InSpaces(ctx, acct, []kernel.ULID{id}); return err }(),
+		"Labels":   func() error { _, err := s.Labels(ctx, acct, []kernel.ULID{id}); return err }(),
+		"SetStar":  s.SetStar(ctx, acct, id, actor, true),
+		"Starred":  func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
 		"Search": func() error {
 			_, err := s.Search(ctx, acct, search.Input{}, core.Scope{Reachable: []kernel.ULID{id}})
 			return err

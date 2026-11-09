@@ -127,6 +127,15 @@ type Stacks interface {
 		spaces []kernel.ULID,
 		labels []string,
 	) ([]Stack, error)
+	// InSpaces lists every stack of acct in spaces, by slug.
+	InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]Stack, error)
+	// Labels reads the labels of those of acct's stacks ids that it has,
+	// sorted, keyed by ID.
+	Labels(
+		ctx context.Context,
+		acct kernel.AccountID,
+		ids []kernel.ULID,
+	) (map[kernel.ULID][]string, error)
 }
 
 // StackGuard is a domain's say in a stack's moves and deletes: a domain

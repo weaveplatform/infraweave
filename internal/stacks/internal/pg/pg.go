@@ -286,6 +286,54 @@ func (s *Store) Find(
 	return out, nil
 }
 
+// InSpaces lists acct's stacks in spaces, by slug.
+func (s *Store) InSpaces(
+	ctx context.Context,
+	acct kernel.AccountID,
+	spaces []kernel.ULID,
+) ([]stacksapi.Stack, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
+		WHERE account_id = $1 AND space_id = ANY($2)
+		ORDER BY slug`, acct, spaces)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: read stacks in spaces: %w", sql.Unavailable(err))
+	}
+	out, err := refs(acct, rows)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: read stacks in spaces: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// Labels reads the labels of acct's stacks ids, sorted, keyed by ID; a
+// stack with none is left out.
+func (s *Store) Labels(
+	ctx context.Context,
+	acct kernel.AccountID,
+	ids []kernel.ULID,
+) (map[kernel.ULID][]string, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT stack_id, label FROM stack_labels
+		WHERE account_id = $1 AND stack_id = ANY($2)
+		ORDER BY stack_id, label COLLATE "C"`, acct, ids)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: read stack labels: %w", sql.Unavailable(err))
+	}
+	defer rows.Close()
+	out := map[kernel.ULID][]string{}
+	for rows.Next() {
+		var id kernel.ULID
+		var label string
+		if err := rows.Scan(&id, &label); err != nil {
+			return nil, fmt.Errorf("stacks: read stack labels: %w", sql.Unavailable(err))
+		}
+		out[id] = append(out[id], label)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("stacks: read stack labels: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 // Create writes a new stack with its hooks and labels.
 func (s *Store) Create(ctx context.Context, st core.Stack) error {
 	//nolint:wrapcheck // each statement in the transaction names itself
