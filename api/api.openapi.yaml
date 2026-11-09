@@ -16012,6 +16012,8 @@ components:
         message:
           type: string
           description: The refusal, for people.
+        range:
+          $ref: '#/components/schemas/SourceRange'
     ProposeWithOverridesRequest:
       additionalProperties: false
       description: The arguments of proposeWithOverrides not carried in the path.
@@ -18196,6 +18198,30 @@ components:
         - role
       type: object
       x-graphql-type: SessionSpaceAccessRoleGrant
+    SourcePosition:
+      description: >-
+        A place in source text. Lines and columns are counted from 1, and a column counts Unicode code points.
+      type: object
+      required: [line, column]
+      properties:
+        line:
+          type: integer
+          format: int32
+          minimum: 1
+        column:
+          type: integer
+          format: int32
+          minimum: 1
+    SourceRange:
+      description: >-
+        Where in an expression or template the fault lies, so an editor can underline it, from start up to but not including end. Only an error in source text carries one.
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          $ref: '#/components/schemas/SourcePosition'
+        end:
+          $ref: '#/components/schemas/SourcePosition'
     Space:
       properties:
         accessLevel:

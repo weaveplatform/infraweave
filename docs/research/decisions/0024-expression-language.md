@@ -136,16 +136,21 @@ The language stays CEL; multi-step logic is built from five parts.
   | Lists | cel-go's lists extension: `slice`, `flatten`, `distinct`, `sort`, `sortBy`, `first`, `last`, `range`; two-variable comprehensions (`transformList`, `transformMap`, `transformMapEntry`) |
   | Maps | Comprehensions over keys, `transformMap`, and infraweave's `merge(a, b)`, `pick(m, keys)` and `omit(m, keys)` |
   | Regular expressions | `matches`, and cel-go's regex extension: `regex.extract`, `regex.extractAll`, `regex.replace` (RE2 syntax) |
-  | Encoding | `base64.encode`, `base64.decode`; infraweave's `url.encode`, `url.decode`, `url.query(map)`, `json.encode`, `json.decode` |
+  | Encoding | infraweave's `base64.encode`, `base64.decode`, `url.encode`, `url.decode`, `url.query(map)`, `json.encode`, `json.decode` |
   | Maths | cel-go's math extension: `math.greatest`, `math.least`, `math.ceil`, `math.floor`, `math.round`, `math.abs`, `math.sign` |
   | Time and durations | `timestamp`, `duration`, their arithmetic and comparisons, and the getters with an optional IANA zone; the `now` variable |
   | Randomness | infraweave's `random.uuid()`, `random.int(min, max)` and `random.string(length)`, drawn from the evaluation's seed |
   | Errors | infraweave's `fail(message)` |
 
-  Functions marked infraweave's are written in Go in `internal/platform/expr` and
-  listed, with their signatures, by the completion endpoint. The library
-  is versioned with the release; a function is never removed or changed
-  in meaning within a major version.
+  Functions marked infraweave's are written in Go in `internal/platform/expr`.
+  cel-go's extensions are used as the module ships them, so a cel-go
+  release can add functions; the completion endpoint lists the library,
+  with signatures, from the environment itself. cel-go's encoders
+  extension is not used: it prices its JSON and YAML functions as
+  unbounded, so every call fails under a cost limit, and its
+  `json.encode` keeps a map's random order. The library is versioned with
+  the release; a function is never removed or changed in meaning within a
+  major version.
 - **`fail(message)`** stops the evaluation with `message`. In Flows the
   delivery fails and the event goes to the block's `errorHandler`
   ([23 section 4.4](../reference/23-flows.md#44-errors)); elsewhere the
@@ -438,7 +443,7 @@ templates.
   data-shaping surfaces.
 - CEL language definition: <https://github.com/google/cel-spec>.
 - cel-go, Apache-2.0: <https://github.com/google/cel-go>, including its
-  `ext` package for strings, lists, maths, encoders, bindings, regular
+  `ext` package for strings, lists, maths, bindings, regular
   expressions and two-variable comprehensions.
 - Kubernetes, [Common Expression Language in Kubernetes](https://kubernetes.io/docs/reference/using-api/cel/):
   CEL evaluated in an API server with cost limits.

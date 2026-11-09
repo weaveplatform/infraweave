@@ -291,3 +291,33 @@ func TestUnitNewLimitReached(t *testing.T) {
 		}
 	}
 }
+
+// TestUnitResponseErrorInvalidRange checks that an error item in source
+// text carries its range into the body, and that any other item has none.
+func TestUnitResponseErrorInvalidRange(t *testing.T) {
+	rng := &kernel.Range{
+		Start: kernel.Position{Line: 2, Column: 5},
+		End:   kernel.Position{Line: 2, Column: 9},
+	}
+	rec := httptest.NewRecorder()
+	ResponseError(rec, nil, &kernel.Invalid{Detail: "refused", Errors: []kernel.FieldError{
+		{
+			Pointer: "/value",
+			Reason:  kernel.ReasonRule,
+			Message: "undefined field 'nmae'",
+			Range:   rng,
+		},
+		{Pointer: "/name", Reason: kernel.ReasonRequired, Message: "A name is required."},
+	}})
+	p := decode(t, rec)
+	want := []FieldError{
+		{
+			Pointer: "/value", Reason: kernel.ReasonRule, Message: "undefined field 'nmae'",
+			Range: &Range{Start: Position{Line: 2, Column: 5}, End: Position{Line: 2, Column: 9}},
+		},
+		{Pointer: "/name", Reason: kernel.ReasonRequired, Message: "A name is required."},
+	}
+	if rec.Code != http.StatusUnprocessableEntity || !reflect.DeepEqual(p.Errors, want) {
+		t.Errorf("%d %+v, want %+v", rec.Code, p.Errors, want)
+	}
+}

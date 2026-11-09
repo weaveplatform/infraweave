@@ -101,6 +101,35 @@ components:
         message:
           type: string
           description: The refusal, for people.
+        range:
+          $ref: '#/components/schemas/SourceRange'
+    SourceRange:
+      description: >-
+        Where in an expression or template the fault lies, so an editor can
+        underline it, from start up to but not including end. Only an error
+        in source text carries one.
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          $ref: '#/components/schemas/SourcePosition'
+        end:
+          $ref: '#/components/schemas/SourcePosition'
+    SourcePosition:
+      description: >-
+        A place in source text. Lines and columns are counted from 1, and a
+        column counts Unicode code points.
+      type: object
+      required: [line, column]
+      properties:
+        line:
+          type: integer
+          format: int32
+          minimum: 1
+        column:
+          type: integer
+          format: int32
+          minimum: 1
     MergePatch:
       description: >-
         A JSON Merge Patch (RFC 7396) of an update's input. Each member it

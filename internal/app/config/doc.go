@@ -13,6 +13,7 @@
 // platform/outbox; Secrets holds the secrets.* settings of platform/crypt:
 // secrets.rotation_interval, and the KEK provider and each provider's
 // settings under secrets.kek, as in secrets.kek.vault.auth.method;
+// Expressions holds the expressions.* limits of platform/expr;
 // ObjectStore holds the objectstore.* settings of platform/objectstore,
 // whose per-store keys are the stores' hyphenated names, as in
 // objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS;
@@ -34,7 +35,7 @@
 // INFRAWEAVE_SECRETS_KEK itself: bound as the key secrets.kek, the
 // variable would hide every other key below it.
 //
-// ref: decisions 0003, 0005, 0006, 0011, 0013, 0015, 0017 and 0020
+// ref: decisions 0003, 0005, 0006, 0011, 0013, 0015, 0017, 0020 and 0024
 //
 // # Input and output
 //
@@ -48,7 +49,7 @@
 // It imports viper and pflag for the decoding, and the setting and default
 // types of platform/httpkit/serve, middleware/ratelimit,
 // middleware/idempotency, platform/sql, platform/observe, platform/queue,
-// platform/outbox, platform/crypt, crypt/kek and platform/objectstore,
-// and the access domain's assembly for its Settings.
-// internal/app and cmd/ import it.
+// platform/outbox, platform/crypt, crypt/kek, platform/expr and
+// platform/objectstore, and the access domain's assembly for its
+// Settings. internal/app and cmd/ import it.
 package config
