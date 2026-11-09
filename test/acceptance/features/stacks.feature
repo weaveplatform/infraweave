@@ -8,7 +8,9 @@ Feature: Stacks
   lifted by its holder, or forced by a caller who may force it, and refuses
   every other lock. A stack protected from deletion is not deleted, and a
   space that holds a stack is not either. A stack in a space the caller
-  cannot read answers as one that does not exist. The home key is
+  cannot read answers as one that does not exist. Until runs exist, a
+  stack's run and task lists are empty pages and a run by ID is not found,
+  each read decided on the stack's space. The home key is
   space-admin on the account's top space; the member key holds only the
   bindings a scenario gives it.
 
@@ -190,3 +192,59 @@ Feature: Stacks
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"labels":["Prod","Prod"]}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/labels/1" as "duplicate"
+
+  @op:stackRuns @op:stackRunsInRange @op:stackProposedRuns @op:stackTasks @op:stackRun @case:success @case:failure
+  Scenario: A stack's runs and tasks are empty pages until runs exist, and a run by ID is not found
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And the member key is space-reader on the space "legacy"
+    When token "m" sends "GET /api/v1/stacks/infra/runs" through A
+    Then it answers 200
+    And the answer's items is '[]'
+    When token "m" sends "GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700691200" through B
+    Then it answers 200
+    And the answer's items is '[]'
+    When token "m" sends "GET /api/v1/stacks/infra/proposed-runs?limit=5" through A
+    Then it answers 200
+    And the answer's items is '[]'
+    When token "h" sends "GET /api/v1/stacks/infra/tasks" through B
+    Then it answers 200
+    And the answer's items is '[]'
+    When token "m" sends "GET /api/v1/stacks/infra/run?id=01JBQ6Q4V2ZK5Y3W8N7M6P5R4T" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/stacks/infra/runs-in-range?start=yesterday&end=1700691200" through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "#/query/start" as "format"
+    When token "m" sends "GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700691201" through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "#/query/end" as "rule"
+
+  @op:stackRuns @op:stackRunsInRange @op:stackProposedRuns @op:stackTasks @op:stackRun @case:denial
+  Scenario: The runs and tasks of a stack the caller cannot read answer as a stack that does not exist
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    And the answer's id is the space "team"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Other","repository":"other","branch":"main","space":"{team}"},"manageState":false}' through A
+    And the member key is space-reader on the space "legacy"
+    When token "m" sends "GET /api/v1/stacks/other/runs" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/stacks/other/runs-in-range?start=1700000000&end=1700000001" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/stacks/other/proposed-runs" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/stacks/other/tasks" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/stacks/other/run?id=01JBQ6Q4V2ZK5Y3W8N7M6P5R4T" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/stacks/missing/runs" through B
+    Then it answers a 404 problem "not-found"
+
+  @op:stackRuns @op:stackRunsInRange @op:stackProposedRuns @op:stackTasks @case:failure
+  Scenario: An altered cursor on a stack's runs or tasks answers 400
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    When token "h" sends "GET /api/v1/stacks/infra/runs?cursor=nope" through A
+    Then it answers a 400 problem "invalid-cursor"
+    When token "h" sends "GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700000001&cursor=nope" through B
+    Then it answers a 400 problem "invalid-cursor"
+    When token "h" sends "GET /api/v1/stacks/infra/proposed-runs?cursor=nope" through A
+    Then it answers a 400 problem "invalid-cursor"
+    When token "h" sends "GET /api/v1/stacks/infra/tasks?cursor=nope" through B
+    Then it answers a 400 problem "invalid-cursor"
