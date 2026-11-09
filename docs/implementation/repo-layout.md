@@ -193,8 +193,8 @@ infraweave/
 │   │                              assignments, stack_run_locks, stack_run_state, stack_outputs)
 │   ├── workers/                   hexagon: pools, workers, credentials, worker protocol endpoints, pool samples (P8, P14)
 │   │   └── api/ assembly/ internal/{core/{pool,worker,credential,drain,waiter,sample,port},adapters/{http,protocol,pg}}/
-│   ├── vendors/                   flat: tool version catalogue (P5, P20)
-│   │   └── api/ assembly/ internal/{vendors,http,pg}/
+│   ├── vendors/                   flat: tool version catalogue (P5, P20), refreshed from the release indexes
+│   │   └── api/ assembly/ internal/{vendors,http,pg,index/indextest}/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
 │   │   └── api/ assembly/ internal/{state,backend,http,pg}/
 │   ├── vcs/                       hexagon: integrations, webhooks, routing, feedback (P9, P12, P19, P19b)

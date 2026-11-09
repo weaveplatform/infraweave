@@ -1048,7 +1048,7 @@
         "lowestTier": "Free",
         "phase": "P5",
         "also": "P20 (`terragruntVersions`, `terragruntEffectiveVersion`, `kubectlVersions`)",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {

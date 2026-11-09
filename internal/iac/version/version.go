@@ -1,6 +1,7 @@
 package version
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"regexp"
@@ -108,4 +109,111 @@ func Parse(s string) (Version, error) {
 		v.Segments[i] = n
 	}
 	return v, nil
+}
+
+// segment is v's i-th numeric segment, 0 past the ones it names, so 1.5
+// compares as 1.5.0.
+func (v Version) segment(i int) int64 {
+	if i < len(v.Segments) {
+		return v.Segments[i]
+	}
+	return 0
+}
+
+// Compare orders v and w as -1, 0 or +1: by their numeric segments, then a
+// prerelease before its release, then prereleases identifier by
+// identifier, numeric ones by value and below any other. Build metadata
+// does not order.
+func (v Version) Compare(w Version) int {
+	for i := range MaxSegments {
+		if c := cmp.Compare(v.segment(i), w.segment(i)); c != 0 {
+			return c
+		}
+	}
+	switch {
+	case v.Prerelease == w.Prerelease:
+		return 0
+	case v.Prerelease == "":
+		return 1
+	case w.Prerelease == "":
+		return -1
+	}
+	a, b := strings.Split(v.Prerelease, "."), strings.Split(w.Prerelease, ".")
+	for i := range min(len(a), len(b)) {
+		if c := compareIdentifier(a[i], b[i]); c != 0 {
+			return c
+		}
+	}
+	return cmp.Compare(len(a), len(b))
+}
+
+func compareIdentifier(a, b string) int {
+	x, errA := strconv.ParseUint(a, 10, 64)
+	y, errB := strconv.ParseUint(b, 10, 64)
+	switch {
+	case errA == nil && errB == nil:
+		return cmp.Compare(x, y)
+	case errA == nil:
+		return -1
+	case errB == nil:
+		return 1
+	}
+	return strings.Compare(a, b)
+}
+
+// String is v as it parsed, less its build metadata.
+func (v Version) String() string {
+	segs := make([]string, len(v.Segments))
+	for i, s := range v.Segments {
+		segs[i] = strconv.FormatInt(s, 10)
+	}
+	out := strings.Join(segs, ".")
+	if v.Prerelease != "" {
+		out += "-" + v.Prerelease
+	}
+	return out
+}
+
+// Allows reports whether v meets every constraint, as Terraform decides
+// its required_version: a prerelease meets a constraint only when the
+// constraint names a prerelease of the same release, so ">= 1.5" never
+// picks 1.6.0-beta1.
+func (cs Constraints) Allows(v Version) bool {
+	for _, c := range cs {
+		if !c.allows(v) {
+			return false
+		}
+	}
+	return true
+}
+
+func (c Constraint) allows(v Version) bool {
+	if v.Prerelease != "" && (c.Version.Prerelease == "" ||
+		Version{Segments: v.Segments}.Compare(Version{Segments: c.Version.Segments}) != 0) {
+		return false
+	}
+	n := v.Compare(c.Version)
+	switch c.Op {
+	case NotEqual:
+		return n != 0
+	case Greater:
+		return n > 0
+	case GreaterEqual:
+		return n >= 0
+	case Less:
+		return n < 0
+	case LessEqual:
+		return n <= 0
+	case Pessimistic:
+		// The segments before the last one the constraint names stay
+		// fixed; that one and those after it may grow.
+		for i := range len(c.Version.Segments) - 1 {
+			if v.segment(i) != c.Version.Segments[i] {
+				return false
+			}
+		}
+		return n >= 0
+	default: // Exact and Equal
+		return n == 0
+	}
 }

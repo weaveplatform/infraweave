@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
 // Streams are the migration streams: the platform's first, since every
@@ -32,6 +33,7 @@ func Streams() []migrate.Stream {
 		schema.Stream(),
 		featuresassembly.Stream(),
 		accessassembly.Stream(),
+		vendorsassembly.Stream(),
 		stacksassembly.Stream(),
 	}
 }

@@ -4813,6 +4813,14 @@ type OpenTofuRuntimeConfig struct {
 	WorkflowTool OpenTofuWorkflowTool `json:"workflowTool"`
 }
 
+// OpenTofuVersionsPage One page of the OpenTofu versions the catalogue lists, newest first.
+type OpenTofuVersionsPage struct {
+	Items []string `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // OpenTofuWorkflowTool defines model for OpenTofuWorkflowTool.
 type OpenTofuWorkflowTool string
 
@@ -8097,6 +8105,14 @@ type TerraformRuntimeConfig struct {
 	WorkflowTool TerraformWorkflowTool `json:"workflowTool"`
 }
 
+// TerraformVersionsPage One page of the Terraform versions the catalogue lists, newest first.
+type TerraformVersionsPage struct {
+	Items []string `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // TerraformWorkflowTool defines model for TerraformWorkflowTool.
 type TerraformWorkflowTool string
 
@@ -9104,6 +9120,20 @@ type OauthRedirectAllowedHostsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// OpenTofuEffectiveVersionParams defines parameters for OpenTofuEffectiveVersion.
+type OpenTofuEffectiveVersionParams struct {
+	Constraints string `form:"constraints" json:"constraints"`
+}
+
+// OpenTofuVersionsParams defines parameters for OpenTofuVersions.
+type OpenTofuVersionsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // OrganizationAccountsParams defines parameters for OrganizationAccounts.
 type OrganizationAccountsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -9721,6 +9751,20 @@ type WebhooksIntegrationUpdateParams struct {
 type StateUploadUrlParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// TerraformEffectiveVersionParams defines parameters for TerraformEffectiveVersion.
+type TerraformEffectiveVersionParams struct {
+	Constraints string `form:"constraints" json:"constraints"`
+}
+
+// TerraformVersionsParams defines parameters for TerraformVersions.
+type TerraformVersionsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // TierFeaturesParams defines parameters for TierFeatures.
@@ -12393,6 +12437,20 @@ type ClientInterface interface {
 	// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
 	OnTrialUntil(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// OpenTofuEffectiveVersion Get OpenTofu Effective Version
+	//
+	// The newest OpenTofu version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+	//
+	// Corresponds with GET /open-tofu-effective-version (the `OpenTofuEffectiveVersion` operationId).
+	OpenTofuEffectiveVersion(ctx context.Context, params *OpenTofuEffectiveVersionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OpenTofuVersions List OpenTofu Versions
+	//
+	// The OpenTofu versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+	//
+	// Corresponds with GET /open-tofu-versions (the `OpenTofuVersions` operationId).
+	OpenTofuVersions(ctx context.Context, params *OpenTofuVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Organization Organization
 	//
 	// The caller's organization.
@@ -13843,6 +13901,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TerraformEffectiveVersion Get Terraform Effective Version
+	//
+	// The newest Terraform version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+	//
+	// Corresponds with GET /terraform-effective-version (the `TerraformEffectiveVersion` operationId).
+	TerraformEffectiveVersion(ctx context.Context, params *TerraformEffectiveVersionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TerraformVersions List Terraform Versions
+	//
+	// The Terraform versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+	//
+	// Corresponds with GET /terraform-versions (the `TerraformVersions` operationId).
+	TerraformVersions(ctx context.Context, params *TerraformVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Tier Tier
 	//
@@ -15716,6 +15788,40 @@ func (c *Client) OauthRedirectAllowedHosts(ctx context.Context, params *OauthRed
 // Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
 func (c *Client) OnTrialUntil(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOnTrialUntilRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenTofuEffectiveVersion Get OpenTofu Effective Version
+//
+// The newest OpenTofu version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+//
+// Corresponds with GET /open-tofu-effective-version (the `OpenTofuEffectiveVersion` operationId).
+func (c *Client) OpenTofuEffectiveVersion(ctx context.Context, params *OpenTofuEffectiveVersionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenTofuEffectiveVersionRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OpenTofuVersions List OpenTofu Versions
+//
+// The OpenTofu versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+//
+// Corresponds with GET /open-tofu-versions (the `OpenTofuVersions` operationId).
+func (c *Client) OpenTofuVersions(ctx context.Context, params *OpenTofuVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOpenTofuVersionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -18877,6 +18983,40 @@ func (c *Client) WebhooksIntegrationUpdate(ctx context.Context, stackId string, 
 // Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 func (c *Client) StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStateUploadUrlRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TerraformEffectiveVersion Get Terraform Effective Version
+//
+// The newest Terraform version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+//
+// Corresponds with GET /terraform-effective-version (the `TerraformEffectiveVersion` operationId).
+func (c *Client) TerraformEffectiveVersion(ctx context.Context, params *TerraformEffectiveVersionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTerraformEffectiveVersionRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TerraformVersions List Terraform Versions
+//
+// The Terraform versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+//
+// Corresponds with GET /terraform-versions (the `TerraformVersions` operationId).
+func (c *Client) TerraformVersions(ctx context.Context, params *TerraformVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTerraformVersionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -22784,6 +22924,122 @@ func NewOnTrialUntilRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOpenTofuEffectiveVersionRequest constructs an http.Request for the OpenTofuEffectiveVersion method
+func NewOpenTofuEffectiveVersionRequest(server string, params *OpenTofuEffectiveVersionParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/open-tofu-effective-version")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "constraints", params.Constraints, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOpenTofuVersionsRequest constructs an http.Request for the OpenTofuVersions method
+func NewOpenTofuVersionsRequest(server string, params *OpenTofuVersionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/open-tofu-versions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -29542,6 +29798,122 @@ func NewStateUploadUrlRequest(server string, params *StateUploadUrlParams) (*htt
 	return req, nil
 }
 
+// NewTerraformEffectiveVersionRequest constructs an http.Request for the TerraformEffectiveVersion method
+func NewTerraformEffectiveVersionRequest(server string, params *TerraformEffectiveVersionParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/terraform-effective-version")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "constraints", params.Constraints, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTerraformVersionsRequest constructs an http.Request for the TerraformVersions method
+func NewTerraformVersionsRequest(server string, params *TerraformVersionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/terraform-versions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewTierRequest constructs an http.Request for the Tier method
 func NewTierRequest(server string) (*http.Request, error) {
 	var err error
@@ -30834,6 +31206,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /on-trial-until (the `OnTrialUntil` operationId).
 	OnTrialUntilWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OnTrialUntilResponse, error)
+
+	// OpenTofuEffectiveVersionWithResponse Get OpenTofu Effective Version
+	//
+	// The newest OpenTofu version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /open-tofu-effective-version (the `OpenTofuEffectiveVersion` operationId).
+	OpenTofuEffectiveVersionWithResponse(ctx context.Context, params *OpenTofuEffectiveVersionParams, reqEditors ...RequestEditorFn) (*OpenTofuEffectiveVersionResponse, error)
+
+	// OpenTofuVersionsWithResponse List OpenTofu Versions
+	//
+	// The OpenTofu versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /open-tofu-versions (the `OpenTofuVersions` operationId).
+	OpenTofuVersionsWithResponse(ctx context.Context, params *OpenTofuVersionsParams, reqEditors ...RequestEditorFn) (*OpenTofuVersionsResponse, error)
 
 	// OrganizationWithResponse Organization
 	//
@@ -32423,6 +32813,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
 	StateUploadUrlWithResponse(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error)
+
+	// TerraformEffectiveVersionWithResponse Get Terraform Effective Version
+	//
+	// The newest Terraform version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /terraform-effective-version (the `TerraformEffectiveVersion` operationId).
+	TerraformEffectiveVersionWithResponse(ctx context.Context, params *TerraformEffectiveVersionParams, reqEditors ...RequestEditorFn) (*TerraformEffectiveVersionResponse, error)
+
+	// TerraformVersionsWithResponse List Terraform Versions
+	//
+	// The Terraform versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /terraform-versions (the `TerraformVersions` operationId).
+	TerraformVersionsWithResponse(ctx context.Context, params *TerraformVersionsParams, reqEditors ...RequestEditorFn) (*TerraformVersionsResponse, error)
 
 	// TierWithResponse Tier
 	//
@@ -39883,6 +40291,189 @@ func (r OnTrialUntilResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OnTrialUntilResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OpenTofuEffectiveVersionResponse200Headers the declared response headers of an HTTP 200 response for OpenTofuEffectiveVersion
+type OpenTofuEffectiveVersionResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OpenTofuEffectiveVersionResponse429Headers the declared response headers of an HTTP 429 response for OpenTofuEffectiveVersion
+type OpenTofuEffectiveVersionResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OpenTofuEffectiveVersionResponse503Headers the declared response headers of an HTTP 503 response for OpenTofuEffectiveVersion
+type OpenTofuEffectiveVersionResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OpenTofuEffectiveVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OpenTofuEffectiveVersionResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OpenTofuEffectiveVersionResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OpenTofuEffectiveVersionResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OpenTofuEffectiveVersionResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OpenTofuEffectiveVersionResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OpenTofuEffectiveVersionResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OpenTofuEffectiveVersionResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OpenTofuEffectiveVersionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OpenTofuEffectiveVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OpenTofuEffectiveVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OpenTofuEffectiveVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OpenTofuVersionsResponse200Headers the declared response headers of an HTTP 200 response for OpenTofuVersions
+type OpenTofuVersionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OpenTofuVersionsResponse429Headers the declared response headers of an HTTP 429 response for OpenTofuVersions
+type OpenTofuVersionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OpenTofuVersionsResponse503Headers the declared response headers of an HTTP 503 response for OpenTofuVersions
+type OpenTofuVersionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OpenTofuVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OpenTofuVersionsPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OpenTofuVersionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OpenTofuVersionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OpenTofuVersionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OpenTofuVersionsResponse) GetJSON200() *OpenTofuVersionsPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r OpenTofuVersionsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OpenTofuVersionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OpenTofuVersionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OpenTofuVersionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OpenTofuVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OpenTofuVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OpenTofuVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OpenTofuVersionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -52222,6 +52813,189 @@ func (r StateUploadUrlResponse) ContentType() string {
 	return ""
 }
 
+// TerraformEffectiveVersionResponse200Headers the declared response headers of an HTTP 200 response for TerraformEffectiveVersion
+type TerraformEffectiveVersionResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TerraformEffectiveVersionResponse429Headers the declared response headers of an HTTP 429 response for TerraformEffectiveVersion
+type TerraformEffectiveVersionResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TerraformEffectiveVersionResponse503Headers the declared response headers of an HTTP 503 response for TerraformEffectiveVersion
+type TerraformEffectiveVersionResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TerraformEffectiveVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TerraformEffectiveVersionResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TerraformEffectiveVersionResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TerraformEffectiveVersionResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TerraformEffectiveVersionResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TerraformEffectiveVersionResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TerraformEffectiveVersionResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TerraformEffectiveVersionResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TerraformEffectiveVersionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TerraformEffectiveVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TerraformEffectiveVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TerraformEffectiveVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// TerraformVersionsResponse200Headers the declared response headers of an HTTP 200 response for TerraformVersions
+type TerraformVersionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TerraformVersionsResponse429Headers the declared response headers of an HTTP 429 response for TerraformVersions
+type TerraformVersionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TerraformVersionsResponse503Headers the declared response headers of an HTTP 503 response for TerraformVersions
+type TerraformVersionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TerraformVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TerraformVersionsPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TerraformVersionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TerraformVersionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TerraformVersionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TerraformVersionsResponse) GetJSON200() *TerraformVersionsPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r TerraformVersionsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TerraformVersionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TerraformVersionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TerraformVersionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TerraformVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TerraformVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TerraformVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TerraformVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // TierResponse200Headers the declared response headers of an HTTP 200 response for Tier
 type TierResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -54377,6 +55151,36 @@ func (c *ClientWithResponses) OnTrialUntilWithResponse(ctx context.Context, reqE
 		return nil, err
 	}
 	return ParseOnTrialUntilResponse(rsp)
+}
+
+// OpenTofuEffectiveVersionWithResponse Get OpenTofu Effective Version
+//
+// The newest OpenTofu version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /open-tofu-effective-version (the `OpenTofuEffectiveVersion` operationId).
+func (c *ClientWithResponses) OpenTofuEffectiveVersionWithResponse(ctx context.Context, params *OpenTofuEffectiveVersionParams, reqEditors ...RequestEditorFn) (*OpenTofuEffectiveVersionResponse, error) {
+	rsp, err := c.OpenTofuEffectiveVersion(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenTofuEffectiveVersionResponse(rsp)
+}
+
+// OpenTofuVersionsWithResponse List OpenTofu Versions
+//
+// The OpenTofu versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /open-tofu-versions (the `OpenTofuVersions` operationId).
+func (c *ClientWithResponses) OpenTofuVersionsWithResponse(ctx context.Context, params *OpenTofuVersionsParams, reqEditors ...RequestEditorFn) (*OpenTofuVersionsResponse, error) {
+	rsp, err := c.OpenTofuVersions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOpenTofuVersionsResponse(rsp)
 }
 
 // OrganizationWithResponse Organization
@@ -56992,6 +57796,36 @@ func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParseStateUploadUrlResponse(rsp)
+}
+
+// TerraformEffectiveVersionWithResponse Get Terraform Effective Version
+//
+// The newest Terraform version the catalogue lists that satisfies the constraints, such as ">= 1.5.0, < 1.6.0" or "~> 1.6.0". Constraints that do not parse, or that no listed version satisfies, answer 422 validation-failed naming the constraints parameter.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /terraform-effective-version (the `TerraformEffectiveVersion` operationId).
+func (c *ClientWithResponses) TerraformEffectiveVersionWithResponse(ctx context.Context, params *TerraformEffectiveVersionParams, reqEditors ...RequestEditorFn) (*TerraformEffectiveVersionResponse, error) {
+	rsp, err := c.TerraformEffectiveVersion(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTerraformEffectiveVersionResponse(rsp)
+}
+
+// TerraformVersionsWithResponse List Terraform Versions
+//
+// The Terraform versions a stack may use, newest first: the stable releases the vendor's release index lists, which the server refreshes from it periodically.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /terraform-versions (the `TerraformVersions` operationId).
+func (c *ClientWithResponses) TerraformVersionsWithResponse(ctx context.Context, params *TerraformVersionsParams, reqEditors ...RequestEditorFn) (*TerraformVersionsResponse, error) {
+	rsp, err := c.TerraformVersions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTerraformVersionsResponse(rsp)
 }
 
 // TierWithResponse Tier
@@ -66605,6 +67439,243 @@ func ParseOnTrialUntilResponse(rsp *http.Response) (*OnTrialUntilResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OnTrialUntilResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOpenTofuEffectiveVersionResponse parses an HTTP response from a OpenTofuEffectiveVersionWithResponse call
+func ParseOpenTofuEffectiveVersionResponse(rsp *http.Response) (*OpenTofuEffectiveVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OpenTofuEffectiveVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OpenTofuEffectiveVersionResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OpenTofuEffectiveVersionResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OpenTofuEffectiveVersionResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOpenTofuVersionsResponse parses an HTTP response from a OpenTofuVersionsWithResponse call
+func ParseOpenTofuVersionsResponse(rsp *http.Response) (*OpenTofuVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OpenTofuVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OpenTofuVersionsPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OpenTofuVersionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OpenTofuVersionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OpenTofuVersionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -82274,6 +83345,243 @@ func ParseStateUploadUrlResponse(rsp *http.Response) (*StateUploadUrlResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StateUploadUrlResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTerraformEffectiveVersionResponse parses an HTTP response from a TerraformEffectiveVersionWithResponse call
+func ParseTerraformEffectiveVersionResponse(rsp *http.Response) (*TerraformEffectiveVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TerraformEffectiveVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TerraformEffectiveVersionResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TerraformEffectiveVersionResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TerraformEffectiveVersionResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTerraformVersionsResponse parses an HTTP response from a TerraformVersionsWithResponse call
+func ParseTerraformVersionsResponse(rsp *http.Response) (*TerraformVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TerraformVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TerraformVersionsPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TerraformVersionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TerraformVersionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TerraformVersionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

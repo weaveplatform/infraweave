@@ -1,0 +1,91 @@
+name: go | Release index contract upstream
+
+# indextest against the vendors' real release indexes, HashiCorp's
+# releases API and OpenTofu's installer index, each night on main. Every
+# pull request runs the same suite against fixtures recorded from them
+# (make vendors-fixtures), so this job is where a change to a real index's
+# format shows first; the fixing pull request refreshes the fixtures. It
+# needs no credential. The job is informational: the quality gate does not
+# need it, and a failure opens an issue, or comments on the open one.
+# ref: decision 0016
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      force-failure:
+        description: 'Fail the run on purpose, to exercise the issue report'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vendors-upstream
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+
+jobs:
+  contract:
+    name: 'vendors-upstream'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Fail on purpose
+        if: ${{ inputs.force-failure }}
+        run: |
+          echo "--- FAIL: force-failure is set" | tee upstream.log
+          exit 1
+
+      # The run's output goes to upstream.log, whose failing cases the
+      # report quotes.
+      - name: indextest against the real indexes
+        env:
+          INFRAWEAVE_TEST_VENDORS_UPSTREAM: '1'
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestAccVendorsUpstream$' ./internal/vendors/internal/index 2>&1 | tee -a upstream.log
+
+      # One open issue tracks failing runs: the first failure opens it, and
+      # each later one comments on it until a person closes it.
+      - name: Open or update the issue
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          title="vendors-upstream failed"
+          failed=$(grep -E -e '--- FAIL|index contract broken|release index unreadable' upstream.log 2>/dev/null | sed 's/^ *//' | sort -u || true)
+          body=$(printf 'The release index contract failed against the real indexes on %s: %s\n\nFailing cases:\n```\n%s\n```\n\nIf an index changed its format, fix its reader, then refresh the fixtures with `make vendors-fixtures` in the same pull request.\n' \
+            "$SHA" "$RUN_URL" "${failed:-none recorded; the run failed outside the tests}")
+          number=$(gh issue list --state open --search "\"${title}\" in:title" --json number,title \
+            -q ".[] | select(.title == \"${title}\") | .number" | head -n 1)
+          if [ -z "$number" ]; then
+            gh issue create --title "$title" --body "$body"
+          else
+            gh issue comment "$number" --body "$body"
+          fi

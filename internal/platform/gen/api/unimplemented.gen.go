@@ -318,6 +318,14 @@ func (UnimplementedStrict) OnTrialUntil(context.Context, OnTrialUntilRequestObje
 	return nil, &problem.NotImplementedError{OperationID: "onTrialUntil", Route: "GET /on-trial-until"}
 }
 
+func (UnimplementedStrict) OpenTofuEffectiveVersion(context.Context, OpenTofuEffectiveVersionRequestObject) (OpenTofuEffectiveVersionResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "openTofuEffectiveVersion", Route: "GET /open-tofu-effective-version"}
+}
+
+func (UnimplementedStrict) OpenTofuVersions(context.Context, OpenTofuVersionsRequestObject) (OpenTofuVersionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "openTofuVersions", Route: "GET /open-tofu-versions"}
+}
+
 func (UnimplementedStrict) Organization(context.Context, OrganizationRequestObject) (OrganizationResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "organization", Route: "GET /organization"}
 }
@@ -796,6 +804,14 @@ func (UnimplementedStrict) WebhooksIntegrationUpdate(context.Context, WebhooksIn
 
 func (UnimplementedStrict) StateUploadUrl(context.Context, StateUploadUrlRequestObject) (StateUploadUrlResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stateUploadUrl", Route: "POST /state/upload-url"}
+}
+
+func (UnimplementedStrict) TerraformEffectiveVersion(context.Context, TerraformEffectiveVersionRequestObject) (TerraformEffectiveVersionResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "terraformEffectiveVersion", Route: "GET /terraform-effective-version"}
+}
+
+func (UnimplementedStrict) TerraformVersions(context.Context, TerraformVersionsRequestObject) (TerraformVersionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "terraformVersions", Route: "GET /terraform-versions"}
 }
 
 func (UnimplementedStrict) Tier(context.Context, TierRequestObject) (TierResponseObject, error) {

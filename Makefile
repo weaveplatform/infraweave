@@ -118,6 +118,10 @@ PRODUCT ?= deploy
 reference-fetch:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref fetch --product $$p || exit 1; done
 
+## vendors-fixtures: record the vendors' release indexes as the index readers' test fixtures (reaches the internet)
+vendors-fixtures:
+	$(GO) run ./tools/vendorsfixtures internal/vendors/internal/index/testdata
+
 ## scaffold: copy one reference tag into an API fragment and rebundle (make scaffold [PRODUCT=flows] TAG=Stacks FAMILY=stacks [FORCE=1])
 scaffold:
 	@test -n "$(TAG)" -a -n "$(FAMILY)" || { echo "usage: make scaffold [PRODUCT=<deploy|flows>] TAG=<reference tag> FAMILY=<fragment name>"; exit 1; }
@@ -191,4 +195,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint lint-fixtures test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint lint-fixtures vet test accept reference-fetch scaffold bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint lint-fixtures vet test accept reference-fetch scaffold vendors-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

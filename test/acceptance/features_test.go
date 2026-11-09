@@ -277,6 +277,9 @@ type world struct {
 	// features is the features settings every server of the scenario
 	// starts with; nil keeps the defaults.
 	features map[string]any
+	// vendors is the release indexes every server of the scenario reads;
+	// nil reads offlineIndexes.
+	vendors map[string]any
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -414,6 +417,11 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	}
 	if w.features != nil {
 		if config, err = withSection(config, "features", w.features); err != nil {
+			return nil, err
+		}
+	}
+	if w.vendors != nil {
+		if config, err = withSection(config, "vendors", w.vendors); err != nil {
 			return nil, err
 		}
 	}

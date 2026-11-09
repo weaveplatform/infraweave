@@ -328,6 +328,7 @@ coverage it would contribute is not waived.
 | `postgres-next` | `ubuntu-latest` | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)), selected by `INFRAWEAVE_POSTGRES=next` | 20 min | no |
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
+| `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's and OpenTofu's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
 
 - **`fips-only` and coverage.** It runs the same tests as the jobs above
   under a stricter runtime, so its coverage adds nothing and is not merged.
@@ -442,9 +443,10 @@ coverage it would contribute is not waived.
 - The Spacelift provider's acceptance configurations are translated, not
   copied verbatim, where they reference Spacelift-only resources; the
   translation is recorded in `provider-parity.yaml`.
-- The `nightly`, `postgres-next` and `objectstore-cloud` jobs are
-  informational: a newer Terraform, OpenTofu or PostgreSQL release, or a
-  real cloud, that breaks a case opens an issue rather than blocking merges.
+- The `nightly`, `postgres-next`, `objectstore-cloud` and
+  `vendors-upstream` jobs are informational: a newer Terraform, OpenTofu or
+  PostgreSQL release, a real cloud, or a release index that changes its
+  format, that breaks a case opens an issue rather than blocking merges.
 - The cloud job needs one lab account or project per cloud, its OIDC trust
   and its bucket, which the maintainer provisions; until they exist the job
   reports itself as not configured rather than passing.
