@@ -8,6 +8,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -20,11 +21,50 @@ type SlugTaken struct{ Slug string }
 
 func (e *SlugTaken) Error() string { return fmt.Sprintf("stacks: slug %q is taken", e.Slug) }
 
-// Fields are the stacks list's searchable fields.
+// Fields are what a stack search filters and orders by, named as the
+// reference's stack filters name them: id, the slug; label, any of its
+// labels; space, its place in the tree, which keeps a node's stacks and,
+// asked, those of the spaces below it; vendor, the vendorConfig member it
+// sets; locked, whether anyone holds its lock; and starred, whether the
+// caller has starred it. A search that names no order reads by id. The
+// fields of data later phases own, such as a stack's run state, commit
+// and drift, join with those phases.
 var Fields = []search.Field{
 	{Name: "id", Type: search.String, Orderable: true},
 	{Name: "name", Type: search.String, Orderable: true},
-	{Name: "space", Type: search.String},
+	{Name: "description", Type: search.String},
+	{Name: "label", Type: search.String},
+	{Name: "space", Type: search.Hierarchy},
+	{Name: "repository", Type: search.String, Orderable: true},
+	{Name: "branch", Type: search.String, Orderable: true},
+	{Name: "projectRoot", Type: search.String},
+	{Name: "provider", Type: search.String},
+	{Name: "vendor", Type: search.Enum, Values: vendors()},
+	{Name: "autodeploy", Type: search.Boolean},
+	{Name: "disabled", Type: search.Boolean},
+	{Name: "locked", Type: search.Boolean},
+	{Name: "starred", Type: search.Boolean},
+	{Name: "createdAt", Type: search.Time, Orderable: true},
+}
+
+// vendors are the kinds of the registered vendors, the values a stack's
+// vendor takes.
+func vendors() []string {
+	all := iac.Vendors()
+	out := make([]string, len(all))
+	for i, v := range all {
+		out[i] = string(v.Kind())
+	}
+	return out
+}
+
+// Scope is what a stack search sees: the spaces the caller may read, the
+// account's space tree, which the space field reads, and the caller,
+// whose stars the starred field reads.
+type Scope struct {
+	Reachable []kernel.ULID
+	Spaces    []accessapi.SpaceNode
+	Actor     Actor
 }
 
 // Store is what the service needs of the stacks' storage. Every method
@@ -66,14 +106,23 @@ type Store interface {
 	) (map[kernel.ULID]bool, error)
 	// SpaceInUse reports whether a stack of acct lives in space.
 	SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
-	// Search reads a page of acct's stacks among reachable that in keeps,
-	// by Fields; an input they cannot answer is a *search.Invalid.
+	// Search reads a page of acct's stacks in the scope that in keeps, by
+	// Fields; an input they cannot answer is a *search.Invalid.
 	Search(
 		ctx context.Context,
 		acct kernel.AccountID,
 		in search.Input,
-		reachable []kernel.ULID,
+		scope Scope,
 	) (search.Result[Stack], error)
+	// Suggest lists the values of Fields that acct's stacks in the scope
+	// that in keeps hold, and counts them; predicates they cannot answer
+	// are a *search.Invalid.
+	Suggest(
+		ctx context.Context,
+		acct kernel.AccountID,
+		in search.SuggestionsInput,
+		scope Scope,
+	) (search.Suggestions, error)
 }
 
 // Actor is who stars a stack: a principal's kind and actor ID.
@@ -207,19 +256,48 @@ func (s *Service) Stack(ctx context.Context, acct kernel.AccountID, slug string)
 	return s.store.BySlug(ctx, acct, slug, false) //nolint:wrapcheck // as above
 }
 
-// List reads a page of the stacks of p's account in the spaces it may
+// Search reads a page of the stacks of p's account in the spaces it may
 // read, which the query leaves the others out of, so every page before
 // the last is full.
-func (s *Service) List(
+func (s *Service) Search(
 	ctx context.Context,
 	p kernel.Principal,
 	in search.Input,
 ) (search.Result[Stack], error) {
+	scope, err := s.scope(ctx, p)
+	if err != nil {
+		return search.Result[Stack]{}, err
+	}
+	return s.store.Search(ctx, p.AccountID, in, scope) //nolint:wrapcheck // as the store's
+}
+
+// Suggest lists the values the stacks of p's account in the spaces it may
+// read hold, under in's predicates, so no value or count names a stack p
+// cannot read.
+func (s *Service) Suggest(
+	ctx context.Context,
+	p kernel.Principal,
+	in search.SuggestionsInput,
+) (search.Suggestions, error) {
+	scope, err := s.scope(ctx, p)
+	if err != nil {
+		return search.Suggestions{}, err
+	}
+	return s.store.Suggest(ctx, p.AccountID, in, scope) //nolint:wrapcheck // as the store's
+}
+
+// scope is what p's searches see: the spaces it may read, its account's
+// tree and its stars.
+func (s *Service) scope(ctx context.Context, p kernel.Principal) (Scope, error) {
 	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
 	if err != nil {
-		return search.Result[Stack]{}, err //nolint:wrapcheck // the snapshot's read names itself
+		return Scope{}, err //nolint:wrapcheck // the snapshot's read names itself
 	}
-	return s.store.Search(ctx, p.AccountID, in, reach) //nolint:wrapcheck // as the store's
+	tree, err := s.spaces.Tree(ctx, p.AccountID)
+	if err != nil {
+		return Scope{}, err //nolint:wrapcheck // the access domain names the read
+	}
+	return Scope{Reachable: reach, Spaces: tree, Actor: ActorOf(p)}, nil
 }
 
 // Starred is which of stacks p has starred.

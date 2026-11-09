@@ -1,7 +1,8 @@
 // Package http is the stacks domain's HTTP adapter: Server, the domain's
 // partial of the API's strict server, which serves the Stacks operations
-// that create, read, list, change, patch, reslug, disable, enable, lock,
-// unlock, star and delete a stack. A read, change or patch answers the
+// that create, read, list, search, change, patch, reslug, disable,
+// enable, lock, unlock, star and delete a stack, and suggest the values a
+// stack search filters by. A read, change or patch answers the
 // stack's ETag; a change, patch or delete passes its If-Match to the
 // service. A patch merges its body into the stack's settings as a PUT
 // would send them and writes the result through the change, through
@@ -21,7 +22,7 @@
 // # Dependencies
 //
 // It imports accessapi, stacksapi, the domain's stacks package,
-// internal/iac, internal/kernel, kernel/search, platform/gen/api and
-// platform/httpkit/problem and platform/httpkit/strict. The stacks
-// domain's assembly constructs it.
+// internal/iac, internal/kernel, kernel/search, platform/gen/api,
+// platform/httpkit/apisearch, platform/httpkit/problem and
+// platform/httpkit/strict. The stacks domain's assembly constructs it.
 package http

@@ -367,18 +367,40 @@ func (s *Store) SpaceInUse(
 	return used, nil
 }
 
-// stackColumn is the SQL of each of stacks.Fields. A stack's space is
-// written as its ULID, since the stacks domain holds no space's slug.
+// stackColumn is the SQL of each of stacks.Fields. The account's space
+// tree belongs to the access domain, so space reads it from the scope
+// rather than from a table this domain does not own.
 var stackColumn = map[string]sqlsearch.Column{
-	"id":    {Expr: "s.slug", Cast: "text", Text: true},
-	"name":  {Expr: "s.name", Cast: "text", Text: true},
-	"space": {Expr: "s.space_id::text"},
+	"id":          {Expr: "s.slug", Cast: "text", Text: true},
+	"name":        {Expr: "s.name", Cast: "text", Text: true},
+	"description": {Expr: "s.description", Text: true},
+	"label": {
+		Expr: `ARRAY(SELECT l.label FROM stack_labels l
+			WHERE l.account_id = s.account_id AND l.stack_id = s.id)`,
+		Many: true, Text: true,
+	},
+	"space":       {Expr: "s.space_id", SpaceTree: true},
+	"repository":  {Expr: "s.repository", Cast: "text", Text: true},
+	"branch":      {Expr: "s.branch", Cast: "text"},
+	"projectRoot": {Expr: "s.project_root"},
+	"provider":    {Expr: "s.provider"},
+	"vendor":      {Expr: "s.vendor"},
+	"autodeploy":  {Expr: "s.autodeploy"},
+	"disabled":    {Expr: "s.disabled"},
+	"locked":      {Expr: "(s.locked_at IS NOT NULL)"},
+	"starred":     {Expr: "(star.stack_id IS NOT NULL)"},
+	"createdAt":   {Expr: "s.created_at", Cast: "timestamptz"},
 }
 
-// stackSearch is the stacks table as stacks.Fields search it.
+// stackSearch is the stacks table as stacks.Fields search it. The caller's
+// star joins every query, $2 and $3 naming the caller, and its key holds
+// one star per caller and stack, so the join never repeats a stack.
 var stackSearch = func() sqlsearch.Entity {
 	e := sqlsearch.Entity{
-		List: "stacks", From: "stacks s", Select: columns, Space: "s.space_id", ID: "s.slug",
+		List: "stacks",
+		From: `stacks s LEFT JOIN stack_stars star ON star.account_id = s.account_id
+			AND star.stack_id = s.id AND star.actor_kind = $2 AND star.actor_id = $3`,
+		Select: columns, Space: "s.space_id", ID: "s.slug",
 		Order: []search.Order{{Field: "id"}},
 	}
 	for _, f := range stacks.Fields {
@@ -389,16 +411,49 @@ var stackSearch = func() sqlsearch.Entity {
 	return e
 }()
 
-// Search reads a page of acct's stacks among reachable that in keeps.
+// searchScope is scope as the search of acct's stacks reads it.
+func searchScope(acct kernel.AccountID, scope stacks.Scope) sqlsearch.Scope {
+	spaces := make([]sqlsearch.SpaceNode, len(scope.Spaces))
+	for i, n := range scope.Spaces {
+		spaces[i] = sqlsearch.SpaceNode{Space: n.ID, Parent: n.Parent, ID: n.Slug, Display: n.Name}
+	}
+	return sqlsearch.Scope{
+		Where:     "s.account_id = $1",
+		Args:      []any{acct, string(scope.Actor.Kind), scope.Actor.ID},
+		Reachable: scope.Reachable,
+		Spaces:    spaces,
+	}
+}
+
+// Search reads a page of acct's stacks in the scope that in keeps.
 func (s *Store) Search(
 	ctx context.Context,
 	acct kernel.AccountID,
 	in search.Input,
-	reachable []kernel.ULID,
+	scope stacks.Scope,
 ) (search.Result[stacks.Stack], error) {
-	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), stackSearch, sqlsearch.Scope{
-		Where: "s.account_id = $1", Args: []any{acct}, Reachable: reachable,
-	}, in, scan)
+	out, err := sqlsearch.Find(
+		ctx,
+		tx.Q(ctx, s.db),
+		stackSearch,
+		searchScope(acct, scope),
+		in,
+		scan,
+	)
+	if err != nil {
+		return out, fmt.Errorf("stacks: %w", err)
+	}
+	return out, nil
+}
+
+// Suggest lists the values acct's stacks in the scope that in keeps hold.
+func (s *Store) Suggest(
+	ctx context.Context,
+	acct kernel.AccountID,
+	in search.SuggestionsInput,
+	scope stacks.Scope,
+) (search.Suggestions, error) {
+	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), stackSearch, searchScope(acct, scope), in)
 	if err != nil {
 		return out, fmt.Errorf("stacks: %w", err)
 	}

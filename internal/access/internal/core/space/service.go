@@ -200,6 +200,19 @@ func (s *Service) Slugs(
 	return out, nil
 }
 
+// Tree lists acct's spaces with their parents, top space first.
+func (s *Service) Tree(ctx context.Context, acct kernel.AccountID) ([]accessapi.SpaceNode, error) {
+	all, err := s.store.Spaces(ctx, acct)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	out := make([]accessapi.SpaceNode, len(all))
+	for i, sp := range all {
+		out[i] = accessapi.SpaceNode{ID: sp.ID, Slug: sp.Slug, Name: sp.Name, Parent: sp.ParentID}
+	}
+	return out, nil
+}
+
 // Spaces lists acct's spaces, top space first.
 func (s *Service) Spaces(ctx context.Context, acct kernel.AccountID) ([]Space, error) {
 	return s.store.Spaces(ctx, acct) //nolint:wrapcheck // the store names the read

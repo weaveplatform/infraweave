@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 )
@@ -104,16 +105,13 @@ func (s Server) SearchSpaces(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the snapshot's read names itself
 	}
-	res, err := s.spaces.Search(ctx, p.AccountID, searchInput(*req.Body), reach)
+	res, err := s.spaces.Search(ctx, p.AccountID, apisearch.Input(*req.Body), reach)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
 	}
 	out := api.SearchSpacesOutput{
-		Edges: []api.SpaceConnection{},
-		PageInfo: api.PageInfo{
-			StartCursor: res.Start, EndCursor: res.End,
-			HasNextPage: res.HasNext, HasPreviousPage: res.HasPrevious,
-		},
+		Edges:    []api.SpaceConnection{},
+		PageInfo: apisearch.PageInfo(res),
 	}
 	for _, e := range res.Edges {
 		out.Edges = append(out.Edges, api.SpaceConnection{
@@ -137,11 +135,11 @@ func (s Server) SearchSpacesSuggestions(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the snapshot's read names itself
 	}
-	got, err := s.spaces.Suggest(ctx, p.AccountID, suggestionsInput(*req.Body), reach)
+	got, err := s.spaces.Suggest(ctx, p.AccountID, apisearch.SuggestionsInput(*req.Body), reach)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
 	}
-	return api.SearchSpacesSuggestions200JSONResponse{Body: suggestions(got)}, nil
+	return api.SearchSpacesSuggestions200JSONResponse{Body: apisearch.Suggestions(got)}, nil
 }
 
 // ActionCatalogue lists every catalogue action with its flags.

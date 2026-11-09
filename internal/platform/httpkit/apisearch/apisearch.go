@@ -1,4 +1,4 @@
-package http
+package apisearch
 
 import (
 	"math"
@@ -7,8 +7,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 )
 
-// searchInput is the reference's SearchInput as kernel/search reads it.
-func searchInput(in api.SearchInput) search.Input {
+// Input is the reference's SearchInput as kernel/search reads it.
+func Input(in api.SearchInput) search.Input {
 	out := search.Input{
 		First:      in.First,
 		After:      deref(in.After),
@@ -29,9 +29,9 @@ func searchInput(in api.SearchInput) search.Input {
 	return out
 }
 
-// suggestionsInput is the reference's SearchSuggestionsInput as
+// SuggestionsInput is the reference's SearchSuggestionsInput as
 // kernel/search reads it.
-func suggestionsInput(in api.SearchSuggestionsInput) search.SuggestionsInput {
+func SuggestionsInput(in api.SearchSuggestionsInput) search.SuggestionsInput {
 	out := search.SuggestionsInput{
 		FullText:   deref(in.FullTextSearch),
 		Predicates: predicates(in.Predicates),
@@ -77,6 +77,13 @@ func predicates(in *[]api.SearchQueryPredicate) []search.Predicate {
 	return out
 }
 
+func deref(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
 // derefOr is the list p points to, or nil: a list that is present but
 // empty stays set, so it keeps no row.
 func derefOr[T any](p *[]T) []T {
@@ -89,9 +96,9 @@ func derefOr[T any](p *[]T) []T {
 	return *p
 }
 
-// suggestions is s as the reference's SearchSuggestionsOutput: every
+// Suggestions is s as the reference's SearchSuggestionsOutput: every
 // field filters, and a field's values are listed only when asked for.
-func suggestions(s search.Suggestions) api.SearchSuggestionsOutput {
+func Suggestions(s search.Suggestions) api.SearchSuggestionsOutput {
 	out := api.SearchSuggestionsOutput{
 		FilteredCount: count(s.Count), Fields: []api.SearchSuggestionsField{},
 	}
@@ -140,6 +147,14 @@ func suggestions(s search.Suggestions) api.SearchSuggestionsOutput {
 		out.Fields = append(out.Fields, f)
 	}
 	return out
+}
+
+// PageInfo is the reference's PageInfo of a page of a search.
+func PageInfo[T any](r search.Result[T]) api.PageInfo {
+	return api.PageInfo{
+		StartCursor: r.Start, EndCursor: r.End,
+		HasNextPage: r.HasNext, HasPreviousPage: r.HasPrevious,
+	}
 }
 
 // count is n as the reference's int32, which no count of rows exceeds.

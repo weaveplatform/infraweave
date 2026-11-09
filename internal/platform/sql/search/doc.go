@@ -4,7 +4,11 @@
 // An Entity maps each searchable field to a Column: its SQL expression, its
 // type, whether it is an array, whether the full text phrase searches it
 // and, for a HIERARCHY field, the subquery templates that expand a node to
-// its descendants and list the nodes. Find reads a page of the rows a Scope
+// its descendants and list the nodes. An entity whose domain does not own
+// the spaces table marks its space field SpaceTree instead: the Scope
+// carries the account's tree, read through the access domain, and the
+// package expands nodes and lists them from it, binding the spaces a
+// constraint keeps as one parameter. Find reads a page of the rows a Scope
 // allows: the caller's own condition, and Space = ANY($n) over the spaces
 // Reachable holds, which every compiled query ANDs before any predicate, so
 // the database never returns a row the caller may not see and a page before
@@ -16,9 +20,10 @@
 // cursor of another list or order, or one a client altered, answers 400
 // invalid-cursor. Suggest counts the rows the same filter keeps and lists
 // the most common values of each field asked for, with counts, so no value
-// or count reaches past the reachable spaces.
+// or count reaches past the reachable spaces. Compile answers the query
+// Find runs, which searchtest fuzzes for each entity.
 //
-// ref: decision 0003, decision 0007 "Evaluation"
+// ref: decision 0003, decision 0004, decision 0007 "Evaluation"
 //
 // # Input and output
 //

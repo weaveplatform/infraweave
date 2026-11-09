@@ -44,6 +44,11 @@ type Column struct {
 	// text, its ID, its parent's ID or NULL, and what it shows as. It runs
 	// with that parameter alone.
 	Nodes string
+	// SpaceTree marks a HIERARCHY field over the spaces Scope.Spaces
+	// lists, in place of Tree and Nodes, for an entity of a domain that
+	// does not own the spaces table and so reads the tree through the
+	// access domain. Expr is the row's space, a uuid.
+	SpaceTree bool
 }
 
 // Entity is a searchable table: its columns and how a page of it reads.
@@ -90,6 +95,16 @@ type Scope struct {
 	Where     string
 	Args      []any
 	Reachable []kernel.ULID
+	// Spaces is the account's space tree, which a SpaceTree column reads.
+	Spaces []SpaceNode
+}
+
+// SpaceNode is a space of the tree a SpaceTree column reads: the space,
+// its parent, zero for the top space, the ID a constraint names it by and
+// a suggestion lists, and what it shows as.
+type SpaceNode struct {
+	Space, Parent kernel.ULID
+	ID, Display   string
 }
 
 // args collects a query's parameters; add answers the next placeholder.
@@ -118,7 +133,7 @@ func filter(
 		parts = append(parts, "("+s.Where+")")
 	}
 	for _, p := range preds {
-		cond := constraint(e.column(p.Field), p.Constraint, a)
+		cond := constraint(e.column(p.Field), s, p.Constraint, a)
 		if p.Exclude {
 			cond = "NOT coalesce(" + cond + ", false)"
 		}
@@ -140,7 +155,23 @@ func filter(
 }
 
 // constraint is c on column col; Check has held c to col's type.
-func constraint(col Column, c kernelsearch.Constraint, a *args) string {
+func constraint(col Column, s Scope, c kernelsearch.Constraint, a *args) string {
+	if col.SpaceTree {
+		switch c.Kind() {
+		case "hierarchyNodeValueEquals":
+			return inSpaces(col, under(s.Spaces, c.HierarchyValues, nil), a)
+		case "hierarchyNode":
+			var deep, flat []string
+			for _, n := range c.Hierarchy {
+				if n.Descendants {
+					deep = append(deep, n.Equals)
+				} else {
+					flat = append(flat, n.Equals)
+				}
+			}
+			return inSpaces(col, under(s.Spaces, deep, flat), a)
+		}
+	}
 	switch c.Kind() {
 	case "booleanEquals":
 		return "(" + col.Expr + " = ANY(" + a.add(c.BooleanEquals) + "::boolean[]))"
@@ -181,6 +212,51 @@ func constraint(col Column, c kernelsearch.Constraint, a *args) string {
 		d, _ := c.TimeInLast.Duration()
 		return "(" + col.Expr + " >= now() - make_interval(secs => " + a.add(d.Seconds()) + "))"
 	}
+}
+
+// inSpaces is col, a space, among spaces.
+func inSpaces(col Column, spaces []kernel.ULID, a *args) string {
+	return "(" + col.Expr + " = ANY(" + a.add(spaces) + "::uuid[]))"
+}
+
+// under is the spaces of tree whose IDs deep names, with every space below
+// them, and those flat names alone. An ID no space has names none.
+func under(tree []SpaceNode, deep, flat []string) []kernel.ULID {
+	children := map[kernel.ULID][]kernel.ULID{}
+	byID := map[string]kernel.ULID{}
+	for _, n := range tree {
+		if !n.Parent.IsZero() {
+			children[n.Parent] = append(children[n.Parent], n.Space)
+		}
+		byID[n.ID] = n.Space
+	}
+	out := []kernel.ULID{}
+	seen := map[kernel.ULID]bool{}
+	var walk func(sp kernel.ULID, below bool)
+	walk = func(sp kernel.ULID, below bool) {
+		if !seen[sp] {
+			seen[sp] = true
+			out = append(out, sp)
+		}
+		if below {
+			for _, c := range children[sp] {
+				if !seen[c] {
+					walk(c, true)
+				}
+			}
+		}
+	}
+	for _, id := range deep {
+		if sp, ok := byID[id]; ok {
+			walk(sp, true)
+		}
+	}
+	for _, id := range flat {
+		if sp, ok := byID[id]; ok {
+			walk(sp, false)
+		}
+	}
+	return out
 }
 
 // equals is col equal to one of the text[] parameter at.
@@ -286,6 +362,14 @@ func compile(e Entity, s Scope, in kernelsearch.Input) (statement, error) {
 		" ORDER BY " + strings.Join(order, ", ") + " LIMIT " + a.add(st.n+1)
 	st.args = a
 	return st, nil
+}
+
+// Compile is the query Find runs for in over e under s, and its
+// parameters, for tests that hold an entity's searches to be
+// parameterized.
+func Compile(e Entity, s Scope, in kernelsearch.Input) (string, []any, error) {
+	st, err := compile(e, s, in)
+	return st.sql, st.args, err
 }
 
 // after is the keyset condition of the rows past the position at in
@@ -481,29 +565,15 @@ func nodes(
 		" WHERE "+where+" GROUP BY 1", a, func(v string, n int) { direct[v] = n }); err != nil {
 		return err
 	}
-	var na args
-	reach := s.Reachable
-	if reach == nil {
-		reach = []kernel.ULID{}
-	}
-	rows, err := q.Query(ctx, fmt.Sprintf(c.Nodes, na.add(reach)), na...)
-	if err != nil {
-		return err //nolint:wrapcheck // Suggest names the read
-	}
-	var (
-		keyOf          []string
-		value, id, dis string
-		parent         *string
-	)
 	sg.Nodes, sg.Counts, sg.Direct = []kernelsearch.HierarchyNode{}, []int{}, []int{}
-	if _, err := pgx.ForEachRow(rows, []any{&value, &id, &parent, &dis}, func() error {
-		keyOf = append(keyOf, value)
-		sg.Nodes = append(sg.Nodes, kernelsearch.HierarchyNode{
-			ID: id, Parent: deref(parent), Display: dis,
-		})
-		return nil
-	}); err != nil {
-		return err //nolint:wrapcheck // as above
+	var keyOf []string
+	if c.SpaceTree {
+		keyOf = spaceNodes(s, sg)
+	} else {
+		var err error
+		if keyOf, err = queryNodes(ctx, q, s, c, sg); err != nil {
+			return err
+		}
 	}
 	at := map[string]int{}
 	for i, n := range sg.Nodes {
@@ -524,6 +594,78 @@ func nodes(
 		}
 	}
 	return nil
+}
+
+// queryNodes lists c's nodes in the reachable spaces by its Nodes
+// template, answering each one's Expr value as text.
+func queryNodes(
+	ctx context.Context,
+	q tx.Querier,
+	s Scope,
+	c Column,
+	sg *kernelsearch.Suggestion,
+) ([]string, error) {
+	var na args
+	reach := s.Reachable
+	if reach == nil {
+		reach = []kernel.ULID{}
+	}
+	rows, err := q.Query(ctx, fmt.Sprintf(c.Nodes, na.add(reach)), na...)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // Suggest names the read
+	}
+	var (
+		keyOf          []string
+		value, id, dis string
+		parent         *string
+	)
+	if _, err := pgx.ForEachRow(rows, []any{&value, &id, &parent, &dis}, func() error {
+		keyOf = append(keyOf, value)
+		sg.Nodes = append(sg.Nodes, kernelsearch.HierarchyNode{
+			ID: id, Parent: deref(parent), Display: dis,
+		})
+		return nil
+	}); err != nil {
+		return nil, err //nolint:wrapcheck // as above
+	}
+	return keyOf, nil
+}
+
+// spaceNodes lists the reachable spaces of s's tree as nodes, by ID, each
+// under its nearest reachable ancestor, so no space the caller may not
+// read is named, and answers each one's space as uuid text, as a SpaceTree
+// column's Expr reads.
+func spaceNodes(s Scope, sg *kernelsearch.Suggestion) []string {
+	reach := map[kernel.ULID]bool{}
+	for _, sp := range s.Reachable {
+		reach[sp] = true
+	}
+	byspace := map[kernel.ULID]SpaceNode{}
+	for _, n := range s.Spaces {
+		byspace[n.Space] = n
+	}
+	listed := make([]SpaceNode, 0, len(s.Reachable))
+	for _, n := range s.Spaces {
+		if reach[n.Space] {
+			listed = append(listed, n)
+		}
+	}
+	slices.SortFunc(listed, func(a, b SpaceNode) int { return strings.Compare(a.ID, b.ID) })
+	keyOf := make([]string, len(listed))
+	for i, n := range listed {
+		keyOf[i] = n.Space.UUID()
+		node := kernelsearch.HierarchyNode{ID: n.ID, Display: n.Display}
+		// hops bounds the walk should the parents ever form a cycle.
+		for p, hops := n.Parent, 0; !p.IsZero() && hops < len(s.Spaces); hops++ {
+			if reach[p] {
+				node.Parent = byspace[p].ID
+				break
+			}
+			p = byspace[p].Parent
+		}
+		sg.Nodes = append(sg.Nodes, node)
+	}
+	return keyOf
 }
 
 func deref(s *string) string {

@@ -9897,6 +9897,9 @@ type StackCreateJSONRequestBody = StackCreateRequest
 // SearchStacksJSONRequestBody defines body for SearchStacks for application/json ContentType.
 type SearchStacksJSONRequestBody = SearchInput
 
+// SearchStacksSuggestionsJSONRequestBody defines body for SearchStacksSuggestions for application/json ContentType.
+type SearchStacksSuggestionsJSONRequestBody = SearchSuggestionsInput
+
 // StackPatchApplicationMergePatchPlusJSONRequestBody defines body for StackPatch for application/merge-patch+json ContentType.
 type StackPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
@@ -13072,6 +13075,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /stacks/search (the `SearchStacks` operationId).
 	SearchStacks(ctx context.Context, body SearchStacksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchStacksSuggestionsWithBody Search Stacks Suggestions
+	//
+	// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+	SearchStacksSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchStacksSuggestions Search Stacks Suggestions
+	//
+	// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+	SearchStacksSuggestions(ctx context.Context, body SearchStacksSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDelete Delete Stack
 	//
@@ -17178,6 +17199,44 @@ func (c *Client) SearchStacksWithBody(ctx context.Context, contentType string, b
 // Corresponds with POST /stacks/search (the `SearchStacks` operationId).
 func (c *Client) SearchStacks(ctx context.Context, body SearchStacksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchStacksRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchStacksSuggestionsWithBody Search Stacks Suggestions
+//
+// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+func (c *Client) SearchStacksSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchStacksSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchStacksSuggestions Search Stacks Suggestions
+//
+// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+func (c *Client) SearchStacksSuggestions(ctx context.Context, body SearchStacksSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchStacksSuggestionsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -25439,6 +25498,46 @@ func NewSearchStacksRequestWithBody(server string, contentType string, body io.R
 	return req, nil
 }
 
+// NewSearchStacksSuggestionsRequest calls the generic SearchStacksSuggestions builder with application/json body
+func NewSearchStacksSuggestionsRequest(server string, body SearchStacksSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchStacksSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchStacksSuggestionsRequestWithBody constructs an http.Request for the SearchStacksSuggestions method, with any body, and a specified content type
+func NewSearchStacksSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewStackDeleteRequest constructs an http.Request for the StackDelete method
 func NewStackDeleteRequest(server string, stackId string, params *StackDeleteParams) (*http.Request, error) {
 	var err error
@@ -31478,6 +31577,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /stacks/search (the `SearchStacks` operationId).
 	SearchStacksWithResponse(ctx context.Context, body SearchStacksJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchStacksResponse, error)
+
+	// SearchStacksSuggestionsWithBodyWithResponse Search Stacks Suggestions
+	//
+	// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+	SearchStacksSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchStacksSuggestionsResponse, error)
+
+	// SearchStacksSuggestionsWithResponse Search Stacks Suggestions
+	//
+	// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+	SearchStacksSuggestionsWithResponse(ctx context.Context, body SearchStacksSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchStacksSuggestionsResponse, error)
 
 	// StackDeleteWithResponse Delete Stack
 	//
@@ -45408,6 +45525,94 @@ func (r SearchStacksResponse) ContentType() string {
 	return ""
 }
 
+// SearchStacksSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchStacksSuggestions
+type SearchStacksSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchStacksSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchStacksSuggestions
+type SearchStacksSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchStacksSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchStacksSuggestions
+type SearchStacksSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchStacksSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchStacksSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchStacksSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchStacksSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchStacksSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchStacksSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchStacksSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchStacksSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchStacksSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchStacksSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchStacksSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchStacksSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackDeleteResponse200Headers the declared response headers of an HTTP 200 response for StackDelete
 type StackDeleteResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -55395,6 +55600,36 @@ func (c *ClientWithResponses) SearchStacksWithResponse(ctx context.Context, body
 		return nil, err
 	}
 	return ParseSearchStacksResponse(rsp)
+}
+
+// SearchStacksSuggestionsWithBodyWithResponse Search Stacks Suggestions
+//
+// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+func (c *ClientWithResponses) SearchStacksSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchStacksSuggestionsResponse, error) {
+	rsp, err := c.SearchStacksSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchStacksSuggestionsResponse(rsp)
+}
+
+// SearchStacksSuggestionsWithResponse Search Stacks Suggestions
+//
+// The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/search/suggestions (the `SearchStacksSuggestions` operationId).
+func (c *ClientWithResponses) SearchStacksSuggestionsWithResponse(ctx context.Context, body SearchStacksSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchStacksSuggestionsResponse, error) {
+	rsp, err := c.SearchStacksSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchStacksSuggestionsResponse(rsp)
 }
 
 // StackDeleteWithResponse Delete Stack
@@ -73521,6 +73756,121 @@ func ParseSearchStacksResponse(rsp *http.Response) (*SearchStacksResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers SearchStacksResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchStacksSuggestionsResponse parses an HTTP response from a SearchStacksSuggestionsWithResponse call
+func ParseSearchStacksSuggestionsResponse(rsp *http.Response) (*SearchStacksSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchStacksSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchStacksSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchStacksSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchStacksSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

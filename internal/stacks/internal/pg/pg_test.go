@@ -107,7 +107,11 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"SetStar":      s.SetStar(ctx, acct, id, actor, true),
 		"Starred":      func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
 		"Search": func() error {
-			_, err := s.Search(ctx, acct, search.Input{}, []kernel.ULID{id})
+			_, err := s.Search(ctx, acct, search.Input{}, stacks.Scope{Reachable: []kernel.ULID{id}})
+			return err
+		}(),
+		"Suggest": func() error {
+			_, err := s.Suggest(ctx, acct, search.SuggestionsInput{}, stacks.Scope{Actor: actor})
 			return err
 		}(),
 	} {

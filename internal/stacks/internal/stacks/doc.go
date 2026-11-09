@@ -1,7 +1,10 @@
 // Package stacks is the stacks domain's logic: Service creates, reads,
-// lists, changes, moves, reslugs, disables, enables, locks, unlocks,
-// stars and deletes an account's stacks for the HTTP adapter, and reads
-// them for other domains through stacksapi.Stacks. Each write checks the
+// searches, changes, moves, reslugs, disables, enables, locks, unlocks,
+// stars and deletes an account's stacks for the HTTP adapter, suggests
+// the values of their searchable Fields, and reads them for other domains
+// through stacksapi.Stacks. A search or suggestion sees only the stacks in
+// the spaces the caller may read, with the account's space tree read
+// through accessapi.Spaces, and the caller's own stars. Each write checks the
 // caller's action in the stack's space through the access domain, holds
 // that space, and moving a stack needs STACK_CREATE in the space it moves
 // to. A write bumps the stack's version and appends stacksapi.Changed in
