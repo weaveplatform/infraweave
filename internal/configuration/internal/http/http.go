@@ -348,7 +348,7 @@ func (s Server) ContextConfigElement(
 	}
 	e, err := s.svc.Element(ctx, p.AccountID, req.ContextId, req.Params.Id)
 	if err != nil {
-		return nil, elementError(err, req.Params.Id)
+		return nil, elementError(err, req.Params.Id, "context")
 	}
 	return api.ContextConfigElement200JSONResponse{Body: elementView(e)}, nil
 }
@@ -411,7 +411,7 @@ func (s Server) ContextConfigDelete(
 	}
 	e, err := s.svc.DeleteElement(ctx, p, req.ContextId, req.ConfigId)
 	if err != nil {
-		return nil, elementError(err, req.ConfigId)
+		return nil, elementError(err, req.ConfigId, "context")
 	}
 	return api.ContextConfigDelete200JSONResponse{Body: elementView(e)}, nil
 }
@@ -522,12 +522,12 @@ func contextError(err error) error {
 	return err
 }
 
-// elementError answers a missing element by its name: the route has
-// found the context already.
-func elementError(err error, name string) error {
+// elementError answers a missing element by its name and the kind of its
+// owner: the route has found the owner already.
+func elementError(err error, name, owner string) error {
 	if errors.Is(err, core.ErrNotFound) {
 		//nolint:wrapcheck // a problem, answered as it is
-		return problem.NotFound.Error(fmt.Sprintf("No config element %q in this context.", name))
+		return problem.NotFound.Error(fmt.Sprintf("No config element %q in this %s.", name, owner))
 	}
 	return contextError(err)
 }

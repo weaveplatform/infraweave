@@ -10156,6 +10156,9 @@ type StackUpdateJSONRequestBody = StackInput
 // StackConfigAddJSONRequestBody defines body for StackConfigAdd for application/json ContentType.
 type StackConfigAddJSONRequestBody = ConfigInput
 
+// StackConfigSetJSONRequestBody defines body for StackConfigSet for application/json ContentType.
+type StackConfigSetJSONRequestBody = ConfigElementInput
+
 // ContextAttachJSONRequestBody defines body for ContextAttach for application/json ContentType.
 type ContextAttachJSONRequestBody = ContextAttachRequest
 
@@ -13624,7 +13627,7 @@ type ClientInterface interface {
 
 	// StackAttachableContexts Stack attachable contexts
 	//
-	// List of contexts that can be attached to this Stack.
+	// The contexts the stack may attach that the caller may read: those of the stack's space and of each space it reaches while each inherits.
 	//
 	// Corresponds with GET /stacks/{stackId}/attachable-contexts (the `StackAttachableContexts` operationId).
 	StackAttachableContexts(ctx context.Context, stackId string, params *StackAttachableContextsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -13645,14 +13648,14 @@ type ClientInterface interface {
 
 	// StackConfigElement Stack config element
 	//
-	// Single stack config element.
+	// A config element of the stack, by its ID. A write-only value is never answered; its checksum is.
 	//
 	// Corresponds with GET /stacks/{stackId}/config-element (the `StackConfigElement` operationId).
 	StackConfigElement(ctx context.Context, stackId string, params *StackConfigElementParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackConfigAddWithBody Add Stack Config
 	//
-	// Add a stack config element.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -13661,7 +13664,7 @@ type ClientInterface interface {
 
 	// StackConfigAdd Add Stack Config
 	//
-	// Add a stack config element.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -13670,10 +13673,28 @@ type ClientInterface interface {
 
 	// StackConfigDelete Delete Stack Config
 	//
-	// Delete a stack config element.
+	// Delete a config element of a stack.
 	//
 	// Corresponds with DELETE /stacks/{stackId}/configs/{configId} (the `StackConfigDelete` operationId).
 	StackConfigDelete(ctx context.Context, stackId string, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackConfigSetWithBody Set Stack Config
+	//
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+	StackConfigSetWithBody(ctx context.Context, stackId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackConfigSet Set Stack Config
+	//
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+	StackConfigSet(ctx context.Context, stackId string, configId string, body StackConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ContextAttachWithBody Attach Context
 	//
@@ -18363,7 +18384,7 @@ func (c *Client) StackAttachableAzureIntegrations(ctx context.Context, stackId s
 
 // StackAttachableContexts Stack attachable contexts
 //
-// List of contexts that can be attached to this Stack.
+// The contexts the stack may attach that the caller may read: those of the stack's space and of each space it reaches while each inherits.
 //
 // Corresponds with GET /stacks/{stackId}/attachable-contexts (the `StackAttachableContexts` operationId).
 func (c *Client) StackAttachableContexts(ctx context.Context, stackId string, params *StackAttachableContextsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -18414,7 +18435,7 @@ func (c *Client) StackAttachableWorkerPools(ctx context.Context, stackId string,
 
 // StackConfigElement Stack config element
 //
-// Single stack config element.
+// A config element of the stack, by its ID. A write-only value is never answered; its checksum is.
 //
 // Corresponds with GET /stacks/{stackId}/config-element (the `StackConfigElement` operationId).
 func (c *Client) StackConfigElement(ctx context.Context, stackId string, params *StackConfigElementParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -18431,7 +18452,7 @@ func (c *Client) StackConfigElement(ctx context.Context, stackId string, params 
 
 // StackConfigAddWithBody Add Stack Config
 //
-// Add a stack config element.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 //
 // Takes any type of body and a specified content type.
 //
@@ -18450,7 +18471,7 @@ func (c *Client) StackConfigAddWithBody(ctx context.Context, stackId string, par
 
 // StackConfigAdd Add Stack Config
 //
-// Add a stack config element.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -18469,11 +18490,49 @@ func (c *Client) StackConfigAdd(ctx context.Context, stackId string, params *Sta
 
 // StackConfigDelete Delete Stack Config
 //
-// Delete a stack config element.
+// Delete a config element of a stack.
 //
 // Corresponds with DELETE /stacks/{stackId}/configs/{configId} (the `StackConfigDelete` operationId).
 func (c *Client) StackConfigDelete(ctx context.Context, stackId string, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackConfigDeleteRequest(c.Server, stackId, configId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackConfigSetWithBody Set Stack Config
+//
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+func (c *Client) StackConfigSetWithBody(ctx context.Context, stackId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackConfigSetRequestWithBody(c.Server, stackId, configId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackConfigSet Set Stack Config
+//
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+func (c *Client) StackConfigSet(ctx context.Context, stackId string, configId string, body StackConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackConfigSetRequest(c.Server, stackId, configId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -28331,6 +28390,60 @@ func NewStackConfigDeleteRequest(server string, stackId string, configId string)
 	return req, nil
 }
 
+// NewStackConfigSetRequest calls the generic StackConfigSet builder with application/json body
+func NewStackConfigSetRequest(server string, stackId string, configId string, body StackConfigSetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackConfigSetRequestWithBody(server, stackId, configId, "application/json", bodyReader)
+}
+
+// NewStackConfigSetRequestWithBody constructs an http.Request for the StackConfigSet method, with any body, and a specified content type
+func NewStackConfigSetRequestWithBody(server string, stackId string, configId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/configs/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewContextAttachRequest calls the generic ContextAttach builder with application/json body
 func NewContextAttachRequest(server string, stackId string, contextId string, body ContextAttachJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -34097,7 +34210,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackAttachableContextsWithResponse Stack attachable contexts
 	//
-	// List of contexts that can be attached to this Stack.
+	// The contexts the stack may attach that the caller may read: those of the stack's space and of each space it reaches while each inherits.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -34124,7 +34237,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigElementWithResponse Stack config element
 	//
-	// Single stack config element.
+	// A config element of the stack, by its ID. A write-only value is never answered; its checksum is.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -34133,7 +34246,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigAddWithBodyWithResponse Add Stack Config
 	//
-	// Add a stack config element.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -34142,7 +34255,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigAddWithResponse Add Stack Config
 	//
-	// Add a stack config element.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -34151,12 +34264,30 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigDeleteWithResponse Delete Stack Config
 	//
-	// Delete a stack config element.
+	// Delete a config element of a stack.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /stacks/{stackId}/configs/{configId} (the `StackConfigDelete` operationId).
 	StackConfigDeleteWithResponse(ctx context.Context, stackId string, configId string, reqEditors ...RequestEditorFn) (*StackConfigDeleteResponse, error)
+
+	// StackConfigSetWithBodyWithResponse Set Stack Config
+	//
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+	StackConfigSetWithBodyWithResponse(ctx context.Context, stackId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackConfigSetResponse, error)
+
+	// StackConfigSetWithResponse Set Stack Config
+	//
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+	StackConfigSetWithResponse(ctx context.Context, stackId string, configId string, body StackConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*StackConfigSetResponse, error)
 
 	// ContextAttachWithBodyWithResponse Attach Context
 	//
@@ -50872,6 +51003,13 @@ func (r StackConfigElementResponse) ContentType() string {
 	return ""
 }
 
+// StackConfigAddResponse200Headers the declared response headers of an HTTP 200 response for StackConfigAdd
+type StackConfigAddResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
 // StackConfigAddResponse201Headers the declared response headers of an HTTP 201 response for StackConfigAdd
 type StackConfigAddResponse201Headers struct {
 	XRateLimitLimit     *int
@@ -50895,6 +51033,8 @@ type StackConfigAddResponse503Headers struct {
 type StackConfigAddResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ConfigElement
 	// JSON201 the response for an HTTP 201 `application/json` response
 	JSON201 *ConfigElement
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
@@ -50909,12 +51049,19 @@ type StackConfigAddResponse struct {
 	ApplicationproblemJSON503 *ApiDisabled
 	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
 	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackConfigAddResponse200Headers
 	// Headers201 the parsed response headers for an HTTP 201 response
 	Headers201 *StackConfigAddResponse201Headers
 	// Headers429 the parsed response headers for an HTTP 429 response
 	Headers429 *StackConfigAddResponse429Headers
 	// Headers503 the parsed response headers for an HTTP 503 response
 	Headers503 *StackConfigAddResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackConfigAddResponse) GetJSON200() *ConfigElement {
+	return r.JSON200
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -51070,6 +51217,117 @@ func (r StackConfigDeleteResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StackConfigDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackConfigSetResponse200Headers the declared response headers of an HTTP 200 response for StackConfigSet
+type StackConfigSetResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackConfigSetResponse201Headers the declared response headers of an HTTP 201 response for StackConfigSet
+type StackConfigSetResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackConfigSetResponse429Headers the declared response headers of an HTTP 429 response for StackConfigSet
+type StackConfigSetResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackConfigSetResponse503Headers the declared response headers of an HTTP 503 response for StackConfigSet
+type StackConfigSetResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackConfigSetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ConfigElement
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ConfigElement
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackConfigSetResponse200Headers
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StackConfigSetResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackConfigSetResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackConfigSetResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackConfigSetResponse) GetJSON200() *ConfigElement {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StackConfigSetResponse) GetJSON201() *ConfigElement {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackConfigSetResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackConfigSetResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackConfigSetResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackConfigSetResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackConfigSetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackConfigSetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackConfigSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackConfigSetResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -60658,7 +60916,7 @@ func (c *ClientWithResponses) StackAttachableAzureIntegrationsWithResponse(ctx c
 
 // StackAttachableContextsWithResponse Stack attachable contexts
 //
-// List of contexts that can be attached to this Stack.
+// The contexts the stack may attach that the caller may read: those of the stack's space and of each space it reaches while each inherits.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -60703,7 +60961,7 @@ func (c *ClientWithResponses) StackAttachableWorkerPoolsWithResponse(ctx context
 
 // StackConfigElementWithResponse Stack config element
 //
-// Single stack config element.
+// A config element of the stack, by its ID. A write-only value is never answered; its checksum is.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -60718,7 +60976,7 @@ func (c *ClientWithResponses) StackConfigElementWithResponse(ctx context.Context
 
 // StackConfigAddWithBodyWithResponse Add Stack Config
 //
-// Add a stack config element.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -60733,7 +60991,7 @@ func (c *ClientWithResponses) StackConfigAddWithBodyWithResponse(ctx context.Con
 
 // StackConfigAddWithResponse Add Stack Config
 //
-// Add a stack config element.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -60748,7 +61006,7 @@ func (c *ClientWithResponses) StackConfigAddWithResponse(ctx context.Context, st
 
 // StackConfigDeleteWithResponse Delete Stack Config
 //
-// Delete a stack config element.
+// Delete a config element of a stack.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -60759,6 +61017,36 @@ func (c *ClientWithResponses) StackConfigDeleteWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseStackConfigDeleteResponse(rsp)
+}
+
+// StackConfigSetWithBodyWithResponse Set Stack Config
+//
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+func (c *ClientWithResponses) StackConfigSetWithBodyWithResponse(ctx context.Context, stackId string, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackConfigSetResponse, error) {
+	rsp, err := c.StackConfigSetWithBody(ctx, stackId, configId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackConfigSetResponse(rsp)
+}
+
+// StackConfigSetWithResponse Set Stack Config
+//
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/configs/{configId} (the `StackConfigSet` operationId).
+func (c *ClientWithResponses) StackConfigSetWithResponse(ctx context.Context, stackId string, configId string, body StackConfigSetJSONRequestBody, reqEditors ...RequestEditorFn) (*StackConfigSetResponse, error) {
+	rsp, err := c.StackConfigSet(ctx, stackId, configId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackConfigSetResponse(rsp)
 }
 
 // ContextAttachWithBodyWithResponse Attach Context
@@ -82480,6 +82768,13 @@ func ParseStackConfigAddResponse(rsp *http.Response) (*StackConfigAddResponse, e
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest ConfigElement
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -82532,6 +82827,30 @@ func ParseStackConfigAddResponse(rsp *http.Response) (*StackConfigAddResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		var headers StackConfigAddResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
 	case rsp.StatusCode == 201:
 		var headers StackConfigAddResponse201Headers
 		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
@@ -82711,6 +83030,159 @@ func ParseStackConfigDeleteResponse(rsp *http.Response) (*StackConfigDeleteRespo
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackConfigDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackConfigSetResponse parses an HTTP response from a StackConfigSetWithResponse call
+func ParseStackConfigSetResponse(rsp *http.Response) (*StackConfigSetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackConfigSetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConfigElement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackConfigSetResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 201:
+		var headers StackConfigSetResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackConfigSetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackConfigSetResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

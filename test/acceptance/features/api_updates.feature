@@ -6,8 +6,9 @@ Feature: A PUT replaces an entity and a PATCH changes what it names
   resets a field to its default, and an array replaces the old one whole.
   Every read and write of one entity answers its ETag. A PUT, PATCH or
   DELETE whose If-Match names a version the entity has moved past answers
-  412 and changes nothing. The home key is space-admin on its account's
-  top space.
+  412 and changes nothing. A PUT to an item's own path creates it, 201,
+  or replaces it, 200. The home key is space-admin on its account's top
+  space.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -94,3 +95,13 @@ Feature: A PUT replaces an entity and a PATCH changes what it names
     Then the answer's description is '"ours"'
     When token "h" sends "DELETE /api/v1/spaces/{team}" if matching the ETag "second" through B
     Then it answers 200
+
+  @op:stackConfigSet @case:success
+  Scenario: A stack's config element PUT at its own path creates it, then replaces it
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/REGION" with '{"type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through B
+    Then it answers 201
+    And the answer's value is '"eu"'
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/REGION" with '{"type":"ENVIRONMENT_VARIABLE","value":"us","writeOnly":false}' through A
+    Then it answers 200
+    And the answer's value is '"us"'

@@ -104,6 +104,9 @@ type Store interface {
 	// PutElement writes e, sealing its value, or keeping the value of the
 	// row e.ID names when e.Value is nil.
 	PutElement(ctx context.Context, e Element) error
+	// LockElements locks owner's elements until the transaction ends, so
+	// two writers of them take turns.
+	LockElements(ctx context.Context, acct kernel.AccountID, owner Owner) error
 	// DeleteElements deletes owner's elements names, every one when names
 	// is nil.
 	DeleteElements(ctx context.Context, acct kernel.AccountID, owner Owner, names []string) error
