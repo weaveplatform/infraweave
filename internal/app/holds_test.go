@@ -42,7 +42,7 @@ func TestAccSpaceHoldRace(t *testing.T) {
 	ctx := t.Context()
 	db := sqltest.Open(t)
 	q := db.Primary()
-	d, err := newDomains(config.Defaults(), db, testKeyring(t, q), nil)
+	d, err := newDomains(config.Defaults(), db, testKeyring(t, q), nil, testEvents(t, q))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,8 +122,10 @@ func TestAccSpaceHoldRace(t *testing.T) {
 				if !commit {
 					return errRollback
 				}
-				_, err = tx.Q(ctx, q).Exec(ctx, `INSERT INTO stacks (account_id, id, slug, space_id)
-					VALUES ($1, $2, 'infra', $3)`, acct, kernel.NewULID(), id)
+				_, err = tx.Q(ctx, q).Exec(ctx, `INSERT INTO stacks (account_id, id, slug, space_id,
+						name, repository, branch, provider, vendor)
+					VALUES ($1, $2, 'infra', $3, 'Infra', 'infra', 'main', 'GITHUB', 'terraform')`,
+					acct, kernel.NewULID(), id)
 				return err //nolint:wrapcheck // as above
 			})
 		})

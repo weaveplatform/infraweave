@@ -21,6 +21,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/test/acceptance"
 )
@@ -39,6 +41,13 @@ func local(t testing.TB) config.Config {
 
 // testKeyring is db's keyring under the local KEK local configures, the
 // one a mode started with local's configuration loads.
+// testEvents is the outbox on db with every domain's event kinds, as
+// serve constructs it.
+func testEvents(t testing.TB, db queue.DB) *outbox.Outbox {
+	t.Helper()
+	return outbox.New(db, queue.New(db), newKinds())
+}
+
 func testKeyring(t testing.TB, db crypt.Querier) *crypt.Keyring {
 	t.Helper()
 	p, closeKEK, err := openKEK(t.Context(), local(t).Secrets.KEK)
@@ -147,9 +156,9 @@ func TestUnitServerListeners(t *testing.T) {
 			}
 			if code := get(
 				t,
-				"http://"+r.APIAddr()+"/api/v1/stacks",
+				"http://"+r.APIAddr()+"/api/v1/stacks/infra/attachable-worker-pools",
 			); code != http.StatusNotImplemented {
-				t.Errorf("API /api/v1/stacks: %d, want 501", code)
+				t.Errorf("API /api/v1/stacks/infra/attachable-worker-pools: %d, want 501", code)
 			}
 		})
 	}

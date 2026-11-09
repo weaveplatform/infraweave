@@ -7,7 +7,7 @@
 // DefaultPageLimit and MaxPageLimit. It holds the identifiers: ULID,
 // generated monotonically within a millisecond, written as 26 characters
 // on the wire and as a uuid in PostgreSQL, whose text UUID gives, and
-// Slug. It holds AuditEntry, which every domain records through
+// Slug, which SlugFrom makes from a name. It holds AuditEntry, which every domain records through
 // platform/audit, and OrganizationAuditEntry, an entry of an
 // organization's own trail, above any account. It holds ErrUnavailable,
 // the mark of a dependency that cannot be reached now, which a store sets

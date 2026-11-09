@@ -17,8 +17,8 @@ redacted and checked in here. Checking it in resolves its record in
 Both YAML files are decoded strictly: an unknown key fails.
 
 `C0` is a synthetic example, marked `example: true`. It is validated and
-replayed like a capture, but its expectation is infraweave's stub, and it
-counts as no capture.
+replayed like a capture, but records nothing Spacelift did, and it counts
+as no capture.
 
 - `TestUnitCaptureRedaction` fails on anything here that looks like a JWT,
   an API key secret, an AWS access key, a private key block, or an e-mail

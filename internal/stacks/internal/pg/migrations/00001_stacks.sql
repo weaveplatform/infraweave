@@ -1,15 +1,87 @@
+-- Stacks: each account's stacks with the settings their runs read, their
+-- hooks, labels and stars.
+-- ref: decisions 0004, 0005 and 0007
+
 -- Other tables hold a stack by its ULID, so a reslug changes one column.
--- space_id has no foreign key because spaces belong to the access domain:
--- a stack holds its space while it is written, and deleting a space asks
--- whether a stack lives in it, which the index answers.
+-- space_id, worker_pool_id and vcs_integration_id have no foreign keys
+-- because spaces, worker pools and VCS integrations belong to other
+-- domains: a stack holds its space while it is written, and deleting a
+-- space asks whether a stack lives in it, which stacks_space answers.
+-- vendor is the vendorConfig member the stack sets and vendor_config that
+-- member's settings, as the iac vendor checked them. lock_holder is the
+-- principal's caller key, which decides who may unlock without force, and
+-- locked_by the name the API shows.
 CREATE TABLE stacks (
-    account_id uuid   NOT NULL,
-    id         uuid   NOT NULL,
-    slug       text   NOT NULL,
-    space_id   uuid   NOT NULL,
-    version    bigint NOT NULL DEFAULT 1,
+    account_id                       uuid        NOT NULL,
+    id                               uuid        NOT NULL,
+    slug                             text        NOT NULL,
+    space_id                         uuid        NOT NULL,
+    name                             text        NOT NULL,
+    description                      text,
+    repository                       text        NOT NULL,
+    repository_url                   text,
+    branch                           text        NOT NULL,
+    provider                         text        NOT NULL,
+    namespace                        text        NOT NULL DEFAULT '',
+    project_root                     text,
+    additional_project_globs         text[]      NOT NULL DEFAULT '{}',
+    git_sparse_checkout_paths        text[],
+    runner_image                     text,
+    worker_pool_id                   uuid,
+    vcs_integration_id               uuid,
+    vendor                           text        NOT NULL,
+    vendor_config                    jsonb       NOT NULL DEFAULT '{}',
+    terraform_version                text,
+    autodeploy                       boolean     NOT NULL DEFAULT false,
+    autoretry                        boolean     NOT NULL DEFAULT false,
+    protect_from_deletion            boolean     NOT NULL DEFAULT false,
+    disabled                         boolean     NOT NULL DEFAULT false,
+    local_preview_enabled            boolean     NOT NULL DEFAULT false,
+    github_action_deploy             boolean     NOT NULL DEFAULT true,
+    enable_sensitive_output_upload   boolean     NOT NULL DEFAULT false,
+    enable_well_known_secret_masking boolean     NOT NULL DEFAULT false,
+    skip_vendor_binary_download      boolean     NOT NULL DEFAULT false,
+    manages_state                    boolean     NOT NULL DEFAULT false,
+    locked_at                        timestamptz,
+    lock_holder                      text,
+    locked_by                        text,
+    lock_note                        text,
+    created_at                       timestamptz NOT NULL DEFAULT now(),
+    version                          bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
-    UNIQUE (account_id, slug)
+    UNIQUE (account_id, slug),
+    CHECK ((locked_at IS NULL) = (lock_holder IS NULL))
 );
 
 CREATE INDEX stacks_space ON stacks (account_id, space_id);
+CREATE INDEX stacks_repository ON stacks (account_id, repository, branch);
+
+-- One row per hook command, in the order each phase runs them.
+CREATE TABLE stack_hooks (
+    account_id uuid    NOT NULL,
+    stack_id   uuid    NOT NULL,
+    phase      text    NOT NULL,
+    position   integer NOT NULL,
+    command    text    NOT NULL,
+    PRIMARY KEY (account_id, stack_id, phase, position),
+    FOREIGN KEY (account_id, stack_id) REFERENCES stacks (account_id, id) ON DELETE CASCADE
+);
+
+CREATE TABLE stack_labels (
+    account_id uuid NOT NULL,
+    stack_id   uuid NOT NULL,
+    label      text NOT NULL,
+    PRIMARY KEY (account_id, stack_id, label),
+    FOREIGN KEY (account_id, stack_id) REFERENCES stacks (account_id, id) ON DELETE CASCADE
+);
+
+-- A star is one caller's: a session's member or an API key, by its
+-- principal kind and actor ID.
+CREATE TABLE stack_stars (
+    account_id uuid NOT NULL,
+    stack_id   uuid NOT NULL,
+    actor_kind text NOT NULL,
+    actor_id   uuid NOT NULL,
+    PRIMARY KEY (account_id, stack_id, actor_kind, actor_id),
+    FOREIGN KEY (account_id, stack_id) REFERENCES stacks (account_id, id) ON DELETE CASCADE
+);

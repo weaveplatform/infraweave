@@ -1,12 +1,12 @@
-# The REST call that stands for the exchange. A real capture's assertions
-# follow from response.json; the example's assert the stub that serves
-# GET /stacks/{stackId} until the stacks family implements it.
+# The REST call that stands for the exchange. Its assertions follow from
+# response.json: Spacelift answers a null stack for an ID the account
+# lacks, which infraweave answers 404 not-found.
 calls:
   - method: GET
     path: /api/v1/stacks/example-stack
     expect:
-      status: 501
-      problem: not-implemented
+      status: 404
+      problem: not-found
       body:
-        /status: 501
-        /title: not implemented
+        /status: 404
+        /title: not found

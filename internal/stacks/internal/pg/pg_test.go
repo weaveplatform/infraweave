@@ -9,11 +9,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
+	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
 )
 
 // TestMain migrates the platform stream and the stacks stream alone: no
@@ -38,8 +40,10 @@ func TestAccStore(t *testing.T) {
 	s := pg.New(db)
 	acct, other := kernel.NewAccountID(), kernel.NewAccountID()
 	space, id := kernel.NewULID(), kernel.NewULID()
-	if _, err := db.Exec(ctx, `INSERT INTO stacks (account_id, id, slug, space_id)
-		VALUES ($1, $2, 'infra', $3)`, acct, id, space); err != nil {
+	if _, err := db.Exec(ctx, `INSERT INTO stacks (account_id, id, slug, space_id, name,
+			repository, branch, provider, vendor)
+		VALUES ($1, $2, 'infra', $3, 'Infra', 'infra', 'main', 'GITHUB', 'terraform')`,
+		acct, id, space); err != nil {
 		t.Fatal(err)
 	}
 	want := stacksapi.Stack{ID: id, Account: acct, Slug: "infra", Space: space}
@@ -90,5 +94,25 @@ func TestAccStoreUnavailable(t *testing.T) {
 	}
 	if _, err := s.SpaceInUse(ctx, acct, id); err == nil {
 		t.Error("SpaceInUse on a closed pool succeeded")
+	}
+	st := stacks.Stack{}
+	st.Account, st.ID = acct, id
+	actor := stacks.Actor{Kind: kernel.PrincipalAPIKey, ID: id}
+	for name, err := range map[string]error{
+		"Read":         func() error { _, err := s.Read(ctx, acct, id, false); return err }(),
+		"ByRepository": func() error { _, err := s.ByRepository(ctx, acct, nil, "r", "b"); return err }(),
+		"Create":       s.Create(ctx, st),
+		"Write":        s.Write(ctx, st),
+		"Delete":       s.Delete(ctx, acct, id),
+		"SetStar":      s.SetStar(ctx, acct, id, actor, true),
+		"Starred":      func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
+		"Search": func() error {
+			_, err := s.Search(ctx, acct, search.Input{}, []kernel.ULID{id})
+			return err
+		}(),
+	} {
+		if err == nil || errors.Is(err, stacksapi.ErrNotFound) {
+			t.Errorf("%s on a closed pool = %v", name, err)
+		}
 	}
 }

@@ -36,6 +36,9 @@ components:
           description: >-
             For forbidden, when an action decided it, the action the caller
             may not perform, a value of the Action enum or a pseudo-action.
+        lockedBy:
+          type: string
+          description: For resource-locked, who holds the lock.
         feature:
           type: string
           description: >-

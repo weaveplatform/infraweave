@@ -14,7 +14,8 @@
 // resolves its
 // entities' spaces for it with a SpaceOf, ErrNoSubject for an entity the
 // account lacks. Spaces is what a domain that stores a space's ID calls to
-// hold the space in its transaction, ErrNoSpace for one the account lacks,
+// find a space by its slug, read the slugs of an account's spaces and
+// hold a space in its transaction, ErrNoSpace for one the account lacks,
 // and SpaceGuard is what such a domain registers, so the space tree
 // refuses a delete or a move that would strand its rows. Action is the
 // action catalogue roles are built from: the reference's Action enum, which

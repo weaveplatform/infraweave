@@ -1,18 +1,23 @@
 // Package pg is the stacks domain's PostgreSQL storage: Stream, its
 // migration stream, whose stacks table keys each stack by its account and
-// ULID, with a slug unique per account and the ID of the space it lives
-// in, which carries no foreign key, since spaces belong to the access
-// domain. Store reads a stack, stacksapi.ErrNotFound when the account lacks it,
-// and answers whether a stack lives in a space. Every method joins the
-// transaction its context carries.
+// ULID, with a slug unique per account, its settings and its lock, and the
+// ID of the space it lives in, which carries no foreign key, since spaces
+// belong to the access domain; stack_hooks, stack_labels and stack_stars
+// hold its hooks, labels and each caller's star. Store reads a stack, by
+// ID, by slug or by the repository's branch it tracks,
+// stacksapi.ErrNotFound when the account lacks it, writes it whole,
+// searches an account's stacks, and answers whether a stack lives in a
+// space. Every method joins the transaction its context carries, and a
+// write of a taken slug is a *stacks.SlugTaken.
 //
 // # Input and output
 //
-// It reads PostgreSQL through the DB it is given.
+// It reads and writes PostgreSQL through the DB it is given.
 //
 // # Dependencies
 //
 // It imports stacksapi, the domain's stacks package for its port,
-// internal/kernel, platform/sql, platform/sql/migrate, platform/tx and
-// pgx. The stacks domain's assembly constructs it.
+// internal/kernel, kernel/search, platform/sql, platform/sql/migrate,
+// platform/sql/search, platform/tx and pgx. The stacks domain's assembly
+// constructs it.
 package pg

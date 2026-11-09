@@ -158,6 +158,36 @@ func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 
 var _ accessapi.Spaces = (*Service)(nil)
 
+// Find is the ID of acct's space slug; accessapi.ErrNoSpace when acct
+// lacks it.
+func (s *Service) Find(
+	ctx context.Context,
+	acct kernel.AccountID,
+	slug string,
+) (kernel.ULID, error) {
+	sp, err := s.store.Space(ctx, acct, slug)
+	if errors.Is(err, port.ErrNotFound) {
+		return kernel.ULID{}, fmt.Errorf("%w: %s", accessapi.ErrNoSpace, slug)
+	}
+	return sp.ID, err //nolint:wrapcheck // the store names the read
+}
+
+// Slugs names each of acct's spaces by its slug.
+func (s *Service) Slugs(
+	ctx context.Context,
+	acct kernel.AccountID,
+) (map[kernel.ULID]string, error) {
+	all, err := s.store.Spaces(ctx, acct)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	out := make(map[kernel.ULID]string, len(all))
+	for _, sp := range all {
+		out[sp.ID] = sp.Slug
+	}
+	return out, nil
+}
+
 // Spaces lists acct's spaces, top space first.
 func (s *Service) Spaces(ctx context.Context, acct kernel.AccountID) ([]Space, error) {
 	return s.store.Spaces(ctx, acct) //nolint:wrapcheck // the store names the read

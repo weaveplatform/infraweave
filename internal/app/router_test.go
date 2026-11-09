@@ -70,9 +70,9 @@ func TestUnitAPIRoutes(t *testing.T) {
 		{
 			"scaffolded operation",
 			http.MethodGet,
-			"/api/v1/stacks",
+			"/api/v1/stacks/infra/attachable-worker-pools",
 			http.StatusNotImplemented,
-			"stacks (GET /stacks)",
+			"stackAttachableWorkerPools (GET /stacks/{stackId}/attachable-worker-pools)",
 		},
 		{"unknown path", http.MethodGet, "/api/v1/nope", http.StatusNotFound, "/api/v1/nope"},
 		{"wrong method", http.MethodPatch, "/api/v1/stacks", http.StatusMethodNotAllowed, "PATCH"},
@@ -120,9 +120,9 @@ func TestUnitOperatorRoutes(t *testing.T) {
 	}
 	wantProblem(
 		t,
-		request(t, refused, http.MethodGet, "/api/v1/stacks"),
+		request(t, refused, http.MethodGet, "/api/v1/stacks/infra/attachable-worker-pools"),
 		http.StatusNotImplemented,
-		"stacks",
+		"stackAttachableWorkerPools",
 	)
 
 	admitted := API(

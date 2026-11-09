@@ -1,5 +1,5 @@
 # The synthetic example. It shows the layout and is replayed like a capture,
-# but records nothing Spacelift did: its expectation is infraweave's stub.
+# but records nothing Spacelift did.
 entry: C0
 example: true
 captured: 2026-11-05

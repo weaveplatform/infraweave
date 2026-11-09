@@ -26,7 +26,7 @@ func TestAccJobEntitlements(t *testing.T) {
 	db := sqltest.Open(t)
 	c := config.Defaults()
 	c.Features.Disabled = []string{"scans"}
-	d, err := newDomains(c, db, testKeyring(t, db.Primary()), nil)
+	d, err := newDomains(c, db, testKeyring(t, db.Primary()), nil, testEvents(t, db.Primary()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestAccSeatRace(t *testing.T) {
 	db := sqltest.Open(t)
 	c := config.Defaults()
 	c.Server.PublicURL = "http://iw.test"
-	d, err := newDomains(c, db, testKeyring(t, db.Primary()), nil)
+	d, err := newDomains(c, db, testKeyring(t, db.Primary()), nil, testEvents(t, db.Primary()))
 	if err != nil {
 		t.Fatal(err)
 	}

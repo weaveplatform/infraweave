@@ -2,30 +2,148 @@ package stacks
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// Store is what the service needs of the stacks' storage.
+// SlugTaken is a slug another stack of the account holds.
+type SlugTaken struct{ Slug string }
+
+func (e *SlugTaken) Error() string { return fmt.Sprintf("stacks: slug %q is taken", e.Slug) }
+
+// Fields are the stacks list's searchable fields.
+var Fields = []search.Field{
+	{Name: "id", Type: search.String, Orderable: true},
+	{Name: "name", Type: search.String, Orderable: true},
+	{Name: "space", Type: search.String},
+}
+
+// Store is what the service needs of the stacks' storage. Every method
+// joins the transaction its context carries.
 type Store interface {
 	// Get reads acct's stack id; stacksapi.ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error)
+	// Read reads acct's stack id whole, locking its row FOR UPDATE when
+	// lock is set; stacksapi.ErrNotFound when acct lacks it.
+	Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Stack, error)
+	// BySlug reads acct's stack slug whole, locking its row FOR UPDATE
+	// when lock is set; stacksapi.ErrNotFound when acct lacks it.
+	BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock bool) (Stack, error)
+	// ByRepository lists acct's stacks that track branch of repository
+	// through integration, nil for none, by slug.
+	ByRepository(
+		ctx context.Context,
+		acct kernel.AccountID,
+		integration *kernel.ULID,
+		repository, branch string,
+	) ([]stacksapi.Stack, error)
+	// Create writes a new stack with its hooks and labels; a *SlugTaken
+	// when another stack of its account holds its slug.
+	Create(ctx context.Context, st Stack) error
+	// Write replaces the stack's settings, hooks and labels, its slug and
+	// its lock, and sets its version to st.Version; a *SlugTaken when
+	// another stack of its account holds its slug.
+	Write(ctx context.Context, st Stack) error
+	// Delete deletes acct's stack id with its hooks, labels and stars.
+	Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// SetStar stars or unstars acct's stack id for the actor.
+	SetStar(ctx context.Context, acct kernel.AccountID, id kernel.ULID, actor Actor, on bool) error
+	// Starred is which of acct's stacks ids the actor has starred.
+	Starred(
+		ctx context.Context,
+		acct kernel.AccountID,
+		ids []kernel.ULID,
+		actor Actor,
+	) (map[kernel.ULID]bool, error)
 	// SpaceInUse reports whether a stack of acct lives in space.
 	SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
+	// Search reads a page of acct's stacks among reachable that in keeps,
+	// by Fields; an input they cannot answer is a *search.Invalid.
+	Search(
+		ctx context.Context,
+		acct kernel.AccountID,
+		in search.Input,
+		reachable []kernel.ULID,
+	) (search.Result[Stack], error)
 }
 
-// Service is the stacks domain's logic.
-type Service struct{ store Store }
+// Actor is who stars a stack: a principal's kind and actor ID.
+type Actor struct {
+	Kind kernel.PrincipalKind
+	ID   kernel.ULID
+}
 
-// New returns the service over store.
-func New(store Store) *Service { return &Service{store: store} }
+// ActorOf is p's actor.
+func ActorOf(p kernel.Principal) Actor { return Actor{Kind: p.Kind, ID: p.ActorID} }
+
+// Events is the outbox a write appends its stacksapi.Changed to.
+type Events interface {
+	Append(ctx context.Context, ev outbox.Event) (outbox.Event, error)
+}
+
+// Deps are what the service is constructed over.
+type Deps struct {
+	Store  Store
+	DB     tx.Beginner
+	Spaces accessapi.Spaces
+	Authz  accessapi.Authorizer
+	Events Events
+	Now    func() time.Time
+}
+
+// Service is the stacks domain's logic. Every write runs in one
+// transaction with its outbox event, holding the stack's space so no
+// delete or move removes it first.
+type Service struct {
+	store  Store
+	db     tx.Beginner
+	spaces accessapi.Spaces
+	authz  accessapi.Authorizer
+	events Events
+	now    func() time.Time
+}
+
+// New returns the service over d.
+func New(d Deps) *Service {
+	now := d.Now
+	if now == nil {
+		now = time.Now
+	}
+	return &Service{
+		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, events: d.Events, now: now,
+	}
+}
 
 var (
 	_ stacksapi.Stacks     = (*Service)(nil)
 	_ accessapi.SpaceGuard = (*Service)(nil)
 )
+
+// Denied is an action the caller may not perform, beyond the one the
+// operation's route decided.
+type Denied struct{ Action accessapi.Action }
+
+func (d *Denied) Error() string { return fmt.Sprintf("you may not perform %s here", d.Action) }
+
+// Locked is a lock another caller holds.
+type Locked struct{ By string }
+
+func (l *Locked) Error() string { return "the stack is locked by " + l.By }
+
+// SpaceError is a space a write names that the account lacks or the
+// caller cannot read, which answers as one that does not exist.
+type SpaceError struct{ Slug string }
+
+func (e *SpaceError) Error() string { return fmt.Sprintf("stacks: no space %q", e.Slug) }
 
 // Get reads acct's stack id.
 func (s *Service) Get(
@@ -34,6 +152,280 @@ func (s *Service) Get(
 	id kernel.ULID,
 ) (stacksapi.Stack, error) {
 	return s.store.Get(ctx, acct, id) //nolint:wrapcheck // the store names the read
+}
+
+// Settings reads acct's stack id's settings.
+func (s *Service) Settings(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+) (stacksapi.Settings, error) {
+	st, err := s.store.Read(ctx, acct, id, false)
+	return st.Settings, err //nolint:wrapcheck // as above
+}
+
+// ByRepository lists acct's stacks that track branch of repository
+// through integration.
+func (s *Service) ByRepository(
+	ctx context.Context,
+	acct kernel.AccountID,
+	integration *kernel.ULID,
+	repository, branch string,
+) ([]stacksapi.Stack, error) {
+	//nolint:wrapcheck // as above
+	return s.store.ByRepository(ctx, acct, integration, repository, branch)
+}
+
+// LockForRun reads acct's stack id's settings, locking its row in the
+// context's transaction.
+func (s *Service) LockForRun(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+) (stacksapi.Settings, error) {
+	st, err := s.store.Read(ctx, acct, id, true)
+	return st.Settings, err //nolint:wrapcheck // as above
+}
+
+// SpaceOf is the space of acct's stack slug, which the access domain's
+// middleware decides a stack's operations on; accessapi.ErrNoSubject when
+// acct lacks it.
+func (s *Service) SpaceOf(
+	ctx context.Context,
+	acct kernel.AccountID,
+	slug string,
+) (kernel.ULID, error) {
+	st, err := s.store.BySlug(ctx, acct, slug, false)
+	if errors.Is(err, stacksapi.ErrNotFound) {
+		return kernel.ULID{}, accessapi.ErrNoSubject
+	}
+	return st.Space, err //nolint:wrapcheck // as above
+}
+
+// Stack reads acct's stack slug.
+func (s *Service) Stack(ctx context.Context, acct kernel.AccountID, slug string) (Stack, error) {
+	return s.store.BySlug(ctx, acct, slug, false) //nolint:wrapcheck // as above
+}
+
+// List reads a page of the stacks of p's account in the spaces it may
+// read, which the query leaves the others out of, so every page before
+// the last is full.
+func (s *Service) List(
+	ctx context.Context,
+	p kernel.Principal,
+	in search.Input,
+) (search.Result[Stack], error) {
+	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
+	if err != nil {
+		return search.Result[Stack]{}, err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	return s.store.Search(ctx, p.AccountID, in, reach) //nolint:wrapcheck // as the store's
+}
+
+// Starred is which of stacks p has starred.
+func (s *Service) Starred(
+	ctx context.Context,
+	p kernel.Principal,
+	stacks []Stack,
+) (map[kernel.ULID]bool, error) {
+	ids := make([]kernel.ULID, len(stacks))
+	for i, st := range stacks {
+		ids[i] = st.ID
+	}
+	return s.store.Starred(ctx, p.AccountID, ids, ActorOf(p)) //nolint:wrapcheck // as above
+}
+
+// Create creates a stack of p's account from in, slugged slug when it is
+// not empty and from in's name otherwise, whose state infraweave keeps
+// when manageState is set. The route has decided
+// STACK_CREATE on in's space. Its refusals point into stackCreate's body,
+// where in is input.
+func (s *Service) Create(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	manageState bool,
+	in Input,
+) (Stack, error) {
+	if err := check("/input", in); err != nil {
+		return Stack{}, err
+	}
+	if slug == "" {
+		slug = kernel.SlugFrom(in.Name).String()
+	} else if !kernel.Slug(slug).Valid() {
+		return Stack{}, &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+			Pointer: "/slug", Reason: kernel.ReasonPattern,
+			Message: "A slug is lowercase letters and digits, in runs joined by single hyphens.",
+		}}}
+	}
+	var st Stack
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		space, err := s.space(ctx, p, in.Space)
+		if err != nil {
+			return err
+		}
+		st = Stack{CreatedAt: s.now(), ManagesState: manageState}
+		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
+		apply(&st, space, in)
+		if err := s.store.Create(ctx, st); err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
+		return s.changed(ctx, st, stacksapi.ChangeCreated)
+	})
+	return st, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// Update replaces the settings of p's account's stack slug with in's. The
+// route has decided STACK_UPDATE on the stack's space; a move to another
+// space also needs STACK_CREATE there.
+func (s *Service) Update(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	in Input,
+) (Stack, error) {
+	if err := check("", in); err != nil {
+		return Stack{}, err
+	}
+	return s.write(
+		ctx,
+		p.AccountID,
+		slug,
+		stacksapi.ChangeUpdated,
+		func(ctx context.Context, st *Stack) error {
+			space, err := s.space(ctx, p, in.Space)
+			if err != nil {
+				return err
+			}
+			if space != st.Space {
+				if err := s.require(ctx, p, accessapi.ActionStackCreate, space); err != nil {
+					return err
+				}
+			}
+			apply(st, space, in)
+			return nil
+		},
+	)
+}
+
+// Reslug gives p's account's stack slug the slug its name derives; a
+// *SlugTaken when another stack holds that one.
+func (s *Service) Reslug(ctx context.Context, p kernel.Principal, slug string) (Stack, error) {
+	return s.write(
+		ctx,
+		p.AccountID,
+		slug,
+		stacksapi.ChangeReslugged,
+		func(_ context.Context, st *Stack) error {
+			st.Slug = kernel.SlugFrom(st.Name).String()
+			return nil
+		},
+	)
+}
+
+// SetDisabled disables or enables p's account's stack slug.
+func (s *Service) SetDisabled(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	disabled bool,
+) (Stack, error) {
+	change := stacksapi.ChangeEnabled
+	if disabled {
+		change = stacksapi.ChangeDisabled
+	}
+	return s.write(ctx, p.AccountID, slug, change, func(_ context.Context, st *Stack) error {
+		st.Disabled = disabled
+		return nil
+	})
+}
+
+// Lock locks p's account's stack slug for p with note, or changes the
+// note of p's own lock; a lock another caller holds is a *Locked. A lock
+// has no expiry.
+func (s *Service) Lock(ctx context.Context, p kernel.Principal, slug, note string) (Stack, error) {
+	return s.write(
+		ctx,
+		p.AccountID,
+		slug,
+		stacksapi.ChangeLocked,
+		func(_ context.Context, st *Stack) error {
+			if st.Lock != nil && st.Lock.Holder != p.Caller() {
+				return &Locked{By: st.Lock.By}
+			}
+			st.Lock = &stacksapi.Lock{Holder: p.Caller(), By: nameOf(p), Note: note, At: s.now()}
+			return nil
+		},
+	)
+}
+
+// Unlock unlocks p's account's stack slug. The route has decided
+// STACK_UNLOCK, which unlocks p's own lock; another caller's needs
+// STACK_UNLOCK_FORCE, since the operation has no force argument. An
+// unlocked stack is answered as it is.
+func (s *Service) Unlock(ctx context.Context, p kernel.Principal, slug string) (Stack, error) {
+	return s.write(
+		ctx,
+		p.AccountID,
+		slug,
+		stacksapi.ChangeUnlocked,
+		func(ctx context.Context, st *Stack) error {
+			if st.Lock == nil {
+				return errUnchanged
+			}
+			if st.Lock.Holder != p.Caller() {
+				if err := s.require(
+					ctx,
+					p,
+					accessapi.ActionStackUnlockForce,
+					st.Space,
+				); err != nil {
+					return err
+				}
+			}
+			st.Lock = nil
+			return nil
+		},
+	)
+}
+
+// Delete deletes p's account's stack slug and answers it as it was; a
+// stack protected from deletion is refused.
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string) (Stack, error) {
+	var st Stack
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		var err error
+		if st, err = s.store.BySlug(ctx, p.AccountID, slug, true); err != nil {
+			return err //nolint:wrapcheck // the store names the read
+		}
+		if st.ProtectFromDeletion {
+			return &kernel.Invalid{Detail: "The stack is protected from deletion; " +
+				"turn protectFromDeletion off first."}
+		}
+		if err := s.store.Delete(ctx, st.Account, st.ID); err != nil {
+			return err //nolint:wrapcheck // as above
+		}
+		st.Version++
+		return s.changed(ctx, st, stacksapi.ChangeDeleted)
+	})
+	return st, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// SetStar stars or unstars p's account's stack slug for p alone.
+func (s *Service) SetStar(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	on bool,
+) (Stack, error) {
+	st, err := s.store.BySlug(ctx, p.AccountID, slug, false)
+	if err != nil {
+		return Stack{}, err //nolint:wrapcheck // as above
+	}
+	if err := s.store.SetStar(ctx, p.AccountID, st.ID, ActorOf(p), on); err != nil {
+		return Stack{}, err //nolint:wrapcheck // as above
+	}
+	return st, nil
 }
 
 // SpaceInUse reports whether a stack lives in space, which refuses its
@@ -47,7 +439,112 @@ func (s *Service) SpaceInUse(
 }
 
 // LostOnMove refuses no move: a stack keeps its space through a move, and
-// nothing it reaches through its space is attached to it yet.
+// nothing it reaches through its space is attached to it.
 func (*Service) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.LostReach, error) {
 	return nil, nil
+}
+
+// errUnchanged ends a write that changes nothing, answering the stack as
+// it is.
+var errUnchanged = errors.New("unchanged")
+
+// write reads acct's stack slug locked, lets change change it, and writes
+// it with its version moved on and its Changed event, in one transaction.
+func (s *Service) write(
+	ctx context.Context,
+	acct kernel.AccountID,
+	slug, what string,
+	change func(ctx context.Context, st *Stack) error,
+) (Stack, error) {
+	var st Stack
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		var err error
+		if st, err = s.store.BySlug(ctx, acct, slug, true); err != nil {
+			return err //nolint:wrapcheck // the store names the read
+		}
+		if err := change(ctx, &st); err != nil {
+			return err
+		}
+		st.Version++
+		if err := s.store.Write(ctx, st); err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
+		return s.changed(ctx, st, what)
+	})
+	if errors.Is(err, errUnchanged) {
+		return st, nil
+	}
+	return st, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// space is the ID of the space slug, the top space when it is empty,
+// held in the context's transaction; a space p cannot read is a
+// *SpaceError, as one the account lacks is.
+func (s *Service) space(ctx context.Context, p kernel.Principal, slug string) (kernel.ULID, error) {
+	id := p.AccountID.ULID
+	if slug != "" {
+		var err error
+		if id, err = s.spaces.Find(ctx, p.AccountID, slug); errors.Is(err, accessapi.ErrNoSpace) {
+			return kernel.ULID{}, &SpaceError{Slug: slug}
+		} else if err != nil {
+			return kernel.ULID{}, err //nolint:wrapcheck // the access domain names the read
+		}
+	}
+	read, err := s.authz.Authorize(ctx, p, accessapi.ActionSpaceRead, id)
+	if err != nil {
+		return kernel.ULID{}, err //nolint:wrapcheck // the snapshot's read names itself
+	}
+	if !read {
+		return kernel.ULID{}, &SpaceError{Slug: slug}
+	}
+	if err := s.spaces.Hold(ctx, p.AccountID, id); errors.Is(err, accessapi.ErrNoSpace) {
+		return kernel.ULID{}, &SpaceError{Slug: slug}
+	} else if err != nil {
+		return kernel.ULID{}, err //nolint:wrapcheck // as above
+	}
+	return id, nil
+}
+
+// require refuses p action in space, as a *Denied.
+func (s *Service) require(
+	ctx context.Context,
+	p kernel.Principal,
+	action accessapi.Action,
+	space kernel.ULID,
+) error {
+	ok, err := s.authz.Authorize(ctx, p, action, space)
+	switch {
+	case err != nil:
+		return err //nolint:wrapcheck // the snapshot's read names itself
+	case !ok:
+		return &Denied{Action: action}
+	}
+	return nil
+}
+
+// changed appends st's Changed event in the context's transaction.
+func (s *Service) changed(ctx context.Context, st Stack, change string) error {
+	doc, err := json.Marshal(stacksapi.Changed{Stack: st.ID, Slug: st.Slug, Change: change})
+	if err != nil {
+		return fmt.Errorf("stacks: encode %s event: %w", change, err)
+	}
+	_, err = s.events.Append(ctx, outbox.Event{
+		Account:       st.Account.ULID,
+		Kind:          stacksapi.ChangedKind,
+		SchemaVersion: stacksapi.ChangedVersion,
+		Space:         st.Space.String(),
+		Subject:       outbox.Subject{Kind: "stack", ID: st.ID.String()},
+		Sequence:      st.Version,
+		Document:      doc,
+	})
+	return err //nolint:wrapcheck // the outbox names the append
+}
+
+// nameOf is the name a lock shows for p: a member's login or an API key's
+// ID, as its session recorded.
+func nameOf(p kernel.Principal) string {
+	if p.Login != "" {
+		return p.Login
+	}
+	return p.ActorID.String()
 }
