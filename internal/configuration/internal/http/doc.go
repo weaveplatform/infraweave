@@ -1,8 +1,8 @@
 // Package http is the configuration domain's HTTP adapter: Server, the
 // domain's partial of the API's strict server, which serves the contexts,
-// their config elements and their attachments to stacks, and the searches
-// of the contexts a caller reads and of those a stack in a space may
-// attach. It answers each context with the actions the caller holds in its
+// their config elements and their attachments to stacks, a stack's own
+// config elements, and the searches of the contexts a caller reads and of
+// those a stack, or a stack in a space, may attach. It answers each context with the actions the caller holds in its
 // space, and never answers a write-only value.
 //
 // # Input and output

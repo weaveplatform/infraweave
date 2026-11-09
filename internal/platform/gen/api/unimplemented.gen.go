@@ -662,6 +662,10 @@ func (UnimplementedStrict) StackConfigDelete(context.Context, StackConfigDeleteR
 	return nil, &problem.NotImplementedError{OperationID: "stackConfigDelete", Route: "DELETE /stacks/{stackId}/configs/{configId}"}
 }
 
+func (UnimplementedStrict) StackConfigSet(context.Context, StackConfigSetRequestObject) (StackConfigSetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackConfigSet", Route: "PUT /stacks/{stackId}/configs/{configId}"}
+}
+
 func (UnimplementedStrict) ContextAttach(context.Context, ContextAttachRequestObject) (ContextAttachResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "contextAttach", Route: "PUT /stacks/{stackId}/contexts/{contextId}"}
 }

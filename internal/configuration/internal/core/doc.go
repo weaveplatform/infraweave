@@ -1,8 +1,8 @@
 // Package core is the configuration domain's model and rules: a context in
 // a space, its config elements, environment variables and mounted files
 // whose values the store seals, and its attachments to stacks. Service
-// creates, changes and deletes contexts, sets and deletes their elements,
-// and attaches them to the stacks within reach: a stack in a space reaches
+// creates, changes and deletes contexts, sets and deletes their elements
+// and a stack's own, and attaches contexts to the stacks within reach: a stack in a space reaches
 // the contexts of that space and of each ancestor it climbs to while every
 // space on the way inherits. SpaceGuard and StackGuard refuse a space
 // delete or move, and a stack move, that would leave an attachment out of

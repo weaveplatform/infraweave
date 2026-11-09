@@ -190,19 +190,30 @@ func (s *Service) attachableScope(
 	if err != nil {
 		return space, Scope{}, err
 	}
+	scope, err := s.reachScope(ctx, p, space)
+	return space, scope, err
+}
+
+// reachScope is the scope of the contexts a stack in space may attach that
+// p may read.
+func (s *Service) reachScope(
+	ctx context.Context,
+	p kernel.Principal,
+	space kernel.ULID,
+) (Scope, error) {
 	tree, err := s.spaces.Tree(ctx, p.AccountID)
 	if err != nil {
-		return space, Scope{}, err //nolint:wrapcheck // the access domain names the read
+		return Scope{}, err //nolint:wrapcheck // the access domain names the read
 	}
 	reach := Reach(index(tree), space)
 	scope, err := s.scope(ctx, p, tree)
 	if err != nil {
-		return space, Scope{}, err
+		return Scope{}, err
 	}
 	scope.Reachable = slices.DeleteFunc(scope.Reachable, func(id kernel.ULID) bool {
 		return !slices.Contains(reach, id)
 	})
-	return space, scope, nil
+	return scope, nil
 }
 
 // scope is what p's searches see: the spaces it may read and its
@@ -320,7 +331,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Con
 			return err //nolint:wrapcheck // the store names the write
 		}
 		for _, e := range in.Config {
-			if _, err := s.put(ctx, c, e); err != nil {
+			if _, err := s.put(ctx, c.Account, Owner{Context: c.ID}, e); err != nil {
 				return err
 			}
 		}
@@ -388,7 +399,7 @@ func (s *Service) Update(
 				return err //nolint:wrapcheck // the store names the write
 			}
 			for _, e := range in.Config {
-				if _, err := s.put(ctx, *c, e); err != nil {
+				if _, err := s.put(ctx, c.Account, Owner{Context: c.ID}, e); err != nil {
 					return err
 				}
 			}
@@ -456,28 +467,46 @@ func (s *Service) SetElement(
 	_, err := s.write(ctx, p.AccountID, slug, kernel.Expect{}, configapi.ChangeConfigured, nil,
 		func(ctx context.Context, c *Context) error {
 			var err error
-			e, err = s.put(ctx, *c, in)
-			if err == nil {
-				created = e.ID.IsZero()
-				e, err = s.store.Element(ctx, c.Account, Owner{Context: c.ID}, in.Name)
-			}
-			if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
-				for i := range inv.Errors {
-					inv.Errors[i].Pointer = at + inv.Errors[i].Pointer
-				}
-			}
-			return err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
+			e, created, err = s.set(ctx, c.Account, Owner{Context: c.ID}, in, at)
+			return err
 		})
 	return e, created, err
 }
 
-// put writes in into c's elements, and answers the element it replaced,
-// zero when it created one. A nil value keeps the replaced element's
-// value, which neither a new element nor one that changes type may do,
-// and a write-only element stays write-only unless its value is sent.
-func (s *Service) put(ctx context.Context, c Context, in ElementInput) (Element, error) {
-	owner := Owner{Context: c.ID}
-	old, err := s.store.Element(ctx, c.Account, owner, in.Name)
+// set writes in into owner's elements and answers the element as stored,
+// and whether it created it; a refusal's pointers lie under at.
+func (s *Service) set(
+	ctx context.Context,
+	acct kernel.AccountID,
+	owner Owner,
+	in ElementInput,
+	at string,
+) (Element, bool, error) {
+	old, err := s.put(ctx, acct, owner, in)
+	if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
+		for i := range inv.Errors {
+			inv.Errors[i].Pointer = at + inv.Errors[i].Pointer
+		}
+	}
+	if err != nil {
+		return Element{}, false, err
+	}
+	e, err := s.store.Element(ctx, acct, owner, in.Name)
+	return e, old.ID.IsZero(), err //nolint:wrapcheck // the store names the read
+}
+
+// put writes in into owner's elements, and answers the element it
+// replaced, zero when it created one. A nil value keeps the replaced
+// element's value, which neither a new element nor one that changes type
+// may do, and a write-only element stays write-only unless its value is
+// sent.
+func (s *Service) put(
+	ctx context.Context,
+	acct kernel.AccountID,
+	owner Owner,
+	in ElementInput,
+) (Element, error) {
+	old, err := s.store.Element(ctx, acct, owner, in.Name)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		old = Element{}
@@ -485,7 +514,7 @@ func (s *Service) put(ctx context.Context, c Context, in ElementInput) (Element,
 		return Element{}, err //nolint:wrapcheck // the store names the read
 	}
 	e := Element{
-		ID: old.ID, Account: c.Account, Owner: owner, Name: in.Name, FileMount: in.FileMount,
+		ID: old.ID, Account: acct, Owner: owner, Name: in.Name, FileMount: in.FileMount,
 		Value: in.Value, WriteOnly: in.WriteOnly, FileMode: in.FileMode, CreatedAt: old.CreatedAt,
 		Checksum: old.Checksum,
 	}

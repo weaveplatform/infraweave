@@ -123,6 +123,40 @@ func handlers(ctx context.Context, s http.Server, att string) map[string]func() 
 			_, err := s.ContextDetach(ctx, api.ContextDetachRequestObject{AttachmentId: att})
 			return err
 		},
+		"stackAttachableContexts": func() error {
+			_, err := s.StackAttachableContexts(
+				ctx,
+				api.StackAttachableContextsRequestObject{StackId: "web"},
+			)
+			return err
+		},
+		"stackConfigElement": func() error {
+			_, err := s.StackConfigElement(ctx, api.StackConfigElementRequestObject{
+				StackId: "web", Params: api.StackConfigElementParams{Id: "S"},
+			})
+			return err
+		},
+		"stackConfigAdd": func() error {
+			_, err := s.StackConfigAdd(
+				ctx,
+				api.StackConfigAddRequestObject{StackId: "web", Body: &element},
+			)
+			return err
+		},
+		"stackConfigSet": func() error {
+			_, err := s.StackConfigSet(ctx, api.StackConfigSetRequestObject{
+				StackId: "web", ConfigId: "B",
+				Body: &api.ConfigElementInput{Type: api.ENVIRONMENTVARIABLE, Value: new("2")},
+			})
+			return err
+		},
+		"stackConfigDelete": func() error {
+			_, err := s.StackConfigDelete(
+				ctx,
+				api.StackConfigDeleteRequestObject{StackId: "web", ConfigId: "S"},
+			)
+			return err
+		},
 	}
 }
 
@@ -136,6 +170,16 @@ func TestAccHandlers(t *testing.T) {
 	f.create(t, "Shared", "team", variable("A", "1"))
 	a, _, err := f.svc.Attach(t.Context(), f.admin, "shared", "web", 0)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := f.svc.SetStackElement(
+		t.Context(),
+		f.admin,
+		"web",
+		variable("S", "1"),
+		"",
+		"/id",
+	); err != nil {
 		t.Fatal(err)
 	}
 	for name, call := range handlers(context.Background(), s, a.ID.String()) {
@@ -164,6 +208,7 @@ func TestAccHandlers(t *testing.T) {
 		"contexts", "attachableContextsInSpace", "searchContexts", "searchContextsSuggestions",
 		"searchSpaceContexts", "searchSpaceContextsSuggestions", "context", "contextCreateV2",
 		"contextUpdateV2", "contextPatch", "contextDelete", "contextAttachedStack", "contextAttach",
+		"stackAttachableContexts",
 	} {
 		if err := calls[name](); err == nil || isProblem(err, 404) {
 			t.Errorf("%s with the spaces down = %v", name, err)

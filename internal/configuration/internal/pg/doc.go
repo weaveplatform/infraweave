@@ -1,6 +1,8 @@
 // Package pg is the configuration domain's PostgreSQL storage: Store, the
-// contexts, their config elements and their attachments to stacks, which
-// seals each element's value to its row and never opens a write-only one;
+// contexts, their config elements and stacks' own, and the contexts'
+// attachments to stacks, which seals each element's value to its row,
+// never opens a write-only one, and locks one owner's elements for the
+// writers of a stack, whose row is the stacks domain's;
 // Stream, the migration stream that creates them; Held, the columns that
 // name other domains' rows; and SealedColumns, the sealed value column.
 //

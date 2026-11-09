@@ -384,6 +384,21 @@ func (s *Store) PutElement(ctx context.Context, e core.Element) error {
 	return nil
 }
 
+// LockElements takes the transaction's advisory lock on owner's
+// elements. The two-key form keeps it apart from the single-key locks
+// the migrator takes, and a hash collision only makes two owners' writers
+// take turns.
+func (s *Store) LockElements(ctx context.Context, acct kernel.AccountID, owner core.Owner) error {
+	_, id := ownerWhere(owner)
+	_, err := tx.Q(ctx, s.db).Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtext('config_elements'), hashtext($1::text || '/' || $2::text))`,
+		acct, id)
+	if err != nil {
+		return fmt.Errorf("configuration: lock config elements: %w", sql.Unavailable(err))
+	}
+	return nil
+}
+
 // DeleteElements deletes owner's elements names, every one when names is
 // nil.
 func (s *Store) DeleteElements(

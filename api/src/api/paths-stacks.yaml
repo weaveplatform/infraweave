@@ -7767,7 +7767,9 @@ paths:
       x-rest-style: field
   /stacks/{stackId}/attachable-contexts:
     get:
-      description: List of contexts that can be attached to this Stack.
+      description: >-
+        The contexts the stack may attach that the caller may read: those of
+        the stack's space and of each space it reaches while each inherits.
       operationId: stackAttachableContexts
       x-infraweave-feature: stacks
       x-infraweave-action: SPACE_READ
@@ -7923,7 +7925,9 @@ paths:
       x-rest-style: field
   /stacks/{stackId}/config-element:
     get:
-      description: Single stack config element.
+      description: >-
+        A config element of the stack, by its ID. A write-only value is never
+        answered; its checksum is.
       operationId: stackConfigElement
       x-infraweave-feature: stacks
       x-infraweave-action: SPACE_READ
@@ -7976,7 +7980,10 @@ paths:
       x-rest-style: field
   /stacks/{stackId}/configs:
     post:
-      description: Add a stack config element.
+      description: >-
+        Add a config element to a stack, or replace the element with its ID:
+        201 when it is created and 200 when it replaces one. A write-only
+        value is never answered; its checksum is.
       operationId: stackConfigAdd
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_ADD_CONFIG
@@ -8007,6 +8014,19 @@ paths:
         required: true
         x-graphql-arg: config
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Replaced.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
         "201":
           content:
             application/json:
@@ -8042,12 +8062,13 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-085
         - idempotency-key
         - rate-limit
       x-rest-style: create
   /stacks/{stackId}/configs/{configId}:
     delete:
-      description: Delete a stack config element.
+      description: Delete a config element of a stack.
       operationId: stackConfigDelete
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_DELETE_CONFIG
@@ -8099,6 +8120,80 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: delete
+    put:
+      description: >-
+        Create or replace the stack's config element at configId, the
+        variable's name or the file's path: 201 when it is created and 200
+        when it replaces one.
+      operationId: stackConfigSet
+      x-infraweave-feature: stacks
+      x-infraweave-action: STACK_ADD_CONFIG
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: My environment variable
+              type: ENVIRONMENT_VARIABLE
+              value: my-value
+              writeOnly: false
+            schema:
+              $ref: '#/components/schemas/ConfigElementInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Replaced.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigElement'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Set Stack Config
+      tags:
+        - Stacks
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-085
+        - rate-limit
+      x-upstream: none
   /stacks/{stackId}/dependency:
     get:
       description: An individual stack dependency.
