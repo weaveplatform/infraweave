@@ -539,7 +539,7 @@ it adds no import.
 | `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
 | `workers` | features, access | `runsapi.Scheduler`, `runsapi.Reports` for the worker protocol |
 | `vendors` | features, access | |
-| `stacks` | features, access, workers, vendors | `runsapi.StackStatus`; `configurationapi.StackConfiguration` for the stack view's `attachedContexts` and `config` |
+| `stacks` | features, access, workers, vendors | `runsapi.StackStatus`; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config` |
 | `configuration` | features, access, stacks | |
 | `policies` | features, access, stacks | |
 | `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |

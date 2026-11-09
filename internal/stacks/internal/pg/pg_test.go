@@ -144,6 +144,125 @@ func TestAccPurge(t *testing.T) {
 	}
 }
 
+// insertStack writes a stack of acct named slug in space with labels,
+// and returns its ID.
+func insertStack(
+	t *testing.T,
+	db *pgxpool.Pool,
+	acct kernel.AccountID,
+	slug string,
+	space kernel.ULID,
+	labels ...string,
+) kernel.ULID {
+	t.Helper()
+	ctx := t.Context()
+	id := kernel.NewULID()
+	if _, err := db.Exec(ctx, `INSERT INTO stacks (account_id, id, slug, space_id, name,
+		repository, branch, provider, vendor)
+		VALUES ($1, $2, $3, $4, 'Infra', 'infra', 'main', 'GITHUB', 'terraform')`,
+		acct, id, slug, space); err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range labels {
+		if _, err := db.Exec(ctx, `INSERT INTO stack_labels (account_id, stack_id, label)
+			VALUES ($1, $2, $3)`, acct, id, l); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return id
+}
+
+// TestAccHold holds a stack FOR KEY SHARE until the holder's transaction
+// ends, which an owner's FOR UPDATE waits for, and refuses another
+// account's stack and a missing one as not found.
+func TestAccHold(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	acct := kernel.NewAccountID()
+	id := insertStack(t, db, acct, "infra", kernel.NewULID())
+	lock := func() error {
+		_, err := db.Exec(ctx, `SELECT id FROM stacks WHERE id = $1 FOR UPDATE NOWAIT`, id)
+		return err
+	}
+	held := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		done <- tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+			if err := s.Hold(ctx, acct, id); err != nil {
+				return err
+			}
+			close(held)
+			<-release
+			return nil
+		})
+	}()
+	select {
+	case <-held:
+	case err := <-done:
+		t.Fatalf("Hold = %v", err)
+	}
+	if err := lock(); err == nil {
+		t.Error("a FOR UPDATE passed a held stack")
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if err := lock(); err != nil {
+		t.Errorf("FOR UPDATE after the holder committed = %v", err)
+	}
+	for name, err := range map[string]error{
+		"another account's": s.Hold(ctx, kernel.NewAccountID(), id),
+		"a missing":         s.Hold(ctx, acct, kernel.NewULID()),
+	} {
+		if !errors.Is(err, stacksapi.ErrNotFound) {
+			t.Errorf("Hold of %s stack = %v, want ErrNotFound", name, err)
+		}
+	}
+}
+
+// TestAccFind finds an account's stacks in the given spaces that carry
+// any of the given labels, by slug, and no other account's.
+func TestAccFind(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	acct, other := kernel.NewAccountID(), kernel.NewAccountID()
+	team, ops := kernel.NewULID(), kernel.NewULID()
+	insertStack(t, db, acct, "beta", team, "autoattach:prod", "web")
+	insertStack(t, db, acct, "alpha", team, "db")
+	insertStack(t, db, acct, "gamma", ops, "autoattach:prod")
+	insertStack(t, db, acct, "delta", team)
+	insertStack(t, db, other, "beta", team, "autoattach:prod")
+	for _, tc := range []struct {
+		spaces []kernel.ULID
+		labels []string
+		want   []string
+	}{
+		{[]kernel.ULID{team}, []string{"autoattach:prod", "db"}, []string{"alpha", "beta"}},
+		{[]kernel.ULID{team, ops}, []string{"autoattach:prod"}, []string{"beta", "gamma"}},
+		{[]kernel.ULID{ops}, []string{"web"}, nil},
+		{[]kernel.ULID{team}, []string{"nothing"}, nil},
+	} {
+		got, err := s.Find(ctx, acct, tc.spaces, tc.labels)
+		if err != nil {
+			t.Fatal(err)
+		}
+		slugs := make([]string, 0, len(got))
+		for _, st := range got {
+			if st.Account != acct || st.ID.IsZero() || st.Space.IsZero() {
+				t.Errorf("Find answered %+v", st)
+			}
+			slugs = append(slugs, st.Slug)
+		}
+		if fmt.Sprint(slugs) != fmt.Sprint(tc.want) {
+			t.Errorf("Find(%v) = %v, want %v", tc.labels, slugs, tc.want)
+		}
+	}
+}
+
 // TestAccStoreUnavailable checks that a read on a closed pool fails, and
 // not as a missing stack.
 func TestAccStoreUnavailable(t *testing.T) {
@@ -168,8 +287,13 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"Write":        s.Write(ctx, st),
 		"Delete":       s.Delete(ctx, acct, id),
 		"Purge":        func() error { _, err := s.Purge(ctx, acct, 1); return err }(),
-		"SetStar":      s.SetStar(ctx, acct, id, actor, true),
-		"Starred":      func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
+		"Hold":         s.Hold(ctx, acct, id),
+		"Find": func() error {
+			_, err := s.Find(ctx, acct, []kernel.ULID{id}, []string{"l"})
+			return err
+		}(),
+		"SetStar": s.SetStar(ctx, acct, id, actor, true),
+		"Starred": func() error { _, err := s.Starred(ctx, acct, []kernel.ULID{id}, actor); return err }(),
 		"Search": func() error {
 			_, err := s.Search(ctx, acct, search.Input{}, core.Scope{Reachable: []kernel.ULID{id}})
 			return err

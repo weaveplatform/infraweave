@@ -653,7 +653,8 @@ func TestUnitSpaceLabels(t *testing.T) {
 }
 
 // TestUnitSpaceFind finds a space's ID by slug, names a missing one by
-// accessapi.ErrNoSpace, and names every space by its slug and in its tree.
+// accessapi.ErrNoSpace, and names every space by its slug and in its tree,
+// with whether it inherits.
 func TestUnitSpaceFind(t *testing.T) {
 	ctx := t.Context()
 	w := newWorld(t)
@@ -668,10 +669,13 @@ func TestUnitSpaceFind(t *testing.T) {
 		slugs[w.legacy.ID] != space.LegacySlug {
 		t.Errorf("Slugs = %v, %v", slugs, err)
 	}
+	inheriting := w.f.spaces[space.LegacySlug]
+	inheriting.InheritEntities = true
+	w.f.spaces[space.LegacySlug] = inheriting
 	tree, err := w.svc.Tree(ctx, w.f.acct)
 	if err != nil || len(tree) != 2 || tree[0].ID != w.top.ID || !tree[0].Parent.IsZero() ||
-		tree[1].Slug != space.LegacySlug || tree[1].Parent != w.top.ID ||
-		tree[1].Name != w.legacy.Name {
+		tree[0].Inherit || tree[1].Slug != space.LegacySlug || tree[1].Parent != w.top.ID ||
+		tree[1].Name != w.legacy.Name || !tree[1].Inherit {
 		t.Errorf("Tree = %+v, %v", tree, err)
 	}
 	w.f.err = errors.New("store down")

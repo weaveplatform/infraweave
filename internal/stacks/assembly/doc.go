@@ -1,7 +1,11 @@
 // Package assembly constructs the stacks domain over its Deps. Stacks is
 // the stacksapi.Stacks that the domains above it call; SpaceGuard is the
 // accessapi.SpaceGuard internal/app registers with the access domain, so
-// a space a stack lives in cannot be deleted; SpaceOf is the
+// a space a stack lives in cannot be deleted; GuardStacks registers
+// another domain's stacksapi.StackGuard, which a stack's move and delete
+// ask; BindConfiguration binds the configuration domain's
+// stacksapi.StackConfiguration, the back edge the stack view reads a
+// stack's contexts and config elements through; SpaceOf is the
 // accessapi.SpaceOf internal/app registers for the entity "stack", so the
 // access domain decides a stack's operations in the stack's space;
 // RegisterEvents registers stacksapi.Changed with the outbox; API is its

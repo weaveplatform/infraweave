@@ -13,10 +13,11 @@ import (
 )
 
 // viewOf is st as the API answers it, in the space slug, with the
-// actions held there and whether the caller starred it. The fields later
-// phases own read their empty values: no runs, so the state NONE, which
-// is terminal, and no blocker; nothing attached, no dependencies and no
-// managed resources.
+// actions held there and whether the caller starred it, and no contexts
+// or config elements, which views reads from the configuration domain.
+// The fields later phases own read their empty values: no runs, so the
+// state NONE, which is terminal, and no blocker; no other attachments, no
+// dependencies and no managed resources.
 func viewOf(
 	st core.Stack,
 	space string,
@@ -167,9 +168,9 @@ func actions(as []accessapi.Action) []api.Action {
 	return out
 }
 
-func orEmpty(s []string) []string {
+func orEmpty[T any](s []T) []T {
 	if s == nil {
-		return []string{}
+		return []T{}
 	}
 	return s
 }

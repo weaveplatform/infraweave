@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
+	"sync"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -106,6 +109,17 @@ type Store interface {
 	) (map[kernel.ULID]bool, error)
 	// SpaceInUse reports whether a stack of acct lives in space.
 	SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
+	// Hold locks acct's stack id FOR KEY SHARE until the context's
+	// transaction ends; stacksapi.ErrNotFound when acct lacks it.
+	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// Find lists acct's stacks in spaces that carry any of labels, by
+	// slug.
+	Find(
+		ctx context.Context,
+		acct kernel.AccountID,
+		spaces []kernel.ULID,
+		labels []string,
+	) ([]stacksapi.Stack, error)
 	// Search reads a page of acct's stacks in the scope that in keeps, by
 	// Fields; an input they cannot answer is a *search.Invalid.
 	Search(
@@ -159,6 +173,9 @@ type Service struct {
 	authz  accessapi.Authorizer
 	events Events
 	now    func() time.Time
+
+	mu     sync.RWMutex
+	guards []stacksapi.StackGuard
 }
 
 // New returns the service over d.
@@ -176,6 +193,19 @@ var (
 	_ stacksapi.Stacks     = (*Service)(nil)
 	_ accessapi.SpaceGuard = (*Service)(nil)
 )
+
+// Guard registers g, which every later move and delete of a stack asks.
+func (s *Service) Guard(g stacksapi.StackGuard) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.guards = append(s.guards, g)
+}
+
+func (s *Service) registered() []stacksapi.StackGuard {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return slices.Clone(s.guards)
+}
 
 // Denied is an action the caller may not perform, beyond the one the
 // operation's route decided.
@@ -234,6 +264,26 @@ func (s *Service) LockForRun(
 ) (stacksapi.Settings, error) {
 	st, err := s.store.Read(ctx, acct, id, true)
 	return st.Settings, err //nolint:wrapcheck // as above
+}
+
+// Hold locks acct's stack id in the context's transaction until it ends,
+// so a move or delete waits for it and its guards see what the caller
+// wrote.
+func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
+	return s.store.Hold(ctx, acct, id) //nolint:wrapcheck // the store names the lock
+}
+
+// Find lists acct's stacks in spaces that carry any of labels.
+func (s *Service) Find(
+	ctx context.Context,
+	acct kernel.AccountID,
+	spaces []kernel.ULID,
+	labels []string,
+) ([]stacksapi.Stack, error) {
+	if len(spaces) == 0 || len(labels) == 0 {
+		return nil, nil
+	}
+	return s.store.Find(ctx, acct, spaces, labels) //nolint:wrapcheck // the store names the read
 }
 
 // SpaceOf is the space of acct's stack slug, which the access domain's
@@ -356,7 +406,8 @@ func (s *Service) Create(
 // Update replaces the settings of p's account's stack slug with in's,
 // when expect accepts its version. The route has decided STACK_UPDATE on
 // the stack's space; a move to another space also needs STACK_CREATE
-// there.
+// there, and is refused when a registered guard names an entity the stack
+// would no longer reach.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
@@ -380,6 +431,12 @@ func (s *Service) Update(
 			}
 			if space != st.Space {
 				if err := s.require(ctx, p, accessapi.ActionStackCreate, space); err != nil {
+					return err
+				}
+				if err := s.lostOnMove(
+					ctx,
+					stacksapi.StackMove{Stack: st.Stack, To: space},
+				); err != nil {
 					return err
 				}
 			}
@@ -482,7 +539,8 @@ func (s *Service) Unlock(ctx context.Context, p kernel.Principal, slug string) (
 
 // Delete deletes p's account's stack slug, when expect accepts its
 // version, and answers it as it was; a stack protected from deletion is
-// refused.
+// refused. Each registered guard deletes its rows of the stack first, in
+// the same transaction.
 func (s *Service) Delete(
 	ctx context.Context,
 	p kernel.Principal,
@@ -501,6 +559,11 @@ func (s *Service) Delete(
 		if st.ProtectFromDeletion {
 			return &kernel.Invalid{Detail: "The stack is protected from deletion; " +
 				"turn protectFromDeletion off first."}
+		}
+		for _, g := range s.registered() {
+			if err := g.Deleting(ctx, st.Stack); err != nil {
+				return fmt.Errorf("stacks: delete what holds stack %s: %w", st.Slug, err)
+			}
 		}
 		if err := s.store.Delete(ctx, st.Account, st.ID); err != nil {
 			return err //nolint:wrapcheck // as above
@@ -542,6 +605,35 @@ func (s *Service) SpaceInUse(
 // nothing it reaches through its space is attached to it.
 func (*Service) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.LostReach, error) {
 	return nil, nil
+}
+
+// lostOnMove asks each registered guard what m cuts the stack off from,
+// refusing the move with every entity named. The stack's row is locked
+// FOR UPDATE already, so each guard sees every committed hold.
+func (s *Service) lostOnMove(ctx context.Context, m stacksapi.StackMove) error {
+	var lost []string
+	for _, g := range s.registered() {
+		l, err := g.LostOnMove(ctx, m)
+		if err != nil {
+			return fmt.Errorf("stacks: check moving stack %s: %w", m.Slug, err)
+		}
+		lost = append(lost, l...)
+	}
+	if len(lost) == 0 {
+		return nil
+	}
+	inv := &kernel.Invalid{Detail: fmt.Sprintf(
+		"The move is refused: stack %s would no longer reach %s.",
+		m.Slug,
+		strings.Join(lost, ", "),
+	)}
+	for _, l := range lost {
+		inv.Errors = append(inv.Errors, kernel.FieldError{
+			Pointer: "/space", Reason: kernel.ReasonRule,
+			Message: fmt.Sprintf("Stack %s would no longer reach %s.", m.Slug, l),
+		})
+	}
+	return inv
 }
 
 // errUnchanged ends a write that changes nothing, answering the stack as

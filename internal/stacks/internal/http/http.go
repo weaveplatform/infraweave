@@ -26,12 +26,14 @@ type Server struct {
 	stacks *core.Service
 	authz  accessapi.Authorizer
 	spaces accessapi.Spaces
+	edges  *edges
 }
 
 // New returns the partial over the service, deciding allowedActions with
-// authz and naming spaces through spaces.
+// authz and naming spaces through spaces. Its stacks have no configuration
+// until BindConfiguration binds a reader.
 func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
-	return Server{stacks: svc, authz: authz, spaces: spaces}
+	return Server{stacks: svc, authz: authz, spaces: spaces, edges: &edges{config: unbound{}}}
 }
 
 // Stacks lists the stacks of the caller's account in the spaces it may
@@ -368,7 +370,8 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (ap
 }
 
 // views are all as p sees them: the actions p holds in each one's space,
-// whether p has starred it, and its space by slug.
+// whether p has starred it, its space by slug, and its attached contexts
+// and config elements, read for all at once.
 func (s Server) views(
 	ctx context.Context,
 	p kernel.Principal,
@@ -387,7 +390,9 @@ func (s Server) views(
 		return nil, err //nolint:wrapcheck // the store names the read
 	}
 	held := map[kernel.ULID][]accessapi.Action{}
+	ids := make([]kernel.ULID, 0, len(all))
 	for _, st := range all {
+		ids = append(ids, st.ID)
 		if _, ok := held[st.Space]; ok {
 			continue
 		}
@@ -395,11 +400,24 @@ func (s Server) views(
 			return nil, err //nolint:wrapcheck // the snapshot's read names itself
 		}
 	}
+	attached, err := s.edges.config.AttachedContexts(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the configuration domain names the read
+	}
+	config, err := s.edges.config.Config(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // as above
+	}
 	for _, st := range all {
 		v, err := viewOf(st, slugs[st.Space], held[st.Space], starred[st.ID])
 		if err != nil {
 			return nil, err
 		}
+		v.AttachedContexts = make([]api.StackContextAttachment, 0, len(attached[st.ID]))
+		for _, c := range attached[st.ID] {
+			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
+		}
+		v.Config = elementViews(config[st.ID])
 		out = append(out, v)
 	}
 	return out, nil
