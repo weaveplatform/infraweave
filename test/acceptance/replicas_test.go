@@ -30,7 +30,7 @@ const (
 func (s *servedSteps) registerReplicas(sc *godog.ScenarioContext) {
 	sc.Step(`^two infraweave servers, A and B, on one database$`, s.twoReplicas)
 	sc.Step(
-		`^two infraweave servers, A and B, on one database whose standard budget is (\d+) at ([0-9.]+) a second$`,
+		`^two infraweave servers, A and B, on one database whose (standard|expensive) budget is (\d+) at ([0-9.]+) a second$`,
 		s.twoReplicasWithBudget,
 	)
 	sc.Step(
@@ -64,19 +64,24 @@ func (s *servedSteps) registerReplicas(sc *godog.ScenarioContext) {
 }
 
 func (s *servedSteps) twoReplicas(ctx context.Context) error {
-	return s.twoReplicasWithBudget(ctx, 0, "")
+	return s.twoReplicasWithBudget(ctx, "", 0, "")
 }
 
-// twoReplicasWithBudget starts the scenario's two servers. A burst of 0
-// keeps the default budget.
-func (s *servedSteps) twoReplicasWithBudget(ctx context.Context, burst int, rate string) error {
+// twoReplicasWithBudget starts the scenario's two servers with class's
+// budget set. A burst of 0 keeps the default budgets.
+func (s *servedSteps) twoReplicasWithBudget(
+	ctx context.Context,
+	class string,
+	burst int,
+	rate string,
+) error {
 	var rateLimit map[string]any
 	if burst > 0 {
 		r, err := strconv.ParseFloat(rate, 64)
 		if err != nil {
 			return fmt.Errorf("%w: rate %q", errStep, rate)
 		}
-		rateLimit = map[string]any{"standard": map[string]any{"rate": r, "burst": burst}}
+		rateLimit = map[string]any{class: map[string]any{"rate": r, "burst": burst}}
 	}
 	for range 2 {
 		if err := s.start(ctx, rateLimit); err != nil {

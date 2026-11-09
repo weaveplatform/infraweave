@@ -12,7 +12,8 @@
 // organization's and an account's seats in use, for its seats read;
 // GuardSpaces registers another domain's accessapi.SpaceGuard, which the
 // space service consults before each delete and move, and Spaces is the
-// accessapi.Spaces such a domain holds a space through; Stream is its
+// accessapi.Spaces such a domain holds a space through and reads the
+// tree from; Stream is its
 // migration stream and SealedColumns its sealed columns, which
 // internal/app registers in construction order. Settings are its
 // auth.* settings: the issuer, auth.tokens.api.ttl, the authorization

@@ -394,17 +394,19 @@ func TestUnitAPIRateLimits(t *testing.T) {
 	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, Platform{}, Blobs{})
 	const me = "192.0.2.1:1"
 
+	// The first search passes the limiter, whatever its operation then
+	// answers; the second finds the expensive budget spent.
 	if rec := send(
 		api,
 		http.MethodPost,
-		"/api/v1/stacks/search",
+		"/api/v1/space-contexts/search",
 		me,
 		"",
-	); rec.Code != http.StatusNotImplemented ||
+	); rec.Code == http.StatusTooManyRequests ||
 		rec.Header().Get("X-RateLimit-Limit") != "1" {
 		t.Errorf("first search: %d %v", rec.Code, rec.Header())
 	}
-	wantTyped(t, send(api, http.MethodPost, "/api/v1/stacks/search", me, ""),
+	wantTyped(t, send(api, http.MethodPost, "/api/v1/space-contexts/search", me, ""),
 		problem.RateLimited)
 	// The standard budget is separate, and a path no operation serves draws
 	// from it too.

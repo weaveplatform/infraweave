@@ -77,7 +77,9 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	}
 	org.register(sc)
 	(&managedSteps{o: org}).register(sc)
-	(&spaceSteps{o: org}).register(sc)
+	spaces := &spaceSteps{o: org}
+	spaces.register(sc)
+	(&stackSearchSteps{s: spaces}).register(sc)
 	(&updateSteps{o: org, etags: map[string]string{}}).register(sc)
 	(&personalSteps{o: org, k: keys}).register(sc)
 	(&oauthSteps{o: org}).register(sc)

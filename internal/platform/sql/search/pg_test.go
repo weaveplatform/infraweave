@@ -412,3 +412,64 @@ func TestUnitQueryFailures(t *testing.T) {
 		t.Errorf("Suggest = %v", err)
 	}
 }
+
+// TestAccSpaceTree reads the tree of a SpaceTree column from the scope and
+// answers every hierarchy constraint and suggestion as the Tree and Nodes
+// templates answer them from the tables.
+func TestAccSpaceTree(t *testing.T) {
+	w := newWorld(t)
+	tree := items
+	tree.Columns = slices.Clone(items.Columns)
+	for i, c := range tree.Columns {
+		if c.Name == "space" {
+			tree.Columns[i] = Column{Field: c.Field, Expr: c.Expr, SpaceTree: true}
+		}
+	}
+	parents := map[string]string{"a": "root", "b": "root", "a1": "a", "a2": "a"}
+	order := []string{"root", "a", "b", "a1", "a2"}
+	spaces := make([]SpaceNode, 0, len(order))
+	for _, slug := range order {
+		spaces = append(spaces, SpaceNode{
+			Space: w.nodes[slug], Parent: w.nodes[parents[slug]],
+			ID: slug, Display: strings.ToUpper(slug),
+		})
+	}
+	all := w.reach("root", "a", "b", "a1", "a2")
+	for name, c := range map[string]ks.Constraint{
+		"below a":       {Hierarchy: []ks.Node{{Equals: "a", Descendants: true}}},
+		"a alone":       {Hierarchy: []ks.Node{{Equals: "a"}, {Equals: "b"}}},
+		"value a":       {HierarchyValues: []string{"a", "a2"}},
+		"no such space": {HierarchyValues: []string{"nope"}},
+		"none":          {Hierarchy: []ks.Node{}},
+	} {
+		in := ks.Input{Predicates: []ks.Predicate{{Field: "space", Constraint: c}}}
+		want, err := Find(t.Context(), w.db, items, Scope{
+			Where: "i.state <> $1", Args: []any{"GONE"}, Reachable: all,
+		}, in, scanSlug)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := Find(t.Context(), w.db, tree, Scope{
+			Where: "i.state <> $1", Args: []any{"GONE"}, Reachable: all, Spaces: spaces,
+		}, in, scanSlug)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(slugs(got), slugs(want)) {
+			t.Errorf("%s: %v, want %v", name, slugs(got), slugs(want))
+		}
+	}
+	in := ks.SuggestionsInput{Fields: []string{"space"}}
+	reach := w.reach("a", "a1", "b")
+	want, err := Suggest(t.Context(), w.db, items, Scope{Reachable: reach}, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Suggest(t.Context(), w.db, tree, Scope{Reachable: reach, Spaces: spaces}, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("suggestions %+v, want %+v", got, want)
+	}
+}

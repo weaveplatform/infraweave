@@ -653,7 +653,7 @@ func TestUnitSpaceLabels(t *testing.T) {
 }
 
 // TestUnitSpaceFind finds a space's ID by slug, names a missing one by
-// accessapi.ErrNoSpace, and names every space by its slug.
+// accessapi.ErrNoSpace, and names every space by its slug and in its tree.
 func TestUnitSpaceFind(t *testing.T) {
 	ctx := t.Context()
 	w := newWorld(t)
@@ -668,8 +668,17 @@ func TestUnitSpaceFind(t *testing.T) {
 		slugs[w.legacy.ID] != space.LegacySlug {
 		t.Errorf("Slugs = %v, %v", slugs, err)
 	}
+	tree, err := w.svc.Tree(ctx, w.f.acct)
+	if err != nil || len(tree) != 2 || tree[0].ID != w.top.ID || !tree[0].Parent.IsZero() ||
+		tree[1].Slug != space.LegacySlug || tree[1].Parent != w.top.ID ||
+		tree[1].Name != w.legacy.Name {
+		t.Errorf("Tree = %+v, %v", tree, err)
+	}
 	w.f.err = errors.New("store down")
 	if _, err := w.svc.Slugs(ctx, w.f.acct); !errors.Is(err, w.f.err) {
 		t.Errorf("Slugs on a failing store = %v", err)
+	}
+	if _, err := w.svc.Tree(ctx, w.f.acct); !errors.Is(err, w.f.err) {
+		t.Errorf("Tree on a failing store = %v", err)
 	}
 }

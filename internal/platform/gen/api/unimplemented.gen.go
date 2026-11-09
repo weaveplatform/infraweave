@@ -538,6 +538,10 @@ func (UnimplementedStrict) SearchStacks(context.Context, SearchStacksRequestObje
 	return nil, &problem.NotImplementedError{OperationID: "searchStacks", Route: "POST /stacks/search"}
 }
 
+func (UnimplementedStrict) SearchStacksSuggestions(context.Context, SearchStacksSuggestionsRequestObject) (SearchStacksSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchStacksSuggestions", Route: "POST /stacks/search/suggestions"}
+}
+
 func (UnimplementedStrict) StackDelete(context.Context, StackDeleteRequestObject) (StackDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackDelete", Route: "DELETE /stacks/{stackId}"}
 }

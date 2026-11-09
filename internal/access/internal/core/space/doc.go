@@ -27,7 +27,9 @@
 // it does not accept is kernel.ErrStale, changing nothing. Search and
 // Suggest read the spaces a caller may read through Store by Fields, the reference's
 // generic search over the tree, with the reachable spaces the caller
-// passes held in the query.
+// passes held in the query. As accessapi.Spaces, Service finds a space by
+// slug, holds it in the caller's transaction, names every space by slug
+// and lists the tree, for the domains that store a space's ID.
 //
 // ref: decision 0007 § "Spaces"
 // ref: decision 0022

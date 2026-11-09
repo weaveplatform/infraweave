@@ -6622,6 +6622,54 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: search
+  /stacks/search/suggestions:
+    post:
+      description: >-
+        The fields a stack search filters and orders by, with the values the stacks the predicates keep hold and how many hold each. Only stacks in spaces the caller may read are counted.
+      operationId: searchStacksSuggestions
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchStacksSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Stacks Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Stacks Suggestions.bru
+      x-graphql:
+        field: searchStacksSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: stacks
+      x-infraweave-subject: list
+      x-rest-style: search
   /stacks/{stackId}:
     delete:
       description: Delete an existing stack.

@@ -6,8 +6,11 @@
 // hold its hooks, labels and each caller's star. Store reads a stack, by
 // ID, by slug or by the repository's branch it tracks,
 // stacksapi.ErrNotFound when the account lacks it, writes it whole,
-// searches an account's stacks, and answers whether a stack lives in a
-// space. Every method joins the transaction its context carries, and a
+// searches an account's stacks and suggests their values by
+// stacks.Fields through platform/sql/search, and answers whether a stack
+// lives in a space. A search joins the caller's stars, and reads the space
+// tree from its scope, since the spaces tables belong to the access
+// domain. Every method joins the transaction its context carries, and a
 // write of a taken slug is a *stacks.SlugTaken.
 //
 // # Input and output

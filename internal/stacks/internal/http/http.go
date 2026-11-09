@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -47,7 +48,7 @@ func (s Server) Stacks(
 	if req.Params.Cursor != nil {
 		in.After = *req.Params.Cursor
 	}
-	res, err := s.stacks.List(ctx, p, in)
+	res, err := s.stacks.Search(ctx, p, in)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a bad cursor is a problem
 	}
@@ -64,6 +65,48 @@ func (s Server) Stacks(
 		out.NextCursor = &res.End
 	}
 	return api.Stacks200JSONResponse{Body: out}, nil
+}
+
+// SearchStacks searches the stacks of the caller's account in the spaces
+// it may read.
+func (s Server) SearchStacks(
+	ctx context.Context,
+	req api.SearchStacksRequestObject,
+) (api.SearchStacksResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.stacks.Search(ctx, p, apisearch.Input(*req.Body))
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
+	}
+	out := api.SearchStacksOutput{
+		Edges: make([]api.StackConnection, 0, len(res.Edges)), PageInfo: apisearch.PageInfo(res),
+	}
+	for _, e := range res.Edges {
+		out.Edges = append(out.Edges, api.StackConnection{
+			Cursor: e.Cursor, Node: api.StackRef{Id: e.Node.Slug},
+		})
+	}
+	return api.SearchStacks200JSONResponse{Body: out}, nil
+}
+
+// SearchStacksSuggestions lists the values the stacks of the caller's
+// account in the spaces it may read hold.
+func (s Server) SearchStacksSuggestions(
+	ctx context.Context,
+	req api.SearchStacksSuggestionsRequestObject,
+) (api.SearchStacksSuggestionsResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	got, err := s.stacks.Suggest(ctx, p, apisearch.SuggestionsInput(*req.Body))
+	if err != nil {
+		return nil, err //nolint:wrapcheck // as above
+	}
+	return api.SearchStacksSuggestions200JSONResponse{Body: apisearch.Suggestions(got)}, nil
 }
 
 // Stack answers one stack of the caller's account.

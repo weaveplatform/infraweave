@@ -126,6 +126,6 @@
 // group, member, oauth, operator, orgadmin, organization, port, session,
 // settings, space and user packages, accessapi,
 // featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
-// platform/httpkit's page, problem, ratelimit and strict. Only the access domain's assembly
+// platform/httpkit's apisearch, page, problem, ratelimit and strict. Only the access domain's assembly
 // imports it.
 package http

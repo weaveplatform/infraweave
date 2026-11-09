@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -28,6 +30,10 @@ type spaces struct {
 	mu    sync.Mutex
 	ids   map[string]kernel.ULID
 	holds []kernel.ULID
+	// parents names a space's parent by slug; acme when it names none.
+	parents map[string]string
+	// treeErr fails Tree.
+	treeErr error
 }
 
 func (s *spaces) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) error {
@@ -53,6 +59,28 @@ func (s *spaces) Slugs(context.Context, kernel.AccountID) (map[kernel.ULID]strin
 	out := map[kernel.ULID]string{}
 	for slug, id := range s.ids {
 		out[id] = slug
+	}
+	return out, nil
+}
+
+// Tree is every space, acme first as the top space and the rest by slug,
+// each below its parent.
+func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode, error) {
+	if s.treeErr != nil {
+		return nil, s.treeErr
+	}
+	out := []accessapi.SpaceNode{{ID: s.ids["acme"], Slug: "acme", Name: "ACME"}}
+	for _, slug := range slices.Sorted(maps.Keys(s.ids)) {
+		if slug == "acme" {
+			continue
+		}
+		parent := s.parents[slug]
+		if parent == "" {
+			parent = "acme"
+		}
+		out = append(out, accessapi.SpaceNode{
+			ID: s.ids[slug], Slug: slug, Name: strings.ToUpper(slug), Parent: s.ids[parent],
+		})
 	}
 	return out, nil
 }
@@ -353,9 +381,9 @@ func TestAccServiceReads(t *testing.T) {
 		"another account's caller":   {other, 0},
 		"a caller who may read none": {kernel.Principal{AccountID: f.acct}, 0},
 	} {
-		res, err := f.svc.List(ctx, c.p, search.Input{})
+		res, err := f.svc.Search(ctx, c.p, search.Input{})
 		if err != nil || len(res.Edges) != c.want {
-			t.Errorf("List as %s = %d stacks, %v; want %d", name, len(res.Edges), err, c.want)
+			t.Errorf("Search as %s = %d stacks, %v; want %d", name, len(res.Edges), err, c.want)
 		}
 	}
 }
