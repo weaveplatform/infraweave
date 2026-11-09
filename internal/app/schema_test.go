@@ -55,7 +55,9 @@ func mayReference(from, to string) bool {
 
 // graphProblems checks the declared graph and the streams' order without a
 // database: a cycle, a stream that names no domain, and a stream
-// registered before the platform's.
+// registered before the platform's or before that of a domain it imports.
+// Streams register in construction order, so the second also catches a
+// domain constructed ahead of a domain whose api/ it calls.
 func graphProblems(streams []migrate.Stream, graph map[string][]string) []string {
 	var out []string
 	const (
@@ -109,6 +111,18 @@ func graphProblems(streams []migrate.Stream, graph map[string][]string) []string
 					schema.Name,
 				),
 			)
+		}
+		for _, d := range graph[s.Name] {
+			if j, ok := at[d]; ok && j > i {
+				out = append(
+					out,
+					fmt.Sprintf(
+						"stream %s is registered before %s, whose api/ it imports",
+						s.Name,
+						d,
+					),
+				)
+			}
 		}
 	}
 	return out
@@ -429,6 +443,11 @@ func TestAccSchemaDependencyFixtures(t *testing.T) {
 			streams: []migrate.Stream{platform},
 			graph:   map[string][]string{"a": {"b"}, "b": {"a"}},
 			want:    []string{"the declared graph has a cycle: a → b → a"},
+		},
+		{
+			name:    "a stream ahead of a domain it imports",
+			streams: []migrate.Stream{platform, fixtureStream("b", "SELECT 1;"), a},
+			want:    []string{"stream b is registered before a, whose api/ it imports"},
 		},
 		{
 			name:    "a stream outside the graph",

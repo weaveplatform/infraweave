@@ -1,0 +1,4 @@
+-- Configuration: each account's contexts and config elements, and what
+-- they attach to. The stream creates no table yet, so it applies as an
+-- empty migration.
+-- ref: decisions 0004 and 0005
