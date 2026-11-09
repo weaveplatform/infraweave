@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
-	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 )
 
 func TestAccSettings(t *testing.T) {
@@ -150,21 +152,6 @@ func TestAccDisablePersonalKeys(t *testing.T) {
 	}
 }
 
-// accountFeatures is the features domain's rows as an account delete
-// sees them: it records each delete and whether it ran in a transaction.
-type accountFeatures struct {
-	entitled
-	deleted []kernel.AccountID
-	inTx    bool
-	err     error
-}
-
-func (f *accountFeatures) DeleteAccount(ctx context.Context, acct kernel.AccountID) error {
-	f.deleted = append(f.deleted, acct)
-	f.inTx = tx.In(ctx)
-	return f.err
-}
-
 // second adds another account to x's organization and returns it.
 func second(t *testing.T, x seeded, slug string) kernel.AccountID {
 	t.Helper()
@@ -191,8 +178,7 @@ func TestAccDeleteAccount(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
 	x := seed(t, db, "aviato")
-	f := &accountFeatures{}
-	s := pg.New(db).WithFeatures(f)
+	s := pg.New(db).WithEvents(events(t, db, true))
 	other := second(t, x, "aviato-two")
 	if _, err := db.Exec(ctx, `INSERT INTO account_users (account_id, organization_id, member_id)
 		VALUES ($1, $3, $4), ($2, $3, $4)`, x.acct, other, x.org, x.member); err != nil {
@@ -228,20 +214,23 @@ func TestAccDeleteAccount(t *testing.T) {
 	if got, err := s.Settings(ctx, x.acct); err != nil || !got.Deletable() {
 		t.Fatalf("a marked account of two: %+v, %v", got, err)
 	}
-	f.err = errors.New("features down")
-	if _, err := s.DeleteAccount(ctx, x.acct, deleted(x, x.acct)); !errors.Is(err, f.err) {
-		t.Fatalf("a failed features delete = %v", err)
+	failing := pg.New(db).WithEvents(events(t, db, false))
+	if _, err := failing.DeleteAccount(ctx, x.acct, deleted(x, x.acct)); !errors.Is(
+		err,
+		outbox.ErrKind,
+	) {
+		t.Fatalf("a failed append = %v", err)
 	}
 	if _, err := s.Account(ctx, x.acct); err != nil {
-		t.Errorf("the account after a failed features delete = %v", err)
+		t.Errorf("the account after a failed append = %v", err)
 	}
-	f.err = nil
 	revoked, err := s.DeleteAccount(ctx, x.acct, deleted(x, x.acct))
 	if err != nil || len(revoked) != 2 {
 		t.Fatalf("delete = %v, %v; want the web and key sessions revoked", revoked, err)
 	}
-	if len(f.deleted) != 2 || f.deleted[1] != x.acct || !f.inTx {
-		t.Errorf("features deletes = %v, in a transaction %t", f.deleted, f.inTx)
+	want := []accessapi.Deleted{{Account: x.acct.ULID, Organization: x.org.ULID}}
+	if got := deletedOf(t, db, x.acct); !slices.Equal(got, want) {
+		t.Errorf("events = %+v, want %+v", got, want)
 	}
 	var rows, entries int
 	if err := db.QueryRow(

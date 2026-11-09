@@ -35,14 +35,17 @@
 // invitations, managed user groups, members
 // and their identities, its
 // break-glass credential, its accounts' settings, role bindings, roles and
-// space trees, its accounts, its rows in the features domain
-// through the featuresapi.Entitlements WithFeatures gives, and itself, as
-// every foreign key restricts. Deleting an account takes its
+// space trees, its accounts and itself, as every foreign key restricts.
+// Deleting an account takes its
 // organization's row lock, so two deletions never both remove an
 // organization's last two accounts, then deletes the account's sessions,
 // API keys, invitations, managed user groups, admissions, settings,
-// role bindings, roles, space tree and features rows and the account, and
-// records its organization trail entry in the same transaction; turning
+// role bindings, roles, space tree and the account, and records its
+// organization trail entry in the same transaction. Each deletion appends
+// an accessapi.Deleted per account it removes to the outbox WithEvents
+// gives, in its transaction, so the other domains' purges remove their
+// rows of it; Keys declares the accounts, organizations and spaces those
+// domains hold, for the nightly orphan count; turning
 // personal keys off with disableExistingKeys disables them for ACCOUNT
 // and revokes their sessions. orgadmin.Store's writes record their
 // organization trail entry in the same transaction: claiming an account
@@ -104,8 +107,8 @@
 //
 // # Dependencies
 //
-// It imports the access domain's core packages and ports, featuresapi,
-// internal/kernel,
+// It imports accessapi, the access domain's core packages and ports,
+// featuresapi, internal/kernel, platform/outbox, platform/sql/integrity,
 // pgx, and platform/sql, platform/sql/migrate, platform/sql/notify,
 // platform/tx, platform/audit for the account and organization trails,
 // platform/crypt for the sealed column and platform/crypt/signer for the

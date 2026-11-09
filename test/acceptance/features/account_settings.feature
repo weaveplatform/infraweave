@@ -10,6 +10,8 @@ Feature: Account settings
   with personal keys themselves. An account is deleted only once marked,
   and never as its organization's last account; its deletion revokes its
   sessions on every replica and is recorded on its organization's trail.
+  The other domains' purges then remove the rows they keep of it, such as
+  its stacks and limits, and leave its organization's.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -64,6 +66,7 @@ Feature: Account settings
   @op:markedForDeletion @op:accountToggleDeletionMark @op:accountCanBeDeleted @op:accountCanBeDeletedAt @op:accountConfirmDelete @case:success @case:failure
   Scenario: A marked account is deleted, and an unmarked one is not
     Given the sibling key is exchanged through A for token "sib"
+    And the account "acme-dev" holds a stack and an account limit
     Then "GET /api/v1/marked-for-deletion" through A with token "sib" answers 'false'
     And "GET /api/v1/account/can-be-deleted" through B with token "sib" answers 'false'
     And "GET /api/v1/account/can-be-deleted-at" through A with token "sib" answers '0'
@@ -78,6 +81,7 @@ Feature: Account settings
     When "POST /api/v1/account/confirm-delete" through B with token "sib" answers 'true'
     Then the viewer through A with token "sib" answers 401 within a second
     And the sibling account no longer exists, and its organization's trail holds its deletion
+    And no stack or limit of the account "acme-dev" remains, and its organization's entitlement does
     And the viewer through A with token "admin" answers 200
 
   @op:accountConfirmDelete @case:denial

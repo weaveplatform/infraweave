@@ -1,6 +1,6 @@
 // Package api is what other domains call of the features domain:
-// Entitlements, which creates and deletes an organization's entitlement
-// and an account's limits in the caller's transaction, reads an
+// Entitlements, which creates an organization's entitlement in the
+// caller's transaction, reads an
 // organization's Entitlement, and admits a creation against the
 // organization's pooled limit and the account's limit, refusing it with a
 // LimitError. It also reads, sets and clears an account's limits for the

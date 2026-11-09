@@ -34,7 +34,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 )
@@ -78,18 +80,32 @@ const expireEvery = time.Hour
 // ref: decision 0007 § "Snapshots and caching"
 const refreshEvery = 5 * time.Second
 
+// RegisterEvents adds the domain's event kinds to kinds, before the
+// scheduler starts.
+func RegisterEvents(kinds *outbox.Kinds) error {
+	//nolint:wrapcheck // names the kind
+	return kinds.Register(accessapi.DeletedKind, accessapi.DeletedVersion, accessapi.DeletedSchema)
+}
+
 // Stream is the access domain's migration stream.
 func Stream() migrate.Stream { return pg.Stream() }
 
 // SealedColumns are the access domain's sealed columns.
 func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 
+// Keys are how the access domain finds the accounts, organizations and
+// spaces other domains hold by ID, for the nightly orphan count.
+func Keys() []integrity.Key { return pg.Keys() }
+
 // Deps are what the access domain takes from the platform.
 type Deps struct {
 	DB pg.DB
-	// Features is the features domain's entitlements, whose rows of an
-	// organization go with the organization.
+	// Features is the features domain's entitlements, which check the
+	// seats limit.
 	Features featuresapi.Entitlements
+	// Events receives an accessapi.Deleted for each account a deletion
+	// removes.
+	Events *outbox.Outbox
 	// Keys seals the signing keys' private halves; crypt.Keyring is one.
 	Keys pg.Sealer
 	// KMS are the opened keys of auth.signing.kms_keys, in its order,
@@ -142,7 +158,7 @@ func New(d Deps) (*Domain, error) {
 		now = time.Now
 	}
 	manual := d.Settings.Signing.Rotation == RotationManual
-	store := pg.New(d.DB).WithFeatures(d.Features)
+	store := pg.New(d.DB).WithFeatures(d.Features).WithEvents(d.Events)
 	decide := authz.NewService(store)
 	refs := make([]string, 0, len(d.KMS))
 	for _, k := range d.KMS {

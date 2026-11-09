@@ -10,8 +10,11 @@
 // stacks.Fields through platform/sql/search, and answers whether a stack
 // lives in a space. A search joins the caller's stars, and reads the space
 // tree from its scope, since the spaces tables belong to the access
-// domain. Every method joins the transaction its context carries, and a
-// write of a taken slug is a *stacks.SlugTaken.
+// domain. Purge deletes a batch of a deleted account's stacks, with their
+// hooks, labels and stars, and reports whether none is left. Held names
+// the columns that hold the access domain's accounts and spaces. Every
+// method joins the transaction its context carries, and a write of a taken
+// slug is a *stacks.SlugTaken.
 //
 // # Input and output
 //
@@ -20,7 +23,8 @@
 // # Dependencies
 //
 // It imports stacksapi, the domain's core package for its port,
-// internal/kernel, kernel/search, platform/sql, platform/sql/migrate,
+// internal/kernel, kernel/search, platform/sql, platform/sql/integrity,
+// platform/sql/migrate,
 // platform/sql/search, platform/tx and pgx. The stacks domain's assembly
 // constructs it.
 package pg

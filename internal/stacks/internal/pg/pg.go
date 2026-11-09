@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	sqlsearch "github.com/weaveplatform/infraweave/internal/platform/sql/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -35,6 +36,15 @@ var files embed.FS
 func Stream() migrate.Stream {
 	sub, _ := fs.Sub(files, "migrations") // a valid path, so never an error
 	return migrate.Stream{Name: StreamName, Files: sub}
+}
+
+// Held are the stacks columns that hold the access domain's rows: a
+// stack's account, and its space within that account.
+func Held() []integrity.Held {
+	return []integrity.Held{
+		{Entity: "account", Table: "stacks", Columns: []string{"account_id"}},
+		{Entity: "space", Table: "stacks", Columns: []string{"account_id", "space_id"}},
+	}
 }
 
 // DB is the pool the store queries, and begins a transaction on for a
@@ -307,6 +317,20 @@ func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 		return fmt.Errorf("stacks: delete stack %s: %w", id, sql.Unavailable(err))
 	}
 	return nil
+}
+
+// Purge deletes up to batch of the deleted account acct's stacks, with
+// their hooks, labels and stars, in one statement, and reports whether
+// none is left. Each call commits on its own unless ctx carries a
+// transaction, so a purge stopped between calls keeps what it deleted and
+// resumes from there.
+func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM stacks WHERE account_id = $1 AND id IN (
+		SELECT id FROM stacks WHERE account_id = $1 LIMIT $2)`, acct, batch)
+	if err != nil {
+		return false, fmt.Errorf("stacks: purge account %s: %w", acct, sql.Unavailable(err))
+	}
+	return tag.RowsAffected() < int64(batch), nil
 }
 
 // SetStar stars or unstars acct's stack id for actor.

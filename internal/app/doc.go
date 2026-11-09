@@ -53,11 +53,15 @@
 // the platform's handlers, the outbox's events.fanout and events.consume
 // and blob.delete over the full Store, and the cron ticker over
 // periodic_tasks, after registering each domain's tasks (Domains.cron),
-// queue.prune, idempotency.purge,
+// integrity.orphans, which counts every domain's held IDs whose row is
+// gone against access' keys and logs each column with any at warn
+// (orphansTask), queue.prune, idempotency.purge,
 // events.prune, blob.expire and secrets.rotate, with secrets.reseal, which
 // each rotation enqueues (secretsTasks) and which walks SealedColumns, the
 // platform's sealed columns and each domain's; every
-// domain appends to and subscribes on Run's one outbox. It stops the ticker, then
+// domain appends to and subscribes on Run's one outbox, where
+// subscribePurges subscribes the features and stacks purges to
+// accessapi.Deleted, since features cannot read access' event itself. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns, as are the operator
 // API's dead-job operations and its data key rotation, the same rotation
@@ -95,12 +99,14 @@
 // # Dependencies
 //
 // It imports app/config for the settings; each domain's assembly (access)
-// to build it, mount its partial and list its stream and sealed columns;
+// to build it, mount its partial and list its stream, sealed columns, keys
+// and held columns; accessapi for the event the purges consume;
 // platform/gen/api and platform/gen/operator for the strict
 // servers; platform/httpkit/{serve,middleware,middleware/ratelimit,
 // middleware/idempotency,problem} for the listeners and controls;
 // platform/observe for the probes and their checks; platform/sql, sql/migrate, sql/schema
 // and sql/notify for the database, its streams and its notifications;
+// sql/integrity for the orphan count;
 // platform/queue, platform/cron and platform/outbox for the scheduler role;
 // platform/crypt, crypt/kek and its providers for the keyring;
 // crypt/signer and its KMS backends for the kms signing keys; platform/objectstore, its

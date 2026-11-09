@@ -373,7 +373,8 @@ Further rules:
 - **No foreign keys between domains.** A domain holds another's row through
   its `api/` (`Hold`, `FOR KEY SHARE` in the caller's transaction), guards
   its own rows' deletes and moves with the guards other domains register,
-  and purges its rows of a deleted account or organization as queue jobs
+  and purges its rows of a deleted account or organization when it
+  consumes `access`' `account.deleted` event
   ([0004](../research/decisions/0004-repository-architecture.md#repository-shape-a-modular-monolith)).
 - **Cross-domain effects.** Queries, authorisation and policy decisions are
   synchronous calls on `api/` interfaces. Consequences are events appended to

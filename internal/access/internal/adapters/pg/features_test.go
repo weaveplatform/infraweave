@@ -2,18 +2,24 @@ package pg_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -24,17 +30,14 @@ type entitled struct{ featuresapi.Entitlements }
 
 func (entitled) CreateOrganization(context.Context, kernel.OrganizationID) error { return nil }
 
-// features is the features domain's rows as the organization create and
-// delete see them: it records each, whether it ran inside a transaction,
-// and fails the create with createErr and the delete with err.
+// features is the features domain's entitlement as the organization
+// create sees it: it records each, whether it ran inside a transaction,
+// and fails with createErr.
 type features struct {
 	entitled
 	created   []kernel.OrganizationID
 	createdTx bool
 	createErr error
-	deleted   []kernel.OrganizationID
-	inTx      bool
-	err       error
 }
 
 func (f *features) CreateOrganization(ctx context.Context, org kernel.OrganizationID) error {
@@ -67,37 +70,79 @@ func TestAccCreateOrganizationFeatures(t *testing.T) {
 	}
 }
 
-func (f *features) DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error {
-	f.deleted = append(f.deleted, org)
-	f.inTx = tx.In(ctx)
-	return f.err
-}
-
-// TestAccDeleteOrganizationFeatures checks that deleting an organization
-// deletes its features rows in the same transaction, and that a failure
-// there keeps the organization.
-func TestAccDeleteOrganizationFeatures(t *testing.T) {
+// TestAccDeleteOrganizationEvents checks that deleting an organization
+// appends an accessapi.Deleted for each of its accounts in the same
+// transaction, and that a failed append keeps the organization.
+func TestAccDeleteOrganizationEvents(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
-	f := &features{err: errors.New("features down")}
-	s := pg.New(db).WithFeatures(f)
 	o, a := tenant(t, "pied", "pied")
-	if err := s.CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
+	if err := pg.New(db).CreateOrganization(ctx, o, a, nil, created(o)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.DeleteOrganization(ctx, o.ID, created(o)); !errors.Is(err, f.err) {
-		t.Fatalf("a failed features delete = %v", err)
-	}
-	if _, err := s.Organization(ctx, o.ID); err != nil {
-		t.Errorf("the organization after a failed features delete = %v", err)
-	}
-	f.err = nil
-	if _, err := s.DeleteOrganization(ctx, o.ID, created(o)); err != nil {
+	b := kernel.NewAccountID()
+	if _, err := db.Exec(ctx, `INSERT INTO accounts (organization_id, id, slug, name)
+		VALUES ($1, $2, 'pied-two', 'pied-two')`, o.ID, b); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.deleted) != 2 || f.deleted[1] != o.ID || !f.inTx {
-		t.Errorf("features deletes = %v, in a transaction %t", f.deleted, f.inTx)
+	if _, err := pg.New(db).WithEvents(events(t, db, false)).
+		DeleteOrganization(ctx, o.ID, created(o)); !errors.Is(err, outbox.ErrKind) {
+		t.Fatalf("a failed append = %v", err)
 	}
+	if _, err := pg.New(db).Organization(ctx, o.ID); err != nil {
+		t.Errorf("the organization after a failed append = %v", err)
+	}
+	if _, err := pg.New(db).WithEvents(events(t, db, true)).
+		DeleteOrganization(ctx, o.ID, created(o)); err != nil {
+		t.Fatal(err)
+	}
+	for _, acct := range []kernel.AccountID{a.ID, b} {
+		want := []accessapi.Deleted{{
+			Account: acct.ULID, Organization: o.ID.ULID, OrganizationDeleted: true,
+		}}
+		if got := deletedOf(t, db, acct); !slices.Equal(got, want) {
+			t.Errorf("events of %s = %+v, want %+v", acct, got, want)
+		}
+	}
+}
+
+// events is an outbox on db whose kinds hold accessapi.Deleted when
+// registered is set, so that without it every append fails.
+func events(t *testing.T, db *pgxpool.Pool, registered bool) *outbox.Outbox {
+	t.Helper()
+	kinds := outbox.NewKinds()
+	if registered {
+		if err := kinds.Register(
+			accessapi.DeletedKind, accessapi.DeletedVersion, accessapi.DeletedSchema,
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return outbox.New(db, queue.New(db), kinds)
+}
+
+// deletedOf reads the accessapi.Deleted documents appended for acct.
+func deletedOf(t *testing.T, db *pgxpool.Pool, acct kernel.AccountID) []accessapi.Deleted {
+	t.Helper()
+	rows, err := db.Query(t.Context(), `SELECT document FROM events
+		WHERE account_id = $1 AND kind = $2 AND subject_id = $3 ORDER BY id`,
+		acct, accessapi.DeletedKind, acct.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	docs, err := pgx.CollectRows(rows, pgx.RowTo[[]byte])
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := make([]accessapi.Deleted, 0, len(docs))
+	for _, doc := range docs {
+		var d accessapi.Deleted
+		if err := json.Unmarshal(doc, &d); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, d)
+	}
+	return out
 }
 
 // seats is the features domain's limit check as a key's first use sees

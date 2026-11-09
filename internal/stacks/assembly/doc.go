@@ -5,8 +5,12 @@
 // accessapi.SpaceOf internal/app registers for the entity "stack", so the
 // access domain decides a stack's operations in the stack's space;
 // RegisterEvents registers stacksapi.Changed with the outbox; API is its
-// partial of the API's strict server, aliased StacksAPI; Stream is its
-// migration stream, which internal/app registers after access'.
+// partial of the API's strict server, aliased StacksAPI; Purge deletes a
+// deleted account's stacks PurgeBatch at a time, which internal/app runs
+// for each accessapi.Deleted, and Held declares the columns that hold the
+// access domain's accounts and spaces, for the nightly orphan count;
+// Stream is its migration stream, which internal/app registers after
+// access'.
 //
 // # Input and output
 //
@@ -16,6 +20,7 @@
 // # Dependencies
 //
 // It imports accessapi, stacksapi, the domain's core, http and pg
-// packages, platform/outbox and platform/sql/migrate. Only internal/app
+// packages, internal/kernel, platform/outbox, platform/sql/integrity and
+// platform/sql/migrate. Only internal/app
 // and cmd/ import it, as the constructors rule enforces.
 package assembly

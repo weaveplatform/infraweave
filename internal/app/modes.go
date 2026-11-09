@@ -157,7 +157,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			l,
 			events,
 			objs.store,
-			domains.cron(log),
+			domains.cron(db.Primary(), log),
 			domains,
 			log,
 			health,

@@ -181,3 +181,36 @@ type LostReach struct {
 	Stack  string
 	Entity string
 }
+
+// DeletedKind is the outbox event an account's deletion appends in its
+// transaction, at DeletedVersion, with a Deleted document: one per account,
+// so deleting an organization appends one for each of its accounts. Its
+// subject is the account's ULID. Each domain that keeps rows of an account
+// consumes it and deletes them, since no other domain's table keys on
+// access' own.
+//
+// ref: decision 0004
+const (
+	DeletedKind    = "account.deleted"
+	DeletedVersion = 1
+)
+
+// Deleted is a DeletedKind event's document: the account and its
+// organization, and whether the organization went with it, so a consumer
+// deletes the organization's rows as well as the account's.
+type Deleted struct {
+	Account             kernel.ULID `json:"account"`
+	Organization        kernel.ULID `json:"organization"`
+	OrganizationDeleted bool        `json:"organizationDeleted"`
+}
+
+// DeletedSchema is the JSON Schema of DeletedVersion's documents.
+var DeletedSchema = []byte(`{
+	"type": "object",
+	"required": ["account", "organization", "organizationDeleted"],
+	"properties": {
+		"account": {"type": "string", "minLength": 26, "maxLength": 26},
+		"organization": {"type": "string", "minLength": 26, "maxLength": 26},
+		"organizationDeleted": {"type": "boolean"}
+	}
+}`)
