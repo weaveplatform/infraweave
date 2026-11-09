@@ -13,7 +13,10 @@
 // service's errors answer as problems: a missing action 403 naming it, a
 // stack locked by another 409 resource-locked naming the holder, a taken
 // slug 409 already-exists, a missing stack or space 404, and a stale
-// If-Match 412.
+// If-Match 412. A stack's run and task lists answer empty pages, refusing
+// a cursor of another list as 400 invalid-cursor and a runsInRange span
+// that is not Unix seconds at most eight days wide as 422, and a run by
+// ID answers 404, until the runs domain serves them.
 //
 // # Input and output
 //
@@ -23,6 +26,7 @@
 //
 // It imports accessapi, stacksapi, the domain's stacks package,
 // internal/iac, internal/kernel, kernel/search, platform/gen/api,
-// platform/httpkit/apisearch, platform/httpkit/problem and
-// platform/httpkit/strict. The stacks domain's assembly constructs it.
+// platform/httpkit/apisearch, platform/httpkit/page,
+// platform/httpkit/problem and platform/httpkit/strict. The stacks
+// domain's assembly constructs it.
 package http
