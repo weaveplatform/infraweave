@@ -3,9 +3,10 @@ Feature: Features the installation switches off
   features.disabled switches a feature off for every organization of the
   installation. Each operation names the capability it belongs to, so a
   request for a switched-off one answers 403 feature-disabled, naming the
-  feature, whatever the organization's tier and whether billing is on; every
-  other operation is unaffected, and so is a switched-off feature no served
-  operation belongs to. With billing on, seats are counted as Spacelift
+  feature, whatever the organization's tier and whether billing is on, and
+  a request that sets a switched-off option, such as a vendor, answers the
+  same, naming the option; every other operation is unaffected, and so is
+  a switched-off feature no served operation belongs to. With billing on, seats are counted as Spacelift
   counts them: an API key takes a seat on its first use in 30 days, so the
   exchange that would take one past the limit answers 403 limit-reached and
   issues no token.
@@ -21,7 +22,14 @@ Feature: Features the installation switches off
 
   Scenario: With nothing switched off the operation runs
     Given a running infraweave server
-    Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
+    Then "GET /api/v1/stacks" on the API listener answers 200
+
+  @op:stackCreate @case:denial
+  Scenario: A switched-off option refuses the requests that set it
+    Given a running infraweave server whose features.disabled is "vendor-opentofu"
+    Then "POST /api/v1/stacks" with '{"input":{"name":"Tofu","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"opentofu":{}}},"manageState":false}' on the API listener answers a 403 problem "feature-disabled"
+    And the problem names the feature "vendor-opentofu"
+    And "GET /api/v1/stacks" on the API listener answers '{"items":[]}'
 
   Scenario: A key's first use beyond the seats limit is refused
     Given two infraweave servers, A and B, on one database

@@ -20,7 +20,7 @@ Feature: Tiers, organization tiers, grants and billing through the operator API
     And token "op" turns billing on through A
     Then "GET /api/v1/viewer" through B with token "h" eventually answers a 403 problem "feature-not-in-tier"
     And the problem names the feature "viewer"
-    And "GET /api/v1/stacks" through B with token "h" answers a 501 problem "not-implemented"
+    And "GET /api/v1/stacks" through B with token "h" eventually answers 200
     When token "op" grants the home organization the feature "viewer" through A
     Then "GET /api/v1/viewer" through B with token "h" eventually answers 200
     And "DELETE /operator/v1/organizations/acme/grants/features/viewer" through B with token "op" answers '{"tier":"Gold","version":3,"features":["stacks"],"limits":{},"grants":{"features":[],"limits":[]}}'

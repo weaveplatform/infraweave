@@ -168,13 +168,13 @@ func (o *orgSteps) listsAccounts(want string) error {
 }
 
 // member checks the last answer's top-level member name against want as
-// JSON.
+// JSON, with each {name} resolved.
 func (o *orgSteps) member(name, want string) error {
 	var got map[string]json.RawMessage
 	var g, w any
 	r := o.a.s.last()
 	if json.Unmarshal(r.body, &got) != nil || json.Unmarshal(got[name], &g) != nil ||
-		json.Unmarshal([]byte(want), &w) != nil || !reflect.DeepEqual(g, w) {
+		json.Unmarshal([]byte(o.resolve(want)), &w) != nil || !reflect.DeepEqual(g, w) {
 		return fmt.Errorf("%w: %s is not %s: %d %s", errStep, name, want, r.status, r.body)
 	}
 	return nil

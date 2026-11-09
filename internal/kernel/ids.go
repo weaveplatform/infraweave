@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -131,12 +132,36 @@ func (u ULID) UUID() string {
 
 // Slug is the account-unique name that stacks, modules, spaces, contexts,
 // policies, templates and blueprints are addressed by, beside their ULID
-// key. It is carried as opaque text: the alphabet and the derivation from
-// a name arrive with stack creation and reslugging, the first operations
-// that make one.
+// key: lowercase letters and digits in runs joined by single hyphens, as
+// SlugFrom derives one from a name.
 //
 // ref: decision 0005
 type Slug string
 
 // String is the slug as written on the wire.
 func (s Slug) String() string { return string(s) }
+
+// SlugFrom derives a slug from name: lowercased, each run of anything
+// other than a letter a to z or a digit one hyphen, with none leading or
+// trailing. A name with no such letter or digit derives the empty slug,
+// which is not Valid.
+func SlugFrom(name string) Slug {
+	var b strings.Builder
+	hyphen := false
+	for _, r := range strings.ToLower(name) {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			if hyphen && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			hyphen = false
+			b.WriteRune(r)
+			continue
+		}
+		hyphen = true
+	}
+	return Slug(b.String())
+}
+
+// Valid reports whether s is a slug SlugFrom could derive: not empty, and
+// the same once derived again.
+func (s Slug) Valid() bool { return s != "" && SlugFrom(string(s)) == s }

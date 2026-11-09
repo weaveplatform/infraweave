@@ -125,8 +125,8 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	}
 	// Every domain appends to and subscribes on this one outbox, and
 	// registers its event kinds, before the scheduler starts.
-	events := outbox.New(db.Primary(), queue.New(db.Primary()), outbox.NewKinds())
-	domains, err := newDomains(c, db, keys, kms)
+	events := outbox.New(db.Primary(), queue.New(db.Primary()), newKinds())
+	domains, err := newDomains(c, db, keys, kms, events)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}

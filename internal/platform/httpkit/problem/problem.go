@@ -200,6 +200,8 @@ type Problem struct {
 	// Action is forbidden's, when an action decided it: the action the
 	// caller may not perform.
 	Action string `json:"action,omitempty"`
+	// LockedBy is resource-locked's: who holds the lock.
+	LockedBy string `json:"lockedBy,omitempty"`
 	// Errors are invalid-request's and validation-failed's: each field
 	// the server refused.
 	Errors []FieldError `json:"errors,omitempty"`

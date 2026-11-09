@@ -405,7 +405,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 	if rec := send(
 		api,
 		http.MethodGet,
-		"/api/v1/stacks",
+		"/api/v1/stacks/infra/attachable-worker-pools",
 		me,
 		"",
 	); rec.Code != http.StatusNotImplemented ||
@@ -431,7 +431,13 @@ func TestUnitAPIDisabledCaller(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.DisabledCallers = []string{addressCaller("192.0.2.1")}
 	api := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, Platform{}, Blobs{})
-	rec := send(api, http.MethodGet, "/api/v1/stacks", "192.0.2.1:1", "")
+	rec := send(
+		api,
+		http.MethodGet,
+		"/api/v1/stacks/infra/attachable-worker-pools",
+		"192.0.2.1:1",
+		"",
+	)
 	wantTyped(t, rec, problem.APIDisabled)
 	if rec.Header().Get("Retry-After") == "" || rec.Header().Get("X-RateLimit-Limit") != "" {
 		t.Errorf("disabled caller's headers: %v", rec.Header())
@@ -439,7 +445,7 @@ func TestUnitAPIDisabledCaller(t *testing.T) {
 	if rec := send(
 		api,
 		http.MethodGet,
-		"/api/v1/stacks",
+		"/api/v1/stacks/infra/attachable-worker-pools",
 		"198.51.100.7:1",
 		"",
 	); rec.Code != http.StatusNotImplemented {

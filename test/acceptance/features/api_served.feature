@@ -24,7 +24,7 @@ Feature: Served API
 
   Scenario: Scaffolded operations answer 501 until a family implements them
     Given a running infraweave server
-    Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
+    Then "GET /api/v1/integrations-count" on the API listener answers a 501 problem "not-implemented"
     And the problem names the request in its instance
 
   Scenario: The router's own errors are problem details
@@ -39,7 +39,7 @@ Feature: Served API
     Then "POST /api/v1/stacks/search" on the API listener answers a 429 problem "rate-limited"
     And the response carries Retry-After and the rate-limit headers
     And the problem names the request in its instance
-    And "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
+    And "GET /api/v1/integrations-count" on the API listener answers a 501 problem "not-implemented"
 
   Scenario: A disabled caller gets 503 api-disabled
     Given a running infraweave server that disables the caller "api_key:01KACME0000000000000000003"
@@ -49,7 +49,7 @@ Feature: Served API
 
   Scenario: Callers the operator has not disabled are unaffected
     Given a running infraweave server that disables the caller "192.0.2.1"
-    Then "GET /api/v1/stacks" on the API listener answers a 501 problem "not-implemented"
+    Then "GET /api/v1/integrations-count" on the API listener answers a 501 problem "not-implemented"
 
   Scenario: A route that needs a credential refuses a request without one
     Given a running infraweave server

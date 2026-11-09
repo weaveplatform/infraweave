@@ -1,8 +1,8 @@
 @postgres
 Feature: Idempotency keys across replicas
   Two infraweave serve processes on one database share their idempotency
-  keys: a key answers the same through either replica. Every operation
-  answers 501 until a family implements it, and a 5xx releases its key, so
+  keys: a key answers the same through either replica. An operation no
+  family implements answers 501, and a 5xx releases its key, so
   these scenarios store a key's state in idempotency_keys themselves, as the
   replica that served the request would have. TestAccGuardedReplicas proves
   a response stored through one replica replays through the other until a
@@ -20,11 +20,11 @@ Feature: Idempotency keys across replicas
     And "POST /api/v1/stacks" with body '{"name":"x"}' and key "k1" through B replays the stored 201
 
   Scenario: A key in flight answers 409 on both replicas until its lock lapses
-    Given "POST /api/v1/stacks" with body '{}' under key "k2" is in flight
-    Then "POST /api/v1/stacks" with body '{}' and key "k2" through A answers a 409 problem "idempotency-key-in-flight"
-    And "POST /api/v1/stacks" with body '{}' and key "k2" through B answers a 409 problem "idempotency-key-in-flight"
+    Given "POST /api/v1/state/upload-url" with body '{}' under key "k2" is in flight
+    Then "POST /api/v1/state/upload-url" with body '{}' and key "k2" through A answers a 409 problem "idempotency-key-in-flight"
+    And "POST /api/v1/state/upload-url" with body '{}' and key "k2" through B answers a 409 problem "idempotency-key-in-flight"
     When the lock of key "k2" lapses
-    Then "POST /api/v1/stacks" with body '{}' and key "k2" through B answers a 501 problem "not-implemented"
+    Then "POST /api/v1/state/upload-url" with body '{}' and key "k2" through B answers a 501 problem "not-implemented"
     And key "k2" is no longer stored
 
   Scenario: A key reused with another request answers 422 on both replicas

@@ -122,4 +122,24 @@ func TestUnitSlug(t *testing.T) {
 	if s := Slug("my-stack"); s.String() != "my-stack" {
 		t.Errorf("String() = %q", s.String())
 	}
+	for name, want := range map[string]Slug{
+		"My Stack":          "my-stack",
+		"  prod / eu-west ": "prod-eu-west",
+		"Infra_2026!":       "infra-2026",
+		"--a--b--":          "a-b",
+		"Zürich":            "z-rich",
+		"!!!":               "",
+	} {
+		if got := SlugFrom(name); got != want {
+			t.Errorf("SlugFrom(%q) = %q, want %q", name, got, want)
+		}
+	}
+	for s, want := range map[Slug]bool{
+		"my-stack": true, "a1": true, "": false, "My-stack": false,
+		"-a": false, "a-": false, "a--b": false, "a_b": false,
+	} {
+		if got := s.Valid(); got != want {
+			t.Errorf("Slug(%q).Valid() = %v, want %v", s, got, want)
+		}
+	}
 }

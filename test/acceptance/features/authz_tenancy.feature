@@ -1,5 +1,5 @@
 @postgres
-Feature: Spaces stay within their account
+Feature: Spaces and their stacks stay within their account
   Each account has its own tree of spaces, and a space of another account
   answers as one that does not exist, whether that account is of the same
   organization or another. A binding grants only in its own account. A new
@@ -7,6 +7,8 @@ Feature: Spaces stay within their account
   its system roles and its first admin, space-admin on its top space. The
   home and sibling accounts are of one organization, and the stranger
   account of another; each key is space-admin on its account's top space.
+  A stack, in its account's space, is the same: another account's answers
+  as one that does not exist, and a slug is taken only within its account.
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key
@@ -51,6 +53,24 @@ Feature: Spaces stay within their account
     When token "h" sends "POST /api/v1/spaces" with '{"name":"Over","description":"","inheritEntities":false,"parentSpace":"acme-dev"}' through A
     Then it answers a 404 problem "not-found"
     When token "h" sends "DELETE /api/v1/spaces/globex" through B
+    Then it answers a 404 problem "not-found"
+
+  @op:stacks @op:stack @op:stackCreate @op:stackLock @op:stackDelete @case:denial
+  Scenario: Another account's stack answers 404, and each account's slugs are its own
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    When token "s" sends "GET /api/v1/stacks/infra" through B
+    Then it answers a 404 problem "not-found"
+    When token "x" sends "POST /api/v1/stacks/infra/lock" through A
+    Then it answers a 404 problem "not-found"
+    When token "x" sends "GET /api/v1/stacks" through B
+    Then the answer lists the stacks ""
+    When token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    When token "s" sends "DELETE /api/v1/stacks/infra" through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then it answers 200
+    When token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Over","repository":"infra","branch":"main","space":"acme"},"manageState":false}' through A
     Then it answers a 404 problem "not-found"
 
   @op:organizationAccountCreate @case:success

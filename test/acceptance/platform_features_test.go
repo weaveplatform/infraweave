@@ -23,6 +23,10 @@ func (s *servedSteps) registerFeatures(sc *godog.ScenarioContext) {
 	sc.Step(`^the problem names the feature "([a-z-]+)"$`, s.namesFeature)
 	sc.Step(`^"([A-Z]+) ([^"]+)" on the API listener answers (\d+)$`, s.apiAnswers)
 	sc.Step(`^"([A-Z]+) ([^"]+)" on the API listener answers '([^']*)'$`, s.apiAnswersJSON)
+	sc.Step(
+		`^"([A-Z]+) ([^"]+)" with '([^']*)' on the API listener answers a (\d+) problem "([a-z-]+)"$`,
+		s.apiBodyProblem,
+	)
 	sc.Step(`^the tier features read on the API listener (hold|lack) "([a-z-]+)"$`, s.tierFeatures)
 	sc.Step(
 		`^the home organization is on the Free tier with billing on, its 2 seats taken$`,
@@ -105,6 +109,21 @@ func (s *servedSteps) apiAnswers(ctx context.Context, method, path, code string)
 		)
 	}
 	return nil
+}
+
+// apiBodyProblem sends body, a JSON document, on the API listener: an
+// option of a feature is a member of a request's body.
+func (s *servedSteps) apiBodyProblem(
+	ctx context.Context,
+	method, path, body, code, slug string,
+) error {
+	resp, err := s.w.api.Do(ctx, method, path, json.RawMessage(body))
+	if resp == nil {
+		return err //nolint:wrapcheck // the client names the request
+	}
+	r := response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
+	s.sent = append(s.sent, r)
+	return isProblem(r, method+" "+path, code, slug)
 }
 
 func (s *servedSteps) apiAnswersJSON(ctx context.Context, method, path, want string) error {

@@ -5239,6 +5239,9 @@ type Problem struct {
 	// Limit The limit of limit-reached, such as seats.
 	Limit *string `json:"limit,omitempty"`
 
+	// LockedBy For resource-locked, who holds the lock.
+	LockedBy *string `json:"lockedBy,omitempty"`
+
 	// Scope For limit-reached, whether the organization's pool or the account's limit was reached.
 	Scope *ProblemScope `json:"scope,omitempty"`
 

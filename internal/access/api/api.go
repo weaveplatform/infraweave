@@ -140,11 +140,16 @@ var ErrNoSpace = errors.New("no such space")
 // the caller's transaction, which the context carries, so no delete or
 // move removes it before that transaction commits; a space the account
 // lacks is ErrNoSpace. The holding domain also registers a SpaceGuard,
-// which a delete or move asks after waiting for every hold.
+// which a delete or move asks after waiting for every hold. A request
+// names a space by its slug, which Find turns into the ID the domain
+// stores, ErrNoSpace when the account lacks it, and Slugs names each of
+// the account's spaces by, for the domain's answers.
 //
 // ref: decision 0004
 type Spaces interface {
 	Hold(ctx context.Context, acct kernel.AccountID, space kernel.ULID) error
+	Find(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error)
+	Slugs(ctx context.Context, acct kernel.AccountID) (map[kernel.ULID]string, error)
 }
 
 // SpaceMove is a proposed move of Space, with every space below it, to a
