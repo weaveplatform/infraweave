@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
@@ -102,6 +103,18 @@ func stackChanged(
 		return run(ctx, kernel.AccountID{ULID: ev.Account}, ch.Stack)
 	}
 }
+
+// Surfaces are the expression surfaces the domain declares: the
+// environment's, configapi.Surface.
+func (d *Domain) Surfaces() []expr.Surface { return []expr.Surface{d.svc.Surface()} }
+
+// BindExpressions binds the registry a value's templates are checked
+// with when it is saved, which internal/app builds from every domain's
+// Surfaces before serving.
+func (d *Domain) BindExpressions(r *expr.Registry) { d.svc.BindExpressions(r) }
+
+// Environment resolves a stack's environment for a run's spec.
+func (d *Domain) Environment() configapi.Environment { return d.svc }
 
 // SpaceGuard is the domain's say in the access domain's space deletes and
 // moves, which internal/app registers there.

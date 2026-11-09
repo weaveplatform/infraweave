@@ -104,6 +104,13 @@ type Store interface {
 	// PutElement writes e, sealing its value, or keeping the value of the
 	// row e.ID names when e.Value is nil.
 	PutElement(ctx context.Context, e Element) error
+	// Opened reads the elements of each of owners with every value
+	// opened, write-only or not, by name, keyed by the owner's ID.
+	Opened(
+		ctx context.Context,
+		acct kernel.AccountID,
+		owners []Owner,
+	) (map[kernel.ULID][]Opened, error)
 	// LockElements locks owner's elements until the transaction ends, so
 	// two writers of them take turns.
 	LockElements(ctx context.Context, acct kernel.AccountID, owner Owner) error

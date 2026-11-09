@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
@@ -127,12 +128,13 @@ func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode,
 	return out, nil
 }
 
-// stacks are an account's stacks by slug, with their labels by slug,
-// recording each hold.
+// stacks are an account's stacks by slug, with their labels and hooks by
+// slug, recording each hold.
 type stacks struct {
 	mu     sync.Mutex
 	all    map[string]stacksapi.Stack
 	labels map[string][]string
+	hooks  map[string]map[string][]string
 	holds  []kernel.ULID
 	err    error
 }
@@ -201,12 +203,21 @@ func (s *stacks) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 	return nil
 }
 
-func (*stacks) Settings(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
+func (s *stacks) Settings(
+	_ context.Context,
+	_ kernel.AccountID,
+	id kernel.ULID,
 ) (stacksapi.Settings, error) {
-	return stacksapi.Settings{}, errors.ErrUnsupported
+	if s.err != nil {
+		return stacksapi.Settings{}, s.err
+	}
+	st, ok := s.byID(id)
+	if !ok {
+		return stacksapi.Settings{}, stacksapi.ErrNotFound
+	}
+	return stacksapi.Settings{
+		Stack: st, Repository: st.Slug, Branch: "main", Hooks: s.hooks[st.Slug],
+	}, nil
 }
 
 func (*stacks) ByRepository(
@@ -379,7 +390,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	st := &stacks{
 		all:    map[string]stacksapi.Stack{"web": web, "db": data},
-		labels: map[string][]string{},
+		labels: map[string][]string{}, hooks: map[string]map[string][]string{},
 	}
 	principal := func(login string) kernel.Principal {
 		return kernel.Principal{
@@ -418,6 +429,11 @@ func newFixture(t *testing.T) *fixture {
 		Store: store, DB: db, Spaces: tree, Stacks: st, Authz: az,
 		Events: outbox.New(db, queue.New(db), kinds), Now: func() time.Time { return f.now },
 	})
+	registry, err := expr.NewRegistry(expr.Defaults(), f.svc.Surface())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.svc.BindExpressions(registry)
 	return f
 }
 

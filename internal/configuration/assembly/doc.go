@@ -7,7 +7,10 @@
 // deletes and moves; Configuration is the stack view's reader; SpaceOf and
 // AttachmentSpaceOf find the space the access domain decides a context's
 // and an attachment's operations on; Subscribe subscribes Autoattach,
-// which follows each stack change with the stack's automatic attachments.
+// which follows each stack change with the stack's automatic attachments;
+// Surfaces declares the environment expression surface, BindExpressions
+// binds the registry internal/app builds from it, and Environment
+// resolves a stack's environment for a run.
 //
 // # Input and output
 //
@@ -16,7 +19,8 @@
 // # Dependencies
 //
 // It imports the domain's api, core, http and pg packages, the access and
-// stacks api packages, internal/kernel, platform/crypt, platform/outbox,
+// stacks api packages, internal/kernel, platform/crypt, platform/expr,
+// platform/outbox,
 // platform/queue and platform/sql/integrity and migrate. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.
 package assembly

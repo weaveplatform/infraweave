@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -97,6 +98,11 @@ func newDomains(
 	)
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
+	registry, err := expr.NewRegistry(c.Expressions, configuration.Surfaces()...)
+	if err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the surface or the setting
+	}
+	configuration.BindExpressions(registry)
 	d := Domains{
 		Features:      features,
 		Access:        access,

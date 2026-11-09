@@ -33,7 +33,8 @@
 //
 // Check takes a Request (surface, the context's variables, form and
 // source) and returns diagnostics with ranges in the source, the result's
-// type and a static cost estimate; Diagnostic.FieldError gives each as the
+// type, a static cost estimate and each literal read of a variable's key
+// with its range; Diagnostic.FieldError gives each as the
 // API's error item. Evaluate takes a Request and an Input (now, the seed,
 // the variables' values, and a loader of secret keys) and returns the
 // Result as Go values, or *CheckError for a source that does not compile
