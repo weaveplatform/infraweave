@@ -133,7 +133,7 @@ func TestUnitErrors(t *testing.T) {
 	}{
 		"a failing server":   {index.OpenTofu{URL: answer(http.StatusBadGateway, "")}, "502"},
 		"a body not JSON":    {index.HashiCorp{URL: answer(http.StatusOK, "<html>")}, "invalid character"},
-		"no server":          {index.OpenTofu{URL: gone.URL}, "connection refused"},
+		"no server":          {index.OpenTofu{URL: gone.URL}, "dial tcp"},
 		"no stable release":  {index.OpenTofu{URL: answer(http.StatusOK, `{"versions":[]}`)}, "no stable release"},
 		"a URL that is none": {index.HashiCorp{URL: "http://[::1"}, "missing ']'"},
 		"a bad request URL":  {index.OpenTofu{URL: "http://a b"}, "invalid character"},

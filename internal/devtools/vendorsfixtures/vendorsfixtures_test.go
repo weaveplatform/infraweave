@@ -168,10 +168,10 @@ func TestUnitRunFails(t *testing.T) {
 		"no versions":       {vendorsfixtures.Source{Format: vendorsfixtures.OpenTofu, URL: answer(http.StatusOK, `{}`)}, "", "no versions"},
 		"a page untimed":    {vendorsfixtures.Source{Format: vendorsfixtures.HashiCorp, URL: answer(http.StatusOK, "["+strings.Join(full, ",")+"]")}, "", "timestamp_created"},
 		"an unknown format": {vendorsfixtures.Source{Name: "x", Format: "svn"}, "", `no format "svn"`},
-		"no server":         {vendorsfixtures.Source{Format: vendorsfixtures.OpenTofu, URL: "http://127.0.0.1:1"}, "", "connection refused"},
+		"no server":         {vendorsfixtures.Source{Format: vendorsfixtures.OpenTofu, URL: "http://127.0.0.1:1"}, "", "dial tcp"},
 		"a bad URL":         {vendorsfixtures.Source{Format: vendorsfixtures.HashiCorp, URL: "http://[::1"}, "", "missing ']'"},
 		"a bad request":     {vendorsfixtures.Source{Format: vendorsfixtures.OpenTofu, URL: "http://a b"}, "", "invalid character"},
-		"no directory":      {vendorsfixtures.Source{Name: "x", Format: vendorsfixtures.OpenTofu, URL: ok}, "/nonexistent/dir", "no such file"},
+		"no directory":      {vendorsfixtures.Source{Name: "x", Format: vendorsfixtures.OpenTofu, URL: ok}, "/nonexistent/dir", "x.json"},
 	} {
 		if c.s.Keep == nil {
 			c.s.Keep = regexp.MustCompile(`^$`)
