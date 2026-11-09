@@ -41,6 +41,9 @@ type Space struct {
 	InheritEntities bool
 	ParentID        kernel.ULID
 	CreatedAt       time.Time
+	// Version is raised by every change of the space; a conditional
+	// change names the version it expects.
+	Version int64
 }
 
 // Top reports whether s is its account's top space.

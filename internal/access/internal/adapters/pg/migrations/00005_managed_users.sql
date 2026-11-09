@@ -27,5 +27,8 @@ CREATE TABLE managed_user_groups (
     name        text        NOT NULL,
     description text        NOT NULL DEFAULT '',
     created_at  timestamptz NOT NULL,
+    -- Raised by every change of the row; the API serves it as the group's
+    -- ETag.
+    version     bigint      NOT NULL DEFAULT 1,
     UNIQUE (account_id, name)
 );

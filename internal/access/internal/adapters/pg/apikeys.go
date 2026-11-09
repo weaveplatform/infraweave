@@ -31,7 +31,7 @@ const keyColumns = `a.organization_id, k.account_id, k.id, k.name, k.description
 		JOIN roles r ON r.account_id = b.account_id AND r.id = b.role_id
 		WHERE b.account_id = k.account_id AND b.space_id = k.account_id
 			AND b.actor_kind = 'api_key' AND b.actor_id = k.id
-			AND r.slug = 'space-admin' AND r.is_system)`
+			AND r.slug = 'space-admin' AND r.is_system), k.version`
 
 // mapping is a claim mapping entry as oidc_claim_mapping stores it.
 type mapping struct {
@@ -78,11 +78,13 @@ SELECT
 
 // TouchAPIKey records a use of the key id: it sets last_used_at unless it
 // is under a minute old, so a busy key writes its row once a minute, not
-// once an exchange. A key that is not personal and was not used within
-// SeatWindow takes a seat with this use: with the features domain held,
-// the seats limit is checked in the touching transaction, whose lock on
-// the organization's entitlement holds until the use commits, and a use
-// beyond it is refused with a *featuresapi.LimitError.
+// once an exchange. A use leaves version as it is: it changes nothing a
+// client edits, so an edit read before it is not stale. A key that is
+// not personal and was not used within SeatWindow takes a seat with this
+// use: with the features domain held, the seats limit is checked in the
+// touching transaction, whose lock on the organization's entitlement
+// holds until the use commits, and a use beyond it is refused with a
+// *featuresapi.LimitError.
 func (s *Store) TouchAPIKey(ctx context.Context, id kernel.ULID) error {
 	//nolint:wrapcheck // the check and the update name themselves
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -372,29 +374,61 @@ func (s *Store) AccountAPIKey(
 	return k, read(err, "API key", id)
 }
 
-// UpdateAPIKey applies c to the account's key id unless it is deleted.
+// UpdateAPIKey applies c to the account's key id unless it is deleted or
+// expect does not accept its version.
 func (s *Store) UpdateAPIKey(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	c apikey.Change,
 ) (apikey.Key, error) {
 	var claims []byte
 	if c.ClaimMapping != nil {
 		claims = mappings(*c.ClaimMapping)
 	}
-	k, err := scanKey(tx.Q(ctx, s.db).QueryRow(ctx, `WITH k AS (UPDATE api_keys SET
-			name = coalesce($3, name),
-			description = coalesce($4, description),
-			teams = coalesce($5, teams),
-			oidc_claim_mapping = coalesce($6, oidc_claim_mapping)
-		WHERE account_id = $1 AND id = $2 AND deleted_at IS NULL RETURNING *)
-		SELECT `+keyColumns+` FROM k JOIN accounts a ON a.id = k.account_id`,
-		acct, id, c.Name, c.Description, c.Teams, claims))
-	if err := read(err, "API key", id); err != nil {
+	var k apikey.Key
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		q := tx.Q(ctx, s.db)
+		if err := lockKey(ctx, q, acct, id, expect); err != nil {
+			return err
+		}
+		var err error
+		k, err = scanKey(q.QueryRow(ctx, `WITH k AS (UPDATE api_keys SET
+				name = coalesce($3, name),
+				description = coalesce($4, description),
+				teams = coalesce($5, teams),
+				oidc_claim_mapping = coalesce($6, oidc_claim_mapping),
+				version = version + 1
+			WHERE account_id = $1 AND id = $2 RETURNING *)
+			SELECT `+keyColumns+` FROM k JOIN accounts a ON a.id = k.account_id`,
+			acct, id, c.Name, c.Description, c.Teams, claims))
+		return read(err, "API key", id)
+	})
+	if err != nil {
 		return apikey.Key{}, fmt.Errorf("update API key %s: %w", id, err)
 	}
 	return k, nil
+}
+
+// lockKey locks the account's key id FOR UPDATE unless it is deleted, so
+// the version expect checks is the one the change replaces; a version it
+// does not accept is kernel.ErrStale.
+func lockKey(
+	ctx context.Context,
+	q tx.Querier,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	expect kernel.Expect,
+) error {
+	var version int64
+	err := q.QueryRow(ctx, `SELECT version FROM api_keys
+		WHERE account_id = $1 AND id = $2 AND deleted_at IS NULL FOR UPDATE`, acct, id).
+		Scan(&version)
+	if err != nil {
+		return read(err, "API key", id)
+	}
+	return expect.Check(version) //nolint:wrapcheck // kernel.ErrStale, answered as it is
 }
 
 // ResetAPIKey replaces the account's secret key's hash and revokes the
@@ -405,7 +439,7 @@ func (s *Store) ResetAPIKey(
 	id kernel.ULID,
 	hash []byte,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "reset", id, `secret_hash = $3`, `TRUE`, acct, id, hash)
+	return s.revokeKey(ctx, "reset", acct, id, kernel.Expect{}, `secret_hash = $3`, `TRUE`, hash)
 }
 
 // DisableAPIKey disables the account's key and revokes its sessions. A
@@ -416,7 +450,7 @@ func (s *Store) DisableAPIKey(
 	id kernel.ULID,
 	reason string,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "disable", id, disabled, `TRUE`, acct, id, reason)
+	return s.revokeKey(ctx, "disable", acct, id, kernel.Expect{}, disabled, `TRUE`, reason)
 }
 
 // DisablePersonalAPIKey is DisableAPIKey of a personal key; a key of the
@@ -427,7 +461,7 @@ func (s *Store) DisablePersonalAPIKey(
 	id kernel.ULID,
 	reason string,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "disable", id, disabled, `is_personal`, acct, id, reason)
+	return s.revokeKey(ctx, "disable", acct, id, kernel.Expect{}, disabled, `is_personal`, reason)
 }
 
 // disabled disables a key for reason $3, keeping the time and reason it
@@ -435,13 +469,15 @@ func (s *Store) DisablePersonalAPIKey(
 const disabled = `disabled_at = coalesce(disabled_at, now()),
 	disabled_reason = coalesce(disabled_reason, $3)`
 
-// DeleteAPIKey marks the account's key deleted and revokes its sessions.
+// DeleteAPIKey marks the account's key deleted and revokes its sessions,
+// unless expect does not accept its version.
 func (s *Store) DeleteAPIKey(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "delete", id, `deleted_at = now()`, `TRUE`, acct, id)
+	return s.revokeKey(ctx, "delete", acct, id, expect, `deleted_at = now()`, `TRUE`)
 }
 
 // SetNonAdminManagers records the account's setting.
@@ -457,16 +493,19 @@ func (s *Store) SetNonAdminManagers(ctx context.Context, acct kernel.AccountID, 
 	return nil
 }
 
-// revokeKey applies set, with args, to the account's key unless it is
-// deleted or fails cond, and revokes every live session of the key in the
-// same transaction, so no token of the old key outlives the change's
-// commit.
+// revokeKey applies set to acct's key id unless it is deleted, fails cond
+// or has a version expect does not accept, raising its version, and
+// revokes every live session of the key in the same transaction, so no
+// token of the old key outlives the change's commit. set and cond name
+// acct as $1, id as $2 and extra from $3.
 func (s *Store) revokeKey(
 	ctx context.Context,
 	what string,
+	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	set, cond string,
-	args ...any,
+	extra ...any,
 ) (apikey.Key, []kernel.ULID, error) {
 	var (
 		k   apikey.Key
@@ -474,10 +513,15 @@ func (s *Store) revokeKey(
 	)
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
+		if err := lockKey(ctx, q, acct, id, expect); err != nil {
+			return err
+		}
 		var err error
-		k, err = scanKey(q.QueryRow(ctx, `WITH k AS (UPDATE api_keys SET `+set+`
+		k, err = scanKey(q.QueryRow(ctx, `WITH k AS (UPDATE api_keys SET `+set+`,
+				version = version + 1
 			WHERE account_id = $1 AND id = $2 AND deleted_at IS NULL AND `+cond+` RETURNING *)
-			SELECT `+keyColumns+` FROM k JOIN accounts a ON a.id = k.account_id`, args...))
+			SELECT `+keyColumns+` FROM k JOIN accounts a ON a.id = k.account_id`,
+			append([]any{acct, id}, extra...)...))
 		if err != nil {
 			return read(err, "API key", id)
 		}
@@ -503,7 +547,7 @@ func scanKey(r pgx.Row) (apikey.Key, error) {
 	err := r.Scan(&k.OrganizationID, &k.AccountID, &k.ID, &k.Name, &k.Description, &k.Type,
 		&k.SecretHash, &k.OIDC.Issuer, &k.OIDC.ClientID, &k.OIDC.SubjectExpression, &claims,
 		&k.Teams, &k.Machine, &k.Owner, &k.OwnerLogin, &k.Creator, &expires, &off,
-		&k.DisabledReason, &used, &k.CreatedAt, &deleted, &k.Admin)
+		&k.DisabledReason, &used, &k.CreatedAt, &deleted, &k.Admin, &k.Version)
 	if err != nil {
 		return apikey.Key{}, err //nolint:wrapcheck // the callers name the read
 	}

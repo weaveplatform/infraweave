@@ -7,10 +7,12 @@ import (
 	"fmt"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/stacks"
 )
@@ -81,7 +83,9 @@ func (s Server) Stack(
 	if err != nil {
 		return nil, err
 	}
-	return api.Stack200JSONResponse{Body: v}, nil
+	return api.Stack200JSONResponse{
+		Body: v, Headers: api.Stack200ResponseHeaders{ETag: etag(st)},
+	}, nil
 }
 
 // StackCreate creates a stack in the space its input names.
@@ -125,7 +129,7 @@ func (s Server) StackUpdate(
 	if err != nil {
 		return nil, err
 	}
-	st, err := s.stacks.Update(ctx, p, req.StackId, in)
+	st, err := s.stacks.Update(ctx, p, req.StackId, strict.IfMatch(req.Params.IfMatch), in)
 	if err != nil {
 		return nil, stackError(err, req.StackId)
 	}
@@ -133,7 +137,55 @@ func (s Server) StackUpdate(
 	if err != nil {
 		return nil, err
 	}
-	return api.StackUpdate200JSONResponse{Body: v}, nil
+	return api.StackUpdate200JSONResponse{
+		Body: v, Headers: api.StackUpdate200ResponseHeaders{ETag: etag(st)},
+	}, nil
+}
+
+// StackPatch changes the settings its merge patch names and keeps the
+// rest, writing the result as StackUpdate writes its input.
+func (s Server) StackPatch(
+	ctx context.Context,
+	req api.StackPatchRequestObject,
+) (api.StackPatchResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var patch map[string]any
+	if req.Body != nil {
+		patch = *req.Body
+	}
+	read := func() (api.StackInput, int64, error) {
+		st, err := s.stacks.Stack(ctx, p.AccountID, req.StackId)
+		if err != nil {
+			return api.StackInput{}, 0, err //nolint:wrapcheck // answered by stackError below
+		}
+		slugs, err := s.spaces.Slugs(ctx, p.AccountID)
+		if err != nil {
+			return api.StackInput{}, 0, err //nolint:wrapcheck // the access domain names the read
+		}
+		in, err := inputView(st, slugs[st.Space])
+		return in, st.Version, err
+	}
+	write := func(view api.StackInput, expect kernel.Expect) (stacks.Stack, error) {
+		in, err := inputOf(view)
+		if err != nil {
+			return stacks.Stack{}, err
+		}
+		return s.stacks.Update(ctx, p, req.StackId, expect, in) //nolint:wrapcheck // as above
+	}
+	st, err := strict.Apply(strict.IfMatch(req.Params.IfMatch), patch, read, write)
+	if err != nil {
+		return nil, stackError(err, req.StackId)
+	}
+	v, err := s.view(ctx, p, st)
+	if err != nil {
+		return nil, err
+	}
+	return api.StackPatch200JSONResponse{
+		Body: v, Headers: api.StackPatch200ResponseHeaders{ETag: etag(st)},
+	}, nil
 }
 
 // StackDelete deletes a stack at once, since it manages no resources, and
@@ -146,7 +198,7 @@ func (s Server) StackDelete(
 	if err != nil {
 		return nil, err
 	}
-	st, err := s.stacks.Delete(ctx, p, req.StackId)
+	st, err := s.stacks.Delete(ctx, p, req.StackId, strict.IfMatch(req.Params.IfMatch))
 	if err != nil {
 		return nil, stackError(err, req.StackId)
 	}
@@ -397,6 +449,59 @@ func inputOf(in api.StackInput) (stacks.Input, error) {
 		out.VendorConfig = raw
 	}
 	return out, nil
+}
+
+// inputView is st's settings as the StackInput a PUT would send to keep
+// them, with its space by slug: the document a merge patch applies to.
+// A Terraform stack with no vendor settings sends no vendorConfig, so a
+// patch that names another vendor does not also have to null Terraform.
+func inputView(st stacks.Stack, space string) (api.StackInput, error) {
+	in := api.StackInput{
+		Name: st.Name, Description: st.Description, Repository: st.Repository,
+		RepositoryURL: st.RepositoryURL, Branch: st.Branch, Space: &space,
+		Namespace: &st.Namespace, ProjectRoot: st.ProjectRoot, RunnerImage: st.RunnerImage,
+		TerraformVersion:             st.TerraformVersion,
+		AdditionalProjectGlobs:       &st.AdditionalProjectGlobs,
+		GitSparseCheckoutPaths:       sparse(st.GitSparseCheckoutPaths),
+		Labels:                       &st.Labels,
+		Autodeploy:                   &st.Autodeploy,
+		Autoretry:                    &st.Autoretry,
+		ProtectFromDeletion:          &st.ProtectFromDeletion,
+		IsDisabled:                   &st.Disabled,
+		LocalPreviewEnabled:          &st.LocalPreviewEnabled,
+		GithubActionDeploy:           &st.GithubActionDeploy,
+		EnableSensitiveOutputUpload:  &st.EnableSensitiveOutputUpload,
+		EnableWellKnownSecretMasking: &st.EnableWellKnownSecretMasking,
+		SkipVendorBinaryDownload:     &st.SkipVendorBinaryDownload,
+	}
+	provider := api.VCSProvider(st.Provider)
+	in.Provider = &provider
+	h := hooksOf(st.Hooks)
+	in.BeforeInit, in.AfterInit = &h.BeforeInit, &h.AfterInit
+	in.BeforePlan, in.AfterPlan = &h.BeforePlan, &h.AfterPlan
+	in.BeforeApply, in.AfterApply = &h.BeforeApply, &h.AfterApply
+	in.BeforeDestroy, in.AfterDestroy = &h.BeforeDestroy, &h.AfterDestroy
+	in.BeforePerform, in.AfterPerform = &h.BeforePerform, &h.AfterPerform
+	in.AfterRun = &h.AfterRun
+	if st.Vendor == string(iac.Terraform) && string(st.VendorConfig) == "{}" {
+		return in, nil
+	}
+	raw, err := json.Marshal(map[string]json.RawMessage{st.Vendor: st.VendorConfig})
+	if err != nil {
+		return api.StackInput{}, fmt.Errorf("stacks: vendorConfig of %s: %w", st.Slug, err)
+	}
+	var vendor api.StackConfigVendorInput
+	if err := json.Unmarshal(raw, &vendor); err != nil {
+		return api.StackInput{}, fmt.Errorf("stacks: vendorConfig of %s: %w", st.Slug, err)
+	}
+	in.VendorConfig = &vendor
+	return in, nil
+}
+
+// etag is st's entity tag, which an If-Match names to change it.
+func etag(st stacks.Stack) *string {
+	t := strict.ETag(st.Version)
+	return &t
 }
 
 func deref(s *[]string) []string {

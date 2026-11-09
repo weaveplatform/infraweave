@@ -102,6 +102,10 @@ func (UnimplementedStrict) ApiKey(context.Context, ApiKeyRequestObject) (ApiKeyR
 	return nil, &problem.NotImplementedError{OperationID: "apiKey", Route: "GET /api-keys/{apiKeyId}"}
 }
 
+func (UnimplementedStrict) ApiKeyPatch(context.Context, ApiKeyPatchRequestObject) (ApiKeyPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyPatch", Route: "PATCH /api-keys/{apiKeyId}"}
+}
+
 func (UnimplementedStrict) ApiKeyUpdate(context.Context, ApiKeyUpdateRequestObject) (ApiKeyUpdateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUpdate", Route: "PUT /api-keys/{apiKeyId}"}
 }
@@ -238,6 +242,10 @@ func (UnimplementedStrict) ManagedUserGroup(context.Context, ManagedUserGroupReq
 	return nil, &problem.NotImplementedError{OperationID: "managedUserGroup", Route: "GET /managed-user-groups/{managedUserGroupId}"}
 }
 
+func (UnimplementedStrict) ManagedUserGroupPatch(context.Context, ManagedUserGroupPatchRequestObject) (ManagedUserGroupPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupPatch", Route: "PATCH /managed-user-groups/{managedUserGroupId}"}
+}
+
 func (UnimplementedStrict) ManagedUserGroupUpdateV2(context.Context, ManagedUserGroupUpdateV2RequestObject) (ManagedUserGroupUpdateV2ResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupUpdateV2", Route: "PUT /managed-user-groups/{managedUserGroupId}"}
 }
@@ -264,6 +272,10 @@ func (UnimplementedStrict) ManagedUserDelete(context.Context, ManagedUserDeleteR
 
 func (UnimplementedStrict) ManagedUser(context.Context, ManagedUserRequestObject) (ManagedUserResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "managedUser", Route: "GET /managed-users/{managedUserId}"}
+}
+
+func (UnimplementedStrict) ManagedUserPatch(context.Context, ManagedUserPatchRequestObject) (ManagedUserPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserPatch", Route: "PATCH /managed-users/{managedUserId}"}
 }
 
 func (UnimplementedStrict) ManagedUserUpdate(context.Context, ManagedUserUpdateRequestObject) (ManagedUserUpdateResponseObject, error) {
@@ -454,6 +466,10 @@ func (UnimplementedStrict) Space(context.Context, SpaceRequestObject) (SpaceResp
 	return nil, &problem.NotImplementedError{OperationID: "space", Route: "GET /spaces/{spaceId}"}
 }
 
+func (UnimplementedStrict) SpacePatch(context.Context, SpacePatchRequestObject) (SpacePatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "spacePatch", Route: "PATCH /spaces/{spaceId}"}
+}
+
 func (UnimplementedStrict) SpaceUpdate(context.Context, SpaceUpdateRequestObject) (SpaceUpdateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "spaceUpdate", Route: "PUT /spaces/{spaceId}"}
 }
@@ -472,6 +488,10 @@ func (UnimplementedStrict) StackDependenciesCreateInBatch(context.Context, Stack
 
 func (UnimplementedStrict) StackDependencyDelete(context.Context, StackDependencyDeleteRequestObject) (StackDependencyDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackDependencyDelete", Route: "DELETE /stack-dependencies/{stackDependencyId}"}
+}
+
+func (UnimplementedStrict) StackDependencyPatch(context.Context, StackDependencyPatchRequestObject) (StackDependencyPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackDependencyPatch", Route: "PATCH /stack-dependencies/{stackDependencyId}"}
 }
 
 func (UnimplementedStrict) StackDependencyUpdate(context.Context, StackDependencyUpdateRequestObject) (StackDependencyUpdateResponseObject, error) {
@@ -524,6 +544,10 @@ func (UnimplementedStrict) StackDelete(context.Context, StackDeleteRequestObject
 
 func (UnimplementedStrict) Stack(context.Context, StackRequestObject) (StackResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stack", Route: "GET /stacks/{stackId}"}
+}
+
+func (UnimplementedStrict) StackPatch(context.Context, StackPatchRequestObject) (StackPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackPatch", Route: "PATCH /stacks/{stackId}"}
 }
 
 func (UnimplementedStrict) StackUpdate(context.Context, StackUpdateRequestObject) (StackUpdateResponseObject, error) {
@@ -646,6 +670,10 @@ func (UnimplementedStrict) StackScheduledDeleteDelete(context.Context, StackSche
 	return nil, &problem.NotImplementedError{OperationID: "stackScheduledDeleteDelete", Route: "DELETE /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId}"}
 }
 
+func (UnimplementedStrict) StackScheduledDeletePatch(context.Context, StackScheduledDeletePatchRequestObject) (StackScheduledDeletePatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackScheduledDeletePatch", Route: "PATCH /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId}"}
+}
+
 func (UnimplementedStrict) StackScheduledDeleteUpdate(context.Context, StackScheduledDeleteUpdateRequestObject) (StackScheduledDeleteUpdateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackScheduledDeleteUpdate", Route: "PUT /stacks/{stackId}/scheduled-deletes/{scheduledDeleteId}"}
 }
@@ -662,6 +690,10 @@ func (UnimplementedStrict) StackScheduledRunDelete(context.Context, StackSchedul
 	return nil, &problem.NotImplementedError{OperationID: "stackScheduledRunDelete", Route: "DELETE /stacks/{stackId}/scheduled-runs/{scheduledRunId}"}
 }
 
+func (UnimplementedStrict) StackScheduledRunPatch(context.Context, StackScheduledRunPatchRequestObject) (StackScheduledRunPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackScheduledRunPatch", Route: "PATCH /stacks/{stackId}/scheduled-runs/{scheduledRunId}"}
+}
+
 func (UnimplementedStrict) StackScheduledRunUpdate(context.Context, StackScheduledRunUpdateRequestObject) (StackScheduledRunUpdateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackScheduledRunUpdate", Route: "PUT /stacks/{stackId}/scheduled-runs/{scheduledRunId}"}
 }
@@ -676,6 +708,10 @@ func (UnimplementedStrict) StackScheduledTaskCreate(context.Context, StackSchedu
 
 func (UnimplementedStrict) StackScheduledTaskDelete(context.Context, StackScheduledTaskDeleteRequestObject) (StackScheduledTaskDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackScheduledTaskDelete", Route: "DELETE /stacks/{stackId}/scheduled-tasks/{scheduledTaskId}"}
+}
+
+func (UnimplementedStrict) StackScheduledTaskPatch(context.Context, StackScheduledTaskPatchRequestObject) (StackScheduledTaskPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackScheduledTaskPatch", Route: "PATCH /stacks/{stackId}/scheduled-tasks/{scheduledTaskId}"}
 }
 
 func (UnimplementedStrict) StackScheduledTaskUpdate(context.Context, StackScheduledTaskUpdateRequestObject) (StackScheduledTaskUpdateResponseObject, error) {
@@ -744,6 +780,10 @@ func (UnimplementedStrict) WebhooksIntegrationCreate(context.Context, WebhooksIn
 
 func (UnimplementedStrict) WebhooksIntegrationDelete(context.Context, WebhooksIntegrationDeleteRequestObject) (WebhooksIntegrationDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "webhooksIntegrationDelete", Route: "DELETE /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId}"}
+}
+
+func (UnimplementedStrict) WebhooksIntegrationPatch(context.Context, WebhooksIntegrationPatchRequestObject) (WebhooksIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "webhooksIntegrationPatch", Route: "PATCH /stacks/{stackId}/webhooks-integrations/{webhooksIntegrationId}"}
 }
 
 func (UnimplementedStrict) WebhooksIntegrationUpdate(context.Context, WebhooksIntegrationUpdateRequestObject) (WebhooksIntegrationUpdateResponseObject, error) {

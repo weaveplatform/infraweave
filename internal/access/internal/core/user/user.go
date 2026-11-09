@@ -96,6 +96,9 @@ type User struct {
 	// Invitation is the latest invitation to the account; nil for a
 	// member admitted without one.
 	Invitation *Invitation
+	// Version is raised by every change of the account's admission of
+	// the member; a conditional change names the version it expects.
+	Version int64
 }
 
 // State derives the user's state at now: EXPIRED is a pending member's
@@ -122,7 +125,9 @@ type Invite struct {
 }
 
 // Store keeps the account's managed users. A member the account does not
-// admit is port.ErrNotFound.
+// admit is port.ErrNotFound. A method given an expect locks the admission
+// and changes nothing, answering kernel.ErrStale, when expect does not
+// accept its version; each change raises it.
 type Store interface {
 	// Users are up to limit of acct's managed users in member ID order
 	// from the first after after.
@@ -150,6 +155,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		id kernel.MemberID,
+		expect kernel.Expect,
 		slack string,
 		e kernel.AuditEntry,
 	) (User, error)
@@ -170,6 +176,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		id kernel.MemberID,
+		expect kernel.Expect,
 		e kernel.AuditEntry,
 	) ([]kernel.ULID, error)
 	// PersonalAPIKeys are up to limit of the member's personal keys in
@@ -252,11 +259,13 @@ func (s *Service) Invite(
 }
 
 // Update sets the managed user's Slack member. rules is how many space
-// access rules the input carries.
+// access rules the input carries. A managed user whose version expect
+// does not accept is kernel.ErrStale and is not changed.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
 	remoteIP, id string,
+	expect kernel.Expect,
 	rules int,
 	slack string,
 ) (User, error) {
@@ -270,21 +279,24 @@ func (s *Service) Update(
 	e := s.entry(p, remoteIP, ActionUpdate, "UPDATE",
 		kernel.AuditResource{Type: ResourceManagedUser, ID: m.String()},
 		map[string]any{"slackMemberID": slack})
-	return s.d.Store.SetSlackMemberID(ctx, p.AccountID, m, slack, e) //nolint:wrapcheck // as above
+	//nolint:wrapcheck // as above
+	return s.d.Store.SetSlackMemberID(ctx, p.AccountID, m, expect, slack, e)
 }
 
 // Delete removes the managed user from p's account and answers them as
-// they were.
+// they were. A managed user whose version expect does not accept is
+// kernel.ErrStale and stays.
 func (s *Service) Delete(
 	ctx context.Context,
 	p kernel.Principal,
 	remoteIP, id string,
+	expect kernel.Expect,
 ) (User, error) {
 	u, err := s.User(ctx, p, id)
 	if err != nil {
 		return User{}, err
 	}
-	ids, err := s.d.Store.Remove(ctx, p.AccountID, u.Member.ID,
+	ids, err := s.d.Store.Remove(ctx, p.AccountID, u.Member.ID, expect,
 		s.entry(p, remoteIP, ActionDelete, "DELETE",
 			kernel.AuditResource{Type: ResourceManagedUser, ID: u.Member.ID.String()}, nil))
 	if err != nil {

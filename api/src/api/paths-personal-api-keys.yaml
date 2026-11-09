@@ -3,6 +3,7 @@
 components:
   schemas:
     PersonalApiKeyInput:
+      additionalProperties: false
       properties:
         description:
           description: Free-form description of the key.

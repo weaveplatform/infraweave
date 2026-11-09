@@ -91,8 +91,8 @@ func TestAccGuardSpaces(t *testing.T) {
 	ctx := t.Context()
 	d, _, a, dev := devSpace(t)
 	d.GuardSpaces(holder{})
-	_, deleted := d.spaces.Delete(ctx, admin(a.ID), dev.Slug)
-	_, moved := d.spaces.Update(ctx, admin(a.ID), dev.Slug, space.LegacySlug, dev)
+	_, deleted := d.spaces.Delete(ctx, admin(a.ID), dev.Slug, kernel.Expect{})
+	_, moved := d.spaces.Update(ctx, admin(a.ID), dev.Slug, space.LegacySlug, kernel.Expect{}, dev)
 	for name, err := range map[string]error{"delete": deleted, "move": moved} {
 		if _, ok := errors.AsType[*space.Refusal](err); !ok {
 			t.Errorf("%s a guard refuses = %v", name, err)

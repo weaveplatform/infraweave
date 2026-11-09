@@ -40,7 +40,10 @@
 // idempotency keys and rate limits, naming each operation's action and
 // subject (x-infraweave-action and
 // x-infraweave-subject) from the action catalogue where its name, path
-// and a query parameter named space decide them. Product.Parity and
+// and a query parameter named space decide them. It gives each update PUT
+// a PATCH twin that takes a JSON Merge Patch, versions the item with ETag
+// and If-Match, and makes every input schema a JSON body reaches reject
+// members it does not name. Product.Parity and
 // ParityCheck decide the parity outcome for each reference operation
 // over the served operations under the product's own tags: served, served
 // with divergence, superseded or missing. They match renamed operations
@@ -52,7 +55,7 @@
 // outcomes and godog's cucumber report (ReadCucumber), by the three-scenario
 // evidence rule, and StateClaims lists the records that claim more.
 //
-// ref: decisions 0003, 0007 and 0016; report 02
+// ref: decisions 0003, 0007, 0016 and 0022; report 02
 //
 // # Input and output
 //

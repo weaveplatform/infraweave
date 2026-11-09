@@ -21,6 +21,7 @@ var conventionComponents = []string{
 	"headers/RateLimitLimit", "headers/RateLimitRemaining", "headers/RateLimitReset",
 	"responses/TooManyRequests", "responses/ApiDisabled", "responses/IdempotencyConflict",
 	"responses/IdempotencyMismatch", "responses/InvalidCursor",
+	"parameters/IfMatch", "headers/ETag", "responses/PreconditionFailed", "schemas/MergePatch",
 }
 
 func common(extra ...string) Defined {
@@ -205,9 +206,81 @@ func TestUnitScaffoldConventions(t *testing.T) {
 	}
 
 	item := op(f, "/stacks/{stackId}", "get")
-	if hasParamRefs(item, "Cursor") || divergence(item) != "rate-limit" {
+	if hasParamRefs(item, "Cursor") || divergence(item) != "if-match,rate-limit" {
 		t.Errorf("a single-item GET was paginated: %s", divergence(item))
 	}
+}
+
+// TestUnitScaffoldUpdateTwin checks the PATCH beside an update PUT, the
+// versions on the item's reads and writes, and that the PUT's input is
+// strict.
+func TestUnitScaffoldUpdateTwin(t *testing.T) {
+	s, f := scaffoldFixture(
+		t,
+		"Stacks",
+		common("schemas/Problem", "responses/Problem", "responses/NotFound"),
+	)
+	put, patch := op(f, "/stacks/{stackId}", "put"), op(f, "/stacks/{stackId}", "patch")
+	if patch == nil {
+		t.Fatalf("no PATCH beside stackUpdate; the item has %v", f.Paths["/stacks/{stackId}"])
+	}
+	body := patch["requestBody"].(ymap)["content"].(ymap)["application/merge-patch+json"].(ymap)
+	if patch["operationId"] != "stackPatch" || patch["summary"] != "Stack patch" ||
+		body["schema"].(ymap)["$ref"] != "#/components/schemas/MergePatch" ||
+		patch["x-upstream"] != "none" || patch["x-graphql"] != nil || patch["x-rest-style"] != nil ||
+		!strings.Contains(patch["description"].(string), "StackInput") {
+		t.Errorf("PATCH = %v", patch)
+	}
+	if !hasParamRefs(patch, "IdempotencyKey", "IfMatch") ||
+		divergence(patch) != "idempotency-key,if-match,merge-patch,rate-limit" {
+		t.Errorf("PATCH: %v %s", patch["parameters"], divergence(patch))
+	}
+	if !hasParamRefs(put, "IfMatch") || hasParamRefs(put, "IdempotencyKey") ||
+		divergence(put) != "if-match,merge-patch,rate-limit" ||
+		put["responses"].(ymap)["412"].(ymap)["$ref"] != "#/components/responses/PreconditionFailed" {
+		t.Errorf("PUT: %v %s", put["parameters"], divergence(put))
+	}
+	for _, m := range []string{"get", "put", "patch"} {
+		h := op(f, "/stacks/{stackId}", m)["responses"].(ymap)["200"].(ymap)["headers"].(ymap)
+		if h["ETag"] == nil {
+			t.Errorf("%s 200 lacks ETag", m)
+		}
+	}
+	if get := op(f, "/stacks/{stackId}", "get"); hasParamRefs(get, "IfMatch") ||
+		divergence(get) != "if-match,rate-limit" {
+		t.Errorf("GET: %v %s", get["parameters"], divergence(get))
+	}
+	total := 0
+	for p := range f.Paths {
+		total += countOps(f, p)
+	}
+	if s.Operations != total {
+		t.Errorf("Operations = %d, the fragment holds %d", s.Operations, total)
+	}
+	clash := ymap{
+		"put":   ymap{"operationId": "stackUpdate", "x-rest-style": "update"},
+		"patch": ymap{"operationId": "stackPatch"},
+	}
+	if _, err := twinUpdate("/stacks/{stackId}", clash); !errors.Is(err, ErrPatchClash) {
+		t.Errorf("an item with a PATCH already = %v", err)
+	}
+	in := f.Components["schemas"]["StackInput"].(ymap)
+	if in["additionalProperties"] != false {
+		t.Errorf("StackInput = %v", in)
+	}
+	if out := f.Components["schemas"]["Stack"].(ymap); out["additionalProperties"] != nil {
+		t.Errorf("Stack, an output, was made strict: %v", out["additionalProperties"])
+	}
+}
+
+func countOps(f fragment, path string) int {
+	n := 0
+	for _, m := range methods {
+		if _, ok := f.Paths[path][m]; ok {
+			n++
+		}
+	}
+	return n
 }
 
 func hasParamRefs(op ymap, names ...string) bool {

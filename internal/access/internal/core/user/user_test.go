@@ -94,6 +94,7 @@ func (s *store) SetSlackMemberID(
 	_ context.Context,
 	acct kernel.AccountID,
 	id kernel.MemberID,
+	expect kernel.Expect,
 	slack string,
 	e kernel.AuditEntry,
 ) (user.User, error) {
@@ -101,7 +102,10 @@ func (s *store) SetSlackMemberID(
 	if err != nil {
 		return u, err
 	}
-	u.SlackMemberID = slack
+	if err := expect.Check(u.Version); err != nil {
+		return user.User{}, err
+	}
+	u.SlackMemberID, u.Version = slack, u.Version+1
 	s.users[id] = u
 	s.trail = append(s.trail, e)
 	return u, nil
@@ -133,9 +137,14 @@ func (s *store) Remove(
 	_ context.Context,
 	acct kernel.AccountID,
 	id kernel.MemberID,
+	expect kernel.Expect,
 	e kernel.AuditEntry,
 ) ([]kernel.ULID, error) {
-	if _, err := s.user(acct, id); err != nil {
+	u, err := s.user(acct, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := expect.Check(u.Version); err != nil {
 		return nil, err
 	}
 	delete(s.users, id)
@@ -314,6 +323,7 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 		w.p,
 		"",
 		id,
+		kernel.Expect{},
 		0,
 		"U2",
 	); err != nil ||
@@ -325,6 +335,7 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 		w.p,
 		"",
 		id,
+		kernel.Expect{},
 		1,
 		"",
 	); !errors.Is(
@@ -333,7 +344,18 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 	) {
 		t.Errorf("update with access rules: %v", err)
 	}
-	if _, err := w.svc.Update(ctx, w.p, "", "nope", 0, ""); !errors.Is(err, port.ErrNotFound) {
+	if _, err := w.svc.Update(
+		ctx,
+		w.p,
+		"",
+		"nope",
+		kernel.Expect{},
+		0,
+		"",
+	); !errors.Is(
+		err,
+		port.ErrNotFound,
+	) {
 		t.Errorf("update of no user: %v", err)
 	}
 
@@ -360,17 +382,41 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 		t.Errorf("personal keys of no user: %v", err)
 	}
 
+	// The store sees the expect each change carries.
+	stale := kernel.ExpectVersions(9)
+	if _, err := w.svc.Update(ctx, w.p, "", id, stale, 0, "U3"); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale update: %v", err)
+	}
+	if _, err := w.svc.Delete(ctx, w.p, "", id, stale); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale delete: %v", err)
+	}
 	w.s.revoked = []kernel.ULID{kernel.NewULID()}
-	if got, err := w.svc.Delete(ctx, w.p, "", id); err != nil || got.Member.ID != u.Member.ID ||
+	if got, err := w.svc.Delete(
+		ctx,
+		w.p,
+		"",
+		id,
+		kernel.Expect{},
+	); err != nil ||
+		got.Member.ID != u.Member.ID ||
 		len(w.dropped) != 1 {
 		t.Errorf("delete = %+v, %v, dropped %v", got, err, w.dropped)
 	}
-	if _, err := w.svc.Delete(ctx, w.p, "", id); !errors.Is(err, port.ErrNotFound) {
+	if _, err := w.svc.Delete(
+		ctx,
+		w.p,
+		"",
+		id,
+		kernel.Expect{},
+	); !errors.Is(
+		err,
+		port.ErrNotFound,
+	) {
 		t.Errorf("delete again: %v", err)
 	}
 
 	w.s.fail = true
-	if _, err := w.svc.Delete(ctx, w.p, "", id); !errors.Is(err, errDown) {
+	if _, err := w.svc.Delete(ctx, w.p, "", id, kernel.Expect{}); !errors.Is(err, errDown) {
 		t.Errorf("delete with the store down: %v", err)
 	}
 }
@@ -378,10 +424,13 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 // removeFails answers Remove with errDown after a read that succeeds.
 type removeFails struct{ *store }
 
-func (removeFails) Remove(context.Context, kernel.AccountID, kernel.MemberID, kernel.AuditEntry) (
-	[]kernel.ULID,
-	error,
-) {
+func (removeFails) Remove(
+	context.Context,
+	kernel.AccountID,
+	kernel.MemberID,
+	kernel.Expect,
+	kernel.AuditEntry,
+) ([]kernel.ULID, error) {
 	return nil, errDown
 }
 
@@ -392,7 +441,16 @@ func TestUnitUserDeleteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := user.NewService(user.Deps{Store: removeFails{w.s}, Now: func() time.Time { return t0 }})
-	if _, err := svc.Delete(t.Context(), w.p, "", u.Member.ID.String()); !errors.Is(err, errDown) {
+	if _, err := svc.Delete(
+		t.Context(),
+		w.p,
+		"",
+		u.Member.ID.String(),
+		kernel.Expect{},
+	); !errors.Is(
+		err,
+		errDown,
+	) {
 		t.Errorf("delete = %v", err)
 	}
 }

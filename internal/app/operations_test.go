@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
@@ -74,7 +75,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		"PUT /blobs/{token}":                          {Public: true},
 	} {
 		got := ops[key]
-		got.Required = nil
+		got.Required, got.Body = nil, nil
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
 		}
@@ -117,6 +118,11 @@ func TestUnitAPIOperations(t *testing.T) {
 			{Pointer: "/vendorConfig/terraform", Feature: "vendor-terraform"},
 		}) {
 		t.Errorf("stackUpdate's options: %+v", g.Options)
+	}
+	// A PATCH beside an update PUT gates the members its PUT gates.
+	if g, put := ops["PATCH "+BaseURL+"/stacks/{stackId}"].Gate,
+		ops["PUT "+BaseURL+"/stacks/{stackId}"].Gate; !reflect.DeepEqual(g, put) {
+		t.Errorf("stackPatch's gate %+v, stackUpdate's %+v", g, put)
 	}
 	// The fs driver's routes are mounted, so a table pattern the driver
 	// does not serve fails the walk below.
@@ -520,6 +526,41 @@ func TestUnitGuardedAuthentication(t *testing.T) {
 	wantTyped(t, send(r, http.MethodPost, "/open", "192.0.2.1:1", ""), problem.APIDisabled)
 }
 
+// TestUnitPatchBodies checks the body a PATCH beside an update PUT is
+// checked against: a merge patch of the PUT's input, in which every member
+// is optional and null resets it, and which refuses the members the input
+// refuses, at any depth.
+func TestUnitPatchBodies(t *testing.T) {
+	rb := apiOperations()["PATCH "+BaseURL+"/stacks/{stackId}"].Body
+	if rb == nil || rb.Content.Get("application/merge-patch+json") == nil {
+		t.Fatalf("stackPatch's body = %+v", rb)
+	}
+	schema := rb.Content.Get("application/merge-patch+json").Schema.Value
+	for _, tc := range []struct {
+		doc string
+		ok  bool
+	}{
+		{`{}`, true},
+		{`{"labels":null,"name":null,"branch":"dev"}`, true},
+		{`{"vendorConfig":{"terraform":{"version":null,"workspace":"w"}}}`, true},
+		{`{"bogus":1}`, false},
+		{`{"labels":"a"}`, false},
+		{`{"vendorConfig":{"terraform":{"bogus":1}}}`, false},
+	} {
+		var v any
+		if err := json.Unmarshal([]byte(tc.doc), &v); err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.VisitJSON(v); (err == nil) != tc.ok {
+			t.Errorf("%s: %v, want ok %v", tc.doc, err, tc.ok)
+		}
+	}
+	put := apiOperations()["PUT "+BaseURL+"/stacks/{stackId}"].Body.Content.Get("application/json")
+	if len(put.Schema.Value.Required) == 0 || put.Schema.Value.Nullable {
+		t.Error("deriving the patch changed the PUT's input")
+	}
+}
+
 // TestUnitSignedURLRoutes checks that the fs driver's routes take no
 // bearer credential: with every credential refused, a token that does not
 // verify reaches the driver and answers its 403, while a route the API
@@ -547,16 +588,27 @@ func TestUnitStrictBodies(t *testing.T) {
 	if ops["POST "+BaseURL+"/api-keys"].Body == nil {
 		t.Error("apiKeyCreate's body is not strict")
 	}
-	if ops["POST "+BaseURL+"/stacks/search"].Body != nil {
-		t.Error("a lenient body is checked")
+	for _, key := range []string{
+		"POST /stacks/search", "PATCH /organization", "PATCH /stacks/{stackId}",
+	} {
+		method, path, _ := strings.Cut(key, " ")
+		if ops[method+" "+BaseURL+path].Body == nil {
+			t.Errorf("%s's body is not checked", key)
+		}
 	}
 	no := false
 	strict := &openapi3.RequestBody{
 		Required: true,
 		Content: openapi3.NewContentWithJSONSchema(&openapi3.Schema{
-			Type:                 &openapi3.Types{"object"},
-			Required:             []string{"name"},
-			Properties:           openapi3.Schemas{"name": openapi3.NewStringSchema().NewRef()},
+			Type:     &openapi3.Types{"object"},
+			Required: []string{"name"},
+			Properties: openapi3.Schemas{
+				"name": openapi3.NewStringSchema().NewRef(),
+				"meta": (&openapi3.Schema{
+					Type:                 &openapi3.Types{"object"},
+					AdditionalProperties: openapi3.AdditionalProperties{Has: &no},
+				}).NewRef(),
+			},
 			AdditionalProperties: openapi3.AdditionalProperties{Has: &no},
 		}),
 	}
@@ -596,6 +648,17 @@ func TestUnitStrictBodies(t *testing.T) {
 		wantTyped(t, rec, problem.InvalidRequest)
 		if name == "unknown field" && !strings.Contains(rec.Body.String(), "admin") {
 			t.Errorf("the unknown field's problem does not name it: %s", rec.Body)
+		}
+	}
+	for body, want := range map[string]string{
+		`{"name":"k","admin":false}`:     "/admin",
+		`{"name":"k","meta":{"a/b~":1}}`: "/meta/a~1b~0",
+	} {
+		var p problem.Problem
+		rec := post("/strict", body, "application/json")
+		if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || len(p.Errors) != 1 ||
+			p.Errors[0].Pointer != want || p.Errors[0].Reason != kernel.ReasonUnknownField {
+			t.Errorf("%s answers %s, want an unknown-field at %s", body, rec.Body, want)
 		}
 	}
 	if runs != 0 {

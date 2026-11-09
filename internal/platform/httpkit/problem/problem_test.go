@@ -64,6 +64,19 @@ func TestUnitResponseErrorInternal(t *testing.T) {
 	}
 }
 
+func TestUnitResponseErrorStale(t *testing.T) {
+	rec := httptest.NewRecorder()
+	ResponseError(
+		rec,
+		httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/", nil),
+		fmt.Errorf("update: %w", kernel.ErrStale),
+	)
+	if p := decode(t, rec); rec.Code != http.StatusPreconditionFailed ||
+		p.Type != TypePrefix+PreconditionFailed.Slug {
+		t.Errorf("got %d %+v", rec.Code, p)
+	}
+}
+
 func TestUnitRequestError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	RequestError(

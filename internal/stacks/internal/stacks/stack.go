@@ -95,6 +95,7 @@ func check(at string, in Input) error {
 	if strings.TrimSpace(in.Branch) == "" {
 		refuse("branch", kernel.ReasonRequired, "A stack needs a branch.")
 	}
+	errs = append(errs, kernel.CheckLabels(at+"/labels", in.Labels)...)
 	if in.WorkerPool != nil {
 		refuse("workerPool", kernel.ReasonNotFound,
 			fmt.Sprintf("No worker pool %q in this account.", *in.WorkerPool))
@@ -159,7 +160,7 @@ func apply(st *Stack, space kernel.ULID, in Input) {
 			st.Hooks[phase] = slices.Clone(cmds)
 		}
 	}
-	st.Labels = slices.Compact(slices.Sorted(slices.Values(in.Labels)))
+	st.Labels = slices.Sorted(slices.Values(in.Labels))
 	st.Autodeploy = deref(in.Autodeploy, false)
 	st.Autoretry = deref(in.Autoretry, false)
 	st.ProtectFromDeletion = deref(in.ProtectFromDeletion, false)

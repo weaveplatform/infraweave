@@ -31,6 +31,9 @@ CREATE TABLE api_keys (
     last_used_at            timestamptz,
     created_at              timestamptz NOT NULL DEFAULT now(),
     deleted_at              timestamptz,
+    -- Raised by every change of the key but a use, which moves only
+    -- last_used_at; the API serves it as the key's ETag.
+    version                 bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
     FOREIGN KEY (owner_user_id) REFERENCES members ON DELETE RESTRICT,
     -- A secret key has its hash; an OIDC key has its issuer, client and

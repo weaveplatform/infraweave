@@ -281,8 +281,8 @@ func RequestError(w http.ResponseWriter, _ *http.Request, err error) {
 }
 
 // ResponseError answers an error a strict handler returned: its problem for
-// an *Error, 501 naming the operation for a stub, and Failure's 503 or 500
-// otherwise, whose details are generic so internal errors never reach the
+// an *Error, 501 naming the operation for a stub, 412 for kernel.ErrStale,
+// and Failure's 503 or 500 otherwise, whose details are generic so internal errors never reach the
 // client.
 func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 	if pe, ok := errors.AsType[*Error](err); ok {
@@ -295,6 +295,15 @@ func ResponseError(w http.ResponseWriter, _ *http.Request, err error) {
 	}
 	if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
 		Write(w, refused(inv))
+		return
+	}
+	if errors.Is(err, kernel.ErrStale) {
+		Write(
+			w,
+			PreconditionFailed.New(
+				"The If-Match names no version the entity has now; read it again.",
+			),
+		)
 		return
 	}
 	Failure(w, err)

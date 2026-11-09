@@ -18,12 +18,19 @@
 // stopping one inheriting. A change it withholds is a *Denied naming
 // SPACE_ADMIN. After each change it drops this replica's authorization
 // snapshot of the account through Deps.Drop, so the change's answer and
-// the caller's next request here see it. Search and Suggest read the
-// spaces a caller may read through Store by Fields, the reference's
+// the caller's next request here see it. A space with no name is
+// ErrName, and labels breaking kernel.CheckLabels' rule, a repeat
+// included, are a *kernel.Invalid naming each at its pointer; labels keep
+// the order given. A Space's Version is raised by every change; Update
+// and Delete carry a kernel.Expect checked against the space read under
+// the tree's lock, after the caller's right to the change, and a version
+// it does not accept is kernel.ErrStale, changing nothing. Search and
+// Suggest read the spaces a caller may read through Store by Fields, the reference's
 // generic search over the tree, with the reachable spaces the caller
 // passes held in the query.
 //
 // ref: decision 0007 § "Spaces"
+// ref: decision 0022
 //
 // # Input and output
 //

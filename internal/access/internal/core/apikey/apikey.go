@@ -68,6 +68,9 @@ type Key struct {
 	// of truth, and no input sets the field.
 	// ref: DV-013
 	Admin bool
+	// Version is raised by every change of the key but a use; a
+	// conditional change names the version it expects.
+	Version int64
 }
 
 // OIDC is an OIDC key's settings: the issuer whose tokens it takes, the

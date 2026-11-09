@@ -17,9 +17,13 @@
 // access rules arrive with P4b, so an input carrying any is
 // ErrBindingsUnsupported rather than dropped. RequestInvite and
 // RequestRoleChange record the request on the account's trail; only a
-// member asks for a role, on the root space until P4's spaces.
+// member asks for a role, on the root space until P4's spaces. A User's
+// Version is raised by every change of the account's admission of the
+// member; Update and Delete carry a kernel.Expect, and the store refuses
+// an admission whose version it does not accept with kernel.ErrStale,
+// changing nothing.
 //
-// ref: decisions 0006 and 0007
+// ref: decisions 0006, 0007 and 0022
 //
 // # Input and output
 //

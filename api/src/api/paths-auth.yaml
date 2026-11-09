@@ -12,6 +12,7 @@ components:
       type: object
       x-graphql-type: ApiKey
     ApiKeyUserRequest:
+      additionalProperties: false
       description: The arguments of apiKeyUser not carried in the path.
       properties:
         id:

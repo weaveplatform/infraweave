@@ -935,6 +935,7 @@ components:
       type: object
       x-graphql-type: SearchSpaceContextsOutput
     SearchSpaceContextsRequest:
+      additionalProperties: false
       description: The arguments of searchSpaceContexts not carried in the path.
       properties:
         input:
@@ -960,6 +961,7 @@ components:
       type: object
       x-graphql-type: SearchSpacePoliciesOutput
     SearchSpacePoliciesRequest:
+      additionalProperties: false
       description: The arguments of searchSpacePolicies not carried in the path.
       properties:
         input:
@@ -1183,6 +1185,7 @@ components:
       type: object
       x-graphql-type: SpaceContextConnection
     SpaceInput:
+      additionalProperties: false
       description: >-
         A space to create, or a space's new fields. A change of the top
         space's parentSpace or inheritEntities is refused.
@@ -2671,6 +2674,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: space
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -2687,6 +2691,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -2704,6 +2710,7 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: path:spaceId:space
@@ -2727,6 +2734,8 @@ paths:
                 $ref: '#/components/schemas/Space'
           description: The space result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -2752,10 +2761,75 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: path:spaceId:space
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of SpaceInput that a JSON Merge Patch (RFC 7396) names
+        and keep the rest; null resets a member to its default. It runs
+        through spaceUpdate, so it validates and persists as the PUT does.
+      operationId: spacePatch
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of SpaceInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+          description: The spacePatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Space
+      tags:
+        - Spaces
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: path:spaceId:space
+      x-upstream: none
     put:
       description: >-
         Change a space's name, description, labels and inheritance, and move
@@ -2774,6 +2848,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: space
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -2795,6 +2870,8 @@ paths:
                 $ref: '#/components/schemas/Space'
           description: The spaceUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -2803,6 +2880,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -2820,6 +2899,8 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: path:spaceId:space

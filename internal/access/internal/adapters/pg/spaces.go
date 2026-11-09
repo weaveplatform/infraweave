@@ -18,7 +18,7 @@ import (
 )
 
 const spaceColumns = `s.account_id, s.id, s.slug, s.name, s.description, s.labels,
-	s.inherit_entities, s.parent_id, s.created_at`
+	s.inherit_entities, s.parent_id, s.created_at, s.version`
 
 // scanSpace reads spaceColumns, then into extra.
 func scanSpace(row pgx.Row, extra ...any) (space.Space, error) {
@@ -28,7 +28,7 @@ func scanSpace(row pgx.Row, extra ...any) (space.Space, error) {
 	)
 	err := row.Scan(append([]any{
 		&s.AccountID, &s.ID, &s.Slug, &s.Name, &s.Description, &s.Labels,
-		&s.InheritEntities, &parent, &s.CreatedAt,
+		&s.InheritEntities, &parent, &s.CreatedAt, &s.Version,
 	}, extra...)...)
 	if parent != nil {
 		s.ParentID = *parent
@@ -233,8 +233,11 @@ func (s *Store) CreateSpace(ctx context.Context, sp space.Space) error {
 // UpdateSpace changes acct's space slug as edit answers, and moves it
 // below parentSlug when that names a new parent: the closure rows that
 // link the subtree to its old ancestors are replaced by the cross product
-// of the new ancestors and the subtree. A move or a change of inheritance
-// changes what grants reach, so it bumps the account's authorization.
+// of the new ancestors and the subtree. edit sees the space read under
+// the tree's lock, so the version it checks is the one the change
+// replaces, and the change raises it once, a move included. A move or a
+// change of inheritance changes what grants reach, so it bumps the
+// account's authorization.
 func (s *Store) UpdateSpace(
 	ctx context.Context,
 	acct kernel.AccountID,
@@ -273,10 +276,11 @@ func (s *Store) UpdateSpace(
 		if out, err = edit(ctx, cur, parent, m); err != nil {
 			return err
 		}
-		if _, err := q.Exec(ctx, `UPDATE spaces SET name = $3, description = $4, labels = $5,
-				inherit_entities = $6 WHERE id = $1 AND account_id = $2`,
+		if err := q.QueryRow(ctx, `UPDATE spaces SET name = $3, description = $4, labels = $5,
+				inherit_entities = $6, version = version + 1 WHERE id = $1 AND account_id = $2
+			RETURNING version`,
 			cur.ID, acct, out.Name, out.Description, nonNil(out.Labels),
-			out.InheritEntities); err != nil {
+			out.InheritEntities).Scan(&out.Version); err != nil {
 			return fmt.Errorf("access: %w", sql.Unavailable(err))
 		}
 		if m != nil {

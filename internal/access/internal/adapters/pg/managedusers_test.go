@@ -133,13 +133,14 @@ func TestAccManagedUserChanges(t *testing.T) {
 		ctx,
 		x.acct,
 		id,
+		kernel.Expect{},
 		"",
 		onTrail(x, user.ActionUpdate),
 	); err != nil ||
 		u.SlackMemberID != "" {
 		t.Errorf("clear Slack member = %+v, %v", u, err)
 	}
-	if _, err := x.s.SetSlackMemberID(ctx, x.acct, x.member, "U2",
+	if _, err := x.s.SetSlackMemberID(ctx, x.acct, x.member, kernel.Expect{}, "U2",
 		onTrail(x, user.ActionUpdate)); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("update of no admission: %v", err)
 	}
@@ -198,7 +199,7 @@ func TestAccManagedUserChanges(t *testing.T) {
 	if err := x.s.CreateSession(ctx, ks); err != nil {
 		t.Fatal(err)
 	}
-	ids, err := x.s.Remove(ctx, x.acct, id, onTrail(x, user.ActionDelete))
+	ids, err := x.s.Remove(ctx, x.acct, id, kernel.Expect{}, onTrail(x, user.ActionDelete))
 	if err != nil || !slices.Contains(ids, web.ID) || !slices.Contains(ids, ks.ID) ||
 		len(ids) != 2 {
 		t.Fatalf("remove = %v, %v", ids, err)
@@ -216,6 +217,7 @@ func TestAccManagedUserChanges(t *testing.T) {
 		ctx,
 		x.acct,
 		id,
+		kernel.Expect{},
 		onTrail(x, user.ActionDelete),
 	); !errors.Is(
 		err,
@@ -318,23 +320,31 @@ func TestAccManagedUserGroups(t *testing.T) {
 		ctx,
 		x.acct,
 		qa.ID,
+		kernel.Expect{},
 		"quality",
 		onTrail(x, group.ActionUpdate),
 	); err != nil ||
 		g.Description != "quality" {
 		t.Errorf("describe = %+v, %v", g, err)
 	}
-	if _, err := x.s.SetDescription(ctx, other.acct, qa.ID, "x",
+	if _, err := x.s.SetDescription(ctx, other.acct, qa.ID, kernel.Expect{}, "x",
 		onTrail(other, group.ActionUpdate)); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("describe from another account: %v", err)
 	}
 	if _, err := x.s.Group(ctx, other.acct, qa.ID); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("read from another account: %v", err)
 	}
-	if err := x.s.DeleteGroup(ctx, x.acct, qa.ID, onTrail(x, group.ActionDelete)); err != nil {
+	if err := x.s.DeleteGroup(
+		ctx,
+		x.acct,
+		qa.ID,
+		kernel.Expect{},
+		onTrail(x, group.ActionDelete),
+	); err != nil {
 		t.Fatal(err)
 	}
 	if err := x.s.DeleteGroup(ctx, x.acct, qa.ID,
+		kernel.Expect{},
 		onTrail(x, group.ActionDelete)); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("delete again: %v", err)
 	}

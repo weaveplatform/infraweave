@@ -161,6 +161,7 @@ components:
         userRoleBindings: served by GET /managed-user-groups/{managedUserGroupId}/user-role-bindings
       x-graphql-type: ManagedUserGroup
     ManagedUserGroupCreateInputV2:
+      additionalProperties: false
       properties:
         description:
           nullable: true
@@ -190,6 +191,7 @@ components:
         - items
       type: object
     ManagedUserGroupUpdateInputV2Body:
+      additionalProperties: false
       properties:
         description:
           nullable: true
@@ -213,6 +215,7 @@ components:
       type: object
       x-graphql-type: ManagedUserInvitation
     ManagedUserInviteInputV2:
+      additionalProperties: false
       properties:
         invitationEmail:
           description: Email address of the user to invite.
@@ -249,6 +252,7 @@ components:
         - items
       type: object
     ManagedUserRequestInviteRequest:
+      additionalProperties: false
       description: The arguments of managedUserRequestInvite not carried in the path.
       properties:
         email:
@@ -261,6 +265,7 @@ components:
       type: object
       x-graphql-args-of: managedUserRequestInvite
     ManagedUserRequestRoleChangeRequest:
+      additionalProperties: false
       description: The arguments of managedUserRequestRoleChange not carried in the path.
       properties:
         requestedAccessLevel:
@@ -270,6 +275,7 @@ components:
       type: object
       x-graphql-args-of: managedUserRequestRoleChange
     ManagedUserUpdateInputBody:
+      additionalProperties: false
       properties:
         accessRules:
           description: new access rules
@@ -286,6 +292,7 @@ components:
       x-graphql-in-path: id
       x-graphql-type: ManagedUserUpdateInput
     RoleBindingInput:
+      additionalProperties: false
       properties:
         roleID:
           description: ID of the role.
@@ -342,6 +349,7 @@ components:
       type: object
       x-graphql-type: SCIMUserMetadata
     SpaceAccessRuleInput:
+      additionalProperties: false
       properties:
         space:
           description: Slug of the space that this access rule affects.
@@ -550,6 +558,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -566,6 +575,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -582,6 +593,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -607,6 +619,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUserGroup'
           description: The managedUserGroup result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -631,8 +645,74 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of ManagedUserGroupUpdateInputV2Body that a JSON Merge Patch (RFC 7396) names
+        and keep the rest; null resets a member to its default. It runs
+        through managedUserGroupUpdateV2, so it validates and persists as the PUT does.
+      operationId: managedUserGroupPatch
+      x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_UPDATE
+      x-infraweave-subject: account
+      parameters:
+        - description: Globally unique, immutable ID of ManagedUserGroup.
+          in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ManagedUserGroupUpdateInputV2Body.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserGroup'
+          description: The managedUserGroupPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch User Group
+      tags:
+        - Managed Users
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: >-
         Set the description of the account's managed user group.
@@ -648,6 +728,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: input.id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -665,6 +746,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUserGroup'
           description: The managedUserGroupUpdateV2 result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -673,6 +756,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -689,6 +774,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /managed-user-groups/{managedUserGroupId}/managed-users:
@@ -940,6 +1027,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         "200":
           content:
@@ -956,6 +1044,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -972,6 +1062,7 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: delete
     get:
@@ -1001,6 +1092,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUser'
           description: The managedUser result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -1025,8 +1118,74 @@ paths:
         type: Query
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
         - rate-limit
       x-rest-style: item
+    patch:
+      description: >-
+        Change the members of ManagedUserUpdateInputBody that a JSON Merge Patch (RFC 7396) names
+        and keep the rest; null resets a member to its default. It runs
+        through managedUserUpdate, so it validates and persists as the PUT does.
+      operationId: managedUserPatch
+      x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_UPDATE
+      x-infraweave-subject: account
+      parameters:
+        - description: Globally unique, immutable ID of ManagedUser to update.
+          in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ManagedUserUpdateInputBody.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUser'
+          description: The managedUserPatch result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Managed User
+      tags:
+        - Managed Users
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
     put:
       description: >-
         Set the managed user's slackMemberID. Space access levels are granted
@@ -1044,6 +1203,7 @@ paths:
           schema:
             type: string
           x-graphql-arg: input.id
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         content:
           application/json:
@@ -1064,6 +1224,8 @@ paths:
                 $ref: '#/components/schemas/ManagedUser'
           description: The managedUserUpdate result.
           headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
             X-RateLimit-Limit:
               $ref: '#/components/headers/RateLimitLimit'
             X-RateLimit-Remaining:
@@ -1072,6 +1234,8 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -1088,6 +1252,8 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - if-match
+        - merge-patch
         - rate-limit
       x-rest-style: update
   /managed-users/{managedUserId}/personal-api-keys:

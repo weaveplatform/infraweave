@@ -186,6 +186,7 @@ components:
       type: object
       x-graphql-type: BillingSubscriptionAddon
     BillingSubscriptionCreateRequest:
+      additionalProperties: false
       description: The arguments of billingSubscriptionCreate not carried in the path.
       properties:
         addons:
@@ -207,6 +208,7 @@ components:
       type: object
       x-graphql-args-of: billingSubscriptionCreate
     BillingSubscriptionUpdateTierRequest:
+      additionalProperties: false
       description: The arguments of billingSubscriptionUpdateTier not carried in the path.
       properties:
         interval:
@@ -305,6 +307,7 @@ components:
       type: string
       x-graphql-type: StripeSubscriptionStatus
     SubscriptionInput:
+      additionalProperties: false
       properties:
         address:
           description: Address visible on invoice
@@ -350,6 +353,7 @@ components:
       type: object
       x-graphql-type: SubscriptionInput
     SubscriptionUpdateV2Input:
+      additionalProperties: false
       properties:
         addons:
           description: addons that the subscription should have (can be ignored because it has not implemented yet).

@@ -332,7 +332,7 @@ func (s *Store) DeactivateMember(
 			return fmt.Errorf("%w: member %s", port.ErrNotFound, id)
 		}
 		rows, err := q.Query(ctx, `UPDATE api_keys SET disabled_at = coalesce(disabled_at, now()),
-				disabled_reason = coalesce(disabled_reason, 'DEPROVISIONED')
+				disabled_reason = coalesce(disabled_reason, 'DEPROVISIONED'), version = version + 1
 			WHERE owner_user_id = $1 AND deleted_at IS NULL RETURNING id`, id)
 		if err != nil {
 			return fmt.Errorf("access: disable personal keys: %w", sql.Unavailable(err))

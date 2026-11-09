@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 )
 
 // Spaces lists the spaces of the caller's account it may read, by slug,
@@ -158,8 +159,9 @@ func (s Server) ActionCatalogue(
 	return api.ActionCatalogue200JSONResponse{Body: out}, nil
 }
 
-// Space answers one space of the caller's account. The route table has
-// answered 404 for one the caller cannot read.
+// Space answers one space of the caller's account, tagged with its
+// version. The route table has answered 404 for one the caller cannot
+// read.
 func (s Server) Space(
 	ctx context.Context,
 	req api.SpaceRequestObject,
@@ -176,7 +178,9 @@ func (s Server) Space(
 	if err != nil {
 		return nil, err
 	}
-	return api.Space200JSONResponse{Body: v}, nil
+	return api.Space200JSONResponse{
+		Body: v, Headers: api.Space200ResponseHeaders{ETag: new(strict.ETag(sp.Version))},
+	}, nil
 }
 
 // SpaceCreate creates a space below the body's parentSpace.
@@ -201,7 +205,7 @@ func (s Server) SpaceCreate(
 }
 
 // SpaceUpdate changes a space's fields and moves it below the body's
-// parentSpace.
+// parentSpace, when its If-Match, if any, names the space's version.
 func (s Server) SpaceUpdate(
 	ctx context.Context,
 	req api.SpaceUpdateRequestObject,
@@ -210,22 +214,81 @@ func (s Server) SpaceUpdate(
 	if err != nil {
 		return nil, err
 	}
-	in := req.Body
-	sp, err := s.spaces.Update(ctx, p, req.SpaceId, in.ParentSpace, spaceOf(*in))
+	sp, err := s.updateSpace(ctx, p, req.SpaceId, strict.IfMatch(req.Params.IfMatch), *req.Body)
 	if err != nil {
-		// A missing space was answered by the route table, so a missing
-		// one here is the parent the body names.
-		return nil, spaceError(err, in.ParentSpace)
+		return nil, err
 	}
 	v, err := s.view(ctx, p, sp)
 	if err != nil {
 		return nil, err
 	}
-	return api.SpaceUpdate200JSONResponse{Body: v}, nil
+	return api.SpaceUpdate200JSONResponse{
+		Body: v, Headers: api.SpaceUpdate200ResponseHeaders{ETag: new(strict.ETag(sp.Version))},
+	}, nil
 }
 
-// SpaceDelete deletes a space and answers it as it was, with the
-// caller's access to it then.
+// SpacePatch changes the fields its merge patch names and keeps the rest,
+// writing the result as SpaceUpdate writes its body.
+func (s Server) SpacePatch(
+	ctx context.Context,
+	req api.SpacePatchRequestObject,
+) (api.SpacePatchResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var patch map[string]any
+	if req.Body != nil {
+		patch = *req.Body
+	}
+	read := func() (api.SpaceInput, int64, error) {
+		sp, err := s.spaces.Space(ctx, p.AccountID, req.SpaceId)
+		if err != nil {
+			return api.SpaceInput{}, 0, spaceError(err, req.SpaceId)
+		}
+		slugs, err := s.spaces.Slugs(ctx, p.AccountID)
+		if err != nil {
+			return api.SpaceInput{}, 0, err //nolint:wrapcheck // the store marks an unreachable database
+		}
+		return spaceInput(sp, slugs), sp.Version, nil
+	}
+	write := func(in api.SpaceInput, expect kernel.Expect) (space.Space, error) {
+		return s.updateSpace(ctx, p, req.SpaceId, expect, in)
+	}
+	sp, err := strict.Apply(strict.IfMatch(req.Params.IfMatch), patch, read, write)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // read and write answer their problems
+	}
+	v, err := s.view(ctx, p, sp)
+	if err != nil {
+		return nil, err
+	}
+	return api.SpacePatch200JSONResponse{
+		Body: v, Headers: api.SpacePatch200ResponseHeaders{ETag: new(strict.ETag(sp.Version))},
+	}, nil
+}
+
+// updateSpace writes in to p's account's space slug, as SpaceUpdate and
+// SpacePatch do, when expect accepts its version.
+func (s Server) updateSpace(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	expect kernel.Expect,
+	in api.SpaceInput,
+) (space.Space, error) {
+	sp, err := s.spaces.Update(ctx, p, slug, in.ParentSpace, expect, spaceOf(in))
+	if err != nil {
+		// A missing space was answered by the route table, so a missing
+		// one here is the parent the body names.
+		return space.Space{}, spaceError(err, in.ParentSpace)
+	}
+	return sp, nil
+}
+
+// SpaceDelete deletes a space, when its If-Match, if any, names the
+// space's version, and answers it as it was, with the caller's access to
+// it then.
 func (s Server) SpaceDelete(
 	ctx context.Context,
 	req api.SpaceDeleteRequestObject,
@@ -243,7 +306,8 @@ func (s Server) SpaceDelete(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.spaces.Delete(ctx, p, req.SpaceId); err != nil {
+	if _, err := s.spaces.Delete(ctx, p, req.SpaceId,
+		strict.IfMatch(req.Params.IfMatch)); err != nil {
 		return nil, spaceError(err, req.SpaceId)
 	}
 	return api.SpaceDelete200JSONResponse{Body: v}, nil
@@ -348,6 +412,19 @@ func slugsOf(spaces []space.Space) map[kernel.ULID]string {
 		out[sp.ID] = sp.Slug
 	}
 	return out
+}
+
+// spaceInput is sp as the SpaceInput that writes it, naming its parent by
+// slug through slugs, and none for the top space.
+func spaceInput(sp space.Space, slugs map[kernel.ULID]string) api.SpaceInput {
+	in := api.SpaceInput{
+		Name: sp.Name, Description: sp.Description, InheritEntities: sp.InheritEntities,
+		Labels: new(nonNil(sp.Labels)),
+	}
+	if !sp.Top() {
+		in.ParentSpace = slugs[sp.ParentID]
+	}
+	return in
 }
 
 // spaceOf is the fields of a SpaceInput the service writes.

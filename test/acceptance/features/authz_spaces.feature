@@ -188,3 +188,24 @@ Feature: Spaces
     And token "m"'s read of the space "{team}" through B allows what the viewer lists for it
     And token "m"'s read of the space "{sub}" through A allows what the viewer lists for it
     And token "m"'s read of the space "acme" through B allows what the viewer lists for it
+
+  @op:spaceCreate @op:spacePatch @case:failure @case:success
+  Scenario: A space's labels are 1 to 255 characters with no control characters or edge whitespace, at most 100, each once
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme","labels":["{256 × x}","a\u0007b","edge ","ok","ok"]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/labels/0" as "max-length"
+    And the problem refuses the field "/labels/1" as "pattern"
+    And the problem refuses the field "/labels/2" as "pattern"
+    And the problem refuses the field "/labels/4" as "duplicate"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme","labels":[{101 labels}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/labels" as "max-length"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme","labels":["prod","Prod","{255 × x}"]}' through A
+    Then it answers 201
+    And the answer's id is the space "team"
+    When token "h" sends "PATCH /api/v1/spaces/{team}" with '{"labels":["prod","Prod"]}' through B
+    Then it answers 200
+    And the answer's labels is '["prod","Prod"]'
+    When token "h" sends "PATCH /api/v1/spaces/{team}" with '{"labels":["Prod","Prod"]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/labels/1" as "duplicate"

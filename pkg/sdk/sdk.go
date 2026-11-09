@@ -109,9 +109,10 @@ type Header struct{ Name, Value string }
 
 // Do sends method to path, which starts at the server's root (/api/v1/…,
 // or /livez on the admin listener), with body encoded as JSON when it is
-// not nil and with headers set. It returns the answer and, for a status of
-// 400 or more, the typed error of its problem as well. A caller's
-// Idempotency-Key header replaces the one the SDK would choose.
+// not nil, as a JSON Merge Patch for PATCH, and with headers set. It
+// returns the answer and, for a status of 400 or more, the typed error of
+// its problem as well. A caller's Idempotency-Key header replaces the one
+// the SDK would choose.
 func (c *Client) Do(
 	ctx context.Context,
 	method, path string,
@@ -131,7 +132,7 @@ func (c *Client) Do(
 		return nil, fmt.Errorf("sdk: %w", err)
 	}
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType(method))
 	}
 	for _, h := range headers {
 		req.Header.Set(h.Name, h.Value)
@@ -147,6 +148,15 @@ func (c *Client) Do(
 	}
 	out := &Response{Status: resp.StatusCode, Header: resp.Header, Body: b}
 	return out, Check(resp, b)
+}
+
+// contentType is the media type of a request body: every PATCH of the API
+// takes a JSON Merge Patch (RFC 7396), and every other method JSON.
+func contentType(method string) string {
+	if method == http.MethodPatch {
+		return "application/merge-patch+json"
+	}
+	return "application/json"
 }
 
 // send sends req with the token, or the API key's, and, on a write, an

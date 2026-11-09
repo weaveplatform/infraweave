@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -21,6 +22,16 @@ const (
 	ConventionPagination  = "cursor-pagination"
 	ConventionIdempotency = "idempotency-key"
 	ConventionRateLimit   = "rate-limit"
+)
+
+// Convention names of the update routes' semantics: if-match on each read
+// that carries an ETag and each write that takes If-Match, merge-patch on
+// an update PUT and the PATCH beside it.
+//
+// ref: decision 0022
+const (
+	ConventionIfMatch    = "if-match"
+	ConventionMergePatch = "merge-patch"
 )
 
 // Cost classes for x-infraweave-cost: each caller has one token bucket per
@@ -43,6 +54,7 @@ var (
 	ErrFragmentExists = errors.New(
 		"specref: fragment exists; scaffold with force to overwrite it",
 	)
+	ErrPatchClash = errors.New("specref: an update route already has a PATCH")
 )
 
 var methods = []string{"get", "put", "post", "delete", "options", "head", "patch", "trace"}
@@ -95,10 +107,12 @@ type ymap = map[string]any
 // conventions: cursor pagination on collection GETs, an optional
 // Idempotency-Key on POST and PATCH, rate-limit responses and headers, and a
 // cost class, and its authorization action and subject where the catalogue
-// decides them. Provenance extensions (x-graphql, x-terraform, x-bruno) are
-// kept.
+// decides them. Each update PUT gets a PATCH beside it, and its item's
+// reads and writes their ETag and If-Match. Every input schema is strict,
+// refusing members it does not name. Provenance extensions (x-graphql,
+// x-terraform, x-bruno) are kept.
 //
-// ref: decisions 0003 and 0007
+// ref: decisions 0003, 0007 and 0022
 func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 	var ref ymap
 	if err := yaml.Unmarshal(o.Reference, &ref); err != nil {
@@ -139,6 +153,13 @@ func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 			authorize(m, p, op, o.Actions)
 			out.Operations++
 		}
+		twinned, err := twinUpdate(p, item)
+		if err != nil {
+			return nil, err
+		}
+		if twinned {
+			out.Operations++
+		}
 		picked[p] = item
 	}
 	if len(picked) == 0 && len(out.Shared) == 0 {
@@ -148,6 +169,7 @@ func Scaffold(o ScaffoldOptions) (*Scaffolded, error) {
 	if err != nil {
 		return nil, err
 	}
+	strictInputs(picked, comps)
 	frag := ymap{"paths": picked}
 	if len(comps) > 0 {
 		frag["components"] = comps
@@ -291,6 +313,7 @@ func pageName(op ymap, items any) string {
 // not collide with an argument the reference already passes.
 var paramNames = map[string]string{
 	"IdempotencyKey": "Idempotency-Key",
+	"IfMatch":        "If-Match",
 	"Cursor":         "cursor",
 	"Limit":          "limit",
 }
@@ -498,4 +521,191 @@ func ReadDefined(dir, skip string) (Defined, error) {
 		}
 	}
 	return d, nil
+}
+
+// updateVersion matches an update's operationId, whose PATCH twin is named
+// for it with Patch in place of Update and any version suffix, which names
+// a revision of the reference's input the twin has no need to repeat.
+var updateVersion = regexp.MustCompile(`Update(V[0-9]+)?$`)
+
+// twinUpdate gives the item's update PUT a PATCH beside it, which applies
+// a JSON Merge Patch through the PUT, and versions the item: ETag on its
+// GET, PUT and PATCH, If-Match and 412 on its PUT, PATCH and DELETE. It
+// reports whether the item had an update PUT.
+//
+// ref: decision 0022
+func twinUpdate(path string, item ymap) (bool, error) {
+	put, ok := item["put"].(ymap)
+	if !ok || put["x-rest-style"] != "update" {
+		return false, nil
+	}
+	if _, taken := item["patch"]; taken {
+		return false, fmt.Errorf("%w: PATCH %s", ErrPatchClash, path)
+	}
+	patch, _ := deepCopy(put).(ymap)
+	id, _ := put["operationId"].(string)
+	patchID := id + "Patch"
+	if updateVersion.MatchString(id) {
+		patchID = updateVersion.ReplaceAllString(id, "Patch")
+	}
+	input := "the update's input"
+	if body, ok := put["requestBody"].(ymap); ok {
+		content, _ := body["content"].(ymap)
+		media, _ := content["application/json"].(ymap)
+		schema, _ := media["schema"].(ymap)
+		if r, ok := schema["$ref"].(string); ok {
+			input = strings.TrimPrefix(r, componentsPrefix+"schemas/")
+		}
+	}
+	patch["operationId"] = patchID
+	if summary, ok := put["summary"].(string); ok {
+		patch["summary"] = strings.NewReplacer("Update", "Patch", "update", "patch").
+			Replace(summary)
+	}
+	patch["description"] = "Change the members of " + input + " that a JSON Merge Patch " +
+		"(RFC 7396) names and keep the rest; null resets a member to its default. " +
+		"It runs through " + id + ", so it validates and persists as the PUT does."
+	patch["requestBody"] = ymap{
+		"description": "A JSON Merge Patch of " + input + ".",
+		"required":    true,
+		"content": ymap{"application/merge-patch+json": ymap{
+			"schema": ymap{"$ref": componentsPrefix + "schemas/MergePatch"},
+		}},
+	}
+	for _, k := range []string{"x-graphql", "x-bruno", "x-rest-style", "x-terraform"} {
+		delete(patch, k)
+	}
+	patch["x-upstream"] = "none"
+	responses, _ := patch["responses"].(ymap)
+	if err := addParams(patch, "IdempotencyKey"); err != nil {
+		return false, fmt.Errorf("PATCH %s: %w", path, err)
+	}
+	setDefault(responses, "409", responseRef("IdempotencyConflict"))
+	setDefault(responses, "422", responseRef("IdempotencyMismatch"))
+	record(patch, ConventionIdempotency, ConventionMergePatch)
+	record(put, ConventionMergePatch)
+	item["patch"] = patch
+	for _, m := range []string{"get", "put", "patch", "delete"} {
+		op, ok := item[m].(ymap)
+		if !ok {
+			continue
+		}
+		if m != "delete" {
+			etag(op)
+		}
+		if m != "get" {
+			if err := addParams(op, "IfMatch"); err != nil {
+				return false, fmt.Errorf("%s %s: %w", strings.ToUpper(m), path, err)
+			}
+			responses, _ := op["responses"].(ymap)
+			setDefault(responses, "412", responseRef("PreconditionFailed"))
+		}
+		record(op, ConventionIfMatch)
+	}
+	return true, nil
+}
+
+// etag declares the ETag header on op's 200 response.
+func etag(op ymap) {
+	responses, _ := op["responses"].(ymap)
+	ok200, _ := responses["200"].(ymap)
+	if ok200 == nil || ok200["$ref"] != nil {
+		return
+	}
+	headers, _ := ok200["headers"].(ymap)
+	if headers == nil {
+		headers = ymap{}
+		ok200["headers"] = headers
+	}
+	headers["ETag"] = ymap{"$ref": componentsPrefix + "headers/ETag"}
+}
+
+// record adds conventions to op's x-infraweave-divergence, kept sorted
+// and without repeats.
+func record(op ymap, conventions ...string) {
+	var all []string
+	switch d := op["x-infraweave-divergence"].(type) {
+	case []string:
+		all = slices.Clone(d)
+	case []any:
+		all = tags(ymap{"tags": d})
+	}
+	for _, c := range conventions {
+		if !slices.Contains(all, c) {
+			all = append(all, c)
+		}
+	}
+	slices.Sort(all)
+	op["x-infraweave-divergence"] = all
+}
+
+func deepCopy(v any) any {
+	switch t := v.(type) {
+	case ymap:
+		out := make(ymap, len(t))
+		for k, e := range t {
+			out[k] = deepCopy(e)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, e := range t {
+			out[i] = deepCopy(e)
+		}
+		return out
+	}
+	return v
+}
+
+// strictInputs sets additionalProperties: false on every object schema a
+// request body reaches through properties, items and unions, among the
+// components the fragment copies and the bodies' inline schemas, so an
+// unknown member is refused rather than ignored. It leaves allOf parts
+// open, since each part of a composition sees the others' members, and
+// leaves a schema alone that already says what it allows.
+//
+// ref: decision 0022
+func strictInputs(picked, comps ymap) {
+	schemas, _ := comps["schemas"].(ymap)
+	seen := map[string]bool{}
+	var walk func(any)
+	walk = func(v any) {
+		s, ok := v.(ymap)
+		if !ok {
+			return
+		}
+		if r, ok := s["$ref"].(string); ok {
+			name, isSchema := strings.CutPrefix(r, componentsPrefix+"schemas/")
+			if def, ok := schemas[name]; isSchema && ok && !seen[name] {
+				seen[name] = true
+				walk(def)
+			}
+			return
+		}
+		if props, ok := s["properties"].(ymap); ok {
+			if _, set := s["additionalProperties"]; !set {
+				s["additionalProperties"] = false
+			}
+			for _, k := range sortedKeys(props) {
+				walk(props[k])
+			}
+		}
+		walk(s["items"])
+		for _, k := range []string{"oneOf", "anyOf"} {
+			list, _ := s[k].([]any)
+			for _, e := range list {
+				walk(e)
+			}
+		}
+	}
+	for _, p := range sortedKeys(picked) {
+		item, _ := picked[p].(ymap)
+		for _, m := range methods {
+			op, _ := item[m].(ymap)
+			body, _ := op["requestBody"].(ymap)
+			content, _ := body["content"].(ymap)
+			media, _ := content["application/json"].(ymap)
+			walk(media["schema"])
+		}
+	}
 }

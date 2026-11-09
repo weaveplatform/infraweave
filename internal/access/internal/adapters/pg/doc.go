@@ -73,7 +73,12 @@
 // space.Store locks an account's tree through its top space's row for
 // each change, and writes the change's closure rows in its transaction:
 // a move deletes the rows linking the subtree to its old ancestors and
-// inserts the cross product of the new ancestors and the subtree.
+// inserts the cross product of the new ancestors and the subtree. Spaces,
+// API keys, admissions and managed user groups each carry a version,
+// raised by every UPDATE of the row but an API key's use, which moves
+// last_used_at alone; a write given a kernel.Expect locks the row FOR
+// UPDATE and checks its version first, and one the expect refuses is
+// kernel.ErrStale, the transaction rolled back.
 // A unique violation on a slug is
 // port.ErrSlugTaken and a
 // break-glass credential of no organization port.ErrNotFound. Store also

@@ -49,3 +49,20 @@ Feature: The route table decides every API operation
     And the answer's action is '"API_KEY_READ"'
     When token "m" sends "GET /api/v1/viewer" through B
     Then the answer's actions is '[]'
+
+  @op:stackCreate @op:stackPatch @op:spaceCreate @op:spaceUpdate @case:failure
+  Scenario: A body field its schema does not name answers 400 with its pointer
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","administrator":true},"manageState":false}' through A
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "/input/administrator" as "unknown-field"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"brnach":"dev"}' through A
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "/brnach" as "unknown-field"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme","colour":"red"}' through B
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "/colour" as "unknown-field"
+    When token "h" sends "PUT /api/v1/spaces/legacy" with '{"name":"Legacy","description":"","inheritEntities":false,"parentSpace":"acme","Labels":[]}' through A
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "/Labels" as "unknown-field"

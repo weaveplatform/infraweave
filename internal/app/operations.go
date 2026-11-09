@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -57,7 +58,8 @@ type Operation struct {
 	// Body is the request body of an operation whose JSON body schema sets
 	// additionalProperties: false, which strictBodies checks before the
 	// handler; nil for every other operation, whose body the generated
-	// handler decodes leniently.
+	// handler decodes leniently. A PATCH beside an update PUT checks its
+	// merge patch against patchSchema of the PUT's input.
 	Body *openapi3.RequestBody
 	// Gate is the operation's x-infraweave-feature, a capability of the
 	// catalogue, and the options its request body's properties name.
@@ -91,6 +93,10 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 	ops := Operations{}
 	for path, item := range doc.Paths.Map() {
 		for method, op := range item.Operations() {
+			body := mediaOf(op)
+			if method == http.MethodPatch && item.Put != nil && isMergePatch(body) {
+				body = patchMedia(mediaOf(item.Put))
+			}
 			cost := ratelimit.Standard
 			if v, ok := op.Extensions["x-infraweave-cost"]; ok {
 				s, _ := v.(string)
@@ -112,7 +118,7 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
 					errSpec, method, path, v)
 			}
-			gate, err := gateOf(op)
+			gate, err := gateOf(op, body)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
 			}
@@ -128,7 +134,7 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				Public:            op.Security != nil && len(*op.Security) == 0,
 				Organization:      org,
 				OrganizationAdmin: admin,
-				Body:              strictBody(op),
+				Body:              strictBody(body),
 				Gate:              gate,
 				Required:          required,
 			}
@@ -165,16 +171,12 @@ var errFeature = errors.New("names no feature of its kind")
 // gateOf reads op's capability, and the options its JSON body's
 // properties carry as x-infraweave-feature: {feature, value}, at any depth
 // of nested objects, where no value means any value but null.
-func gateOf(op *openapi3.Operation) (featuresapi.Gate, error) {
+func gateOf(op *openapi3.Operation, mt *bodyMedia) (featuresapi.Gate, error) {
 	name, _ := op.Extensions["x-infraweave-feature"].(string)
 	if f, ok := features.Lookup(name); !ok || f.Kind != features.Capability {
 		return featuresapi.Gate{}, fmt.Errorf("x-infraweave-feature %q %w", name, errFeature)
 	}
 	g := featuresapi.Gate{Feature: name}
-	if op.RequestBody == nil || op.RequestBody.Value == nil {
-		return g, nil
-	}
-	mt := op.RequestBody.Value.Content.Get(jsonType)
 	if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
 		return g, nil
 	}
@@ -233,20 +235,102 @@ func optionsOf(
 	return out, nil
 }
 
-// strictBody is op's request body when its JSON schema forbids properties
-// it does not name.
-func strictBody(op *openapi3.Operation) *openapi3.RequestBody {
-	if op.RequestBody == nil || op.RequestBody.Value == nil {
-		return nil
-	}
-	mt := op.RequestBody.Value.Content.Get(jsonType)
+// strictBody is the request body of mt, an operation's body media, when
+// its schema forbids properties it does not name.
+func strictBody(mt *bodyMedia) *openapi3.RequestBody {
 	if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
 		return nil
 	}
 	if ap := mt.Schema.Value.AdditionalProperties.Has; ap == nil || *ap {
 		return nil
 	}
-	return op.RequestBody.Value
+	return &openapi3.RequestBody{
+		Required: mt.required,
+		Content:  openapi3.Content{mt.typ: &mt.MediaType},
+	}
+}
+
+// The media types of the API's request bodies: JSON, and a JSON Merge
+// Patch for PATCH.
+//
+// ref: decision 0022
+const (
+	jsonType       = "application/json"
+	mergePatchType = "application/merge-patch+json"
+)
+
+// bodyMedia is an operation's request body media: its type, its schema
+// and whether the body is required.
+type bodyMedia struct {
+	openapi3.MediaType
+	typ      string
+	required bool
+}
+
+// mediaOf is op's JSON or merge-patch request body media, nil for an
+// operation with neither.
+func mediaOf(op *openapi3.Operation) *bodyMedia {
+	if op == nil || op.RequestBody == nil || op.RequestBody.Value == nil {
+		return nil
+	}
+	for _, typ := range []string{jsonType, mergePatchType} {
+		if mt := op.RequestBody.Value.Content.Get(typ); mt != nil {
+			return &bodyMedia{MediaType: *mt, typ: typ, required: op.RequestBody.Value.Required}
+		}
+	}
+	return nil
+}
+
+// isMergePatch reports whether mt is the generic MergePatch body of a
+// PATCH beside an update PUT, which names no members of its own.
+func isMergePatch(mt *bodyMedia) bool {
+	return mt != nil && mt.typ == mergePatchType && mt.Schema != nil &&
+		mt.Schema.Value != nil && len(mt.Schema.Value.Properties) == 0
+}
+
+// patchMedia is the merge-patch body that put, an update PUT's body,
+// takes beside it: patchSchema of the PUT's input.
+func patchMedia(put *bodyMedia) *bodyMedia {
+	if put == nil || put.Schema == nil || put.Schema.Value == nil {
+		return nil
+	}
+	return &bodyMedia{
+		MediaType: openapi3.MediaType{Schema: &openapi3.SchemaRef{
+			Value: patchSchema(put.Schema.Value, map[*openapi3.Schema]*openapi3.Schema{}),
+		}},
+		typ:      mergePatchType,
+		required: true,
+	}
+}
+
+// patchSchema is s as a merge patch of it may be: every member optional
+// and nullable, since null resets it, and each object member a patch of
+// its own, since a merge patch merges into objects. It allows no member
+// that s refuses, so an unknown field in a PATCH is refused as a PUT
+// refuses it. done holds the schemas already made, so a schema that
+// contains itself is made once.
+func patchSchema(s *openapi3.Schema, done map[*openapi3.Schema]*openapi3.Schema) *openapi3.Schema {
+	if p, ok := done[s]; ok {
+		return p
+	}
+	p := *s
+	p.Required = nil
+	p.Nullable = true
+	done[s] = &p
+	if len(s.Properties) > 0 {
+		p.Properties = make(openapi3.Schemas, len(s.Properties))
+		for name, ref := range s.Properties {
+			if ref == nil || ref.Value == nil {
+				p.Properties[name] = ref
+				continue
+			}
+			p.Properties[name] = &openapi3.SchemaRef{
+				Value:      patchSchema(ref.Value, done),
+				Extensions: ref.Extensions,
+			}
+		}
+	}
+	return &p
 }
 
 // apiOperations reads the embedded specs once: the API's under BaseURL
@@ -431,14 +515,11 @@ func (o Operation) access() accessapi.Access {
 	return accessapi.Account
 }
 
-// jsonType is the media type every request body of the API is.
-const jsonType = "application/json"
-
 // strictBodies checks the body of a request whose operation has a strict
 // one against its schema, answering 400 invalid-request for an unknown
 // field, a missing required one or a wrong type before the handler decodes
-// it. A body with no Content-Type is checked as JSON, as the generated
-// handler decodes it.
+// it. A body with no Content-Type is checked as the operation's one media
+// type, JSON or a merge patch, as the generated handler decodes it.
 //
 // ref: decision 0022
 func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Handler) http.Handler {
@@ -451,16 +532,53 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 				return
 			}
 			if r.Header.Get("Content-Type") == "" {
-				r.Header.Set("Content-Type", jsonType)
+				for typ := range rb.Content {
+					r.Header.Set("Content-Type", typ)
+				}
 			}
 			in := &openapi3filter.RequestValidationInput{Request: r, Options: opts}
 			if err := openapi3filter.ValidateRequestBody(r.Context(), in, rb); err != nil {
-				problem.RequestError(w, r, err)
+				bodyError(w, r, err)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// bodyError answers a body its schema refuses as invalid-request. A
+// member the schema does not list is named by its pointer, reason
+// unknown-field, so a client finds the misspelt field without parsing
+// the detail. kin-openapi names that member only in its reason's text,
+// which TestUnitStrictBodies pins, so a change to the text fails there
+// rather than silently dropping the pointer.
+func bodyError(w http.ResponseWriter, r *http.Request, err error) {
+	se, ok := errors.AsType[*openapi3.SchemaError](err)
+	if !ok || se.SchemaField != "properties" {
+		problem.RequestError(w, r, err)
+		return
+	}
+	quoted, prefixed := strings.CutPrefix(se.Reason, "property ")
+	quoted, suffixed := strings.CutSuffix(quoted, " is unsupported")
+	if !prefixed || !suffixed {
+		problem.RequestError(w, r, err)
+		return
+	}
+	name, uerr := strconv.Unquote(quoted)
+	if uerr != nil {
+		problem.RequestError(w, r, err)
+		return
+	}
+	at := ""
+	for _, token := range append(se.JSONPointer(), name) {
+		at += "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(token)
+	}
+	p := problem.InvalidRequest.New("The body sets a field its schema does not name.")
+	p.Errors = []problem.FieldError{{
+		Pointer: at, Reason: kernel.ReasonUnknownField,
+		Message: fmt.Sprintf("No field %q here.", name),
+	}}
+	problem.Write(w, p)
 }
 
 // caller is the key of the rate limits and idempotency keys: the

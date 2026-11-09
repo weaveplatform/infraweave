@@ -39,7 +39,9 @@ const DisabledByAdmin = "ADMIN"
 // account: a key of another account, or a deleted one, is the store's not
 // found error, which the service passes through. The methods that revoke a
 // key's sessions do so in the key's transaction, sending each session's
-// invalidation, and return the sessions they revoked.
+// invalidation, and return the sessions they revoked. A method given an
+// expect locks the key and changes nothing, answering kernel.ErrStale,
+// when expect does not accept its version; each change raises it.
 type Store interface {
 	CreateAPIKey(ctx context.Context, k Key) error
 	// AccountAPIKeys are up to limit of the account's keys, in ID order,
@@ -55,6 +57,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		id kernel.ULID,
+		expect kernel.Expect,
 		c Change,
 	) (Key, error)
 	// ResetAPIKey replaces a secret key's hash.
@@ -74,6 +77,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		id kernel.ULID,
+		expect kernel.Expect,
 	) (Key, []kernel.ULID, error)
 	// SetNonAdminManagers records the account's
 	// apiKeyEnableNonAdminManagers setting.
@@ -231,11 +235,13 @@ func (s *Service) Get(ctx context.Context, p kernel.Principal, id kernel.ULID) (
 }
 
 // Update applies c to the key id of p's account. A claim mapping applies
-// to an OIDC key only.
+// to an OIDC key only. A key whose version expect does not accept is
+// kernel.ErrStale and is not changed.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
 	id kernel.ULID,
+	expect kernel.Expect,
 	c Change,
 ) (Key, error) {
 	if err := s.may(ctx, p, accessapi.ActionApiKeyUpdate); err != nil {
@@ -270,7 +276,8 @@ func (s *Service) Update(
 	if err := errors.Join(errs...); err != nil {
 		return Key{}, err
 	}
-	return s.d.Store.UpdateAPIKey(ctx, p.AccountID, id, c) //nolint:wrapcheck // as above
+	//nolint:wrapcheck // as above
+	return s.d.Store.UpdateAPIKey(ctx, p.AccountID, id, expect, c)
 }
 
 // Reset replaces the secret of the key id of p's account and revokes
@@ -308,12 +315,19 @@ func (s *Service) Disable(ctx context.Context, p kernel.Principal, id kernel.ULI
 }
 
 // Delete deletes the key id of p's account and revokes every session of
-// the key. The row stays, deleted, while sessions and audit name it.
-func (s *Service) Delete(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, error) {
+// the key. The row stays, deleted, while sessions and audit name it. A
+// key whose version expect does not accept is kernel.ErrStale and is
+// kept.
+func (s *Service) Delete(
+	ctx context.Context,
+	p kernel.Principal,
+	id kernel.ULID,
+	expect kernel.Expect,
+) (Key, error) {
 	if err := s.may(ctx, p, accessapi.ActionApiKeyDelete); err != nil {
 		return Key{}, err
 	}
-	k, _, err := s.revoked("")(s.d.Store.DeleteAPIKey(ctx, p.AccountID, id))
+	k, _, err := s.revoked("")(s.d.Store.DeleteAPIKey(ctx, p.AccountID, id, expect))
 	return k, err
 }
 

@@ -108,6 +108,7 @@ func (a *authSteps) do(
 	ctx context.Context,
 	replica, name, method, path string,
 	body any,
+	headers ...sdk.Header,
 ) (response, error) {
 	tok, ok := a.tokens[name]
 	if !ok && name != "" {
@@ -117,7 +118,7 @@ func (a *authSteps) do(
 	if err != nil {
 		return response{}, err
 	}
-	resp, err := c.Do(ctx, method, path, body)
+	resp, err := c.Do(ctx, method, path, body, headers...)
 	if resp == nil {
 		return response{}, err
 	}

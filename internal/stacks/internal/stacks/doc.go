@@ -5,8 +5,11 @@
 // caller's action in the stack's space through the access domain, holds
 // that space, and moving a stack needs STACK_CREATE in the space it moves
 // to. A write bumps the stack's version and appends stacksapi.Changed in
-// the same transaction. Input's settings are checked, with each refusal's
-// pointer, before anything is read; Terraform and OpenTofu settings are
+// the same transaction; Update and Delete take the kernel.Expect of the
+// request's If-Match and check it against the version they read under
+// the row's lock, so a stale one changes nothing. Input's settings are
+// checked, with each refusal's pointer, before anything is read; labels
+// follow kernel.CheckLabels, and Terraform and OpenTofu settings are
 // checked by internal/iac. Service is also the domain's
 // accessapi.SpaceGuard, refusing deleting a space a stack lives in, and
 // the accessapi.SpaceOf of the entity "stack". It refuses no move yet,

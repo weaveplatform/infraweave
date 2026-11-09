@@ -52,6 +52,7 @@ const (
 var conventionParams = map[string][]string{
 	ConventionPagination:  {"query cursor", "query limit"},
 	ConventionIdempotency: {"header Idempotency-Key"},
+	ConventionIfMatch:     {"header If-Match"},
 }
 
 var (
@@ -465,7 +466,8 @@ func compareParity(
 
 func notConvention(name string) bool {
 	switch name {
-	case ConventionPagination, ConventionIdempotency, ConventionRateLimit:
+	case ConventionPagination, ConventionIdempotency, ConventionRateLimit,
+		ConventionIfMatch, ConventionMergePatch:
 		return false
 	}
 	return true

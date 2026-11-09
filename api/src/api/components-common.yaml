@@ -101,6 +101,15 @@ components:
         message:
           type: string
           description: The refusal, for people.
+    MergePatch:
+      description: >-
+        A JSON Merge Patch (RFC 7396) of an update's input. Each member it
+        names replaces the input's, an object member merges into the
+        input's object, an array replaces the input's whole, and null
+        resets the member to its default. Members it does not name keep
+        their values.
+      type: object
+      additionalProperties: true
   parameters:
     IdempotencyKey:
       name: Idempotency-Key
@@ -114,6 +123,17 @@ components:
         type: string
         minLength: 1
         maxLength: 255
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: >-
+        The ETag of the version the change was made against, or *. When
+        the entity has changed since, the request answers 412
+        precondition-failed and changes nothing. Without it, the last
+        write wins.
+      schema:
+        type: string
     Cursor:
       name: cursor
       in: query
@@ -145,6 +165,12 @@ components:
       description: Seconds until that bucket is full again.
       schema:
         type: integer
+    ETag:
+      description: >-
+        The strong entity tag of the version answered, which If-Match
+        takes to make a later change conditional on it.
+      schema:
+        type: string
     RetryAfter:
       description: Seconds to wait before retrying.
       schema:
@@ -224,6 +250,19 @@ components:
             type: urn:infraweave:problem:invalid-cursor
             title: Invalid cursor
             status: 400
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    PreconditionFailed:
+      description: >-
+        The If-Match names no version the entity has now: it changed since
+        the caller read it. Read it again and reapply the change.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:precondition-failed
+            title: precondition failed
+            status: 412
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     NotFound:
       description: No such resource, or the caller may not see it.

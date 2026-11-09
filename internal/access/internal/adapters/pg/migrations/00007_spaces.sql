@@ -19,6 +19,9 @@ CREATE TABLE spaces (
     inherit_entities boolean     NOT NULL DEFAULT false,
     parent_id        uuid,
     created_at       timestamptz NOT NULL DEFAULT now(),
+    -- Raised by every change of the row; the API serves it as the space's
+    -- ETag.
+    version          bigint      NOT NULL DEFAULT 1,
     UNIQUE (account_id, slug),
     UNIQUE (account_id, id),
     FOREIGN KEY (account_id, parent_id) REFERENCES spaces (account_id, id)

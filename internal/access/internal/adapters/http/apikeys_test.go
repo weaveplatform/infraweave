@@ -24,6 +24,8 @@ func (s *store) CreateAPIKey(_ context.Context, k apikey.Key) error {
 	if err := s.err(); err != nil {
 		return err
 	}
+	// A new row's version is the column's default.
+	k.Version = 1
 	s.keys[k.ID] = k
 	return nil
 }
@@ -67,9 +69,10 @@ func (s *store) UpdateAPIKey(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	c apikey.Change,
 ) (apikey.Key, error) {
-	k, _, err := s.change(ctx, acct, id, func(k *apikey.Key) {
+	k, _, err := s.change(ctx, acct, id, expect, func(k *apikey.Key) {
 		if c.Name != nil {
 			k.Name = *c.Name
 		}
@@ -86,10 +89,13 @@ func (s *store) UpdateAPIKey(
 	return k, err
 }
 
+// change applies f to the key, raising its version, unless expect does
+// not accept it.
 func (s *store) change(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 	f func(*apikey.Key),
 	revoke bool,
 ) (apikey.Key, []kernel.ULID, error) {
@@ -97,7 +103,11 @@ func (s *store) change(
 	if err != nil {
 		return apikey.Key{}, nil, err
 	}
+	if err := expect.Check(k.Version); err != nil {
+		return apikey.Key{}, nil, err
+	}
 	f(&k)
+	k.Version++
 	s.keys[id] = k
 	var ids []kernel.ULID
 	for sid, ss := range s.sessions {
@@ -116,7 +126,14 @@ func (s *store) ResetAPIKey(
 	id kernel.ULID,
 	hash []byte,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.change(ctx, acct, id, func(k *apikey.Key) { k.SecretHash = hash }, true)
+	return s.change(
+		ctx,
+		acct,
+		id,
+		kernel.Expect{},
+		func(k *apikey.Key) { k.SecretHash = hash },
+		true,
+	)
 }
 
 func (s *store) DisableAPIKey(
@@ -125,7 +142,7 @@ func (s *store) DisableAPIKey(
 	id kernel.ULID,
 	reason string,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.change(ctx, acct, id, func(k *apikey.Key) {
+	return s.change(ctx, acct, id, kernel.Expect{}, func(k *apikey.Key) {
 		k.DisabledAt, k.DisabledReason = t0, reason
 	}, true)
 }
@@ -134,8 +151,9 @@ func (s *store) DeleteAPIKey(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
+	expect kernel.Expect,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.change(ctx, acct, id, func(k *apikey.Key) { k.DeletedAt = t0 }, true)
+	return s.change(ctx, acct, id, expect, func(k *apikey.Key) { k.DeletedAt = t0 }, true)
 }
 
 func (s *store) SetNonAdminManagers(

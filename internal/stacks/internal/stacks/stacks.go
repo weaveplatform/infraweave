@@ -275,13 +275,15 @@ func (s *Service) Create(
 	return st, err //nolint:wrapcheck // each step in the transaction names itself
 }
 
-// Update replaces the settings of p's account's stack slug with in's. The
-// route has decided STACK_UPDATE on the stack's space; a move to another
-// space also needs STACK_CREATE there.
+// Update replaces the settings of p's account's stack slug with in's,
+// when expect accepts its version. The route has decided STACK_UPDATE on
+// the stack's space; a move to another space also needs STACK_CREATE
+// there.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
 	slug string,
+	expect kernel.Expect,
 	in Input,
 ) (Stack, error) {
 	if err := check("", in); err != nil {
@@ -291,6 +293,7 @@ func (s *Service) Update(
 		ctx,
 		p.AccountID,
 		slug,
+		expect,
 		stacksapi.ChangeUpdated,
 		func(ctx context.Context, st *Stack) error {
 			space, err := s.space(ctx, p, in.Space)
@@ -315,6 +318,7 @@ func (s *Service) Reslug(ctx context.Context, p kernel.Principal, slug string) (
 		ctx,
 		p.AccountID,
 		slug,
+		kernel.Expect{},
 		stacksapi.ChangeReslugged,
 		func(_ context.Context, st *Stack) error {
 			st.Slug = kernel.SlugFrom(st.Name).String()
@@ -334,10 +338,17 @@ func (s *Service) SetDisabled(
 	if disabled {
 		change = stacksapi.ChangeDisabled
 	}
-	return s.write(ctx, p.AccountID, slug, change, func(_ context.Context, st *Stack) error {
-		st.Disabled = disabled
-		return nil
-	})
+	return s.write(
+		ctx,
+		p.AccountID,
+		slug,
+		kernel.Expect{},
+		change,
+		func(_ context.Context, st *Stack) error {
+			st.Disabled = disabled
+			return nil
+		},
+	)
 }
 
 // Lock locks p's account's stack slug for p with note, or changes the
@@ -348,6 +359,7 @@ func (s *Service) Lock(ctx context.Context, p kernel.Principal, slug, note strin
 		ctx,
 		p.AccountID,
 		slug,
+		kernel.Expect{},
 		stacksapi.ChangeLocked,
 		func(_ context.Context, st *Stack) error {
 			if st.Lock != nil && st.Lock.Holder != p.Caller() {
@@ -368,6 +380,7 @@ func (s *Service) Unlock(ctx context.Context, p kernel.Principal, slug string) (
 		ctx,
 		p.AccountID,
 		slug,
+		kernel.Expect{},
 		stacksapi.ChangeUnlocked,
 		func(ctx context.Context, st *Stack) error {
 			if st.Lock == nil {
@@ -389,14 +402,23 @@ func (s *Service) Unlock(ctx context.Context, p kernel.Principal, slug string) (
 	)
 }
 
-// Delete deletes p's account's stack slug and answers it as it was; a
-// stack protected from deletion is refused.
-func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string) (Stack, error) {
+// Delete deletes p's account's stack slug, when expect accepts its
+// version, and answers it as it was; a stack protected from deletion is
+// refused.
+func (s *Service) Delete(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	expect kernel.Expect,
+) (Stack, error) {
 	var st Stack
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
 		if st, err = s.store.BySlug(ctx, p.AccountID, slug, true); err != nil {
 			return err //nolint:wrapcheck // the store names the read
+		}
+		if err := expect.Check(st.Version); err != nil {
+			return err //nolint:wrapcheck // kernel.ErrStale is the answer
 		}
 		if st.ProtectFromDeletion {
 			return &kernel.Invalid{Detail: "The stack is protected from deletion; " +
@@ -448,12 +470,16 @@ func (*Service) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.Lo
 // it is.
 var errUnchanged = errors.New("unchanged")
 
-// write reads acct's stack slug locked, lets change change it, and writes
-// it with its version moved on and its Changed event, in one transaction.
+// write reads acct's stack slug locked, checks its version against
+// expect, lets change change it, and writes it with its version moved on
+// and its Changed event, in one transaction. A version expect refuses is
+// kernel.ErrStale, and nothing is written.
 func (s *Service) write(
 	ctx context.Context,
 	acct kernel.AccountID,
-	slug, what string,
+	slug string,
+	expect kernel.Expect,
+	what string,
 	change func(ctx context.Context, st *Stack) error,
 ) (Stack, error) {
 	var st Stack
@@ -461,6 +487,9 @@ func (s *Service) write(
 		var err error
 		if st, err = s.store.BySlug(ctx, acct, slug, true); err != nil {
 			return err //nolint:wrapcheck // the store names the read
+		}
+		if err := expect.Check(st.Version); err != nil {
+			return err //nolint:wrapcheck // kernel.ErrStale is the answer
 		}
 		if err := change(ctx, &st); err != nil {
 			return err

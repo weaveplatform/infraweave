@@ -17,6 +17,18 @@ import (
 // ErrName is a space created or changed without a name.
 var ErrName = errors.New("a space needs a name")
 
+// checkInput refuses a space with no name with ErrName, and labels that
+// break the label rule with a *kernel.Invalid naming each at its pointer.
+func checkInput(in Space) error {
+	if in.Name == "" {
+		return ErrName
+	}
+	if errs := kernel.CheckLabels("/labels", in.Labels); len(errs) > 0 {
+		return &kernel.Invalid{Detail: "The space's labels are refused.", Errors: errs}
+	}
+	return nil
+}
+
 // Store keeps the spaces and their closure rows. Every change locks the
 // account's tree first, so two changes of one tree never interleave and a
 // move can never close a cycle another move opened. A space or account
@@ -274,15 +286,16 @@ func (s *Service) administers(ctx context.Context, p kernel.Principal, r rights,
 }
 
 // Create creates in below the space parent of p's account. Its slug is
-// SlugOf the name and a new ULID.
+// SlugOf the name and a new ULID. Labels keep the order given; one that
+// breaks the label rule is a *kernel.Invalid.
 func (s *Service) Create(
 	ctx context.Context,
 	p kernel.Principal,
 	parent string,
 	in Space,
 ) (Space, error) {
-	if in.Name == "" {
-		return Space{}, ErrName
+	if err := checkInput(in); err != nil {
+		return Space{}, err
 	}
 	pa, err := s.store.Space(ctx, p.AccountID, parent)
 	if err != nil {
@@ -316,14 +329,17 @@ func (s *Service) Create(
 // and inheritance, and moves it, with its subtree, below parent when that
 // is a new one. The top space's parent is empty and it never inherits; a
 // space below it needs a parent. Each registered guard may refuse a move.
+// A space whose version expect does not accept, read under the tree's
+// lock, is kernel.ErrStale and is not changed.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
 	slug, parent string,
+	expect kernel.Expect,
 	in Space,
 ) (Space, error) {
-	if in.Name == "" {
-		return Space{}, ErrName
+	if err := checkInput(in); err != nil {
+		return Space{}, err
 	}
 	r, err := s.rightsOf(ctx, p)
 	if err != nil {
@@ -334,6 +350,9 @@ func (s *Service) Update(
 		func(ctx context.Context, cur, pa Space, m *accessapi.SpaceMove) (Space, error) {
 			if err := s.administers(ctx, p, r, cur); err != nil {
 				return Space{}, err
+			}
+			if err := expect.Check(cur.Version); err != nil {
+				return Space{}, err //nolint:wrapcheck // kernel.ErrStale, answered as it is
 			}
 			if err := s.reshape(ctx, p, r, cur, pa, m, in); err != nil {
 				return Space{}, err
@@ -430,8 +449,14 @@ func lostOnMove(
 
 // Delete deletes p's account's space slug and answers it as it was. The
 // top space and legacy are never deleted, and a space a registered guard
-// says is in use is refused.
-func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string) (Space, error) {
+// says is in use is refused. A space whose version expect does not
+// accept is kernel.ErrStale and is kept.
+func (s *Service) Delete(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	expect kernel.Expect,
+) (Space, error) {
 	r, err := s.rightsOf(ctx, p)
 	if err != nil {
 		return Space{}, err
@@ -444,6 +469,9 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string) (
 		}
 		if err := r.structural("delete spaces"); err != nil {
 			return err
+		}
+		if err := expect.Check(sp.Version); err != nil {
+			return err //nolint:wrapcheck // kernel.ErrStale, answered as it is
 		}
 		switch {
 		case sp.Top():

@@ -30,9 +30,12 @@
 // accept it now, through the store's unlocked reading of the rule the
 // creation runs under its locks. A personal key whose
 // owner leaves the account or is deactivated is disabled as
-// DEPROVISIONED.
+// DEPROVISIONED. A Key's Version is raised by every change but a use;
+// Update and Delete carry a kernel.Expect, and the store refuses a key
+// whose version it does not accept with kernel.ErrStale, changing
+// nothing.
 //
-// ref: decisions 0006 and 0007, DV-014
+// ref: decisions 0006, 0007 and 0022, DV-014
 //
 // # Input and output
 //
