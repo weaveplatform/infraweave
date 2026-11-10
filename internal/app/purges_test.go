@@ -18,9 +18,11 @@ import (
 
 // TestAccPurges checks the purges as the server wires them: deleting an
 // organization removes access' rows at once, and the outbox's workers then
-// run the features and stacks purges, which remove the organization's
-// entitlement, its accounts' limits and their stacks, and leave another
-// organization's. An account's own purge removes its limits alone.
+// run the features, stacks and configuration purges, which remove the
+// organization's entitlement, its accounts' limits, their stacks, and
+// their contexts with their elements and attachments and the stacks' own
+// elements, and leave another organization's. An account's own purge
+// removes its limits alone.
 func TestAccPurges(t *testing.T) {
 	ctx := t.Context()
 	db := sqltest.Open(t)
@@ -74,6 +76,27 @@ func TestAccPurges(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		shared, stack := kernel.NewULID(), kernel.NewULID()
+		for _, stmt := range []struct {
+			sql  string
+			args []any
+		}{
+			{`INSERT INTO contexts (account_id, id, slug, space_id, name)
+				VALUES ($1, $2, 'shared', $3, 'Shared')`, []any{shared, kernel.NewULID()}},
+			{
+				`INSERT INTO config_elements (account_id, id, context_id, stack_id, element,
+				file_mount, value_sealed, checksum, write_only)
+				VALUES ($1, $2, $3, NULL, 'A', false, '\x00', '', false),
+					($1, $4, NULL, $5, 'B', false, '\x00', '', false)`,
+				[]any{kernel.NewULID(), shared, kernel.NewULID(), stack},
+			},
+			{`INSERT INTO context_attachments (account_id, id, context_id, stack_id)
+				VALUES ($1, $2, $3, $4)`, []any{kernel.NewULID(), shared, stack}},
+		} {
+			if _, err := q.Exec(ctx, stmt.sql, append([]any{x.acct}, stmt.args...)...); err != nil {
+				t.Fatal(err)
+			}
+		}
 		return x
 	}
 	gone, kept := create("gone"), create("kept")
@@ -88,7 +111,10 @@ func TestAccPurges(t *testing.T) {
 		return count(`SELECT
 			(SELECT count(*) FROM stacks WHERE account_id = $2)
 			+ (SELECT count(*) FROM account_limits WHERE account_id = $2)
-			+ (SELECT count(*) FROM organization_entitlements WHERE organization_id = $1)`,
+			+ (SELECT count(*) FROM organization_entitlements WHERE organization_id = $1)
+			+ (SELECT count(*) FROM contexts WHERE account_id = $2)
+			+ (SELECT count(*) FROM config_elements WHERE account_id = $2)
+			+ (SELECT count(*) FROM context_attachments WHERE account_id = $2)`,
 			x.org, x.acct)
 	}
 
@@ -99,8 +125,8 @@ func TestAccPurges(t *testing.T) {
 	if n := count(`SELECT count(*) FROM accounts WHERE id = $1`, gone.acct); n != 0 {
 		t.Errorf("the deleted organization's account is still there")
 	}
-	if n := held(gone); n != 5 {
-		t.Fatalf("before the purges: %d rows of the deleted organization, want 5", n)
+	if n := held(gone); n != 9 {
+		t.Fatalf("before the purges: %d rows of the deleted organization, want 9", n)
 	}
 
 	reg := queue.NewRegistry()
@@ -127,15 +153,15 @@ func TestAccPurges(t *testing.T) {
 		case <-tick.C:
 		}
 	}
-	if n := held(kept); n != 5 {
-		t.Errorf("another organization keeps %d rows, want 5", n)
+	if n := held(kept); n != 9 {
+		t.Errorf("another organization keeps %d rows, want 9", n)
 	}
 
 	if err := d.Features.Purge(ctx, kept.org, kept.acct, false); err != nil {
 		t.Fatal(err)
 	}
-	if n := held(kept); n != 4 {
-		t.Errorf("after an account's own features purge, %d rows, want 4", n)
+	if n := held(kept); n != 8 {
+		t.Errorf("after an account's own features purge, %d rows, want 8", n)
 	}
 }
 

@@ -4,7 +4,8 @@
 // never opens a write-only one but for Opened, a run spec's read, locks one owner's elements for the
 // writers of a stack, whose row is the stacks domain's, finds the contexts
 // in some spaces carrying some labels through contexts_labels, and takes
-// the account's automatic-attachment lock;
+// the account's automatic-attachment lock, and purges a deleted account's
+// rows a batch at a time;
 // Stream, the migration stream that creates them; Held, the columns that
 // name other domains' rows; and SealedColumns, the sealed value column.
 //

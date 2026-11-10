@@ -24,10 +24,10 @@ Feature: Operator organizations
     Then the organization "initech" read through A with token "op" has the account "main", unclaimed, and the break-glass login "root-admin"
     When token "op" removes the break-glass credential of "initech" through A
     Then the organization "initech" read through B with token "op" has the account "main", unclaimed, and no break-glass credential
-    And the account "main" holds a stack and an account limit
+    And the account "main" holds a stack, a context with elements attached to it, and an account limit
     When token "op" deletes the organization "initech" through B
     Then "GET /operator/v1/organizations/initech" through A with token "op" answers a 404 problem "not-found"
-    And no stack, limit or entitlement of the account "main" or its organization remains
+    And no stack, context, limit or entitlement of the account "main" or its organization remains
     And the organizations listed through A with token "op" leave out "initech"
     And the trail of "initech" holds "organization.create", "organization.break_glass_set", "organization.break_glass_delete" and "organization.delete" by the operator
 
