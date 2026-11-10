@@ -11,7 +11,8 @@
 // binding operations through the binding service and the grant views
 // through the holder service; Bindings is the
 // accessapi.Bindings through which another domain binds the actors it
-// keeps, such as stacks; OrganizationID finds an organization's ID by its
+// keeps, such as stacks, and Grants the accessapi.Grants that explains
+// what reaches a space for them; OrganizationID finds an organization's ID by its
 // slug, for the features domain's operator partial, and Seats counts an
 // organization's and an account's seats in use, for its seats read;
 // GuardSpaces registers another domain's accessapi.SpaceGuard, which the

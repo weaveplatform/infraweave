@@ -183,8 +183,11 @@ var ErrNoBinding = errors.New("no such role binding")
 // account already holds.
 var ErrBindingHeld = errors.New("the actor already holds the role in the space")
 
-// BindingRequest names a role binding's role and space by their slugs.
+// BindingRequest names a role binding's actor by its ID and its role and
+// space by their slugs. A change of a binding names no actor, since its
+// actor never changes.
 type BindingRequest struct {
+	Actor kernel.ULID
 	Role  string
 	Space string
 }
@@ -201,18 +204,25 @@ type RoleBinding struct {
 	Space     string
 	CreatedAt time.Time
 	CreatedBy string
+	Version   int64
 }
 
 // Bindings are the role bindings of the actors another domain keeps, such
-// as stacks. Bind records, as p, a binding of the actor for each request,
-// all or none, in the transaction ctx carries when there is one: a role
-// or space the account lacks, or a space p does not administer, is a
-// *kernel.Invalid pointing at pointer/<index>/roleID or spaceID, and a
-// binding the account holds ErrBindingHeld. Unbind deletes one binding,
-// ErrNoBinding when the account lacks it, and UnbindActor every binding
-// of an actor the owning domain deletes. ByActor and BySpace read an
-// actor's bindings and a space's, oldest first. Each write moves the
-// account's authorization.
+// as stacks. Bind records, as p, the binding of an actor of a kind each
+// request names, all or none, in the transaction ctx carries when there
+// is one: a role or space the account lacks, or a space p does not
+// administer, is a *kernel.Invalid pointing at pointer/<index>/roleID or
+// spaceID, or at /roleID or /spaceID for an empty pointer, and a binding
+// the account holds ErrBindingHeld. Binding reads one binding of
+// an actor of a kind, ErrNoBinding when the account lacks it. Rebind
+// moves one to the role and space req names, which p must administer as
+// Bind's, and Unbind deletes one; each locks the binding, has expect
+// accept its version and check refuse it as it is, so a check of its
+// space sees the space the write changes, and answers ErrNoBinding for
+// one the account lacks. UnbindActor deletes every binding of an actor
+// the owning domain deletes. ByActor and BySpace read an actor's bindings
+// and a space's, oldest first. Each write moves the account's
+// authorization.
 //
 // ref: decision 0007 § "Bindings"
 type Bindings interface {
@@ -220,15 +230,31 @@ type Bindings interface {
 		ctx context.Context,
 		p kernel.Principal,
 		actor string,
-		id kernel.ULID,
 		pointer string,
 		reqs []BindingRequest,
 	) ([]RoleBinding, error)
+	Binding(
+		ctx context.Context,
+		acct kernel.AccountID,
+		actor string,
+		id kernel.ULID,
+	) (RoleBinding, error)
+	Rebind(
+		ctx context.Context,
+		p kernel.Principal,
+		actor string,
+		id kernel.ULID,
+		expect kernel.Expect,
+		req BindingRequest,
+		check func(RoleBinding) error,
+	) (RoleBinding, error)
 	Unbind(
 		ctx context.Context,
 		acct kernel.AccountID,
 		actor string,
 		id kernel.ULID,
+		expect kernel.Expect,
+		check func(RoleBinding) error,
 	) (RoleBinding, error)
 	UnbindActor(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) error
 	ByActor(
@@ -238,6 +264,42 @@ type Bindings interface {
 		id kernel.ULID,
 	) ([]RoleBinding, error)
 	BySpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) ([]RoleBinding, error)
+}
+
+// StackHome is a stack and the space it lives in.
+type StackHome struct {
+	Stack kernel.ULID
+	Space kernel.ULID
+}
+
+// StackGrant is one role reaching a space for a stack: Source is RESIDENT
+// for a grant on the space itself, PROPAGATED for one on an ancestor and
+// INHERITED for one on a descendant whose path up inherits entities,
+// which grants space-reader whatever role it binds. Binding is the
+// binding's ID, zero for the stack's implicit read of the space it lives
+// in, and Space the space the grant is on.
+//
+// ref: decision 0007 § "Evaluation"
+type StackGrant struct {
+	Source  string
+	Binding kernel.ULID
+	Role    string
+	Space   kernel.ULID
+}
+
+// Grants explains what reaches a space for actors other than the caller.
+// Stacks is, for each of stacks, every grant that reaches acct's space
+// for it, in binding order, decided as Authorizer decides a run of that
+// stack, and nil for a stack no grant reaches.
+//
+// ref: decision 0007 § "Evaluation"
+type Grants interface {
+	Stacks(
+		ctx context.Context,
+		acct kernel.AccountID,
+		space kernel.ULID,
+		stacks []StackHome,
+	) ([][]StackGrant, error)
 }
 
 // SpaceMove is a proposed move of Space, with every space below it, to a

@@ -341,6 +341,11 @@ where a grant reaches it, and the users bound there or naming such a group
 among the groups their latest sign-in reported; each view searches only
 those. Under `MANAGED_USERS` the session views list the live sessions whose
 user, key and teams reach the space, as their requests are decided.
+`stacksWithAccessToSpace` explains each stack of the account as a run of it
+would be decided, its implicit read included: `RESIDING` lists the stacks
+that live in the space, and `ALL_WITH_ACCESS`, which needs `SPACE_ADMIN`,
+every stack a grant reaches it for, whichever space the stack lives in,
+through the reference's narrow stack view.
 
 The rule extends to every field of a view that says what the caller may do
 or holds, whether a role action decides it or a precondition of one

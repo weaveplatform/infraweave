@@ -19,8 +19,9 @@
 // and SpaceGuard is what such a domain registers, so the space tree
 // refuses a delete or a move that would strand its rows. Bindings is
 // what a domain that keeps actors, such as stacks, calls to bind them to
-// roles in spaces, read and delete their bindings, ErrNoBinding for a
-// binding the account lacks and ErrBindingHeld for one it holds. Action is the
+// roles in spaces, read, move and delete their bindings, ErrNoBinding for
+// a binding the account lacks and ErrBindingHeld for one it holds, and
+// Grants explains which of its stacks a space's grants reach. Action is the
 // action catalogue roles are built from: the reference's Action enum, which
 // specref generates into actions.gen.go from the introspection snapshot
 // and actions.yaml's rows (subject, fallback, disabled, deprecated), then

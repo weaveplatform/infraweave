@@ -10053,6 +10053,13 @@ type StacksWithAccessToSpaceParams struct {
 	Mode  *StackAccessMode `form:"mode,omitempty" json:"mode,omitempty"`
 }
 
+// StacksWithAccessToSpaceSuggestionsParams defines parameters for StacksWithAccessToSpaceSuggestions.
+type StacksWithAccessToSpaceSuggestionsParams struct {
+	Space string                 `form:"space" json:"space"`
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+	Mode  *StackAccessMode       `form:"mode,omitempty" json:"mode,omitempty"`
+}
+
 // StackDeleteParams defines parameters for StackDelete.
 type StackDeleteParams struct {
 	DestroyResources *bool `form:"destroyResources,omitempty" json:"destroyResources,omitempty"`
@@ -14674,10 +14681,19 @@ type ClientInterface interface {
 	// Returns stacks that can act in the space. RESIDING lists the space's own stacks;
 	// ALL_WITH_ACCESS additionally lists every stack whose self-read or explicit role
 	// binding reaches the space, whether that is on the space itself, an ancestor
-	// (propagates down), or an inheriting descendant (read propagates up).
+	// (propagates down), or an inheriting descendant (read propagates up), and
+	// requires space admin. Each stack is listed with the grants that reach the
+	// space for it, whichever space it lives in.
 	//
 	// Corresponds with GET /stacks-with-access-to-space (the `StacksWithAccessToSpace` operationId).
 	StacksWithAccessToSpace(ctx context.Context, params *StacksWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StacksWithAccessToSpaceSuggestions Stacks With Access To Space Suggestions
+	//
+	// The fields stacksWithAccessToSpace filters and orders by, with the values the stacks it lists in the mode hold and how many hold each, so nothing past those stacks is counted. ALL_WITH_ACCESS requires space admin.
+	//
+	// Corresponds with GET /stacks-with-access-to-space-suggestions (the `StacksWithAccessToSpaceSuggestions` operationId).
+	StacksWithAccessToSpaceSuggestions(ctx context.Context, params *StacksWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchStacksWithBody Search Stacks
 	//
@@ -20166,11 +20182,30 @@ func (c *Client) StackCreate(ctx context.Context, params *StackCreateParams, bod
 // Returns stacks that can act in the space. RESIDING lists the space's own stacks;
 // ALL_WITH_ACCESS additionally lists every stack whose self-read or explicit role
 // binding reaches the space, whether that is on the space itself, an ancestor
-// (propagates down), or an inheriting descendant (read propagates up).
+// (propagates down), or an inheriting descendant (read propagates up), and
+// requires space admin. Each stack is listed with the grants that reach the
+// space for it, whichever space it lives in.
 //
 // Corresponds with GET /stacks-with-access-to-space (the `StacksWithAccessToSpace` operationId).
 func (c *Client) StacksWithAccessToSpace(ctx context.Context, params *StacksWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStacksWithAccessToSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StacksWithAccessToSpaceSuggestions Stacks With Access To Space Suggestions
+//
+// The fields stacksWithAccessToSpace filters and orders by, with the values the stacks it lists in the mode hold and how many hold each, so nothing past those stacks is counted. ALL_WITH_ACCESS requires space admin.
+//
+// Corresponds with GET /stacks-with-access-to-space-suggestions (the `StacksWithAccessToSpaceSuggestions` operationId).
+func (c *Client) StacksWithAccessToSpaceSuggestions(ctx context.Context, params *StacksWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStacksWithAccessToSpaceSuggestionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -31325,6 +31360,74 @@ func NewStacksWithAccessToSpaceRequest(server string, params *StacksWithAccessTo
 	return req, nil
 }
 
+// NewStacksWithAccessToSpaceSuggestionsRequest constructs an http.Request for the StacksWithAccessToSpaceSuggestions method
+func NewStacksWithAccessToSpaceSuggestionsRequest(server string, params *StacksWithAccessToSpaceSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks-with-access-to-space-suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if params.Mode != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "mode", *params.Mode, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSearchStacksRequest calls the generic SearchStacks builder with application/json body
 func NewSearchStacksRequest(server string, body SearchStacksJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -39029,12 +39132,23 @@ type ClientWithResponsesInterface interface {
 	// Returns stacks that can act in the space. RESIDING lists the space's own stacks;
 	// ALL_WITH_ACCESS additionally lists every stack whose self-read or explicit role
 	// binding reaches the space, whether that is on the space itself, an ancestor
-	// (propagates down), or an inheriting descendant (read propagates up).
+	// (propagates down), or an inheriting descendant (read propagates up), and
+	// requires space admin. Each stack is listed with the grants that reach the
+	// space for it, whichever space it lives in.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /stacks-with-access-to-space (the `StacksWithAccessToSpace` operationId).
 	StacksWithAccessToSpaceWithResponse(ctx context.Context, params *StacksWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*StacksWithAccessToSpaceResponse, error)
+
+	// StacksWithAccessToSpaceSuggestionsWithResponse Stacks With Access To Space Suggestions
+	//
+	// The fields stacksWithAccessToSpace filters and orders by, with the values the stacks it lists in the mode hold and how many hold each, so nothing past those stacks is counted. ALL_WITH_ACCESS requires space admin.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /stacks-with-access-to-space-suggestions (the `StacksWithAccessToSpaceSuggestions` operationId).
+	StacksWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *StacksWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*StacksWithAccessToSpaceSuggestionsResponse, error)
 
 	// SearchStacksWithBodyWithResponse Search Stacks
 	//
@@ -57563,6 +57677,94 @@ func (r StacksWithAccessToSpaceResponse) ContentType() string {
 	return ""
 }
 
+// StacksWithAccessToSpaceSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for StacksWithAccessToSpaceSuggestions
+type StacksWithAccessToSpaceSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StacksWithAccessToSpaceSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for StacksWithAccessToSpaceSuggestions
+type StacksWithAccessToSpaceSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StacksWithAccessToSpaceSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for StacksWithAccessToSpaceSuggestions
+type StacksWithAccessToSpaceSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StacksWithAccessToSpaceSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StacksWithAccessToSpaceSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StacksWithAccessToSpaceSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StacksWithAccessToSpaceSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StacksWithAccessToSpaceSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StacksWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StacksWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StacksWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StacksWithAccessToSpaceSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StacksWithAccessToSpaceSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StacksWithAccessToSpaceSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StacksWithAccessToSpaceSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SearchStacksResponse200Headers the declared response headers of an HTTP 200 response for SearchStacks
 type SearchStacksResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -70555,7 +70757,9 @@ func (c *ClientWithResponses) StackCreateWithResponse(ctx context.Context, param
 // Returns stacks that can act in the space. RESIDING lists the space's own stacks;
 // ALL_WITH_ACCESS additionally lists every stack whose self-read or explicit role
 // binding reaches the space, whether that is on the space itself, an ancestor
-// (propagates down), or an inheriting descendant (read propagates up).
+// (propagates down), or an inheriting descendant (read propagates up), and
+// requires space admin. Each stack is listed with the grants that reach the
+// space for it, whichever space it lives in.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -70566,6 +70770,21 @@ func (c *ClientWithResponses) StacksWithAccessToSpaceWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseStacksWithAccessToSpaceResponse(rsp)
+}
+
+// StacksWithAccessToSpaceSuggestionsWithResponse Stacks With Access To Space Suggestions
+//
+// The fields stacksWithAccessToSpace filters and orders by, with the values the stacks it lists in the mode hold and how many hold each, so nothing past those stacks is counted. ALL_WITH_ACCESS requires space admin.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /stacks-with-access-to-space-suggestions (the `StacksWithAccessToSpaceSuggestions` operationId).
+func (c *ClientWithResponses) StacksWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *StacksWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*StacksWithAccessToSpaceSuggestionsResponse, error) {
+	rsp, err := c.StacksWithAccessToSpaceSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStacksWithAccessToSpaceSuggestionsResponse(rsp)
 }
 
 // SearchStacksWithBodyWithResponse Search Stacks
@@ -94751,6 +94970,121 @@ func ParseStacksWithAccessToSpaceResponse(rsp *http.Response) (*StacksWithAccess
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StacksWithAccessToSpaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStacksWithAccessToSpaceSuggestionsResponse parses an HTTP response from a StacksWithAccessToSpaceSuggestionsWithResponse call
+func ParseStacksWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*StacksWithAccessToSpaceSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StacksWithAccessToSpaceSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StacksWithAccessToSpaceSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StacksWithAccessToSpaceSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StacksWithAccessToSpaceSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

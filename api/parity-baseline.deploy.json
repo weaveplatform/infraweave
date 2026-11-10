@@ -411,8 +411,7 @@
       "searchSpacePoliciesSuggestions",
       "searchTofuWorkspacesSuggestions",
       "searchVCSIntegrationsSuggestions",
-      "searchWorkerPoolsSuggestions",
-      "stacksWithAccessToSpaceSuggestions"
+      "searchWorkerPoolsSuggestions"
     ],
     "Sessions and Security Keys": [
       "securityKeyDelete",

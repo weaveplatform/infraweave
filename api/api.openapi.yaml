@@ -8948,7 +8948,9 @@ paths:
         Returns stacks that can act in the space. RESIDING lists the space's own stacks;
         ALL_WITH_ACCESS additionally lists every stack whose self-read or explicit role
         binding reaches the space, whether that is on the space itself, an ancestor
-        (propagates down), or an inheriting descendant (read propagates up).
+        (propagates down), or an inheriting descendant (read propagates up), and
+        requires space admin. Each stack is listed with the grants that reach the
+        space for it, whichever space it lives in.
       operationId: stacksWithAccessToSpace
       parameters:
         - in: query
@@ -9000,6 +9002,66 @@ paths:
         type: Query
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: query:space
+      x-rest-style: read
+  /stacks-with-access-to-space-suggestions:
+    get:
+      description: >-
+        The fields stacksWithAccessToSpace filters and orders by, with the values the stacks it lists in the mode hold and how many hold each, so nothing past those stacks is counted. ALL_WITH_ACCESS requires space admin.
+      operationId: stacksWithAccessToSpaceSuggestions
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+        - in: query
+          name: mode
+          schema:
+            $ref: '#/components/schemas/StackAccessMode'
+          x-graphql-arg: mode
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The stacksWithAccessToSpaceSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Stacks With Access To Space Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Stacks With Access To Space Suggestions.bru
+      x-graphql:
+        field: stacksWithAccessToSpaceSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces

@@ -7,7 +7,12 @@
 // stacksapi.StackConfiguration, the back edge the stack view reads a
 // stack's contexts and config elements through; SpaceOf is the
 // accessapi.SpaceOf internal/app registers for the entity "stack", so the
-// access domain decides a stack's operations in the stack's space;
+// access domain decides a stack's operations in the stack's space, and
+// BindingSpaceOf the one it registers for "stack_role_binding", so a
+// stack binding's operations are decided in its stack's space too; Deps
+// carry the access domain's accessapi.Bindings, through which the domain
+// binds its stacks and removes a deleted stack's bindings, and
+// accessapi.Grants, which explains the stacks a space's grants reach;
 // RegisterEvents registers stacksapi.Changed with the outbox; API is its
 // partial of the API's strict server, aliased StacksAPI; Purge deletes a
 // deleted account's stacks PurgeBatch at a time, which internal/app runs

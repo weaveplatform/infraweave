@@ -710,6 +710,10 @@ func (UnimplementedStrict) StacksWithAccessToSpace(context.Context, StacksWithAc
 	return nil, &problem.NotImplementedError{OperationID: "stacksWithAccessToSpace", Route: "GET /stacks-with-access-to-space"}
 }
 
+func (UnimplementedStrict) StacksWithAccessToSpaceSuggestions(context.Context, StacksWithAccessToSpaceSuggestionsRequestObject) (StacksWithAccessToSpaceSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stacksWithAccessToSpaceSuggestions", Route: "GET /stacks-with-access-to-space-suggestions"}
+}
+
 func (UnimplementedStrict) SearchStacks(context.Context, SearchStacksRequestObject) (SearchStacksResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchStacks", Route: "POST /stacks/search"}
 }

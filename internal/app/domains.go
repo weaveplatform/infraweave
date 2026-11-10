@@ -75,13 +75,16 @@ func newDomains(
 	}
 	vendors := vendorsassembly.New(vendorsassembly.Deps{DB: db.Primary(), Settings: c.Vendors})
 	stacks := stacksassembly.New(stacksassembly.Deps{
-		DB:     db.Primary(),
-		Spaces: access.Spaces(),
-		Authz:  access.Authorizer(),
-		Events: events,
+		DB:       db.Primary(),
+		Spaces:   access.Spaces(),
+		Authz:    access.Authorizer(),
+		Bindings: access.Bindings(),
+		Grants:   access.Grants(),
+		Events:   events,
 	})
 	access.GuardSpaces(stacks.SpaceGuard())
 	access.ResolveSubjects(stacksassembly.Entity, stacks.SpaceOf())
+	access.ResolveSubjects(stacksassembly.BindingEntity, stacks.BindingSpaceOf())
 	configuration := configurationassembly.New(configurationassembly.Deps{
 		DB:     db.Primary(),
 		Keys:   keys,

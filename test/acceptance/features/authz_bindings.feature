@@ -16,14 +16,19 @@ Feature: Role bindings
   space-admin on the account's top space, acme; the member key,
   01KACME000000000000000000A, holds only the bindings a scenario gives it.
   An API key never manages API keys, so the member's browser session
-  creates them.
+  creates them. A stack binding needs STACK_MANAGE on the stack's space
+  and SPACE_ADMIN on the space it binds in; one on the top space needs the
+  stack to live there. It stays where it is when the stack moves, and goes
+  when the stack is deleted. A space's stacks with access are those that
+  live in it, or, for its admin, every stack whose own read or binding
+  reaches it.
 
   Background:
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
 
-  @op:userRoleBindingCreate @op:userRoleBinding @op:userRoleBindingUpdate @op:userRoleBindingPatch @op:userRoleBindingDelete @op:managedUserUserRoleBindings @case:success
+  @op:userRoleBindingCreate @op:userRoleBinding @op:userRoleBindingUpdate @op:userRoleBindingPatch @op:userRoleBindingDelete @op:userRoleBindingBatchCreate @op:managedUserUserRoleBindings @case:success
   Scenario: A managed user's binding grants exactly its role's actions in its space and the spaces below
     Given the home account's member has a browser session, admitted to home alone
     And the home account's member is "alice"
@@ -38,8 +43,7 @@ Feature: Role bindings
     And the answer's userID is '"{alice}"'
     And the browser's read of the space "legacy" through B allows exactly the role "space-reader"'s actions
     And the browser's read of the space "{child}" through A allows exactly the role "space-reader"'s actions
-    When the browser sends "GET /api/v1/spaces/acme" through B
-    Then it answers a 404 problem "not-found"
+    And the browser's read of the space "acme" through B is not found
     When token "h" sends "GET /api/v1/user-role-bindings/{b}" through B
     Then it answers 200
     And the answer's ETag is kept as "first"
@@ -53,8 +57,12 @@ Feature: Role bindings
     Then the answer lists 1 binding
     When token "h" sends "DELETE /api/v1/user-role-bindings/{b}" through B
     Then it answers 200
-    When the browser sends "GET /api/v1/spaces/acme" through A
-    Then it answers a 404 problem "not-found"
+    And the browser's read of the space "acme" through A is not found
+    When token "h" sends "POST /api/v1/user-role-binding-batches" with '{"bindings":[{"userID":"{alice}","roleID":"space-reader","spaceID":"legacy"},{"userID":"{alice}","roleID":"space-writer","spaceID":"{child}"}]}' through A
+    Then it answers 201
+    And the browser's read of the space "{child}" through B allows exactly the role "space-writer"'s actions
+    When token "h" sends "GET /api/v1/managed-users/{alice}/user-role-bindings" through A
+    Then the answer lists 2 bindings
 
   @op:userGroupRoleBindingCreate @op:userGroupRoleBinding @op:userGroupRoleBindingUpdate @op:userGroupRoleBindingPatch @op:userGroupRoleBindingDelete @op:userGroupRoleBindingBatchCreate @op:managedUserGroupUserRoleBindings @case:success
   Scenario: A group's binding of a custom role grants exactly its actions to a session reporting the group
@@ -291,3 +299,165 @@ Feature: Role bindings
     When the browser sends "POST /api/v1/api-keys" with '{"name":"other","teams":[],"accessRules":[{"space":"nowhere","spaceAccessLevel":"READ"}]}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/accessRules/0/space"
+
+  @op:stackRoleBindingCreate @op:stackRoleBinding @op:stackRoleBindingUpdate @op:stackRoleBindingPatch @op:stackRoleBindingDelete @op:stackRoleBindingBatchCreate @op:stackRoleBindings @op:stacksWithAccessToSpace @op:stacksWithAccessToSpaceSuggestions @op:stackUpdate @op:stackDelete @case:success
+  Scenario: A stack bound in another space holds the role there, keeps its binding when it moves and loses it when deleted
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Child","description":"","inheritEntities":true,"parentSpace":"legacy"}' through A
+    And the answer's id is the space "child"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Web","repository":"web","branch":"main","space":"{child}"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Top","repository":"top","branch":"main","space":"acme"},"manageState":false}' through A
+    When token "h" lists the stacks with access to the space "legacy" through B
+    Then the answer lists 1 holder
+    And the holder "infra" holds the role "space-reader" on the space "legacy" as RESIDENT by its own read
+    When token "h" lists the stacks with access to the space "legacy" in the mode ALL_WITH_ACCESS through A
+    Then the answer lists 3 holders
+    And the holder "top" holds the role "space-reader" on the space "acme" as PROPAGATED by its own read
+    And the holder "web" holds the role "space-reader" on the space "{child}" as INHERITED by its own read
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"web","roleID":"space-writer","spaceID":"legacy"}' through B
+    Then it answers 201
+    And the answer's id names "b"
+    And the answer's stackName is '"Web"'
+    And the home account holds 1 stack role binding
+    When token "h" lists the stacks with access to the space "legacy" in the mode ALL_WITH_ACCESS through A
+    Then the holder "web" holds the role "space-writer" on the space "legacy" as RESIDENT through the binding "{b}"
+    When token "h" lists the stacks with access to the space "{child}" in the mode ALL_WITH_ACCESS searching "web" through B
+    Then the answer lists 1 holder
+    And the holder "web" holds the role "space-writer" on the space "legacy" as PROPAGATED through the binding "{b}"
+    When token "h" asks for the suggestions of the stacks with access to the space "legacy" in the mode ALL_WITH_ACCESS through A
+    Then the suggestions count 3
+    When token "h" asks for the suggestions of the stacks with access to the space "legacy" through B
+    Then the suggestions count 1
+    When token "h" sends "GET /api/v1/stack-role-bindings/{b}" through A
+    Then it answers 200
+    And the answer's ETag is kept as "first"
+    When token "h" sends "PUT /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-admin","spaceID":"legacy"}' if matching the ETag "first" through B
+    Then it answers 200
+    And the answer's role is '{"id":"space-admin"}'
+    When token "h" sends "PATCH /api/v1/stack-role-bindings/{b}" with '{"spaceID":"{child}"}' through A
+    Then it answers 200
+    And the answer's space is '{"id":"{child}"}'
+    When token "h" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"infra","roleID":"space-reader","spaceID":"{child}"},{"stackID":"top","roleID":"space-admin","spaceID":"acme"}]}' through B
+    Then it answers 201
+    And the home account holds 3 stack role bindings
+    When token "h" sends "PUT /api/v1/stacks/web" with '{"name":"Web","repository":"web","branch":"main","space":"acme"}' through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/stacks/web/role-bindings" through B
+    Then the answer lists 1 binding
+    And the answer's binding of the role "space-admin" names "kept"
+    When token "h" sends "GET /api/v1/stack-role-bindings/{kept}" through A
+    Then it answers 200
+    And the answer's space is '{"id":"{child}"}'
+    When token "h" sends "DELETE /api/v1/stack-role-bindings/{b}" through B
+    Then it answers 200
+    And the home account holds 2 stack role bindings
+    When token "h" sends "DELETE /api/v1/stacks/infra" through A
+    Then it answers 200
+    And the home account holds 1 stack role binding
+
+  @op:stackRoleBindingCreate @op:stackRoleBinding @op:stackRoleBindingUpdate @op:stackRoleBindingPatch @op:stackRoleBindingDelete @op:stackRoleBindingBatchCreate @op:stackRoleBindings @op:stacksWithAccessToSpace @op:stacksWithAccessToSpaceSuggestions @case:denial
+  Scenario: A stack's binding needs STACK_MANAGE on the stack's space and SPACE_ADMIN on the space it binds in
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Top","repository":"top","branch":"main","space":"acme"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"}' through A
+    And the answer's id names "b"
+    When token "m" sends "GET /api/v1/stack-role-bindings/{b}" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/stacks/infra/role-bindings" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" lists the stacks with access to the space "legacy" through B
+    Then it answers a 404 problem "not-found"
+    Given the member key is space-reader on the space "legacy"
+    When token "m" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"}' through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"}]}' through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PUT /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-writer","spaceID":"legacy"}' through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PATCH /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-writer"}' through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "DELETE /api/v1/stack-role-bindings/{b}" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" lists the stacks with access to the space "legacy" in the mode ALL_WITH_ACCESS through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" asks for the suggestions of the stacks with access to the space "legacy" in the mode ALL_WITH_ACCESS through A
+    Then it answers a 403 problem "forbidden"
+    Given token "h" sends "POST /api/v1/roles" with '{"name":"Stack Managers","actions":["SPACE_READ","STACK_MANAGE"]}' through B
+    And token "h" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"stack-managers","spaceID":"legacy"}' through A
+    When token "m" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-writer","spaceID":"legacy"}' through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PUT /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-writer","spaceID":"legacy"}' through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PATCH /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-writer"}' through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "DELETE /api/v1/stack-role-bindings/{b}" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"infra","roleID":"space-writer","spaceID":"legacy"}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/bindings/0/spaceID"
+    Given the member key is space-admin on the space "legacy"
+    When token "m" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"top","roleID":"space-reader","spaceID":"legacy"}' through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"acme"}' through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"infra","roleID":"space-writer","spaceID":"legacy"},{"stackID":"top","roleID":"space-reader","spaceID":"legacy"}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/bindings/1/stackID"
+    When token "m" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-writer","spaceID":"legacy"}' through B
+    Then it answers 201
+    And the home account holds 2 stack role bindings
+
+  @op:stackRoleBindingCreate @op:stackRoleBinding @op:stackRoleBindingUpdate @op:stackRoleBindingPatch @op:stackRoleBindingDelete @op:stackRoleBindingBatchCreate @op:stackRoleBindings @op:stacksWithAccessToSpace @op:stacksWithAccessToSpaceSuggestions @case:failure
+  Scenario: A top-space binding of a stack below it, an unknown stack, role, space or binding, a duplicate and a stale change are refused
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"acme"}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/spaceID"
+    When token "h" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"},{"stackID":"infra","roleID":"space-writer","spaceID":"acme"}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/bindings/1/spaceID"
+    And the home account holds 0 stack role bindings
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"nope","roleID":"space-reader","spaceID":"legacy"}' through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"nope","spaceID":"legacy"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/roleID"
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"nowhere"}' through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"}' through A
+    Then it answers 201
+    And the answer's id names "b"
+    When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"}' through B
+    Then it answers a 409 problem "already-exists"
+    When token "h" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"nope","roleID":"space-reader","spaceID":"legacy"}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/bindings/0/stackID"
+    When token "h" sends "PUT /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-reader","spaceID":"acme"}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/spaceID"
+    When token "h" sends "GET /api/v1/stack-role-bindings/{b}" through A
+    Then it answers 200
+    And the answer's ETag is kept as "old"
+    When token "h" sends "PATCH /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-writer"}' through B
+    Then it answers 200
+    When token "h" sends "PUT /api/v1/stack-role-bindings/{b}" with '{"roleID":"space-admin","spaceID":"legacy"}' if matching the ETag "old" through A
+    Then it answers a 412 problem "precondition-failed"
+    When token "h" sends "PATCH /api/v1/stack-role-bindings/{b}" with '{"roleID":"nope"}' through B
+    Then it answers a 422 problem "validation-failed"
+    When token "h" sends "GET /api/v1/stack-role-bindings/01KACME0000000000000000999" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "PUT /api/v1/stack-role-bindings/01KACME0000000000000000999" with '{"roleID":"space-reader","spaceID":"legacy"}' through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "PATCH /api/v1/stack-role-bindings/01KACME0000000000000000999" with '{"roleID":"space-reader"}' through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "DELETE /api/v1/stack-role-bindings/01KACME0000000000000000999" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/stacks/nope/role-bindings" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" lists the stacks with access to the space "nowhere" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" asks for the suggestions of the stacks with access to the space "nowhere" in the mode ALL_WITH_ACCESS through A
+    Then it answers a 404 problem "not-found"
+    When token "h" lists the stacks with access to the space "legacy" ordered by "owner" through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/orderBy/0/field"
