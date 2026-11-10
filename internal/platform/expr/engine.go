@@ -53,10 +53,12 @@ type Variable struct {
 }
 
 // Context is what a surface knows of one of its contexts: the variables it
-// declares there, which narrow the surface's own by name, and sample
-// values for trying an expression out.
+// declares there, which narrow the surface's own by name, the keys that
+// close a map variable there, and sample values for trying an expression
+// out.
 type Context struct {
 	Variables []Variable
+	Keys      map[string][]string
 	Sample    map[string]any
 }
 
@@ -66,16 +68,20 @@ type Surface struct {
 	Name      string
 	Variables []Variable
 	// Env authorizes p's read of the context ref names and describes it. It
-	// fails with the owning domain's not-found error for a context p
-	// cannot read.
+	// fails with an error wrapping ErrNoContext for a context p cannot
+	// read, whether or not it exists.
 	Env func(ctx context.Context, p kernel.Principal, ref string) (Context, error)
 }
 
 // Request names what to compile: the surface, the variables of the
 // context, which narrow the surface's by name, the form and the source.
+// Keys closes each map variable it names to those keys: a literal read of
+// another is an error, as a misspelt field of an object is. A key read
+// any other way is not checked.
 type Request struct {
 	Surface   string
 	Variables []Variable
+	Keys      map[string][]string
 	Form      Form
 	Source    string
 }
@@ -215,6 +221,10 @@ func (r Result) Mask(s string) string {
 // ErrUnknownSurface is a request naming a surface no domain declares.
 var ErrUnknownSurface = errors.New("unknown surface")
 
+// ErrNoContext is a context a surface does not have, or one the caller
+// cannot read.
+var ErrNoContext = errors.New("no such context")
+
 // ErrRequest is a request the registry cannot compile at all: a variable
 // its surface does not declare, a schema that is not JSON, or an unknown
 // form.
@@ -316,7 +326,24 @@ func (r *Registry) Check(req Request) (Check, error) {
 	}
 	c := p.check
 	c.Reads = slices.Clone(p.check.Reads)
+	c.Diagnostics = append(slices.Clone(c.Diagnostics), unknownKeys(c.Reads, req.Keys)...)
 	return c, nil
+}
+
+// unknownKeys are an error for each read of a key that keys closes its
+// variable to and does not name.
+func unknownKeys(reads []Read, keys map[string][]string) []Diagnostic {
+	var out []Diagnostic
+	for _, r := range reads {
+		if known, ok := keys[r.Variable]; ok && !slices.Contains(known, r.Key) {
+			out = append(out, Diagnostic{
+				Severity: SeverityError,
+				Message:  fmt.Sprintf("%s has no key %q", r.Variable, r.Key),
+				Range:    r.Range,
+			})
+		}
+	}
+	return out
 }
 
 // Evaluate compiles req and runs it against in, under the limits. A
@@ -328,8 +355,10 @@ func (r *Registry) Evaluate(ctx context.Context, req Request, in Input) (Result,
 	if err != nil {
 		return Result{}, err
 	}
-	if !p.check.OK() {
-		return Result{}, &CheckError{Diagnostics: p.check.Diagnostics}
+	if unknown := unknownKeys(p.check.Reads, req.Keys); !p.check.OK() || len(unknown) > 0 {
+		return Result{}, &CheckError{
+			Diagnostics: append(slices.Clone(p.check.Diagnostics), unknown...),
+		}
 	}
 	vars, masker, err := r.activation(ctx, p, env, in)
 	if err != nil {

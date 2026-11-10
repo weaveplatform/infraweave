@@ -808,7 +808,9 @@ func TestUnitExprRegistry(t *testing.T) {
 
 // TestUnitExprReads checks that a check reports each literal read of a
 // variable's key across a template's expressions, in source order with
-// its range, and leaves out a key the source computes.
+// its range, and leaves out a key the source computes; and that keys
+// closing a map refuse a literal read of another key, at check and at
+// evaluation, leaving the cached check as it was.
 func TestUnitExprReads(t *testing.T) {
 	r := registry(t, expr.Defaults(), expr.Surface{Name: "s", Variables: []expr.Variable{
 		{
@@ -838,5 +840,174 @@ func TestUnitExprReads(t *testing.T) {
 	chk.Reads[0].Key = "Z"
 	if again, _ := r.Check(req); again.Reads[0].Key != "B" {
 		t.Errorf("the cached check, its caller's copy changed, reads %+v", again.Reads)
+	}
+
+	closed := req
+	closed.Keys = map[string][]string{"env": {"B"}}
+	chk, err = r.Check(closed)
+	if want := []expr.Diagnostic{{
+		Severity: expr.SeverityError, Message: `env has no key "A"`, Range: rng(1, 22, 1, 25),
+	}}; err != nil || !reflect.DeepEqual(chk.Diagnostics, want) {
+		t.Errorf("a closed map's diagnostics %+v, %v", chk.Diagnostics, err)
+	}
+	if again, _ := r.Check(req); !again.OK() {
+		t.Errorf("the cached check took the closed map's diagnostics: %+v", again.Diagnostics)
+	}
+	in := expr.Input{Values: map[string]any{
+		"env": map[string]any{"A": "a", "B": "b"}, "other": map[string]any{"k": "A"},
+	}}
+	if _, err := r.Evaluate(t.Context(), closed, in); !isCheckError(err, 1) {
+		t.Errorf("evaluating a read of a key the map is closed to = %v", err)
+	}
+	closed.Keys = map[string][]string{"env": {"A", "B"}}
+	if res, err := r.Evaluate(t.Context(), closed, in); err != nil || res.Value != "b-a-ba" {
+		t.Errorf("evaluating within the closed map = %+v, %v", res, err)
+	}
+}
+
+// isCheckError reports whether err is a *expr.CheckError of n diagnostics.
+func isCheckError(err error, n int) bool {
+	ce, ok := errors.AsType[*expr.CheckError](err)
+	return ok && len(ce.Diagnostics) == n
+}
+
+// TestUnitExprComplete checks the items at a cursor: variables and global
+// functions at the start, an object's fields from its schema and a map's
+// from the sample after a dot, a namespace's functions, the functions
+// called on a value, and none outside a template's ${{ … }}.
+func TestUnitExprComplete(t *testing.T) {
+	r := registry(t, expr.Defaults(), expr.Surface{Name: "s", Variables: []expr.Variable{
+		{
+			Name: "env",
+			Schema: json.RawMessage(
+				`{"type": "object", "additionalProperties": {"type": "string"}}`,
+			),
+		},
+		{Name: "stack", Schema: json.RawMessage(`{"type": "object", "properties": {
+			"name": {"type": "string"}, "labels": {"type": "array", "items": {"type": "string"}}}}`)},
+	}})
+	sample := map[string]any{"env": map[string]any{"REGION": "eu", "ROLE": "x", "TOKEN": "*****"}}
+	labels := func(items []expr.Completion) []string {
+		out := make([]string, 0, len(items))
+		for _, c := range items {
+			out = append(out, c.Kind+":"+c.Label)
+		}
+		return out
+	}
+	complete := func(form expr.Form, src string, line, column int) []expr.Completion {
+		t.Helper()
+		items, err := r.Complete(expr.Request{Surface: "s", Form: form, Source: src},
+			kernel.Position{Line: line, Column: column}, sample)
+		if err != nil {
+			t.Fatalf("%q at %d:%d: %v", src, line, column, err)
+		}
+		return items
+	}
+	items := complete(expr.FormTemplate, "x ${{ env.R", 1, 12)
+	if got := labels(items); !reflect.DeepEqual(got, []string{"field:REGION", "field:ROLE"}) {
+		t.Errorf("env.R completes %v", got)
+	}
+	if items[0].Range != rng(1, 11, 1, 12) || items[0].Detail != "string" {
+		t.Errorf("env.R's first item %+v", items[0])
+	}
+	if got := labels(
+		complete(expr.FormExpression, "stack.", 1, 7),
+	); !slices.Contains(got, "field:labels") ||
+		!slices.Contains(got, "field:name") ||
+		!slices.Contains(got, "function:size") {
+		t.Errorf("stack. completes %v", got)
+	}
+	if got := labels(complete(expr.FormExpression, "s", 1, 2)); !reflect.DeepEqual(got,
+		[]string{"variable:stack", "function:size", "function:string"}) {
+		t.Errorf("s completes %v", got)
+	}
+	if got := labels(
+		complete(expr.FormExpression, "n", 1, 2),
+	); !reflect.DeepEqual(
+		got,
+		[]string{"variable:now"},
+	) {
+		t.Errorf("n completes %v", got)
+	}
+	if got := labels(complete(expr.FormExpression, "base64.e", 1, 9)); !reflect.DeepEqual(got,
+		[]string{"function:encode"}) {
+		t.Errorf("base64.e completes %v", got)
+	}
+	if got := labels(
+		complete(expr.FormExpression, "[1].al", 1, 7),
+	); !slices.Contains(
+		got,
+		"macro:all",
+	) {
+		t.Errorf("[1].al completes %v", got)
+	}
+	if got := complete(expr.FormTemplate, "${{ env.A }} tail", 1, 15); len(got) != 0 {
+		t.Errorf("outside an expression %v", got)
+	}
+	if got := complete(expr.FormTemplate, "$${{ env.", 1, 10); len(got) != 0 {
+		t.Errorf("after an escaped ${{ %v", got)
+	}
+	if got := labels(
+		complete(expr.FormExpression, "true &&\n  stack.na", 2, 11),
+	); !reflect.DeepEqual(
+		got,
+		[]string{"field:name"},
+	) {
+		t.Errorf("on a second line %v", got)
+	}
+	if got := complete(
+		expr.FormExpression,
+		"nope.",
+		1,
+		6,
+	); len(got) == 0 ||
+		slices.Contains(labels(got), "field:name") {
+		t.Errorf("after an unknown name %v", labels(got))
+	}
+	typed := registry(t, expr.Defaults(), expr.Surface{Name: "t", Variables: []expr.Variable{
+		{Name: "v", Schema: json.RawMessage(`{"properties": {
+			"i": {"type": "integer"}, "n": {"type": "number"}, "b": {"type": "boolean"},
+			"z": {"type": "null"}, "l": {"type": "array"}, "o": {"properties": {"x": {}}},
+			"m": {"type": "object"}, "d": {}}}`)},
+	}})
+	got, err := typed.Complete(expr.Request{Surface: "t", Form: expr.FormExpression, Source: "v."},
+		kernel.Position{Line: 1, Column: 3}, nil)
+	details := map[string]string{}
+	for _, c := range got {
+		if c.Kind == expr.KindField {
+			details[c.Label] = c.Detail
+		}
+	}
+	if want := map[string]string{
+		"i": "int", "n": "double", "b": "bool", "z": "null", "l": "list(dyn)", "o": "object",
+		"m": "map(string, dyn)", "d": "dyn",
+	}; err != nil || !reflect.DeepEqual(details, want) {
+		t.Errorf("v.'s fields %v, %v", details, err)
+	}
+	if got, err := typed.Complete(
+		expr.Request{Surface: "t", Form: expr.FormExpression, Source: "v.o.x."},
+		kernel.Position{
+			Line:   1,
+			Column: 7,
+		},
+		nil,
+	); err != nil ||
+		slices.ContainsFunc(got, func(c expr.Completion) bool {
+			return c.Kind == expr.KindField
+		}) {
+		t.Errorf("a field of a value with none %v, %v", got, err)
+	}
+
+	for _, c := range []struct {
+		req expr.Request
+		at  kernel.Position
+	}{
+		{expr.Request{Surface: "s", Form: expr.FormExpression, Source: "env"}, kernel.Position{Line: 2, Column: 1}},
+		{expr.Request{Surface: "s", Form: "yaml", Source: "env"}, kernel.Position{Line: 1, Column: 1}},
+		{expr.Request{Surface: "nope", Form: expr.FormExpression, Source: "env"}, kernel.Position{Line: 1, Column: 1}},
+	} {
+		if _, err := r.Complete(c.req, c.at, nil); err == nil {
+			t.Errorf("%+v at %+v completed", c.req, c.at)
+		}
 	}
 }

@@ -286,8 +286,9 @@ WebSocket, `/flows/mcp`, `/flows/e/...` and `/flows/forms/...`).
   accepted there as missing until test scenarios are designed (PD-16).
 - **Capabilities.** Each record of
   [`capabilities.json`](../../data/capabilities.json) names its `product`
-  (`deploy` or `flows`), and docscheck checks each reference's tags against
-  the records of its own product.
+  (`deploy` or `flows`, or `infraweave` for a tag of its own outside the
+  parity surface), and docscheck checks each reference's tags against the
+  records of its own product.
 
 ## From the reference to the served API
 

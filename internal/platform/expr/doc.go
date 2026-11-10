@@ -38,7 +38,9 @@
 // API's error item. Evaluate takes a Request and an Input (now, the seed,
 // the variables' values, and a loader of secret keys) and returns the
 // Result as Go values, or *CheckError for a source that does not compile
-// and *Failed for an evaluation that stops. Nothing is logged or stored;
+// and *Failed for an evaluation that stops. Complete takes a Request, a
+// cursor and the context's sample values and returns the Completion items
+// an editor may insert there, with the range each replaces. Nothing is logged or stored;
 // the caches live in memory and are rebuilt on a miss.
 //
 // # Dependencies

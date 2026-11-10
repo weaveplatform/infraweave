@@ -947,6 +947,66 @@ func (e EntityVendorTerraformKind) Valid() bool {
 	}
 }
 
+// Defines values for ExpressionCompletionKind.
+const (
+	Field    ExpressionCompletionKind = "field"
+	Function ExpressionCompletionKind = "function"
+	Macro    ExpressionCompletionKind = "macro"
+	Variable ExpressionCompletionKind = "variable"
+)
+
+// Valid indicates whether the value is a known member of the ExpressionCompletionKind enum.
+func (e ExpressionCompletionKind) Valid() bool {
+	switch e {
+	case Field:
+		return true
+	case Function:
+		return true
+	case Macro:
+		return true
+	case Variable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ExpressionDiagnosticSeverity.
+const (
+	Error   ExpressionDiagnosticSeverity = "error"
+	Warning ExpressionDiagnosticSeverity = "warning"
+)
+
+// Valid indicates whether the value is a known member of the ExpressionDiagnosticSeverity enum.
+func (e ExpressionDiagnosticSeverity) Valid() bool {
+	switch e {
+	case Error:
+		return true
+	case Warning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ExpressionForm.
+const (
+	Expression ExpressionForm = "expression"
+	Template   ExpressionForm = "template"
+)
+
+// Valid indicates whether the value is a known member of the ExpressionForm enum.
+func (e ExpressionForm) Valid() bool {
+	switch e {
+	case Expression:
+		return true
+	case Template:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ExternalIntegrationConfigServiceNowKind.
 const (
 	ExternalIntegrationConfigServiceNowKindExternalIntegrationConfigServiceNow ExternalIntegrationConfigServiceNowKind = "ExternalIntegrationConfigServiceNow"
@@ -4043,6 +4103,118 @@ type EnvironmentVariable struct {
 	// Value Value of an environment variable
 	Value string `json:"value"`
 }
+
+// ExpressionCheck What checking a source finds: its diagnostics, the type of its result when it compiles, and the estimated cost of evaluating it, in the units expressions.cost_limit counts.
+type ExpressionCheck struct {
+	// Cost The static estimate of an evaluation's cost.
+	Cost        ExpressionCost         `json:"cost"`
+	Diagnostics []ExpressionDiagnostic `json:"diagnostics"`
+
+	// Type The result's CEL type, such as string or list(int); empty when the source does not compile.
+	Type string `json:"type"`
+}
+
+// ExpressionCheckRequest A source to check against a surface, in the context ref names.
+type ExpressionCheckRequest struct {
+	// Form How the source is written: expression, one CEL expression that keeps its type, or template, text with expressions embedded as ${{ … }} and rendered into a string.
+	Form ExpressionForm `json:"form"`
+
+	// Ref The context within the surface, such as a stack's ID on the environment surface. A context the caller cannot read answers 404.
+	Ref string `json:"ref"`
+
+	// Source The expression or template.
+	Source string `json:"source"`
+
+	// Surface The surface the source is written for, such as environment.
+	Surface string `json:"surface"`
+}
+
+// ExpressionCompleteRequest A source being edited, and the cursor to complete at.
+type ExpressionCompleteRequest struct {
+	// Form How the source is written: expression, one CEL expression that keeps its type, or template, text with expressions embedded as ${{ … }} and rendered into a string.
+	Form ExpressionForm `json:"form"`
+
+	// Position A place in source text. Lines and columns are counted from 1, and a column counts Unicode code points.
+	Position SourcePosition `json:"position"`
+
+	// Ref The context within the surface, such as a stack's ID on the environment surface. A context the caller cannot read answers 404.
+	Ref string `json:"ref"`
+
+	// Source The expression or template.
+	Source string `json:"source"`
+
+	// Surface The surface the source is written for, such as environment.
+	Surface string `json:"surface"`
+}
+
+// ExpressionCompletion One item an editor may insert at the cursor: a variable, a field, a function or a macro, with its type or signatures, and the range of the source its label replaces.
+type ExpressionCompletion struct {
+	Description string `json:"description"`
+
+	// Detail A variable's or field's type, or a function's signatures, one a line.
+	Detail string                   `json:"detail"`
+	Kind   ExpressionCompletionKind `json:"kind"`
+	Label  string                   `json:"label"`
+
+	// Range Where in an expression or template the fault lies, so an editor can underline it, from start up to but not including end. Only an error in source text carries one.
+	Range SourceRange `json:"range"`
+}
+
+// ExpressionCompletionKind defines model for ExpressionCompletion.Kind.
+type ExpressionCompletionKind string
+
+// ExpressionCompletions The items at the cursor, each starting with what is typed before it.
+type ExpressionCompletions struct {
+	Items []ExpressionCompletion `json:"items"`
+}
+
+// ExpressionCost The static estimate of an evaluation's cost.
+type ExpressionCost struct {
+	Max int64 `json:"max"`
+	Min int64 `json:"min"`
+}
+
+// ExpressionDiagnostic One finding about a source: an error refuses it, a warning comes back with it.
+type ExpressionDiagnostic struct {
+	Message string `json:"message"`
+
+	// Range Where in an expression or template the fault lies, so an editor can underline it, from start up to but not including end. Only an error in source text carries one.
+	Range    SourceRange                  `json:"range"`
+	Severity ExpressionDiagnosticSeverity `json:"severity"`
+}
+
+// ExpressionDiagnosticSeverity defines model for ExpressionDiagnostic.Severity.
+type ExpressionDiagnosticSeverity string
+
+// ExpressionEvaluateRequest A source to evaluate against the context's sample values, each variable sample names replacing the context's own.
+type ExpressionEvaluateRequest struct {
+	// Form How the source is written: expression, one CEL expression that keeps its type, or template, text with expressions embedded as ${{ … }} and rendered into a string.
+	Form ExpressionForm `json:"form"`
+
+	// Ref The context within the surface, such as a stack's ID on the environment surface. A context the caller cannot read answers 404.
+	Ref string `json:"ref"`
+
+	// Sample Values to evaluate against, by variable name, each replacing the context's sample value of that variable.
+	Sample *map[string]interface{} `json:"sample,omitempty"`
+
+	// Source The expression or template.
+	Source string `json:"source"`
+
+	// Surface The surface the source is written for, such as environment.
+	Surface string `json:"surface"`
+}
+
+// ExpressionEvaluation An evaluation's result. A secret the context holds is evaluated as a masked placeholder, never its value.
+type ExpressionEvaluation struct {
+	// Type The result's CEL type.
+	Type string `json:"type"`
+
+	// Value The result as JSON; a template's is its text, unless it is one whole expression.
+	Value interface{} `json:"value"`
+}
+
+// ExpressionForm How the source is written: expression, one CEL expression that keeps its type, or template, text with expressions embedded as ${{ … }} and rendered into a string.
+type ExpressionForm string
 
 // ExternalIntegration defines model for ExternalIntegration.
 type ExternalIntegration struct {
@@ -9174,6 +9346,24 @@ type EvaluateFeatureFlagsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ExpressionCheckParams defines parameters for ExpressionCheck.
+type ExpressionCheckParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ExpressionCompleteParams defines parameters for ExpressionComplete.
+type ExpressionCompleteParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ExpressionEvaluateParams defines parameters for ExpressionEvaluate.
+type ExpressionEvaluateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // ManagedUserGroupsParams defines parameters for ManagedUserGroups.
 type ManagedUserGroupsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -10044,6 +10234,15 @@ type ContextConfigAddJSONRequestBody = ConfigInput
 
 // ContextConfigSetJSONRequestBody defines body for ContextConfigSet for application/json ContentType.
 type ContextConfigSetJSONRequestBody = ConfigElementInput
+
+// ExpressionCheckJSONRequestBody defines body for ExpressionCheck for application/json ContentType.
+type ExpressionCheckJSONRequestBody = ExpressionCheckRequest
+
+// ExpressionCompleteJSONRequestBody defines body for ExpressionComplete for application/json ContentType.
+type ExpressionCompleteJSONRequestBody = ExpressionCompleteRequest
+
+// ExpressionEvaluateJSONRequestBody defines body for ExpressionEvaluate for application/json ContentType.
+type ExpressionEvaluateJSONRequestBody = ExpressionEvaluateRequest
 
 // ManagedUserGroupCreateV2JSONRequestBody defines body for ManagedUserGroupCreateV2 for application/json ContentType.
 type ManagedUserGroupCreateV2JSONRequestBody = ManagedUserGroupCreateInputV2
@@ -12569,6 +12768,60 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
 	EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExpressionCheckWithBody Check Expression
+	//
+	// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+	ExpressionCheckWithBody(ctx context.Context, params *ExpressionCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExpressionCheck Check Expression
+	//
+	// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+	ExpressionCheck(ctx context.Context, params *ExpressionCheckParams, body ExpressionCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExpressionCompleteWithBody Complete Expression
+	//
+	// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+	ExpressionCompleteWithBody(ctx context.Context, params *ExpressionCompleteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExpressionComplete Complete Expression
+	//
+	// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+	ExpressionComplete(ctx context.Context, params *ExpressionCompleteParams, body ExpressionCompleteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExpressionEvaluateWithBody Evaluate Expression
+	//
+	// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+	ExpressionEvaluateWithBody(ctx context.Context, params *ExpressionEvaluateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExpressionEvaluate Evaluate Expression
+	//
+	// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+	ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Id Id
 	//
@@ -16057,6 +16310,120 @@ func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEdi
 // Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
 func (c *Client) EvaluateFeatureFlags(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEvaluateFeatureFlagsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExpressionCheckWithBody Check Expression
+//
+// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+func (c *Client) ExpressionCheckWithBody(ctx context.Context, params *ExpressionCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExpressionCheckRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExpressionCheck Check Expression
+//
+// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+func (c *Client) ExpressionCheck(ctx context.Context, params *ExpressionCheckParams, body ExpressionCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExpressionCheckRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExpressionCompleteWithBody Complete Expression
+//
+// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+func (c *Client) ExpressionCompleteWithBody(ctx context.Context, params *ExpressionCompleteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExpressionCompleteRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExpressionComplete Complete Expression
+//
+// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+func (c *Client) ExpressionComplete(ctx context.Context, params *ExpressionCompleteParams, body ExpressionCompleteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExpressionCompleteRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExpressionEvaluateWithBody Evaluate Expression
+//
+// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+func (c *Client) ExpressionEvaluateWithBody(ctx context.Context, params *ExpressionEvaluateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExpressionEvaluateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExpressionEvaluate Evaluate Expression
+//
+// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+func (c *Client) ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExpressionEvaluateRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -23441,6 +23808,171 @@ func NewEvaluateFeatureFlagsRequest(server string, params *EvaluateFeatureFlagsP
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewExpressionCheckRequest calls the generic ExpressionCheck builder with application/json body
+func NewExpressionCheckRequest(server string, params *ExpressionCheckParams, body ExpressionCheckJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewExpressionCheckRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewExpressionCheckRequestWithBody constructs an http.Request for the ExpressionCheck method, with any body, and a specified content type
+func NewExpressionCheckRequestWithBody(server string, params *ExpressionCheckParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/expressions/check")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewExpressionCompleteRequest calls the generic ExpressionComplete builder with application/json body
+func NewExpressionCompleteRequest(server string, params *ExpressionCompleteParams, body ExpressionCompleteJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewExpressionCompleteRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewExpressionCompleteRequestWithBody constructs an http.Request for the ExpressionComplete method, with any body, and a specified content type
+func NewExpressionCompleteRequestWithBody(server string, params *ExpressionCompleteParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/expressions/complete")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewExpressionEvaluateRequest calls the generic ExpressionEvaluate builder with application/json body
+func NewExpressionEvaluateRequest(server string, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewExpressionEvaluateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewExpressionEvaluateRequestWithBody constructs an http.Request for the ExpressionEvaluate method, with any body, and a specified content type
+func NewExpressionEvaluateRequestWithBody(server string, params *ExpressionEvaluateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/expressions/evaluate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -33045,6 +33577,60 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /evaluate-feature-flags (the `EvaluateFeatureFlags` operationId).
 	EvaluateFeatureFlagsWithResponse(ctx context.Context, params *EvaluateFeatureFlagsParams, reqEditors ...RequestEditorFn) (*EvaluateFeatureFlagsResponse, error)
 
+	// ExpressionCheckWithBodyWithResponse Check Expression
+	//
+	// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+	ExpressionCheckWithBodyWithResponse(ctx context.Context, params *ExpressionCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExpressionCheckResponse, error)
+
+	// ExpressionCheckWithResponse Check Expression
+	//
+	// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+	ExpressionCheckWithResponse(ctx context.Context, params *ExpressionCheckParams, body ExpressionCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionCheckResponse, error)
+
+	// ExpressionCompleteWithBodyWithResponse Complete Expression
+	//
+	// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+	ExpressionCompleteWithBodyWithResponse(ctx context.Context, params *ExpressionCompleteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExpressionCompleteResponse, error)
+
+	// ExpressionCompleteWithResponse Complete Expression
+	//
+	// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+	ExpressionCompleteWithResponse(ctx context.Context, params *ExpressionCompleteParams, body ExpressionCompleteJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionCompleteResponse, error)
+
+	// ExpressionEvaluateWithBodyWithResponse Evaluate Expression
+	//
+	// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+	ExpressionEvaluateWithBodyWithResponse(ctx context.Context, params *ExpressionEvaluateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error)
+
+	// ExpressionEvaluateWithResponse Evaluate Expression
+	//
+	// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+	ExpressionEvaluateWithResponse(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error)
+
 	// IdWithResponse Id
 	//
 	// The ID of the caller's account.
@@ -41528,6 +42114,333 @@ func (r EvaluateFeatureFlagsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EvaluateFeatureFlagsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ExpressionCheckResponse200Headers the declared response headers of an HTTP 200 response for ExpressionCheck
+type ExpressionCheckResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ExpressionCheckResponse429Headers the declared response headers of an HTTP 429 response for ExpressionCheck
+type ExpressionCheckResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ExpressionCheckResponse503Headers the declared response headers of an HTTP 503 response for ExpressionCheck
+type ExpressionCheckResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ExpressionCheckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExpressionCheck
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ExpressionCheckResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ExpressionCheckResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ExpressionCheckResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ExpressionCheckResponse) GetJSON200() *ExpressionCheck {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ExpressionCheckResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ExpressionCheckResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ExpressionCheckResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ExpressionCheckResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ExpressionCheckResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ExpressionCheckResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ExpressionCheckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ExpressionCheckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExpressionCheckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ExpressionCheckResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ExpressionCompleteResponse200Headers the declared response headers of an HTTP 200 response for ExpressionComplete
+type ExpressionCompleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ExpressionCompleteResponse429Headers the declared response headers of an HTTP 429 response for ExpressionComplete
+type ExpressionCompleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ExpressionCompleteResponse503Headers the declared response headers of an HTTP 503 response for ExpressionComplete
+type ExpressionCompleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ExpressionCompleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExpressionCompletions
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ExpressionCompleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ExpressionCompleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ExpressionCompleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ExpressionCompleteResponse) GetJSON200() *ExpressionCompletions {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ExpressionCompleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ExpressionCompleteResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ExpressionCompleteResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ExpressionCompleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ExpressionCompleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ExpressionCompleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ExpressionCompleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ExpressionCompleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExpressionCompleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ExpressionCompleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ExpressionEvaluateResponse200Headers the declared response headers of an HTTP 200 response for ExpressionEvaluate
+type ExpressionEvaluateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ExpressionEvaluateResponse429Headers the declared response headers of an HTTP 429 response for ExpressionEvaluate
+type ExpressionEvaluateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ExpressionEvaluateResponse503Headers the declared response headers of an HTTP 503 response for ExpressionEvaluate
+type ExpressionEvaluateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ExpressionEvaluateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExpressionEvaluation
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ExpressionEvaluateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ExpressionEvaluateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ExpressionEvaluateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ExpressionEvaluateResponse) GetJSON200() *ExpressionEvaluation {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ExpressionEvaluateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ExpressionEvaluateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ExpressionEvaluateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ExpressionEvaluateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ExpressionEvaluateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ExpressionEvaluateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ExpressionEvaluateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ExpressionEvaluateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExpressionEvaluateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ExpressionEvaluateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -58995,6 +59908,96 @@ func (c *ClientWithResponses) EvaluateFeatureFlagsWithResponse(ctx context.Conte
 	return ParseEvaluateFeatureFlagsResponse(rsp)
 }
 
+// ExpressionCheckWithBodyWithResponse Check Expression
+//
+// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+func (c *ClientWithResponses) ExpressionCheckWithBodyWithResponse(ctx context.Context, params *ExpressionCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExpressionCheckResponse, error) {
+	rsp, err := c.ExpressionCheckWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExpressionCheckResponse(rsp)
+}
+
+// ExpressionCheckWithResponse Check Expression
+//
+// Parse and type-check an expression or a template against a surface and one of its contexts, answering its diagnostics with their ranges, its result type and its estimated cost. An unknown surface answers 422 validation-failed naming the surface field.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /expressions/check (the `ExpressionCheck` operationId).
+func (c *ClientWithResponses) ExpressionCheckWithResponse(ctx context.Context, params *ExpressionCheckParams, body ExpressionCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionCheckResponse, error) {
+	rsp, err := c.ExpressionCheck(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExpressionCheckResponse(rsp)
+}
+
+// ExpressionCompleteWithBodyWithResponse Complete Expression
+//
+// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+func (c *ClientWithResponses) ExpressionCompleteWithBodyWithResponse(ctx context.Context, params *ExpressionCompleteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExpressionCompleteResponse, error) {
+	rsp, err := c.ExpressionCompleteWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExpressionCompleteResponse(rsp)
+}
+
+// ExpressionCompleteWithResponse Complete Expression
+//
+// The completion items at a cursor in an expression or a template: the variables, the fields of an object or of a map's sample value, a namespace's functions, and the functions and macros that may follow, with their types and signatures. A cursor outside a template's ${{ … }} has none.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /expressions/complete (the `ExpressionComplete` operationId).
+func (c *ClientWithResponses) ExpressionCompleteWithResponse(ctx context.Context, params *ExpressionCompleteParams, body ExpressionCompleteJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionCompleteResponse, error) {
+	rsp, err := c.ExpressionComplete(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExpressionCompleteResponse(rsp)
+}
+
+// ExpressionEvaluateWithBodyWithResponse Evaluate Expression
+//
+// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+func (c *ClientWithResponses) ExpressionEvaluateWithBodyWithResponse(ctx context.Context, params *ExpressionEvaluateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error) {
+	rsp, err := c.ExpressionEvaluateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExpressionEvaluateResponse(rsp)
+}
+
+// ExpressionEvaluateWithResponse Evaluate Expression
+//
+// Evaluate an expression or a template against its context's sample values, under the limits every evaluation runs under; a secret is evaluated as a masked placeholder. A source that does not type-check, or an evaluation that fails or goes over a limit, answers 422 validation-failed naming the source field with the fault's range.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
+func (c *ClientWithResponses) ExpressionEvaluateWithResponse(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error) {
+	rsp, err := c.ExpressionEvaluate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExpressionEvaluateResponse(rsp)
+}
+
 // IdWithResponse Id
 //
 // The ID of the caller's account.
@@ -70650,6 +71653,414 @@ func ParseEvaluateFeatureFlagsResponse(rsp *http.Response) (*EvaluateFeatureFlag
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers EvaluateFeatureFlagsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseExpressionCheckResponse parses an HTTP response from a ExpressionCheckWithResponse call
+func ParseExpressionCheckResponse(rsp *http.Response) (*ExpressionCheckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExpressionCheckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExpressionCheck
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ExpressionCheckResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ExpressionCheckResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ExpressionCheckResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseExpressionCompleteResponse parses an HTTP response from a ExpressionCompleteWithResponse call
+func ParseExpressionCompleteResponse(rsp *http.Response) (*ExpressionCompleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExpressionCompleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExpressionCompletions
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ExpressionCompleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ExpressionCompleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ExpressionCompleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseExpressionEvaluateResponse parses an HTTP response from a ExpressionEvaluateWithResponse call
+func ParseExpressionEvaluateResponse(rsp *http.Response) (*ExpressionEvaluateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExpressionEvaluateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExpressionEvaluation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ExpressionEvaluateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ExpressionEvaluateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ExpressionEvaluateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

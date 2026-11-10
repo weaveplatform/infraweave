@@ -1,0 +1,366 @@
+# infraweave's own: the editor endpoints over the expression surfaces each
+# domain declares. No Spacelift operation corresponds to them.
+components:
+  schemas:
+    ExpressionForm:
+      description: >-
+        How the source is written: expression, one CEL expression that keeps
+        its type, or template, text with expressions embedded as ${{ … }}
+        and rendered into a string.
+      enum:
+        - expression
+        - template
+      type: string
+    ExpressionCheckRequest:
+      additionalProperties: false
+      description: A source to check against a surface, in the context ref names.
+      properties:
+        surface:
+          description: The surface the source is written for, such as environment.
+          type: string
+        ref:
+          description: >-
+            The context within the surface, such as a stack's ID on the
+            environment surface. A context the caller cannot read answers 404.
+          type: string
+        source:
+          description: The expression or template.
+          type: string
+        form:
+          $ref: '#/components/schemas/ExpressionForm'
+      required:
+        - surface
+        - ref
+        - source
+        - form
+      type: object
+    ExpressionCompleteRequest:
+      additionalProperties: false
+      description: A source being edited, and the cursor to complete at.
+      properties:
+        surface:
+          description: The surface the source is written for, such as environment.
+          type: string
+        ref:
+          description: >-
+            The context within the surface, such as a stack's ID on the
+            environment surface. A context the caller cannot read answers 404.
+          type: string
+        source:
+          description: The expression or template.
+          type: string
+        form:
+          $ref: '#/components/schemas/ExpressionForm'
+        position:
+          $ref: '#/components/schemas/SourcePosition'
+      required:
+        - surface
+        - ref
+        - source
+        - form
+        - position
+      type: object
+    ExpressionEvaluateRequest:
+      additionalProperties: false
+      description: >-
+        A source to evaluate against the context's sample values, each
+        variable sample names replacing the context's own.
+      properties:
+        surface:
+          description: The surface the source is written for, such as environment.
+          type: string
+        ref:
+          description: >-
+            The context within the surface, such as a stack's ID on the
+            environment surface. A context the caller cannot read answers 404.
+          type: string
+        source:
+          description: The expression or template.
+          type: string
+        form:
+          $ref: '#/components/schemas/ExpressionForm'
+        sample:
+          additionalProperties: true
+          description: >-
+            Values to evaluate against, by variable name, each replacing the
+            context's sample value of that variable.
+          type: object
+      required:
+        - surface
+        - ref
+        - source
+        - form
+      type: object
+    ExpressionDiagnostic:
+      description: >-
+        One finding about a source: an error refuses it, a warning comes
+        back with it.
+      properties:
+        severity:
+          enum:
+            - error
+            - warning
+          type: string
+        message:
+          type: string
+        range:
+          $ref: '#/components/schemas/SourceRange'
+      required:
+        - severity
+        - message
+        - range
+      type: object
+    ExpressionCheck:
+      description: >-
+        What checking a source finds: its diagnostics, the type of its result
+        when it compiles, and the estimated cost of evaluating it, in the
+        units expressions.cost_limit counts.
+      properties:
+        diagnostics:
+          items:
+            $ref: '#/components/schemas/ExpressionDiagnostic'
+          type: array
+        type:
+          description: >-
+            The result's CEL type, such as string or list(int); empty when the
+            source does not compile.
+          type: string
+        cost:
+          $ref: '#/components/schemas/ExpressionCost'
+      required:
+        - diagnostics
+        - type
+        - cost
+      type: object
+    ExpressionCost:
+      description: The static estimate of an evaluation's cost.
+      properties:
+        min:
+          format: int64
+          type: integer
+        max:
+          format: int64
+          type: integer
+      required:
+        - min
+        - max
+      type: object
+    ExpressionCompletion:
+      description: >-
+        One item an editor may insert at the cursor: a variable, a field, a
+        function or a macro, with its type or signatures, and the range of
+        the source its label replaces.
+      properties:
+        label:
+          type: string
+        kind:
+          enum:
+            - variable
+            - field
+            - function
+            - macro
+          type: string
+        detail:
+          description: A variable's or field's type, or a function's signatures, one a line.
+          type: string
+        description:
+          type: string
+        range:
+          $ref: '#/components/schemas/SourceRange'
+      required:
+        - label
+        - kind
+        - detail
+        - description
+        - range
+      type: object
+    ExpressionCompletions:
+      description: The items at the cursor, each starting with what is typed before it.
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ExpressionCompletion'
+          type: array
+      required:
+        - items
+      type: object
+    ExpressionEvaluation:
+      description: >-
+        An evaluation's result. A secret the context holds is evaluated as
+        a masked placeholder, never its value.
+      properties:
+        value:
+          description: >-
+            The result as JSON; a template's is its text, unless it is one
+            whole expression.
+          nullable: true
+        type:
+          description: The result's CEL type.
+          type: string
+      required:
+        - value
+        - type
+      type: object
+paths:
+  /expressions/check:
+    post:
+      description: >-
+        Parse and type-check an expression or a template against a surface
+        and one of its contexts, answering its diagnostics with their ranges,
+        its result type and its estimated cost. An unknown surface answers
+        422 validation-failed naming the surface field.
+      operationId: expressionCheck
+      x-infraweave-feature: expressions
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpressionCheckRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpressionCheck'
+          description: The source's diagnostics, type and cost.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Check Expression
+      tags:
+        - Expressions
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-upstream: none
+  /expressions/complete:
+    post:
+      description: >-
+        The completion items at a cursor in an expression or a template: the
+        variables, the fields of an object or of a map's sample value, a
+        namespace's functions, and the functions and macros that may follow,
+        with their types and signatures. A cursor outside a template's
+        ${{ … }} has none.
+      operationId: expressionComplete
+      x-infraweave-feature: expressions
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpressionCompleteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpressionCompletions'
+          description: The completion items.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Complete Expression
+      tags:
+        - Expressions
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-upstream: none
+  /expressions/evaluate:
+    post:
+      description: >-
+        Evaluate an expression or a template against its context's sample
+        values, under the limits every evaluation runs under; a secret is
+        evaluated as a masked placeholder. A source that does not
+        type-check, or an evaluation that fails or goes over a limit,
+        answers 422 validation-failed naming the source field with the
+        fault's range.
+      operationId: expressionEvaluate
+      x-infraweave-feature: expressions
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpressionEvaluateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpressionEvaluation'
+          description: The result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Evaluate Expression
+      tags:
+        - Expressions
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-upstream: none

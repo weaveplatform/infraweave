@@ -109,7 +109,7 @@ func newDomains(
 		Vendors:       vendors,
 		Stacks:        stacks,
 		Configuration: configuration,
-		Expressions:   expressionsassembly.New(),
+		Expressions:   expressionsassembly.New(registry),
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),
 	}

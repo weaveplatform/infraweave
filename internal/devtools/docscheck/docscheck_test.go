@@ -720,7 +720,8 @@ func TestUnitCheckProductTags(t *testing.T) {
 }
 
 // TestUnitCapabilitiesSchemaProduct proves the committed capabilities schema
-// requires product and accepts only the products specref knows.
+// requires product and accepts only the products specref knows, and
+// infraweave for a tag of infraweave's own, which no reference has.
 func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
 	schema, err := os.ReadFile("../../../docs/data/schema/capabilities.schema.json")
 	if err != nil {
@@ -766,6 +767,7 @@ func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
 	for _, p := range specref.Products() {
 		names = append(names, p.Name)
 	}
+	names = append(names, "infraweave")
 	if got := s.Properties.Records.Items.Properties.Product.Enum; !slices.Equal(got, names) {
 		t.Errorf("schema products %q, specref products %q", got, names)
 	}

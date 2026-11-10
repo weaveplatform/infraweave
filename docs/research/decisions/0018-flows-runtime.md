@@ -389,7 +389,8 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   subscriptions, OIDC, audit and OTLP export) is
   designed by infraweave from the docs and the data model above, and
   carries `x-upstream: none`. Each record of `docs/data/capabilities.json`
-  names its `product` (`deploy` or `flows`), and docscheck holds each
+  names its `product` (`deploy` or `flows`, or `infraweave` for a tag of
+  its own outside the parity surface), and docscheck holds each
   reference's tags to its own product's records.
 - **Clients are infraweave's own** ([0001](0001-rest-first-spacelift-surface.md)).
   `infraweavectl` and the provider cover Flows through the served document,
