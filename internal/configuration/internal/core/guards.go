@@ -224,15 +224,19 @@ func (s *Service) contextMove(ctx context.Context, c Context, space kernel.ULID)
 		return nil
 	}
 	slices.Sort(lost)
-	inv := &kernel.Invalid{Detail: fmt.Sprintf(
-		"The move is refused: stacks %s would no longer reach context %s.",
-		strings.Join(lost, ", "), c.Slug)}
+	inv := &kernel.Invalid{}
+	reasons := make([]string, 0, len(lost))
 	for _, l := range lost {
+		reasons = append(
+			reasons,
+			fmt.Sprintf("stack %s would no longer reach context %s", l, c.Slug),
+		)
 		inv.Errors = append(inv.Errors, kernel.FieldError{
 			Pointer: "/input/space", Reason: kernel.ReasonRule,
 			Message: fmt.Sprintf("Stack %s would no longer reach context %s.", l, c.Slug),
 		})
 	}
+	inv.Detail = "The move is refused: " + strings.Join(reasons, "; ") + "."
 	return inv
 }
 

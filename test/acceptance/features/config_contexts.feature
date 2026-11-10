@@ -235,12 +235,15 @@ Feature: Contexts
     When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem's detail names "context shared"
+    And the problem's detail names "stack infra"
     When token "h" sends "PUT /api/v1/spaces/{child}" with '{"name":"Child","description":"","inheritEntities":true,"parentSpace":"legacy"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem's detail names "context shared"
+    And the problem's detail names "stack infra"
     When token "h" sends "PUT /api/v1/contexts/shared" with '{"input":{"name":"Shared","space":"legacy"}}' through B
     Then it answers a 422 problem "validation-failed"
-    And the problem's detail names "infra"
+    And the problem's detail names "context shared"
+    And the problem's detail names "stack infra"
     When token "h" sends "PUT /api/v1/contexts/shared" with '{"input":{"name":"Shared","space":"{child}"}}' through A
     Then it answers 200
     And the answer's space is '"{child}"'
@@ -298,3 +301,20 @@ Feature: Contexts
     Then the answer's description is '"ours"'
     When token "h" sends "DELETE /api/v1/contexts/shared" if matching the ETag "second" through B
     Then it answers 200
+
+  @op:contextCreateV2 @op:context @op:contextConfigSet @op:contextConfigElement @op:stack @op:expressionEvaluate @case:success
+  Scenario: A write-only value appears in no answer, log line, audit entry or event, while its checksum does
+    When token "h" sends "POST /api/v1/contexts" with '{"name":"Vault","space":"{team}","configAttachments":[{"id":"TOKEN","type":"ENVIRONMENT_VARIABLE","value":"zebra-quartz-91","writeOnly":true}],"stackAttachments":[{"stack":"infra","priority":0}]}' through A
+    Then it answers 201
+    When token "h" sends "PUT /api/v1/contexts/vault/configs/KEY" with '{"type":"ENVIRONMENT_VARIABLE","value":"emu-glacier-37","writeOnly":true}' through B
+    Then it answers 201
+    When token "h" sends "GET /api/v1/contexts/vault/config-element?id=TOKEN" through B
+    Then the answer's checksum is '"9f0b27344d24812799b226a4a959690a4a8c5d94801b7dd9ce1dbc6c5d4602ef"'
+    When token "h" sends "GET /api/v1/contexts/vault" through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/expressions/evaluate" with '{"surface":"environment","ref":"infra","form":"template","source":"Bearer ${{ env.TOKEN }}"}' through A
+    Then the answer's value is '"Bearer *****"'
+    And no answer of the scenario, log line of A or B, audit entry or event holds "zebra-quartz-91"
+    And no answer of the scenario, log line of A or B, audit entry or event holds "emu-glacier-37"
