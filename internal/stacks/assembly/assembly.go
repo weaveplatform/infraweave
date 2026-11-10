@@ -108,6 +108,11 @@ func (d *Domain) BindConfiguration(c stacksapi.StackConfiguration) {
 	d.api.BindConfiguration(c)
 }
 
+// SetStackStatus binds the runs domain's reader of the run blocking each
+// stack, a back edge internal/app binds after it constructs that domain;
+// until then no run blocks a stack.
+func (d *Domain) SetStackStatus(s stacksapi.StackStatus) { d.api.SetStackStatus(s) }
+
 // SpaceGuard is the domain's say in the access domain's space deletes and
 // moves, which internal/app registers there.
 func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.stacks }

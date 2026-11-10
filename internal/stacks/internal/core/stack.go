@@ -13,8 +13,10 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// Stack is a stack as the domain keeps it: the settings its runs read and
-// the ones only the API shows.
+// Stack is a stack as the domain keeps it: the settings its runs read, the
+// ones only the API shows, and State and Blocked, the runs domain's
+// projection of its tracked run and run lock, which a write of its
+// settings leaves as they are.
 type Stack struct {
 	stacksapi.Settings
 	Description                  *string
@@ -29,6 +31,8 @@ type Stack struct {
 	// its creation decides once.
 	ManagesState bool
 	CreatedAt    time.Time
+	State        kernel.StackState
+	Blocked      bool
 }
 
 // DefaultProvider is the VCS provider of a stack whose input names none.

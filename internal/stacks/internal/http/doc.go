@@ -14,8 +14,10 @@
 // stacksapi.StackConfiguration BindConfiguration binds, read once for a
 // whole page and empty until one is bound, with a write-only value left
 // out, its branch head and tracked commit as the vcs domain resolved
-// them, and the members later phases own at their empty values. The
-// service's errors answer as problems: a missing action 403 naming it, a
+// them, its state and blocked from the runs domain's projection, its
+// blocker from the stacksapi.StackStatus SetStackStatus binds, none until
+// one is bound, and the members later phases own at their empty values.
+// The service's errors answer as problems: a missing action 403 naming it, a
 // stack locked by another 409 resource-locked naming the holder, a taken
 // slug 409 already-exists, a missing stack or space 404, and a stale
 // If-Match 412. A stack's run and task lists answer empty pages, refusing

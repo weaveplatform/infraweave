@@ -13,8 +13,11 @@
 -- locked_by the name the API shows. tracked_branch_head and tracked_commit
 -- are the branch's head and the commit runs use, each a stacksapi.Commit as
 -- JSON, which the vcs domain writes; tracked_commit_set_by names who set
--- the tracked commit. Writing them changes no version, since no request
--- body carries them.
+-- the tracked commit. state and blocked are the runs domain's projection
+-- of the stack's tracked run and of its run lock, which it writes through
+-- stacksapi in the transaction that moves the run, so stack lists filter,
+-- sort and count by state from this table. Writing any of them changes no
+-- version, since no request body carries them.
 CREATE TABLE stacks (
     account_id                       uuid        NOT NULL,
     id                               uuid        NOT NULL,
@@ -53,6 +56,8 @@ CREATE TABLE stacks (
     tracked_branch_head              jsonb,
     tracked_commit                   jsonb,
     tracked_commit_set_by            text        NOT NULL DEFAULT '',
+    state                            text        NOT NULL DEFAULT 'NONE',
+    blocked                          boolean     NOT NULL DEFAULT false,
     created_at                       timestamptz NOT NULL DEFAULT now(),
     version                          bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
@@ -62,6 +67,7 @@ CREATE TABLE stacks (
 
 CREATE INDEX stacks_space ON stacks (account_id, space_id);
 CREATE INDEX stacks_repository ON stacks (account_id, repository, branch);
+CREATE INDEX stacks_state ON stacks (account_id, state);
 
 -- One row per hook command, in the order each phase runs them.
 CREATE TABLE stack_hooks (
