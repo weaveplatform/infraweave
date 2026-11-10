@@ -1,8 +1,9 @@
 // Package pg is the stacks domain's PostgreSQL storage: Stream, its
 // migration stream, whose stacks table keys each stack by its account and
-// ULID, with a slug unique per account, its settings and its lock, and the
-// ID of the space it lives in, which carries no foreign key, since spaces
-// belong to the access domain; stack_hooks, stack_labels and stack_stars
+// ULID, with a slug unique per account, its settings and its lock, the
+// runs domain's projection of its run state, which SetRunState writes
+// without counting a version, and the ID of the space it lives in, which
+// carries no foreign key, since spaces belong to the access domain; stack_hooks, stack_labels and stack_stars
 // hold its hooks, labels and each caller's star. Store reads a stack, by
 // ID, by slug or by the repository's branch it tracks,
 // stacksapi.ErrNotFound when the account lacks it, writes it whole,

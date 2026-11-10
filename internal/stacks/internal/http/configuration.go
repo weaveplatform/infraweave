@@ -8,9 +8,18 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// unbound is the configuration of a server whose configuration domain is
-// not bound: no stack has a context or a config element.
+// unbound is the configuration and run status of a server whose
+// configuration and runs domains are not bound: no stack has a context or
+// a config element, and no run blocks one.
 type unbound struct{}
+
+func (unbound) Blockers(
+	context.Context,
+	kernel.AccountID,
+	[]kernel.ULID,
+) (map[kernel.ULID]kernel.ULID, error) {
+	return map[kernel.ULID]kernel.ULID{}, nil
+}
 
 func (unbound) AttachedContexts(
 	context.Context,
@@ -32,11 +41,16 @@ func (unbound) Config(
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
 	config stacksapi.StackConfiguration
+	status stacksapi.StackStatus
 }
 
 // BindConfiguration makes c the configuration every copy of s reads. It
 // runs during construction, before the server serves a request.
 func (s Server) BindConfiguration(c stacksapi.StackConfiguration) { s.edges.config = c }
+
+// SetStackStatus makes st the run status every copy of s reads. It runs
+// during construction, before the server serves a request.
+func (s Server) SetStackStatus(st stacksapi.StackStatus) { s.edges.status = st }
 
 // contextView is a context attachment as the API answers it.
 func contextView(c stacksapi.AttachedContext) api.StackContextAttachment {

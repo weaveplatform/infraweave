@@ -10,7 +10,11 @@
 -- vendor is the vendorConfig member the stack sets and vendor_config that
 -- member's settings, as the iac vendor checked them. lock_holder is the
 -- principal's caller key, which decides who may unlock without force, and
--- locked_by the name the API shows.
+-- locked_by the name the API shows. state and blocked are the runs
+-- domain's projection of the stack's tracked run and of its run lock,
+-- which it writes through stacksapi in the transaction that moves the
+-- run, so stack lists filter, sort and count by state from this table;
+-- version does not count them, since they are not the stack's settings.
 CREATE TABLE stacks (
     account_id                       uuid        NOT NULL,
     id                               uuid        NOT NULL,
@@ -46,6 +50,8 @@ CREATE TABLE stacks (
     lock_holder                      text,
     locked_by                        text,
     lock_note                        text,
+    state                            text        NOT NULL DEFAULT 'NONE',
+    blocked                          boolean     NOT NULL DEFAULT false,
     created_at                       timestamptz NOT NULL DEFAULT now(),
     version                          bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
@@ -55,6 +61,7 @@ CREATE TABLE stacks (
 
 CREATE INDEX stacks_space ON stacks (account_id, space_id);
 CREATE INDEX stacks_repository ON stacks (account_id, repository, branch);
+CREATE INDEX stacks_state ON stacks (account_id, state);
 
 -- One row per hook command, in the order each phase runs them.
 CREATE TABLE stack_hooks (

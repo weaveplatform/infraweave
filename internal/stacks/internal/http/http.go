@@ -31,9 +31,13 @@ type Server struct {
 
 // New returns the partial over the service, deciding allowedActions with
 // authz and naming spaces through spaces. Its stacks have no configuration
-// until BindConfiguration binds a reader.
+// until BindConfiguration binds a reader, and no blocker until
+// SetStackStatus binds one.
 func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
-	return Server{stacks: svc, authz: authz, spaces: spaces, edges: &edges{config: unbound{}}}
+	return Server{
+		stacks: svc, authz: authz, spaces: spaces,
+		edges: &edges{config: unbound{}, status: unbound{}},
+	}
 }
 
 // Stacks lists the stacks of the caller's account in the spaces it may
@@ -408,6 +412,10 @@ func (s Server) views(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	blockers, err := s.edges.status.Blockers(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the runs domain names the read
+	}
 	for _, st := range all {
 		v, err := viewOf(st, slugs[st.Space], held[st.Space], starred[st.ID])
 		if err != nil {
@@ -418,6 +426,9 @@ func (s Server) views(
 			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
 		}
 		v.Config = elementViews(config[st.ID])
+		if run, ok := blockers[st.ID]; ok {
+			v.Blocker = &api.RunRef{Id: run.String()}
+		}
 		out = append(out, v)
 	}
 	return out, nil

@@ -81,7 +81,7 @@ const columns = `s.account_id, s.id, s.slug, s.space_id, s.name, s.description, 
 	s.autoretry, s.protect_from_deletion, s.disabled, s.local_preview_enabled,
 	s.github_action_deploy, s.enable_sensitive_output_upload,
 	s.enable_well_known_secret_masking, s.skip_vendor_binary_download, s.manages_state, s.locked_at,
-	s.lock_holder, s.locked_by, s.lock_note, s.created_at, s.version,
+	s.lock_holder, s.locked_by, s.lock_note, s.created_at, s.version, s.state, s.blocked,
 	(SELECT coalesce(jsonb_object_agg(phase, commands), '{}') FROM (
 		SELECT h.phase, jsonb_agg(h.command ORDER BY h.position) AS commands FROM stack_hooks h
 		WHERE h.account_id = s.account_id AND h.stack_id = s.id GROUP BY h.phase) AS p),
@@ -104,7 +104,8 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 		&st.Autoretry, &st.ProtectFromDeletion, &st.Disabled, &st.LocalPreviewEnabled,
 		&st.GithubActionDeploy, &st.EnableSensitiveOutputUpload,
 		&st.EnableWellKnownSecretMasking, &st.SkipVendorBinaryDownload, &st.ManagesState, &lockedAt,
-		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &hooks, &st.Labels,
+		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &st.State, &st.Blocked, &hooks,
+		&st.Labels,
 	}, extra...)...)
 	if err != nil {
 		return core.Stack{}, err //nolint:wrapcheck // callers name the read
@@ -260,6 +261,27 @@ func (s *Store) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID)
 		return fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
 	case err != nil:
 		return fmt.Errorf("stacks: hold stack %s: %w", id, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// SetRunState writes acct's stack id's state and blocked. The update
+// changes no key, so its FOR NO KEY UPDATE lock never waits on a Hold's
+// FOR KEY SHARE.
+func (s *Store) SetRunState(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	state kernel.StackState,
+	blocked bool,
+) error {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET state = $3, blocked = $4
+		WHERE account_id = $1 AND id = $2`, acct, id, state, blocked)
+	switch {
+	case err != nil:
+		return fmt.Errorf("stacks: set run state of %s: %w", id, sql.Unavailable(err))
+	case tag.RowsAffected() == 0:
+		return fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
 	}
 	return nil
 }
@@ -547,6 +569,7 @@ var stackColumn = map[string]sqlsearch.Column{
 	"locked":      {Expr: "(s.locked_at IS NOT NULL)"},
 	"starred":     {Expr: "(star.stack_id IS NOT NULL)"},
 	"createdAt":   {Expr: "s.created_at", Cast: "timestamptz"},
+	"state":       {Expr: "s.state", Cast: "text"},
 }
 
 // stackSearch is the stacks table as core.Fields search it. The caller's

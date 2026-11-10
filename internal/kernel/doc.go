@@ -23,10 +23,12 @@
 // own type so one cannot stand in for another, and Principal: its kind,
 // the actor, and the organization, account and member it acts in. Caller
 // is the principal's `<kind>:<actor ID>` key, which rate-limit buckets and
-// idempotency keys use. Run states and the other shared types join it with
-// the phases that need them.
+// idempotency keys use. It holds the run types: RunState with its terminal
+// and passive flags, RunType and whether it blocks its stack, StackState,
+// the projection of a stack's tracked run that StackStateOf derives, and
+// RunPriority, with RunTier ordering a worker pool's waiting runs.
 //
-// ref: decisions 0003, 0005, 0006, 0007, 0015 and 0022
+// ref: decisions 0003, 0005, 0006, 0007, 0008, 0015 and 0022
 //
 // # Input and output
 //

@@ -6,7 +6,8 @@
 // the keyring, with their settings, beside the access domain's
 // Authenticator and OperatorAuthenticator, and the expression registry it
 // builds from the domains' surfaces under the expressions settings and
-// binds back into the configuration domain;
+// binds back into the configuration domain, and binds the runs domain's
+// stack status and stack guard back into the stacks domain;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //

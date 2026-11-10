@@ -203,6 +203,17 @@ func (s *stacks) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 	return nil
 }
 
+// SetRunState is the runs domain's write, which configuration never makes.
+func (s *stacks) SetRunState(
+	context.Context,
+	kernel.AccountID,
+	kernel.ULID,
+	kernel.StackState,
+	bool,
+) error {
+	return nil
+}
+
 func (s *stacks) Settings(
 	_ context.Context,
 	_ kernel.AccountID,
