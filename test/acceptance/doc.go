@@ -32,7 +32,8 @@
 // and start, and which the moby client pauses; OldPostgres, below the
 // floor),
 // RustFS, Vault and Gitea, which serves HTTPS under a CA the suite makes
-// for the run and hosts each scenario's own repositories; chi serves the
+// for the run and hosts each scenario's own repositories, and which a @vcs
+// scenario's servers trust through vcs.ca_file; chi serves the
 // in-process OIDC issuer. The secrets
 // steps load the keyring and serve's blob store from internal/platform to
 // seal and read what no operation serves yet, and run infraweave secrets

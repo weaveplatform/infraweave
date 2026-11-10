@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -57,6 +58,64 @@ func (s *Service) Resolve(
 		return vcsapi.Commit{}, fmt.Errorf("vcs: resolve %s: %w", ref, err)
 	}
 	return c, nil
+}
+
+// Resolver is the service as the stacks domain's commit operations reach
+// it, through stacksapi.StackSources.
+func (s *Service) Resolver() stacksapi.StackSources { return resolver{s} }
+
+type resolver struct{ s *Service }
+
+// Resolve implements stacksapi.StackSources.
+func (r resolver) Resolve(
+	ctx context.Context,
+	acct kernel.AccountID,
+	stack kernel.ULID,
+	ref string,
+) (stacksapi.Commit, error) {
+	c, err := r.s.Resolve(ctx, acct, stack, ref)
+	if errors.Is(err, vcsapi.ErrRefNotFound) {
+		return stacksapi.Commit{}, fmt.Errorf("%w: %w", stacksapi.ErrRefNotFound, err)
+	}
+	return stackCommit(c), err
+}
+
+// stackCommit is c as the stacks domain keeps it.
+func stackCommit(c vcsapi.Commit) stacksapi.Commit {
+	return stacksapi.Commit{
+		Hash: c.Hash, Tag: c.Tag, URL: c.URL, Message: c.Message, AuthorName: c.AuthorName,
+		AuthorLogin: c.AuthorLogin, Timestamp: c.Timestamp,
+	}
+}
+
+// Track sets acct's stack id's branch head and tracked commit to the
+// head of its branch, set by infraweave. A stack deleted since, or on a
+// provider infraweave reads no source of, has nothing to track; a branch
+// the repository lacks is a queue.Permanent failure, which no retry
+// mends, and the stack keeps what it tracked.
+func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error {
+	src, repo, err := s.source(ctx, acct, stack)
+	if _, ok := errors.AsType[*kernel.Invalid](err); ok || errors.Is(err, stacksapi.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	st, err := s.stacks.Settings(ctx, acct, stack)
+	if err != nil {
+		return err //nolint:wrapcheck // stacks names the read
+	}
+	c, err := src.ResolveRef(ctx, repo, st.Branch)
+	if errors.Is(err, port.ErrNotFound) || errors.Is(err, port.ErrRepositoryURL) {
+		//nolint:wrapcheck // marks it
+		return queue.Permanent(fmt.Errorf("vcs: track %s of stack %s: %w", st.Branch, stack, err))
+	}
+	if err != nil {
+		return fmt.Errorf("vcs: track %s of stack %s: %w", st.Branch, stack, err)
+	}
+	head := stackCommit(c)
+	//nolint:wrapcheck // stacks names the write
+	return s.stacks.SetTracked(ctx, acct, stack, &head, &head, "infraweave")
 }
 
 // SourceURL implements vcsapi.Sources.

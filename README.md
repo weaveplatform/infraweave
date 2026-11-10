@@ -293,6 +293,7 @@ To bootstrap an installation:
 | `objectstore.retention.<store>` | | `INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS` and so on | `run-logs` and `run-observability` `1440h`, `run-artifacts` `720h`, `workspaces` and `policy-inputs` `168h`, `inbox` `48h`, `uploads` `24h`; `0` keeps objects |
 | `objectstore.part_size` | | `INFRAWEAVE_OBJECTSTORE_PART_SIZE` | `16777216` (16 MiB; at least 5 MiB) |
 | `objectstore.signed_url_ttl` | | `INFRAWEAVE_OBJECTSTORE_SIGNED_URL_TTL` | `15m` |
+| `vcs.ca_file` | | `INFRAWEAVE_VCS_CA_FILE` | none: a PEM file of certificate authorities trusted beside the system's when reaching a repository's host, for a host under a private CA; read at start |
 | `log.format` | | `INFRAWEAVE_LOG_FORMAT` | `json` (or `text`) |
 | `log.level` | `--log-level` | `INFRAWEAVE_LOG_LEVEL` | `info` (`debug`, `warn`, `error`) |
 

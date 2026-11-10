@@ -25,7 +25,15 @@
 // some spaces that carry some labels, and none without a space or a
 // label; InSpaces lists every stack in some spaces and Labels some
 // stacks' labels; BySlug and ByIDs read stacks for the domains that
-// attach to them. Bind, BindAll, Rebind and Unbind write a stack's role
+// attach to them. SyncCommit sets a stack's branch head and tracked
+// commit to its branch's head, and SetCurrentCommit its tracked commit to
+// a commit of its repository, resolving each through the
+// stacksapi.StackSources BindSources binds, outside any transaction; a ref
+// the repository lacks is a *kernel.Invalid, at /sha for a commit, and
+// no bound source kernel.ErrUnavailable. SetTracked writes them for the
+// vcs domain; neither changes the stack's version. A write's
+// stacksapi.Changed marks whether it gave or changed the stack's source:
+// its provider, VCS integration, namespace, repository, URL or branch. Bind, BindAll, Rebind and Unbind write a stack's role
 // bindings through accessapi.Bindings: each needs STACK_MANAGE on the
 // stack's space and SPACE_ADMIN on the space bound in, the first
 // decided by the route for an operation on one binding, and a binding on

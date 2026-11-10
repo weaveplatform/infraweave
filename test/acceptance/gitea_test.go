@@ -23,6 +23,10 @@ type giteaSteps struct {
 	last map[string]string
 	// kept are commit SHAs the scenario kept by name.
 	kept map[string]string
+	// ids are the names a request's {name} resolves, which the API steps
+	// share: each repository's clone URL as {name.url} and each kept
+	// commit as {key}.
+	ids map[string]string
 }
 
 func (g *giteaSteps) register(sc *godog.ScenarioContext) {
@@ -68,6 +72,9 @@ func (g *giteaSteps) repository(ctx context.Context, name string, table *godog.T
 		return err
 	}
 	g.repos[name], g.last[name] = repo, sha
+	if g.ids != nil {
+		g.ids[name+".url"] = g.gitea.CloneURL(repo)
+	}
 	return nil
 }
 
@@ -109,6 +116,9 @@ func (g *giteaSteps) keepHead(ctx context.Context, branch, name, key string) err
 		return err
 	}
 	g.kept[key] = sha
+	if g.ids != nil {
+		g.ids[key] = sha
+	}
 	return nil
 }
 

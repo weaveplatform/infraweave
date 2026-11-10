@@ -719,3 +719,121 @@ func TestAccServiceStateChanges(t *testing.T) {
 		t.Errorf("events %v, want %v", c, want)
 	}
 }
+
+// sources resolves refs from heads, by ref, and answers err for any other;
+// ErrRefNotFound for a ref it lacks.
+type sources struct {
+	heads map[string]stacksapi.Commit
+	err   error
+}
+
+func (s sources) Resolve(
+	_ context.Context,
+	_ kernel.AccountID,
+	_ kernel.ULID,
+	ref string,
+) (stacksapi.Commit, error) {
+	if s.err != nil {
+		return stacksapi.Commit{}, s.err
+	}
+	c, ok := s.heads[ref]
+	if !ok {
+		return stacksapi.Commit{}, stacksapi.ErrRefNotFound
+	}
+	return c, nil
+}
+
+// TestAccServiceTracked syncs and sets a stack's tracked commit, which
+// changes neither its version nor its events, refuses a branch or commit
+// the repository lacks, keeps a provider's unavailability, and marks the
+// events of writes that give or change the stack's source.
+func TestAccServiceTracked(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t)
+	st, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.SyncCommit(ctx, f.writer, "infra"); !errors.Is(err, kernel.ErrUnavailable) {
+		t.Errorf("SyncCommit with no sources bound = %v", err)
+	}
+	at := time.Unix(1_700_000_000, 0).UTC()
+	head := stacksapi.Commit{Hash: "bbb", Message: "head", AuthorName: "Ada", Timestamp: at}
+	old := stacksapi.Commit{Hash: "aaa", Message: "old", AuthorName: "Ada", Timestamp: at}
+	f.svc.BindSources(sources{heads: map[string]stacksapi.Commit{"main": head, "aaa": old}})
+	got, err := f.svc.SyncCommit(ctx, f.writer, "infra")
+	if err != nil || *got.TrackedCommit != head || *got.TrackedBranchHead != head ||
+		got.TrackedCommitSetBy != "infraweave" || got.Version != st.Version {
+		t.Fatalf("SyncCommit = %+v, %v", got, err)
+	}
+	got, err = f.svc.SetCurrentCommit(ctx, f.writer, "infra", "aaa")
+	if err != nil || *got.TrackedCommit != old || *got.TrackedBranchHead != head ||
+		got.TrackedCommitSetBy != "writer" {
+		t.Fatalf("SetCurrentCommit = %+v, %v", got, err)
+	}
+	read, err := f.svc.Settings(ctx, f.acct, st.ID)
+	if err != nil || *read.TrackedCommit != old || *read.TrackedBranchHead != head ||
+		read.TrackedCommitSetBy != "writer" || read.Version != st.Version {
+		t.Errorf("Settings after the set = %+v, %v", read, err)
+	}
+	if got := pointers(t, func() error {
+		_, err := f.svc.SetCurrentCommit(ctx, f.writer, "infra", "ccc")
+		return err
+	}()); len(got) != 1 || got[0] != "/sha" {
+		t.Errorf("an unknown commit's pointers = %v", got)
+	}
+	in := input("Infra")
+	in.Branch = "gone"
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); err != nil {
+		t.Fatal(err)
+	}
+	if got := pointers(t, func() error {
+		_, err := f.svc.SyncCommit(ctx, f.writer, "infra")
+		return err
+	}()); len(got) != 0 {
+		t.Errorf("an unknown branch's pointers = %v", got)
+	}
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); err != nil {
+		t.Fatal(err)
+	}
+	f.svc.BindSources(sources{err: kernel.ErrUnavailable})
+	for name, call := range map[string]func() error{
+		"SyncCommit": func() error { _, err := f.svc.SyncCommit(ctx, f.writer, "infra"); return err },
+		"SetCurrentCommit": func() error {
+			_, err := f.svc.SetCurrentCommit(ctx, f.writer, "infra", "aaa")
+			return err
+		},
+	} {
+		if err := call(); !errors.Is(err, kernel.ErrUnavailable) {
+			t.Errorf("%s with the provider down = %v", name, err)
+		}
+	}
+	f.svc.BindSources(sources{heads: map[string]stacksapi.Commit{"gone": head}})
+	if _, err := f.svc.SetCurrentCommit(ctx, f.writer, "infra", "aaa"); err == nil {
+		t.Error("SetCurrentCommit of a commit the repository lacks succeeded")
+	}
+	if _, err := f.svc.SyncCommit(ctx, f.writer, "nope"); !errors.Is(err, stacksapi.ErrNotFound) {
+		t.Errorf("SyncCommit of a missing stack = %v", err)
+	}
+	if err := f.svc.SetTracked(ctx, f.acct, kernel.NewULID(), &head, nil, ""); !errors.Is(
+		err, stacksapi.ErrNotFound) {
+		t.Errorf("SetTracked of a missing stack = %v", err)
+	}
+	rows, err := f.db.Query(ctx, `SELECT coalesce((document->>'source')::boolean, false)
+		FROM events WHERE account_id = $1 AND kind = $2 AND subject_id = $3 ORDER BY sequence`,
+		f.acct, stacksapi.ChangedKind, st.ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var marked []bool
+	for rows.Next() {
+		var b bool
+		if err := rows.Scan(&b); err != nil {
+			t.Fatal(err)
+		}
+		marked = append(marked, b)
+	}
+	if !slices.Equal(marked, []bool{true, true, false}) {
+		t.Errorf("the events' source marks = %v, want the create's and the branch change's", marked)
+	}
+}

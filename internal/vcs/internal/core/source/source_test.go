@@ -3,10 +3,12 @@ package source
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -14,11 +16,27 @@ import (
 
 var errOffline = errors.New("offline")
 
-// stacks answers Settings from one stack, or err.
+// stacks answers Settings from one stack, or err, and records what
+// SetTracked sets in tracked.
 type stacks struct {
 	stacksapi.Stacks
 	settings stacksapi.Settings
 	err      error
+	tracked  *[]stacksapi.Commit
+}
+
+func (s stacks) SetTracked(
+	_ context.Context,
+	_ kernel.AccountID,
+	_ kernel.ULID,
+	head, commit *stacksapi.Commit,
+	setBy string,
+) error {
+	if *head != *commit || setBy != "infraweave" {
+		return errOffline
+	}
+	*s.tracked = append(*s.tracked, *head)
+	return nil
 }
 
 func (s stacks) Settings(
@@ -157,6 +175,85 @@ func TestUnitSourceRefused(t *testing.T) {
 		if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != "/provider" ||
 			inv.Errors[0].Reason != kernel.ReasonRule {
 			t.Errorf("%s of an unread provider = %+v", name, inv)
+		}
+	}
+}
+
+// TestUnitTrack checks that a stack tracks its branch's head, set by
+// infraweave; that a stack deleted since, or on a provider with no source,
+// has nothing to track; that a branch the repository lacks fails for good;
+// and that a provider that does not answer fails to be retried.
+func TestUnitTrack(t *testing.T) {
+	url := "https://git.example/acme/infra.git"
+	head := vcsapi.Commit{Hash: "abc", Message: "init", Timestamp: time.Unix(1, 0)}
+	acct, id := kernel.NewAccountID(), kernel.NewULID()
+	var tracked []stacksapi.Commit
+	var got port.Repository
+	track := func(st stacks, src port.Source) error {
+		st.tracked = &tracked
+		return New(st, map[string]port.Source{"GIT": src}).Track(t.Context(), acct, id)
+	}
+	if err := track(
+		stacks{settings: settings("GIT", &url)},
+		source{repo: &got, commit: head},
+	); err != nil ||
+		len(tracked) != 1 ||
+		tracked[0].Hash != "abc" {
+		t.Fatalf("Track = %v, tracked %+v", err, tracked)
+	}
+	for name, st := range map[string]stacks{
+		"a deleted stack":  {err: stacksapi.ErrNotFound},
+		"another provider": {settings: settings("GITHUB", nil)},
+	} {
+		if err := track(st, source{repo: &got}); err != nil {
+			t.Errorf("Track of %s = %v", name, err)
+		}
+	}
+	if err := track(stacks{err: errOffline}, source{repo: &got}); !errors.Is(err, errOffline) {
+		t.Errorf("Track with stacks down = %v", err)
+	}
+	if err := track(
+		stacks{settings: settings("GIT", &url)},
+		source{repo: &got, err: port.ErrNotFound},
+	); !permanent(err) || !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("Track of a missing branch = %v", err)
+	}
+	if err := track(
+		stacks{settings: settings("GIT", &url)},
+		source{repo: &got, err: kernel.ErrUnavailable},
+	); !errors.Is(err, kernel.ErrUnavailable) || permanent(err) {
+		t.Errorf("Track with the provider down = %v", err)
+	}
+}
+
+// permanent reports whether err is a queue.Permanent result, which the
+// queue does not retry.
+func permanent(err error) bool {
+	return fmt.Sprintf("%T", err) == fmt.Sprintf("%T", queue.Permanent(err))
+}
+
+// TestUnitResolver checks that the stacks domain's resolver answers the
+// commit as stacks keeps it, and a ref the repository lacks as
+// stacksapi.ErrRefNotFound.
+func TestUnitResolver(t *testing.T) {
+	var got port.Repository
+	c := vcsapi.Commit{
+		Hash:       "abc",
+		Tag:        "v1",
+		Message:    "init",
+		AuthorName: "Ada",
+		Timestamp:  time.Unix(1, 0),
+	}
+	for _, tc := range []struct {
+		err  error
+		want error
+	}{{nil, nil}, {port.ErrNotFound, stacksapi.ErrRefNotFound}} {
+		r := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
+			"GIT": source{repo: &got, commit: c, err: tc.err},
+		}).Resolver()
+		sc, err := r.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
+		if !errors.Is(err, tc.want) || (tc.err == nil && (sc.Hash != "abc" || sc.Tag != "v1")) {
+			t.Errorf("Resolve with %v = %+v, %v", tc.err, sc, err)
 		}
 	}
 }

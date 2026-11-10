@@ -5,7 +5,9 @@
 // another domain's stacksapi.StackGuard, which a stack's move and delete
 // ask; BindConfiguration binds the configuration domain's
 // stacksapi.StackConfiguration, the back edge the stack view reads a
-// stack's contexts and config elements through; SpaceOf is the
+// stack's contexts and config elements through; BindSources binds the vcs
+// domain's stacksapi.StackSources, which a stack's sync and set of its
+// tracked commit resolve refs through; SpaceOf is the
 // accessapi.SpaceOf internal/app registers for the entity "stack", so the
 // access domain decides a stack's operations in the stack's space, and
 // BindingSpaceOf the one it registers for "stack_role_binding", so a
