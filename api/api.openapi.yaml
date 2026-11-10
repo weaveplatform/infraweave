@@ -19188,7 +19188,7 @@ components:
         customInput:
           $ref: '#/components/schemas/CustomVCSInput'
         userFacingHost:
-          description: User Facing Host which will be used for all user-facing URLs displayed in the Spacelift UI
+          description: The host every user-facing URL infraweave displays uses.
           type: string
           x-terraform:
             - spacelift_bitbucket_datacenter_integration.user_facing_host

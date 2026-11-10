@@ -3686,7 +3686,7 @@ type BitbucketDatacenterIntegrationCreateRequest struct {
 	ApiHost     string          `json:"apiHost"`
 	CustomInput *CustomVCSInput `json:"customInput,omitempty"`
 
-	// UserFacingHost User Facing Host which will be used for all user-facing URLs displayed in the Spacelift UI
+	// UserFacingHost The host every user-facing URL infraweave displays uses.
 	UserFacingHost string `json:"userFacingHost"`
 
 	// Username Username which will be used to authenticate requests for cloning repositories

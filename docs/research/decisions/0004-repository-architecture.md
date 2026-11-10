@@ -341,7 +341,7 @@ change.
   number within a stream, so parallel phases collide in review, not in
   production.
 - **Back edges** are bound after construction in `internal/app`: `stacks`
-  reads run state (`runsapi.StackStatus`), `runs` reads VCS sources,
+  reads run state (`stacksapi.StackStatus`, which `runs` implements), `runs` reads VCS sources,
   cloud credentials and state versions at handover (`vcsapi.Sources`,
   `cloudapi.Credentials`, `stateapi.Versions`), the worker protocol in
   `workers` claims and reports through `runsapi.Scheduler` and
@@ -353,7 +353,7 @@ change.
   written into `stacks`' table through `stacksapi` by each run transition,
   in its transaction, so stack lists filter, sort and count by state
   without reading `runs`' tables. The blocker's details and the run lock
-  are read through `runsapi.StackStatus`.
+  are read through `stacksapi.StackStatus`.
 - **Orphans written outside the code go unseen** until the nightly
   integrity task counts them: for each ID column that names another
   domain's row, the rows whose ID the owner's `api/` no longer knows. It

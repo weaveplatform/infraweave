@@ -13,10 +13,10 @@ import (
 )
 
 // viewOf is st as the API answers it, in the space slug, with the
-// actions held there and whether the caller starred it, and no contexts
-// or config elements, which views reads from the configuration domain.
-// The fields later phases own read their empty values: no runs, so the
-// state NONE, which is terminal, and no blocker; no other attachments, no
+// actions held there and whether the caller starred it, its state and
+// whether a run blocks it, and no contexts, config elements or blocker,
+// which views reads from the configuration and runs domains. The fields
+// later phases own read their empty values: no other attachments, no
 // dependencies and no managed resources.
 func viewOf(
 	st core.Stack,
@@ -67,8 +67,9 @@ func viewOf(
 		TrackedCommit:                commitView(st.TrackedCommit),
 		TrackedCommitSetBy:           st.TrackedCommitSetBy,
 		VcsDetached:                  st.VCSDetached,
-		State:                        api.StackStateNONE,
-		StateIsTerminal:              true,
+		State:                        api.StackState(st.State),
+		StateIsTerminal:              st.State.Terminal(),
+		Blocked:                      st.Blocked,
 		AttachedAwsIntegrations:      []api.StackAwsIntegrationAttachment{},
 		AttachedAzureIntegrations:    []api.StackAzureIntegrationAttachment{},
 		AttachedContexts:             []api.StackContextAttachment{},

@@ -62,7 +62,7 @@ facts shape the design.
      ([08 StackState](../reference/08-run-lifecycle.md#stackstate-and-runstate)).
      They are a projection written inside the transition's transaction, so stack
      lists filter, sort and count by state from their own table; the blocker and
-     the run lock are read through `runsapi.StackStatus`
+     the run lock are read through `stacksapi.StackStatus`, which `runs` implements
      ([0004](0004-repository-architecture.md#constraints));
   5. emits a `run_updated` event with `outbox.Append` in the same transaction;
      decision 0015's fan-out, through the queue of

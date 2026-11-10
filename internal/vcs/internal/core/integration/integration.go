@@ -254,7 +254,7 @@ func (s *Service) Search(
 		p.AccountID,
 		in,
 		scope,
-	) //nolint:wrapcheck // the store names the read
+	)
 }
 
 // Suggest lists the values the integrations of p's account in the spaces
@@ -302,7 +302,7 @@ func (s *Service) Attachable(
 		p.AccountID,
 		in,
 		scope,
-	) //nolint:wrapcheck // the store names the read
+	)
 }
 
 // Test runs the Tester of the provider of p's account's integration id;

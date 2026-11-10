@@ -184,7 +184,7 @@ infraweave/
 │   ├── configuration/             flat: config elements, contexts, attachments, auto-attach (P6)
 │   │   └── api/ assembly/ internal/{core,http,pg}/
 │   ├── runs/                      hexagon: owns every table a run transition writes (P7, P9, P10, P16)
-│   │   ├── api/                   Runs, Scheduler, Reports, StackStatus, StateAccess, events
+│   │   ├── api/                   Runs, Scheduler, Reports, StateAccess, events
 │   │   ├── assembly/
 │   │   └── internal/
 │   │       ├── core/              machine lifecycle gates queuegate schedule handover timers
@@ -540,7 +540,7 @@ it adds no import.
 | `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
 | `workers` | features, access | `runsapi.Scheduler`, `runsapi.Reports` for the worker protocol |
 | `vendors` | features, access | |
-| `stacks` | features, access, workers, vendors | `runsapi.StackStatus`; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config` |
+| `stacks` | features, access, workers, vendors | `stacksapi.StackStatus`, which `runs` implements, for the stack view's blocker; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config` |
 | `configuration` | features, access, stacks | |
 | `policies` | features, access, stacks | |
 | `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |

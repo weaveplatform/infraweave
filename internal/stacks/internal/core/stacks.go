@@ -28,10 +28,10 @@ func (e *SlugTaken) Error() string { return fmt.Sprintf("stacks: slug %q is take
 // reference's stack filters name them: id, the slug; label, any of its
 // labels; space, its place in the tree, which keeps a node's stacks and,
 // asked, those of the spaces below it; vendor, the vendorConfig member it
-// sets; locked, whether anyone holds its lock; and starred, whether the
-// caller has starred it. A search that names no order reads by id. The
-// fields of data later phases own, such as a stack's run state, commit
-// and drift, join with those phases.
+// sets; locked, whether anyone holds its lock; starred, whether the
+// caller has starred it; and state, its tracked run's state. A search
+// that names no order reads by id. The fields of data later phases own,
+// such as a stack's commit and drift, join with those phases.
 var Fields = []search.Field{
 	{Name: "id", Type: search.String, Orderable: true},
 	{Name: "name", Type: search.String, Orderable: true},
@@ -48,6 +48,17 @@ var Fields = []search.Field{
 	{Name: "locked", Type: search.Boolean},
 	{Name: "starred", Type: search.Boolean},
 	{Name: "createdAt", Type: search.Time, Orderable: true},
+	{Name: "state", Type: search.Enum, Values: states(), Orderable: true},
+}
+
+// states are the values a stack's state takes.
+func states() []string {
+	all := kernel.StackStates()
+	out := make([]string, len(all))
+	for i, s := range all {
+		out[i] = string(s)
+	}
+	return out
 }
 
 // vendors are the kinds of the registered vendors, the values a stack's
@@ -133,6 +144,16 @@ type Store interface {
 	// Hold locks acct's stack id FOR KEY SHARE until the context's
 	// transaction ends; stacksapi.ErrNotFound when acct lacks it.
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// SetRunState writes acct's stack id's state and blocked, leaving its
+	// settings and version as they are; stacksapi.ErrNotFound when acct
+	// lacks it.
+	SetRunState(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+		state kernel.StackState,
+		blocked bool,
+	) error
 	// Find lists acct's stacks in spaces that carry any of labels, by
 	// slug.
 	Find(
@@ -455,6 +476,26 @@ func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 	return s.store.Hold(ctx, acct, id) //nolint:wrapcheck // the store names the lock
 }
 
+// SetRunState writes the runs domain's projection of acct's stack id:
+// its tracked run's state, and whether a run blocks it. A state outside
+// kernel.StackStates is refused before any write.
+func (s *Service) SetRunState(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	state kernel.StackState,
+	blocked bool,
+) error {
+	if !state.Valid() {
+		return fmt.Errorf("%w: %q", ErrStackState, state)
+	}
+	//nolint:wrapcheck // the store names the write
+	return s.store.SetRunState(ctx, acct, id, state, blocked)
+}
+
+// ErrStackState is a state that is not a kernel.StackState.
+var ErrStackState = errors.New("stacks: not a stack state")
+
 // Find lists acct's stacks in spaces that carry any of labels.
 func (s *Service) Find(
 	ctx context.Context,
@@ -610,7 +651,7 @@ func (s *Service) Create(
 		if err != nil {
 			return err
 		}
-		st = Stack{CreatedAt: s.now(), ManagesState: manageState}
+		st = Stack{CreatedAt: s.now(), ManagesState: manageState, State: kernel.StackStateNone}
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
 		apply(&st, space, in)
 		if err := s.bind(ctx, p.AccountID, &st, in, "/input"); err != nil {

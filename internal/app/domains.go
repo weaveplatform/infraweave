@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
@@ -36,6 +37,7 @@ type Domains struct {
 	Vendors       *vendorsassembly.Domain
 	Stacks        *stacksassembly.Domain
 	Configuration *configurationassembly.Domain
+	Runs          *runsassembly.Domain
 	VCS           *vcsassembly.Domain
 	Expressions   *expressionsassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
@@ -103,6 +105,9 @@ func newDomains(
 	)
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
+	runs := runsassembly.New(runsassembly.Deps{DB: db.Primary()})
+	stacks.GuardStacks(runs.StackGuard())
+	stacks.SetStackStatus(runs.StackStatus())
 	registry, err := expr.NewRegistry(c.Expressions, configuration.Surfaces()...)
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting
@@ -129,6 +134,7 @@ func newDomains(
 		Vendors:       vendors,
 		Stacks:        stacks,
 		Configuration: configuration,
+		Runs:          runs,
 		VCS:           vcs,
 		Expressions:   expressionsassembly.New(registry),
 		Auth:          access.Authenticator(),

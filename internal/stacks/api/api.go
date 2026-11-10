@@ -139,6 +139,17 @@ type Stacks interface {
 	// caller to commit, and each StackGuard it then asks sees what the
 	// caller wrote. ErrNotFound when acct lacks it.
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// SetRunState writes the runs domain's projection of acct's stack id
+	// in the context's transaction: state, its tracked run's state, and
+	// blocked, whether a run blocks it. The stack's settings and version
+	// stay as they are. ErrNotFound when acct lacks it.
+	SetRunState(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+		state kernel.StackState,
+		blocked bool,
+	) error
 	// Find lists acct's stacks in spaces that carry any of labels, by
 	// slug.
 	Find(
@@ -256,6 +267,21 @@ type StackConfiguration interface {
 		acct kernel.AccountID,
 		stacks []kernel.ULID,
 	) (map[kernel.ULID][]ConfigElement, error)
+}
+
+// StackStatus is what the stack view reads of the runs domain, which is
+// constructed after stacks and implements it: the run blocking each of
+// the account's stacks, the run that holds its run lock, keyed by stack
+// ID, with a stack no run blocks absent. The stacks domain declares it,
+// so the back edge internal/app binds after construction adds no import.
+//
+// ref: decisions 0004 and 0008
+type StackStatus interface {
+	Blockers(
+		ctx context.Context,
+		acct kernel.AccountID,
+		stacks []kernel.ULID,
+	) (map[kernel.ULID]kernel.ULID, error)
 }
 
 // AttachedContext is a context attached to a stack as the stack's view

@@ -282,7 +282,7 @@ func bindingTag(b core.Binding) *string {
 func holdingView(h core.Holding, slugs map[kernel.ULID]string) api.StackWithAccessToSpaceNode {
 	out := api.StackWithAccessToSpaceNode{
 		Stack: api.SpaceAccessStack{
-			Id: h.Slug, Name: h.Name, Labels: orEmpty(h.Labels), State: api.StackStateNONE,
+			Id: h.Slug, Name: h.Name, Labels: orEmpty(h.Labels), State: api.StackState(h.State),
 		},
 		Roles: make([]api.StackSpaceAccessRoleGrant, 0, len(h.Grants)),
 	}

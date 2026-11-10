@@ -12,6 +12,7 @@ internal/iac/x/x.go iac-pure github.com/weaveplatform/infraweave/internal/stacks
 internal/iac/x/x.go shared-below-domains github.com/weaveplatform/infraweave/internal/stacks
 internal/platform/x/x.go shared-below-domains github.com/weaveplatform/infraweave/internal/stacks
 internal/runs/internal/core/core.go core-not-adapters github.com/weaveplatform/infraweave/internal/runs/internal/adapters
+internal/runs/up/up.go graph-runs github.com/weaveplatform/infraweave/internal/vcs/api
 internal/stacks/api/api.go api-packages github.com/weaveplatform/infraweave/internal/platform/outboxutil
 internal/stacks/docs/docs.go devtools github.com/weaveplatform/infraweave/internal/devtools/specref
 internal/stacks/docs/docs.go graph-stacks github.com/weaveplatform/infraweave/internal/devtools/specref

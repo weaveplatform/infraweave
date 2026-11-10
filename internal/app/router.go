@@ -17,6 +17,7 @@ import (
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
+	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
@@ -42,6 +43,7 @@ type apiServer struct {
 	vendorsassembly.VendorsAPI
 	stacksassembly.StacksAPI
 	configurationassembly.ConfigurationAPI
+	runsassembly.RunsAPI
 	vcsassembly.VCSAPI
 	expressionsassembly.ExpressionsAPI
 	unimplemented
@@ -119,6 +121,7 @@ func API(
 			VendorsAPI:       d.Vendors.API(),
 			StacksAPI:        d.Stacks.API(),
 			ConfigurationAPI: d.Configuration.API(),
+			RunsAPI:          d.Runs.API(),
 			VCSAPI:           d.VCS.API(),
 			ExpressionsAPI:   d.Expressions.API(),
 			queues:           p.Queues,

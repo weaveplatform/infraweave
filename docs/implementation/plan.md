@@ -1357,7 +1357,7 @@ update semantics, input strictness and search every later family reuses.
    `accessapi.Spaces.Hold` and registers a space guard, and holds its VCS
    integration's ID as a plain column, since `vcs` imports `stacks`. The
    `stacks` edge to `workers` lands with P8, and `stacks`'
-   `runsapi.StackStatus` back edge with P7
+   `stacksapi.StackStatus` back edge with P7
    ([declared graph](repo-layout.md#declared-graph)).
 8. Account and organization deletion becomes
    [decision 0004](../research/decisions/0004-repository-architecture.md#repository-shape-a-modular-monolith)'s
@@ -1520,9 +1520,9 @@ queued; nothing executes them until P8.
    `stack_outputs`. Each transition writes the stack's `state` and
    `blocked` through `stacksapi` in its transaction, so stack lists filter,
    sort and count by state from `stacks`' own table, and
-   `runsapi.StackStatus` serves the blocker and the run lock to stack reads
+   `stacksapi.StackStatus`, which `runs` implements, serves the blocker and the run lock to stack reads
    ([0004](../research/decisions/0004-repository-architecture.md#constraints)).
-   `internal/kernel/run.go` holds the 22 `RunState`
+   `internal/kernel/run.go` holds the 21 `RunState`
    values (`PENDING` absent, `UNKNOWN` never assigned), `RunType`,
    `StackState` and `RunPriority`.
 2. `internal/runs/internal/core/machine`: the edges of the
@@ -1554,7 +1554,7 @@ queued; nothing executes them until P8.
    `vendors`, with `runs` and `stack_run_locks` referencing `stacks`, and
    `vcs`' edge to `runs`. Its `workers` edge lands with P8 and its
    `policies` edge with P13. `stacks` reads run state through
-   `runsapi.StackStatus`, and `runTrigger` resolves a named commit through
+   `stacksapi.StackStatus`, and `runTrigger` resolves a named commit through
    `vcsapi.Sources`, back edges that `internal/app` sets after
    construction (`SetStackStatus`, `SetSources`), adding no import
    ([declared graph](repo-layout.md#declared-graph)).
