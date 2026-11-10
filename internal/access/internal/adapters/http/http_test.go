@@ -407,7 +407,7 @@ func newWorld(t *testing.T) *world {
 			Accounts: st,
 			Settings: cfg,
 			Spaces: space.NewService(space.Deps{
-				Store: w.tree, Authz: w.authz, Drop: func(kernel.AccountID) {},
+				Store: w.tree, Authz: w.authz,
 				Now: func() time.Time { return t0 },
 			}),
 			OAuth: grants,
@@ -417,9 +417,9 @@ func newWorld(t *testing.T) *world {
 			Groups: group.NewService(group.Deps{
 				Store: w.people, Now: func() time.Time { return t0 },
 			}),
-			Roles: role.NewService(role.Deps{Store: w.roles, Drop: func(kernel.AccountID) {}}),
+			Roles: role.NewService(role.Deps{Store: w.roles}),
 			Bindings: binding.NewService(binding.Deps{
-				Store: w.binds, Authz: w.authz, Drop: func(kernel.AccountID) {},
+				Store: w.binds, Authz: w.authz,
 			}),
 			Holders: holder.NewService(w.held, w.held),
 			Atomic:  func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },

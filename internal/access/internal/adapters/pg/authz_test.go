@@ -10,7 +10,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
-	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
@@ -117,62 +116,14 @@ func TestAccAuthzData(t *testing.T) {
 	}
 }
 
-// TestAccAuthzInvalidation checks that every write a snapshot reads moves
-// the account's authz_version and sends authz:<account> on commit, and a
-// refused write, or a rename, which no snapshot reads, does neither.
-func TestAccAuthzInvalidation(t *testing.T) {
+// TestAccAuthzRefusedWrites checks that a refused write, or a rename,
+// which no snapshot reads, neither moves the account's authz_version nor
+// sends authz:<account>. TestAccAuthzWritePaths checks the writes that do.
+func TestAccAuthzRefusedWrites(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "endframe")
 	c := listen(t, x.db)
 	svc := treeOf(x.s)
-	want := []string{authz.Key(x.acct)}
-	var created space.Space
-	var ops group.Group
-	for _, w := range []struct {
-		name  string
-		write func() error
-	}{
-		{"create a space", func() (err error) {
-			created, err = svc.Create(ctx, x.acct, "endframe", space.Space{Name: "Prod"})
-			return err
-		}},
-		{"make a space inherit", func() error {
-			in := created
-			in.InheritEntities = true
-			_, err := svc.svc.Update(ctx, admin(x.acct), created.Slug, "endframe", kernel.Expect{}, in)
-			return err
-		}},
-		{"move a space", func() error {
-			return svc.Move(ctx, x.acct, created.Slug, space.LegacySlug)
-		}},
-		{"delete a space", func() error { return svc.Delete(ctx, x.acct, created.Slug) }},
-		{"create a group", func() (err error) {
-			ops, err = x.s.CreateGroup(ctx, group.Group{
-				AccountID: x.acct, ID: kernel.NewULID(), Name: "ops", CreatedAt: spacesAt,
-			}, onTrail(x, group.ActionCreate))
-			return err
-		}},
-		{"delete a group", func() error {
-			return x.s.DeleteGroup(ctx, x.acct, ops.ID, kernel.Expect{}, onTrail(x, group.ActionDelete))
-		}},
-		{"claim the account", func() error {
-			_, err := x.s.ClaimAccount(ctx, x.org, x.acct, x.member, spacesAt,
-				byAdmin(x, orgadmin.ActionAccountClaim))
-			return err
-		}},
-	} {
-		before := authzVersion(t, x, x.acct)
-		if err := w.write(); err != nil {
-			t.Fatalf("%s: %v", w.name, err)
-		}
-		if got := messages(t, c); !slices.Equal(got, want) {
-			t.Errorf("%s sent %v, want %v", w.name, got, want)
-		}
-		if v := authzVersion(t, x, x.acct); v <= before {
-			t.Errorf("%s left authz_version at %d", w.name, v)
-		}
-	}
-
 	before := authzVersion(t, x, x.acct)
 	if _, err := svc.Create(ctx, x.acct, "nope", space.Space{Name: "x"}); err == nil {
 		t.Fatal("a create below a missing space succeeded")

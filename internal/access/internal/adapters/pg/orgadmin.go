@@ -121,7 +121,7 @@ func (s *Store) CreateAccount(
 			a.OrganizationID, a.ID, a.Slug, a.Name, a.ClaimedAt, a.CreatedAt); err != nil {
 			return classify(err, "account")
 		}
-		if err := seedAccount(ctx, q, a); err != nil {
+		if err := s.seedAccount(ctx, q, a); err != nil {
 			return err
 		}
 		if err := s.admit(ctx, q, a.OrganizationID, a.ID, admin); err != nil {
@@ -164,7 +164,7 @@ func (s *Store) ClaimAccount(
 		if err := bindAccountAdmin(ctx, q, acct, admin, e); err != nil {
 			return err
 		}
-		if err := bumpAuthz(ctx, q, acct); err != nil {
+		if err := s.bumpAuthz(ctx, q, acct); err != nil {
 			return err
 		}
 		a, err = scanAccount(q.QueryRow(ctx, `UPDATE accounts SET claimed_at = $2

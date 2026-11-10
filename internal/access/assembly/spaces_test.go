@@ -75,7 +75,7 @@ func devSpace(t *testing.T) (*Domain, *sql.DB, account.Account, space.Space) {
 	// The account has no admin yet, so the tree is changed as the rule
 	// would let an account admin, through an authorizer allowing it.
 	d.spaces = space.NewService(space.Deps{
-		Store: d.store, Authz: everything{}, Drop: func(kernel.AccountID) {}, Now: time.Now,
+		Store: d.store, Authz: everything{}, Now: time.Now,
 	})
 	dev, err := d.spaces.Create(ctx, admin(a.ID), "guarded", space.Space{Name: "Dev"})
 	if err != nil {

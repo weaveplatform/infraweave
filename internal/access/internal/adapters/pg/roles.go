@@ -17,7 +17,7 @@ import (
 
 // seedAccount records what creating a gives it, in the transaction that
 // creates it: its top space and legacy, and its system roles.
-func seedAccount(ctx context.Context, q tx.Querier, a account.Account) error {
+func (s *Store) seedAccount(ctx context.Context, q tx.Querier, a account.Account) error {
 	if err := seedSpaces(ctx, q, a); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func seedAccount(ctx context.Context, q tx.Querier, a account.Account) error {
 			return fmt.Errorf("access: seed role %s: %w", r.Slug, sql.Unavailable(err))
 		}
 	}
-	return bumpAuthz(ctx, q, a.ID)
+	return s.bumpAuthz(ctx, q, a.ID)
 }
 
 // bindAccountAdmin binds space-admin on acct's top space to the member
@@ -123,7 +123,7 @@ func (s *Store) CreateRole(ctx context.Context, r role.Role) error {
 		if err := writeActions(ctx, q, r); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, r.AccountID)
+		return s.bumpAuthz(ctx, q, r.AccountID)
 	})
 	if err != nil {
 		return fmt.Errorf("create role %s: %w", r.Slug, err)
@@ -162,7 +162,7 @@ func (s *Store) UpdateRole(
 		if err := writeActions(ctx, q, out); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return role.Role{}, fmt.Errorf("update role %s: %w", slug, err)
@@ -198,7 +198,7 @@ func (s *Store) DeleteRole(
 			acct, cur.ID); err != nil {
 			return fmt.Errorf("access: %w", sql.Unavailable(err))
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return role.Role{}, fmt.Errorf("delete role %s: %w", slug, err)

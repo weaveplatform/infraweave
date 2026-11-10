@@ -14,8 +14,8 @@
 // and Releasable refuses dropping one in a space the caller does not
 // administer. Update moves a binding to another role or space, never
 // another actor, and Update and Delete check the If-Match against the
-// version they lock. Each write drops the account's authorization
-// snapshot on this replica.
+// version they lock. The store forgets the account's authorization
+// snapshot on this replica when a write commits.
 //
 // ref: decision 0007 § "Bindings"
 //

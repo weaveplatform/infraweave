@@ -152,7 +152,7 @@ func (s *Store) CreateBindings(
 			}
 			ids = append(ids, b.ID)
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create bindings: %w", err)
@@ -222,7 +222,7 @@ func (s *Store) UpdateBinding(
 		if err != nil {
 			return fmt.Errorf("access: %w", sql.Unavailable(err))
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return binding.Listed{}, fmt.Errorf("update binding %s: %w", id, err)
@@ -252,7 +252,7 @@ func (s *Store) DeleteBinding(
 			acct, id); err != nil {
 			return fmt.Errorf("access: %w", sql.Unavailable(err))
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return binding.Listed{}, fmt.Errorf("delete binding %s: %w", id, err)
@@ -281,7 +281,7 @@ func (s *Store) ReplaceAccessRules(
 				return err
 			}
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("replace the access rules of %s %s: %w", kind, id, err)
@@ -301,7 +301,7 @@ func (s *Store) DeleteActorBindings(
 		if err := unbindActor(ctx, q, acct, kind, id); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("delete the bindings of %s %s: %w", kind, id, err)

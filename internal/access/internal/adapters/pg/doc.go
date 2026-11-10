@@ -32,8 +32,10 @@
 // rows to. Every write to the
 // space tree or a space's inheritance, to roles, role_actions,
 // role_bindings or managed_user_groups, and every admission, moves the
-// account's authz_version and sends
-// authz:<account> on infraweave_invalidate in its transaction; AuthzData
+// account's authz_version and sends authz:<account> on
+// infraweave_invalidate in its transaction, and deleting an account
+// sends the message alone; the function WithSnapshots gives forgets this
+// replica's snapshot of the account when the transaction commits. AuthzData
 // reads an account's authorization rows in one serializable transaction
 // and AuthzVersions the versions of the accounts a replica holds, as
 // authz.Store.

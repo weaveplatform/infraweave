@@ -16,9 +16,9 @@
 // while it is on, also creates below, moves between and deletes the
 // spaces they administer, creating only spaces that inherit and never
 // stopping one inheriting. A change it withholds is a *Denied naming
-// SPACE_ADMIN. After each change it drops this replica's authorization
-// snapshot of the account through Deps.Drop, so the change's answer and
-// the caller's next request here see it. A space with no name is
+// SPACE_ADMIN. The store forgets this replica's authorization snapshot
+// of the account when a change commits, so the change's answer and the
+// caller's next request here see it. A space with no name is
 // ErrName, and labels breaking kernel.CheckLabels' rule, a repeat
 // included, are a *kernel.Invalid naming each at its pointer; labels keep
 // the order given. A Space's Version is raised by every change; Update

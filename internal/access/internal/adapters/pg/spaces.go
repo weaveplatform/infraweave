@@ -222,7 +222,7 @@ func (s *Store) CreateSpace(ctx context.Context, sp space.Space) error {
 		if err := insertSpace(ctx, q, sp); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, sp.AccountID)
+		return s.bumpAuthz(ctx, q, sp.AccountID)
 	})
 	if err != nil {
 		return fmt.Errorf("create space %s: %w", sp.Slug, err)
@@ -291,7 +291,7 @@ func (s *Store) UpdateSpace(
 		if m == nil && out.InheritEntities == cur.InheritEntities {
 			return nil
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return space.Space{}, fmt.Errorf("update space %s: %w", slug, err)
@@ -403,7 +403,7 @@ func (s *Store) DeleteSpace(
 				return fmt.Errorf("access: %w", sql.Unavailable(err))
 			}
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("delete space %s: %w", slug, err)

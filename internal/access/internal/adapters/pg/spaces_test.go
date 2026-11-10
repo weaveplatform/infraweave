@@ -43,7 +43,7 @@ type adminTree struct{ svc *space.Service }
 
 func treeOf(s space.Store) adminTree {
 	return adminTree{space.NewService(space.Deps{
-		Store: s, Authz: everything{}, Drop: func(kernel.AccountID) {},
+		Store: s, Authz: everything{},
 		Now: func() time.Time { return spacesAt },
 	})}
 }

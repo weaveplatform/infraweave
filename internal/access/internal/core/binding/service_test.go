@@ -227,13 +227,12 @@ func (g *grants) Actions(
 }
 
 // fixture is a service over a store whose caller administers the top
-// space and reads the team space, with the drops it made.
+// space and reads the team space.
 type fixture struct {
 	st    *store
 	authz *grants
 	svc   *binding.Service
 	p     kernel.Principal
-	drops int
 }
 
 func newFixture() *fixture {
@@ -243,9 +242,7 @@ func newFixture() *fixture {
 		f.st.spaces["top"]:  admin,
 		f.st.spaces["team"]: {accessapi.ActionSpaceRead},
 	}}
-	f.svc = binding.NewService(binding.Deps{
-		Store: f.st, Authz: f.authz, Drop: func(kernel.AccountID) { f.drops++ },
-	})
+	f.svc = binding.NewService(binding.Deps{Store: f.st, Authz: f.authz})
 	return f
 }
 
@@ -323,9 +320,7 @@ func TestUnitPrepare(t *testing.T) {
 	f.authz = &grants{on: map[kernel.ULID][]accessapi.Action{
 		f.st.spaces["top"]: {accessapi.ActionSpaceRead},
 	}}
-	f.svc = binding.NewService(
-		binding.Deps{Store: f.st, Authz: failAdmin{f.authz}, Drop: func(kernel.AccountID) {}},
-	)
+	f.svc = binding.NewService(binding.Deps{Store: f.st, Authz: failAdmin{f.authz}})
 	if _, err := f.svc.Prepare(ctx, f.p, binding.ActorUser, binding.OriginBinding, "", fields,
 		[]binding.Request{{Role: "space-reader", Space: "top"}}); !errors.Is(err, errDown) {
 		t.Errorf("admin decision down = %v", err)
@@ -369,8 +364,8 @@ func TestUnitServiceWrites(t *testing.T) {
 	}
 	ls, err := f.svc.Create(ctx, f.p, binding.ActorUser, "", fields,
 		[]binding.Request{{Actor: bob.String(), Role: "space-reader", Space: "top"}})
-	if err != nil || len(ls) != 1 || f.drops != 1 {
-		t.Fatalf("create = %+v, %v, drops %d", ls, err, f.drops)
+	if err != nil || len(ls) != 1 {
+		t.Fatalf("create = %+v, %v", ls, err)
 	}
 	f.st.fail["CreateBindings"] = true
 	if _, err := f.svc.Create(
@@ -408,16 +403,14 @@ func TestUnitServiceWrites(t *testing.T) {
 		bob,
 		[]binding.Binding{{ID: kernel.NewULID()}},
 	)
-	if err != nil || got[0].ActorKind != binding.ActorGroup || got[0].ActorID != bob ||
-		f.drops != 2 {
+	if err != nil || got[0].ActorKind != binding.ActorGroup || got[0].ActorID != bob {
 		t.Errorf("bind = %+v, %v", got, err)
 	}
 
 	id := ls[0].ID.String()
 	moved, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
 		binding.Request{Actor: bob.String(), Role: "space-admin", Space: "top"}, nil)
-	if err != nil || moved.RoleID != f.st.roles["space-admin"] || moved.Version != 2 ||
-		f.drops != 3 {
+	if err != nil || moved.RoleID != f.st.roles["space-admin"] || moved.Version != 2 {
 		t.Errorf("update = %+v, %v", moved, err)
 	}
 	if _, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.ExpectVersions(9), fields,
@@ -462,11 +455,10 @@ func TestUnitServiceWrites(t *testing.T) {
 		binding.ActorUser,
 		bob,
 		[]binding.Binding{{}},
-	); err != nil ||
-		f.drops != 4 {
+	); err != nil {
 		t.Errorf("replace = %v", err)
 	}
-	if err := f.svc.Unbind(ctx, acct, binding.ActorUser, bob); err != nil || f.drops != 5 {
+	if err := f.svc.Unbind(ctx, acct, binding.ActorUser, bob); err != nil {
 		t.Errorf("unbind = %v", err)
 	}
 	f.st.fail["ReplaceAccessRules"], f.st.fail["DeleteActorBindings"] = true, true
@@ -516,9 +508,6 @@ func TestUnitServiceWrites(t *testing.T) {
 		errDown,
 	) {
 		t.Errorf("delete down = %v", err)
-	}
-	if f.drops != 5 {
-		t.Errorf("drops = %d, want 5", f.drops)
 	}
 }
 

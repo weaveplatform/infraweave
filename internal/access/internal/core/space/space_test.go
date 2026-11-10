@@ -234,15 +234,12 @@ type world struct {
 	svc         *space.Service
 	p           kernel.Principal
 	at          time.Time
-	// dropped are the accounts whose snapshot each change dropped.
-	dropped *[]kernel.AccountID
 }
 
 func newWorld(t *testing.T) world {
 	t.Helper()
 	f, top, legacy := newTree(t)
 	authz := &admins{on: map[kernel.ULID]bool{top.ID: true}}
-	dropped := &[]kernel.AccountID{}
 	at := time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)
 	return world{
 		f:      f,
@@ -252,9 +249,7 @@ func newWorld(t *testing.T) world {
 		at:     at,
 		svc: space.NewService(space.Deps{
 			Store: f, Authz: authz, Now: func() time.Time { return at },
-			Drop: func(a kernel.AccountID) { *dropped = append(*dropped, a) },
 		}),
-		dropped: dropped,
 		p: kernel.Principal{
 			Kind:      kernel.PrincipalUser,
 			ActorID:   kernel.NewULID(),
@@ -409,12 +404,6 @@ func TestUnitSpaceService(t *testing.T) {
 	); err != nil ||
 		gone.ID != prod.ID {
 		t.Errorf("Delete a guard allows = %+v, %v", gone, err)
-	}
-	// Each change that succeeded dropped the snapshot, and no refusal did:
-	// the create, the update, the top space's rename, the rename a guard
-	// does not see, the move and the delete.
-	if n := len(*w.dropped); n != 6 || (*w.dropped)[0] != w.f.acct {
-		t.Errorf("dropped %d snapshots: %v", n, *w.dropped)
 	}
 
 	w.f.err = errors.New("store down")
@@ -584,10 +573,6 @@ func TestUnitSpaceVersions(t *testing.T) {
 	}
 	if got := w.f.spaces[dev.Slug]; got.Name != "Dev" || got.Version != 1 {
 		t.Errorf("after the stale writes = %+v", got)
-	}
-	// The drop follows the create alone.
-	if n := len(*w.dropped); n != 1 {
-		t.Errorf("dropped %d snapshots", n)
 	}
 
 	got, err := w.svc.Update(ctx, w.p, dev.Slug, w.top.Slug, kernel.ExpectVersions(1),
