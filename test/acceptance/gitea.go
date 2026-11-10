@@ -296,6 +296,12 @@ func (g *Gitea) Head(ctx context.Context, name, branch string) (string, error) {
 	return resp.Commit.ID, nil
 }
 
+// Tag creates the annotated tag tag of commit in the repository name.
+func (g *Gitea) Tag(ctx context.Context, name, tag, commit string) error {
+	return g.call(ctx, http.MethodPost, "/repos/"+giteaUser+"/"+name+"/tags",
+		map[string]any{"tag_name": tag, "target": commit, "message": tag}, nil)
+}
+
 // CloneURL is the HTTPS URL the repository name is cloned from.
 func (g *Gitea) CloneURL(name string) string {
 	return g.URL + "/" + giteaUser + "/" + name + ".git"
