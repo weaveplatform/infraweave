@@ -41,6 +41,18 @@ func (s *Service) Resolve(
 	if errors.Is(err, port.ErrNotFound) {
 		return vcsapi.Commit{}, fmt.Errorf("%w: %s", vcsapi.ErrRefNotFound, ref)
 	}
+	if errors.Is(err, port.ErrRepositoryURL) {
+		return vcsapi.Commit{}, &kernel.Invalid{
+			Detail: "The stack's repository URL is not one infraweave reaches.",
+			Errors: []kernel.FieldError{
+				{
+					Pointer: "/repositoryURL",
+					Reason:  kernel.ReasonRule,
+					Message: "The repository URL must be an https URL without a credential, query or fragment.",
+				},
+			},
+		}
+	}
 	if err != nil {
 		return vcsapi.Commit{}, fmt.Errorf("vcs: resolve %s: %w", ref, err)
 	}

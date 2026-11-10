@@ -10,21 +10,31 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// stacks answers Settings with a stack on raw Git.
-type stacks struct{ stacksapi.Stacks }
-
-func (stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
-	return stacksapi.Settings{Provider: "GIT"}, nil
+// stacks answers Settings with a stack on provider, at an http URL.
+type stacks struct {
+	stacksapi.Stacks
+	provider string
 }
 
-// TestUnitDomain checks that the domain reads no provider's source yet,
-// so a stack's ref is refused as invalid, and that a nil domain's partial
-// is the zero one.
+func (s stacks) Settings(
+	context.Context,
+	kernel.AccountID,
+	kernel.ULID,
+) (stacksapi.Settings, error) {
+	u := "http://git.example/acme/infra.git"
+	return stacksapi.Settings{Provider: s.provider, RepositoryURL: &u}, nil
+}
+
+// TestUnitDomain checks that the domain reads raw Git, refusing an http
+// URL at /repositoryURL before any request, and no other provider yet, and
+// that a nil domain's partial is the zero one.
 func TestUnitDomain(t *testing.T) {
-	d := New(Deps{Stacks: stacks{}})
-	_, err := d.Sources().Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
-	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
-		t.Errorf("Resolve = %v", err)
+	for provider, pointer := range map[string]string{"GIT": "/repositoryURL", "GITHUB": "/provider"} {
+		d := New(Deps{Stacks: stacks{provider: provider}})
+		_, err := d.Sources().Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
+		if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Pointer != pointer {
+			t.Errorf("Resolve on %s = %v", provider, err)
+		}
 	}
 	var none *Domain
 	if !reflect.ValueOf(none.API()).IsZero() {

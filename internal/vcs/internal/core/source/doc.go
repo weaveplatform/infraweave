@@ -1,8 +1,10 @@
 // Package source resolves the commits of a stack's repository: Service
 // implements vcsapi.Sources by reading the stack's settings and asking the
 // Source of the provider they name. A provider without a Source is
-// refused as a *kernel.Invalid naming /provider, and a ref the repository
-// lacks as vcsapi.ErrRefNotFound.
+// refused as a *kernel.Invalid naming /provider, a repository URL the
+// Source refuses as one naming /repositoryURL, and a ref the repository
+// lacks as vcsapi.ErrRefNotFound. A provider the Source cannot reach keeps
+// kernel.ErrUnavailable.
 //
 // # Input and output
 //

@@ -63,8 +63,8 @@ func settings(provider string, url *string) stacksapi.Settings {
 
 // TestUnitResolve checks that a ref resolves through the Source of the
 // stack's provider, over the stack's repository, and that a ref the
-// Source lacks is vcsapi.ErrRefNotFound while another failure keeps its
-// cause.
+// Source lacks is vcsapi.ErrRefNotFound, a repository URL it refuses is
+// invalid at /repositoryURL, and another failure keeps its cause.
 func TestUnitResolve(t *testing.T) {
 	url := "https://git.example/acme/infra.git"
 	want := vcsapi.Commit{Hash: "abc", Message: "init", Timestamp: time.Unix(1, 0)}
@@ -85,6 +85,7 @@ func TestUnitResolve(t *testing.T) {
 	}{
 		{port.ErrNotFound, vcsapi.ErrRefNotFound},
 		{errOffline, errOffline},
+		{kernel.ErrUnavailable, kernel.ErrUnavailable},
 	} {
 		svc := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
 			"GIT": source{repo: &got, err: tc.err},
@@ -100,6 +101,21 @@ func TestUnitResolve(t *testing.T) {
 		) {
 			t.Errorf("Resolve with %v = %v, want %v", tc.err, err, tc.want)
 		}
+	}
+}
+
+// TestUnitResolveRepositoryURL checks that a repository URL the Source
+// refuses is invalid at /repositoryURL.
+func TestUnitResolveRepositoryURL(t *testing.T) {
+	var got port.Repository
+	svc := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
+		"GIT": source{repo: &got, err: port.ErrRepositoryURL},
+	})
+	_, err := svc.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
+	inv, ok := errors.AsType[*kernel.Invalid](err)
+	if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != "/repositoryURL" ||
+		inv.Errors[0].Reason != kernel.ReasonRule {
+		t.Errorf("Resolve = %v", err)
 	}
 }
 

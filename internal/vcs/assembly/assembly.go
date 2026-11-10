@@ -4,6 +4,7 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/source"
 )
@@ -18,9 +19,12 @@ type Domain struct {
 	sources *source.Service
 }
 
-// New constructs the domain over d.
+// New constructs the domain over d, reading raw Git repositories, served as
+// the GIT provider, over https with the system's roots.
 func New(d Deps) *Domain {
-	return &Domain{sources: source.New(d.Stacks, map[string]port.Source{})}
+	return &Domain{sources: source.New(d.Stacks, map[string]port.Source{
+		"GIT": rawgit.New(rawgit.Options{}),
+	})}
 }
 
 // Sources resolves the commits of a stack's repository for other domains.
