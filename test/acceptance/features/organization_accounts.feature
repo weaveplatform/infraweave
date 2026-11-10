@@ -5,8 +5,10 @@ Feature: Organization accounts, members and keys
   organization key's token. It creates, claims, renames and deletes the
   organization's accounts, deactivates members, grants and revokes the role,
   and manages organization keys, which exchange at /api/v1/auth/token for a
-  token only this tag accepts. No answer of the tag names an account's
-  stacks, runs, state or secrets.
+  token only this tag accepts. An account admin without the organization
+  role is refused each of its operations with 403 naming
+  ORGANIZATION_ADMIN, and an account API key's token with 401. No answer
+  of the tag names an account's stacks, runs, state or secrets.
   ref: decision 0007
 
   Background:
@@ -92,3 +94,30 @@ Feature: Organization accounts, members and keys
     Then it answers a 401 problem "unauthenticated"
     When token "h" sends "GET /api/v1/organization/usage" through B
     Then it answers a 401 problem "unauthenticated"
+
+  @op:organization @op:organizationUpdate @op:organizationAccountCreate @op:organizationAccountDelete @op:organizationAccountClaim @op:organizationMembers @op:organizationMemberDeactivate @op:organizationAdminGrant @op:organizationAdminRevoke @case:denial
+  Scenario: An account admin without the organization role is refused every admin operation, naming the role's action
+    Given the home account's member has a browser session, admitted to home alone
+    And the home account's member is "alice"
+    When the browser sends "GET /api/v1/organization" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+    When the browser sends "PATCH /api/v1/organization" with '{"name":"Mine"}' through B
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "POST /api/v1/organization/accounts" with '{"slug":"acme-ops","name":"Ops","admin":"{alice}"}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+    When the browser sends "POST /api/v1/organization/accounts/acme-dev/claim" with '{"admin":"{alice}"}' through B
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "DELETE /api/v1/organization/accounts/acme-dev" through A
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "GET /api/v1/organization/members" through B
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "PUT /api/v1/organization/members/{alice}/organization-admin" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+    When the browser sends "DELETE /api/v1/organization/members/{alice}/organization-admin" through B
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "POST /api/v1/organization/members/{alice}/deactivate" through A
+    Then it answers a 403 problem "forbidden"
+    And the browser's account switcher through B lists "acme"

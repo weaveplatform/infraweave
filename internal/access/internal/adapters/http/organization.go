@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
@@ -37,8 +38,8 @@ func orgActor(ctx context.Context) (orgadmin.Actor, error) {
 	return orgadmin.Actor{Principal: p, RemoteIP: from(ctx).addr}, nil
 }
 
-// orgAdminError is err as the problem it answers: 403 for a member without the
-// organization role, 404 for what the organization does not hold, 409
+// orgAdminError is err as the problem it answers: 403 naming
+// ORGANIZATION_ADMIN for a member without the organization role, 404 for what the organization does not hold, 409
 // already-exists for an account slug in use and invalid-state for a state
 // the write refuses, 422 for input the service or the features domain
 // refuses, and err itself otherwise, which the store marks when the
@@ -47,10 +48,12 @@ func orgAdminError(err error, what string) error {
 	le, isLimit := errors.AsType[*featuresapi.AccountLimitError](err)
 	switch {
 	case errors.Is(err, orgadmin.ErrForbidden):
-		//nolint:wrapcheck // a problem, answered as it is
-		return problem.Forbidden.Error(
-			"The Organization tag needs the organization role organization-admin.",
-		)
+		p := problem.Forbidden.New(fmt.Sprintf(
+			"The Organization tag needs %s, which only the organization role organization-admin holds.",
+			accessapi.ActionOrganizationAdmin,
+		))
+		p.Action = string(accessapi.ActionOrganizationAdmin)
+		return &problem.Error{Problem: p}
 	case errors.Is(err, port.ErrNotFound):
 		//nolint:wrapcheck // as above
 		return problem.NotFound.Error(fmt.Sprintf("No %s in this organization.", what))
