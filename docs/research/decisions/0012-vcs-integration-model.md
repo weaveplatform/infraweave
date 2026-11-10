@@ -116,6 +116,29 @@ not provider names.
   scope rule serves it; it does not name `SHOWCASE`. Each served provider implements `Source` and needs no
   other change here.
 
+### Every provider is a peer
+
+GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps are
+built together: every capability, operation and acceptance scenario
+infraweave gives one it gives the others, in the same phase, wherever the
+provider's API has an equivalent. This goes beyond Spacelift, whose support
+outside GitHub is thinner
+([11 section 5](../reference/11-vcs-integrations.md#5-gitlab)). Where
+GitHub has a capability, the others gain its equivalent:
+
+| GitHub capability | Equivalent on the other providers | Where none exists |
+|---|---|---|
+| An installation token per run, limited to one repository | GitLab: a project access token with `read_repository`; Bitbucket Data Center: a repository access token with `REPO_READ`; each revoked when the run ends (below) | Bitbucket Cloud and Azure DevOps mint no repository token through their APIs, so their runs receive the integration's token |
+| Check-run actions **Preview** and **Deploy** | Pull request comment commands that start the same runs, from each provider's comment event | |
+| Renames followed through the `repository` event | Renames followed by the stable repository or project ID every event carries; an event whose path differs from the stack's under the same ID updates the stack | |
+| Deployments | GitLab environments | Bitbucket and Azure DevOps: commit statuses only |
+
+Each provider has a chi fake (`githubfake`, `gitlabfake`,
+`bitbucketcloudfake`, `bitbucketdcfake`, `azuredevopsfake`) that holds its
+client to the routes it calls in every pull request, and the scheduled
+`vcs-cloud` job checks every provider against real repositories
+([0016](0016-testing-and-acceptance.md)).
+
 ### Webhook intake: stored before acknowledgement
 
 Each integration has one endpoint, `POST /webhooks/vcs/{provider}/{integrationId}`;
@@ -231,7 +254,9 @@ credential that is part of the run's sealed secret material:
 | Provider | Credential |
 |---|---|
 | GitHub, GitHub Enterprise | An installation token minted for the run, limited to that repository and `contents: read`, expiring after one hour |
-| GitLab, Bitbucket, Azure DevOps | The integration's token, which these providers cannot narrow |
+| GitLab | A project access token minted for the run with `read_repository`, expiring the next day and revoked when the run reaches a terminal state; where the integration's token cannot create one (it needs the Maintainer role on the project), the integration's token, and the run's log says so |
+| Bitbucket Data Center | A repository access token minted for the run with `REPO_READ`, expiring the next day and revoked when the run reaches a terminal state; where the integration's token cannot create one (it needs repository admin), the integration's token, and the run's log says so |
+| Bitbucket Cloud, Azure DevOps | The integration's token, which these providers cannot narrow through their APIs |
 | Raw Git | None; public HTTPS URLs only |
 
 A run behind a VCS agent pool needs a private worker that can reach the VCS;
@@ -324,7 +349,9 @@ the launcher's mapping of pool names to endpoints is 0008's.
   window; the delivery listing and replay routes; the HTTP long-poll agent
   protocol and token layout; refusal of unmatched Azure DevOps requests by the
   agent; and `infraweave/<stack slug>` as the individual check name, which
-  Spacelift does not document.
+  Spacelift does not document; and, beyond GitHub, per-run repository
+  tokens on GitLab and Bitbucket Data Center, pull request comment commands,
+  and renames followed by repository ID.
 
 ## Constraints
 
@@ -332,8 +359,9 @@ the launcher's mapping of pool names to endpoints is 0008's.
   follow each provider's own documentation; report 11 marks them **[I]** for
   Spacelift. The individual check name is unverified in Spacelift; branch
   protection rules copied from Spacelift may need the name changed.
-- **Provider-wide tokens.** GitLab, Bitbucket and Azure DevOps runs receive a
-  token with the integration's full scope, sealed to the worker pool's key and
+- **Provider-wide tokens.** Bitbucket Cloud and Azure DevOps runs, and
+  GitLab and Bitbucket Data Center runs whose integration cannot mint a
+  repository token, receive a token with the integration's full scope, sealed to the worker pool's key and
   masked in logs; a narrower credential needs provider support that does not
   exist.
 - **Spacelift's VCS agent does not connect** to infraweave, nor does
@@ -355,6 +383,10 @@ the launcher's mapping of pool names to endpoints is 0008's.
   `routes.go` is allowed, and a request outside it is refused, Azure DevOps
   included; a test client records every request each provider client makes in
   its own tests and fails on any that the allowlist refuses.
+- `sourcetest`: every provider's `Source` passes one contract suite: raw Git
+  against Gitea and every other provider against its fake in every pull
+  request, and against the real repositories the scheduled `vcs-cloud` job
+  creates.
 - Gherkin features under `test/acceptance/features/`, against PostgreSQL in a
   container and a fake VCS served by chi:
   - `vcs_webhooks.feature`: a signed push creates one tracked run; a bad

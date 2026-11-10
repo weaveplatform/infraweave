@@ -77,7 +77,7 @@
         "feature": "`account-settings`; each setting with its subject's feature, such as `mfa` and `ai-account-controls`",
         "lowestTier": "Free; Enterprise for `mfa`",
         "phase": "P3b",
-        "also": "P4, P8, P10, P12, P13b, P15, P18b, P20b, P23, P25",
+        "also": "P4, P8, P10, P12b, P13b, P15, P18b, P20b, P23, P25",
         "state": "partial",
         "notes": "Each setting lands with the phase that owns its subject"
       }
@@ -912,7 +912,7 @@
         "feature": "`stacks`, `scheduling`, `ignored-runs`; the vendor options",
         "lowestTier": "Free; Starter+ for `ignored-runs`; Business for `scheduling`",
         "phase": "P5",
-        "also": "P4b (`stackRoleBindings`), P6, P7, P8, P9, P11, P12, P13, P15, P16, P18, P20b, P22, P6b (`stackSyncCommit`, `stackSetCurrentCommit`)",
+        "also": "P4b (`stackRoleBindings`), P6, P7, P8, P9, P11, P12, P12b, P13, P15, P16, P18, P20b, P22, P6b (`stackSyncCommit`, `stackSetCurrentCommit`)",
         "state": "partial",
         "notes": "`stacks`, `stack`, `stackCreate`, `stackUpdate`, `stackDelete`, `stackReslug`, `stackDisable`, `stackEnable`, `stackLock`, `stackUnlock` and `starSet` are served (P5), the list holding only the stacks of reachable spaces; `stackRoleBindings` lists a stack's role bindings (P4b), which stay where they are when the stack moves and go when it is deleted; `stackRuns`, `stackRunsInRange`, `stackProposedRuns` and `stackTasks` answer empty pages and `stackRun` answers 404 until P7 fills them from the runs domain, so they are not evidence of P5's task 1; the rest of P5 serves search, labels, the version catalogue and the vendor options; `stackConfigElement`, `stackConfigAdd`, `stackConfigSet`, `stackConfigDelete` and `stackAttachableContexts` are served by the configuration domain (P6); state, schedules, dependencies and webhooks land with their own phases"
       }
@@ -1035,15 +1035,15 @@
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
         "plan": "All; aggregated checks Business; space-level integrations Enterprise [D]",
         "tierFeatures": "`AGGREGATED_VCS_CHECKS`",
-        "notes": "GitHub in P12; GitLab, Bitbucket and Azure DevOps in P19"
+        "notes": "Every provider in P12, with webhooks and feedback in P12b"
       },
       "infraweave": {
         "feature": "`vcs-integrations`; options `aggregated-vcs-checks`, `multiple-vcs-integrations`",
         "lowestTier": "Free; Business for `aggregated-vcs-checks`; Enterprise for `multiple-vcs-integrations`",
         "phase": "P12",
-        "also": "P19 (GitLab, Bitbucket, Azure DevOps)",
+        "also": "P12b (webhooks, checks, comments and deployments)",
         "state": "missing",
-        "notes": "GitHub and GitHub Enterprise first; the other providers later"
+        "notes": "Every provider is a peer, built together: GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps; beyond Spacelift, the others gain GitHub's capabilities where their APIs allow: per-run repository tokens, comment commands for Preview and Deploy, and renames followed by repository ID"
       }
     },
     {
@@ -1326,7 +1326,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -1381,7 +1381,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -1529,7 +1529,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -2389,7 +2389,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -2462,7 +2462,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -2480,7 +2480,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -2666,7 +2666,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -2684,7 +2684,7 @@
       "infraweave": {
         "feature": "`vcs-integrations`",
         "lowestTier": "Free",
-        "apiPhase": "P19",
+        "apiPhase": "P12b",
         "providerPhase": "P24",
         "state": "missing"
       }
@@ -3434,7 +3434,7 @@
       },
       "infraweave": {
         "feature": "`aggregated-vcs-checks`",
-        "phase": "P12",
+        "phase": "P12b",
         "delivers": "`AGGREGATED` and `ALL` check modes"
       }
     },
@@ -3610,7 +3610,7 @@
       },
       "infraweave": {
         "feature": "`multiple-vcs-integrations`",
-        "phase": "P19",
+        "phase": "P12",
         "delivers": "More than one integration per provider and space-level integrations"
       }
     },
@@ -3803,7 +3803,7 @@
       },
       "infraweave": {
         "feature": "`ignored-runs`",
-        "phase": "P12",
+        "phase": "P12b",
         "delivers": "`stackSearchRunIgnoredTriggers` and ignored-run warnings"
       }
     },

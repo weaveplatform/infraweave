@@ -209,7 +209,7 @@
       "kind": "Operations",
       "rule": "S2a",
       "replacement": "Their `V2` forms",
-      "replacementPhase": "P19",
+      "replacementPhase": "P12",
       "evidence": "The reference routes the `V2` twin (report 26 section 7.5)"
     },
     {
@@ -349,7 +349,7 @@
       "id": "DEP-04",
       "treatment": "served",
       "interface": "The `feature:add_plan_pr_comment` stack label",
-      "phase": "P12",
+      "phase": "P12b",
       "why": "Decision [0012](../research/decisions/0012-vcs-integration-model.md) posts its comments beside notification policy `pull_request` rules"
     },
     {
