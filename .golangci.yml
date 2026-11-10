@@ -302,6 +302,24 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/
             - github.com/weaveplatform/infraweave/internal/iac$
             - github.com/weaveplatform/infraweave/internal/iac/
+        graph-vcs:
+          list-mode: lax
+          files:
+            - "**/internal/vcs/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: vcs imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/vcs/
+            - github.com/weaveplatform/infraweave/internal/features/api$
+            - github.com/weaveplatform/infraweave/internal/access/api$
+            - github.com/weaveplatform/infraweave/internal/stacks/api$
+            - github.com/weaveplatform/infraweave/internal/runs/api$
+            - github.com/weaveplatform/infraweave/internal/registry/api$
+            - github.com/weaveplatform/infraweave/internal/policies/api$
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
         graph-expressions:
           list-mode: lax
           files:

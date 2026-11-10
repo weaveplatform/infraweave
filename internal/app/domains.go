@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
@@ -35,6 +36,7 @@ type Domains struct {
 	Vendors       *vendorsassembly.Domain
 	Stacks        *stacksassembly.Domain
 	Configuration *configurationassembly.Domain
+	VCS           *vcsassembly.Domain
 	Expressions   *expressionsassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
 	Auth accessapi.Authenticator
@@ -106,12 +108,14 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting
 	}
 	configuration.BindExpressions(registry)
+	vcs := vcsassembly.New(vcsassembly.Deps{Stacks: stacks.Stacks()})
 	d := Domains{
 		Features:      features,
 		Access:        access,
 		Vendors:       vendors,
 		Stacks:        stacks,
 		Configuration: configuration,
+		VCS:           vcs,
 		Expressions:   expressionsassembly.New(registry),
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),

@@ -198,7 +198,7 @@ infraweave/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
 │   │   └── api/ assembly/ internal/{core,backend,http,pg}/
 │   ├── vcs/                       hexagon: sources, integrations, webhooks, routing, feedback (P6b, P12, P19, P19b)
-│   │   └── api/ assembly/ internal/{core/{integration,intake,normalize,route,feedback,pullrequest,port},
+│   │   └── api/ assembly/ internal/{core/{source,integration,intake,normalize,route,feedback,pullrequest,port},
 │   │                              adapters/{http,github,gitlab,bitbucketcloud,bitbucketdc,azuredevops,rawgit,agentgateway,pg}}/
 │   ├── policies/                  flat: policies, attachments, inputs, combination, samples, simulation (P13, P13b)
 │   │   └── api/ assembly/ internal/{core,inputs,combine,sample,http,pg}/
