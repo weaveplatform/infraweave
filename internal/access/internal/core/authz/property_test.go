@@ -7,6 +7,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -81,9 +82,9 @@ func TestUnitClosureProperty(t *testing.T) {
 		m, key, stack := kernel.NewMemberID(), kernel.NewULID(), kernel.NewULID()
 		team := x.group("team")
 		actors := []struct {
-			kind role.ActorKind
+			kind binding.ActorKind
 			id   kernel.ULID
-		}{{role.ActorUser, m.ULID}, {role.ActorGroup, team}, {role.ActorAPIKey, key}, {role.ActorStack, stack}}
+		}{{binding.ActorUser, m.ULID}, {binding.ActorGroup, team}, {binding.ActorAPIKey, key}, {binding.ActorStack, stack}}
 		for range r.IntN(6) {
 			a := actors[r.IntN(len(actors))]
 			x.bind(a.kind, a.id, slugs[r.IntN(len(slugs))], names[r.IntN(len(names))])

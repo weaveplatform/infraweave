@@ -9607,7 +9607,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "`admin` field: a body that sets it answers `400 invalid-request`",
-            "`space-admin` binding on the account's top space, which P4 seeds the `role_bindings` table for and reads; it reads `false` until P4b serves API key bindings"
+            "`space-admin` binding on the account's top space, which P4 seeds the `role_bindings` table for and reads, and P4b's API key bindings write"
           ]
         }
       ]

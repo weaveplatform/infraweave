@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -218,7 +219,7 @@ func (s Server) roleView(
 		RoleBindings:      make([]api.RoleBinding, 0, len(bs)),
 	}
 	for _, b := range bs {
-		v, err := bindingView(r.Slug, b)
+		v, err := bindingView(b)
 		if err != nil {
 			return api.Role{}, err
 		}
@@ -227,31 +228,19 @@ func (s Server) roleView(
 	return out, nil
 }
 
-// bindingView is b of the role slug as its actor kind's binding.
-func bindingView(slug string, b role.Listed) (api.RoleBinding, error) {
+// bindingView is b as its actor kind's binding.
+func bindingView(b binding.Listed) (api.RoleBinding, error) {
 	var (
-		v     api.RoleBinding
-		err   error
-		id    = b.ID.String()
-		actor = b.ActorID.String()
-		space = api.SpaceRef{Id: b.Space}
+		v   api.RoleBinding
+		err error
 	)
 	switch b.ActorKind {
-	case role.ActorUser:
-		err = v.FromUserRoleBinding(api.UserRoleBinding{
-			Id: id, Kind: api.UserRoleBindingKindUserRoleBinding, Role: api.RoleRef{Id: slug},
-			RoleID: slug, Space: space, User: api.ManagedUserRef{Id: actor}, UserID: actor,
-		})
-	case role.ActorGroup:
-		err = v.FromUserGroupRoleBinding(api.UserGroupRoleBinding{
-			Id: id, Kind: api.UserGroupRoleBindingKindUserGroupRoleBinding, RoleID: slug,
-			Space: space, UserGroup: api.ManagedUserGroupRef{Id: actor},
-		})
+	case binding.ActorUser:
+		err = v.FromUserRoleBinding(userBinding(b))
+	case binding.ActorGroup:
+		err = v.FromUserGroupRoleBinding(groupBinding(b))
 	default:
-		err = v.FromApiKeyRoleBinding(api.ApiKeyRoleBinding{
-			Id: id, Kind: api.ApiKeyRoleBindingKindApiKeyRoleBinding, Role: api.RoleRef{Id: slug},
-			Space: space, ApiKey: api.ApiKeyRef{Id: actor}, ApiKeyID: actor,
-		})
+		err = v.FromApiKeyRoleBinding(keyBinding(b))
 	}
 	return v, err //nolint:wrapcheck // encoding a struct of strings cannot fail
 }

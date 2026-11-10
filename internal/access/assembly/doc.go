@@ -7,7 +7,10 @@
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI, the API's partial serving the Organization tag
 // through the orgadmin service, the Managed Users tag through the user
-// and group services and the Roles tag through the role service; OrganizationID finds an organization's ID by its
+// and group services, the Roles tag through the role service and the role
+// binding operations through the binding service; Bindings is the
+// accessapi.Bindings through which another domain binds the actors it
+// keeps, such as stacks; OrganizationID finds an organization's ID by its
 // slug, for the features domain's operator partial, and Seats counts an
 // organization's and an account's seats in use, for its seats read;
 // GuardSpaces registers another domain's accessapi.SpaceGuard, which the
@@ -37,8 +40,9 @@
 // replica's session cache in step with infraweave_invalidate.
 // Authorizer is the authorization evaluator for every domain, from the
 // replica's per-account snapshots; Requirer is the middleware deciding
-// each API operation's action on its subject, finding a space by its slug
-// and another domain's entity through the lookup ResolveSubjects
+// each API operation's action on its subject, finding a space by its slug,
+// a role binding's by its ID under its actor's kind, and another domain's
+// entity through the lookup ResolveSubjects
 // registers; which also decide each account
 // principal's Admin as it authenticates; WatchAuthorization keeps them in
 // step with infraweave_invalidate's authz:<account> messages and compares

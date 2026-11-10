@@ -38,7 +38,11 @@ func (s Server) PersonalApiKeys(
 	}
 	body := api.ApiKeyPage{Items: make([]api.ApiKey, 0, len(keys)), NextCursor: next}
 	for _, k := range keys {
-		body.Items = append(body.Items, apiKey(k, "", acts))
+		v, err := s.keyOf(ctx, k, "", acts)
+		if err != nil {
+			return nil, err
+		}
+		body.Items = append(body.Items, v)
 	}
 	return api.PersonalApiKeys200JSONResponse{Body: body}, nil
 }

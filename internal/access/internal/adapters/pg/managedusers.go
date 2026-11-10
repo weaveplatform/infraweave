@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -345,6 +346,9 @@ func (s *Store) Remove(
 			acct, id); err != nil {
 			return fmt.Errorf("access: remove managed user: %w", sql.Unavailable(err))
 		}
+		if err := unbindActor(ctx, q, acct, binding.ActorUser, id.ULID); err != nil {
+			return err
+		}
 		return bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
@@ -530,6 +534,9 @@ func (s *Store) DeleteGroup(
 			id,
 		); err != nil {
 			return fmt.Errorf("access: delete group: %w", sql.Unavailable(err))
+		}
+		if err := unbindActor(ctx, q, acct, binding.ActorGroup, id); err != nil {
+			return err
 		}
 		return bumpAuthz(ctx, q, acct)
 	})

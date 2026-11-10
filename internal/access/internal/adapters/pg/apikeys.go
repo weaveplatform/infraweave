@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -477,7 +478,26 @@ func (s *Store) DeleteAPIKey(
 	id kernel.ULID,
 	expect kernel.Expect,
 ) (apikey.Key, []kernel.ULID, error) {
-	return s.revokeKey(ctx, "delete", acct, id, expect, `deleted_at = now()`, `TRUE`)
+	var (
+		k   apikey.Key
+		ids []kernel.ULID
+	)
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		var err error
+		if k, ids, err = s.revokeKey(ctx, "delete", acct, id, expect, `deleted_at = now()`,
+			`TRUE`); err != nil {
+			return err
+		}
+		q := tx.Q(ctx, s.db)
+		if err := unbindActor(ctx, q, acct, binding.ActorAPIKey, id); err != nil {
+			return err
+		}
+		return bumpAuthz(ctx, q, acct)
+	})
+	if err != nil {
+		return apikey.Key{}, nil, err //nolint:wrapcheck // revokeKey and unbindActor name it
+	}
+	return k, ids, nil
 }
 
 // SetNonAdminManagers records the account's setting.

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -105,8 +106,8 @@ func (s *store) RoleBindings(
 	context.Context,
 	kernel.AccountID,
 	kernel.ULID,
-) ([]role.Listed, error) {
-	return []role.Listed{{Space: "top"}}, s.err
+) ([]binding.Listed, error) {
+	return []binding.Listed{{Space: "top"}}, s.err
 }
 
 func service(t *testing.T) (*role.Service, *store, kernel.AccountID, *int) {

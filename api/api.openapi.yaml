@@ -1564,6 +1564,56 @@ paths:
         - merge-patch
         - rate-limit
       x-rest-style: update
+  /api-keys/{apiKeyId}/api-key-role-bindings:
+    get:
+      description: >-
+        The API key's role bindings, oldest first: those made as bindings and those its access rules made.
+      operationId: apiKeyApiKeyRoleBindings
+      x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ApiKeyRoleBinding'
+                type: array
+          description: The apiKeyRoleBindings result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Api key api key role bindings
+      tags:
+        - API Keys
+      x-graphql:
+        field: apiKeyRoleBindings
+        operation: query
+        type: ApiKey
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
   /api-keys/{apiKeyId}/reset:
     post:
       description: Reset the secret of an API key.
@@ -4043,7 +4093,7 @@ paths:
       x-rest-style: list
     post:
       description: >-
-        Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+        Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
       operationId: managedUserGroupCreateV2
       x-infraweave-feature: managed-users
       x-infraweave-action: MANAGED_USER_GROUP_CREATE
@@ -4385,6 +4435,56 @@ paths:
         - cursor-pagination
         - rate-limit
       x-rest-style: field
+  /managed-user-groups/{managedUserGroupId}/user-role-bindings:
+    get:
+      description: >-
+        The group's role bindings, oldest first: those made as bindings and those its access rules made.
+      operationId: managedUserGroupUserRoleBindings
+      x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_GROUP_READ
+      x-infraweave-subject: any
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: managedUserGroupId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserGroupRoleBinding'
+                type: array
+          description: The userRoleBindings result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Managed user group user role bindings
+      tags:
+        - Managed Users
+      x-graphql:
+        field: userRoleBindings
+        operation: query
+        type: ManagedUserGroup
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
   /managed-user-invite-requests:
     post:
       description: >-
@@ -4489,7 +4589,7 @@ paths:
       x-rest-style: list
     post:
       description: >-
-        Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+        Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
       operationId: managedUserInviteV2
       x-infraweave-feature: managed-users
       x-infraweave-action: MANAGED_USER_INVITE
@@ -4601,7 +4701,7 @@ paths:
       x-rest-style: delete
     get:
       description: >-
-        The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+        The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER; the member's grants are its role bindings, which accessRules reads back as far as access rules made them. A member the account does not admit answers 404.
       operationId: managedUser
       x-infraweave-feature: managed-users
       x-infraweave-action: MANAGED_USER_READ
@@ -4715,7 +4815,7 @@ paths:
       x-upstream: none
     put:
       description: >-
-        Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+        Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
       operationId: managedUserUpdate
       x-infraweave-feature: managed-users
       x-infraweave-action: MANAGED_USER_UPDATE
@@ -4889,6 +4989,56 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: action
+  /managed-users/{managedUserId}/user-role-bindings:
+    get:
+      description: >-
+        The managed user's role bindings, oldest first: those made as bindings and those its access rules made.
+      operationId: managedUserUserRoleBindings
+      x-infraweave-feature: managed-users
+      x-infraweave-action: MANAGED_USER_READ
+      x-infraweave-subject: any
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: managedUserId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserRoleBinding'
+                type: array
+          description: The userRoleBindings result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Managed user user role bindings
+      tags:
+        - Managed Users
+      x-graphql:
+        field: userRoleBindings
+        operation: query
+        type: ManagedUser
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
   /marked-for-deletion:
     get:
       description: Whether the account is marked for deletion.
@@ -14755,8 +14905,15 @@ components:
       description: |-
         A new API key. There is no admin field: a body that sets one answers
         400, and a key becomes an account admin through a space-admin role
-        binding on the account's top space.
+        binding on the account's top space. accessRules and roleBindings bind
+        the key in its creation, under the rules of the managed users' inputs.
       properties:
+        accessRules:
+          description: Access rules for api key.
+          items:
+            $ref: '#/components/schemas/SpaceAccessRuleInput'
+          nullable: true
+          type: array
         description:
           description: Description of the API key
           nullable: true
@@ -14780,6 +14937,11 @@ components:
           # Any OIDC settings make an OIDC key, which needs the option.
           x-infraweave-feature:
             feature: oidc-api-keys
+        roleBindings:
+          items:
+            $ref: '#/components/schemas/RoleBindingInput'
+          nullable: true
+          type: array
         teams:
           items:
             type: string

@@ -13,9 +13,10 @@
 // an invitation's sentAt after InvitationTTL (C125); Resend restarts it.
 // Delete stops the account admitting the member: their sessions in it
 // are revoked and their personal keys in it disabled as DEPROVISIONED,
-// and they stay a member of the organization. Role bindings and space
-// access rules arrive with P4b, so an input carrying any is
-// ErrBindingsUnsupported rather than dropped. RequestInvite and
+// and they stay a member of the organization; the store deletes their
+// bindings in the account with the admission. The binding service writes
+// the role bindings and space access rules an input carries, in the
+// transaction of the write that carries them. RequestInvite and
 // RequestRoleChange record the request on the account's trail; only a
 // member asks for a role, on the root space until P4's spaces. A User's
 // Version is raised by every change of the account's admission of the

@@ -255,7 +255,7 @@ func TestUnitUserInvite(t *testing.T) {
 	ctx := t.Context()
 	w := newWorld()
 	u, err := w.svc.Invite(ctx, w.p, "192.0.2.1",
-		user.Invite{Login: "bob", Email: "bob@example.com", SlackMemberID: "U1"}, 0)
+		user.Invite{Login: "bob", Email: "bob@example.com", SlackMemberID: "U1"})
 	if err != nil || u.Member.Login != "bob" || u.Invitation == nil ||
 		!u.Invitation.SentAt.Equal(t0) || u.Invitation.Email != "bob@example.com" {
 		t.Fatalf("invite = %+v, %v", u, err)
@@ -268,11 +268,7 @@ func TestUnitUserInvite(t *testing.T) {
 		t.Errorf("entry = %+v", e)
 	}
 
-	if _, err := w.svc.Invite(ctx, w.p, "", user.Invite{Login: "bob"}, 1); !errors.Is(err,
-		user.ErrBindingsUnsupported) {
-		t.Errorf("with role bindings: %v", err)
-	}
-	_, err = w.svc.Invite(ctx, w.p, "", user.Invite{Login: "", Email: "nope"}, 0)
+	_, err = w.svc.Invite(ctx, w.p, "", user.Invite{Login: "", Email: "nope"})
 	if !isField(err, "username") || !isField(err, "invitationEmail") {
 		t.Errorf("bad input: %v", err)
 	}
@@ -282,7 +278,6 @@ func TestUnitUserInvite(t *testing.T) {
 		w.p,
 		"",
 		user.Invite{Login: "carol"},
-		0,
 	); !errors.Is(
 		err,
 		errDown,
@@ -294,7 +289,7 @@ func TestUnitUserInvite(t *testing.T) {
 func TestUnitUserReadsAndWrites(t *testing.T) {
 	ctx := t.Context()
 	w := newWorld()
-	u, err := w.svc.Invite(ctx, w.p, "", user.Invite{Login: "bob"}, 0)
+	u, err := w.svc.Invite(ctx, w.p, "", user.Invite{Login: "bob"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +319,6 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 		"",
 		id,
 		kernel.Expect{},
-		0,
 		"U2",
 	); err != nil ||
 		got.SlackMemberID != "U2" {
@@ -334,23 +328,8 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 		ctx,
 		w.p,
 		"",
-		id,
-		kernel.Expect{},
-		1,
-		"",
-	); !errors.Is(
-		err,
-		user.ErrBindingsUnsupported,
-	) {
-		t.Errorf("update with access rules: %v", err)
-	}
-	if _, err := w.svc.Update(
-		ctx,
-		w.p,
-		"",
 		"nope",
 		kernel.Expect{},
-		0,
 		"",
 	); !errors.Is(
 		err,
@@ -384,7 +363,7 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 
 	// The store sees the expect each change carries.
 	stale := kernel.ExpectVersions(9)
-	if _, err := w.svc.Update(ctx, w.p, "", id, stale, 0, "U3"); !errors.Is(err, kernel.ErrStale) {
+	if _, err := w.svc.Update(ctx, w.p, "", id, stale, "U3"); !errors.Is(err, kernel.ErrStale) {
 		t.Errorf("a stale update: %v", err)
 	}
 	if _, err := w.svc.Delete(ctx, w.p, "", id, stale); !errors.Is(err, kernel.ErrStale) {
@@ -436,7 +415,7 @@ func (removeFails) Remove(
 
 func TestUnitUserDeleteFails(t *testing.T) {
 	w := newWorld()
-	u, err := w.svc.Invite(t.Context(), w.p, "", user.Invite{Login: "bob"}, 0)
+	u, err := w.svc.Invite(t.Context(), w.p, "", user.Invite{Login: "bob"})
 	if err != nil {
 		t.Fatal(err)
 	}

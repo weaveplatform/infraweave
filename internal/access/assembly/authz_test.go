@@ -15,6 +15,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
@@ -93,11 +94,11 @@ func TestUnitWatchAuthorization(t *testing.T) {
 			defer r.mu.Unlock()
 			r.d.Bindings = nil
 			if bind {
-				r.d.Bindings = []role.Binding{
+				r.d.Bindings = []binding.Binding{
 					{
 						AccountID: acct,
 						ID:        kernel.NewULID(),
-						ActorKind: role.ActorUser,
+						ActorKind: binding.ActorUser,
 						ActorID:   m.ULID,
 						RoleID:    admin,
 						SpaceID:   acct.ULID,

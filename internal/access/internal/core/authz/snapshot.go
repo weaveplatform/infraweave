@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -16,7 +17,7 @@ type Data struct {
 	Version  int64
 	Spaces   []Space
 	Roles    []Role
-	Bindings []role.Binding
+	Bindings []binding.Binding
 	Groups   []Group
 }
 
@@ -45,7 +46,7 @@ type Group struct {
 
 // actor is one member of a principal's actor set.
 type actor struct {
-	kind role.ActorKind
+	kind binding.ActorKind
 	id   kernel.ULID
 }
 
@@ -70,7 +71,7 @@ type Snapshot struct {
 	children map[kernel.ULID][]kernel.ULID
 	roles    map[kernel.ULID]grantRole
 	reader   grantRole
-	bindings map[actor][]role.Binding
+	bindings map[actor][]binding.Binding
 	groups   map[string]kernel.ULID
 }
 
@@ -90,7 +91,7 @@ func Build(d Data) *Snapshot {
 		inherit:  map[kernel.ULID]bool{},
 		children: map[kernel.ULID][]kernel.ULID{},
 		roles:    map[kernel.ULID]grantRole{},
-		bindings: map[actor][]role.Binding{},
+		bindings: map[actor][]binding.Binding{},
 		groups:   map[string]kernel.ULID{},
 	}
 	for _, sp := range d.Spaces {

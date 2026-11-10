@@ -7,6 +7,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -74,7 +75,7 @@ func TestUnitService(t *testing.T) {
 	}
 	// A binding the store holds is decided only after the snapshot is
 	// dropped or found stale.
-	x.bind(role.ActorUser, m.ULID, role.SpaceAdmin, "top")
+	x.bind(binding.ActorUser, m.ULID, role.SpaceAdmin, "top")
 	f.version = 1
 	if ok, _ := svc.Admin(ctx, p); ok || f.loads != 1 {
 		t.Fatalf("a held snapshot reloaded: admin %t after %d loads", ok, f.loads)

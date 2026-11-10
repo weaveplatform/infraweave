@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -19,11 +20,11 @@ import (
 type roleBook struct {
 	st       *store
 	roles    map[string]role.Role
-	bindings map[string][]role.Listed
+	bindings map[string][]binding.Listed
 }
 
 func newRoleBook(st *store, acct kernel.AccountID) *roleBook {
-	b := &roleBook{st: st, roles: map[string]role.Role{}, bindings: map[string][]role.Listed{}}
+	b := &roleBook{st: st, roles: map[string]role.Role{}, bindings: map[string][]binding.Listed{}}
 	for _, r := range role.Seed(acct) {
 		r.Version = 1
 		b.roles[r.Slug] = r
@@ -112,7 +113,7 @@ func (b *roleBook) RoleBindings(
 	_ context.Context,
 	_ kernel.AccountID,
 	id kernel.ULID,
-) ([]role.Listed, error) {
+) ([]binding.Listed, error) {
 	for slug, r := range b.roles {
 		if r.ID == id {
 			return b.bindings[slug], b.st.err()
@@ -215,11 +216,11 @@ func TestUnitRoles(t *testing.T) {
 	}
 
 	r := w.roles.roles["deploy-bots"]
-	at := role.Binding{ID: kernel.NewULID(), RoleID: r.ID, ActorID: kernel.NewULID()}
-	for _, kind := range []role.ActorKind{role.ActorUser, role.ActorGroup, role.ActorAPIKey} {
+	at := binding.Binding{ID: kernel.NewULID(), RoleID: r.ID, ActorID: kernel.NewULID()}
+	for _, kind := range []binding.ActorKind{binding.ActorUser, binding.ActorGroup, binding.ActorAPIKey} {
 		at.ActorKind = kind
 		w.roles.bindings["deploy-bots"] = append(w.roles.bindings["deploy-bots"],
-			role.Listed{Binding: at, Space: "acme"})
+			binding.Listed{Binding: at, Role: r.Slug, Space: "acme"})
 	}
 	got := decode[api.Role](t, w.do(t, http.MethodGet, "/roles/deploy-bots", me, ""))
 	if got.RoleBindingsCount != 3 || len(got.RoleBindings) != 3 {

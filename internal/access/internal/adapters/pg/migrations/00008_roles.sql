@@ -43,6 +43,7 @@ CREATE TABLE role_bindings (
     origin     text        NOT NULL CHECK (origin IN ('binding', 'access_rule')),
     created_at timestamptz NOT NULL DEFAULT now(),
     created_by text        NOT NULL,
+    version    bigint      NOT NULL DEFAULT 1,
     UNIQUE (actor_kind, actor_id, role_id, space_id),
     FOREIGN KEY (account_id, role_id) REFERENCES roles (account_id, id) ON DELETE RESTRICT,
     FOREIGN KEY (account_id, space_id) REFERENCES spaces (account_id, id) ON DELETE CASCADE

@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
@@ -140,6 +141,7 @@ type Domain struct {
 	users    *user.Service
 	groups   *group.Service
 	roles    *role.Service
+	bindings *binding.Service
 	oauth    *oauth.Service
 	spaces   *space.Service
 	manual   bool
@@ -235,6 +237,9 @@ func New(d Deps) (*Domain, error) {
 		}
 		return sp.ID, err //nolint:wrapcheck // the store names the read
 	})
+	for entity, kind := range bindingEntities {
+		subjects.Register(entity, bindingSpace(store, kind))
+	}
 	return &Domain{
 		store:    store,
 		tokens:   tokens,
@@ -252,7 +257,10 @@ func New(d Deps) (*Domain, error) {
 		users:  user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups: group.NewService(group.Deps{Store: store, Now: now}),
 		roles:  role.NewService(role.Deps{Store: store, Drop: decide.Drop}),
-		oauth:  grants,
+		bindings: binding.NewService(
+			binding.Deps{Store: store, Authz: decide, Drop: decide.Drop},
+		),
+		oauth: grants,
 		spaces: space.NewService(
 			space.Deps{Store: store, Authz: decide, Drop: decide.Drop, Now: now},
 		),
@@ -270,7 +278,7 @@ func (d *Domain) API() AccessAPI {
 	return http.NewServer(http.Services{
 		Auth: d.authn, Keys: d.keys, Authz: d.authz, Spaces: d.spaces, Accounts: d.store,
 		Settings: d.settings, Orgs: d.orgAdmin, Users: d.users, Groups: d.groups, Roles: d.roles,
-		OAuth: d.oauth,
+		Bindings: d.bindings, OAuth: d.oauth, Atomic: d.store.Atomic,
 	})
 }
 

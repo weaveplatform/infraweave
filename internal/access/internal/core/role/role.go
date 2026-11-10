@@ -110,3 +110,27 @@ func SystemActions(slug string) (actions []accessapi.Action, ok bool) {
 	}
 	return actions, true
 }
+
+// levels are the system roles a legacy space access level grants, by the
+// level's name.
+//
+// ref: decision 0007 § "Bindings"
+var levels = map[string]string{"READ": SpaceReader, "WRITE": SpaceWriter, "ADMIN": SpaceAdmin}
+
+// ForLevel is the system role a legacy space access rule of level grants,
+// and false for NONE or any other level, which grants none.
+func ForLevel(level string) (string, bool) {
+	slug, ok := levels[level]
+	return slug, ok
+}
+
+// LevelOf is the space access level the system role slug grants as an
+// access rule, and false for a role no level names.
+func LevelOf(slug string) (string, bool) {
+	for level, s := range levels {
+		if s == slug {
+			return level, true
+		}
+	}
+	return "", false
+}

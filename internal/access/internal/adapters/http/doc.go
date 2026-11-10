@@ -35,10 +35,18 @@
 // invite and role change requests, and manage its groups: a managed user
 // or group of another account answers 404, a second invitation of one
 // member or address 409 invalid-state, a group name in use 409
-// already-exists, any role binding or access rule 400 invalid-request, a
-// role change request from anything but a member 403, a seat beyond the
-// pool 403 limit-reached and input the service refuses 422
-// validation-failed. The Personal API Keys operations create a personal
+// already-exists, a role change request from anything but a member 403,
+// a seat beyond the pool 403 limit-reached and input the service refuses
+// 422 validation-failed. An invitation's and a new group's roleBindings,
+// an API key's accessRules and roleBindings, and a managed user's
+// accessRules, which replace those it holds, are stored as role bindings
+// in the transaction that writes the actor, through Atomic, all or none:
+// an access rule binds the system role its level names, NONE none, and
+// an element whose role or space the account lacks or whose space the
+// caller does not administer is refused at its pointer, 422
+// validation-failed, as is dropping an access rule in such a space.
+// Each view's accessRules are the bindings its access rules made, and an
+// ApiKey's admin and spaceCount read its bindings. The Personal API Keys operations create a personal
 // key owned by the calling member, answering 403 forbidden to any other
 // caller or while the account turns personal keys off, and list, count
 // and disable the account's personal keys, a key of the account's own
@@ -68,8 +76,15 @@
 // its bindings to users, groups and API keys: a role the account lacks
 // answers 404, a slug in use 409 already-exists, a role with bindings
 // 409 invalid-state, and a system role's change or a disabled action 422
-// validation-failed, the action named at its pointer. The update routes
-// of spaces, API keys, managed users, managed user groups and roles serve the API's update semantics through httpkit/strict: the
+// validation-failed, the action named at its pointer. The role binding
+// operations, through binding.Service, read, create one or a batch of,
+// replace, patch and delete the bindings of managed users, groups and
+// API keys, and list an actor's: each needs SPACE_ADMIN on the space it
+// binds in, an element refused at /bindings/<index>/<field> of a batch
+// that writes none, a binding the account holds 409 already-exists, a
+// change of its actor 422 validation-failed, and a binding or actor the
+// account lacks 404. The update routes of spaces, API keys, managed
+// users, managed user groups, roles and role bindings serve the API's update semantics through httpkit/strict: the
 // item GET, the PUT and the PATCH answer the version they answer as a
 // strong ETag; PUT and DELETE pass their If-Match to the service, which
 // checks it against the row it locks; a PATCH merges its RFC 7396 patch

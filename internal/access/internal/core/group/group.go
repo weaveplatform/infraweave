@@ -124,17 +124,12 @@ func (s *Service) Group(ctx context.Context, p kernel.Principal, id string) (Gro
 	return s.d.Store.Group(ctx, p.AccountID, g) //nolint:wrapcheck // as above
 }
 
-// Create creates a group of p's account. bindings is how many role
-// bindings the input carries.
+// Create creates a group of p's account.
 func (s *Service) Create(
 	ctx context.Context,
 	p kernel.Principal,
 	remoteIP, name, description string,
-	bindings int,
 ) (Group, error) {
-	if bindings > 0 {
-		return Group{}, fmt.Errorf("%w: roleBindings", user.ErrBindingsUnsupported)
-	}
 	if err := organization.CheckName("groupName", name); err != nil {
 		return Group{}, err //nolint:wrapcheck // a FieldError, answered as it is
 	}

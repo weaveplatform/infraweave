@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
@@ -28,8 +29,8 @@ const (
 	identityProviderNone = api.IdentityProviderEMPTY
 )
 
-// managedError is err as the problem it answers: 400 for role bindings,
-// which are not stored yet, 403 for a role change no member asks for, 404
+// managedError is err as the problem it answers: 403 for a role change no
+// member asks for, 404
 // for a user, group or space the account does not hold, 409 for a group
 // name in use or a state the change refuses, 422 for input the service
 // refuses, 403 limit-reached for a seat beyond the limit, and err itself
@@ -41,12 +42,9 @@ func managedError(err error, what string) error {
 		return &problem.Error{
 			Problem: problem.NewLimitReached(le.Limit, string(le.Scope), le.Value),
 		}
-	case errors.Is(err, managed.ErrBindingsUnsupported):
-		//nolint:wrapcheck // a problem, answered as it is
-		return problem.InvalidRequest.Error(err.Error() +
-			": role bindings and space access rules arrive with the account's roles; send none.")
 	case errors.Is(err, managed.ErrNotMember):
-		return problem.Forbidden.Error(err.Error()) //nolint:wrapcheck // as above
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.Forbidden.Error(err.Error())
 	case errors.Is(err, port.ErrNotFound):
 		//nolint:wrapcheck // as above
 		return problem.NotFound.Error(fmt.Sprintf("No %s in this account.", what))
@@ -69,12 +67,12 @@ var userStatuses = map[member.Status]api.UserStatus{
 }
 
 // managedUser is u as Spacelift's ManagedUser, with acts as its
-// allowedActions. Role bindings and space access arrive with P4b, so role
-// is USER and the rules and counts are empty; no identity provider is
-// configured before P23's, so loginMethod is EMPTY.
-func managedUser(u managed.User, acts []api.Action) api.ManagedUser {
+// allowedActions and the access rules among held, its bindings. role is
+// USER; no identity provider is configured before P23's, so loginMethod
+// is EMPTY.
+func managedUser(u managed.User, acts []api.Action, held []binding.Listed) api.ManagedUser {
 	out := api.ManagedUser{
-		AccessRules:          []api.SpaceAccessRule{},
+		AccessRules:          rules(held),
 		AllowedActions:       acts,
 		GroupCount:           int32(min(u.GroupCount, 1<<31-1)), //nolint:gosec // clamped
 		Id:                   u.Member.ID.String(),
@@ -105,9 +103,11 @@ func managedUser(u managed.User, acts []api.Action) api.ManagedUser {
 	return out
 }
 
-func managedGroup(g group.Group) api.ManagedUserGroup {
+// managedGroup is g as Spacelift's ManagedUserGroup, with the access
+// rules among held, its bindings.
+func managedGroup(g group.Group, held []binding.Listed) api.ManagedUserGroup {
 	return api.ManagedUserGroup{
-		AccessRules:      []api.SpaceAccessRule{},
+		AccessRules:      rules(held),
 		Description:      g.Description,
 		GroupName:        g.Name,
 		Id:               g.ID.String(),
@@ -118,26 +118,52 @@ func managedGroup(g group.Group) api.ManagedUserGroup {
 	}
 }
 
-func managedUsers(us []managed.User, acts []api.Action) []api.ManagedUser {
+// userViews are managedUser of each of us with the actions the caller
+// holds on a managed user and its bindings.
+func (s Server) userViews(
+	ctx context.Context,
+	p kernel.Principal,
+	us []managed.User,
+) ([]api.ManagedUser, error) {
+	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]api.ManagedUser, 0, len(us))
 	for _, u := range us {
-		out = append(out, managedUser(u, acts))
+		held, err := s.bindings.Held(ctx, p.AccountID, binding.ActorUser, u.Member.ID.ULID)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // the store names the read
+		}
+		out = append(out, managedUser(u, acts, held))
 	}
-	return out
+	return out, nil
 }
 
-// userView is managedUser of u with the actions the caller holds on a
-// managed user.
+// userView is userViews of u alone.
 func (s Server) userView(
 	ctx context.Context,
 	p kernel.Principal,
 	u managed.User,
 ) (api.ManagedUser, error) {
-	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	vs, err := s.userViews(ctx, p, []managed.User{u})
 	if err != nil {
 		return api.ManagedUser{}, err
 	}
-	return managedUser(u, acts), nil
+	return vs[0], nil
+}
+
+// groupView is managedGroup of g with its bindings.
+func (s Server) groupView(
+	ctx context.Context,
+	p kernel.Principal,
+	g group.Group,
+) (api.ManagedUserGroup, error) {
+	held, err := s.bindings.Held(ctx, p.AccountID, binding.ActorGroup, g.ID)
+	if err != nil {
+		return api.ManagedUserGroup{}, err //nolint:wrapcheck // the store names the read
+	}
+	return managedGroup(g, held), nil
 }
 
 func userID(u managed.User) string { return u.Member.ID.String() }
@@ -162,12 +188,12 @@ func (s Server) ManagedUsers(
 	if err != nil {
 		return nil, err
 	}
-	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	items, err := s.userViews(ctx, p, us)
 	if err != nil {
 		return nil, err
 	}
 	return api.ManagedUsers200JSONResponse{
-		Body: api.ManagedUserPage{Items: managedUsers(us, acts), NextCursor: next},
+		Body: api.ManagedUserPage{Items: items, NextCursor: next},
 	}, nil
 }
 
@@ -194,7 +220,8 @@ func (s Server) ManagedUser(
 	}, nil
 }
 
-// ManagedUserInviteV2 invites a person to the account.
+// ManagedUserInviteV2 invites a person to the account with the role
+// bindings the invitation names, all or none.
 func (s Server) ManagedUserInviteV2(
 	ctx context.Context,
 	req api.ManagedUserInviteV2RequestObject,
@@ -203,13 +230,32 @@ func (s Server) ManagedUserInviteV2(
 	if err != nil {
 		return nil, err
 	}
-	u, err := s.users.Invite(ctx, p, from(ctx).addr, managed.Invite{
-		Login:         req.Body.Username,
-		Email:         deref(req.Body.InvitationEmail),
-		SlackMemberID: deref(req.Body.SlackMemberID),
-	}, len(req.Body.RoleBindings))
+	bs, err := s.prepare(
+		ctx,
+		p,
+		binding.ActorUser,
+		legacy{bindings: roleRequests(req.Body.RoleBindings)},
+	)
 	if err != nil {
-		return nil, managedError(err, "managed user")
+		return nil, err
+	}
+	var u managed.User
+	err = s.atomic(ctx, func(ctx context.Context) error {
+		if u, err = s.users.Invite(ctx, p, from(ctx).addr, managed.Invite{
+			Login:         req.Body.Username,
+			Email:         deref(req.Body.InvitationEmail),
+			SlackMemberID: deref(req.Body.SlackMemberID),
+		}); err != nil {
+			return managedError(err, "managed user")
+		}
+		return bindingError(
+			s.bind(ctx, p.AccountID, binding.ActorUser, u.Member.ID.ULID, bs),
+			"",
+			"",
+		)
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck // each write in the transaction answers its own problem
 	}
 	v, err := s.userView(ctx, p, u)
 	if err != nil {
@@ -262,7 +308,11 @@ func (s Server) ManagedUserPatch(
 		if err != nil {
 			return api.ManagedUserUpdateInputBody{}, 0, managedError(err, "managed user")
 		}
-		return userInput(u), u.Version, nil
+		held, err := s.bindings.Held(ctx, p.AccountID, binding.ActorUser, u.Member.ID.ULID)
+		if err != nil {
+			return api.ManagedUserUpdateInputBody{}, 0, err //nolint:wrapcheck // the store names the read
+		}
+		return userInput(u, held), u.Version, nil
 	}
 	write := func(in api.ManagedUserUpdateInputBody, expect kernel.Expect) (managed.User, error) {
 		return s.updateUser(ctx, p, req.ManagedUserId, expect, in)
@@ -281,7 +331,8 @@ func (s Server) ManagedUserPatch(
 }
 
 // updateUser writes in to the managed user id, as ManagedUserUpdate and
-// ManagedUserPatch do, when expect accepts its version.
+// ManagedUserPatch do, when expect accepts its version: its Slack member,
+// and its access rules in place of those it holds, all or none.
 func (s Server) updateUser(
 	ctx context.Context,
 	p kernel.Principal,
@@ -289,18 +340,37 @@ func (s Server) updateUser(
 	expect kernel.Expect,
 	in api.ManagedUserUpdateInputBody,
 ) (managed.User, error) {
-	u, err := s.users.Update(ctx, p, from(ctx).addr, id, expect, len(in.AccessRules),
-		deref(in.SlackMemberID))
+	cur, err := s.users.User(ctx, p, id)
 	if err != nil {
 		return managed.User{}, managedError(err, "managed user")
 	}
-	return u, nil
+	actor := cur.Member.ID.ULID
+	bs, err := s.prepare(ctx, p, binding.ActorUser, legacy{rules: ruleRequests(in.AccessRules)})
+	if err == nil {
+		err = s.bindings.Releasable(ctx, p, binding.ActorUser, actor, "/accessRules", bs.rules)
+	}
+	if err != nil {
+		return managed.User{}, err //nolint:wrapcheck // a refusal, answered as it is
+	}
+	var u managed.User
+	err = s.atomic(ctx, func(ctx context.Context) error {
+		if u, err = s.users.Update(ctx, p, from(ctx).addr, id, expect,
+			deref(in.SlackMemberID)); err != nil {
+			return managedError(err, "managed user")
+		}
+		return bindingError(
+			s.bindings.ReplaceRules(ctx, p.AccountID, binding.ActorUser, actor, bs.rules),
+			"",
+			"",
+		)
+	})
+	return u, err //nolint:wrapcheck // each write in the transaction answers its own problem
 }
 
-// userInput is u as the ManagedUserUpdateInputBody that writes it: no
-// access rules, which nothing stores yet, and its Slack member, if any.
-func userInput(u managed.User) api.ManagedUserUpdateInputBody {
-	in := api.ManagedUserUpdateInputBody{AccessRules: []api.SpaceAccessRuleInput{}}
+// userInput is u as the ManagedUserUpdateInputBody that writes it: the
+// access rules among held, its bindings, and its Slack member, if any.
+func userInput(u managed.User, held []binding.Listed) api.ManagedUserUpdateInputBody {
+	in := api.ManagedUserUpdateInputBody{AccessRules: ruleInputs(rules(held))}
 	if u.SlackMemberID != "" {
 		in.SlackMemberID = &u.SlackMemberID
 	}
@@ -409,7 +479,11 @@ func (s Server) ManagedUserPersonalApiKeys(
 	}
 	body := api.ApiKeyPage{Items: make([]api.ApiKey, 0, len(keys)), NextCursor: next}
 	for _, k := range keys {
-		body.Items = append(body.Items, apiKey(k, "", acts))
+		v, err := s.keyOf(ctx, k, "", acts)
+		if err != nil {
+			return nil, err
+		}
+		body.Items = append(body.Items, v)
 	}
 	return api.ManagedUserPersonalApiKeys200JSONResponse{Body: body}, nil
 }
@@ -435,7 +509,11 @@ func (s Server) ManagedUserGroups(
 		NextCursor: next,
 	}
 	for _, g := range gs {
-		body.Items = append(body.Items, managedGroup(g))
+		v, err := s.groupView(ctx, p, g)
+		if err != nil {
+			return nil, err
+		}
+		body.Items = append(body.Items, v)
 	}
 	return api.ManagedUserGroups200JSONResponse{Body: body}, nil
 }
@@ -454,13 +532,18 @@ func (s Server) ManagedUserGroup(
 	if err != nil {
 		return nil, managedError(err, "managed user group")
 	}
+	v, err := s.groupView(ctx, p, g)
+	if err != nil {
+		return nil, err
+	}
 	return api.ManagedUserGroup200JSONResponse{
-		Body:    managedGroup(g),
+		Body:    v,
 		Headers: api.ManagedUserGroup200ResponseHeaders{ETag: new(strict.ETag(g.Version))},
 	}, nil
 }
 
-// ManagedUserGroupCreateV2 creates a managed user group of the account.
+// ManagedUserGroupCreateV2 creates a managed user group of the account
+// with the role bindings its input names, all or none.
 func (s Server) ManagedUserGroupCreateV2(
 	ctx context.Context,
 	req api.ManagedUserGroupCreateV2RequestObject,
@@ -469,12 +552,31 @@ func (s Server) ManagedUserGroupCreateV2(
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.groups.Create(ctx, p, from(ctx).addr, req.Body.GroupName,
-		deref(req.Body.Description), len(req.Body.RoleBindings))
+	bs, err := s.prepare(
+		ctx,
+		p,
+		binding.ActorGroup,
+		legacy{bindings: roleRequests(req.Body.RoleBindings)},
+	)
 	if err != nil {
-		return nil, managedError(err, "managed user group")
+		return nil, err
 	}
-	return api.ManagedUserGroupCreateV2201JSONResponse{Body: managedGroup(g)}, nil
+	var g group.Group
+	err = s.atomic(ctx, func(ctx context.Context) error {
+		if g, err = s.groups.Create(ctx, p, from(ctx).addr, req.Body.GroupName,
+			deref(req.Body.Description)); err != nil {
+			return managedError(err, "managed user group")
+		}
+		return bindingError(s.bind(ctx, p.AccountID, binding.ActorGroup, g.ID, bs), "", "")
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck // each write in the transaction answers its own problem
+	}
+	v, err := s.groupView(ctx, p, g)
+	if err != nil {
+		return nil, err
+	}
+	return api.ManagedUserGroupCreateV2201JSONResponse{Body: v}, nil
 }
 
 // ManagedUserGroupUpdateV2 sets a managed user group's description, when
@@ -492,8 +594,12 @@ func (s Server) ManagedUserGroupUpdateV2(
 	if err != nil {
 		return nil, err
 	}
+	v, err := s.groupView(ctx, p, g)
+	if err != nil {
+		return nil, err
+	}
 	return api.ManagedUserGroupUpdateV2200JSONResponse{
-		Body:    managedGroup(g),
+		Body:    v,
 		Headers: api.ManagedUserGroupUpdateV2200ResponseHeaders{ETag: new(strict.ETag(g.Version))},
 	}, nil
 }
@@ -531,8 +637,12 @@ func (s Server) ManagedUserGroupPatch(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // read and write answer their problems
 	}
+	v, err := s.groupView(ctx, p, g)
+	if err != nil {
+		return nil, err
+	}
 	return api.ManagedUserGroupPatch200JSONResponse{
-		Body:    managedGroup(g),
+		Body:    v,
 		Headers: api.ManagedUserGroupPatch200ResponseHeaders{ETag: new(strict.ETag(g.Version))},
 	}, nil
 }
@@ -569,7 +679,7 @@ func (s Server) ManagedUserGroupDelete(
 	if err != nil {
 		return nil, managedError(err, "managed user group")
 	}
-	return api.ManagedUserGroupDelete200JSONResponse{Body: managedGroup(g)}, nil
+	return api.ManagedUserGroupDelete200JSONResponse{Body: managedGroup(g, nil)}, nil
 }
 
 // ManagedUserGroupManagedUsers lists a managed user group's members.
@@ -588,12 +698,12 @@ func (s Server) ManagedUserGroupManagedUsers(
 	if err != nil {
 		return nil, managedError(err, "managed user group")
 	}
-	acts, err := s.actionsOn(ctx, p, entityManagedUser)
+	items, err := s.userViews(ctx, p, us)
 	if err != nil {
 		return nil, err
 	}
 	return api.ManagedUserGroupManagedUsers200JSONResponse{
-		Body: api.ManagedUserPage{Items: managedUsers(us, acts), NextCursor: next},
+		Body: api.ManagedUserPage{Items: items, NextCursor: next},
 	}, nil
 }
 

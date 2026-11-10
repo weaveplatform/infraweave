@@ -7,9 +7,6 @@
       "aiIntegrationUpdate",
       "aiIntegrations"
     ],
-    "API Keys": [
-      "apiKeyApiKeyRoleBindings"
-    ],
     "Account": [
       "defaultPublicWorkerPoolRunnerImage",
       "outgoingIPAddresses",
@@ -202,9 +199,7 @@
       "managedUserGroupIntegrationCreate",
       "managedUserGroupIntegrationDelete",
       "managedUserGroupIntegrationUpdate",
-      "managedUserGroupIntegrations",
-      "managedUserGroupUserRoleBindings",
-      "managedUserUserRoleBindings"
+      "managedUserGroupIntegrations"
     ],
     "Modules": [
       "module",

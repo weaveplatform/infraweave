@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
@@ -315,6 +316,7 @@ type world struct {
 	tree   *spaceTree
 	people *people
 	roles  *roleBook
+	binds  *bindBook
 }
 
 // public is the route class that takes no credential.
@@ -380,6 +382,7 @@ func newWorld(t *testing.T) *world {
 	w.tree = newSpaceTree(st, st.accounts[w.acct])
 	w.people = newPeople(st, w.acct)
 	w.roles = newRoleBook(st, w.acct)
+	w.binds = &bindBook{w: w}
 	keys := apikey.NewService(apikey.Deps{
 		Store: st, Authz: w.authz, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
@@ -395,7 +398,11 @@ func newWorld(t *testing.T) *world {
 	})
 	strict := api.NewStrictHandlerWithOptions(
 		full{Server: NewServer(Services{
-			Auth: auth, Keys: keys, Authz: w.authz, Accounts: st, Settings: cfg,
+			Auth:     auth,
+			Keys:     keys,
+			Authz:    w.authz,
+			Accounts: st,
+			Settings: cfg,
 			Spaces: space.NewService(space.Deps{
 				Store: w.tree, Authz: w.authz, Drop: func(kernel.AccountID) {},
 				Now: func() time.Time { return t0 },
@@ -408,6 +415,10 @@ func newWorld(t *testing.T) *world {
 				Store: w.people, Now: func() time.Time { return t0 },
 			}),
 			Roles: role.NewService(role.Deps{Store: w.roles, Drop: func(kernel.AccountID) {}}),
+			Bindings: binding.NewService(binding.Deps{
+				Store: w.binds, Authz: w.authz, Drop: func(kernel.AccountID) {},
+			}),
+			Atomic: func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
 		})},
 		nil,
 		api.StrictHTTPServerOptions{

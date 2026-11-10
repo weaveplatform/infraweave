@@ -12,6 +12,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
@@ -310,7 +311,7 @@ func TestAccCustomRoles(t *testing.T) {
 		t.Errorf("a bound role's delete = %v", err)
 	}
 	b, err := svc.Bindings(ctx, x.acct, r)
-	if err != nil || len(b) != 1 || b[0].Space != "hooli" || b[0].ActorKind != role.ActorUser ||
+	if err != nil || len(b) != 1 || b[0].Space != "hooli" || b[0].ActorKind != binding.ActorUser ||
 		b[0].ActorID != x.member.ULID {
 		t.Errorf("Bindings = %+v, %v", b, err)
 	}

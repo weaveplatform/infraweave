@@ -42,10 +42,6 @@ var (
 	// pending invitation in the account, and a resend to a managed user
 	// with no pending invitation.
 	ErrInvalidState = errors.New("invalid managed user state")
-	// ErrBindingsUnsupported refuses role bindings and space access rules,
-	// which nothing stores until P4b's bindings, so none is dropped
-	// silently.
-	ErrBindingsUnsupported = errors.New("role bindings are not served yet")
 	// ErrNotMember refuses a role change request of a caller that is no
 	// member, as only a person holds a role.
 	ErrNotMember = errors.New("only a member may ask for a role change")
@@ -231,18 +227,13 @@ func (s *Service) User(ctx context.Context, p kernel.Principal, id string) (User
 	return s.d.Store.User(ctx, p.AccountID, m) //nolint:wrapcheck // as above
 }
 
-// Invite invites the person in names to p's account. bindings is how many
-// role bindings the input carries.
+// Invite invites the person in names to p's account.
 func (s *Service) Invite(
 	ctx context.Context,
 	p kernel.Principal,
 	remoteIP string,
 	in Invite,
-	bindings int,
 ) (User, error) {
-	if bindings > 0 {
-		return User{}, fmt.Errorf("%w: roleBindings", ErrBindingsUnsupported)
-	}
 	if err := errors.Join(
 		organization.CheckName("username", in.Login),
 		member.CheckEmail("invitationEmail", in.Email),
@@ -258,20 +249,15 @@ func (s *Service) Invite(
 	return s.d.Store.Invite(ctx, p.OrganizationID, p.AccountID, in, inv, e)
 }
 
-// Update sets the managed user's Slack member. rules is how many space
-// access rules the input carries. A managed user whose version expect
-// does not accept is kernel.ErrStale and is not changed.
+// Update sets the managed user's Slack member. A managed user whose
+// version expect does not accept is kernel.ErrStale and is not changed.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
 	remoteIP, id string,
 	expect kernel.Expect,
-	rules int,
 	slack string,
 ) (User, error) {
-	if rules > 0 {
-		return User{}, fmt.Errorf("%w: accessRules", ErrBindingsUnsupported)
-	}
 	m, err := parse(id)
 	if err != nil {
 		return User{}, err

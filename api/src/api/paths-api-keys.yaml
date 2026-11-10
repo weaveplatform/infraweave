@@ -170,8 +170,15 @@ components:
       description: |-
         A new API key. There is no admin field: a body that sets one answers
         400, and a key becomes an account admin through a space-admin role
-        binding on the account's top space.
+        binding on the account's top space. accessRules and roleBindings bind
+        the key in its creation, under the rules of the managed users' inputs.
       properties:
+        accessRules:
+          description: Access rules for api key.
+          items:
+            $ref: '#/components/schemas/SpaceAccessRuleInput'
+          nullable: true
+          type: array
         description:
           description: Description of the API key
           nullable: true
@@ -195,6 +202,11 @@ components:
           # Any OIDC settings make an OIDC key, which needs the option.
           x-infraweave-feature:
             feature: oidc-api-keys
+        roleBindings:
+          items:
+            $ref: '#/components/schemas/RoleBindingInput'
+          nullable: true
+          type: array
         teams:
           items:
             type: string
@@ -707,6 +719,57 @@ paths:
         - merge-patch
         - rate-limit
       x-rest-style: update
+  /api-keys/{apiKeyId}/api-key-role-bindings:
+    get:
+      description: >-
+        The API key's role bindings, oldest first: those made as bindings and
+        those its access rules made.
+      operationId: apiKeyApiKeyRoleBindings
+      x-infraweave-feature: api-keys
+      x-infraweave-action: API_KEY_READ
+      x-infraweave-subject: any
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: apiKeyId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ApiKeyRoleBinding'
+                type: array
+          description: The apiKeyRoleBindings result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Api key api key role bindings
+      tags:
+        - API Keys
+      x-graphql:
+        field: apiKeyRoleBindings
+        operation: query
+        type: ApiKey
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
   /api-keys/{apiKeyId}/reset:
     post:
       description: Reset the secret of an API key.

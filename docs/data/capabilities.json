@@ -36,8 +36,8 @@
         "lowestTier": "Free; Enterprise for `oidc-api-keys`",
         "phase": "P3",
         "also": "P4b (`apiKeyApiKeyRoleBindings`)",
-        "state": "partial",
-        "notes": "Seven operations are served (P3), secret and OIDC keys alike; `apiKeyApiKeyRoleBindings` arrives with key bindings in P4b, until when `admin` reads false"
+        "state": "implemented",
+        "notes": "Secret and OIDC keys are served (P3); `apiKeyApiKeyRoleBindings` lists a key's bindings (P4b), and `admin` reads whether one is `space-admin` on the account's top space"
       }
     },
     {
@@ -531,7 +531,7 @@
         "phase": "P3b",
         "also": "P4b (role bindings), P18 (group integrations)",
         "state": "partial",
-        "notes": "A managed user is an organization member as one account sees it; group integrations give a Slack channel access rules (report 14 section 4.3)"
+        "notes": "A managed user is an organization member as one account sees it; the role bindings and access rules an invitation, a group or an update carries are stored as role bindings (P4b); group integrations give a Slack channel access rules (report 14 section 4.3)"
       }
     },
     {
@@ -736,7 +736,7 @@
         "lowestTier": "Free",
         "phase": "P4b",
         "state": "partial",
-        "notes": "`roles`, `role`, `roleCreate`, `roleUpdate`, `rolePatch` and `roleDelete` are served (P4b), custom roles holding only assignable actions beside the five system roles; the user, group, API key and stack role binding operations answer 501 until the rest of P4b serves them"
+        "notes": "`roles`, `role`, `roleCreate`, `roleUpdate`, `rolePatch` and `roleDelete` are served (P4b), custom roles holding only assignable actions beside the five system roles, and the user, group and API key role binding operations bind roles in spaces, each needing `SPACE_ADMIN` on its space; the stack role binding operations answer 501 until the stack bindings of P4b serve them"
       }
     },
     {

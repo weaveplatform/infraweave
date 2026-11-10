@@ -134,6 +134,10 @@ func (UnimplementedStrict) ApiKeyUpdate(context.Context, ApiKeyUpdateRequestObje
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUpdate", Route: "PUT /api-keys/{apiKeyId}"}
 }
 
+func (UnimplementedStrict) ApiKeyApiKeyRoleBindings(context.Context, ApiKeyApiKeyRoleBindingsRequestObject) (ApiKeyApiKeyRoleBindingsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyApiKeyRoleBindings", Route: "GET /api-keys/{apiKeyId}/api-key-role-bindings"}
+}
+
 func (UnimplementedStrict) ApiKeyReset(context.Context, ApiKeyResetRequestObject) (ApiKeyResetResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyReset", Route: "POST /api-keys/{apiKeyId}/reset"}
 }
@@ -350,6 +354,10 @@ func (UnimplementedStrict) ManagedUserGroupManagedUsers(context.Context, Managed
 	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupManagedUsers", Route: "GET /managed-user-groups/{managedUserGroupId}/managed-users"}
 }
 
+func (UnimplementedStrict) ManagedUserGroupUserRoleBindings(context.Context, ManagedUserGroupUserRoleBindingsRequestObject) (ManagedUserGroupUserRoleBindingsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserGroupUserRoleBindings", Route: "GET /managed-user-groups/{managedUserGroupId}/user-role-bindings"}
+}
+
 func (UnimplementedStrict) ManagedUserRequestInvite(context.Context, ManagedUserRequestInviteRequestObject) (ManagedUserRequestInviteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "managedUserRequestInvite", Route: "POST /managed-user-invite-requests"}
 }
@@ -384,6 +392,10 @@ func (UnimplementedStrict) ManagedUserPersonalApiKeys(context.Context, ManagedUs
 
 func (UnimplementedStrict) ManagedUserResendInvite(context.Context, ManagedUserResendInviteRequestObject) (ManagedUserResendInviteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "managedUserResendInvite", Route: "POST /managed-users/{managedUserId}/resend-invite"}
+}
+
+func (UnimplementedStrict) ManagedUserUserRoleBindings(context.Context, ManagedUserUserRoleBindingsRequestObject) (ManagedUserUserRoleBindingsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "managedUserUserRoleBindings", Route: "GET /managed-users/{managedUserId}/user-role-bindings"}
 }
 
 func (UnimplementedStrict) MarkedForDeletion(context.Context, MarkedForDeletionRequestObject) (MarkedForDeletionResponseObject, error) {
