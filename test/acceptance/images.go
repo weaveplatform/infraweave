@@ -45,6 +45,11 @@ const (
 	// ImageVault is the Vault whose Transit engine the vault KEK
 	// provider's suite, the vault start and @vault run against.
 	ImageVault = "hashicorp/vault:2.2.1@sha256:962a92876e168d68eaaa24b0b8b49bbce1cb63024060a67bba95cd158a366fc2"
+	// ImageGitea serves @vcs: a Git host with real repositories, webhooks
+	// and commit statuses, in place of hosted VCS providers.
+	//
+	// ref: decision 0016
+	ImageGitea = "gitea/gitea:28.3.0@sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d"
 	// ImageMoto is the AWS emulator whose KMS the awskms KEK provider's
 	// suite runs against. LocalStack's image needs a licence token to
 	// start, which no public pull request has.
