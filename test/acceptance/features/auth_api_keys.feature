@@ -12,7 +12,11 @@ Feature: API keys
   exists before it; every other key here is created through the API. Keys
   manage keys here because the home account allows it, a setting only a
   member turns on, which account_settings.feature covers. The servers trust
-  the shared OIDC issuer's certificate and allow it alone.
+  the shared OIDC issuer's certificate and allow it alone. Reading the
+  keys needs API_KEY_READ, which space-admin on any space holds and
+  space-writer on the top space does not, and the managers setting needs
+  the account admin. The member key, 01KACME000000000000000000A, holds
+  only the bindings a scenario gives it.
   ref: decisions 0006 and 0007, DV-013, DV-014
 
   Background:
@@ -104,3 +108,26 @@ Feature: API keys
   Scenario: The account records whether non-admins manage API keys
     Then setting non-admin API key managers through A with token "admin" to true answers true
     And setting non-admin API key managers through B with token "admin" to false answers false
+
+  @op:apiKeys @op:apiKey @op:apiKeyEnableNonAdminManagers @case:denial
+  Scenario: A key that writes in the top space but administers no space is refused the account's keys, which an admin of a space below the top reads
+    Given the member key is exchanged through A for token "m"
+    And token "admin" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"space-writer","spaceID":"acme"}' through A
+    And the answer's id names "writer"
+    When token "m" sends "GET /api/v1/api-keys" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"API_KEY_READ"'
+    When token "m" sends "GET /api/v1/api-keys/01KACME0000000000000000003" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PUT /api/v1/account/api-key-non-admin-managers" with '{"enable":true}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
+    When token "admin" sends "DELETE /api/v1/api-key-role-bindings/{writer}" through A
+    And token "admin" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"space-admin","spaceID":"legacy"}' through A
+    And token "m" sends "GET /api/v1/api-keys" through A
+    Then it answers 200
+    When token "m" sends "GET /api/v1/api-keys/01KACME0000000000000000003" through A
+    Then it answers 200
+    When token "m" sends "PUT /api/v1/account/api-key-non-admin-managers" with '{"enable":true}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
