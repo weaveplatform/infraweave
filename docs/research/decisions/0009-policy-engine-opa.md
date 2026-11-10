@@ -184,9 +184,9 @@ Who calls the engine, when, and what the result does to the run of decision
 |---|---|---|---|
 | `LOGIN` | `internal/access` (decision [0006](0006-authentication-and-tokens.md)) | Entry into an account (a sign-in, an account switch) and API key exchange, under the `LOGIN_POLICIES` scheme of decision [0007](0007-authorization-spaces-and-roles.md), with every `LOGIN` policy of the account's top space | Allow, admin, roles per space, teams, or denial with messages |
 | `GIT_PUSH` | the `vcs.process_delivery` job (decision [0012](0012-vcs-integration-model.md)) | Per affected stack or module, before any run exists | Creates the run in `QUEUED` (T1), cancels runs, sets lock, priority, external dependencies, module version, commit status |
-| `APPROVAL` | `internal/run` | On entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW`, and on each `runReview` | `QUEUED` to `READY` waits for approve (T2); reject gives T5, T24 or T29; approve in `PENDING_REVIEW` gives T23 |
-| `PLAN` | `internal/run` | When the worker reports a finished plan, and on each targeted replan | Picks the next state: `FAILED` (T18), `UNCONFIRMED` (T20), `APPLYING` (T21), `PENDING_REVIEW` (T22) or `FINISHED` (T17) |
-| `INITIALIZATION` (deprecated, server-side) | `internal/run` | Before `QUEUED` to `READY` | `deny` sends the run to `FAILED` with the messages |
+| `APPROVAL` | `internal/runs` | On entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW`, and on each `runReview` | `QUEUED` to `READY` waits for approve (T2); reject gives T5, T24 or T29; approve in `PENDING_REVIEW` gives T23 |
+| `PLAN` | `internal/runs` | When the worker reports a finished plan, and on each targeted replan | Picks the next state: `FAILED` (T18), `UNCONFIRMED` (T20), `APPLYING` (T21), `PENDING_REVIEW` (T22) or `FINISHED` (T17) |
+| `INITIALIZATION` (deprecated, server-side) | `internal/runs` | Before `QUEUED` to `READY` | `deny` sends the run to `FAILED` with the messages |
 | `TASK` (deprecated) | the task create handler | Before the task run is created | `deny` creates no run and answers `403`, problem `forbidden` (decision [0022](0022-api-errors-and-update-semantics.md)), with the messages in `detail` |
 | `TRIGGER` | the `policy.trigger` job | A tracked run or task reaches a terminal state; a module version is released | Creates tracked runs on the named stacks |
 | `NOTIFICATION` | event routing (decision 0015) | Every event decision 0015 defines | Routes to the inbox, Slack, webhooks, pull request comments |

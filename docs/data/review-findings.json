@@ -9344,7 +9344,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "**Depends on:** P7, P6, P4, P2b.",
-            "P8 needs both, because the run handover carries the resolved environment"
+            "P8 needs P6 and P7, because\n  the run handover carries the resolved environment"
           ]
         }
       ]
@@ -13329,7 +13329,7 @@
         {
           "file": "docs/implementation/repo-layout.md",
           "present": [
-            "feedback (P9, P12, P19, P19b)",
+            "feedback (P6b, P12, P19, P19b)",
             "flows (P18d) and intelligence (P25)",
             "from domain contributions (P17)"
           ]

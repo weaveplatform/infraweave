@@ -37,7 +37,7 @@ facts shape the design.
 
 ### The state machine is the authority
 
-- **One transition table.** `internal/run` holds the edges of the
+- **One transition table.** `internal/runs/internal/core/machine` holds the edges of the
   [run-transitions register](../../data/run-transitions.json) as data: report
   08's T1 to T43
   ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
@@ -46,7 +46,8 @@ facts shape the design.
   refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
   absent from the served enum (decision 0021).
 - **One entry point.** Every state change goes through
-  `run.Transition(ctx, tx, req)` with the run ID, the expected `state_version`, the
+  `lifecycle.Transition(ctx, tx, req)` in `internal/runs/internal/core/lifecycle`,
+  with the run ID, the expected `state_version`, the
   target state, the driver, the actor and a note. In the caller's transaction it:
   1. locks the run row (`SELECT ... FOR UPDATE`, in 0005's lock order) and checks
      that `runs.state_version` equals the expected value and that the edge exists
@@ -55,20 +56,26 @@ facts shape the design.
   3. appends a `run_state_transitions` row (`run`, `sequence` = the new
      `state_version`, `state`, `timestamp`, `until`, `username`, `note`,
      `terminal`, `has_logs`);
-  4. updates the stack's `state` and `state_set_by` when the run is the stack's
-     tracked run and the state exists in `StackState`
+  4. writes the stack's `state` and `blocked` into the `stacks` domain's table
+     through `stacksapi` when the run is the stack's tracked run and the state
+     exists in `StackState`
      ([08 StackState](../reference/08-run-lifecycle.md#stackstate-and-runstate)).
-     The columns live in a table the run transition owns, so the write stays
-     inside the transition's transaction; decision 0004 places it;
+     They are a projection written inside the transition's transaction, so stack
+     lists filter, sort and count by state from their own table; the blocker and
+     the run lock are read through `runsapi.StackStatus`
+     ([0004](0004-repository-architecture.md#constraints));
   5. emits a `run_updated` event with `outbox.Append` in the same transaction;
      decision 0015's fan-out, through the queue of
      [0011](0011-persistent-work-queue.md), reaches notifications, webhooks,
      the audit trail and the commit checks of
      [0012](0012-vcs-integration-model.md). When a blocking run ends, the
      transaction also enqueues decision 0009's `policy.trigger` job;
-  6. when the new state is terminal, deletes the run's rows in `state_locks`, so a
-     stopped, killed or failed run never leaves a state lock behind
-     ([0010](0010-state-backend.md));
+  6. when the new state is terminal, releases the stack lock the run holds in
+     `stack_run_locks`. A transition writes only the `runs` domain's tables, so
+     the `state` domain releases the run's rows in `state_locks` when it consumes
+     the run's terminal `run_updated`, and `runsapi.StateAccess` refuses a lock to
+     a run that is no longer active; a stopped, killed or failed run never keeps a
+     state lock ([0010](0010-state-backend.md));
   7. enqueues `run.schedule` for the stack when the run leaves a state that holds
      or waits on the stack lock, and issues `NOTIFY infraweave_runs` with the pool
      ID when the new state is claimable (`READY`, `CONFIRMED`, `REPLAN_REQUESTED`).
@@ -116,13 +123,13 @@ server answers with the state the runner is to execute next, or with `pause` or
 coalesce into one evaluation ([0011](0011-persistent-work-queue.md)). It is
 enqueued when a run is created, reaches a terminal state or `UNCONFIRMED`, is
 reviewed, when an upstream run or external dependency settles, and on
-`stackUnlock` and `stackEnable`. The handler locks the stack row and walks its
-`QUEUED` runs oldest first
+`stackUnlock` and `stackEnable`. The handler locks the stack's `stack_run_locks`
+row and walks its `QUEUED` runs oldest first
 ([08 section 4](../reference/08-run-lifecycle.md#4-queueing-the-stack-lock-and-scheduling)):
 
-- **The stack lock.** `stacks.blocker_run_id` names the run holding the exclusive
-  lock. A blocking run (`TRACKED`, `TASK`, `DESTROY`) moves to `READY` only when
-  the column is empty, and takes it in the same transaction; it releases it on
+- **The stack lock.** `stack_run_locks`, keyed by stack, names the run holding the
+  exclusive lock. A blocking run (`TRACKED`, `TASK`, `DESTROY`) moves to `READY`
+  only when no run holds it, and takes it in the same transaction; it releases it on
   reaching a terminal state. Proposed and test runs never take it. A blocked run
   reports the holder as its blocker.
 - **Gates.** The run's approval policies have approved; every upstream run it
@@ -608,11 +615,15 @@ offers this policy is available to it alone; 0009 lists built-ins.
 
 ## Verification
 
-- `internal/run/transitions_test.go`: every edge of the table is allowed for its
-  run types and driver, and every other pair is refused.
-- `internal/run/report08_test.go`: parses report 08's transition table and fails
-  when an edge there is missing from the implementation.
-- `internal/run/claim_test.go` (PostgreSQL through testcontainers): seven-tier
+- `TestUnitTransitionTable` (`internal/runs/internal/core/machine`): every edge of
+  the table is allowed for its run types and driver, and every other pair is
+  refused.
+- `TestUnitTransitionRegister`: reads the
+  [run-transitions register](../../data/run-transitions.json), which holds report
+  08's transition table and T44, and fails when an edge there is missing from the
+  machine or the machine has one beyond it.
+- `TestAccRunClaim` (`internal/runs/internal/core/schedule`, PostgreSQL through
+  testcontainers): seven-tier
   order with oldest first, one claim per run under 50 concurrent pollers, drift
   limit, and the `public-worker-slots` limit pooled per organization with an
   account limit below it.
@@ -620,7 +631,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   minute, a repeated minute writes nothing, rows older than
   `worker.samples.retention` are deleted, and `SamplesBetween` returns the
   window.
-- `internal/workerapi` tests: registration refused for a foreign chain, a reset
+- `internal/workers` protocol adapter tests: registration refused for a foreign chain, a reset
   serial, a replayed `jti` and a skewed `iat`; poll hold, wake-up and timeout;
   signals; session renewal; `409` on a stale report.
 - `internal/workers` reap tests on a fake clock: offline at 3 minutes with the
