@@ -55,9 +55,15 @@ Feature: Spaces and their stacks stay within their account
     When token "h" sends "DELETE /api/v1/spaces/globex" through B
     Then it answers a 404 problem "not-found"
 
-  @op:stacks @op:stack @op:stackCreate @op:stackLock @op:stackDelete @case:denial
+  @op:stacks @op:stack @op:stackCreate @op:stackLock @op:stackDelete @op:searchStacks @op:searchStacksSuggestions @case:denial
   Scenario: Another account's stack answers 404, and each account's slugs are its own
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["prod"]},"manageState":false}' through A
+    Then token "s" searching the stacks through B in pages of 1 finds "" forwards and back
+    And token "x" searching the stacks through A in pages of 1 finds "" forwards and back
+    When token "s" sends "POST /api/v1/stacks/search/suggestions" with '{"fields":["label"]}' through A
+    Then the answer suggests the label values "" of 0 stacks
+    When token "x" sends "POST /api/v1/stacks/search/suggestions" with '{"fields":["label"]}' through B
+    Then the answer suggests the label values "" of 0 stacks
     When token "s" sends "GET /api/v1/stacks/infra" through B
     Then it answers a 404 problem "not-found"
     When token "x" sends "POST /api/v1/stacks/infra/lock" through A
@@ -83,3 +89,29 @@ Feature: Spaces and their stacks stay within their account
     When the browser sends "POST /api/v1/organization/accounts" with '{"slug":"initech-ops","name":"Ops","admin":"{bob}"}' through B
     Then it answers 201
     And the account "initech-ops" has its top space, legacy below it, the system roles and "bob" as space-admin on its top space
+
+  @op:contexts @op:context @op:contextAttach @op:searchContexts @op:attachableContextsInSpace @case:denial
+  Scenario: Each account attaches only its own contexts, and another account's answers 404
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","stackAttachments":[{"stack":"infra","priority":0}]}' through B
+    And token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    When token "s" sends "GET /api/v1/contexts/shared" through A
+    Then it answers a 404 problem "not-found"
+    When token "x" sends "GET /api/v1/contexts/shared" through B
+    Then it answers a 404 problem "not-found"
+    When token "s" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":0}' through A
+    Then it answers a 404 problem "not-found"
+    When token "s" sends "GET /api/v1/contexts" through B
+    Then the answer lists the contexts ""
+    When token "x" sends "POST /api/v1/contexts/search" with '{}' through A
+    Then the answer lists the contexts ""
+    When token "s" sends "GET /api/v1/attachable-contexts-in-space?id=legacy" through B
+    Then the answer lists the contexts ""
+    When token "s" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","stackAttachments":[{"stack":"infra","priority":0}]}' through A
+    Then it answers 201
+    And the stack "infra" read through B with token "s" eventually attaches the contexts "shared"
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "shared"
+    When token "s" sends "DELETE /api/v1/contexts/shared?force=true" through B
+    Then it answers 200
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "shared"
+    And the stack "infra" read through B with token "s" eventually attaches the contexts ""
