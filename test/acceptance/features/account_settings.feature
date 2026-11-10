@@ -38,7 +38,7 @@ Feature: Account settings
     And creating a key through B with token "admin" and '{"name":"deploy","teams":[]}' answers a 403 problem "forbidden"
     And "GET /api/v1/api-keys-manageable-by-non-humans" through B with token "admin" answers 'false'
 
-  @op:accountToggleAPIKeyManagementFromNonHumans @case:success
+  @op:accountToggleAPIKeyManagementFromNonHumans @op:apiKeysManageableByNonHumans @case:success
   Scenario: A member lets API keys manage API keys
     Given the home account's member has a browser session, admitted to home alone
     When "POST /api/v1/account/toggle-api-key-management-from-non-humans" through A in the browser answers 'true'

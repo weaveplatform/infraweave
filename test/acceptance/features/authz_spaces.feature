@@ -209,3 +209,13 @@ Feature: Spaces
     When token "h" sends "PATCH /api/v1/spaces/{team}" with '{"labels":["Prod","Prod"]}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/labels/1" as "duplicate"
+
+  @op:spacePatch @case:denial
+  Scenario: A member who reads a space but does not administer it patches nothing, and one it cannot read is not found
+    Given the member key is space-reader on the space "legacy"
+    When token "m" sends "PATCH /api/v1/spaces/legacy" with '{"description":"mine"}' through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PATCH /api/v1/spaces/acme" with '{"description":"mine"}' through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/spaces/legacy" through A
+    Then the answer's description is '""'

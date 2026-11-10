@@ -104,10 +104,12 @@ Feature: API keys
     Then creating an OIDC key through A with token "admin" for the shared issuer over plain HTTP answers a 422 problem "validation-failed"
     And creating an OIDC key through A with token "admin" for "https://token.actions.githubusercontent.com" answers a 422 problem "validation-failed"
 
-  @op:apiKeyEnableNonAdminManagers @case:success
+  @op:apiKeyEnableNonAdminManagers @op:apiKeysManagedByNonAdmins @case:success
   Scenario: The account records whether non-admins manage API keys
     Then setting non-admin API key managers through A with token "admin" to true answers true
+    And "GET /api/v1/api-keys-managed-by-non-admins" through B with token "admin" answers 'true'
     And setting non-admin API key managers through B with token "admin" to false answers false
+    And "GET /api/v1/api-keys-managed-by-non-admins" through A with token "admin" answers 'false'
 
   @op:apiKeys @op:apiKey @op:apiKeyEnableNonAdminManagers @case:denial
   Scenario: A key that writes in the top space but administers no space is refused the account's keys, which an admin of a space below the top reads
