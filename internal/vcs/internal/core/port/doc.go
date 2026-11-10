@@ -2,8 +2,10 @@
 // provider implements to resolve refs, read files and list the files two
 // commits differ in, over a Repository; ErrNotFound when the repository,
 // ref or path is missing, ErrRepositoryURL for a repository URL a Source
-// refuses, and ErrTooLarge for a file over MaxFileSize. The sourcetest
-// package is the contract every Source passes.
+// refuses, and ErrTooLarge for a file over MaxFileSize; and Tester, which
+// a provider implements to check an Integration, its Settings and opened
+// secrets, with Checks of each kind. The sourcetest package is the
+// contract every Source passes.
 //
 // # Input and output
 //

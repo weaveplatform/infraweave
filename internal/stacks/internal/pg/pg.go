@@ -77,7 +77,7 @@ var _ core.Store = (*Store)(nil)
 const columns = `s.account_id, s.id, s.slug, s.space_id, s.name, s.description, s.repository,
 	s.repository_url, s.branch, s.provider, s.namespace, s.project_root,
 	s.additional_project_globs, s.git_sparse_checkout_paths, s.runner_image, s.worker_pool_id,
-	s.vcs_integration_id, s.vendor, s.vendor_config, s.terraform_version, s.autodeploy,
+	s.vcs_integration_id, s.vcs_detached, s.vendor, s.vendor_config, s.terraform_version, s.autodeploy,
 	s.autoretry, s.protect_from_deletion, s.disabled, s.local_preview_enabled,
 	s.github_action_deploy, s.enable_sensitive_output_upload,
 	s.enable_well_known_secret_masking, s.skip_vendor_binary_download, s.manages_state, s.locked_at,
@@ -99,15 +99,48 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 		holder, lockedBy, note *string
 	)
 	err := row.Scan(append([]any{
-		&st.Account, &st.ID, &st.Slug, &st.Space, &st.Name, &st.Description, &st.Repository,
-		&st.RepositoryURL, &st.Branch, &st.Provider, &st.Namespace, &st.ProjectRoot,
-		&st.AdditionalProjectGlobs, &st.GitSparseCheckoutPaths, &st.RunnerImage, &st.WorkerPool,
-		&st.VCSIntegration, &st.Vendor, &config, &st.TerraformVersion, &st.Autodeploy,
-		&st.Autoretry, &st.ProtectFromDeletion, &st.Disabled, &st.LocalPreviewEnabled,
-		&st.GithubActionDeploy, &st.EnableSensitiveOutputUpload,
-		&st.EnableWellKnownSecretMasking, &st.SkipVendorBinaryDownload, &st.ManagesState, &lockedAt,
-		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &head, &commit,
-		&st.TrackedCommitSetBy, &hooks, &st.Labels,
+		&st.Account,
+		&st.ID,
+		&st.Slug,
+		&st.Space,
+		&st.Name,
+		&st.Description,
+		&st.Repository,
+		&st.RepositoryURL,
+		&st.Branch,
+		&st.Provider,
+		&st.Namespace,
+		&st.ProjectRoot,
+		&st.AdditionalProjectGlobs,
+		&st.GitSparseCheckoutPaths,
+		&st.RunnerImage,
+		&st.WorkerPool,
+		&st.VCSIntegration,
+		&st.VCSDetached,
+		&st.Vendor,
+		&config,
+		&st.TerraformVersion,
+		&st.Autodeploy,
+		&st.Autoretry,
+		&st.ProtectFromDeletion,
+		&st.Disabled,
+		&st.LocalPreviewEnabled,
+		&st.GithubActionDeploy,
+		&st.EnableSensitiveOutputUpload,
+		&st.EnableWellKnownSecretMasking,
+		&st.SkipVendorBinaryDownload,
+		&st.ManagesState,
+		&lockedAt,
+		&holder,
+		&lockedBy,
+		&note,
+		&st.CreatedAt,
+		&st.Version,
+		&head,
+		&commit,
+		&st.TrackedCommitSetBy,
+		&hooks,
+		&st.Labels,
 	}, extra...)...)
 	if err != nil {
 		return core.Stack{}, err //nolint:wrapcheck // callers name the read
@@ -379,6 +412,26 @@ func (s *Store) SetTracked(
 	return nil
 }
 
+// DetachVCS detaches acct's stacks bound to integration, leaving their
+// versions as they are.
+func (s *Store) DetachVCS(
+	ctx context.Context,
+	acct kernel.AccountID,
+	integration kernel.ULID,
+) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET vcs_detached = true,
+			vcs_integration_id = NULL
+		WHERE account_id = $1 AND vcs_integration_id = $2`, acct, integration)
+	if err != nil {
+		return fmt.Errorf(
+			"stacks: detach VCS integration %s: %w",
+			integration,
+			sql.Unavailable(err),
+		)
+	}
+	return nil
+}
+
 // Create writes a new stack with its hooks and labels.
 func (s *Store) Create(ctx context.Context, st core.Stack) error {
 	//nolint:wrapcheck // each statement in the transaction names itself
@@ -423,7 +476,7 @@ func (s *Store) write(ctx context.Context, st core.Stack) error {
 			local_preview_enabled = $25, github_action_deploy = $26,
 			enable_sensitive_output_upload = $27, enable_well_known_secret_masking = $28,
 			skip_vendor_binary_download = $29, locked_at = $30, lock_holder = $31, locked_by = $32,
-			lock_note = $33, version = $34
+			lock_note = $33, version = $34, vcs_detached = $35
 		WHERE account_id = $1 AND id = $2`,
 		st.Account, st.ID, st.Slug, st.Space, st.Name, st.Description, st.Repository,
 		st.RepositoryURL, st.Branch, st.Provider, st.Namespace, st.ProjectRoot,
@@ -431,7 +484,7 @@ func (s *Store) write(ctx context.Context, st core.Stack) error {
 		st.VCSIntegration, st.Vendor, config, st.TerraformVersion, st.Autodeploy, st.Autoretry,
 		st.ProtectFromDeletion, st.Disabled, st.LocalPreviewEnabled, st.GithubActionDeploy,
 		st.EnableSensitiveOutputUpload, st.EnableWellKnownSecretMasking,
-		st.SkipVendorBinaryDownload, lockedAt, holder, by, note, st.Version)
+		st.SkipVendorBinaryDownload, lockedAt, holder, by, note, st.Version, st.VCSDetached)
 	switch {
 	case err != nil:
 		return writeError(st, err)

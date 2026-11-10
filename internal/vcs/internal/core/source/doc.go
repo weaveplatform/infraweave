@@ -9,12 +9,15 @@
 // stacksapi.ErrRefNotFound. Track sets a stack's branch head and tracked
 // commit to its branch's head, set by infraweave; a stack gone or without
 // a source it can read is skipped, and a repository or branch its host
-// lacks fails the job for good, as a retry finds it no more.
+// lacks fails the job for good, as a retry finds it no more. The Source
+// reaches the repository through the integration the stack uses, its own
+// or its provider's default, which Integrations finds; a stack whose
+// integration was deleted is refused as a *kernel.Invalid.
 //
 // # Input and output
 //
-// New takes the stacks domain's api and each provider's Source by its
-// served VCSProvider value.
+// New takes the stacks domain's api, each provider's Source by its served
+// VCSProvider value, and the domain's Integrations.
 //
 // # Dependencies
 //

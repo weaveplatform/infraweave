@@ -70,7 +70,8 @@ type Commit struct {
 // Settings are what a run of the stack reads. Vendor is the iac vendor's
 // kind and VendorConfig its settings as the vendor checked them; Hooks
 // maps each phase that has commands to them, in order. WorkerPool and
-// VCSIntegration are nil when the stack names none. TrackedBranchHead and
+// VCSIntegration are nil when the stack names none, and VCSDetached marks
+// a stack whose integration was deleted. TrackedBranchHead and
 // TrackedCommit are nil until the vcs domain resolves the branch, and
 // TrackedCommitSetBy names who set TrackedCommit. Version counts the
 // stack's writes, which SetTracked is not.
@@ -87,6 +88,7 @@ type Settings struct {
 	RunnerImage            *string
 	WorkerPool             *kernel.ULID
 	VCSIntegration         *kernel.ULID
+	VCSDetached            bool
 	Vendor                 string
 	VendorConfig           json.RawMessage
 	TerraformVersion       *string
@@ -164,6 +166,32 @@ type Stacks interface {
 		id kernel.ULID,
 		head, commit *Commit,
 		setBy string,
+	) error
+	// DetachVCS detaches acct's stacks bound to integration, in the
+	// context's transaction: each one forgets the integration and
+	// refuses its commit operations until a write gives it a source
+	// again. It changes neither the stacks' versions nor their events.
+	DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error
+}
+
+// ErrNoIntegration reports a VCS integration a stack may not bind: one
+// the account lacks, of another provider, or in a space the stack's space
+// does not reach.
+var ErrNoIntegration = errors.New("stacks: no such VCS integration")
+
+// StackIntegrations is what a stack's write checks its VCS integration
+// with, a back edge the vcs domain implements: Bindable is nil when
+// acct's integration id is of provider and in space or a space space
+// inherits from, and ErrNoIntegration otherwise.
+//
+// ref: decisions 0004 and 0012
+type StackIntegrations interface {
+	Bindable(
+		ctx context.Context,
+		acct kernel.AccountID,
+		space kernel.ULID,
+		provider string,
+		id kernel.ULID,
 	) error
 }
 

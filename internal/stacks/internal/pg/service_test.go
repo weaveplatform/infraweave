@@ -286,7 +286,7 @@ func TestAccServiceCreate(t *testing.T) {
 	}
 	want := []string{
 		"/input/name", "/input/repository", "/input/branch", "/input/workerPool",
-		"/input/vcsIntegrationId", "/input/terraformVersion", "/input/vendorConfig",
+		"/input/terraformVersion", "/input/vendorConfig",
 		"/input/vendorConfig/terraform/version",
 	}
 	if got := pointers(t, func() error {
@@ -836,4 +836,92 @@ func TestAccServiceTracked(t *testing.T) {
 	if !slices.Equal(marked, []bool{true, true, false}) {
 		t.Errorf("the events' source marks = %v, want the create's and the branch change's", marked)
 	}
+}
+
+// integrations binds only bound, of provider GITLAB, and fails with err
+// when it is set.
+type integrations struct {
+	bound kernel.ULID
+	err   error
+}
+
+func (i integrations) Bindable(
+	_ context.Context,
+	_ kernel.AccountID,
+	_ kernel.ULID,
+	provider string,
+	id kernel.ULID,
+) error {
+	switch {
+	case i.err != nil:
+		return i.err
+	case id != i.bound || provider != "GITLAB":
+		return stacksapi.ErrNoIntegration
+	}
+	return nil
+}
+
+// TestAccServiceIntegration checks that a stack binds only an integration
+// the vcs domain allows, refused at vcsIntegrationId otherwise, and none
+// before one is bound; that detaching forgets the integration and
+// refuses the commit operations as *core.Detached without moving the
+// version; and that a write giving the stack a source again clears it.
+func TestAccServiceIntegration(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t)
+	bound := kernel.NewULID()
+	in := input("Infra")
+	in.Provider, in.VCSIntegration = new("GITLAB"), new(bound.String())
+	refused := func(name string, call func() error, pointer string) {
+		t.Helper()
+		if got := pointers(t, call()); len(got) != 1 || got[0] != pointer {
+			t.Errorf("%s's pointers = %v", name, got)
+		}
+	}
+	create := func() error { _, err := f.svc.Create(ctx, f.admin, "", false, in); return err }
+	refused("a create with none bound", create, "/input/vcsIntegrationId")
+	f.svc.BindIntegrations(integrations{bound: bound})
+	st, err := f.svc.Create(ctx, f.admin, "", false, in)
+	if err != nil || st.VCSIntegration == nil || *st.VCSIntegration != bound {
+		t.Fatalf("Create = %+v, %v", st, err)
+	}
+	other := in
+	other.VCSIntegration = new("not-a-ulid")
+	refused("an update naming a bad ID", func() error {
+		_, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, other)
+		return err
+	}, "/vcsIntegrationId")
+	other.VCSIntegration = new(kernel.NewULID().String())
+	refused("an update naming another", func() error {
+		_, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, other)
+		return err
+	}, "/vcsIntegrationId")
+	f.svc.BindIntegrations(integrations{err: kernel.ErrUnavailable})
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); !errors.Is(
+		err, kernel.ErrUnavailable) {
+		t.Errorf("Update with the vcs domain down = %v", err)
+	}
+	f.svc.BindIntegrations(integrations{bound: bound})
+	if err := f.svc.DetachVCS(ctx, f.acct, bound); err != nil {
+		t.Fatal(err)
+	}
+	read, err := f.svc.Settings(ctx, f.acct, st.ID)
+	if err != nil || !read.VCSDetached || read.VCSIntegration != nil || read.Version != st.Version {
+		t.Fatalf("Settings after the detach = %+v, %v", read, err)
+	}
+	f.svc.BindSources(sources{heads: map[string]stacksapi.Commit{"main": {Hash: "aaa"}}})
+	if _, err := f.svc.SyncCommit(ctx, f.writer, "infra"); !isDetached(err) {
+		t.Errorf("SyncCommit of a detached stack = %v", err)
+	}
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); err != nil {
+		t.Fatal(err)
+	}
+	if read, err = f.svc.Settings(ctx, f.acct, st.ID); err != nil || read.VCSDetached {
+		t.Errorf("Settings after the rebind = %+v, %v", read, err)
+	}
+}
+
+func isDetached(err error) bool {
+	_, ok := errors.AsType[*core.Detached](err)
+	return ok
 }

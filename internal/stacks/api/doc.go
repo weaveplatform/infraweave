@@ -12,7 +12,10 @@
 // configuration domain, a back edge that domain implements, with
 // AttachedContext and ConfigElement its answers. StackSources is what the
 // stack's commit operations resolve refs through, a back edge the vcs
-// domain implements, with ErrRefNotFound for a ref the repository lacks.
+// domain implements, with ErrRefNotFound for a ref the repository lacks,
+// and StackIntegrations what a stack's write checks the VCS integration it
+// names with, another, with ErrNoIntegration for one it may not bind;
+// Stacks.DetachVCS detaches the stacks bound to a deleted integration.
 // Changed is the event the domain appends to the outbox whenever a stack
 // is created, changed, locked, unlocked or deleted, marking a change that
 // gives or changes its source, with ChangedSchema its document's schema.
@@ -26,5 +29,6 @@
 // It imports the standard library and internal/kernel. The domains above
 // stacks in the declared graph import it; the stacks domain's assembly
 // implements Stacks, those domains StackGuard, the configuration domain
-// StackConfiguration, and the vcs domain StackSources.
+// StackConfiguration, and the vcs domain StackSources and
+// StackIntegrations.
 package api

@@ -72,9 +72,10 @@ type Input struct {
 const invalidDetail = "The stack's settings are refused."
 
 // check refuses each field of in a stack cannot hold, with pointers
-// under at, the input's place in the request body. A worker pool or VCS
-// integration ID names nothing: no domain holds either, so no account
-// has one for a stack to name.
+// under at, the input's place in the request body. A worker pool ID
+// names nothing: no domain holds one, so no account has one for a stack
+// to name. A VCS integration ID is the vcs domain's to check, once the
+// stack's space is known.
 func check(at string, in Input) error {
 	var errs []kernel.FieldError
 	refuse := func(field, reason, message string) {
@@ -99,10 +100,6 @@ func check(at string, in Input) error {
 	if in.WorkerPool != nil {
 		refuse("workerPool", kernel.ReasonNotFound,
 			fmt.Sprintf("No worker pool %q in this account.", *in.WorkerPool))
-	}
-	if in.VCSIntegration != nil {
-		refuse("vcsIntegrationId", kernel.ReasonNotFound,
-			fmt.Sprintf("No VCS integration %q in this account.", *in.VCSIntegration))
 	}
 	err := iac.ValidateSettings(iac.Input{
 		VendorConfig: in.VendorConfig, TerraformVersion: in.TerraformVersion,

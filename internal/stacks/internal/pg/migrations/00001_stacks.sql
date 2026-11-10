@@ -14,7 +14,9 @@
 -- are the branch's head and the commit runs use, each a stacksapi.Commit as
 -- JSON, which the vcs domain writes; tracked_commit_set_by names who set
 -- the tracked commit. Writing them changes no version, since no request
--- body carries them.
+-- body carries them. vcs_detached marks a stack whose VCS integration was
+-- deleted, which the vcs domain sets, clearing vcs_integration_id, in the
+-- delete's transaction; a write that changes the stack's source clears it.
 CREATE TABLE stacks (
     account_id                       uuid        NOT NULL,
     id                               uuid        NOT NULL,
@@ -33,6 +35,7 @@ CREATE TABLE stacks (
     runner_image                     text,
     worker_pool_id                   uuid,
     vcs_integration_id               uuid,
+    vcs_detached                     boolean     NOT NULL DEFAULT false,
     vendor                           text        NOT NULL,
     vendor_config                    jsonb       NOT NULL DEFAULT '{}',
     terraform_version                text,

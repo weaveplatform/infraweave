@@ -7,7 +7,8 @@
 // ID, by slug or by the repository's branch it tracks,
 // stacksapi.ErrNotFound when the account lacks it, writes it whole but
 // for its tracked commit and branch head, which SetTracked writes without
-// its version,
+// its version, detaches the stacks bound to a VCS integration, which
+// DetachVCS does without their versions,
 // searches an account's stacks and suggests their values by
 // stacks.Fields through platform/sql/search, answers whether a stack
 // lives in a space, finds an account's stacks in some spaces by label

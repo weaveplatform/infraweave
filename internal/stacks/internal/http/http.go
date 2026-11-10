@@ -476,6 +476,11 @@ func stackError(err error, slug string) error {
 		p.LockedBy = l.By
 		return &problem.Error{Problem: p}
 	}
+	if _, ok := errors.AsType[*core.Detached](err); ok {
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InvalidState.Error(
+			"The stack's VCS integration was deleted; give the stack an integration first.")
+	}
 	if sp, ok := errors.AsType[*core.SpaceError](err); ok {
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.NotFound.Error(fmt.Sprintf("No space %q in this account.", sp.Slug))

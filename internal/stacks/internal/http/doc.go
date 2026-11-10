@@ -16,7 +16,9 @@
 // out, its branch head and tracked commit as the vcs domain resolved
 // them, and the members later phases own at their empty values. The
 // service's errors answer as problems: a missing action 403 naming it, a
-// stack locked by another 409 resource-locked naming the holder, a taken
+// stack locked by another 409 resource-locked naming the holder, a commit
+// operation on a stack whose VCS integration was deleted 409
+// invalid-state, a taken
 // slug 409 already-exists, a missing stack or space 404, and a stale
 // If-Match 412. A stack's run and task lists answer empty pages, refusing
 // a cursor of another list as 400 invalid-cursor and a runsInRange span

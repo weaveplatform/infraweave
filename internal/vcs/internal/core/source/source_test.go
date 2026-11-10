@@ -87,7 +87,7 @@ func TestUnitResolve(t *testing.T) {
 	url := "https://git.example/acme/infra.git"
 	want := vcsapi.Commit{Hash: "abc", Message: "init", Timestamp: time.Unix(1, 0)}
 	var got port.Repository
-	svc := New(stacks{settings: settings("GIT", &url)}, map[string]port.Source{
+	svc := newService(stacks{settings: settings("GIT", &url)}, map[string]port.Source{
 		"GIT": source{repo: &got, commit: want},
 	})
 	c, err := svc.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
@@ -105,7 +105,7 @@ func TestUnitResolve(t *testing.T) {
 		{errOffline, errOffline},
 		{kernel.ErrUnavailable, kernel.ErrUnavailable},
 	} {
-		svc := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
+		svc := newService(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
 			"GIT": source{repo: &got, err: tc.err},
 		})
 		if _, err := svc.Resolve(
@@ -126,7 +126,7 @@ func TestUnitResolve(t *testing.T) {
 // refuses is invalid at /repositoryURL.
 func TestUnitResolveRepositoryURL(t *testing.T) {
 	var got port.Repository
-	svc := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
+	svc := newService(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
 		"GIT": source{repo: &got, err: port.ErrRepositoryURL},
 	})
 	_, err := svc.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
@@ -142,7 +142,7 @@ func TestUnitResolveRepositoryURL(t *testing.T) {
 // reaches the Source without one.
 func TestUnitSourceURL(t *testing.T) {
 	var got port.Repository
-	svc := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
+	svc := newService(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
 		"GIT": source{repo: &got},
 	})
 	u, err := svc.SourceURL(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "abc")
@@ -155,8 +155,8 @@ func TestUnitSourceURL(t *testing.T) {
 // stacksapi.ErrNotFound, and that a provider without a Source is refused
 // as invalid at /provider, by both methods.
 func TestUnitSourceRefused(t *testing.T) {
-	missing := New(stacks{err: stacksapi.ErrNotFound}, nil)
-	unread := New(stacks{settings: settings("GITHUB", nil)}, map[string]port.Source{})
+	missing := newService(stacks{err: stacksapi.ErrNotFound}, nil)
+	unread := newService(stacks{settings: settings("GITHUB", nil)}, map[string]port.Source{})
 	acct, id := kernel.NewAccountID(), kernel.NewULID()
 	for name, call := range map[string]func(*Service) error{
 		"Resolve": func(s *Service) error {
@@ -191,7 +191,7 @@ func TestUnitTrack(t *testing.T) {
 	var got port.Repository
 	track := func(st stacks, src port.Source) error {
 		st.tracked = &tracked
-		return New(st, map[string]port.Source{"GIT": src}).Track(t.Context(), acct, id)
+		return newService(st, map[string]port.Source{"GIT": src}).Track(t.Context(), acct, id)
 	}
 	if err := track(
 		stacks{settings: settings("GIT", &url)},
@@ -248,12 +248,87 @@ func TestUnitResolver(t *testing.T) {
 		err  error
 		want error
 	}{{nil, nil}, {port.ErrNotFound, stacksapi.ErrRefNotFound}} {
-		r := New(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
+		r := newService(stacks{settings: settings("GIT", nil)}, map[string]port.Source{
 			"GIT": source{repo: &got, commit: c, err: tc.err},
 		}).Resolver()
 		sc, err := r.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
 		if !errors.Is(err, tc.want) || (tc.err == nil && (sc.Hash != "abc" || sc.Tag != "v1")) {
 			t.Errorf("Resolve with %v = %+v, %v", tc.err, sc, err)
 		}
+	}
+}
+
+// integrations answers Use with in, found when found is set, or err, and
+// records the integration ID it is asked for.
+type integrations struct {
+	in    port.Integration
+	found bool
+	err   error
+	asked **kernel.ULID
+}
+
+func (i integrations) Use(
+	_ context.Context,
+	_ kernel.AccountID,
+	_ string,
+	id *kernel.ULID,
+) (port.Integration, bool, error) {
+	if i.asked != nil {
+		*i.asked = id
+	}
+	return i.in, i.found, i.err
+}
+
+// newService is the service over st and providers, whose stacks use no
+// integration.
+func newService(st stacksapi.Stacks, providers map[string]port.Source) *Service {
+	return New(st, providers, integrations{})
+}
+
+// TestUnitIntegration checks that the Source reaches the repository
+// through the integration the stack uses, its own when it names one; that
+// a failed read of it fails the resolve; and that a detached stack is
+// refused as invalid.
+func TestUnitIntegration(t *testing.T) {
+	id := kernel.NewULID()
+	set := settings("GITLAB", nil)
+	set.VCSIntegration = &id
+	use := port.Integration{Provider: "GITLAB", Credential: []byte("token")}
+	var got port.Repository
+	var asked *kernel.ULID
+	svc := New(stacks{settings: set}, map[string]port.Source{
+		"GITLAB": source{repo: &got, commit: vcsapi.Commit{Hash: "abc"}},
+	}, integrations{in: use, found: true, asked: &asked})
+	if _, err := svc.Resolve(
+		t.Context(),
+		kernel.NewAccountID(),
+		kernel.NewULID(),
+		"main",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if got.Integration == nil || string(got.Integration.Credential) != "token" ||
+		asked == nil || *asked != id {
+		t.Errorf("repository = %+v, asked for %v", got, asked)
+	}
+	failed := New(stacks{settings: set}, map[string]port.Source{"GITLAB": source{repo: &got}},
+		integrations{err: errOffline})
+	if _, err := failed.Resolve(
+		t.Context(),
+		kernel.NewAccountID(),
+		kernel.NewULID(),
+		"main",
+	); !errors.Is(
+		err,
+		errOffline,
+	) {
+		t.Errorf("Resolve with a failed integration = %v", err)
+	}
+	set.VCSDetached = true
+	detached := New(stacks{settings: set}, map[string]port.Source{"GITLAB": source{repo: &got}},
+		integrations{})
+	_, err := detached.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
+	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
+		t.Errorf("Resolve of a detached stack = %v", err)
 	}
 }

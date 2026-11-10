@@ -2681,6 +2681,381 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /azure-dev-ops-repo-integrations:
+    post:
+      description: Creates the Azure DevOps Repo integration.
+      operationId: azureDevOpsRepoIntegrationCreate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:customInput.spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              accessibleProjects: []
+              organizationURL: https://dev.azure.com/my-org
+              personalAccessToken: AZURE_PAT_HERE
+            schema:
+              $ref: '#/components/schemas/AzureDevOpsRepoIntegrationCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Azure DevOps Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Azure DevOps/Create Azure DevOps Integration.bru
+      x-graphql:
+        field: azureDevOpsRepoIntegrationCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}:
+    delete:
+      description: Deletes the Azure DevOps Repo integration.
+      operationId: azureDevOpsRepoIntegrationDelete
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureDevOpsRepoIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: azureDevOpsRepoIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
+          description: The azureDevOpsRepoIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Azure DevOps Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Azure DevOps/Delete Azure DevOps Integration.bru
+      x-graphql:
+        field: azureDevOpsRepoIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: Shows Azure DevOps Repos integration details.
+      operationId: azureDevOpsRepoIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:azureDevOpsRepoIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: azureDevOpsRepoIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
+          description: The azureDevOpsRepoIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Azure DevOps Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Azure DevOps/Get Azure DevOps Integration.bru
+      x-graphql:
+        field: azureDevOpsRepoIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: azureDevOpsRepoIntegrationPatch
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureDevOpsRepoIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: azureDevOpsRepoIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of AzureDevOpsRepoIntegrationUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
+          description: The azureDevOpsRepoIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Azure DevOps Integration
+      tags:
+        - VCS Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: Updates the Azure DevOps Repo integration with new properties.
+      operationId: azureDevOpsRepoIntegrationUpdate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureDevOpsRepoIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: azureDevOpsRepoIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AzureDevOpsRepoIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
+          description: The azureDevOpsRepoIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Azure DevOps Integration
+      tags:
+        - VCS Integrations
+      x-bruno: Danger Zone/Update Azure DevOps Integration.bru
+      x-graphql:
+        field: azureDevOpsRepoIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test:
+    post:
+      description: Tests the Azure DevOps Repo integration.
+      operationId: azureDevOpsRepoIntegrationTest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureDevOpsRepoIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: azureDevOpsRepoIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The azureDevOpsRepoIntegrationTest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Test Azure DevOps Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Azure DevOps/Test Azure DevOps Integration.bru
+      x-graphql:
+        field: azureDevOpsRepoIntegrationTest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /azure-dev-ops-webhooks-endpoint:
+    get:
+      description: Endpoint for incoming Azure DevOps webhooks.
+      operationId: azureDevOpsWebhooksEndpoint
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The azureDevOpsWebhooksEndpoint result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Webhooks Endpoint
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Azure DevOps/Get Webhooks Endpoint.bru
+      x-graphql:
+        field: azureDevOpsWebhooksEndpoint
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /billed-externally:
     get:
       description: >-
@@ -3035,6 +3410,939 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /bitbucket-cloud-integrations:
+    post:
+      description: Creates the Bitbucket Cloud integration.
+      operationId: bitbucketCloudIntegrationCreateV2
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:customInput.spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              apiToken: APP_PASSWORD_HERE
+              email: user@example.com
+            schema:
+              $ref: '#/components/schemas/BitbucketCloudIntegrationInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketCloudIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Bitbucket Cloud Integration V2
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Create Bitbucket Cloud Integration V2.bru
+      x-graphql:
+        field: bitbucketCloudIntegrationCreateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}:
+    delete:
+      description: Deletes the Bitbucket Cloud integration.
+      operationId: bitbucketCloudIntegrationDelete
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketCloudIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketCloudIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketCloudIntegration'
+          description: The bitbucketCloudIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Bitbucket Cloud Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Delete Bitbucket Cloud Integration.bru
+      x-graphql:
+        field: bitbucketCloudIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: Shows Bitbucket Cloud integration details.
+      operationId: bitbucketCloudIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:bitbucketCloudIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketCloudIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketCloudIntegration'
+          description: The bitbucketCloudIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Bitbucket Cloud Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Get Bitbucket Cloud Integration.bru
+      x-graphql:
+        field: bitbucketCloudIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+      operationId: bitbucketCloudIntegrationPatch
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketCloudIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: bitbucketCloudIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: input.customInput.id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of BitbucketCloudIntegrationUpdateInputBody.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketCloudIntegration'
+          description: The bitbucketCloudIntegrationUpdateV2 result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Bitbucket Cloud Integration V2
+      tags:
+        - VCS Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: Updates the Bitbucket Cloud integration with new properties.
+      operationId: bitbucketCloudIntegrationUpdateV2
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketCloudIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: bitbucketCloudIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: input.customInput.id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BitbucketCloudIntegrationUpdateInputBody'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketCloudIntegration'
+          description: The bitbucketCloudIntegrationUpdateV2 result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Bitbucket Cloud Integration V2
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Update Bitbucket Cloud Integration V2.bru
+      x-graphql:
+        field: bitbucketCloudIntegrationUpdateV2
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret:
+    post:
+      description: Regenerates the webhook secret for Bitbucket Cloud integration.
+      operationId: bitbucketCloudIntegrationRegenerateWebhookSecret
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketCloudIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketCloudIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketCloudIntegration'
+          description: The bitbucketCloudIntegrationRegenerateWebhookSecret result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Regenerate Webhook Secret
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Regenerate Webhook Secret.bru
+      x-graphql:
+        field: bitbucketCloudIntegrationRegenerateWebhookSecret
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/test:
+    post:
+      description: Tests the Bitbucket Cloud integration.
+      operationId: bitbucketCloudIntegrationTest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketCloudIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketCloudIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The bitbucketCloudIntegrationTest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Test Bitbucket Cloud Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Test Bitbucket Cloud Integration.bru
+      x-graphql:
+        field: bitbucketCloudIntegrationTest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /bitbucket-cloud-webhooks-endpoint:
+    get:
+      description: Endpoint for incoming Bitbucket Cloud webhooks.
+      operationId: bitbucketCloudWebhooksEndpoint
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The bitbucketCloudWebhooksEndpoint result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Webhooks Endpoint
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Cloud/Get Webhooks Endpoint.bru
+      x-graphql:
+        field: bitbucketCloudWebhooksEndpoint
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /bitbucket-datacenter-integrations:
+    post:
+      description: Creates the Bitbucket Datacenter integration.
+      operationId: bitbucketDatacenterIntegrationCreate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:customInput.spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              accessToken: BITBUCKET_ACCESS_TOKEN_HERE
+              apiHost: https://bitbucket.example.com
+              userFacingHost: https://bitbucket.example.com
+              username: my-bitbucket-user
+            schema:
+              $ref: '#/components/schemas/BitbucketDatacenterIntegrationCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketDatacenterIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Bitbucket Datacenter Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Datacenter/Create Bitbucket Datacenter Integration.bru
+      x-graphql:
+        field: bitbucketDatacenterIntegrationCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}:
+    delete:
+      description: Deletes the Bitbucket Datacenter integration.
+      operationId: bitbucketDatacenterIntegrationDelete
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketDatacenterIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketDatacenterIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketDatacenterIntegration'
+          description: The bitbucketDatacenterIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Bitbucket Datacenter Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Datacenter/Delete Bitbucket Datacenter Integration.bru
+      x-graphql:
+        field: bitbucketDatacenterIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: Shows Bitbucket Datacenter integration details.
+      operationId: bitbucketDatacenterIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:bitbucketDatacenterIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketDatacenterIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketDatacenterIntegration'
+          description: The bitbucketDatacenterIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Bitbucket Datacenter Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Datacenter/Get Bitbucket Datacenter Integration.bru
+      x-graphql:
+        field: bitbucketDatacenterIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: bitbucketDatacenterIntegrationPatch
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketDatacenterIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: bitbucketDatacenterIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of BitbucketDatacenterIntegrationUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketDatacenterIntegration'
+          description: The bitbucketDatacenterIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Bitbucket Datacenter Integration
+      tags:
+        - VCS Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: Updates the Bitbucket Datacenter integration with new properties.
+      operationId: bitbucketDatacenterIntegrationUpdate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketDatacenterIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: bitbucketDatacenterIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BitbucketDatacenterIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketDatacenterIntegration'
+          description: The bitbucketDatacenterIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Bitbucket Datacenter Integration
+      tags:
+        - VCS Integrations
+      x-bruno: Danger Zone/Update Bitbucket Datacenter Integration.bru
+      x-graphql:
+        field: bitbucketDatacenterIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret:
+    post:
+      description: Regenerates the webhook secret for Bitbucket Datacenter integration.
+      operationId: bitbucketDatacenterIntegrationRegenerateWebhookSecret
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketDatacenterIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketDatacenterIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BitbucketDatacenterIntegration'
+          description: The bitbucketDatacenterIntegrationRegenerateWebhookSecret result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Regenerate Webhook Secret
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Datacenter/Regenerate Webhook Secret.bru
+      x-graphql:
+        field: bitbucketDatacenterIntegrationRegenerateWebhookSecret
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/test:
+    post:
+      description: Tests the Bitbucket Datacenter integration.
+      operationId: bitbucketDatacenterIntegrationTest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:bitbucketDatacenterIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: bitbucketDatacenterIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The bitbucketDatacenterIntegrationTest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Test Bitbucket Datacenter Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Datacenter/Test Bitbucket Datacenter Integration.bru
+      x-graphql:
+        field: bitbucketDatacenterIntegrationTest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /bitbucket-datacenter-webhooks-endpoint:
+    get:
+      description: Endpoint for incoming Bitbucket Datacenter webhooks.
+      operationId: bitbucketDatacenterWebhooksEndpoint
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The bitbucketDatacenterWebhooksEndpoint result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Webhooks Endpoint
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Bitbucket Datacenter/Get Webhooks Endpoint.bru
+      x-graphql:
+        field: bitbucketDatacenterWebhooksEndpoint
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /branches:
+    get:
+      description: List of branches for a given repository.
+      operationId: branches
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - in: query
+          name: provider
+          required: true
+          schema:
+            $ref: '#/components/schemas/VCSProvider'
+          x-graphql-arg: provider
+        - in: query
+          name: namespace
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: namespace
+        - in: query
+          name: repository
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: repository
+        - in: query
+          name: repositoryURL
+          schema:
+            type: string
+          x-graphql-arg: repositoryURL
+        - in: query
+          name: vcsIntegrationID
+          schema:
+            type: string
+          x-graphql-arg: vcsIntegrationID
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchesPage'
+          description: The branches result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Branches
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/List Branches.bru
+      x-graphql:
+        field: branches
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
   /context-attachments/{attachmentId}:
     delete:
       description: >-
@@ -4081,6 +5389,965 @@ paths:
         - idempotency-key
         - rate-limit
       x-upstream: none
+  /github-enterprise-integrations:
+    post:
+      description: Creates the GitHub Enterprise integration
+      operationId: githubEnterpriseIntegrationCreate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:customInput.spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              apiHost: https://github.example.com
+              appID: "12345"
+              privateKey: |-
+                -----BEGIN RSA PRIVATE KEY-----
+                ...
+                -----END RSA PRIVATE KEY-----
+              userFacingHost: https://github.example.com
+              webhookSecret: my-webhook-secret
+            schema:
+              $ref: '#/components/schemas/GithubEnterpriseIntegrationCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create GitHub Enterprise Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub Enterprise/Create GitHub Enterprise Integration.bru
+      x-graphql:
+        field: githubEnterpriseIntegrationCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /github-enterprise-integrations/{githubEnterpriseIntegrationId}:
+    delete:
+      description: Deletes the GitHub Enterprise integration
+      operationId: githubEnterpriseIntegrationDelete
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:githubEnterpriseIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: githubEnterpriseIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: The githubEnterpriseIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete GitHub Enterprise Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub Enterprise/Delete GitHub Enterprise Integration.bru
+      x-graphql:
+        field: githubEnterpriseIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: |-
+        GitHub Enterprise Integration settings. If the id is not provided, it will return
+        the default GitHub Enterprise Integration.
+      operationId: githubEnterpriseIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:githubEnterpriseIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: githubEnterpriseIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: The githubEnterpriseIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get GitHub Enterprise Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub Enterprise/Get GitHub Enterprise Integration.bru
+      x-graphql:
+        field: githubEnterpriseIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: githubEnterpriseIntegrationPatch
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:githubEnterpriseIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: githubEnterpriseIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of GithubEnterpriseIntegrationUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: The githubEnterpriseIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch GitHub Enterprise Integration
+      tags:
+        - VCS Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: Updates the GitHub Enterprise integration
+      operationId: githubEnterpriseIntegrationUpdate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:githubEnterpriseIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: githubEnterpriseIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GithubEnterpriseIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: The githubEnterpriseIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update GitHub Enterprise Integration
+      tags:
+        - VCS Integrations
+      x-bruno: Danger Zone/Update GitHub Enterprise Integration.bru
+      x-graphql:
+        field: githubEnterpriseIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret:
+    post:
+      description: Regenerates the webhook secret for GitHub Enterprise integration.
+      operationId: githubEnterpriseIntegrationRegenerateWebhookSecret
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:githubEnterpriseIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: githubEnterpriseIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: The githubEnterpriseIntegrationRegenerateWebhookSecret result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Regenerate Webhook Secret
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub Enterprise/Regenerate Webhook Secret.bru
+      x-graphql:
+        field: githubEnterpriseIntegrationRegenerateWebhookSecret
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /github-enterprise-integrations/{githubEnterpriseIntegrationId}/test:
+    post:
+      description: Tests the GitHub Enterprise integration
+      operationId: githubEnterpriseIntegrationTest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:githubEnterpriseIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: githubEnterpriseIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The githubEnterpriseIntegrationTest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Test GitHub Enterprise Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub Enterprise/Test GitHub Enterprise Integration.bru
+      x-graphql:
+        field: githubEnterpriseIntegrationTest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /github-enterprise-webhooks-endpoint:
+    get:
+      description: The webhooks endpoint to use in your GitHub Enterprise App
+      operationId: githubEnterpriseWebhooksEndpoint
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The githubEnterpriseWebhooksEndpoint result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Webhooks Endpoint
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub Enterprise/Get Webhooks Endpoint.bru
+      x-graphql:
+        field: githubEnterpriseWebhooksEndpoint
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /github-integration:
+    get:
+      description: Build-in GitHub Integration settings.
+      operationId: githubIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubIntegration'
+          description: The githubIntegration result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get GitHub Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub/Get GitHub Integration.bru
+      x-graphql:
+        field: githubIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: singleton
+    put:
+      description: Updates the build-in GitHub integration
+      operationId: githubIntegrationUpdate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
+      requestBody:
+        content:
+          application/json:
+            example:
+              useGitCheckout: false
+              vcsChecks: ALL
+            schema:
+              $ref: '#/components/schemas/GithubIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubIntegration'
+          description: The githubIntegrationUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update GitHub Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitHub/Update GitHub Integration.bru
+      x-graphql:
+        field: githubIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: singleton
+  /gitlab-integrations:
+    post:
+      description: Creates the GitLab integration.
+      operationId: gitlabIntegrationCreate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:customInput.spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              apiHost: https://gitlab.example.com
+              privateToken: glpat-xxxxxxxxxxxxxxxxxxxx
+              userFacingHost: https://gitlab.example.com
+            schema:
+              $ref: '#/components/schemas/GitlabIntegrationCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitlabIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create GitLab Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitLab/Create GitLab Integration.bru
+      x-graphql:
+        field: gitlabIntegrationCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /gitlab-integrations/{gitlabIntegrationId}:
+    delete:
+      description: Deletes the GitLab integration.
+      operationId: gitlabIntegrationDelete
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:gitlabIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: gitlabIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitlabIntegration'
+          description: The gitlabIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete GitLab Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitLab/Delete GitLab Integration.bru
+      x-graphql:
+        field: gitlabIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: |-
+        Shows Gitlab integration details. If the id is not provided, it will return
+        the default Gitlab Integration.
+      operationId: gitlabIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:gitlabIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: gitlabIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitlabIntegration'
+          description: The gitlabIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get GitLab Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitLab/Get GitLab Integration.bru
+      x-graphql:
+        field: gitlabIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: gitlabIntegrationPatch
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:gitlabIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: gitlabIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of GitlabIntegrationUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitlabIntegration'
+          description: The gitlabIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch GitLab Integration
+      tags:
+        - VCS Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+      operationId: gitlabIntegrationUpdate
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:gitlabIntegrationId:vcs_integration
+      parameters:
+        - description: The slug of the integration that should be updated.
+          in: path
+          name: gitlabIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: customInput.id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitlabIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitlabIntegration'
+          description: The gitlabIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update GitLab Integration
+      tags:
+        - VCS Integrations
+      x-bruno: Danger Zone/Update GitLab Integration.bru
+      x-graphql:
+        field: gitlabIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret:
+    post:
+      description: Regenerates the webhook secret for GitLab integration.
+      operationId: gitlabIntegrationRegenerateWebhookSecret
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:gitlabIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: gitlabIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitlabIntegration'
+          description: The gitlabIntegrationRegenerateWebhookSecret result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Regenerate Webhook Secret
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitLab/Regenerate Webhook Secret.bru
+      x-graphql:
+        field: gitlabIntegrationRegenerateWebhookSecret
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /gitlab-integrations/{gitlabIntegrationId}/test:
+    post:
+      description: Tests the GitLab integration.
+      operationId: gitlabIntegrationTest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:gitlabIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: gitlabIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The gitlabIntegrationTest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Test GitLab Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitLab/Test GitLab Integration.bru
+      x-graphql:
+        field: gitlabIntegrationTest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /gitlab-webhooks-endpoint:
+    get:
+      description: Endpoint for incoming Gitlab webhooks.
+      operationId: gitlabWebhooksEndpoint
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The gitlabWebhooksEndpoint result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Webhooks Endpoint
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/GitLab/Get Webhooks Endpoint.bru
+      x-graphql:
+        field: gitlabWebhooksEndpoint
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /id:
     get:
       description: The ID of the caller's account.
@@ -6648,6 +8915,68 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: action
+  /repositories:
+    get:
+      description: |-
+        List of repositories available to the account.
+        Optional filter param can be applied for the results returned from VCS.
+      operationId: repositories
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - in: query
+          name: provider
+          schema:
+            $ref: '#/components/schemas/VCSProvider'
+          x-graphql-arg: provider
+        - in: query
+          name: vcsIntegrationID
+          schema:
+            type: string
+          x-graphql-arg: vcsIntegrationID
+        - in: query
+          name: filter
+          schema:
+            type: string
+          x-graphql-arg: filter
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryPage'
+          description: The repositories result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Repositories
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/List Repositories.bru
+      x-graphql:
+        field: repositories
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: read
   /roles:
     get:
       description: >-
@@ -14342,6 +16671,364 @@ paths:
       x-infraweave-feature: spaces
       x-infraweave-subject: query:space
       x-rest-style: read
+  /v-cs-integrations/search:
+    post:
+      operationId: searchVCSIntegrations
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example:
+              first: 50
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchVCSIntegrationsOutput'
+          description: The searchVCSIntegrations result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search VCS Integrations
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Search VCS Integrations.bru
+      x-graphql:
+        field: searchVCSIntegrations
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /v-cs-integrations/search/suggestions:
+    post:
+      description: >-
+        The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+      operationId: searchVCSIntegrationsSuggestions
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchVCSIntegrationsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search VCSIntegrations Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search VCSIntegrations Suggestions.bru
+      x-graphql:
+        field: searchVCSIntegrationsSuggestions
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /vcs-integrations:
+    get:
+      description: List of all VCS integrations available in the account.
+      operationId: vcsIntegrations
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VCSIntegrationPage'
+          description: The vcsIntegrations result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List VCS Integrations
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/List VCS Integrations.bru
+      x-graphql:
+        field: vcsIntegrations
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+  /vcs-integrations/{vcsIntegrationId}:
+    get:
+      description: Get VCS integrations by provider and id
+      operationId: vcsIntegration
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:vcsIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: vcsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - in: query
+          name: provider
+          required: true
+          schema:
+            $ref: '#/components/schemas/VCSProvider'
+          x-graphql-arg: provider
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VCSIntegration'
+          description: The vcsIntegration result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get VCS Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Get VCS Integration.bru
+      x-graphql:
+        field: vcsIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: item
+  /vcs-integrations/{vcsIntegrationId}/search-users:
+    get:
+      description: Search stacks/modules using this VCS integration.
+      operationId: vcsIntegrationSearchUsers
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:vcsIntegrationId:vcs_integration
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: vcsIntegrationId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchVCSIntegrationUsersOutput'
+          description: The searchUsers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Vcs integration search users
+      tags:
+        - VCS Integrations
+      x-graphql:
+        field: searchUsers
+        operation: query
+        type: VCSIntegration
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /vcs-integrations/{vcsIntegrationId}/search-users-suggestions:
+    get:
+      description: Search stacks/modules suggestions using this VCS integration.
+      operationId: vcsIntegrationSearchUsersSuggestions
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:vcsIntegrationId:vcs_integration
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: vcsIntegrationId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchUsersSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Vcs integration search users suggestions
+      tags:
+        - VCS Integrations
+      x-graphql:
+        field: searchUsersSuggestions
+        operation: query
+        type: VCSIntegration
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /vcs-integrations/{vcsIntegrationId}/test:
+    get:
+      description: Runs a test to check whether the VCS integration is configured correctly
+      operationId: vcsIntegrationTest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:vcsIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: vcsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - in: query
+          name: provider
+          required: true
+          schema:
+            $ref: '#/components/schemas/VCSProvider'
+          x-graphql-arg: provider
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VCSIntegrationTestResult'
+          description: The vcsIntegrationTest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Test VCS Integration
+      tags:
+        - VCS Integrations
+      x-bruno: VCS Integrations/Test VCS Integration.bru
+      x-graphql:
+        field: vcsIntegrationTest
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
   /viewer:
     get:
       description: Current user, if any.
@@ -15875,6 +18562,63 @@ components:
         - webhookUrl
       type: object
       x-graphql-type: AzureDevOpsRepoIntegration
+    AzureDevOpsRepoIntegrationCreateRequest:
+      additionalProperties: false
+      description: The arguments of azureDevOpsRepoIntegrationCreate not carried in the path.
+      properties:
+        accessibleProjects:
+          description: Restrict the integration to specific Azure DevOps projects. Leave empty to allow all projects in the organization.
+          items:
+            type: string
+          nullable: true
+          type: array
+          x-terraform:
+            - spacelift_azure_devops_integration.accessible_projects
+        customInput:
+          $ref: '#/components/schemas/CustomVCSInput'
+        organizationURL:
+          type: string
+        personalAccessToken:
+          description: The Azure DevOps personal access token
+          type: string
+          x-terraform:
+            - spacelift_azure_devops_integration.personal_access_token
+            - spacelift_azure_devops_integration.personal_access_token_wo
+        userFacingHost:
+          description: User facing host URL. Defaults to the organization URL if not set. Set this when using VCS agents.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_azure_devops_integration.user_facing_host
+      required:
+        - organizationURL
+        - personalAccessToken
+      type: object
+      x-graphql-args-of: azureDevOpsRepoIntegrationCreate
+    AzureDevOpsRepoIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of azureDevOpsRepoIntegrationUpdate not carried in the path.
+      properties:
+        accessibleProjects:
+          items:
+            type: string
+          nullable: true
+          type: array
+        customInput:
+          $ref: '#/components/schemas/CustomVCSUpdateInputBody'
+        organizationURL:
+          type: string
+        personalAccessToken:
+          nullable: true
+          type: string
+        userFacingHost:
+          nullable: true
+          type: string
+      required:
+        - customInput
+        - organizationURL
+      type: object
+      x-graphql-args-of: azureDevOpsRepoIntegrationUpdate
     AzureIntegration:
       description: AzureIntegration represents an integration with an Azure AD tenant.
       properties:
@@ -16337,6 +19081,36 @@ components:
         - webhookUrl
       type: object
       x-graphql-type: BitbucketCloudIntegration
+    BitbucketCloudIntegrationInput:
+      additionalProperties: false
+      properties:
+        apiToken:
+          type: string
+        customInput:
+          $ref: '#/components/schemas/CustomVCSInput'
+        email:
+          type: string
+      required:
+        - apiToken
+        - email
+      type: object
+      x-graphql-type: BitbucketCloudIntegrationInput
+    BitbucketCloudIntegrationUpdateInputBody:
+      additionalProperties: false
+      properties:
+        apiToken:
+          nullable: true
+          type: string
+        customInput:
+          $ref: '#/components/schemas/CustomVCSUpdateInputBody'
+        email:
+          type: string
+      required:
+        - customInput
+        - email
+      type: object
+      x-graphql-in-path: customInput.id
+      x-graphql-type: BitbucketCloudIntegrationUpdateInput
     BitbucketDatacenterIntegration:
       description: BitbucketDatacenterIntegration shows Bitbucket Datacenter integration details.
       properties:
@@ -16396,6 +19170,62 @@ components:
         - webhookURL
       type: object
       x-graphql-type: BitbucketDatacenterIntegration
+    BitbucketDatacenterIntegrationCreateRequest:
+      additionalProperties: false
+      description: The arguments of bitbucketDatacenterIntegrationCreate not carried in the path.
+      properties:
+        accessToken:
+          description: User access token from Bitbucket
+          type: string
+          x-terraform:
+            - spacelift_bitbucket_datacenter_integration.access_token
+            - spacelift_bitbucket_datacenter_integration.access_token_wo
+        apiHost:
+          description: The API host where requests will be sent
+          type: string
+          x-terraform:
+            - spacelift_bitbucket_datacenter_integration.api_host
+        customInput:
+          $ref: '#/components/schemas/CustomVCSInput'
+        userFacingHost:
+          description: User Facing Host which will be used for all user-facing URLs displayed in the Spacelift UI
+          type: string
+          x-terraform:
+            - spacelift_bitbucket_datacenter_integration.user_facing_host
+        username:
+          description: Username which will be used to authenticate requests for cloning repositories
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_bitbucket_datacenter_integration.username
+      required:
+        - accessToken
+        - apiHost
+        - userFacingHost
+      type: object
+      x-graphql-args-of: bitbucketDatacenterIntegrationCreate
+    BitbucketDatacenterIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of bitbucketDatacenterIntegrationUpdate not carried in the path.
+      properties:
+        accessToken:
+          nullable: true
+          type: string
+        apiHost:
+          type: string
+        customInput:
+          $ref: '#/components/schemas/CustomVCSUpdateInputBody'
+        userFacingHost:
+          type: string
+        username:
+          nullable: true
+          type: string
+      required:
+        - apiHost
+        - customInput
+        - userFacingHost
+      type: object
+      x-graphql-args-of: bitbucketDatacenterIntegrationUpdate
     BlobStorageAuthMethod:
       description: BlobStorageAuthMethod is how a Blob Storage integration authenticates its reads.
       enum:
@@ -16532,6 +19362,19 @@ components:
         - id
       type: object
       x-graphql-type: Blueprint
+    BranchesPage:
+      description: One page of a cursor-paginated list.
+      properties:
+        items:
+          items:
+            type: string
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
     ClaimMapping:
       properties:
         entries:
@@ -17067,6 +19910,103 @@ components:
         - node
       type: object
       x-graphql-type: ContextsConnection
+    CustomVCSInput:
+      additionalProperties: false
+      properties:
+        description:
+          description: Free-form description of the integration.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_azure_devops_integration.description
+            - spacelift_bitbucket_datacenter_integration.description
+            - spacelift_gitlab_integration.description
+        isDefault:
+          description: isDefault indicates whether this integration should be used as the default. If not provided, defaults to false.
+          nullable: true
+          type: boolean
+          x-terraform:
+            - spacelift_azure_devops_integration.is_default
+            - spacelift_bitbucket_datacenter_integration.is_default
+            - spacelift_gitlab_integration.is_default
+        labels:
+          description: Labels for the integration.
+          items:
+            type: string
+          nullable: true
+          type: array
+          x-terraform:
+            - spacelift_azure_devops_integration.labels
+            - spacelift_bitbucket_datacenter_integration.labels
+            - spacelift_gitlab_integration.labels
+        name:
+          description: The name of the integration
+          type: string
+          x-terraform:
+            - spacelift_azure_devops_integration.name
+            - spacelift_bitbucket_datacenter_integration.name
+            - spacelift_gitlab_integration.name
+        spaceID:
+          description: The space this VCS integration belongs to.
+          type: string
+          x-terraform:
+            - spacelift_azure_devops_integration.space_id
+            - spacelift_bitbucket_datacenter_integration.space_id
+            - spacelift_gitlab_integration.space_id
+        useGitCheckout:
+          description: Indicates whether the integration should use git checkout. If false source code will be downloaded using the VCS API.
+          nullable: true
+          type: boolean
+          x-terraform:
+            - spacelift_azure_devops_integration.use_git_checkout
+            - spacelift_bitbucket_datacenter_integration.use_git_checkout
+            - spacelift_gitlab_integration.use_git_checkout
+        vcsCheckOptions:
+          $ref: '#/components/schemas/VCSCheckOptionsInput'
+        vcsChecks:
+          allOf:
+            - $ref: '#/components/schemas/VCSCheck'
+          description: vcsChecks contains all the VCS checks enabled for this integration. If not provided, defaults to INDIVIDUAL
+          x-terraform:
+            - spacelift_azure_devops_integration.vcs_checks
+            - spacelift_bitbucket_datacenter_integration.vcs_checks
+            - spacelift_gitlab_integration.vcs_checks
+      required:
+        - name
+        - spaceID
+      type: object
+      x-graphql-type: CustomVCSInput
+    CustomVCSUpdateInputBody:
+      additionalProperties: false
+      properties:
+        description:
+          description: Free-form description of the integration.
+          nullable: true
+          type: string
+        labels:
+          description: Labels for the integration.
+          items:
+            type: string
+          nullable: true
+          type: array
+        space:
+          description: |-
+            The slug of the space that the integration will belong to after
+            the update.
+          type: string
+        useGitCheckout:
+          description: Indicates whether the integration should use git checkout. If false source code will be downloaded using the VCS API.
+          nullable: true
+          type: boolean
+        vcsCheckOptions:
+          $ref: '#/components/schemas/VCSCheckOptionsInput'
+        vcsChecks:
+          $ref: '#/components/schemas/VCSCheck'
+      required:
+        - space
+      type: object
+      x-graphql-in-path: id
+      x-graphql-type: CustomVCSUpdateInput
     DataPoint:
       properties:
         labels:
@@ -17798,6 +20738,30 @@ components:
         - webhookUrl
       type: object
       x-graphql-type: GithubEnterpriseIntegration
+    GithubEnterpriseIntegrationCreateRequest:
+      additionalProperties: false
+      description: The arguments of githubEnterpriseIntegrationCreate not carried in the path.
+      properties:
+        apiHost:
+          type: string
+        appID:
+          type: string
+        customInput:
+          $ref: '#/components/schemas/CustomVCSInput'
+        privateKey:
+          type: string
+        userFacingHost:
+          nullable: true
+          type: string
+        webhookSecret:
+          nullable: true
+          type: string
+      required:
+        - apiHost
+        - appID
+        - privateKey
+      type: object
+      x-graphql-args-of: githubEnterpriseIntegrationCreate
     GithubEnterpriseIntegrationInstallation:
       description: |-
         GithubEnterpriseIntegrationInstallation represents a single GitHub Enterprise
@@ -17818,6 +20782,28 @@ components:
         - installationId
       type: object
       x-graphql-type: GithubEnterpriseIntegrationInstallation
+    GithubEnterpriseIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of githubEnterpriseIntegrationUpdate not carried in the path.
+      properties:
+        apiHost:
+          type: string
+        customInput:
+          $ref: '#/components/schemas/CustomVCSUpdateInputBody'
+        privateKey:
+          nullable: true
+          type: string
+        userFacingHost:
+          nullable: true
+          type: string
+        webhookSecret:
+          type: string
+      required:
+        - apiHost
+        - customInput
+        - webhookSecret
+      type: object
+      x-graphql-args-of: githubEnterpriseIntegrationUpdate
     GithubIntegration:
       description: GithubIntegration shows build-in GitHub integration details.
       properties:
@@ -17844,6 +20830,21 @@ components:
         - vcsChecks
       type: object
       x-graphql-type: GithubIntegration
+    GithubIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of githubIntegrationUpdate not carried in the path.
+      properties:
+        useGitCheckout:
+          nullable: true
+          type: boolean
+        vcsCheckOptions:
+          $ref: '#/components/schemas/VCSCheckOptionsInput'
+        vcsChecks:
+          $ref: '#/components/schemas/VCSCheck'
+      required:
+        - vcsChecks
+      type: object
+      x-graphql-args-of: githubIntegrationUpdate
     GitlabIntegration:
       description: GitlabIntegration shows Gitlab integration details.
       properties:
@@ -17895,6 +20896,53 @@ components:
         - webhookUrl
       type: object
       x-graphql-type: GitlabIntegration
+    GitlabIntegrationCreateRequest:
+      additionalProperties: false
+      description: The arguments of gitlabIntegrationCreate not carried in the path.
+      properties:
+        apiHost:
+          description: API host URL
+          type: string
+          x-terraform:
+            - spacelift_gitlab_integration.api_host
+        customInput:
+          $ref: '#/components/schemas/CustomVCSInput'
+        privateToken:
+          description: The GitLab API Token
+          type: string
+          x-terraform:
+            - spacelift_gitlab_integration.private_token
+            - spacelift_gitlab_integration.private_token_wo
+        userFacingHost:
+          description: User facing host URL.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_gitlab_integration.user_facing_host
+      required:
+        - apiHost
+        - privateToken
+      type: object
+      x-graphql-args-of: gitlabIntegrationCreate
+    GitlabIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of gitlabIntegrationUpdate not carried in the path.
+      properties:
+        apiHost:
+          nullable: true
+          type: string
+        customInput:
+          $ref: '#/components/schemas/CustomVCSUpdateInputBody'
+        privateToken:
+          nullable: true
+          type: string
+        userFacingHost:
+          nullable: true
+          type: string
+      required:
+        - customInput
+      type: object
+      x-graphql-args-of: gitlabIntegrationUpdate
     Hooks:
       description: Hooks represents a collection of hooks extending the standard run lifecycle.
       properties:
@@ -20040,6 +23088,33 @@ components:
         - phantom
       type: object
       x-graphql-type: PulumiStack
+    Repository:
+      description: GitHub repository with branches.
+      properties:
+        id:
+          description: Name of the repository.
+          type: string
+        namespace:
+          description: Repository namespace.
+          type: string
+      required:
+        - id
+        - namespace
+      type: object
+      x-graphql-type: Repository
+    RepositoryPage:
+      description: One page of a cursor-paginated list.
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/Repository'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
     Role:
       properties:
         actions:
@@ -22027,6 +25102,32 @@ components:
         - values
       type: object
       x-graphql-type: SearchSuggestionsPossibleValuesString
+    SearchVCSIntegrationUsersOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/VCSIntegrationUserConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchVCSIntegrationUsersOutput
+    SearchVCSIntegrationsOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/VCSIntegrationsConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchVCSIntegrationsOutput
     SeatLimit:
       description: >-
         A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
@@ -25436,6 +28537,20 @@ components:
         - individualSkipUnchanged
       type: object
       x-graphql-type: VCSCheckOptions
+    VCSCheckOptionsInput:
+      additionalProperties: false
+      description: Input for configuring additional VCS check options.
+      properties:
+        individualFailuresOnly:
+          description: When true, individual check runs are only sent when a run reaches a non-success terminal state.
+          nullable: true
+          type: boolean
+        individualSkipUnchanged:
+          description: When true, individual check runs are only sent for runs that plan changes; runs with no changes are skipped (failures are still sent).
+          nullable: true
+          type: boolean
+      type: object
+      x-graphql-type: VCSCheckOptionsInput
     VCSIntegration:
       properties:
         createdAt:
@@ -25489,6 +28604,19 @@ components:
         searchUsers: served by GET /vcs-integrations/{vcsIntegrationId}/search-users
         searchUsersSuggestions: served by GET /vcs-integrations/{vcsIntegrationId}/search-users-suggestions
       x-graphql-type: VCSIntegration
+    VCSIntegrationCheck:
+      properties:
+        metadata:
+          $ref: '#/components/schemas/VCSIntegrationTestResultMetadata'
+        status:
+          $ref: '#/components/schemas/VCSIntegrationTestStatus'
+        type:
+          $ref: '#/components/schemas/VCSIntegrationTestType'
+      required:
+        - status
+        - type
+      type: object
+      x-graphql-type: VCSIntegrationCheck
     VCSIntegrationDetails:
       discriminator:
         mapping:
@@ -25534,6 +28662,108 @@ components:
         - id
       type: object
       x-graphql-type: VCSIntegration
+    VCSIntegrationTestResult:
+      properties:
+        checks:
+          items:
+            $ref: '#/components/schemas/VCSIntegrationCheck'
+          type: array
+        status:
+          $ref: '#/components/schemas/VCSIntegrationTestStatus'
+      required:
+        - checks
+        - status
+      type: object
+      x-graphql-type: VCSIntegrationTestResult
+    VCSIntegrationTestResultMetadata:
+      properties:
+        githubAppEvents:
+          items:
+            type: string
+          type: array
+        permissions:
+          items:
+            type: string
+          type: array
+        reason:
+          nullable: true
+          type: string
+        webHooks:
+          $ref: '#/components/schemas/VCSIntegrationTestResultMetadataWebhooks'
+      required:
+        - githubAppEvents
+        - permissions
+      type: object
+      x-graphql-type: VCSIntegrationTestResultMetadata
+    VCSIntegrationTestResultMetadataWebhooks:
+      properties:
+        actual:
+          type: string
+        expected:
+          type: string
+      required:
+        - actual
+        - expected
+      type: object
+      x-graphql-type: VCSIntegrationTestResultMetadataWebhooks
+    VCSIntegrationTestStatus:
+      enum:
+        - SUCCESS
+        - FAIL
+      type: string
+      x-graphql-type: VCSIntegrationTestStatus
+    VCSIntegrationTestType:
+      enum:
+        - CONNECTION
+        - PERMISSIONS
+        - WEBHOOK
+        - GITHUB_APP_EVENTS
+      type: string
+      x-graphql-type: VCSIntegrationTestType
+    VCSIntegrationUser:
+      description: VCSIntegrationUser represents a user (module or stacks) of the VCS integration.
+      properties:
+        isModule:
+          description: True if the attached project is a module.
+          type: boolean
+        spaceDetails:
+          $ref: '#/components/schemas/SpaceRef'
+        stackId:
+          description: Slug of the attached stack or module.
+          type: string
+        stackName:
+          description: Name of the attached stack or module.
+          type: string
+      required:
+        - isModule
+        - spaceDetails
+        - stackId
+        - stackName
+      type: object
+      x-graphql-type: VCSIntegrationUser
+    VCSIntegrationUserConnection:
+      description: VCSIntegrationUserConnection represents a single stack/module in a page of results for a VCS integration.
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/VCSIntegrationUser'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: VCSIntegrationUserConnection
+    VCSIntegrationsConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/VCSIntegrationRef'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: VCSIntegrationsConnection
     VCSProvider:
       description: VCSProvider is the type of VCS provider.
       enum:

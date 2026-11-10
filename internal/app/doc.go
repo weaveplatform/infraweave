@@ -7,7 +7,8 @@
 // Authenticator and OperatorAuthenticator, and the expression registry it
 // builds from the domains' surfaces under the expressions settings and
 // binds back into the configuration domain, and the vcs domain's
-// resolution of a stack's refs, which it binds back into the stacks domain;
+// resolution of a stack's refs and check of the VCS integration a stack
+// names, which it binds back into the stacks domain;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //
@@ -63,7 +64,7 @@
 // each rotation enqueues (secretsTasks) and which walks SealedColumns, the
 // platform's sealed columns and each domain's; every
 // domain appends to and subscribes on Run's one outbox, where
-// subscribePurges subscribes the features, stacks and configuration purges to
+// subscribePurges subscribes the features, stacks, configuration and vcs purges to
 // accessapi.Deleted, since features cannot read access' event itself, and
 // the configuration domain subscribes its automatic attachments, and the
 // vcs domain its tracking of a stack's commit, to stacksapi.Changed. It stops the ticker, then

@@ -75,6 +75,9 @@ type Scope struct {
 // Store is what the service needs of the stacks' storage. Every method
 // joins the transaction its context carries.
 type Store interface {
+	// DetachVCS detaches acct's stacks bound to integration, leaving
+	// their versions as they are.
+	DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error
 	// SetTracked sets acct's stack id's branch head and tracked commit,
 	// leaving either unchanged when nil; stacksapi.ErrNotFound when acct
 	// lacks it.
@@ -211,9 +214,10 @@ type Service struct {
 	events   Events
 	now      func() time.Time
 
-	mu      sync.RWMutex
-	guards  []stacksapi.StackGuard
-	sources stacksapi.StackSources
+	mu           sync.RWMutex
+	guards       []stacksapi.StackGuard
+	sources      stacksapi.StackSources
+	integrations stacksapi.StackIntegrations
 }
 
 // New returns the service over d.
@@ -246,6 +250,16 @@ func (s *Service) BindSources(src stacksapi.StackSources) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sources = src
+}
+
+// BindIntegrations makes in what a stack's write checks the VCS
+// integration it names with; until it runs, every integration is
+// refused. It runs during construction, before the service serves a
+// request.
+func (s *Service) BindIntegrations(in stacksapi.StackIntegrations) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.integrations = in
 }
 
 func (s *Service) registered() []stacksapi.StackGuard {
@@ -314,6 +328,21 @@ func (s *Service) SetTracked(
 	return s.store.SetTracked(ctx, acct, id, head, commit, setBy)
 }
 
+// DetachVCS detaches acct's stacks bound to integration.
+func (s *Service) DetachVCS(
+	ctx context.Context,
+	acct kernel.AccountID,
+	integration kernel.ULID,
+) error {
+	return s.store.DetachVCS(ctx, acct, integration) //nolint:wrapcheck // the store names the write
+}
+
+// Detached is a stack whose VCS integration was deleted, which refuses
+// its commit operations until a write gives it a source again.
+type Detached struct{ Slug string }
+
+func (d *Detached) Error() string { return "stack " + d.Slug + " has no VCS integration" }
+
 // SyncCommit sets p's account's stack slug's branch head and tracked
 // commit to its branch's head, resolved now. The route has decided
 // STACK_SYNC_COMMIT on the stack's space.
@@ -344,6 +373,9 @@ func (s *Service) track(
 	st, err := s.store.BySlug(ctx, p.AccountID, slug, false)
 	if err != nil {
 		return Stack{}, err //nolint:wrapcheck // the store names the read
+	}
+	if st.VCSDetached {
+		return Stack{}, &Detached{Slug: st.Slug}
 	}
 	s.mu.RLock()
 	src := s.sources
@@ -581,6 +613,9 @@ func (s *Service) Create(
 		st = Stack{CreatedAt: s.now(), ManagesState: manageState}
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
 		apply(&st, space, in)
+		if err := s.bind(ctx, p.AccountID, &st, in, "/input"); err != nil {
+			return err
+		}
 		if err := s.store.Create(ctx, st); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
@@ -627,9 +662,48 @@ func (s *Service) Update(
 				}
 			}
 			apply(st, space, in)
-			return nil
+			return s.bind(ctx, p.AccountID, st, in, "")
 		},
 	)
+}
+
+// bind binds st to the VCS integration in names, which must be of st's
+// provider and in st's space or one it inherits from; a refusal points
+// at at's vcsIntegrationId.
+func (s *Service) bind(
+	ctx context.Context,
+	acct kernel.AccountID,
+	st *Stack,
+	in Input,
+	at string,
+) error {
+	if in.VCSIntegration == nil {
+		return nil
+	}
+	refused := &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+		Pointer: at + "/vcsIntegrationId", Reason: kernel.ReasonNotFound,
+		Message: fmt.Sprintf("No %s VCS integration %q that the stack's space reaches.",
+			st.Provider, *in.VCSIntegration),
+	}}}
+	id, err := kernel.ParseULID(*in.VCSIntegration)
+	if err != nil {
+		return refused
+	}
+	s.mu.RLock()
+	integrations := s.integrations
+	s.mu.RUnlock()
+	if integrations == nil {
+		return refused
+	}
+	err = integrations.Bindable(ctx, acct, st.Space, st.Provider, id)
+	if errors.Is(err, stacksapi.ErrNoIntegration) {
+		return refused
+	}
+	if err != nil {
+		return err //nolint:wrapcheck // the vcs domain names the read
+	}
+	st.VCSIntegration = &id
+	return nil
 }
 
 // Reslug gives p's account's stack slug the slug its name derives; a
@@ -855,10 +929,14 @@ func (s *Service) write(
 			return err
 		}
 		st.Version++
+		source := sourceOf(st) != before
+		if source {
+			st.VCSDetached = false
+		}
 		if err := s.store.Write(ctx, st); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
-		return s.changed(ctx, st, what, sourceOf(st) != before)
+		return s.changed(ctx, st, what, source)
 	})
 	if errors.Is(err, errUnchanged) {
 		return st, nil

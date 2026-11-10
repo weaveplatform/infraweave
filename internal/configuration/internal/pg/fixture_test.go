@@ -203,6 +203,10 @@ func (s *stacks) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 	return nil
 }
 
+// DetachVCS is never reached: the configuration domain deletes no VCS
+// integration.
+func (*stacks) DetachVCS(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
 // SetTracked is never reached: the configuration domain does not track
 // commits.
 func (*stacks) SetTracked(
